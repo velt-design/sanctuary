@@ -89,6 +89,18 @@ for(const [width,projection] of [[6,3],[1.5,6],[10,1.5]])test(`size plan, slider
 for(const [oldStep,newStep] of [['shape','roof'],['explore','extras'],['review','review']])test(`saved ${oldStep} progress migrates to ${newStep}`,async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.addInitScript(step=>localStorage.setItem('sanctuary.mobile-journey.v1',step),oldStep);await page.goto('/configurator-preview?open=1');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-mobile-step',newStep);
 });
+test('starting a new design clears the previous side targets and lighting tab',async({page})=>{
+ await page.setViewportSize({width:390,height:750});await page.goto('/configurator-preview?open=1');await toExtras(page);
+ await page.getByRole('checkbox',{name:/Front 1/}).check();await page.getByRole('radio',{name:'Timber',exact:true}).check();
+ await page.getByRole('button',{name:'Lighting',exact:true}).click();await next(page,'See your pergola');await next(page,'Review your design');
+ await next(page,'Start a new design');await next(page,'Start new design');await toExtras(page);
+ await expect(page.getByRole('button',{name:'Sides',exact:true})).toHaveAttribute('aria-pressed','true');
+ for(const checkbox of await page.getByRole('checkbox').all())await expect(checkbox).not.toBeChecked();
+ await expect(page.getByRole('radio',{name:'Timber',exact:true})).toBeDisabled();
+ await expect(page.getByText('Choose one or more sides above.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Choose your sides',exact:true}).getByRole('alert')).toHaveCount(0);
+});
+
 test('normal entry, reset confirmation and increased text remain usable',async({page})=>{
  await page.setViewportSize({width:390,height:750});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');await page.getByRole('radio',{name:/Design your pergola/}).click();await expect(page.getByRole('heading',{name:'Find your roof.'})).toBeFocused();
  await toModel(page);await next(page,'Review your design');await next(page,'Start a new design');await expect(page.getByText('Replace this design and start again?',{exact:true})).toBeVisible();await next(page,'Keep this design');await next(page,'Start a new design');await next(page,'Start new design');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-mobile-step','roof');
