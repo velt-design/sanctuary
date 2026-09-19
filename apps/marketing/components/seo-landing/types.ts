@@ -113,6 +113,7 @@ export type SeoLandingPageConfig = {
   marker: string;
   route: string;
   showGuideNavigation?: boolean;
+  showDesignNextSteps?: boolean;
   breadcrumbLabel?: string;
   enquiryType?: EnquiryAudience;
   schemaKind?: 'service';
@@ -128,6 +129,7 @@ export type SeoLandingPageConfig = {
     title: string;
     intro: string;
     primaryCta: string;
+    primaryHref?: string;
     secondaryCta: string;
     secondaryHref: string;
     proof: readonly string[];

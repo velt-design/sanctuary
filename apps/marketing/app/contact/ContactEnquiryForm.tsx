@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
 import { sendGoogleAnalyticsEvent } from '../../lib/googleAnalyticsEvent';
+import { useEnquiryInteraction } from '../../components/enquiry/useEnquiryInteraction';
 import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import SimpleCoverCalculator from '@/components/simple-cover-calculator/SimpleCoverCalculator';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
@@ -123,6 +124,7 @@ export default function ContactEnquiryForm({
     trackingBasis,
     trackingRegionPolicy,
   } = useConsent();
+  const trackFirstInteraction = useEnquiryInteraction('contact', Boolean(configuredDesign), hasTrackingDecision && consent.analytics);
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [selectedPathway, setPathway] = useState<ContactPathway | null>(() => (
     getInitialContactPathway(initialEnquiryType, initialContext, initialIntent)
@@ -272,20 +274,6 @@ export default function ContactEnquiryForm({
       clearFieldError('enquiryType');
     }
     resetSubmissionMessage();
-
-    if (!window.matchMedia('(max-width: 760px)').matches) return;
-
-    window.requestAnimationFrame(() => {
-      const destination = nextPathway === 'simple'
-        ? simpleCalculatorRef.current
-        : projectSectionRef.current;
-      destination?.scrollIntoView({
-        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          ? 'auto'
-          : 'smooth',
-        block: 'start',
-      });
-    });
   };
 
   const handleBusinessAudience = (nextAudience: BusinessAudience) => {
@@ -503,7 +491,7 @@ export default function ContactEnquiryForm({
     }
   };
 
-  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields mobileFinish={mobileFinish} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
+  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'
@@ -525,6 +513,8 @@ export default function ContactEnquiryForm({
       action="/api/enquiry/fallback"
       noValidate={isEnhanced}
       onInput={handleFormInput}
+      onInputCapture={trackFirstInteraction}
+      onChangeCapture={trackFirstInteraction}
       onSubmit={handleSubmit}
       aria-labelledby="contact-form-title"
       data-contact-pathway={pathway ?? 'chooser'}
@@ -534,7 +524,7 @@ export default function ContactEnquiryForm({
       <input type="hidden" name="enquiryContext" value={JSON.stringify(contextProperties)} readOnly />
       <input type="hidden" name="enquiryType" value={enquiryType ?? ''} disabled={!isEnhanced && !configuredDesign} readOnly />
 
-      <ContactFormIntro configured={Boolean(configuredDesign)} bespoke={pathway === 'custom'} business={pathway === 'commercial-professional'} hasSourceContext={hasSourceContext} contextDisplay={contextDisplay} />
+      <ContactFormIntro configured={Boolean(configuredDesign)} bespoke={pathway === 'custom'} business={pathway === 'commercial-professional'} selected={Boolean(pathway)} hasSourceContext={hasSourceContext} contextDisplay={contextDisplay} />
 
       <EnquiryErrorSummary
         className="contact-form__error-summary"
@@ -605,13 +595,13 @@ export default function ContactEnquiryForm({
                 />
               ) : null}
 
-              {pathway === 'commercial-professional' ? (
+              <fieldset className="contact-form__business-persistence" hidden={pathway !== 'commercial-professional'} disabled={pathway !== 'commercial-professional'}>
                 <ContactCommercialFields
                   audience={businessAudience}
                   hasAudienceError={Boolean(fieldErrors.enquiryType)}
                   onAudienceChange={handleBusinessAudience}
                 />
-              ) : null}
+              </fieldset>
 
               <div className="contact-form__field contact-form__field--wide">
                 <label htmlFor="contact-suburb">

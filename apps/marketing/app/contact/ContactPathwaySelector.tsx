@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { useState } from 'react';
 import { ENQUIRY_AUDIENCE_OPTIONS } from '@/lib/enquiryFormContract';
 import type { EnquiryAudience } from '@/lib/enquiryContext';
 import type { EnquiryContext } from '@/lib/enquiryContext';
@@ -24,8 +25,16 @@ export default function ContactPathwaySelector({
   sourceContext,
   onChange,
 }: ContactPathwaySelectorProps) {
+  const [choosing, setChoosing] = useState(!pathway);
+  const selected = CONTACT_PATHWAY_OPTIONS.find(option => option.value === pathway);
   return (
     <>
+      <details className="contact-form__pathway-choice" open={choosing} hidden={!isEnhanced}
+        onToggle={event => setChoosing(event.currentTarget.open)}>
+        <summary>
+          <span><small>Your pathway</small><strong>{selected?.label ?? 'Choose your pathway'}</strong></span>
+          <span>{choosing ? 'Close choices' : 'Change pathway'}</span>
+        </summary>
       <fieldset
         className="contact-form__section contact-form__type contact-form__pathways"
         aria-describedby={hasError ? errorId : undefined}
@@ -71,6 +80,7 @@ export default function ContactPathwaySelector({
           ))}
         </div>
       </fieldset>
+      </details>
 
       <noscript>
         <fieldset className="contact-form__section contact-form__type">

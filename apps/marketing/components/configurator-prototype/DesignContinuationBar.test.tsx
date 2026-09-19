@@ -27,6 +27,7 @@ const scroll = (bottom: number) => act(async () => { openingBottom = bottom; win
 it('appears immediately on other browsing pages, including their opening section', async () => {
   path = '/products';
   await render(); expect(host.textContent).toContain('Start designing');
+  expect(host.querySelector('aside')?.getAttribute('data-design-placement')).toBe('in-flow');
   await scroll(-1); expect(host.textContent).toContain('Start designing');
   expect(host.querySelector('a')?.getAttribute('href')).toBe('/configurator-preview?open=1');
   await scroll(10); expect(host.textContent).toContain('Start designing');
@@ -53,6 +54,7 @@ it('does not compete with enquiry or private transaction pages', async () => {
   expect(host.querySelector('aside')).toBeNull();
   vi.stubGlobal('scrollY', 120); await scroll(600);
   expect(host.textContent).toContain('Start designing');
+  expect(host.querySelector('aside')?.getAttribute('data-design-placement')).toBe('floating');
   vi.stubGlobal('scrollY', 0); await scroll(720);
   expect(host.querySelector('aside')).toBeNull();
 });

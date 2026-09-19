@@ -40,6 +40,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
   const explicitIntent = params.enquiry_intent === 'help' || params.enquiry_intent === 'bespoke' ? params.enquiry_intent : undefined;
   // A normal contact link must remain an enquiry entry, even after browsing a cover.
   const initialIntent = explicitIntent ?? (params.configurator !== 'preview' && getInitialContactPathway(initialEnquiryType, enquiryContext) === 'simple' ? 'help' : undefined);
+  const hasChosenPathway = Boolean(getInitialContactPathway(initialEnquiryType, enquiryContext, initialIntent));
   const sourceProject = projects.find(
     (project) => project.slug === enquiryContext.sourceProject,
   );
@@ -74,10 +75,10 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
             <p>
               Share the site, intended use and what you know so far.
             </p>
-            <a className="contact-action contact-action--primary" href={buildConfiguratorEnquiryHref(enquiryContext)}>
-              Design your pergola
-            </a>
-            <a className="contact-action" href="#contact-form">Need help or a bespoke design?</a>
+            {hasChosenPathway ? <a className="contact-action contact-action--primary" href="#contact-form">Continue your project brief</a> : <>
+              <a className="contact-action contact-action--primary" href={buildConfiguratorEnquiryHref(enquiryContext)}>Design your pergola</a>
+              <a className="contact-action" href="#contact-form">Need help or a bespoke design?</a>
+            </>}
           </div>
 
           <figure className="contact-hero__figure">
@@ -117,6 +118,11 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
               <p>
                 Leave design choices open if you are unsure.
               </p>
+            </div>
+
+            <div>
+              <p className="contact-eyebrow">What happens next</p>
+              <p>We’ll review your brief and usually respond within the working day. Together, we’ll agree what is needed to move your project forward.</p>
             </div>
 
             <div className="contact-guidance__direct">

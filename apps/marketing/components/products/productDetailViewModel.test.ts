@@ -6,6 +6,12 @@ import {
 } from './productDetailViewModel';
 
 describe('product detail editorial view model', () => {
+  it('keeps Hip and accessory enquiries on their specific brief and offers the designer for supported forms', () => {
+    for (const product of products) {
+      const model = buildProductDetailViewModel(product);
+      expect(model.showDesignNextSteps).toBe(['pitched', 'gable', 'box-perimeter'].includes(product.slug));
+    }
+  });
   it('gives every canonical product the same three purposeful groups', () => {
     expect(products).toHaveLength(10);
 

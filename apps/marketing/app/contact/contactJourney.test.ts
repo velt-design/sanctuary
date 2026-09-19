@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parseEnquiryContext } from '../../lib/enquiryContext';
 import {
   getContactEnquiryAudience,
   getInitialBusinessAudience,
@@ -7,6 +8,15 @@ import {
 } from './contactJourney';
 
 describe('contact journey routing', () => {
+  it('continues validated project or product references without inventing bespoke intent', () => {
+    const known = { projectSlugs: ['warkworth-outdoor-room'], productSlugs: ['gable'] };
+    const project = parseEnquiryContext({ source_project: 'warkworth-outdoor-room', enquiry_type: 'residential' }, known);
+    expect(getInitialContactPathway('residential', project)).toBe('help');
+    expect(getInitialContactPathway('residential', project, 'bespoke')).toBe('custom');
+    expect(getInitialContactPathway('professional', project)).toBe('commercial-professional');
+    expect(getInitialContactPathway(null, parseEnquiryContext({ source_product: 'gable' }, known))).toBe('help');
+    expect(getInitialContactPathway(null, parseEnquiryContext({ source_project: 'unknown' }, known))).toBeNull();
+  });
   it('uses trusted journey context without treating a generic residential audience as a pathway', () => {
     expect(getInitialContactPathway('residential', {})).toBeNull();
     expect(getInitialContactPathway('residential', { projectDirection: 'cover' })).toBe('simple');

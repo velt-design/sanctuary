@@ -104,8 +104,39 @@ current homepage continue button.
 | Project-led visual-finder events | analytics | `apps/marketing/app/_home-project-finder/ProjectFinderTracker.tsx` | Measures the production `/` view, closed direction, commercial/professional-path and priority changes, completed result views, project-detail opens, service continuation and header/final enquiry exits while analytics is enabled | Marketing and Engineering |
 | Simple cover calculator funnel | analytics | `apps/marketing/lib/simpleCoverAnalytics.ts`, `apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.tsx`, `apps/marketing/app/simple-pergolas-auckland/SimplePergolaJourney.tsx` | Measures calculator view, first interaction, closed result state, result-continuation CTA and form start while analytics is enabled; emits only placement, result status, source path, viewport category and calculation-attached boolean | Marketing and Engineering |
 | Configured-designer funnel | analytics | `apps/marketing/components/configurator-prototype/DesignFunnelTracker.tsx`, `apps/marketing/app/contact/ContactEnquiryForm.tsx` | Measures open, first edit, review and existing submission outcomes; excludes entered design/contact values and staff revision routes | Marketing and Engineering |
+| Enquiry first interaction | analytics | `apps/marketing/components/enquiry/useEnquiryInteraction.ts` | Measures one first input/change per mounted contact or embedded form, distinct from a submit attempt; never reads field values | Marketing and Engineering |
+| Guide and product decision clicks | analytics | `apps/marketing/components/journey/DecisionTrackingRegion.tsx` | Measures marked design/help/comparison links in the decision panels, form comparison and related-guide navigation using closed codes only | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
+
+### Web-coherence measurement update (19 September 2026, local candidate)
+
+`contact_form_interaction` means the first input/change in a mounted enquiry
+form. Focus, rendering, restoring saved values and submit attempts do not emit
+it. The first edit consumes the local once marker even if consent is denied or
+unresolved; enabling analytics never replays that earlier edit. Its payload is
+limited to `event_category: contact`, `form_surface: contact|embedded`, the
+configured-design boolean and `contact_funnel_version: v1`. Existing
+`contact_start` continues to mean a valid submission attempt, not form opening
+or first interaction. A remount can produce another interaction; report users
+or sessions, not raw event ratios as a conversion rate.
+
+`journey_decision_click` records only explicitly marked links within the new
+decision panels, product-form comparison and related-guide navigation. Its
+closed source values are `cost_guide`, `product_hub`, `product_detail`,
+`product_comparison` and `guide_navigation`; actions are `design`, `help` and
+`compare`; destinations are `designer`, `enquiry`, `product` and
+`planning_content`. It adds `event_category: journey` and `journey_version: v1`.
+It never reads/emits the link URL, query, fragment, visible text, dimensions or
+field content. It does not prevent navigation or queue denied clicks. Homepage
+tracking and existing vendor loaders are unchanged.
+
+The embedded Acrylic enquiry form now uses the same explicit-GA-stream helper
+as Contact for `contact_success`, with the existing non-personal submission UUID
+as `lead_event_id` after an accepted receipt. Meta and `lead_submitted` retain
+their existing category gates; no additional `generate_lead` is introduced.
+Focused tests mock enquiry and vendor traffic. This candidate is not evidence
+of production event delivery; record release time before comparing new cohorts.
 
 The guided-home experiment uses the separate `guided_home_v1` variant and
 closed, allowlisted question, answer and result identifiers. Its listener can

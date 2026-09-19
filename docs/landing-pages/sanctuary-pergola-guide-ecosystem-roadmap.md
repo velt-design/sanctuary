@@ -9,6 +9,25 @@ variant consolidation complete
 
 ## Roadmap authority and use
 
+### 19 September 2026 web-coherence working version
+
+The authorised web-coherence batch connects the cost guide and product pages to
+the existing designer and contextual project help through
+`apps/marketing/components/journey/DesignNextSteps.tsx`. The cost-guide hero now
+links to the designer; bespoke/help enquiries retain the existing embedded form.
+No generic prices, estimate calculations or new technical claims are introduced.
+The product hub renders the existing governed four-form comparison view model.
+
+`guideDecisionLinks.ts` now owns two explicit related decisions for each route
+using `PergolaGuideNavigation`, replacing previous/next reading-order links.
+Gable and pitched guides lead to their respective product details and alternative
+form planning. Routes, metadata, schema, sitemap and the current directory
+classification remain unchanged; this does not complete G04-G23 or authorise
+the optional new guides. The homepage is frozen under the current owner decision.
+Focused component/domain tests cover the links and context boundaries. Integrated
+local browser verification and independent journey review passed. Hosted staging
+verification and production release remain separate gates.
+
 This document is the implementation authority for restructuring the Sanctuary Pergolas guide ecosystem. It is intentionally standalone. An agent should be able to begin any goal below without needing the original external audit.
 
 Read these sources before implementation:
