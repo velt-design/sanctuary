@@ -8,7 +8,7 @@ import '../../components/seo-landing/seo-landing.css';
 
 export const metadata: Metadata = {
   title: { absolute: 'Pergola Cost Auckland | Scope & Quote Guide' }, description: pergolaCostConfig.description, alternates: { canonical: pergolaCostConfig.route },
-  openGraph: { type: 'website', url: pergolaCostConfig.route, title: 'What Really Shapes Pergola Cost in Auckland', description: 'Compare geometry, structure, roofing, site work and responsibilities before comparing a pergola total.', images: [{ url: pergolaCostConfig.hero.image, alt: pergolaCostConfig.hero.imageAlt }] },
-  twitter: { card: 'summary_large_image', title: 'What Really Shapes Pergola Cost in Auckland', description: 'A practical guide to the scope behind a custom pergola price.', images: [pergolaCostConfig.hero.image] },
+  openGraph: { type: 'website', url: pergolaCostConfig.route, title: 'What Will Your Pergola Cost in Auckland?', description: pergolaCostConfig.description, images: [{ url: pergolaCostConfig.hero.image, alt: pergolaCostConfig.hero.imageAlt }] },
+  twitter: { card: 'summary_large_image', title: 'What Will Your Pergola Cost in Auckland?', description: pergolaCostConfig.description, images: [pergolaCostConfig.hero.image] },
 };
 export default function PergolaCostAucklandPage() { return <SeoLandingPage config={pergolaCostConfig} />; }

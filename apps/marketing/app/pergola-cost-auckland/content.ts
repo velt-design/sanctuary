@@ -4,7 +4,7 @@ import { buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
 const faqItems = [
   {
     question: 'How much does a pergola cost in Auckland?',
-    answer: ['A useful figure needs a defined site, design and scope. Sanctuary does not publish an unqualified generic price.'],
+    answer: ['Start with your dimensions and roof choices in the pergola designer. Supported configurations can show an initial installed estimate; other designs need an individual quote. A complete outdoor room or complex connection needs a brief covering the whole project.'],
   },
   {
     question: 'What shapes the price?',
@@ -16,7 +16,7 @@ const faqItems = [
   },
   {
     question: 'How should I compare quotes?',
-    answer: ['Compare the design, materials, site work, approvals, services, inclusions, exclusions and responsibilities.'],
+    answer: ['Check whether GST, installation, foundations, house connections, drainage, engineering, consent work and selected extras are included. Ask each supplier to identify exclusions and allowances so you can compare the complete work.'],
   },
 ] as const;
 
@@ -24,7 +24,7 @@ export const pergolaCostConfig = {
   marker: 'pergola-cost-auckland',
   showDesignNextSteps: true,
   route: '/pergola-cost-auckland',
-  description: 'Understand the design, structure, roofing, site work and options that shape an Auckland pergola quote.',
+  description: 'Explore an initial pergola estimate for supported designs, understand Auckland installation cost drivers and compare what each quote includes.',
   schemaName: 'Pergola Cost Auckland',
   serviceName: 'Pergola scope and estimate review in Auckland',
   serviceType: 'Pergola project scoping',
@@ -43,27 +43,27 @@ export const pergolaCostConfig = {
     imageAlt: 'Complex pergola scope with mixed roof zones beside an Auckland home',
     objectPosition: '50% 42%',
     eyebrow: 'Pergola cost in Auckland',
-    title: 'Pergola cost starts with scope.',
-    intro: 'Size, structure, roofing, site work and extras shape the price.',
+    title: 'What will your pergola cost?',
+    intro: 'Explore an initial estimate for a supported design, or send us your brief for a project-specific quote.',
     primaryCta: 'Design and estimate',
     primaryHref: buildConfiguratorEnquiryHref({ sourcePath: '/pergola-cost-auckland', sourceComponent: 'hero' }),
     secondaryCta: 'See cost drivers',
     secondaryHref: '#cost-drivers',
-    proof: ['No generic square-metre price', 'Scope before comparison', 'Project-specific quote'],
+    proof: ['Your dimensions and choices', 'Estimate where supported', 'Site and scope confirmed before quoting'],
   },
   blocks: [
     {
       kind: 'split-intro',
       id: 'price-with-context',
-      eyebrow: 'The answer',
-      title: 'A price is useful only when the scope is clear.',
-      paragraphs: ['Two similar footprints can need different structures, connections, site work and integrated options.'],
+      eyebrow: 'Find your starting budget',
+      title: 'Start with a design, or start with a brief.',
+      paragraphs: ['Use the designer to explore your size, roof and optional extras. Where an estimate is available, it applies to that configuration. For a bespoke outdoor room, a difficult house connection or work beyond the pergola, send photos and rough dimensions below so we can assess the complete scope.'],
     },
     {
       kind: 'projects',
       id: 'cost-projects',
       eyebrow: 'Scope examples',
-      title: 'Photos reveal what area alone cannot.',
+      title: 'What your budget needs to cover.',
       intro: 'These are scope examples, not price examples.',
       items: [
         {
@@ -91,7 +91,7 @@ export const pergolaCostConfig = {
       id: 'cost-drivers',
       tone: 'warm',
       eyebrow: 'Cost drivers',
-      title: 'Trace cost to four decisions.',
+      title: 'Four things that change the total.',
       items: [
         { title: 'Size and structure', outcome: 'Define the footprint, height, spans and posts.', consider: 'Loads, supports, foundations and engineering.' },
         { title: 'Roof and connection', outcome: 'Choose the form, roofing and house junction.', consider: 'Fall, flashing, gutters and discharge.' },
@@ -125,9 +125,9 @@ export const pergolaCostConfig = {
       kind: 'scope',
       id: 'cost-checklist',
       eyebrow: 'Quote scope',
-      title: 'Read what sits behind the total.',
-      lead: 'A bare number is not enough.',
-      paragraphs: ['Check what will be built, what remains optional and who owns connected work.'],
+      title: 'Check what the quoted price includes.',
+      lead: 'Compare the complete installed scope.',
+      paragraphs: ['Check GST, installation, foundations, house connections and drainage. Ask whether engineering, consent work, electrical work and selected accessories are included, excluded or allowed for.'],
       factors: [
         ['Design', 'Form, dimensions, materials and finish'],
         ['Delivery', 'Site work, installation and approvals'],

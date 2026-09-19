@@ -42,8 +42,8 @@ const pages: ProgrammePage[] = [
     marker: 'pergola-cost-auckland',
     route: '/pergola-cost-auckland',
     title: 'Pergola Cost Auckland | Scope & Quote Guide',
-    description: 'Understand the design, structure, roofing, site work and options that shape an Auckland pergola quote.',
-    h1: 'Pergola cost starts with scope.',
+    description: 'Explore an initial pergola estimate for supported designs, understand Auckland installation cost drivers and compare what each quote includes.',
+    h1: 'What will your pergola cost?',
     submitLabel: 'Send project brief',
     faqCount: 4,
     role: 'decision-guide',
@@ -203,7 +203,7 @@ for (const programmePage of pages) {
       await expect(main.locator('.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
       await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
       const guideNavigation = main.getByRole('navigation', {
-        name: 'Pergola guide progression',
+        name: 'Related planning decisions',
       });
       if (programmePage.showGuideNavigation === false) {
         await expect(guideNavigation).toHaveCount(0);
