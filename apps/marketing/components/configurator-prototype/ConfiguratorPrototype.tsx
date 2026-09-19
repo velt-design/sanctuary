@@ -68,10 +68,12 @@ function ConfiguratorWorkspace({active,draft,expanded,onToggleExpanded,renderEnq
   if (!ready) return <div className={styles.loading} role="status">Preparing your design…</div>;
   const pricePanel = (afterSummary?: ReactNode) => <section id="configurator-price-breakdown" tabIndex={-1} className={styles.price} aria-label="Estimated price" aria-live={afterSummary ? 'off' : 'polite'} aria-atomic="true">
           {(!mobile || renderEnquiry) && <p className={styles.eyebrow}>{roof.family === 'gable' ? 'YOUR GABLE PERGOLA' : roof.family === 'box' ? 'YOUR BOX PERIMETER PERGOLA' : 'YOUR PITCHED PERGOLA'}</p>}
+          <div aria-live={afterSummary ? 'polite' : undefined} aria-atomic={afterSummary ? true : undefined}>
           {configuratorPrice?.status !== 'disabled' ? <PublishedPriceDisplay part={afterSummary ? 'summary' : 'all'} value={configuratorPrice} retry={retryConfigured} hasInfills={!!(roof.family==='gable'&&roof.infills)||!!roof.blinds?.some(blind=>blind.infill)}/> : process.env.NODE_ENV === 'development' ? <ReviewPriceDisplay part={afterSummary ? 'summary' : 'all'} value={reviewPrice} expanded={mobile && !renderEnquiry}/> : !hasSimpleRoofPrice(roof) ? <><p className={styles.priceValue}>Your pergola, taking shape.</p><p className={styles.small}>Explore the design here. Your selected roof pricing will be confirmed by Sanctuary.</p></> : !result ? <p className={styles.priceValue}>Updating estimate…</p> : result.status === 'priced'
             ? <><p className={styles.priceValue}><span>From </span>{new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(result.price.fromIncGst)}</p><p className={styles.small}>Including GST · Subject to site confirmation</p></>
             : result.status === 'custom' ? <><p className={styles.priceValue}>A custom fit.</p><p className={styles.small}>{result.reason}</p></>
             : <><p>Estimate unavailable. Keep exploring your design.</p><button className={styles.textButton} onClick={retry}>Retry estimate <ArrowUpRight /></button></>}
+          </div>
           {afterSummary}
           {afterSummary && (configuratorPrice?.status !== 'disabled' ? <PublishedPriceDisplay part="details" value={configuratorPrice} retry={retryConfigured} hasInfills={!!(roof.family==='gable'&&roof.infills)||!!roof.blinds?.some(blind=>blind.infill)}/> : process.env.NODE_ENV === 'development' ? <ReviewPriceDisplay part="details" value={reviewPrice} expanded/> : null)}
         </section>;
