@@ -4,9 +4,10 @@ import type { PreviewRoofChoices } from './GableChoices';
 import { usePreviewBlinds } from './PreviewBlindProvider';
 import { mobileSidePresets, sideConfigurationKey } from './mobileSidePresets';
 import css from './mobileSideLooks.module.css';
+import MobileSideSummary from './MobileSideSummary';
 
-export default function MobileSideLooks({ roof, onChange, preview, children }: {
-  roof: PreviewRoofChoices; onChange: (roof: PreviewRoofChoices) => void; preview: ReactNode; children: ReactNode;
+export default function MobileSideLooks({ roof, onChange, preview, estimate, children }: {
+  roof: PreviewRoofChoices; onChange: (roof: PreviewRoofChoices) => void; preview: ReactNode; estimate: ReactNode; children: ReactNode;
 }) {
   const workspace = usePreviewBlinds()!;
   const looks = mobileSidePresets(roof, workspace.openings);
@@ -38,7 +39,9 @@ export default function MobileSideLooks({ roof, onChange, preview, children }: {
     <div className={css.description} aria-live="polite" aria-atomic="true">
       <p className={css.count}>{index < 0 ? `${looks.length} suggested looks` : `${index + 1} of ${looks.length}`}</p>
       <h2>{current?.name ?? 'Your combination'}</h2>
+      <MobileSideSummary roof={roof}/>
     </div>
+    {estimate}
     <details className={css.customise} onToggle={event => { if (!event.currentTarget.open) workspace.setEditing(false); }}>
       <summary>Customise sides</summary>
       {children}

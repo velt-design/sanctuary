@@ -1,21 +1,14 @@
-import { RoundedBox } from '@react-three/drei';
-import { useEffect, useMemo } from 'react';
-import { RoundedBoxGeometry } from 'three-stdlib';
-import StudioFurnitureMaterial from './StudioFurnitureMaterial';
+import { Soft, Leg, LoungeChair } from './StudioFurniturePieces';
+import { useRef } from 'react';
+import type { Group } from 'three';
+import { useStudioFurnitureEvidence } from './useStudioFurnitureEvidence';
+import StudioFurnitureAdditions from './StudioFurnitureAdditions';
 import StudioContactShadow from './StudioContactShadow';
+import Chair from './StudioDiningChair';
 import type { GeometryPlanViewModel } from '@sp/geometry';
 import { studioFurnitureLayout } from './studioFurnitureLayout';
 
-type V = [number, number, number];
 const frame = '#292b29', fabric = '#ded8ca', stone = '#b5afa2';
-function Soft({ at, size, color, radius = 20, rotation }: { at: V; size: V; color: string; radius?: number; rotation?: V }) {
-  return <RoundedBox position={at} args={size} radius={radius} smoothness={3} rotation={rotation}>
-    <StudioFurnitureMaterial color={color} finish={color===frame?'frame':color===stone?'stone':'fabric'}/>
-  </RoundedBox>;
-}
-function Leg({ at, height = 400 }: { at: V; height?: number }) {
-  return <mesh position={at} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[12, 16, height, 8]}/><meshStandardMaterial color={frame} roughness={.5} metalness={.3}/></mesh>;
-}
 function Lounge() {
   return <group>
     <group position={[-400,-300,0]}>
@@ -41,16 +34,6 @@ function CoffeeTable() {
   return <group><StudioContactShadow width={950} depth={600}/><Soft at={[0,0,330]} size={[950,600,70]} color={stone} radius={2}/>
     {[-290,290].map(x => <Soft key={x} at={[x,0,165]} size={[130,380,310]} color={stone} radius={2}/>)}</group>;
 }
-function LoungeChair() {
-  return <group><StudioContactShadow width={820} depth={840}/>
-    <Soft at={[0,0,300]} size={[820,840,95]} color={frame} radius={8}/>
-    <Soft at={[0,60,410]} size={[630,680,170]} color={fabric} radius={18}/>
-    <Soft at={[0,-330,620]} size={[640,170,440]} color={fabric} radius={18}/>
-    {[-1,1].map(side=><group key={side}>
-      <Soft at={[side*365,0,475]} size={[90,840,310]} color={fabric} radius={12}/>
-      {[-300,300].map(y=><Leg key={y} at={[side*340,y,135]} height={270}/>)}</group>)}
-  </group>;
-}
 function SmallSofa() {
   return <group>
     <StudioContactShadow width={1700} depth={820}/>
@@ -71,33 +54,16 @@ function SmallCoffeeTable() {
 }
 function CompactLounge({ chair = false }: { chair?: boolean }) {
   return <group>
-    <group position={[chair?-650:0,-430,0]}><SmallSofa/></group>
-    <group position={[chair?-650:0,580,0]}><SmallCoffeeTable/></group>
-    {chair&&<group position={[1200,0,0]} rotation={[0,0,Math.PI/2]}><LoungeChair/></group>}
+    <group position={[chair?-400:0,-430,0]}><SmallSofa/></group>
+    <group position={[chair?-350:0,580,0]}><SmallCoffeeTable/></group>
+    {chair&&<group position={[950,350,0]} rotation={[0,0,Math.PI/2]}><LoungeChair/></group>}
   </group>;
 }
 function Bistro() {
   return <group><StudioContactShadow width={650} depth={650}/>
     <Soft at={[0,0,735]} size={[650,650,65]} color={stone} radius={2}/>
     <Soft at={[0,0,350]} size={[170,170,700]} color={stone} radius={2}/>
-    {[-1,1].map(side=><group key={side} position={[side*575,0,0]} rotation={[0,0,side*Math.PI/2]}><Chair/></group>)}
-  </group>;
-}
-function Chair() {
-  const back = useMemo(() => {
-    const geometry = new RoundedBoxGeometry(530,110,260,5,48);
-    const positions = geometry.attributes.position;
-    for(let i=0;i<positions.count;i++) positions.setY(i,positions.getY(i)-positions.getX(i)**2*.0011);
-    geometry.computeVertexNormals();
-    return geometry;
-  }, []);
-  useEffect(()=>()=>back.dispose(),[back]);
-  return <group>
-    <Soft at={[0,0,455]} size={[510,480,95]} color="#bdb5a5" radius={42}/>
-    <mesh geometry={back} position={[0,185,735]}><StudioFurnitureMaterial color="#bdb5a5" finish="fabric"/></mesh>
-    {[-1,1].flatMap(side => [-1,1].map(end => <mesh key={`${side}-${end}`} position={[side*210,end*160,end===1?355:210]} rotation={[Math.PI/2,0,-side*.055]}>
-      <cylinderGeometry args={[18,24,end===1?710:420,10]}/><StudioFurnitureMaterial color="#46372d" finish="wood"/>
-    </mesh>))}
+    {[-1,1].map(side=><group key={side} position={[side*550,0,0]} rotation={[0,0,-side*Math.PI/2]}><Chair/></group>)}
   </group>;
 }
 function Dining() {
@@ -108,8 +74,11 @@ function Dining() {
   </group>;
 }
 export default function StudioFurniture({ plan, floor }: { plan: GeometryPlanViewModel; floor: number }) {
-  const layout = studioFurnitureLayout(plan.extents, plan.members.posts.map(p => ({ x:p.centerline.start.x, y:p.centerline.start.y, radius:p.profile.widthMm/2 })));
-  return <group name="illustrative-outdoor-furniture">{layout.map(item => <group key={item.kind} name={`illustrative-${item.kind}`} position={[item.x,item.y,floor+4]} rotation={[0,0,item.rotation]}>
-    {item.kind==='lounge'?<Lounge/>:item.kind==='dining'?<Dining/>:item.kind==='bistro'?<Bistro/>:<CompactLounge chair={item.kind==='small-lounge'}/>}
+  const root=useRef<Group>(null);
+  const choice = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('furniture') : null;
+  const layout = studioFurnitureLayout(plan.extents, plan.members.posts.map(p => ({ x:p.centerline.start.x, y:p.centerline.start.y, radius:p.profile.widthMm/2 })), choice === 'social' || choice === 'mixed' ? choice : undefined);
+  useStudioFurnitureEvidence(root,layout);
+  return <group ref={root} name="illustrative-outdoor-furniture">{layout.map((item,i) => <group key={`${item.kind}-${i}`} name={`illustrative-${item.kind}`} position={[item.x,item.y,floor+4]} rotation={[0,0,item.rotation]}>
+    {item.kind==='lounge'?<Lounge/>:item.kind==='dining'?<Dining/>:item.kind==='bistro'?<Bistro/>:item.kind==='compact'||item.kind==='small-lounge'?<CompactLounge chair={item.kind==='small-lounge'}/>:<StudioFurnitureAdditions kind={item.kind}/>}
   </group>)}</group>;
 }

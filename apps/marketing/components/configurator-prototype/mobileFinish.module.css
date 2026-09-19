@@ -23,7 +23,7 @@
 .actions{display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:8px;padding:0;margin:10px 0 0;border:0}
 .actions :global([class*="share"]){margin:0}
 .actions p{font-size:11px;margin:6px 0}
-.finish :global([class*="portraitImage"]){height:clamp(120px,21dvh,180px);aspect-ratio:auto}
+.finish :global([class*="portraitImage"]){height:clamp(185px,30dvh,260px);aspect-ratio:auto}
 .finish :global([class*="portrait"]){margin-bottom:8px}
 .finish :global([class*="portrait"]) figcaption{padding-block:0}
 

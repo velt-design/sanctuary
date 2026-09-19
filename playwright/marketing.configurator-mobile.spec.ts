@@ -136,9 +136,40 @@ test('lighting is one page, stable camera, and night is confined to the lighting
  await expect(page.locator('canvas')).toHaveAttribute('data-camera',/perspective/);
  const camera=()=>page.locator('canvas').evaluate(el=>{const c=JSON.parse(el.getAttribute('data-camera')!);return [...c.position,...c.target,c.distance].map((n:number)=>Math.round(n*1000)/1000);});
  const initial=await camera();
- for(const name of ['A gentle glow','More light','No lighting']){await next(page,name);await expect(page.getByRole('button',{name,exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','true');expect(await camera()).toEqual(initial);await aboveFold(page,page.getByRole('button',{name,exact:true}));}
+ expect(JSON.parse((await page.locator('canvas').getAttribute('data-camera'))!).fov).toBe(75);
+ for(const name of ['Gentle','Brighter','No lights']){const choice=page.getByRole('button',{name:new RegExp(`^${name}`)});await choice.click();await expect(choice).toHaveAttribute('aria-pressed','true');await expect(choice).toHaveAccessibleName(new RegExp(`^${name}`));await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','true');expect(await camera()).toEqual(initial);await aboveFold(page,choice);}
  await next(page,'Sides');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','false');await next(page,'Review your design');await expect(page.locator('[data-mobile-step]')).toHaveAttribute('data-night','false');
  await expect(page.getByRole('group',{name:'Choose view'})).toHaveCount(0);await expect(page.getByRole('group',{name:'Time of day'})).toHaveCount(0);
+});
+
+test('lighting uses an interior view after side refinement and settles without changing screens',async({page})=>{
+ await page.setViewportSize({width:390,height:667});await page.goto('/configurator-preview?open=1');
+ await page.getByRole('radio',{name:'Solid',exact:true}).check();await toExtras(page);
+ for(let i=0;i<3;i++)await next(page,'Next side configuration');
+ await page.getByText('Customise sides',{exact:true}).click();
+ await page.getByText('Locate & refine sides',{exact:true}).click();
+ await page.getByRole('combobox',{name:'Opening to refine'}).selectOption({label:'Front 1'});
+ await next(page,'Lighting');await page.getByRole('button',{name:/^Brighter/}).click();
+ await expect(page.locator('canvas[data-camera]')).toHaveAttribute('data-camera',/"fov":75/);
+ await expect(page.getByText('Editing Front 1',{exact:true})).toHaveCount(0);
+ await expect(page.locator('[data-blind-count]')).toHaveAttribute('data-blind-count','2');
+ await expect(page.locator('[data-side-panel-count]')).toHaveAttribute('data-side-panel-count','2');
+ const camera=JSON.parse((await page.locator('canvas').getAttribute('data-camera'))!);
+ expect(camera.position[0]).toBeGreaterThan(0);expect(camera.position[0]).toBeLessThan(6000);
+ expect(camera.position[1]).toBeGreaterThan(0);expect(camera.position[1]).toBeLessThan(3000);
+ expect(camera.position[2]).toBeGreaterThan(1000);expect(camera.position[2]).toBeLessThan(1700);
+ const canvas=page.locator('canvas'),box=(await canvas.boundingBox())!;
+ await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();await page.mouse.move(box.x+box.width*.65,box.y+box.height*.5,{steps:8});await page.mouse.up();
+ const orbited=JSON.parse((await canvas.getAttribute('data-camera'))!);expect(orbited.position).not.toEqual(camera.position);
+ await page.getByRole('button',{name:/^Gentle/}).click();
+ const retained=JSON.parse((await canvas.getAttribute('data-camera'))!);
+ for(let i=0;i<3;i++){expect(retained.position[i]).toBeCloseTo(orbited.position[i],3);expect(retained.target[i]).toBeCloseTo(orbited.target[i],3);}
+ await expect(canvas).toHaveAttribute('data-studio-state','settled');
+ // Allow the final DPR/shadow invalidation, then require a full idle window.
+ await expect.poll(async()=>{const frames=await canvas.getAttribute('data-studio-frames');await page.waitForTimeout(1000);return await canvas.getAttribute('data-studio-frames')===frames;},{timeout:10000}).toBe(true);
+ await next(page,'Sides');await expect(page.getByRole('heading',{name:'Front blinds + timber sides',exact:true})).toBeVisible();
+ await next(page,'Review your design');await page.locator('[data-design-portrait="captured"]').waitFor();
+ await page.getByRole('region',{name:'Your pergola review'}).getByRole('button',{name:'Explore your design',exact:true}).click();await expect(page.locator('canvas[data-camera]')).toHaveAttribute('data-camera',/"fov":24/);
 });
 for(const [width,projection] of [[6,3],[1.5,6],[10,1.5]])test(`size plan, slider and attachment remain usable for ${width}x${projection}`,async({page})=>{
  await page.setViewportSize({width:360,height:750});await page.goto('/configurator-preview?open=1');await next(page,'Set your size');
@@ -256,4 +287,40 @@ test('mobile size drag stays local until release and preserves the final size th
  await expect(page.getByRole('region',{name:'Your pergola review'})).toContainText(`${(Number(keyboardValue)/1000).toFixed(1)} ×`);
  await next(page,'Edit design');await next(page,'Edit Size & structure');
  await expect(page.getByRole('slider',{name:'Width',exact:true})).toHaveValue(keyboardValue);
+});
+
+test('extras explain selected faces and lighting, and never show an old price after a change',async({page})=>{
+ await page.setViewportSize({width:390,height:667});
+ let delay=false,unavailable=false;
+ await page.route('**/api/configurator-price',async route=>{
+  if(delay)await new Promise(resolve=>setTimeout(resolve,1200));
+  await route.fulfill({json:unavailable?{status:'unavailable'}:{status:'priced',amountIncGst:delay?24000:20000,currency:'NZD',includesGst:true,breakdown:[],versionNumber:1,calculationRef:'synthetic-preview'}});
+ });
+ await page.goto('/configurator-preview?open=1');await toExtras(page);
+ const sides=page.getByRole('region',{name:'Side configurations'});
+ const faces=page.locator('dl[aria-label="Selected side treatments"]');
+ await expect(faces.locator('dd')).toHaveText(['Open','Open','Open']);
+ await expect(sides.locator('[class*=estimate][role=status]')).toContainText('$20,000');
+ delay=true;
+ await next(page,'Next side configuration');
+ await expect(faces.locator('dd')).toHaveText(['Open','Blinds','Open']);
+ await expect(sides.locator('[class*=estimate][role=status]')).toHaveText('Updating estimate…');
+ await expect(sides).not.toContainText('$20,000');
+ await expect(sides.locator('[class*=estimate][role=status]')).toContainText('$24,000');
+ await next(page,'Next side configuration');await next(page,'Next side configuration');
+ await expect(faces.locator('dd')).toHaveText(['Timber','Blinds','Timber']);
+ await aboveFold(page,faces);
+ unavailable=true;
+ await next(page,'Lighting');await page.getByRole('button',{name:/^Gentle/}).click();
+ const lighting=page.getByRole('region',{name:'Choose lighting'});
+ await expect(lighting).toContainText('Estimate unavailable · continue to review');
+ await expect(lighting).not.toContainText('$24,000');
+ const viewport=page.locator('[data-light-rafter-count]');
+ const count=Number(await viewport.getAttribute('data-light-rafter-count'))+Number(await viewport.getAttribute('data-light-cedar-count'));
+ await expect(page.getByRole('button',{name:/^Gentle/})).toContainText(`${count} lights`);
+ await aboveFold(page,page.getByRole('button',{name:/^Brighter/}));
+ await next(page,'Review your design');await page.locator('[data-design-portrait="captured"]').waitFor();
+ expect((await page.locator('[data-design-portrait]').boundingBox())!.height).toBeGreaterThanOrEqual(185);
+ await aboveFold(page,page.getByRole('button',{name:'Enquire',exact:true}));
+ await aboveFold(page,page.getByRole('button',{name:'Share design',exact:true}));
 });
