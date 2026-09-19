@@ -5,20 +5,19 @@ import { buildContactDesignBrief } from '../../app/contact/contactDesignBrief';
 import { parseEnquiryContext, type EnquiryContext } from '../../lib/enquiryContext';
 import { designEnquiryHref } from './configuratorOverlay';
 import type { PreviewSelection } from './ConfiguratorPrototype';
-import type { RailSection } from './RailProvider';
 import type { SharedEstimate } from './sharedEstimate';
 import { getRoofFinish } from './roofFinish';
 import MobileDesignPortrait from './MobileDesignPortrait';
-import DesignReview from './DesignReview';
+import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 import ShareDesign from './ShareDesign';
 import StaffRevisionReturn from './StaffRevisionReturn';
 import { useConsent } from '../ConsentProvider';
 import { emitDesignEvent } from './DesignFunnelTracker';
 import css from './mobileFinish.module.css';
 
-export default function MobileDesignFinish({ visible, selection, pricePanel, estimate, onEdit, onExplore, onDetails, notice }: {
+export default function MobileDesignFinish({ visible, selection, pricePanel, estimate, onEdit, onExplore, notice }: {
   visible: boolean; selection: PreviewSelection; pricePanel: ReactNode; estimate: SharedEstimate | null;
-  onEdit: (section: RailSection) => void; onExplore: () => void; onDetails: () => void; notice?: string;
+  onEdit: () => void; onExplore: () => void; notice?: string;
 }) {
   const { input, roof } = selection;
   const { consent, hasTrackingDecision } = useConsent();
@@ -48,13 +47,11 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
       <StaffRevisionReturn draft={{ version: 1, input, roof }} customerAction={<button className={css.primary} onClick={enquire}>Enquire</button>} />
       <ShareDesign draft={{ version: 1, input, roof }} estimate={estimate} prominent />
     </div>
-    <p className={css.saveNote}>Save with your enquiry, or keep a link with Share.</p>
-    {visible && <><details className={css.edit}><summary>Edit design</summary><DesignReview hideHeading customerChoices input={input} roof={roof} onEdit={onEdit} /><button onClick={onDetails}>Connection & design options</button></details>{notice && <p role="status">{notice}</p>}</>}
+    {visible && <><button className={css.edit} onClick={onEdit} aria-label="Edit design"><span><strong>Edit design</strong></span><ArrowUpRight/></button>{notice && <p role="status">{notice}</p>}</>}
     <div className={css.price}>{pricePanel}</div>
-    <p className={css.note}>Subject to site confirmation. Foundations, unusual access or fixings, new electrical supply and travel are assessed separately.</p>
+    <p className={css.note}>Concept and estimate subject to site measure. Structure and connections will be confirmed; foundations, unusual access or fixings, new electrical supply and travel are assessed separately.</p>
     <div ref={form} hidden={!enquiring} tabIndex={-1} className={css.form}>
       {enquiring && <ContactEnquiryForm initialEnquiryType="residential" initialContext={context} configuredDesign={brief} compactConfigured mobileFinish />}
     </div>
-    <p className={css.note}>Concept preview. Structure and connections confirmed at site measure.</p>
   </section>;
 }

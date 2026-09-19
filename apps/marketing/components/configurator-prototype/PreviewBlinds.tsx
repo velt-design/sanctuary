@@ -5,13 +5,18 @@ import { BufferGeometry, DoubleSide, Float32BufferAttribute } from 'three';
 import { buildRepresentativeBlind, type BlindMesh, type BlindOpening } from '@sp/geometry';
 import { usePreviewBlinds } from './PreviewBlindProvider';
 import { blindColour, blindFabric, type PreviewBlind } from './blindCatalog';
+import { useStudioTreatment } from './StudioTreatment';
 import PreviewSidePanel from './PreviewSidePanel';
 function Part({data,blind}:{data:BlindMesh;blind:PreviewBlind}) {
+  const studio=useStudioTreatment();
   const geometry=useMemo(()=>{const g=new BufferGeometry();g.setAttribute('position',new Float32BufferAttribute(data.positions,3));g.setIndex(data.indices);g.computeVertexNormals();return g;},[data]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);
   const screen=data.kind==='fabric',pvc=blind.fabric==='pvc',clear=blind.colour==='Clear';
   const opacity=data.kind==='infill'?.24:screen?(pvc?(clear?.14:.35):.8-blindFabric(blind).openness*.018):1;
-  return <mesh name={data.id} geometry={geometry} renderOrder={screen?3:0}><meshStandardMaterial side={DoubleSide} color={data.kind==='frame'?'#242824':screen?(pvc?'#a9b7b2':blindColour(blind.colour)):'#b5d1cd'} roughness={screen&&!pvc?.92:.38} metalness={data.kind==='frame'?.25:0} transparent={opacity<1} opacity={opacity} depthWrite={opacity===1}/></mesh>;
+  return <mesh name={data.id} geometry={geometry} renderOrder={screen?3:0}><meshStandardMaterial onBeforeCompile={studio&&screen&&!pvc ? shader=>{
+    shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWeave;').replace('#include <begin_vertex>','#include <begin_vertex>\nvWeave=position;');
+    shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWeave;').replace('#include <color_fragment>','#include <color_fragment>\nfloat weave=sin((vWeave.x+vWeave.y)*.15)*sin(vWeave.z*.15);diffuseColor.rgb*=.97+.03*weave;');
+  }:undefined} customProgramCacheKey={()=>studio&&screen&&!pvc?'studio-fabric-v1':'preview-blind-v1'} side={DoubleSide} color={data.kind==='frame'?'#242824':screen?(pvc?'#a9b7b2':blindColour(blind.colour)):'#b5d1cd'} roughness={screen&&!pvc?.92:.38} metalness={data.kind==='frame'?.25:0} transparent={opacity<1} opacity={opacity} depthWrite={opacity===1}/></mesh>;
 }
 function Blind({opening,blind,onSelect}:{opening:BlindOpening;blind:PreviewBlind;onSelect:()=>void}) {
   const parts=useMemo(()=>buildRepresentativeBlind(opening,blind),[opening,blind]);

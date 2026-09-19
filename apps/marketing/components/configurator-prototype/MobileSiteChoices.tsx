@@ -15,8 +15,8 @@ export default function MobileSiteChoices({ input, roof, setInput, setRoof }: {
     </fieldset>
     {roof.attachmentIntent === 'unsure' && <p className={css.caption}>Connection is marked “Not sure” in More design options.</p>}
     <fieldset className={css.segmented}><legend>Where will it sit?</legend>
-      <div>{(['ground', 'elevated'] as const).map(level => <label key={level} data-selected={input.level === level}>
-        <input type="radio" name="mobile-level" checked={input.level === level} onChange={() => setInput({ ...input, level })} />
+      <div>{(['ground', 'elevated'] as const).map(level => <label key={level} data-selected={input.level === level} data-disabled={level === 'elevated' && roof.attachmentIntent === 'freestanding'}>
+        <input type="radio" name="mobile-level" disabled={level === 'elevated' && roof.attachmentIntent === 'freestanding'} checked={input.level === level} onChange={() => setInput({ ...input, level })} />
         {level === 'ground' ? 'Ground' : 'Elevated'}
       </label>)}</div>
     </fieldset>

@@ -10,8 +10,8 @@ import type { Point3 } from '@sp/geometry';
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 const PRESENTATION_DIRECTION = new Vector3(.85, 1.9, .65).normalize();
 
-export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
-  bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
+export default function PreviewCamera({ explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+  explore?: boolean; portrait?: boolean; studio?: boolean; bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
 }) {
   const { camera, size, gl, invalidate } = useThree();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
@@ -31,7 +31,7 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
     const centre = new Vector3(bounds.center.x, bounds.center.y, bounds.center.z);
     if (initialise) {
       touched.current = false;
-      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
+      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : studio ? new Vector3(1.45,1.9,portrait ? .35 : .7).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
       camera.position.copy(centre).addScaledVector(direction, bounds.size * 3);
     } else camera.position.add(centre.clone().sub(orbit.target));
     orbit.target.copy(centre);
@@ -45,8 +45,8 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
       const direction = camera.position.clone().sub(centre).normalize();
       const oldDistance = camera.position.distanceTo(centre);
       const tanY = Math.tan(camera.fov * Math.PI / 360);
-      const paddingX = (size.width < 600 ? .92 : .86) * (surroundings ? .9 : 1);
-      const paddingY = Math.max(.5, (size.height - (size.height < 320 ? 16 : 40)) / size.height) * (surroundings ? .9 : 1);
+      const paddingX = studio ? .97 : (size.width < 600 ? .92 : .86) * (surroundings ? .9 : 1);
+      const paddingY = studio && portrait ? .94 : Math.max(.5, (size.height - (size.height < 320 ? 16 : 40)) / size.height) * (surroundings ? .9 : 1);
       let distance = 1000;
       for (const p of fitPoints) {
         const point = new Vector3(p.x, p.y, p.z).applyMatrix4(camera.matrixWorldInverse);
@@ -54,14 +54,18 @@ export default function PreviewCamera({ bounds, fitPoints, enabled, reset, fit, 
         distance = Math.max(distance, depth + Math.abs(point.x) / (tanY * camera.aspect * paddingX),
           depth + Math.abs(point.y) / (tanY * paddingY));
       }
-      camera.position.copy(centre).addScaledVector(direction, distance);
+      camera.position.copy(centre).addScaledVector(direction, studio && explore && !portrait ? distance/1.2 : distance);
     }
+    // Tall phone canvases are width-constrained: lift the composition toward
+    // the heading without cropping the product or changing the orbit target.
+    if (studio && size.height > size.width * 1.25) camera.setViewOffset(size.width,size.height,0,size.height*.08,size.width,size.height);
+    else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     orbit.update();
     previous.current = { reset, fit, width: size.width, height: size.height, presentation, side };
     recordCamera();
     invalidate();
-  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, side, invalidate, recordCamera]);
+  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, invalidate, recordCamera]);
 
   return <OrbitControls ref={controls} makeDefault enabled={enabled} enablePan={false}
     enableDamping={false} minDistance={1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * .48}

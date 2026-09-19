@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group, MathUtils, Mesh, MeshStandardMaterial, OrthographicCamera, Vector3 } from 'three';
+import { Group, MathUtils, Mesh, MeshStandardMaterial, OrthographicCamera, PerspectiveCamera, Vector3 } from 'three';
 import type { RepresentativeSurroundings } from '@sp/geometry';
 import type { SceneBounds } from '@sp/geometry-viewer';
 import ReferenceTreeMeshes from './ReferenceTreeMeshes';
@@ -8,8 +8,8 @@ import { foliageOverlapsProduct } from './foliageOverlap';
 
 type Point3 = { x: number; y: number; z: number };
 
-function Tree({ geometry, bounds, productPoints }: {
-  geometry: RepresentativeSurroundings['trees'][number]; bounds: SceneBounds; productPoints: Point3[];
+function Tree({ geometry, bounds, productPoints, perspectiveFade }: {
+  geometry: RepresentativeSurroundings['trees'][number]; bounds: SceneBounds; productPoints: Point3[]; perspectiveFade: boolean;
 }) {
   const { position: { x, y, z }, radiusMm: radius, specimen } = geometry;
   const tree = useRef<Group>(null);
@@ -26,7 +26,7 @@ function Tree({ geometry, bounds, productPoints }: {
     return { corners, centre: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 } };
   }, [specimen]);
   useFrame(({ camera, invalidate }, delta) => {
-    if (!(camera instanceof OrthographicCamera)) return;
+    if (!(camera instanceof OrthographicCamera) && !(perspectiveFade && camera instanceof PerspectiveCamera)) return;
     const corners: { x: number; y: number }[] = [];
     // Solved member/roof points avoid treating empty rear floor corners as product.
     for (const point of productPoints) {
@@ -64,8 +64,8 @@ function Tree({ geometry, bounds, productPoints }: {
   </group>;
 }
 
-export default function PreviewLandscape({ context, bounds, productPoints }: { context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: Point3[] }) {
+export default function PreviewLandscape({ context, bounds, productPoints, perspectiveFade = false }: { perspectiveFade?: boolean; context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: Point3[] }) {
   return <group name="landscape-context">
-    {context.trees.map((geometry, index) => <Tree key={index} geometry={geometry} bounds={bounds} productPoints={productPoints} />)}
+    {context.trees.map((geometry, index) => <Tree key={index} geometry={geometry} bounds={bounds} productPoints={productPoints} perspectiveFade={perspectiveFade} />)}
   </group>;
 }

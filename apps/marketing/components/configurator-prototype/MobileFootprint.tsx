@@ -7,20 +7,23 @@ import type { PreviewDimensionAxis } from './usePreviewDimension';
 import css from './mobileFootprint.module.css';
 
 /** Quiet footprint from the same solved plan as the full configurator. */
-export default function MobileFootprint({ input, roof, activeDimension }: {
-  input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null;
+export default function MobileFootprint({ input, displayInput = input, roof, activeDimension }: {
+  input: SimpleCoverInput; displayInput?: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null;
 }) {
   const patternId = useId();
   const geometry = useMemo(() => solvePergolaPreview(input, roof).geometry, [input, roof]);
   const plan = geometry?.plan;
   if (!plan) return <p className={css.unavailable}>Adjust your size to see the footprint.</p>;
   const { minX, minY, maxX, maxY } = plan.extents;
-  const scale = Math.min(236 / Math.max(1, maxX - minX), 122 / Math.max(1, maxY - minY));
-  const w = (maxX - minX) * scale, h = (maxY - minY) * scale;
+  // During a drag, resize the last solved footprint. Member counts/constraints
+  // reconcile once on release; no detailed geometry is rebuilt per input event.
+  const rx=displayInput.widthMm/input.widthMm, ry=displayInput.projectionMm/input.projectionMm;
+  const scale = Math.min(236 / Math.max(1, (maxX - minX)*rx), 122 / Math.max(1, (maxY - minY)*ry));
+  const w = (maxX - minX) * rx * scale, h = (maxY - minY) * ry * scale;
   const left = 184 - w / 2, top = 113 - h / 2;
-  const x = (value: number) => left + (value - minX) * scale;
-  const y = (value: number) => top + (value - minY) * scale;
-  const width = `${(input.widthMm / 1000).toFixed(1)} m`, projection = `${(input.projectionMm / 1000).toFixed(1)} m`;
+  const x = (value: number) => left + (value - minX) * rx * scale;
+  const y = (value: number) => top + (value - minY) * ry * scale;
+  const width = `${(displayInput.widthMm / 1000).toFixed(1)} m`, projection = `${(displayInput.projectionMm / 1000).toFixed(1)} m`;
   const attached = roof.attachmentIntent !== 'freestanding';
   const members = [...plan.members.rafters, ...plan.members.beams, ...plan.members.ledgers, ...plan.members.gutters, ...plan.members.ridge];
   const primary = new Set([...plan.members.beams, ...plan.members.ledgers, ...plan.members.gutters, ...plan.members.ridge].map(member => member.id));

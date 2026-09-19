@@ -7,7 +7,7 @@ export default function ReviewPriceDisplay({ value, expanded = false }: { value:
   if (value.status !== 'priced') return <p>Price preview unavailable. Try adjusting your design.</p>;
   const Breakdown = expanded ? 'section' : 'details';
   return <>
-    <p className={styles.eyebrow}>DRAFT PRICE · OWNER REVIEW</p>
+    <p className={styles.eyebrow}>{expanded ? 'DRAFT PRICE' : 'DRAFT PRICE · OWNER REVIEW'}</p>
     <p className={styles.priceValue}>{reviewMoney(value.amount)}</p>
     <p className={styles.small}>Including GST · {value.excluded.length ? 'Pergola subtotal' : 'Pergola estimate'}</p>
     {value.excluded.length > 0 && <p><strong>Not included yet:</strong> {value.excluded.join(', ')}. These need separate pricing.</p>}
