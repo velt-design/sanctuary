@@ -33,13 +33,15 @@ describe('submitted design boundary', () => {
     expect(buildCustomerBrief('residential', design).summary).not.toContain('Facade attachment');
     expect(buildCustomerBrief('residential', DEFAULT_PREVIEW_DRAFT).summary).toContain('Facade attachment');
   });
-  it('renders the corrected saved summary in customer HTML and plain text', async () => {
+  it('links to the corrected saved design in customer HTML and plain text without repeating the summary', async () => {
     const fixture = enquiryExperienceFixtures()[0];
     const design = parsePreviewDraft({ ...DEFAULT_PREVIEW_DRAFT, roof: { family: 'gable', orientation: 'parallel', infills: false, attachmentIntent: 'freestanding' } })!;
     const customerBrief = buildCustomerBrief('residential', design);
     const rendered = await renderWebsiteAutoresponder('EMAIL_WEBSITE_ENQUIRY_configured_V2', { ...fixture.variables, customerBrief });
-    expect(rendered.html).toContain('Freestanding, no house connection');
-    expect(rendered.text).toContain('Ridge across width');
+    const expectedUrl = customerDesignUrl(customerBrief);
+    if (!expectedUrl) throw new Error('Expected a reopenable submitted design');
+    expect(rendered.html).toContain(expectedUrl.replaceAll('&', '&amp;'));
+    expect(rendered.text).toContain(expectedUrl);
     expect(rendered.text).not.toContain('Facade attachment');
     if (process.env.ENQUIRY_RENDER_ARTIFACTS === 'true') {
       const { writeFileSync } = await import('node:fs');
@@ -87,14 +89,14 @@ describe('submitted design boundary', () => {
   });
 });
 
-it('renders all five journeys with distinct subjects, separated notes and no invented estimate', async () => {
+it('renders all five journeys with distinct subjects, concise receipts and no invented estimate', async () => {
   const subjects = new Set<string>();
   for (const fixture of enquiryExperienceFixtures()) {
     const rendered = await renderWebsiteAutoresponder(fixture.templateId, { ...fixture.variables });
     subjects.add(rendered.subject);
-    expect(rendered.text).toContain(fixture.variables.message);
+    expect(rendered.text).not.toContain(fixture.variables.message);
     expect(rendered.text).not.toContain('$0');
-    expect(rendered.text.match(new RegExp(fixture.variables.message!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))).toHaveLength(1);
+    expect(rendered.text).toContain('Reply to this email');
     if (fixture.variables.customerBrief?.design) expect(rendered.html).toContain('View your submitted pergola');
     if (process.env.ENQUIRY_RENDER_ARTIFACTS === 'true') {
       const { writeFileSync } = await import('node:fs');

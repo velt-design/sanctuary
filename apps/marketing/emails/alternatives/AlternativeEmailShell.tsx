@@ -33,8 +33,9 @@ const emailCss = `
     mso-table-lspace: 0pt;
     mso-table-rspace: 0pt;
   }
+  .spx-shell { overflow-wrap: anywhere; word-wrap: break-word; }
   .spx-button {
-    border: 1px solid ${THEME.accent} !important;
+    border: 1px solid ${THEME.inverse} !important;
   }
   @media only screen and (max-width: 620px) {
     .spx-shell {
@@ -129,8 +130,8 @@ const emailCss = `
   html.sp-preview-light .spx-rule-strong { border-color: #aeb2aa !important; }
   html.sp-preview-light .spx-link { color: #111210 !important; }
   html.sp-preview-light .spx-button {
-    background-color: ${THEME.accent} !important;
-    border-color: ${THEME.accent} !important;
+    background-color: ${THEME.inverse} !important;
+    border-color: ${THEME.inverse} !important;
     color: #f4f4f0 !important;
   }
 `;
@@ -148,6 +149,7 @@ export function AlternativeEmailShell(props: {
       }
     >
       <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
         <meta name="supported-color-schemes" content="light dark" />
         <style>{emailCss}</style>
@@ -215,29 +217,6 @@ export function AlternativeEmailShell(props: {
                   </Text>
                 </Link>
               </Column>
-              <Column
-                className="spx-hide-mobile"
-                style={{
-                  width: 260,
-                  verticalAlign: 'middle',
-                  textAlign: 'right',
-                }}
-              >
-                <Text
-                  className="spx-subtle"
-                  style={{
-                    margin: 0,
-                    color: THEME.subtle,
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: '0.12em',
-                    lineHeight: 1.5,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Auckland · Design · Build · Install
-                </Text>
-              </Column>
             </Row>
           </Section>
 
@@ -265,19 +244,9 @@ export function AlternativeEmailShell(props: {
             </Text>
             <Text
               style={{
-                margin: '5px 0 16px',
-                color: '#cfd1ca',
-                fontSize: 11,
-                lineHeight: 1.55,
-              }}
-            >
-              Bespoke pergolas, designed and built around the architecture.
-            </Text>
-            <Text
-              style={{
                 margin: 0,
                 color: THEME.inverseText,
-                fontSize: 11,
+                fontSize: 14,
                 lineHeight: 1.75,
               }}
             >
@@ -290,7 +259,7 @@ export function AlternativeEmailShell(props: {
               >
                 022 854 5633
               </Link>
-              {'  ·  '}
+              <br />
               <Link
                 href="mailto:info@sanctuarypergolas.co.nz"
                 style={{
@@ -308,7 +277,7 @@ export function AlternativeEmailShell(props: {
             style={{
               margin: '10px 2px 0',
               color: THEME.subtle,
-              fontSize: 10,
+              fontSize: 13,
               lineHeight: 1.5,
             }}
           >

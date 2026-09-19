@@ -4,16 +4,9 @@ import { THEME } from '../theme';
 import type { AlternativePreviewTheme } from './AlternativeEmailShell';
 import { AlternativeEmailShell } from './AlternativeEmailShell';
 import type { AlternativeEmailModel } from './alternativeEmailModel';
-import {
-  AttachmentList,
-  DetailRows,
-  EstimateNote,
-  Eyebrow,
-  InvestmentBlock,
-  ProjectImage,
-  ReplyPanel,
-  StepRows,
-} from './AlternativeEmailParts';
+import { AttachmentList, EstimateNote, InvestmentBlock } from './AlternativeEmailParts';
+import { ConfiguredEstimate } from '../ConfiguredEstimate';
+import { ReceiptClosing, SubmittedDesign } from '../SubmittedDesign';
 
 export function EditorialRefinedEmail(props: {
   model: AlternativeEmailModel;
@@ -21,75 +14,22 @@ export function EditorialRefinedEmail(props: {
   previewTheme?: AlternativePreviewTheme;
 }) {
   const { model } = props;
+  const dimensions = model.summary.find(row => row.label === 'Approximate dimensions' && row.value !== 'Not supplied');
   return (
-    <AlternativeEmailShell
-      preview={props.preheader}
-      previewTheme={props.previewTheme}
-    >
-      <Section
-        className="spx-surface spx-rule spx-mobile-pad"
-        style={{
-          padding: '34px 34px 38px',
-          backgroundColor: THEME.elevated,
-          borderRight: `1px solid ${THEME.rule}`,
-          borderLeft: `1px solid ${THEME.rule}`,
-        }}
-      >
-        <Eyebrow>{model.eyebrow}</Eyebrow>
-        <Heading
-          as="h1"
-          className="spx-heading spx-text"
-          style={{
-            margin: '0 0 15px',
-            color: THEME.text,
-            fontSize: 36,
-            fontWeight: 700,
-            letterSpacing: '-0.047em',
-            lineHeight: 1.03,
-          }}
-        >
-          {model.heading}
-        </Heading>
-        <Text
-          className="spx-muted"
-          style={{
-            margin: 0,
-            color: THEME.muted,
-            fontSize: 14,
-            lineHeight: 1.7,
-          }}
-        >
-          {model.intro}
-        </Text>
-        <Text
-          className="spx-subtle"
-          style={{
-            margin: '11px 0 0',
-            color: THEME.subtle,
-            fontSize: 11,
-            lineHeight: 1.6,
-          }}
-        >
-          {model.reassurance}
-        </Text>
-
-        <ProjectImage model={model} margin="28px 0 26px" />
-
-        <InvestmentBlock model={model} />
-        <EstimateNote model={model} />
-
-        <Section style={{ margin: '29px 0 28px' }}>
-          <Eyebrow>What happens next</Eyebrow>
-          <StepRows steps={model.steps} />
-        </Section>
-
-        <Section style={{ margin: '0 0 27px' }}>
-          <Eyebrow>Your project details</Eyebrow>
-          <DetailRows rows={model.summary} />
-        </Section>
-
-        <AttachmentList links={model.attachmentLinks} />
-        <ReplyPanel model={model} />
+    <AlternativeEmailShell preview={props.preheader} previewTheme={props.previewTheme}>
+      <Section className="spx-surface spx-rule spx-mobile-pad" style={{ padding: '34px', backgroundColor: THEME.elevated, borderRight: '1px solid ' + THEME.rule, borderLeft: '1px solid ' + THEME.rule }}>
+        <Heading as="h1" className="spx-heading spx-text" style={{ margin: '0 0 20px', color: THEME.text, fontSize: 30, fontWeight: 500, letterSpacing: '-1px', lineHeight: 1.15 }}>We’ve received your enquiry</Heading>
+        <Text className="spx-text" style={{ margin: '0 0 24px', color: THEME.text, fontSize: 16, lineHeight: 1.65 }}>{model.reassurance}</Text>
+        {model.submittedDesign || model.configuredEstimate !== undefined
+          ? <ConfiguredEstimate value={model.configuredEstimate} />
+          : <>
+            {dimensions && model.baseInvestment && <Text className="spx-muted" style={{ margin: '0 0 12px', color: THEME.muted, fontSize: 14, lineHeight: 1.6 }}>{dimensions.value}</Text>}
+            <InvestmentBlock model={model} tone="warm" />
+            <EstimateNote model={model} />
+          </>}
+        <SubmittedDesign design={model.submittedDesign} />
+        <AttachmentList links={model.attachmentLinks} compact />
+        <ReceiptClosing filesReceivedCount={model.filesReceivedCount} hasDownloadLinks={model.attachmentLinks.length > 0} />
       </Section>
     </AlternativeEmailShell>
   );

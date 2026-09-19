@@ -158,6 +158,40 @@ Current website enquiry autoresponders keep the existing payload shape for previ
 
 The email preview route renders an outbox row by template ID and variables. It uses repo-rendered website autoresponder templates, portal transactional templates, or DB `email_templates` fallback HTML.
 
+### Customer email clarity (19 September 2026)
+
+The five V2 enquiry experiences share `EnquiryExperienceEmail`; retained V1
+autoresponders use `EditorialRefinedEmail`. Both follow the approved marketing
+editorial direction with sentence-case headings and readable qualification text.
+Following owner feedback about excess information, both keep only the receipt,
+immediate next action, available pricing, relevant design/file links and a brief
+reply invitation. The full form recap, customer notes/preferences, multi-step
+process, repeated introduction, promotional image and slogan are omitted from
+the customer email. The stored enquiry retains all submitted information.
+Preview-only Image-led and Compact alternatives retain their reference imagery;
+they are not the active send layout.
+
+V2 next-action copy retains the existing typical one-working-day response
+wording and Auckland site-measure policy. It distinguishes a requested visit from
+a booked appointment. V1 does not gain a new response-time promise. A configured
+estimate keeps its validated frozen total and breakdown; listed extras are
+explicitly included. Legacy optional blinds are explicitly additional to the
+pergola estimate. V1 configured fallbacks retain the frozen breakdown even when
+only a saved summary, rather than a reopenable design, is available. Missing or
+inconsistent configured pricing requests a tailored
+quote, never a fabricated amount. Installation/GST and quote limitations remain
+beside the price. Submitted design links retain the warning that editing a saved
+design does not update the enquiry; customers are asked to reply with revisions.
+`SubmittedDesign` shares this unchanged safe-link resolution and compact link
+presentation between V1 and V2. Inline-file counts and expiring download links
+remain visible without a full submission recap.
+
+Shared email parts retain inline/table layout and dark-mode fallbacks. Browser
+previews prove layout and reading order, not Gmail/Outlook/Apple Mail delivery or
+forced-colour behavior. Focused render coverage is in
+`apps/marketing/emails/enquiryEmailClarity.test.ts`; transport, recipient, BCC,
+attachment and enquiry persistence contracts are unchanged.
+
 `/staff/email-previews` is the fixture-only Enquiry Email Workbench for the website autoresponder. Its staff-authenticated review surface renders the active Editorial Refined production layout alongside the preview-only Image-led and Compact alternatives from one shared enquiry content model. The review flow is explicitly ordered as project scenario, design review and inbox proof. Staff-facing copy uses project scenario, completed project and design language while keeping repository fixture identifiers behind the UI. The compact navigator synchronizes all layouts across residential and commercial enquiries with Pitched, Gable, Box perimeter and Hip forms, each with and without blinds, plus one fixed professional fixture: 17 combinations in total. It also identifies the governed completed-project image and its match quality so reviewers can verify the customer selection, image evidence and email content together.
 
 The workbench supports side-by-side comparison and a focused single-layout mode. Desktop, narrow and mobile canvases render the email at 760, 600 and 390 px respectively, with 50%, 75% and 100% inspection zoom and controlled light/dark simulations. Zoom is applied outside the sandboxed iframe: the iframe retains the selected real pixel width and exact rendered `srcDoc`, so workbench CSS cannot alter email HTML. Each layout exposes its differentiated inbox subject, preheader, design intent, best-use guidance and plain-text fallback. Refresh re-renders the current governed fixture; Reset returns the entire review state to the default residential pitched fixture. Simulations remain comparison aids, not proof of any particular inbox client's rendering.
@@ -168,7 +202,7 @@ Rendering and delivery have separate availability contracts. Authenticated produ
 
 Send controls remain disabled until the authenticated preview API reports `sendReady=true`. The delivery panel must state the exact safe configuration reason (`missing_api_key`, `missing_recipient`, `invalid_recipient`, disabled flag or disallowed environment) beside the controls instead of presenting an unexplained grey button. It also keeps the fixed-recipient, no-BCC and no-write contract visible in every state. Vercel environment changes apply only to a new deployment, so adding or correcting any preview variable requires redeploying the branch. `RESEND_API_KEY_PREVIEW` must contain the actual Resend secret value, not the display name assigned to that key in Resend.
 
-Website autoresponder hero imagery is resolved centrally by `apps/marketing/lib/websiteAutoresponderHero.ts` from the governed records in `apps/marketing/data/projects.ts`. The email identifies the image as a completed Sanctuary project and states that project's recorded roof approach; it does not claim the pictured build is an exact preview of the submitted project. The current selection policy is:
+The preview-only Image-led and Compact alternatives resolve hero imagery centrally through `apps/marketing/lib/websiteAutoresponderHero.ts` from the governed records in `apps/marketing/data/projects.ts`. These alternatives identify the image as a completed Sanctuary project and state that project's recorded roof approach; they do not claim the pictured build is an exact preview of the submitted project. The active customer email has no project image. The reference selection policy is:
 
 | Enquiry selection | Completed project shown | Evidence note |
 | --- | --- | --- |

@@ -2,6 +2,7 @@ import * as React from 'react';
 import {
   Button,
   Column,
+  Heading,
   Img,
   Link,
   Row,
@@ -20,20 +21,21 @@ export function Eyebrow(props: {
   inverse?: boolean;
 }) {
   return (
-    <Text
-      className={props.inverse ? undefined : 'spx-subtle'}
+    <Heading
+      as="h2"
+      className={props.inverse ? undefined : 'spx-text'}
       style={{
         margin: '0 0 13px',
-        color: props.inverse ? '#bfc2ba' : THEME.subtle,
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '0.14em',
+        color: props.inverse ? THEME.inverseText : THEME.text,
+        fontSize: 20,
+        fontWeight: 500,
+        letterSpacing: '0',
         lineHeight: 1.45,
-        textTransform: 'uppercase',
+        textTransform: 'none',
       }}
     >
       {props.children}
-    </Text>
+    </Heading>
   );
 }
 
@@ -81,10 +83,10 @@ export function ProjectImage(props: {
           style={{
             margin: '0 0 3px',
             color: inverse ? '#bfc2ba' : THEME.subtle,
-            fontSize: 9,
-            letterSpacing: '0.12em',
+            fontSize: 14,
+            letterSpacing: '0',
             lineHeight: 1.4,
-            textTransform: 'uppercase',
+            textTransform: 'none',
           }}
         >
           Completed Sanctuary project
@@ -94,7 +96,7 @@ export function ProjectImage(props: {
           className={inverse ? undefined : 'spx-link'}
           style={{
             color: inverse ? THEME.inverseText : THEME.text,
-            fontSize: 12,
+            fontSize: 16,
             fontWeight: 700,
             lineHeight: 1.45,
             textDecoration: 'none',
@@ -107,7 +109,7 @@ export function ProjectImage(props: {
           style={{
             margin: '3px 0 0',
             color: inverse ? '#cfd1ca' : THEME.subtle,
-            fontSize: 10,
+            fontSize: 14,
             lineHeight: 1.5,
           }}
         >
@@ -143,14 +145,14 @@ export function InvestmentBlock(props: {
         style={{
           margin: '0 0 8px',
           color: inverse ? '#bfc2ba' : THEME.subtle,
-          fontSize: 9,
+          fontSize: 14,
           fontWeight: 700,
-          letterSpacing: '0.14em',
+          letterSpacing: '0',
           lineHeight: 1.4,
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
-        Early installed estimate
+        Your estimated price
       </Text>
       <Text
         className={inverse ? undefined : 'spx-text'}
@@ -170,11 +172,11 @@ export function InvestmentBlock(props: {
         style={{
           margin: '6px 0 0',
           color: inverse ? '#cfd1ca' : THEME.muted,
-          fontSize: 11,
+          fontSize: 15,
           lineHeight: 1.5,
         }}
       >
-        Pergola structure and installation, including GST
+        Pergola structure and installation · NZD including GST
       </Text>
       {props.model.blindsInvestment ? (
         <Section
@@ -192,13 +194,13 @@ export function InvestmentBlock(props: {
             style={{
               margin: '0 0 4px',
               color: inverse ? '#bfc2ba' : THEME.subtle,
-              fontSize: 9,
-              letterSpacing: '0.1em',
+              fontSize: 14,
+              letterSpacing: '0',
               lineHeight: 1.45,
-              textTransform: 'uppercase',
+              textTransform: 'none',
             }}
           >
-            Optional outdoor blinds
+            Outdoor blinds · additional cost
           </Text>
           <Text
             className={inverse ? undefined : 'spx-text'}
@@ -211,6 +213,9 @@ export function InvestmentBlock(props: {
             }}
           >
             {props.model.blindsInvestment}
+          </Text>
+          <Text className={inverse ? undefined : 'spx-muted'} style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.6, color: inverse ? '#cfd1ca' : THEME.muted }}>
+            NZD including GST. Added to the pergola estimate above.
           </Text>
         </Section>
       ) : null}
@@ -226,7 +231,7 @@ export function EstimateNote({ model }: { model: AlternativeEmailModel }) {
       style={{
         margin: '11px 0 0',
         color: THEME.subtle,
-        fontSize: 10,
+        fontSize: 14,
         lineHeight: 1.65,
       }}
     >
@@ -258,7 +263,7 @@ export function StepRows(props: {
               style={{
                 margin: 0,
                 color: THEME.subtle,
-                fontSize: 10,
+                fontSize: 14,
                 lineHeight: 1.5,
               }}
             >
@@ -271,7 +276,7 @@ export function StepRows(props: {
               style={{
                 margin: '0 0 3px',
                 color: THEME.text,
-                fontSize: props.compact ? 13 : 15,
+                fontSize: props.compact ? 16 : 18,
                 fontWeight: 700,
                 lineHeight: 1.35,
               }}
@@ -283,7 +288,7 @@ export function StepRows(props: {
               style={{
                 margin: 0,
                 color: THEME.muted,
-                fontSize: props.compact ? 11 : 12,
+                fontSize: props.compact ? 14 : 16,
                 lineHeight: 1.6,
               }}
             >
@@ -315,7 +320,7 @@ export function DetailRows(props: {
         >
           <Column
             style={{
-              width: '34%',
+              width: '40%',
               paddingRight: 14,
               verticalAlign: 'top',
             }}
@@ -325,7 +330,7 @@ export function DetailRows(props: {
               style={{
                 margin: 0,
                 color: THEME.subtle,
-                fontSize: 9,
+                fontSize: 14,
                 lineHeight: 1.5,
               }}
             >
@@ -338,7 +343,7 @@ export function DetailRows(props: {
               style={{
                 margin: 0,
                 color: THEME.text,
-                fontSize: props.compact ? 11 : 12,
+                fontSize: props.compact ? 14 : 16,
                 lineHeight: 1.6,
               }}
             >
@@ -372,7 +377,7 @@ export function AttachmentList(props: {
         style={{
           margin: '0 0 8px',
           color: THEME.text,
-          fontSize: 12,
+          fontSize: 16,
           fontWeight: 700,
         }}
       >
@@ -383,7 +388,7 @@ export function AttachmentList(props: {
         style={{
           margin: '0 0 8px',
           color: THEME.muted,
-          fontSize: 11,
+          fontSize: 15,
           lineHeight: 1.65,
         }}
       >
@@ -405,7 +410,7 @@ export function AttachmentList(props: {
         style={{
           margin: 0,
           color: THEME.subtle,
-          fontSize: 9,
+          fontSize: 14,
           lineHeight: 1.5,
         }}
       >
@@ -442,20 +447,20 @@ export function ReplyPanel(props: {
         style={{
           margin: '0 0 7px',
           color: inverse ? THEME.inverseText : THEME.text,
-          fontSize: props.compact ? 17 : 20,
+          fontSize: props.compact ? 18 : 22,
           fontWeight: 700,
           letterSpacing: '-0.025em',
           lineHeight: 1.2,
         }}
       >
-        {props.heading ?? 'Have something useful to add?'}
+        {props.heading ?? 'Want to add anything?'}
       </Text>
       <Text
         className={inverse ? undefined : 'spx-muted'}
         style={{
           margin: '0 0 15px',
           color: inverse ? '#cfd1ca' : THEME.muted,
-          fontSize: 11,
+          fontSize: 15,
           lineHeight: 1.65,
         }}
       >
@@ -466,17 +471,17 @@ export function ReplyPanel(props: {
         className="spx-button"
         style={{
           display: 'inline-block',
-          padding: '13px 17px',
-          backgroundColor: THEME.accent,
-          border: `1px solid ${THEME.accent}`,
+          padding: '15px 20px',
+          backgroundColor: THEME.inverse,
+          border: `1px solid ${THEME.inverse}`,
           borderRadius: 0,
           color: THEME.inverseText,
-          fontSize: 9,
+          fontSize: 14,
           fontWeight: 700,
-          letterSpacing: '0.1em',
+          letterSpacing: '0',
           lineHeight: 1,
           textDecoration: 'none',
-          textTransform: 'uppercase',
+          textTransform: 'none',
         }}
       >
         {props.model.replyButtonLabel}
