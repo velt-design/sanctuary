@@ -270,6 +270,22 @@
   content: "\2192";
 }
 
+.formComparisonSection {
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+}
+
+.formComparisonSection > h3 {
+  margin: 0 0 1rem;
+  max-width: 36ch;
+  font-size: clamp(1.35rem, 2.1vw, 1.85rem);
+  line-height: 1.25;
+}
+
+.formComparisonSection > p {
+  max-width: 70ch;
+  margin: 0 0 1.75rem;
+}
+
 .formComparison {
   border-top: 1px solid var(--color-rule-strong);
 }

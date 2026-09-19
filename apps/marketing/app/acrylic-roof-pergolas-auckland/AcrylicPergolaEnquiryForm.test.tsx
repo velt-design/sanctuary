@@ -5,6 +5,8 @@ import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
 import AcrylicPergolaEnquiryForm from './AcrylicPergolaEnquiryForm';
 
 let root: Root | null = null;
+let analyticsEnabled = false;
+let marketingEnabled = false;
 
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -19,7 +21,7 @@ vi.mock('@/components/marketing-foundation', () => ({
 
 vi.mock('@/components/ConsentProvider', () => ({
   useConsent: () => ({
-    consent: { analytics: false, marketing: false },
+    consent: { analytics: analyticsEnabled, marketing: marketingEnabled },
     hasTrackingDecision: true,
     trackingBasis: 'user_choice',
     trackingRegionPolicy: 'consent_required',
@@ -44,6 +46,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  analyticsEnabled = false; marketingEnabled = false;
   window.history.replaceState({}, '', '/simple-pergolas-auckland');
 });
 
@@ -53,6 +56,7 @@ afterEach(async () => {
     root = null;
   }
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   document.body.innerHTML = '';
 });
 
@@ -110,6 +114,33 @@ function fillRequiredFields(container: HTMLElement) {
 }
 
 describe('AcrylicPergolaEnquiryForm Simple cover variant', () => {
+  it('tracks one first edit separately from submission and never reports a failed receipt as success', async () => {
+    analyticsEnabled = true;
+    const gtag = vi.fn(); vi.stubGlobal('gtag', gtag);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok:false, json:async()=>({error:'Try again.'}) } as Response);
+    const container = await renderForm(pricedHandoff); fillRequiredFields(container);
+    expect(gtag).not.toHaveBeenCalled();
+    await act(async () => {
+      container.querySelector('[name=name]')!.dispatchEvent(new Event('input', {bubbles:true}));
+      container.querySelector('[name=email]')!.dispatchEvent(new Event('input', {bubbles:true}));
+      container.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles:true,cancelable:true}));
+    });
+    expect(gtag.mock.calls.filter(call => call[1] === 'contact_form_interaction')).toHaveLength(1);
+    expect(gtag.mock.calls.filter(call => call[1] === 'contact_success')).toHaveLength(0);
+  });
+  it.each([[true, false], [false, true], [false, false]])('gates success categories with analytics=%s marketing=%s and reconciles the receipt ID', async (analytics, marketing) => {
+    analyticsEnabled = analytics; marketingEnabled = marketing;
+    const gtag = vi.fn(); const fbq = vi.fn(); const layer: Record<string, unknown>[] = [];
+    vi.stubGlobal('gtag', gtag); vi.stubGlobal('fbq', fbq); vi.stubGlobal('dataLayer', layer);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response);
+    const container = await renderForm(pricedHandoff); fillRequiredFields(container);
+    await act(async () => { container.querySelector('form')!.dispatchEvent(new Event('submit', {bubbles:true,cancelable:true})); });
+    if (analytics) expect(gtag).toHaveBeenCalledWith('event', 'contact_success', expect.objectContaining({send_to:'G-KGLF83X6JW', lead_event_id:'c314107a-a893-4f4f-a306-f50dc507fea4'}));
+    else expect(gtag).not.toHaveBeenCalled();
+    expect(fbq.mock.calls.length).toBe(marketing ? 1 : 0);
+    expect(layer.filter(event => event.event === 'lead_submitted')).toHaveLength(analytics || marketing ? 1 : 0);
+    if (analytics || marketing) expect(layer[0].lead_event_id).toBe('c314107a-a893-4f4f-a306-f50dc507fea4');
+  });
   it('submits only the opaque reference as pricing authority for a priced handoff', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,

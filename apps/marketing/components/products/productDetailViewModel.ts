@@ -69,6 +69,8 @@ export function buildProductDetailViewModel(
   }).slice(0, 1);
 
   return {
+    // Hip is a catalogue form, but is not supported by the online designer.
+    showDesignNextSteps: ['pitched', 'gable', 'box-perimeter'].includes(product.slug),
     disclosureGroups: PRODUCT_DETAIL_DISCLOSURE_GROUPS,
     visibleFit: {
       suitableCondition: product.decision.worksWhen[0],

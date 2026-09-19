@@ -325,6 +325,28 @@ body:has([data-contact-page]):not(:has([data-project-preview])):not(.no-scroll):
   font-size: .78rem;
 }
 
+.contact-form__pathway-choice {
+  border-block: 1px solid var(--color-rule);
+}
+
+.contact-form__pathway-choice > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 76px;
+  padding: 1rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.contact-form__pathway-choice > summary::-webkit-details-marker { display: none; }
+.contact-form__pathway-choice > summary > span:first-child { display: grid; gap: .25rem; }
+.contact-form__pathway-choice > summary small { color: var(--color-text-subtle); font-size: .75rem; }
+.contact-form__pathway-choice > summary > span:last-child { font-size: .8rem; text-decoration: underline; text-underline-offset: .2em; }
+.contact-form__pathway-choice > summary:focus-visible { outline: 2px solid var(--color-accent-olive); outline-offset: 3px; }
+.contact-form__business-persistence { min-width: 0; grid-column: 1 / -1; border: 0; margin: 0; padding: 0; }
+
 .contact-form__error-summary {
   display: grid;
   gap: .65rem;

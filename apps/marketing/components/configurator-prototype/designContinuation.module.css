@@ -7,3 +7,5 @@
 :global(body):has(.bar) :global(.acrylic-sticky-cta){display:none!important}
 @media(max-width:720px){.bar{width:calc(100% - 20px);bottom:max(10px,env(safe-area-inset-bottom));font-size:12px}.action{min-height:52px;padding:10px 12px;gap:8px}.action>span:last-child{font-size:11px}}
 @media(prefers-reduced-transparency:reduce){.bar{background:#dfe2de;backdrop-filter:none}}
+.bar.inFlow{position:relative;z-index:auto;bottom:auto;left:auto;transform:none;margin:24px auto;width:min(680px,calc(100% - 32px));background:#dfe2de;backdrop-filter:none;-webkit-backdrop-filter:none}
+:global(body:has(dialog[open])) .inFlow,:global(body:has(.consent-banner)) .inFlow,:global(body:has(.mobile-menu.open)) .inFlow{display:flex;visibility:hidden}

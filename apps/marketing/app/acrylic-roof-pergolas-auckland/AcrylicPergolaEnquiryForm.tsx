@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Eyebrow, Heading } from '@/components/marketing-foundation';
 import { useConsent } from '@/components/ConsentProvider';
+import { sendGoogleAnalyticsEvent } from '../../lib/googleAnalyticsEvent';
+import { useEnquiryInteraction } from '../../components/enquiry/useEnquiryInteraction';
 import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { createEnquirySubmissionId, ENQUIRY_ATTACHMENT_ACCEPT, uploadEnquiryAttachments, validateEnquiryAttachments } from '@/lib/enquiryAttachments';
@@ -110,12 +112,13 @@ function trackLeadSubmitted(
     event_category: 'contact',
     event_label: contextProperties.enquiry_type ?? 'unknown',
     landing_page: landingPage,
+    lead_event_id: eventId,
   });
 
   try {
     if (!trackingConsent.hasTrackingDecision) return;
     if (trackingConsent.analytics) {
-      trackingWindow.gtag?.('event', 'contact_success', eventData);
+      sendGoogleAnalyticsEvent('contact_success', eventData, true);
     }
     if (trackingConsent.marketing) {
       trackingWindow.fbq?.('track', 'Lead', eventData, { eventID: eventId });
@@ -195,6 +198,7 @@ export default function AcrylicPergolaEnquiryForm({
     trackingBasis,
     trackingRegionPolicy,
   } = useConsent();
+  const trackFirstInteraction = useEnquiryInteraction('embedded', false, hasTrackingDecision && consent.analytics);
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [enquiryType, setEnquiryType] = useState<EnquiryAudience | null>(
     isSimpleCover ? 'residential' : initialEnquiryType ?? sourceContext.enquiryType ?? null,
@@ -391,6 +395,8 @@ export default function AcrylicPergolaEnquiryForm({
       action="/api/enquiry/fallback"
       noValidate={isEnhanced}
       onSubmit={handleSubmit}
+      onInputCapture={trackFirstInteraction}
+      onChangeCapture={trackFirstInteraction}
       aria-labelledby="estimate-form-title"
     >
       <input

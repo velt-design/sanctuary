@@ -17,3 +17,15 @@ playwright-report
 test-results
 coverage
 *.log
+
+**/.next-*
+
+/tmp
+/.playwright-mcp
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.pub
+/.mcp.json
+/docs

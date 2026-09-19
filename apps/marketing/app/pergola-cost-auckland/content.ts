@@ -12,7 +12,11 @@ const faqItems = [
   },
   {
     question: 'Can I get an early estimate?',
+<<<<<<< HEAD
     answer: ['Yes. Explore your design online, or send photos and rough dimensions using the form below. An initial estimate is not a final quote: site measure, structural review and confirmed scope still matter.'],
+=======
+    answer: ['Use the designer to explore the available forms, dimensions and options. It shows an initial installed estimate where pricing is available; some designs need an individual quote. For a bespoke project or help choosing, send photos, rough dimensions and intended use. Any early indication remains subject to site and scope confirmation.'],
+>>>>>>> origin/main
   },
   {
     question: 'How should I compare quotes?',
@@ -22,6 +26,7 @@ const faqItems = [
 
 export const pergolaCostConfig = {
   marker: 'pergola-cost-auckland',
+  showDesignNextSteps: true,
   route: '/pergola-cost-auckland',
   description: 'Explore an initial pergola estimate for supported designs, understand Auckland installation cost drivers and compare what each quote includes.',
   schemaName: 'Pergola Cost Auckland',
@@ -42,12 +47,22 @@ export const pergolaCostConfig = {
     imageAlt: 'Complex pergola scope with mixed roof zones beside an Auckland home',
     objectPosition: '50% 42%',
     eyebrow: 'Pergola cost in Auckland',
+<<<<<<< HEAD
     title: 'What will your pergola cost?',
     intro: 'Explore an initial estimate for a supported design, or send us your brief for a project-specific quote.',
     primaryCta: 'Send project brief',
     secondaryCta: 'Explore my design and estimate',
     secondaryHref: buildConfiguratorEnquiryHref({ enquiryType: 'residential', sourcePath: '/pergola-cost-auckland', sourceComponent: 'hero' }),
     proof: ['Your dimensions and choices', 'Estimate where supported', 'Site and scope confirmed before quoting'],
+=======
+    title: 'Pergola cost starts with scope.',
+    intro: 'Size, structure, roofing, site work and extras shape the price.',
+    primaryCta: 'Design and estimate',
+    primaryHref: buildConfiguratorEnquiryHref({ sourcePath: '/pergola-cost-auckland', sourceComponent: 'hero' }),
+    secondaryCta: 'See cost drivers',
+    secondaryHref: '#cost-drivers',
+    proof: ['No generic square-metre price', 'Scope before comparison', 'Project-specific quote'],
+>>>>>>> origin/main
   },
   blocks: [
     {

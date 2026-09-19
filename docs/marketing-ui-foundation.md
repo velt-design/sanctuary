@@ -6,6 +6,39 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 
 ## Source Of Truth
 
+### Web-coherence candidate (19 September 2026)
+
+Local review changes preserve the homepage and configured-design owners. Contact
+continues a known pathway or validated project/product reference into a brief;
+references without stronger intent use Help, not an inferred bespoke design.
+The selected pathway is a compact native Change disclosure, kept open while
+choosing. Neutral entry retains choices. Choice changes do not auto-scroll;
+contact/brief fields and business details survive pathway round trips. The
+existing contextual source, validation, retry and submission contracts remain.
+Response wording uses the approved claims register.
+
+Cost-guide and pergola-product decision panels link to the existing designer
+and contextual help; configured designs needing individual quotes are not
+relabeled bespoke. The product hub compares the four governed forms. Hip and
+accessory products retain their specific brief CTA; only Pitched, Gable and Box
+offer the designer, matching its current supported forms. Guide navigation presents related
+decisions instead of implying a required sequence. No generic price example or
+search-ranking claim is added.
+
+The non-homepage design continuation is currently in normal flow at its existing
+mount after the footer, so it cannot cover reading content. This trades persistent
+visibility for an end-of-page continuation. Homepage floating behavior remains.
+The integrated local preview and independent review verified unobscured reading
+and the unchanged homepage continuation at desktop and phone widths.
+
+Local tests cover continuity, consent, closed click metadata and receipt event
+identity. Independent local review completed the cost-to-help, project-to-brief,
+product comparison and designer-to-enquiry/Edit journeys at desktop and phone
+widths. Hosted staging and live delivery remain separate verification gates. Local pricing availability is not proof
+of the live pricebook, and no pricebook is enabled by this change. An overlapping
+marketing-foundation task uses a separate worktree; reconcile both owning-doc
+changes during integration without overwriting either agreement.
+
 ### Proposed evolution catalogue (17 September 2026)
 
 The owner approved an isolated comparison at `/__foundation/marketing/evolution`,
