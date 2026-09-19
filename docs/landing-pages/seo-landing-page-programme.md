@@ -4,6 +4,18 @@ The current guide-cluster page roles and rewrite decisions are recorded in [Perg
 
 Status: Active implementation checklist.
 
+## 19 September 2026 cost-guide review version
+
+The cost guide now offers a direct, source-attributed entry to the existing
+pergola designer and retains the embedded brief for individual assessment.
+The first answer distinguishes estimates for supported configurations from
+bespoke or wider project scope; quote checks explicitly cover GST, installation,
+foundations, connections, drainage, engineering, consent and electrical work.
+No pricing calculation, pricebook, form API or shared layout is changed.
+Representative price examples remain pending commercial approval under the
+Marketing Claims Register. This working-branch update is not a production
+release or approval to publish static figures.
+
 This document tracks the ten approved Sanctuary marketing landing pages. Pages are built and proved one at a time. A page is complete only after content, claim, SEO, conversion, responsive, link, schema, typecheck, browser and production-build checks pass.
 
 ## Page checklist

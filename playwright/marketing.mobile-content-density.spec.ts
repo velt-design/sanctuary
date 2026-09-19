@@ -295,8 +295,8 @@ const routeCases: readonly RouteCase[] = [
     maximumVisibleWords: 650,
     maximumVisibleHeadingRegions: 9,
     mobileSignals: [
-      'Pergola cost starts with scope.',
-      'Photos reveal what area alone cannot.',
+      'What will your pergola cost?',
+      'What your budget needs to cover.',
       'Cost drivers, quote checks and questions',
       'Send project brief',
     ],
