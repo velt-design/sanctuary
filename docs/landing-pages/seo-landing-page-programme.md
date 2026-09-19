@@ -13,8 +13,7 @@ bespoke or wider project scope; quote checks explicitly cover GST, installation,
 foundations, connections, drainage, engineering, consent and electrical work.
 No pricing calculation, pricebook, form API or shared layout is changed.
 Representative price examples remain pending commercial approval under the
-Marketing Claims Register. This working-branch update is not a production
-release or approval to publish static figures.
+Marketing Claims Register. The approved cost-guide release directs customers to current designer estimates; it does not publish static price examples.
 
 This document tracks the ten approved Sanctuary marketing landing pages. Pages are built and proved one at a time. A page is complete only after content, claim, SEO, conversion, responsive, link, schema, typecheck, browser and production-build checks pass.
 
