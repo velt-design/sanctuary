@@ -4,7 +4,7 @@ The current guide-cluster page roles and rewrite decisions are recorded in [Perg
 
 Status: Active implementation checklist.
 
-## 19 September 2026 cost-guide review version
+## 20 September 2026 cost-guide update
 
 The cost guide now offers a direct, source-attributed entry to the existing
 pergola designer and retains the embedded brief for individual assessment.
