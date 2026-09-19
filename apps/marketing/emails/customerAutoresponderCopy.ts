@@ -30,17 +30,17 @@ export function customerEstimatePreheader(
 ): string {
   if (!baseRange) {
     return enquiryType === 'commercial'
-      ? 'Your commercial project details and the next steps from Sanctuary.'
-      : 'Your project details and the next steps from Sanctuary.';
+      ? 'Your commercial enquiry is with Sanctuary. We’ll reply by email.'
+      : 'Your enquiry is with Sanctuary. We’ll reply by email.';
   }
   const amountLabel =
     baseRange.lowIncGst === baseRange.highIncGst
       ? 'indicative installed estimate'
       : 'indicative installed range';
   return enquiryType === 'commercial'
-    ? `Your commercial project details, ${amountLabel} and the next steps from Sanctuary.`
-    : `Your project details, ${amountLabel} and the next steps from Sanctuary.`;
+    ? `Your commercial ${amountLabel}, including GST. Next steps from Sanctuary.`
+    : `Your ${amountLabel}, including GST. Next steps from Sanctuary.`;
 }
 
 export const PROFESSIONAL_ENQUIRY_PREHEADER =
-  'Your brief is with Sanctuary. Review the details received and what happens next.';
+  'Your project enquiry is with Sanctuary. We’ll reply by email.';

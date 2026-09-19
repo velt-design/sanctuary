@@ -21,17 +21,17 @@ it('confirms a request without implying a booked visit or free travel outside Au
   expect(html).toContain('confirm availability and any travel cost first');
   const help = renderToStaticMarkup(<EnquiryExperienceEmail experience="help" variables={{name:'Taylor'}} />);
   expect(help).not.toContain('Your site-measure request has been received');
-  expect(help).toContain('If a site measure would help');
+  expect(help).toContain('help you choose a pergola');
 });
 
-it('keeps a customer budget distinct from calculated pricing and omits it for configured enquiries', () => {
+it('keeps supplied preferences in the submission without repeating them in the receipt', () => {
   const variables = { name: 'Taylor', projectPreferences: { preferredTiming: 'Spring', budgetPreference: 'provided', budgetHint: '$20,000 <script>' } };
   const help = renderToStaticMarkup(<EnquiryExperienceEmail experience="help" variables={variables} />);
-  expect(help).toContain('Preferred timing');
-  expect(help).toContain('Your budget (NZD, including GST)');
-  expect(help).toContain('$20,000 &lt;script&gt;');
+  expect(help).not.toContain('Preferred timing');
+  expect(help).not.toContain('$20,000');
   expect(help).not.toContain('<script>');
   const configured = renderToStaticMarkup(<EnquiryExperienceEmail experience="configured" variables={variables} />);
-  expect(configured).toContain('Spring');
+  expect(configured).not.toContain('Spring');
   expect(configured).not.toContain('$20,000');
+  expect(variables.projectPreferences.budgetHint).toBe('$20,000 <script>');
 });

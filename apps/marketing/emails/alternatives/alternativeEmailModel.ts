@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import { formatInvestmentAmount } from '../components/InvestmentPanel';
 import { formatNZD } from '../utils/money';
+import { submittedEmailDesign } from '../SubmittedDesign';
 
 export type AlternativeEmailStep = Readonly<{
   title: string;
@@ -36,6 +37,9 @@ export type AlternativeEmailModel = Readonly<{
   attachmentLinks: readonly { name: string; url: string }[];
   replyPrompt: string;
   replyButtonLabel: string;
+  submittedDesign?: ReturnType<typeof submittedEmailDesign>;
+  configuredEstimate?: unknown;
+  filesReceivedCount?: number;
 }>;
 
 function supplied(value: unknown): string {
@@ -94,10 +98,10 @@ function estimateModel(
         ? formatInvestmentAmount(props.blindsRange, formatNZD)
         : undefined,
     estimateNote: props.simpleCoverEstimate
-      ? `An early installed estimate, including GST. It is not a quote. It uses the selected dimensions, ${simpleCoverLevel(props.simpleCoverEstimate.level).toLowerCase()} and ${simpleCoverConnection(props.simpleCoverEstimate.connection).toLowerCase()}, together with the standard Simple calculator assumptions. We will confirm the final scope after reviewing the site and connection details.`
+      ? `Not a quote. Uses your selected dimensions, ${simpleCoverLevel(props.simpleCoverEstimate.level).toLowerCase()} and ${simpleCoverConnection(props.simpleCoverEstimate.connection).toLowerCase()}, with standard Simple calculator assumptions. Subject to site confirmation.`
       : baseIsSingleAmount
-      ? 'An early installed estimate, including GST. It is not a quote and assumes standard access, fixings, colour and fascia connection. We will confirm the final scope after reviewing the site and connection details.'
-      : 'An early installed range, including GST. It reflects the assumptions stored with this enquiry and is not a quote. We will confirm the final scope after reviewing the site and connection details.',
+      ? 'Not a quote. Assumes standard access, fixings, colour and a fascia connection. Subject to site confirmation.'
+      : 'Not a quote. This range uses the assumptions saved with your enquiry. Subject to site confirmation.',
   };
 }
 
@@ -107,19 +111,19 @@ function estimateSteps(
   if (audience === 'commercial') {
     return [
       {
-        title: 'A designer reviews your brief',
+        title: 'We review your project',
         description:
           'We check the intended use, dimensions, roof form, selected options and information supplied.',
       },
       {
-        title: 'We confirm the project interfaces',
+        title: 'We discuss your site and timing',
         description:
-          'We identify the site, access, structural and programme details needed to understand the work.',
+          'We’ll ask about access, structural connections and when the work needs to be done.',
       },
       {
-        title: 'We recommend the next step',
+        title: 'We explain what is needed for a quote',
         description:
-          'Once the context is clear, we confirm what is needed for a measured proposal.',
+          'We’ll confirm the measurements and design details needed to prepare your proposal.',
       },
     ];
   }
@@ -128,17 +132,17 @@ function estimateSteps(
     {
       title: 'A designer reviews your brief',
       description:
-        'We check the dimensions, roof form, roof approach and options against the notes supplied.',
+        'We’ll check your size, roof and selected options alongside your notes.',
     },
     {
-      title: 'We confirm the site questions',
+      title: 'We discuss your site',
       description:
-        'We get in touch if photographs, access, connections or measurements need more detail.',
+        'We’ll ask for any photos or measurements we need and discuss how the pergola will connect to your home.',
     },
     {
-      title: 'We recommend the next step',
+      title: 'We explain what is needed for a quote',
       description:
-        'Once the scope is understood, we confirm the useful path toward a measured proposal.',
+        'We’ll explain whether a site measure or more design work is needed before we prepare your proposal.',
     },
   ];
 }
@@ -167,17 +171,17 @@ function buildEstimateModel(
           .join(', ')
       : 'None selected';
   const isCommercial = audience === 'commercial';
-  const receivedDetails = props.baseRange
-    ? 'including the roof form, selected options and early installed estimate'
-    : 'including the project information and files supplied';
 
   return {
     audience,
+    submittedDesign: submittedEmailDesign(variables),
+    configuredEstimate: props.configuredEstimate,
+    filesReceivedCount: props.filesReceivedCount,
     eyebrow: `${isCommercial ? 'Commercial' : 'Residential'} pergola enquiry · received`,
-    heading: `Thanks, ${firstName(props.name)}. Your pergola brief is with us.`,
-    intro: `We have the details for your ${supplied(props.suburb)} project, ${receivedDetails}.`,
+    heading: `Thanks, ${firstName(props.name)}. We’ve received your pergola enquiry.`,
+    intro: props.suburb ? `Thanks for getting in touch about your project in ${supplied(props.suburb)}.` : 'Thanks for getting in touch about your pergola.',
     reassurance:
-      'You do not need to submit the form again. The information below is the brief our team will review.',
+      'Our team will review your enquiry and reply by email. You don’t need to do anything else for now.',
     hero: resolveWebsiteAutoresponderHero(props),
     ...estimateModel(props),
     steps: estimateSteps(audience),
@@ -193,8 +197,8 @@ function buildEstimateModel(
             { label: 'House connection', value: simpleCoverConnection(props.simpleCoverEstimate.connection) },
           ]
         : []),
-      { label: 'Pergola form', value: supplied(props.style) },
-      { label: 'Roof approach', value: supplied(props.roof) },
+      { label: 'Pergola shape', value: supplied(props.style) },
+      { label: 'Roof material', value: props.roof === 'Both' ? 'Acrylic and timber' : supplied(props.roof) },
       { label: 'Options to discuss', value: options },
       {
         label: 'Files received',
@@ -204,9 +208,9 @@ function buildEstimateModel(
     ],
     attachmentLinks: props.attachmentLinks ?? [],
     replyPrompt: isCommercial
-      ? 'Reply with any drawings, site information, programme constraints or commercial requirements that would help us understand the project.'
-      : 'Reply with any additional photos, plans, site constraints or timing preferences that would help us understand the space.',
-    replyButtonLabel: 'Add project information',
+      ? 'Reply to this email with plans, site information, timing requirements or questions.'
+      : 'Reply to this email with photos, plans or questions. Tell us if you’d like to change any of the details you submitted.',
+    replyButtonLabel: 'Email Sanctuary',
   };
 }
 
@@ -216,27 +220,29 @@ function buildProfessionalModel(
   const props = variables as unknown as Professional;
   return {
     audience: 'professional',
+    submittedDesign: submittedEmailDesign(variables),
+    filesReceivedCount: props.filesReceivedCount,
     eyebrow: 'Professional project enquiry · received',
-    heading: `Thanks, ${firstName(props.name)}. Your project brief is with us.`,
-    intro: `We have received the outline and files for your ${supplied(props.suburb)} project. They give our team a clear starting point for a useful technical conversation.`,
+    heading: `Thanks, ${firstName(props.name)}. We’ve received your project enquiry.`,
+    intro: 'Thanks for involving Sanctuary. We’ve received your enquiry and will review the project information you supplied.',
     reassurance:
-      'You do not need to submit the form again. The information below is the brief our team will review.',
+      'Our team will review your enquiry and reply by email. You don’t need to do anything else for now.',
     hero: resolveWebsiteAutoresponderHero(props),
     steps: [
       {
-        title: 'We review the design brief',
+        title: 'We review your project information',
         description:
           'We read the notes and drawings, then identify decisions already made and gaps still to resolve.',
       },
       {
-        title: 'We clarify the interfaces',
+        title: 'We discuss the technical details',
         description:
-          'We confirm the project stage, structural connections, consent context and relevant site constraints.',
+          'We’ll discuss the project stage, structural connections, consent requirements and site constraints.',
       },
       {
-        title: 'We agree the useful response',
+        title: 'We agree what you need from us',
         description:
-          'The next step may be budget guidance, technical input, a site conversation or a measured proposal.',
+          'We’ll confirm whether you need budget guidance, design details, a site discussion or a proposal.',
       },
     ],
     summary: [
@@ -251,8 +257,8 @@ function buildProfessionalModel(
     ],
     attachmentLinks: props.attachmentLinks ?? [],
     replyPrompt:
-      'Reply with any additional drawings, project-stage context, boundary conditions, wind exposure or interface details that would help us understand the work.',
-    replyButtonLabel: 'Add project information',
+      'Reply to this email with drawings, site details or questions you’d like us to consider.',
+    replyButtonLabel: 'Email Sanctuary',
   };
 }
 

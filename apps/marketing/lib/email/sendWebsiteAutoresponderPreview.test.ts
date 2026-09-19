@@ -59,7 +59,7 @@ describe('website autoresponder preview sender', () => {
     });
     expect(message).not.toHaveProperty('bcc');
     expect(message.html).toContain('sp-preview');
-    expect(message.text).toContain('Your project details');
+    expect(message.text).toContain('Reply to this email');
     expect(options).toMatchObject({ timeoutMs: 15_000 });
     expect(options.idempotencyKey).toMatch(
       /^website-autoresponder-preview:residential-gable-with-blinds:editorial-refined:/,

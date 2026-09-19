@@ -52,7 +52,17 @@ describe('website autoresponder layout alternatives', () => {
         expect(rendered.sendSubject).toBe(
           `[Preview: ${layout.name}] ${production.subject}`,
         );
-        expect(rendered.html).toContain(hero.imageUrl);
+        if (layout.id === 'editorial-refined') {
+          expect(rendered.html).not.toContain('<img');
+          expect(rendered.text).not.toContain('Your project note');
+          expect(rendered.text).toContain('Reply to this email');
+        } else {
+          expect(rendered.html).toContain(hero.imageUrl);
+          expect(rendered.text).toContain('Your project note');
+          expect(rendered.text).toContain('Want to add anything?');
+          expect(rendered.text).toContain('Email Sanctuary');
+          expect(rendered.text).toContain(hero.projectTitle);
+        }
         expect(rendered.html).toContain('name="color-scheme"');
         expect(rendered.html).toContain('content="light dark"');
         expect(rendered.html).toContain(
@@ -64,16 +74,12 @@ describe('website autoresponder layout alternatives', () => {
         expect(rendered.html).toContain('max-width:760px');
         expect(rendered.html).toContain('spx-button');
         expect(rendered.text).toContain('Sanctuary Pergolas');
-        expect(rendered.text).toContain('Your project note');
-        expect(rendered.text).toContain('Have something useful to add?');
-        expect(rendered.text).toContain('Add project information');
-        expect(rendered.text).toContain(hero.projectTitle);
         expect(rendered.text).not.toContain('[Preview:');
 
         if (variant === 'professional') {
-          expect(rendered.text).not.toContain('Early installed estimate');
+          expect(rendered.text).not.toContain('Your estimated price');
         } else {
-          expect(rendered.text).toContain('Early installed estimate');
+          expect(rendered.text).toContain('Your estimated price');
         }
       }
     }
@@ -104,9 +110,7 @@ describe('website autoresponder layout alternatives', () => {
         'compact',
       ),
     ]);
-    expect(editorial.html.indexOf('<h1')).toBeLessThan(
-      editorial.html.indexOf('<img'),
-    );
+    expect(editorial.html).not.toContain('<img');
     expect(imageLed.html.indexOf('<img')).toBeLessThan(
       imageLed.html.indexOf('<h1'),
     );
@@ -203,14 +207,14 @@ describe('website autoresponder layout alternatives', () => {
     );
 
     expect(rendered.preheader).toBe(
-      'Your project details and the next steps from Sanctuary.',
+      'Your enquiry is with Sanctuary. We’ll reply by email.',
     );
     expect(rendered.text).toContain(
-      'including the project information and files supplied',
+      'reply by email',
     );
-    expect(rendered.text).toContain('Approximate dimensions');
-    expect(rendered.text).toContain('Not supplied');
-    expect(rendered.text).not.toContain('Early installed estimate');
+    expect(rendered.text).not.toContain('Approximate dimensions');
+    expect(rendered.text).not.toContain('Not supplied');
+    expect(rendered.text).not.toContain('Your estimated price');
     expect(rendered.text).not.toContain('$0');
   });
 
@@ -234,10 +238,8 @@ describe('website autoresponder layout alternatives', () => {
 
     expect(rendered.text).toContain('6m wide × 3m deep');
     expect(rendered.text).not.toContain('3m deep × 0m high');
-    expect(rendered.text).toContain('Deck level');
-    expect(rendered.text).toContain('Elevated deck');
-    expect(rendered.text).toContain('House connection');
-    expect(rendered.text).toContain('Soffit brackets');
+    expect(rendered.text).not.toContain('Deck level');
+    expect(rendered.text).not.toContain('House connection');
     expect(rendered.text).toContain('selected dimensions, elevated deck and soffit brackets');
     expect(rendered.text).toContain('standard Simple calculator assumptions');
     expect(rendered.text).not.toContain('fascia connection');
