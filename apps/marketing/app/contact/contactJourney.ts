@@ -59,6 +59,7 @@ export function getInitialContactPathway(
   if (context.projectDirection === 'cover' || (context.sourcePath && simpleSourcePaths.has(context.sourcePath))) {
     return 'simple';
   }
+  if (context.sourceProject || context.sourceProduct) return 'help';
   return null;
 }
 

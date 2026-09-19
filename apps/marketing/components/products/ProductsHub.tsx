@@ -1,10 +1,8 @@
 import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import editorial from '@/components/marketing-foundation/editorial/editorial.module.css';
-import Image from 'next/image';
 import JsonLd from '@/components/JsonLd';
 import {
-  Button,
   Container,
   Eyebrow,
   Heading,
@@ -13,24 +11,20 @@ import {
   TextLink,
 } from '@/components/marketing-foundation/Primitives';
 import {
-  ConversionSection,
   ProjectStory,
 } from '@/components/marketing-foundation/Patterns';
 import {
   productCategories,
   products,
 } from '@/data/products';
-import { buildEnquiryHref } from '@/lib/enquiryContext';
 import { absoluteUrl } from '@/lib/seo';
 import ProductCard from './ProductCard';
+import ProductFormComparison from './ProductFormComparison';
+import DesignNextSteps from '../journey/DesignNextSteps';
 import { buildProductHubViewModel } from './productHubViewModel';
 import styles from './product-pages.module.css';
 
 export default function ProductsHub() {
-  const enquiryHref = buildEnquiryHref({
-    sourcePath: '/products',
-    sourceComponent: 'product_cta',
-  });
   const {
     guideLinks,
     optionGateways,
@@ -90,8 +84,11 @@ export default function ProductsHub() {
               />
             ))}
           </div>
+          <ProductFormComparison />
         </Container>
       </Section>
+
+      <DesignNextSteps sourcePath="/products" />
 
       <Section tone="neutral">
         <Container width="wide">
@@ -166,13 +163,6 @@ export default function ProductsHub() {
         </Container>
       </Section>
 
-      <ConversionSection
-        eyebrow="Project brief"
-        heading="Not sure which option fits?"
-        copy="Send your suburb, photos and rough dimensions."
-        actionLabel="Send project brief"
-        href={enquiryHref}
-      />
     </main>
   );
 }

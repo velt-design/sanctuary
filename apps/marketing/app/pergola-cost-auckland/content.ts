@@ -1,4 +1,5 @@
 import type { SeoLandingPageConfig } from '@/components/seo-landing/types';
+import { buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
 
 const faqItems = [
   {
@@ -11,7 +12,7 @@ const faqItems = [
   },
   {
     question: 'Can I get an early estimate?',
-    answer: ['Send photos, rough dimensions and intended use. Any early indication remains subject to site and scope confirmation.'],
+    answer: ['Use the designer to explore the available forms, dimensions and options. It shows an initial installed estimate where pricing is available; some designs need an individual quote. For a bespoke project or help choosing, send photos, rough dimensions and intended use. Any early indication remains subject to site and scope confirmation.'],
   },
   {
     question: 'How should I compare quotes?',
@@ -21,6 +22,7 @@ const faqItems = [
 
 export const pergolaCostConfig = {
   marker: 'pergola-cost-auckland',
+  showDesignNextSteps: true,
   route: '/pergola-cost-auckland',
   description: 'Understand the design, structure, roofing, site work and options that shape an Auckland pergola quote.',
   schemaName: 'Pergola Cost Auckland',
@@ -43,7 +45,8 @@ export const pergolaCostConfig = {
     eyebrow: 'Pergola cost in Auckland',
     title: 'Pergola cost starts with scope.',
     intro: 'Size, structure, roofing, site work and extras shape the price.',
-    primaryCta: 'Send project brief',
+    primaryCta: 'Design and estimate',
+    primaryHref: buildConfiguratorEnquiryHref({ sourcePath: '/pergola-cost-auckland', sourceComponent: 'hero' }),
     secondaryCta: 'See cost drivers',
     secondaryHref: '#cost-drivers',
     proof: ['No generic square-metre price', 'Scope before comparison', 'Project-specific quote'],

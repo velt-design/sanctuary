@@ -26,7 +26,7 @@ export default function DesignContinuationBar() {
   }, [pathname, excluded]);
 
   if (excluded || dismissed || (pathname === '/' && !pastOpening)) return null;
-  return <aside className={styles.bar} aria-label="Your pergola design">
+  return <aside className={`${styles.bar}${pathname === '/' ? '' : ` ${styles.inFlow}`}`} aria-label="Your pergola design" data-design-placement={pathname === '/' ? 'floating' : 'in-flow'}>
     <Link href={`/configurator-preview?open=1${started ? '&resume=1' : ''}`} className={styles.action}>
       <span>{started ? 'Your pergola' : 'Your pergola, your way.'}</span>
       <span>{started ? 'Continue designing' : 'Start designing'} <span aria-hidden="true"><ArrowUpRight /></span></span>

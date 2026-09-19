@@ -19,6 +19,7 @@ import { absoluteUrl } from '@/lib/seo';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
 import { buildProductDetailViewModel } from './productDetailViewModel';
 import styles from './product-pages.module.css';
+import DesignNextSteps from '../journey/DesignNextSteps';
 
 type ProductDetailPageProps = {
   product: ProductRecord;
@@ -156,6 +157,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
       />
 
       <EditorialProductContent product={product} enquiryHref={enquiryHref}
+        nextSteps={model.showDesignNextSteps ? <DesignNextSteps sourcePath={product.route} sourceProduct={product.slug} /> : undefined}
         gallery={<ProductGallery product={product} items={model.galleryItems} />}
         evidence={<EvidenceStory product={product} />}
         supportingLinks={<><div className={styles.guideLinkList}>{model.relatedProducts.map(related => <TextLink key={related.slug} href={related.route}>{related.name}</TextLink>)}</div><ul className={styles.guideLinkList}>{[product.guide].map(guide => <li key={guide.href} className={cardLinks.surface}><Heading as="h3" variant="card">{guide.label}</Heading><TextLink className={cardLinks.hitLink} aria-label={`Read guide: ${guide.label}`} href={guide.href}>Read guide</TextLink></li>)}</ul></>}

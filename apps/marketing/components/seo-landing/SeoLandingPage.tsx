@@ -10,6 +10,7 @@ import { absoluteUrl } from '@/lib/seo';
 import SeoLandingBlocks from './SeoLandingBlocks';
 import SeoLandingMobileDisclosure from './SeoLandingMobileDisclosure';
 import PergolaGuideNavigation from './PergolaGuideNavigation';
+import DesignNextSteps from '../journey/DesignNextSteps';
 import type { SeoLandingPageConfig } from './types';
 import type { GuidedJourneyContext as GuidedJourneyContextModel } from '@/lib/guidedJourneyContext';
 import type { ProjectFinderJourneyContext as ProjectFinderJourneyContextModel } from '@/lib/projectFinderContinuation';
@@ -91,11 +92,12 @@ export default function SeoLandingPage({
     <main className="acrylic-landing seo-landing" data-marketing-foundation-page data-seo-landing={config.marker}>
       <JsonLd data={pageSchemas} />
       <EditorialLandingHero id={config.marker+'-title'} eyebrow={config.hero.eyebrow} title={config.hero.title} intro={config.hero.intro} image={config.hero.image} alt={config.hero.imageAlt} objectPosition={config.hero.objectPosition}>
-        <div className="editorial-actions"><TextLink href="#project-details">{config.hero.primaryCta}</TextLink><TextLink href={config.hero.secondaryHref}>{config.hero.secondaryCta}</TextLink></div>
+        <div className="editorial-actions"><TextLink href={config.hero.primaryHref ?? '#project-details'}>{config.hero.primaryCta}</TextLink><TextLink href={config.hero.secondaryHref}>{config.hero.secondaryCta}</TextLink></div>
         <ul className="editorial-proof" aria-label={config.schemaName+' approach'}>{config.hero.proof.map(item => <li key={item}>{item}</li>)}</ul>
       </EditorialLandingHero>
       <GuidedJourneyContext context={guidedContext} />
       <ProjectFinderJourneyContext context={projectFinderContext} />
+      {config.showDesignNextSteps && <DesignNextSteps sourcePath={config.route} helpHref="#project-details" />}
       {config.showGuideNavigation === false
         ? null
         : <PergolaGuideNavigation route={config.route} />}

@@ -7,9 +7,9 @@ import RoofApproaches from './RoofApproaches';
 import styles from './composition.module.css';
 import productStyles from './product-composition.module.css';
 
-type Props = { product: ProductRecord; enquiryHref: string; gallery: ReactNode; evidence: ReactNode; supportingLinks: ReactNode };
+type Props = { product: ProductRecord; enquiryHref: string; gallery: ReactNode; evidence: ReactNode; supportingLinks: ReactNode; nextSteps?: ReactNode };
 
-export default function EditorialProductContent({ product, enquiryHref, gallery, evidence, supportingLinks }: Props) {
+export default function EditorialProductContent({ product, enquiryHref, gallery, evidence, supportingLinks, nextSteps }: Props) {
   const gable = product.slug === 'gable';
   const exploreTarget = gable ? '#roof-approaches' : '#product-fit';
   return <>
@@ -67,9 +67,9 @@ export default function EditorialProductContent({ product, enquiryHref, gallery,
     <section className={styles.section} data-product-evidence><Container width="wide">{evidence}</Container></section>
     {gallery}
     <Container width="wide"><div className={productStyles.alternatives}><div><Eyebrow>Other options</Eyebrow><Heading as="h2" variant="card">A different approach?</Heading></div>{product.alternatives.map(slug => { const alternative = getProductBySlug(slug); return alternative ? <TextLink key={slug} href={alternative.route}>{alternative.name}</TextLink> : null; })}</div>{supportingLinks}</Container>
-    <section className={styles.conversion}><Container width="wide" className={styles.conversionGrid}>
+    {nextSteps ?? <section className={styles.conversion}><Container width="wide" className={styles.conversionGrid}>
       <div><Eyebrow>Your place, your project</Eyebrow><Heading>{product.categorySlug === 'pergolas' ? <>Find the right form<br />for your home.</> : <>Make it part of<br />your space.</>}</Heading></div>
       <div><Text size="large">Share your location, a few site photos and what you want from the space.</Text><Button href={enquiryHref}>Send project brief <span aria-hidden="true"><ArrowUpRight /></span></Button><Text size="small">We’ll confirm the materials, dimensions and site requirements with you.</Text></div>
-    </Container></section>
+    </Container></section>}
   </>;
 }
