@@ -35,7 +35,7 @@ test('keeps first-visit consent early in keyboard order and clear of the homepag
   await page.goto('/');
 
   const banner = page.getByRole('region', { name: 'Cookie preferences' });
-  const primaryAction = page.getByRole('link', { name: 'Find your project direction' });
+  const primaryAction = page.getByRole('button', { name: 'Continue to choose your project starting point' });
   await expect(banner).toBeVisible();
   await expect(primaryAction).toBeVisible();
 

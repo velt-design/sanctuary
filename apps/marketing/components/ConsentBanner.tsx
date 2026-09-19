@@ -11,6 +11,22 @@ export default function ConsentBanner() {
   const [showChoices, setShowChoices] = useState(false);
   const firstActionRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const bannerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!bannerOpen || !bannerRef.current) return;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty('--consent-banner-clearance', `${window.innerHeight - bannerRef.current!.getBoundingClientRect().top + 8}px`);
+    const observer = new ResizeObserver(update);
+    observer.observe(bannerRef.current);
+    window.addEventListener('resize', update);
+    update();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+      root.style.removeProperty('--consent-banner-clearance');
+    };
+  }, [bannerOpen]);
 
   useEffect(() => {
     setAnalytics(consent.analytics);
@@ -68,7 +84,7 @@ export default function ConsentBanner() {
   if (!bannerOpen) return null;
 
   return (
-    <aside className="consent-banner" aria-label="Cookie preferences" role="region" aria-live="polite">
+    <aside ref={bannerRef} className="consent-banner" aria-label="Cookie preferences" role="region" aria-live="polite">
       <div className="consent-banner__row">
         <p className="consent-banner__body">
           We use optional cookies for analytics and marketing. See our{' '}

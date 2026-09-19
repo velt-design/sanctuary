@@ -90,7 +90,7 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     <div hidden={mode === 'details'}>
     {mode === 'full' && <div className={styles.sectionLabel}><h2>Size & shape</h2></div>}
     {mode === 'full' && <RoofTypeChoice value={roof} onChange={updateRoof} />}
-    <p className={styles.small}>{roof.attachmentIntent==='freestanding'?'Choose the width and projection of your freestanding pergola.':'Width runs along the house. Projection is how far your pergola extends out from it.'}</p>
+    <p className={styles.small}>{mode==='size'?'Width runs across. Projection runs out from the back.':roof.attachmentIntent==='freestanding'?'Choose the width and projection of your freestanding pergola.':'Width runs along the house. Projection is how far your pergola extends out from it.'}</p>
     <div className={styles.dimensions}>
     <Dimension axis="width" onActivity={onDimensionActivity} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
       onChange={(widthMm) => update({ ...input, widthMm })} />

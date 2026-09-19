@@ -851,33 +851,17 @@ contract and `playwright/marketing.configurator-transition.spec.ts` for coverage
 
 ### Mobile configurator guided draft (18 September 2026)
 
-Jordan approved a seven-screen mobile configurator, retaining the desktop
-editorial composition. MobileRoofChoice adopts the Gable reference selector's
-three clear choices, large selection-linked imagery and restrained copy.
-The second design pass uses matched architectural illustrations based on actual
-configurator captures for roof shapes; Jordan approved the warm photographic
-treatment. Existing project photographs are cropped to material details for the
-roof build-up choices, focusing on the material. These are
-material references rather than shape-specific views. The later model reflects actual
-selections. The journey prioritises shape, roof, size, model exploration,
-optional sides/lighting, finished model and review. Specific house connections stay in
-More design options, with the estimate's assumption visible at review.
-See customer-configurator-architecture.md for state and workflow ownership.
-Independent delivery review and release gates apply to the integrated journey.
-Keep choice imagery and descriptions in stable regions. Downstream notices belong
-with the relevant extras and review, not above introductory choices. Lighting
-starts with simple layouts and retains detailed fittings/LED controls in a
-disclosure; side finishes use the same progressive disclosure. The first model
-introduces spatial exploration; the finished view emphasises the completed design
-with daylight and a lower presentation camera angle. Mobile has no view/time switches. Night is confined to lighting, including the unlit comparison. Size uses a quiet architectural plan with double-line rafters, beams and gutters from solved geometry, subdued acrylic/solid roof hatching and a fixed-height dimensioned view. Acrylic has a faint blue tint; solid roof regions hide the rafters beneath them.
-The size controls use black-selected Attached/Freestanding then Ground/Elevated switches. Gable
-Parallel/Extending sits beneath the shape selector, in a stable-height space.
-Sides supports selecting multiple openings on a quiet actual footprint or checkbox list. A stable five-option image selector uses matched warm architectural material references; Apply names the number of openings affected. A separate actual-model confirmation retains individual refinements and returns to group selection through Choose more sides. Images illustrate treatment types, not exact customer geometry or slat spacing.
-Review begins with a fresh capture of the actual design and keeps price lines
-visible, while supporting draft allowance detail remains available in disclosures.
-Chosen position/size/level/ridge are separate from connection/site requirements to
-confirm. Solid uses the Riverhead upward
-view with a crop emphasising the timber ceiling; image framing remains fixed.
+Jordan approved a five-page mobile journey on 19 September, replacing the seven-screen flow: Roof, Size, Sides & Lighting, Your Model, Review. Desktop retains its editorial composition. Roof combines shape and material rows with nine matched architectural references: the three approved acrylic renders and six solid/combination variants in the same warm treatment. Each shape/material selection changes the visual. These illustrate the combination; the later actual model reflects dimensions, ridge direction and refinements.
+
+Main choices, their visual and the next action fit above the fold at 360–430px wide and 750px viewport height. Fixed visual regions prevent selection jumps. Advanced options remain disclosed, and smaller viewports or enlarged text can scroll safely. Gable ridge direction sits in the optional roof details. Ground/Elevated may scroll below the main size and attachment choices; neither is required above the fold. Specific house connections stay in More design options.
+
+Roof references retain their full 4:3 composition rather than a shallow cropped strip. Side and lighting previews use the available content height, preserving room for their primary controls and the fixed next action. The Size plan has a larger readable drawing region; optional site controls may scroll. Check actual screen use as well as element visibility: unused space is not a reason to keep a small image.
+
+Sides and Lighting are tabs within page 3. Sides uses native opening checkboxes, a five-treatment row and a matched material reference on one page. Selecting a treatment immediately updates the selected group after atomic fit validation, preserving same-kind customisation and unselected openings. A disclosure retains the opening map and individual settings. There is no Apply or confirmation subpage. Lighting retains three presets, an actual steady night model and detailed fittings/LED controls in a disclosure. Downstream notices belong with extras and Review, not above introductory roof choices.
+
+Size uses a quiet architectural plan with double-line rafters, beams, gutters and ridge from solved geometry. Acrylic has a faint blue tint and subdued hatch; solid regions mask underlying rafters. Attached/Freestanding precedes Ground/Elevated. The separate daylight model stop is page 4, immediately before Review. Mobile has no view/time switches; night is confined to the lighting tab.
+
+Review keeps a fresh actual-design portrait, compact specification, Enquire/Share actions near the top, permanently open price lines and essential exclusions. Detailed pricing and the inline enquiry form may scroll; main actions and the estimate total remain visible in the normal first viewport. See customer-configurator-architecture.md for state and workflow ownership.
 
 Mobile arrow icons use SVG; range inputs retain native keyboard/touch behavior but their native paint is transparent, with one CSS handle above the track. Touch selection does not receive a second focus outline; keyboard focus remains visible. WebKit browser evidence complements Chromium checks and does not establish physical iPhone acceptance.
 The design-enquiry preview retains its 3D/Plan switch as understated text tabs with a thin active underline, matching desktop configurator styling at both mobile and desktop widths; the guided mobile configurator itself has no view switch.

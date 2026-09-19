@@ -20,7 +20,7 @@ for (const allowed of [false, true]) test(`mobile finish respects analytics cons
   }, allowed);
   await page.goto('/configurator-preview?open=1');
   await page.getByRole('radio', { name: 'Gable', exact: true }).check();
-  for (const name of ['Choose your roof', 'Set your size', 'See your pergola', 'Add sides & lighting', 'Continue without extras', 'Review your design']) {
+  for (const name of ['Set your size', 'Add sides & lighting', 'See your pergola', 'Review your design']) {
     await page.getByRole('button', { name, exact: true }).click();
   }
   const share = page.getByRole('button', { name: 'Share design', exact: true });

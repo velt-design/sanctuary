@@ -44,15 +44,14 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
   return <section hidden={!visible} className={css.finish} aria-label="Your pergola review">
     {visible && <MobileDesignPortrait key={JSON.stringify({input,roof})} input={input} roof={roof} onExplore={onExplore} />}
     <p className={css.spec}>{roof.family === 'mono' ? 'Pitched' : roof.family === 'gable' ? 'Gable' : 'Box perimeter'} · {(input.widthMm / 1000).toFixed(1)} × {(input.projectionMm / 1000).toFixed(1)} m · {finish.material === 'acrylic' ? 'Acrylic' : finish.material === 'solid' ? 'Solid' : 'Combination'}</p>
+    <div className={css.actions}>
+      <StaffRevisionReturn draft={{ version: 1, input, roof }} customerAction={<button className={css.primary} onClick={enquire}>Enquire</button>} />
+      <ShareDesign draft={{ version: 1, input, roof }} estimate={estimate} prominent />
+    </div>
+    <p className={css.saveNote}>Save with your enquiry, or keep a link with Share.</p>
     {visible && <><details className={css.edit}><summary>Edit design</summary><DesignReview hideHeading customerChoices input={input} roof={roof} onEdit={onEdit} /><button onClick={onDetails}>Connection & design options</button></details>{notice && <p role="status">{notice}</p>}</>}
     <div className={css.price}>{pricePanel}</div>
     <p className={css.note}>Subject to site confirmation. Foundations, unusual access or fixings, new electrical supply and travel are assessed separately.</p>
-    <div className={css.actions}>
-      <StaffRevisionReturn draft={{ version: 1, input, roof }} customerAction={<button className={css.primary} onClick={enquire}>Enquire</button>} />
-      <p>Save this design with your enquiry.</p>
-      <ShareDesign draft={{ version: 1, input, roof }} estimate={estimate} prominent />
-      <p>Keep a link to this exact design, or send it to someone.</p>
-    </div>
     <div ref={form} hidden={!enquiring} tabIndex={-1} className={css.form}>
       {enquiring && <ContactEnquiryForm initialEnquiryType="residential" initialContext={context} configuredDesign={brief} compactConfigured mobileFinish />}
     </div>
