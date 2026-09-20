@@ -36,7 +36,7 @@ export default function ShareDesign({ draft, estimate, prominent = false }: { dr
   };
   return <div className={styles.share}>
     <div className={styles.shareButtons}>
-      {prominent ? <><button type="button" disabled={busy} onClick={() => share(nativeShare)}>Share design</button>{nativeShare && <button type="button" disabled={busy} onClick={() => share(false)}>Copy link</button>}</> : <><button type="button" disabled={busy} onClick={() => share(false)}>Copy design link</button>{nativeShare && <button type="button" disabled={busy} onClick={() => share(true)}>Share…</button>}</>}
+      {prominent ? <button type="button" disabled={busy} onClick={() => share(nativeShare)}>Share design</button> : <><button type="button" disabled={busy} onClick={() => share(false)}>Copy design link</button>{nativeShare && <button type="button" disabled={busy} onClick={() => share(true)}>Share…</button>}</>}
     </div>
     {current && <p role="status">{current.message}</p>}
     {current?.fallback && <input aria-label="Design link" readOnly value={current.fallback} onFocus={event => event.currentTarget.select()} />}

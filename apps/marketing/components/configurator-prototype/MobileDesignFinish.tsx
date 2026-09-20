@@ -44,10 +44,10 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
     {visible && <MobileDesignPortrait key={JSON.stringify({input,roof})} input={input} roof={roof} onExplore={onExplore} />}
     <p className={css.spec}>{roof.family === 'mono' ? 'Pitched' : roof.family === 'gable' ? 'Gable' : 'Box perimeter'} · {(input.widthMm / 1000).toFixed(1)} × {(input.projectionMm / 1000).toFixed(1)} m · {finish.material === 'acrylic' ? 'Acrylic' : finish.material === 'solid' ? 'Solid' : 'Combination'}</p>
     <div className={css.price}>{pricePanel(<><div className={css.actions}>
-      <StaffRevisionReturn draft={{ version: 1, input, roof }} customerAction={<button className={css.primary} onClick={enquire}>Enquire</button>} />
+      <button onClick={onEdit}>Edit design</button>
       <ShareDesign draft={{ version: 1, input, roof }} estimate={estimate} prominent />
     </div>
-    {visible && <><button className={css.edit} onClick={onEdit} aria-label="Edit design"><span><strong>Edit design</strong></span><ArrowUpRight/></button>{notice && <p role="status">{notice}</p>}</>}</>)}</div>
+    {visible && <><div className={css.continue}><StaffRevisionReturn draft={{ version: 1, input, roof }} customerAction={<button onClick={enquire}><span>Enquire</span><ArrowUpRight/></button>} /></div>{notice && <p role="status">{notice}</p>}</>}</>)}</div>
     <p className={css.note}>Concept and estimate subject to site measure. Structure and connections will be confirmed; foundations, unusual access or fixings, new electrical supply and travel are assessed separately.</p>
     <div ref={form} hidden={!enquiring} tabIndex={-1} className={css.form}>
       {enquiring && <ContactEnquiryForm initialEnquiryType="residential" initialContext={context} configuredDesign={brief} compactConfigured mobileFinish />}
