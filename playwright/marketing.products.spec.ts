@@ -321,7 +321,10 @@ test('all ten product routes retain the complete mobile content contract', async
     await expect(main.getByText(product.decision.resolve[0], { exact: true }))
       .toBeVisible();
     await expect(main).not.toContainText('—');
-    await expect(main.getByRole('link', { name: 'Send project brief' }))
+    const enquiryLabel = ['pitched', 'gable', 'box-perimeter'].includes(product.slug)
+      ? 'Discuss my project'
+      : 'Send project brief';
+    await expect(main.getByRole('link', { name: enquiryLabel }))
       .toHaveCount(1);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
@@ -337,10 +340,11 @@ test('all ten product routes retain the complete mobile content contract', async
       return (Array.isArray(parsed) ? parsed : [parsed]).map((node) => node['@type']);
     });
     expect(schemaTypes).toEqual(expect.arrayContaining([
-      'Product',
+      'WebPage',
       'BreadcrumbList',
     ]));
     expect(schemaTypes).not.toContain('FAQPage');
+    expect(schemaTypes).not.toContain('Product');
 
     const emDashDecorationCount = await main.locator('*').evaluateAll((elements) =>
       elements.reduce((count, element) => {
@@ -408,7 +412,8 @@ test('a pergola form and an accessory preserve metadata, structured data and evi
       const parsed = JSON.parse(script) as Record<string, unknown> | Array<Record<string, unknown>>;
       return (Array.isArray(parsed) ? parsed : [parsed]).map((node) => node['@type']);
     });
-    expect(schemaTypes).toContain('Product');
+    expect(schemaTypes).toContain('WebPage');
+    expect(schemaTypes).not.toContain('Product');
     expect(schemaTypes).toContain('BreadcrumbList');
     expect(schemaTypes).not.toContain('FAQPage');
     await expect(page.getByText(/^See it built/).first()).toBeVisible();

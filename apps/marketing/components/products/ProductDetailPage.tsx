@@ -113,14 +113,14 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
         data={[
           {
             '@context': 'https://schema.org',
-            '@type': 'Product',
+            // Quote-led catalogue pages have no published offer or product review.
+            // Describe the page without claiming Product rich-result eligibility.
+            '@type': 'WebPage',
             name: product.name,
             description: product.metadata.description,
             image: [product.hero, ...product.gallery].map((media) =>
               absoluteUrl(media.src),
             ),
-            brand: { '@type': 'Brand', name: 'Sanctuary Pergolas' },
-            category: product.categoryLabel,
             url: absoluteUrl(product.route),
           },
           {
