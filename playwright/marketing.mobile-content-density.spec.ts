@@ -217,7 +217,7 @@ const routeCases: readonly RouteCase[] = [
       '/projects/warkworth-outdoor-room',
       '/gable-pergolas-auckland',
     ],
-    schemaTypes: ['Product', 'BreadcrumbList'],
+    schemaTypes: ['WebPage', 'BreadcrumbList'],
   },
   {
     id: 'commercial service',

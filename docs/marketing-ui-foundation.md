@@ -444,8 +444,11 @@ native groups: `fit-and-definition` (`How it works`),
 `specification-and-tradeoffs` (`What to confirm`) and `related-support`
 (`Compare and plan`). The final group exposes at most one alternative and one
 guide. Supporting content remains server rendered, open without JavaScript and
-expanded with non-interactive summaries above 640px. Product and Breadcrumb
-schema remain; retired FAQ copy is no longer emitted as visible content or
+expanded with non-interactive summaries above 640px. WebPage and BreadcrumbList
+schema describe these quote-led catalogue pages. Product rich-result markup is
+not emitted without eligible, visible offer or product-specific review data;
+do not invent prices or reuse business-wide ratings to satisfy it.
+Retired FAQ copy is no longer emitted as visible content or
 FAQ schema. Governed, context-only and not-published evidence caveats remain
 visible and cannot be upgraded by presentation code.
 
@@ -847,7 +850,7 @@ results and the complete local foundation suite are the relevant signals.
 The product suite additionally verifies every catalogue route, one visible H1,
 loaded imagery, both project actions, the single gallery, three
 keyboard-operable server-rendered groups, 44px targets, height budgets,
-metadata, Product/Breadcrumb schema, reduced motion, no nested scroller and
+metadata, WebPage/BreadcrumbList schema, reduced motion, no nested scroller and
 honest unpublished heater evidence. The projects suite retains the Phase 2
 collection, gallery, filter, selector and responsive contracts while asserting
 the reduced Brief/Response hierarchy and single related-project navigation
