@@ -17,8 +17,7 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
   const box = options.family === 'box' ? prepareBoxRoofFinish(assembly, finish, options.projectionMm) : null;
   if (box?.gable) assembly.members.push(boxMember('solid-box-ridge', 'ridge', { x: 50, y: options.projectionMm / 2, z: box.peak - (options.widthMm > 3100 ? 75 : 50) }, { x: options.widthMm - 50, y: options.projectionMm / 2, z: box.peak - (options.widthMm > 3100 ? 75 : 50) }, options.widthMm > 3100 ? '150x50' : '100x50'));
   const maxAcrylicBays = roofFinishBayLimit(options.widthMm, options.projectionMm, options.family, options.orientation);
-  const bays = Math.min(maxAcrylicBays, Math.max(1, finish.acrylicBays));
-  const covering: RoofFinishGeometry = { meshes: [], regions: [], acrylicBays: bays, maxAcrylicBays };
+  const covering: RoofFinishGeometry = { meshes: [], regions: [], acrylicBays: 0, maxAcrylicBays };
   const acrylic: RoofCladdingPanel3D[] = assembly.roofCladdingPanels.filter(p => p.metadata?.representativeGableInfill);
   assembly.members = assembly.members.filter(m => m.role !== 'rafter' && m.role !== 'joiner');
   const profileHeight = representativeRoofProfile(finish.profile, finish.trayWidth).height;
@@ -27,7 +26,9 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
     const frame = roofCoordinates(roof);
     const { lo, hi, near, far, point, n } = frame;
     const start = lo, end = hi;
-    const bandWidth = Math.min(bays * 620, (end - start) - 200);
+    // Proportions stay constant as the design grows. The legacy acrylicBays
+    // field remains readable in saved links, but no longer sets the band width.
+    const bandWidth = (end - start) / (finish.layout === 'house' ? 2 : 3);
     const bandStart = finish.layout === 'house' ? start : (start + end - bandWidth) / 2;
     const bandEnd = bandStart + bandWidth;
     const whole: RoofRectangle = { a: lo, b: hi, c: near, d: far };
@@ -62,6 +63,7 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
     if (finish.material === 'combination') {
       // Glazing is cut between joiner faces and never continues beneath the solid roof.
       const lightXs = xs.filter(x => x >= light.a - .01 && x <= light.b + .01);
+      covering.acrylicBays = Math.max(covering.acrylicBays, lightXs.length - 1);
       for (let i = 1; i < lightXs.length; i++) {
         const r = { ...light, a: rowCentre(lightXs[i - 1]) + 26, b: rowCentre(lightXs[i]) - 26 };
         if (r.b <= r.a) continue;

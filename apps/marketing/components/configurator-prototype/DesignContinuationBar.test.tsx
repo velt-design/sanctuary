@@ -44,7 +44,7 @@ it('offers the saved-design destination after editing and remembers dismissal', 
 });
 
 it('does not compete with enquiry or private transaction pages', async () => {
-  for (const route of ['/design-enquiry', '/contact', '/quote/example', '/invoice/example']) {
+  for (const route of ['/design-enquiry', '/contact', '/quote/example', '/invoice/example', '/products/pergolas/pitched', '/products/pergolas/gable', '/products/pergolas/box-perimeter']) {
     path = route; await render(); await scroll(-1); expect(host.querySelector('aside')).toBeNull();
   }
 });

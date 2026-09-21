@@ -72,6 +72,7 @@ export default function PreviewPlan({ profile = 'corrugated', trayWidth = 400, r
       <pattern id="plan-hatch" width={11/scale} height={11/scale} patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2={11/scale} stroke="#343a33" strokeOpacity=".2" strokeWidth={1/scale}/></pattern>
     </defs>
     <rect x={left} y={top} width={right-left} height={bottom-top} fill="url(#plan-grid)" />
+    <g className={styles.gardenPlan} data-plan-facing-house transform={`translate(${minX + maxX} 0) scale(-1 1)`}>
     {context && !lightingPlan && <g data-context="house-footprint">
       <rect x={minX-(compact ? 10 : 30)/scale} y={minY-(compact ? 54 : 76)/scale} width={lengthMm+(compact ? 20 : 60)/scale} height={(compact ? 54 : 76)/scale} fill="#d9ddd5" stroke="#b9c1b4" strokeWidth={.5/scale}/>
       <rect data-context="house-band" x={minX-(compact ? 10 : 30)/scale} y={minY-14/scale} width={lengthMm+(compact ? 20 : 60)/scale} height={14/scale} fill="url(#plan-hatch)" stroke="#717c6a" strokeWidth={.7/scale}/>
@@ -120,6 +121,7 @@ export default function PreviewPlan({ profile = 'corrugated', trayWidth = 400, r
     })}
     {!lightingPlan && <BlindPlan scale={scale} contextOnly={roofFocus || readOnly} guided={guidedOpenings} />}
     {lightingPlan && <PlanLighting scale={scale}/>}
+    </g>
     {!guidedOpenings && <g fill="none" stroke="#aeb6a5" strokeWidth={.6} vectorEffect="non-scaling-stroke">
       <path vectorEffect="non-scaling-stroke" d={`M ${minX} ${maxY + 4 / scale} V ${widthLine + font * .5} M ${maxX} ${maxY + 4 / scale} V ${widthLine + font * .5}`} />
       <path vectorEffect="non-scaling-stroke" d={`M ${minX - 4 / scale} ${minY} H ${projectionLine - font * .5} M ${minX - 4 / scale} ${maxY} H ${projectionLine - font * .5}`} />

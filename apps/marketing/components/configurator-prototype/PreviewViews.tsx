@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import {useRail} from './RailProvider';
 import {useLighting} from './LightingProvider';
 import {hasLighting} from './lightingSelection';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDayNightPresentation } from './useDayNightPresentation';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { solvePergolaPreview, solveSimpleCoverSurroundings } from './solvePreview';
@@ -21,11 +21,12 @@ const PreviewScene = dynamic(() => import('./PreviewScene'), {
   ssr: false, loading: () => <div className={styles.loading} role="status">Loading 3D view…</div>,
 });
 
-export default function PreviewViews({ input, roof, activeDimension, expanded, onToggleExpanded, guided = false, presentation = false, simple = false, onAddLighting, onCapture, reviewSetting = false }: { reviewSetting?: boolean; onCapture?: (image: string) => void; simple?: boolean; presentation?: boolean; guided?: boolean; onAddLighting?: () => void; input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
+export default function PreviewViews({ readOnly = false, input, roof, activeDimension, expanded, onToggleExpanded, guided = false, presentation = false, simple = false, onAddLighting, onCapture, onReady, reviewSetting = false }: { onReady?: () => void; readOnly?: boolean; reviewSetting?: boolean; onCapture?: (image: string) => void; simple?: boolean; presentation?: boolean; guided?: boolean; onAddLighting?: () => void; input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
   const blinds=usePreviewBlinds();
   const mobile = useMobileConfigurator();
   const rail=useRail();
   const lighting=useLighting();
+  const furnished = (reviewSetting || (!mobile && rail.section === 'review')) && !lighting?.editing;
   const viewport = useRef<HTMLDivElement>(null);
   const nightPresentation = useDayNightPresentation(lighting?.night ?? false, viewport, Boolean(onCapture));
   const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
@@ -36,6 +37,7 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
   const geometry = artifact.geometry;
   const covering = geometry?.covering;
   const renderable = geometry !== undefined;
+  useEffect(() => { if (!renderable) onReady?.(); }, [renderable, onReady]);
   const context = useMemo(() => geometry ? solveSimpleCoverSurroundings(input, geometry.assembly, roof) : null, [geometry, input, roof]);
   return <>
     {!simple && <div className={styles.viewToolbar}>
@@ -56,12 +58,12 @@ export default function PreviewViews({ input, roof, activeDimension, expanded, o
       data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene choiceView={mobile && guided && simple && !reviewSetting && (rail.section === 'sides' || rail.section === 'lighting') ? rail.section : undefined} reviewSetting={reviewSetting} nightPresentation={nightPresentation} showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D' && !onCapture} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} presentation={presentation} onCapture={onCapture} onFallback={() => changeView('Plan')} />
+          <PreviewScene onReady={onReady} framingKey={JSON.stringify([input.widthMm,input.projectionMm,input.connection,input.level,roof.family,roof.orientation,roof.attachmentIntent])} choiceView={mobile && guided && simple && !reviewSetting && (rail.section === 'sides' || rail.section === 'lighting') ? rail.section : undefined} reviewSetting={furnished} nightPresentation={nightPresentation} showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D' && !onCapture} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} presentation={presentation || furnished} onCapture={onCapture} onFallback={() => changeView('Plan')} />
         </div>
-        {view === 'Plan' && <PreviewPlan guidedOpenings={guided && simple && rail.section === 'sides'} profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
+        {view === 'Plan' && <PreviewPlan readOnly={readOnly} guidedOpenings={guided && simple && rail.section === 'sides'} profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>
         : <div className={styles.loading} role="status">{artifact.messages[0]?.message || 'This design needs a closer look. Adjust your dimensions to continue.'}</div>}
-    {reviewSetting&&(mobile||(process.env.NODE_ENV==='development'&&typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('render')==='studio'))&&<span style={{position:'absolute',bottom:8,right:10,fontSize:10,color:'var(--color-text-secondary)',pointerEvents:'none'}}>Setting & furniture illustrative</span>}
+    {furnished && view === '3D' && surroundings &&<span style={{position:'absolute',bottom:8,right:10,fontSize:10,color:'var(--color-text-secondary)',pointerEvents:'none'}}>Setting & furniture illustrative</span>}
     {!simple&&lighting?.night&&!hasLighting(lighting.value)&&<div className={styles.nightPrompt}>Your design has no lights yet. <button onClick={()=>{if(onAddLighting)onAddLighting();else lighting.open();if(expanded&&window.matchMedia('(max-width: 720px)').matches)onToggleExpanded();}}>Add lighting</button></div>}
     </div>
     {!simple && <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable

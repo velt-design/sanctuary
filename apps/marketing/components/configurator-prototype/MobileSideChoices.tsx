@@ -11,6 +11,7 @@ export default function MobileSideChoices({flow,roof}:{flow:ReturnType<typeof us
   const {openings,selected,select}=workspace;
   const applied=openings.filter(o=>sideTreatmentAt(roof,o.id)!=='open');
   return <section className={`${css.sides} ${css.compactEditor}`} aria-label="Choose your sides">
+    <p className={css.previewNote}>Left and right are viewed from your home{roof.attachmentIntent==='freestanding'?' or the back of your pergola':''}.</p>
     <fieldset className={css.faceChoices}><legend>Sides to change</legend>
       {(['left','front','right'] as const).map(side=>{
         const ids=openings.filter(o=>o.side===side).map(o=>o.id);

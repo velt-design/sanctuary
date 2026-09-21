@@ -45,9 +45,9 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
   },[roof.attachmentIntent,input,setInput]);
   const rail=useRail(),lighting=useLighting()!,blinds=usePreviewBlinds()!;
   const [step,setStep]=useState<MobileStep>(()=>draft.linkNotice==='loaded'?'review':desktopSection?desktopSection==='review'?'review':desktopSection==='roof'?'roof':desktopSection==='structure'?'size':'extras':readMobileStep());
-  const [reviewStarted,setReviewStarted]=useState(step==='review');
+  const [reviewStarted,setReviewStarted]=useState(false);
   const [details,setDetails]=useState(false);
-  const [editMenu,setEditMenu]=useState(false);
+  const [editMenu,setEditMenu]=useState(() => draft.linkNotice === 'loaded' && new URLSearchParams(window.location.search).get('entry') === 'edit');
   const [extra,setExtra]=useState<'sides'|'lighting'>(desktopSection==='lighting'?'lighting':'sides');
   const [returnToReview,setReturnToReview]=useState(false);
   const [resetting,setResetting]=useState(false);
@@ -60,12 +60,12 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
   const model=!editMenu&&!details&&step==='finished';
   const night=!details&&step==='extras'&&extra==='lighting';
   const presentation=useDayNightPresentation(night,scroll);
-  useEffect(()=>{if(step==='review')setReviewStarted(true);},[step]);
+  useEffect(()=>{if(step==='review'&&!editMenu)setReviewStarted(true);},[step,editMenu]);
   useEffect(()=>{
     saveMobileStep(step);retainPreviewDraft();
     if(!editMenu)rail.choose(details?'structure':step==='review'||step==='finished'?'review':step==='roof'?'roof':step==='extras'?extra:'structure');
   },[step,details,extra,editMenu]);
-  useEffect(()=>{if(draft.linkNotice==='loaded'){setStep('review');setDetails(false);}},[draft.linkNotice]);
+  useEffect(()=>{if(draft.linkNotice==='loaded'){setStep('review');setDetails(false);setEditMenu(new URLSearchParams(window.location.search).get('entry') === 'edit');}},[draft.linkNotice]);
   useEffect(()=>{if(blinds.editing&&step!=='extras'){sides.start([blinds.selected]);setStep('extras');setExtra('sides');}},[blinds.editing]);
   useEffect(()=>{lighting.setView('3D');lighting.setNight(night);},[step,night]);
   function go(next:MobileStep){setEditMenu(false);blinds.setEditing(false);setDetails(false);setStep(next);}
@@ -83,7 +83,7 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
   function back(){if(returnToReview){chooseEdit();return;}if(details){setDetails(false);return;}go(MOBILE_STEPS[Math.max(0,index-1)]);}
   return <JourneyNightPresentation.Provider value={presentation}><div className={`${styles.page} ${css.journey}`} data-mobile-step={step} data-mobile-editor={details?'details':night?'lighting':''} data-night={lighting.night}>
     <header className={css.heading}>
-      <div className={css.progress}><span>{model?'Your model':editMenu||returnToReview?'Editing your design':details?'Refine your design':`Step ${index+1} of ${MOBILE_STEPS.length}`}</span><span>{['Roof','Size','Sides & lighting','Review'][index]}</span></div>
+      <div className={css.progress}><span>{model?'Your model':editMenu||returnToReview?'Editing your design':details?'Refine your design':`Step ${index+1} of ${MOBILE_STEPS.length}`}</span><span>{editMenu ? 'Your choices' : ['Roof','Size','Sides & lighting','Review'][index]}</span></div>
       <div className={css.progressTrack} hidden={editMenu||returnToReview} aria-hidden="true">{MOBILE_STEPS.map((s,i)=><span key={s} data-complete={i<=index}/>)}</div>
       <h1 className={!editMenu&&!details&&step==='review'?css.reviewHeading:undefined} tabIndex={-1} ref={heading}>{editMenu?'Edit your design.':details?'More design options.':titles[step]}</h1>
     </header>
@@ -108,12 +108,12 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
       </>}
       {model&&<><section className={css.model} data-full="true" aria-label="Your pergola preview"><PreviewViews reviewSetting guided simple presentation input={input} roof={roof} activeDimension={activeDimension} expanded={false} onToggleExpanded={()=>{}}/></section><div className={css.modelActions}><button onClick={()=>go('extras')}>Adjust sides & lighting</button><button onClick={()=>setDetails(true)}>More design options</button></div></>}
       {details&&<div className={css.controls}><PreviewControls mode="details" input={input} roof={roof} onChange={setInput} onRoofChange={setRoof} onDimensionActivity={showDimension}/></div>}
-      {(reviewStarted||step==='review')&&<MobileDesignFinish visible={!editMenu&&!details&&step==='review'} selection={selection} pricePanel={pricePanel} estimate={estimate} onEdit={chooseEdit} onExplore={()=>{setReturnToReview(true);go('finished');}} notice={draft.selectionNotice}/>}
+      {(reviewStarted||(!editMenu&&step==='review'))&&<MobileDesignFinish visible={!editMenu&&!details&&step==='review'} selection={selection} pricePanel={pricePanel} estimate={estimate} onEdit={chooseEdit} onExplore={()=>{setReturnToReview(true);go('finished');}} notice={draft.selectionNotice}/>}
       {!editMenu&&!details&&step==='review'&&<div className={css.restart}>{resetting?<><p>Replace this design and start again?</p><button onClick={()=>{position.clear();comparison.clear();resetPreviewDraft();sides.start();setExtra('sides');setResetting(false);setReturnToReview(false);go('roof');}}>Start new design</button><button onClick={()=>setResetting(false)}>Keep this design</button></>:<button className={css.textButton} onClick={()=>setResetting(true)}>Start a new design</button>}</div>}
     </div>
     <footer hidden={!editMenu&&!details&&step==='review'} className={css.footer} aria-label="Continue your design">
       <button hidden={editMenu} className={css.back} disabled={!details&&index===0&&!returnToReview} onClick={back}>{returnToReview?'All sections':'Back'}</button>
-      <button className={css.next} onClick={next}>{editMenu||returnToReview?'Return to review':details?'Done':nextLabels[step]}<span aria-hidden="true"><ArrowUpRight/></span></button>
+      <button className={css.next} onClick={next}>{editMenu&&!reviewStarted?'Review your design':editMenu||returnToReview?'Return to review':details?'Done':nextLabels[step]}<span aria-hidden="true"><ArrowUpRight/></span></button>
     </footer>
   </div></JourneyNightPresentation.Provider>;
 }

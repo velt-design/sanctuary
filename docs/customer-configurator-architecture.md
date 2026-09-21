@@ -1,4 +1,69 @@
 # Sanctuary "Your Pergola" Customer Configurator
+
+## Proportional roofs and close behaviour (21 September 2026)
+
+The owner-approved combination roof uses equal solid/acrylic/solid thirds of
+each roof-plane run. The supported away-gable house-side band uses equal
+acrylic/solid halves. These proportions resize through the shared representative
+geometry, so Plan, 3D, product pages and the existing geometry-derived price
+adapter use the same roof. Historical `acrylicBays` fields remain parseable but
+no longer control band width; the width stepper is replaced by proportion copy.
+No commercial rates or workbench geometry rules change.
+
+Seeded product/project links retain a short-lived same-tab return entry and
+reading position. Closing releases the dialog lock before navigation, returns
+through history and restores the captured position after the source route settles;
+direct links with a valid same-origin source path use that path as fallback.
+Unattributed standalone visits retain their landing page. Existing in-place
+overlays still close in place. Both configurator and product fullscreen use a
+shared nested scroll lock with fixed body, important overflow and restoration.
+
+## Product and project entry trial (21 September 2026)
+
+Local trial: the pitched, gable and box-perimeter product pages offer size, roof finish and named blind
+arrangements. It consumes the existing geometry, preview-draft parser,
+serialization and price hooks; no pricing or geometry rules are duplicated.
+Initial attachment/ground-level assumptions are disclosed: pitched uses fascia,
+gable uses fascia with a selectable parallel or extending ridge, and box uses the wall.
+Product choices use a separate versioned session record per family and do not replace the customer's main
+draft until an explicit enquiry or configurator handoff. Both handoffs carry a
+validated design hash, source attribution and displayed estimate basis. The
+receiving journey recalculates; a saved estimate never authorizes a price.
+Product solid and mixed presets default to 150 mm ThermoPine, labelled "Solid +
+timber" and "Mixed + timber". Cedar remains available in the full designer;
+completed-project descriptions retain their actual material. Gable direction
+is persisted with product choices and carried into both handoffs; older saved
+product selections default to parallel. Direction changes rebuild blind openings
+through the same canonical draft and geometry path.
+Invalid blind packages block handoff rather than silently pricing fewer blinds.
+Partial development estimates are withheld. Repository prices remain explicitly
+draft; published prices still require the existing approved pricing service.
+
+St Heliers starts a 6 x 3 m gable, with source_project attribution. It is labelled
+as roof shape and size only: opal tint, custom end framing and published height
+are not reproduced. Remaining attachment/ridge/height defaults are disclosed.
+The model wrapper offers 3D/Plan recovery without enabling individual-side edits.
+Jordan approved the local gable/box extension on 21 September. This remains a
+local product-page trial, not deployment or approval of published pricing.
+`productDesigns` owns family presentation/attachment defaults; shared product
+controls, draft validation, rendering and pricing remain single implementations.
+Box finish changes reuse `previewProjectionMax`: an over-limit projection is
+adjusted atomically with the finish and explained in the reserved choice status
+region. Saved selections receive the same constraint before rendering/pricing.
+The gable editorial roof photographs remain an explicitly labelled material
+comparison; they do not alter the selected product design or estimate.
+
+Calm editing correction (21 September 2026): PreviewViews supplies a structural framing key (dimensions, roof shape/orientation, attachment and level). PreviewCamera ignores finish/screen-only changes, preserves the viewing angle on resizing, and delegates brief interruptible framing to useCameraTransition; reduced motion applies the final frame immediately. useFurnitureLayout retains valid fixed-size pieces during rapid edits and chooses new capacity after a 220ms pause; pieces that no longer fit are removed immediately. Memoised furniture pieces avoid reconstructing their meshes on every size increment. Desktop estimate states reserve the same vertical space so loading a price cannot resize/refit the canvas. Verify continuous dragging and option changes, not only settled screenshots.
+
+Shared presentation update (21 September 2026): DimensionControl is now owned by
+marketing-foundation and consumed by PreviewControls and product choices. Its
+value input selects on focus; constraints remain with the caller. Mobile Size
+still batches pointer gestures. Desktop dimension shortcuts target the shared
+numeric input. PergolaFootprint is device-neutral and reused by product Plan.
+Studio rendering applies at both breakpoints; furniture is enabled in product
+and desktop Review, omitted while editing, and labelled illustrative. Existing
+adaptive detail and geometry/pricing contracts remain authoritative.
+
 ## Master Architecture and Implementation Specification
 
 
@@ -5601,7 +5666,7 @@ not exercised by intercepted browser tests.
 
 Mobile Review now uses MobileDesignFinish: actual portrait, compact specification, a prominent edit action, visible price breakdown/exclusions and two clear Enquire/Share routes. Inline enquiry reuses ContactEnquiryForm/ConfiguredEnquiryFields via opt-in mobileFinish; remains mounted across guided edits, preserving entered fields. Existing session storage supports reload. Successful submission is reset if the design later changes, avoiding a saved claim for an unsent version. CustomerDesign snapshot and signed-price handoff remain unchanged. Staff revision returns retain their portal route. Sharing uses the existing serialized immutable design URL, with native share, copy and manual-copy recovery. Desktop and standalone enquiry remain on their existing presentations. HTTP LAN previews cannot submit through the secure-browser requirement; intercepted browser tests simulate secure capability and do not prove live delivery.
 
-Mobile Size renders MobileFootprint from solvePergolaPreview geometry: outline, actual posts and double-line rafters, beams, ledgers, gutters and ridge, in a fixed-space SVG with width/projection and conditional house edge. Acrylic has a faint blue tint and subdued hatch; actual solid roof regions have a quiet hatch and mask the rafters beneath them. Member widths have a minimum screen width for phone legibility. This is page 2 of the four-page journey; daylight 3D is optional from Review. Existing controls and geometry rules are unchanged.
+Mobile Size renders PergolaFootprint from solvePergolaPreview geometry: outline, actual posts and double-line rafters, beams, ledgers, gutters and ridge, in a fixed-space SVG with width/projection and conditional house edge. Acrylic has a faint blue tint and subdued hatch; actual solid roof regions have a quiet hatch and mask the rafters beneath them. Member widths have a minimum screen width for phone legibility. This is page 2 of the four-page journey; daylight 3D is optional from Review. Existing controls and geometry rules are unchanged.
 
 Release tracking: mobile Enquire/Share alternatives use the existing consent-gated configured-design event owner, distinguishing intent, successful share/copy and manual-link recovery. Native cancellation never records completion. Final browser coverage is `marketing.configurator-tracking.spec.ts`; no customer values or design URLs enter analytics.
 
@@ -5625,10 +5690,12 @@ Mobile extras clarity: preset browsing includes a Left / Front / Right treatment
 
 Mobile choice-camera presentation: guided Sides uses a lower three-quarter overview, held steady across preset changes. Guided Lighting starts inside the front corner at eye level with a wider field of view so ceiling fittings and light on occupied surfaces can be compared. The pose derives from product bounds, excluding elevated reference supports; screen geometry, opacity, lowering, light positions/counts and intent remain unchanged. Individual side editing retains its exterior face view, but does not override or highlight a side in Lighting. Lighting preset changes retain the current view, including a customer orbit. Review/Explore, desktop and standalone enquiry keep their existing cameras. Idle rendering remains demand-based; no extra light sources, scene assets or continuous camera animation are added.
 
-MobileSizeStep holds a temporary pointer/keyboard draft. During a gesture, MobileFootprint scales its last solved SVG to the displayed dimensions without changing solver inputs. Release, cancellation, blur or unmount commits the latest dimensions once; typed commits remain immediate. Existing geometry, constraints and pricing then reconcile. No approximate geometry is persisted.
+MobileSizeStep holds a temporary pointer/keyboard draft. During a gesture, PergolaFootprint scales its last solved SVG to the displayed dimensions without changing solver inputs. Release, cancellation, blur or unmount commits the latest dimensions once; typed commits remain immediate. Existing geometry, constraints and pricing then reconcile. No approximate geometry is persisted.
 
 MobileRoofImage preserves the decoded previous image until the selected image is decoded, overlays a320ms fade, then removes the old layer. Rapid changes cannot commit an obsolete load; reduced motion swaps without animation. Layout dimensions and selected roof intent update independently of loading. Material order is Acrylic, Combination, Solid.
 
 Review-only steel filtering derives a mean plane from the existing sheet triangles and blends normals by pixel footprint. The filtered plane faces the viewer consistently across front/back corrugation facets; using each facet's facing sign produces dotted aliasing at grazing angles. Geometry, profile silhouette and shadow casting remain unchanged. Furniture finishes and contact cues stay inside the illustrative Review setting; earlier choices retain their own materials and camera behavior.
 
 Illustrative dark dining chairs are owned by StudioDiningChair. studioFurnitureLayout reserves a 650 mm rear access strip and a connected 650 mm side or central route, with a cross route between sequential settings. Setting envelopes stay 150 mm inside the footprint and avoid solved posts with an additional 100 mm buffer. Rotated lounge groups face the route. These are presentation references, not certified access dimensions, customer-priced furnishings or engineering clearances. The compact sofa/chair setting uses a 2750 x 1800 mm envelope. Shared upholstered pieces remain in StudioFurniturePieces; added full-size settings are in StudioFurnitureAdditions. Development-only furniture comparison and mesh-bound evidence support visual QA without changing saved design intent or adding a render loop. Review-only lighting/material flags retain earlier-view defaults and demand rendering.
+
+Product-to-enquiry review (21 September 2026): the dedicated enquiry details use canonical descriptions for roof/ceiling, gable direction, house connection, positioned blinds/panels, gable ends and lighting, replacing the ambiguous selected-side count. Product choices remain serialized through the existing draft contract; no pricing or intake contract changes. Protected release-preview verification uses the already-published production Version14 pin; local development draft totals are not customer-price evidence.

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
 import type { PreviewDimensionAxis } from './usePreviewDimension';
-import MobileFootprint from './MobileFootprint';
+import PergolaFootprint from './PergolaFootprint';
 import PreviewControls from './PreviewControls';
 import MobileSiteChoices from './MobileSiteChoices';
 import css from './mobileJourney.module.css';
@@ -15,12 +15,14 @@ export default function MobileSizeStep({ input, roof, setInput, setRoof, activeD
   activeDimension: PreviewDimensionAxis | null; showDimension: (axis: PreviewDimensionAxis | null) => void;
 }) {
   const [live, setLive]=useState(input);
+  const [resizing, setResizing]=useState(false);
   const pending=useRef<SimpleCoverInput | null>(null);
   const interacting=useRef(false);
   const commitRef=useRef(setInput);
   commitRef.current=setInput;
   function finish() {
     interacting.current=false;
+    setResizing(false);
     if(pending.current){const value=pending.current;pending.current=null;commitRef.current(value);}
   }
   useEffect(()=>{if(!interacting.current)setLive(input);},[input]);
@@ -38,11 +40,11 @@ export default function MobileSizeStep({ input, roof, setInput, setRoof, activeD
   },[]);
   const isRange=(target: EventTarget)=>target instanceof HTMLInputElement && target.type==='range';
   return <div data-mobile-size-draft data-committed-width={input.widthMm} data-committed-projection={input.projectionMm}
-    onPointerDownCapture={e=>{if(isRange(e.target))interacting.current=true;}}
-    onKeyDownCapture={e=>{if(isRange(e.target)&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key))interacting.current=true;}}
+    onPointerDownCapture={e=>{if(isRange(e.target)){interacting.current=true;setResizing(true);}}}
+    onKeyDownCapture={e=>{if(isRange(e.target)&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key)){interacting.current=true;setResizing(true);}}}
     onKeyUpCapture={e=>{if(isRange(e.target))finish();}}
     onBlurCapture={e=>{if(isRange(e.target))finish();}}>
-    <MobileFootprint input={input} displayInput={live} roof={roof} activeDimension={activeDimension}/>
+    <PergolaFootprint input={input} displayInput={live} roof={roof} activeDimension={activeDimension} resizing={resizing}/>
     <div className={`${css.controls} ${css.sizeControls}`}>
       <PreviewControls mode="size" input={live} roof={roof} onChange={next=>{
         setLive(next);

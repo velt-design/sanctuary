@@ -14,6 +14,27 @@
 
 ---
 
+## Current homepage entry (21 September 2026)
+
+The approved replacement for the primary starting-point cards is **Find your
+pergola**: Pitched, Gable and Box link to their product pages. Each uses the shared
+product card, roofline illustration and canonical 6 x 3 m acrylic/open-side
+example price, including GST and labelled as an installed estimate subject to
+site confirmation. Approved pricing comes from the existing pricing service;
+unavailable or partial prices never become a misleading total. No new rates.
+
+Desktop uses three columns; mobile uses stacked cards with full-width portrait imagery, with
+no hidden swipe-only options. Compare pergolas links to `/products`. Bespoke and
+commercial/professional buttons follow immediately, retaining the existing
+result/brief pathways, query links and back/forward restoration. The hero, proof
+rail and built-project evidence remain. No-JavaScript fallback offers the same
+three product routes plus bespoke and professional destinations.
+
+`HomePergolaSelection.tsx` owns the homepage cards; `ProductCard.tsx` owns the hub cards.
+`ProductExamplePrice.tsx` and `PRODUCT_FORM_CHOICES` own shared product presentation
+and example pricing. The older primary radio-card layout and its direct-designer
+entry described below are superseded; historical `project=cover` links still work.
+
 ## 1. Purpose
 
 Create a new experimental Sanctuary Pergolas homepage that combines:

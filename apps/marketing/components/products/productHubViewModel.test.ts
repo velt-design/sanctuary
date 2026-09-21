@@ -3,16 +3,16 @@ import { products } from "../../data/products";
 import { buildProductHubViewModel } from "./productHubViewModel";
 
 describe("buildProductHubViewModel", () => {
-  it("keeps the four pergola forms as the primary comparison", () => {
+  it("presents the three configurable forms without removing the canonical Hip route", () => {
     const model = buildProductHubViewModel();
 
     expect(model.pergolaForms.map((product) => product.slug)).toEqual([
       "pitched",
       "gable",
-      "hip",
       "box-perimeter",
     ]);
-    expect(model.comparisonRows).toHaveLength(4);
+    expect(model.comparisonRows).toHaveLength(3);
+    expect(model.canonicalProductRoutes).toContain('/products/pergolas/hip');
     expect(
       model.comparisonRows.every(
         (row) => row.geometry && row.usefulWhen && row.constraint,

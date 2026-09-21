@@ -29,7 +29,7 @@ export function StudioQuality({ revision, onReducedDetail }: { revision: string;
     const settle = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        setDpr(Math.min(window.devicePixelRatio, performanceSample.current.reduced?1.25:1.75));
+        setDpr(Math.min(window.devicePixelRatio, performanceSample.current.reduced || (typeof window.matchMedia === 'function' && window.matchMedia('(max-width:760px)').matches) ? 1.25 : 1.75));
         scene.traverse(object => {
           if (!(object instanceof Mesh)) return;
           const materials = Array.isArray(object.material) ? object.material : [object.material];

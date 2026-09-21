@@ -1,5 +1,24 @@
 # Customer journey launch review
 
+## Current verification — 21 September 2026
+
+Read-only production verification confirms the website approval pin and published
+pricebook pointer both resolve to Version14, `ca566b3d-68d2-4508-8c60-89db900421cf`,
+content hash `33f2f61e754eac149b6f434f5c9eecd1a2321fe9d283ceb82fd03705d47c1dcf`.
+The effective config JSON manifest is v2.9; the legacy metadata column still says
+v2.8. Durable enquiry and V2 experience production settings are enabled. This
+supersedes the old activation status below, not its historical test evidence.
+
+The current product-page trial remains a protected preview, with the same approved
+version pinned for that deployment. Public 6×3m acrylic/open-side baseline prices
+are Pitched $11,706, Gable $15,362 and Box $15,630 including GST. Independent
+preview review confirms product-to-enquiry price parity, exact design details and
+unsent-field preservation through editing. No enquiry was submitted in this
+verification. Product-page production rollout and requested physical-phone check
+remain outstanding; no new pricebook was published.
+
+## Historical launch-review evidence (16 September)
+
 Status: **launch-review milestone verified; production activation blocked by the
 release gates below**. Updated 16 September 2026.
 

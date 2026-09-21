@@ -27,7 +27,7 @@ it('keeps the view on lighting entry and resets night when advancing to review',
     await click('Lighting'); expect(host.querySelector('output')!.textContent).toBe('lighting:3D:false');
     await click('Night'); expect(host.querySelector('output')!.textContent).toBe('lighting:3D:true');
     await click('Back to Personalise'); expect(host.querySelector('output')!.textContent).toBe('personalise:3D:false');
-    await click('Review my design →'); expect(host.querySelector('output')!.textContent).toBe('review:3D:false');
+    await click('Review my design'); expect(host.querySelector('output')!.textContent).toBe('review:3D:false');
     await click('Plan'); await click('Lighting'); expect(host.querySelector('output')!.textContent).toBe('lighting:Plan:false');
   } finally { await React.act(async () => root.unmount()); vi.unstubAllGlobals(); }
 });

@@ -6,7 +6,8 @@ import RoofBattenControls from './RoofBattenControls';
 import RoofFinishChoices from "./RoofFinishChoices";
 import { previewProjectionMax } from "./roofFinish";
 
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
+import DimensionControl from '../marketing-foundation/DimensionControl';
 import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
 import {
   SIMPLE_COVER_WIDTH_MIN_MM, SIMPLE_COVER_WIDTH_MAX_MM,
@@ -18,49 +19,7 @@ import type { PreviewDimensionAxis } from './usePreviewDimension';
 import AttachmentChoices from './AttachmentChoices';
 import styles from './prototype.module.css';
 import ui from './sectionControls.module.css';
-import slider from '../simple-cover-calculator/SimpleCoverCalculator.module.css';
 import GableChoices, { RoofTypeChoice, type PreviewRoofChoices } from './GableChoices';
-
-function Dimension({ axis, label, value, min, max, onChange, onActivity }: {
-  axis: PreviewDimensionAxis; label: string; value: number; min: number; max: number; onChange: (value: number) => void;
-  onActivity: (axis: PreviewDimensionAxis | null) => void;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const [notice, setNotice] = useState('');
-  const marks = [min, ...Array.from({ length: Math.ceil(max / 1000) }, (_, i) => i * 1000).filter(mark => mark >= min + 750 && mark <= max - 750), max];
-  function commit() {
-    const text = draft ?? (value / 1000).toFixed(1);
-    const number = Number(text);
-    const next = text.trim() && Number.isFinite(number)
-      ? Math.min(max, Math.max(min, Math.round(number * 10) * 100)) : value;
-    setNotice(!text.trim() || !Number.isFinite(number) ? 'Enter a size in metres.'
-      : number * 1000 < min || number * 1000 > max ? `Choose ${metres(min)}–${metres(max)}.` : '');
-    if (next !== value) onChange(next);
-    setDraft(null);
-  }
-  return <div className={styles.dimension} data-dimension={axis}
-    onFocusCapture={() => onActivity(axis)}
-    onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onActivity(null); }}
-    onPointerEnter={(event) => { if (event.pointerType === 'mouse') onActivity(axis); }}
-    onPointerDown={() => onActivity(axis)}
-    onPointerLeave={(event) => { if (!event.currentTarget.contains(document.activeElement)) onActivity(null); }}>
-    <div className={slider.dimensionHeading}>
-      <label htmlFor={`range-${label}`}>{label}</label>
-      <label className={`${slider.dimensionValue} ${styles.dimensionValue}`}><input aria-label={`${label} in metres`} inputMode="decimal" value={draft ?? (value / 1000).toFixed(1)}
-        onFocus={(event) => event.currentTarget.select()}
-        onChange={(event) => { setDraft(event.target.value); setNotice(''); }} onBlur={commit}
-        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} /><span>m</span></label>
-    </div>
-    <div className={slider.rangeControl} style={{ '--range-progress': `${(value - min) / (max - min) * 100}%` } as CSSProperties}>
-    <input className={slider.range} id={`range-${label}`} type="range" min={min} max={max} step={100} value={value}
-      aria-valuetext={metres(value)} onChange={(event) => { setDraft(null); setNotice(''); onChange(Number(event.target.value)); }} />
-    <div className={slider.rangeRail} aria-hidden="true">{marks.map((mark, index) => <span key={mark} className={slider.rangeStop}
-      data-terminal={index === 0 || index === marks.length - 1 ? 'true' : undefined}
-      style={{ left: `${(mark - min) / (max - min) * 100}%` }}>{mark / 1000}</span>)}</div>
-    </div>
-    {notice && <p className={styles.inputNotice}>{notice}</p>}
-  </div>;
-}
 
 export default function PreviewControls({ input, roof, onRoofChange, onChange, onDimensionActivity, mode = 'full' }: {
   mode?: 'full' | 'size' | 'details';
@@ -92,9 +51,9 @@ export default function PreviewControls({ input, roof, onRoofChange, onChange, o
     {mode === 'full' && <RoofTypeChoice value={roof} onChange={updateRoof} />}
     {mode!=='size'&&<p className={styles.small}>{roof.attachmentIntent==='freestanding'?'Choose the width and projection of your freestanding pergola.':'Width runs along the house. Projection is how far your pergola extends out from it.'}</p>}
     <div className={styles.dimensions}>
-    <Dimension axis="width" onActivity={onDimensionActivity} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
+    <DimensionControl axis="width" onActivity={axis => onDimensionActivity(axis as PreviewDimensionAxis | null)} label="Width" value={input.widthMm} min={Math.max(SIMPLE_COVER_WIDTH_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.lengthMm.minimum)} max={SIMPLE_COVER_WIDTH_MAX_MM}
       onChange={(widthMm) => update({ ...input, widthMm })} />
-    <Dimension key={projectionMax} axis="projection" onActivity={onDimensionActivity} label="Projection" value={input.projectionMm} min={Math.max(SIMPLE_COVER_PROJECTION_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.projectionMm.minimum)} max={projectionMax}
+    <DimensionControl key={projectionMax} axis="projection" onActivity={axis => onDimensionActivity(axis as PreviewDimensionAxis | null)} label="Projection" value={input.projectionMm} min={Math.max(SIMPLE_COVER_PROJECTION_MIN_MM, CUSTOMER_DIMENSION_BOUNDS.projectionMm.minimum)} max={projectionMax}
       onChange={(projectionMm) => update({ ...input, projectionMm })} />
     </div>
     {projectionMax < SIMPLE_COVER_PROJECTION_MAX_MM && <p className={styles.inputNotice}>Maximum projection for this roof: {metres(projectionMax)}.</p>}

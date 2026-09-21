@@ -5,23 +5,26 @@ import type { PreviewRoofChoices } from './GableChoices';
 import { solvePergolaPreview } from './solvePreview';
 import type { PreviewDimensionAxis } from './usePreviewDimension';
 import css from './mobileFootprint.module.css';
+import { useFootprintScale } from './useFootprintScale';
 
 /** Quiet footprint from the same solved plan as the full configurator. */
-export default function MobileFootprint({ input, displayInput = input, roof, activeDimension }: {
+export default function PergolaFootprint({ input, displayInput = input, roof, activeDimension, resizing = false }: {
+  resizing?: boolean;
   input: SimpleCoverInput; displayInput?: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null;
 }) {
   const patternId = useId();
   const geometry = useMemo(() => solvePergolaPreview(input, roof).geometry, [input, roof]);
   const plan = geometry?.plan;
+  const rx=displayInput.widthMm/input.widthMm, ry=displayInput.projectionMm/input.projectionMm;
+  const targetScale = plan ? Math.min(236 / Math.max(1, (plan.extents.maxX - plan.extents.minX)*rx), 122 / Math.max(1, (plan.extents.maxY - plan.extents.minY)*ry)) : 1;
+  const scale = useFootprintScale(targetScale, resizing);
   if (!plan) return <p className={css.unavailable}>Adjust your size to see the footprint.</p>;
   const { minX, minY, maxX, maxY } = plan.extents;
   // During a drag, resize the last solved footprint. Member counts/constraints
   // reconcile once on release; no detailed geometry is rebuilt per input event.
-  const rx=displayInput.widthMm/input.widthMm, ry=displayInput.projectionMm/input.projectionMm;
-  const scale = Math.min(236 / Math.max(1, (maxX - minX)*rx), 122 / Math.max(1, (maxY - minY)*ry));
   const w = (maxX - minX) * rx * scale, h = (maxY - minY) * ry * scale;
   const left = 184 - w / 2, top = 113 - h / 2;
-  const x = (value: number) => left + (value - minX) * rx * scale;
+  const x = (value: number) => left + (maxX - value) * rx * scale;
   const y = (value: number) => top + (value - minY) * ry * scale;
   const width = `${(displayInput.widthMm / 1000).toFixed(1)} m`, projection = `${(displayInput.projectionMm / 1000).toFixed(1)} m`;
   const attached = roof.attachmentIntent !== 'freestanding';

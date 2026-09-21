@@ -1,4 +1,5 @@
 'use client';
+import controls from '../marketing-foundation/design-controls.module.css';
 import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 
 import {useEffect, useState} from 'react';
@@ -37,5 +38,5 @@ export default function StaffRevisionReturn({draft, customerAction}: {draft: Pre
   useEffect(() => { setCurrentUrl(window.location.href); setEnquiryHref(designEnquiryHref()); }, []);
   const href = currentUrl ? staffRevisionReturnUrl(currentUrl, draft, process.env.NODE_ENV !== 'production', process.env.NEXT_PUBLIC_STAFF_PORTAL_ORIGIN) : null;
   return href ? <a href={href}>Review revision in portal <ArrowUpRight /></a>
-    : customerAction ?? <Link href={enquiryHref} prefetch={false}>Enquire about this design <ArrowUpRight /></Link>;
+    : customerAction ?? <Link className={controls.action} href={enquiryHref} prefetch={false}>Enquire about this design <ArrowUpRight /></Link>;
 }

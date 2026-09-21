@@ -6,11 +6,13 @@ import { OrbitControls } from '@react-three/drei';
 import { PerspectiveCamera, Vector3 } from 'three';
 import type { SceneBounds } from '@sp/geometry-viewer';
 import type { Point3 } from '@sp/geometry';
+import { useCameraTransition } from './useCameraTransition';
 
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 const PRESENTATION_DIRECTION = new Vector3(.85, 1.9, .65).normalize();
 
-export default function PreviewCamera({ choiceView, explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+export default function PreviewCamera({ framingKey, choiceView, explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+  framingKey?: string;
   choiceView?: 'sides' | 'lighting';
   explore?: boolean; portrait?: boolean; studio?: boolean; bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
 }) {
@@ -18,17 +20,31 @@ export default function PreviewCamera({ choiceView, explore = false, portrait = 
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
   const previous = useRef<{ reset: number; fit: number; width: number; height: number; presentation: boolean; side?: string; choiceView?: string } | null>(null);
   const touched = useRef(false);
+  const framedBounds = useRef<SceneBounds | null>(null);
+  const framedKey = useRef<string | undefined>(undefined);
   const recordCamera = useCallback(() => {
     if (!(camera instanceof PerspectiveCamera) || !controls.current) return;
     gl.domElement.dataset.camera = JSON.stringify({ projection: 'perspective', fov: camera.fov,
       position: camera.position.toArray(), target: controls.current.target.toArray(), zoom: camera.zoom,
       distance: camera.position.distanceTo(controls.current.target) });
   }, [camera, gl]);
+  const { move, cancel } = useCameraTransition(recordCamera);
 
   useLayoutEffect(() => {
     const orbit = controls.current;
     if (!(camera instanceof PerspectiveCamera) || !orbit || !size.width || !size.height) return;
     const initialise = !previous.current || previous.current.reset !== reset || previous.current.presentation !== presentation || previous.current.side !== side || previous.current.choiceView !== choiceView;
+    const resized = previous.current?.width !== size.width || previous.current?.height !== size.height;
+    const oldBounds = framedBounds.current;
+    // Roof finishes and new object identities are not a request to reframe.
+    // Small trim differences must not move the entire composition.
+    const changed = framingKey !== undefined ? framedKey.current !== framingKey : !oldBounds || (['x', 'y', 'z'] as const).some(axis => Math.abs(oldBounds.min[axis] - bounds.min[axis]) > 50 || Math.abs(oldBounds.max[axis] - bounds.max[axis]) > 50);
+    if (!initialise && !resized && !changed && previous.current?.fit === fit) return;
+    if (process.env.NODE_ENV === 'development') gl.domElement.dataset.cameraFraming = JSON.stringify({ framingKey, previousKey: framedKey.current, initialise, resized, changed, width: size.width, height: size.height });
+    const before = { position: camera.position.clone(), target: orbit.target.clone(), fov: camera.fov };
+    const firstFrame = !previous.current;
+    framedBounds.current = bounds;
+    framedKey.current = framingKey;
     const centre = new Vector3(bounds.center.x, bounds.center.y, bounds.center.z);
     if (choiceView === 'lighting' && !side) {
       // Stand inside the front corner: selected screens remain intact behind the
@@ -46,6 +62,7 @@ export default function PreviewCamera({ choiceView, explore = false, portrait = 
       camera.lookAt(orbit.target);
       camera.updateProjectionMatrix();
       orbit.update();
+      move(orbit, before, firstFrame);
       previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView };
       recordCamera(); invalidate();
       return;
@@ -87,12 +104,13 @@ export default function PreviewCamera({ choiceView, explore = false, portrait = 
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     orbit.update();
+    move(orbit, before, firstFrame);
     previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView };
     recordCamera();
     invalidate();
-  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, choiceView, invalidate, recordCamera]);
+  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, choiceView, invalidate, recordCamera, move, framingKey, gl]);
 
   return <OrbitControls ref={controls} makeDefault enabled={enabled} enablePan={false}
     enableDamping={false} minDistance={1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * (choiceView === 'lighting' ? .5 : .48)}
-    onStart={() => { touched.current = true; }} onChange={recordCamera} />;
+    onStart={() => { touched.current = true; cancel(); }} onChange={recordCamera} />;
 }

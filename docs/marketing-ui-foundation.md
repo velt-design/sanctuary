@@ -1,5 +1,113 @@
 # Marketing UI Foundation
 
+## Product clarity refinement (21 September 2026)
+
+The hub introduces bespoke design alongside the roofline choice, with a dedicated
+section immediately after the three cards. Hub and product bespoke links use the
+existing bespoke enquiry intent, not Help me choose. Gable direction uses the
+foundation segmented radio style (dark selected state, visible keyboard focus).
+Sides retain four standard configurations, with one labelled House/Left/Front/Right
+plan highlighting selected blind edges beside the controls. The plan stays in a
+stable region; other combinations remain available in the full designer.
+Pitched now features the governed residential Tindalls Bay project, explicitly
+identified as bespoke evidence. Featured product alternatives link the three
+current families; the canonical Hip route is retained.
+
+## Mobile product journey refinement (21 September 2026)
+
+Pitched, Gable and Box retain the desktop composition. On mobile, identity and
+preview lead; price follows the dimensions, with only the active choice panel
+visible. Non-actionable repeated helper copy is suppressed, while constraints,
+draft labels and recovery remain. Size always shows its footprint above the mobile dimension controls. Mobile Size/Roof/Sides tabs use a dark selected state and single-line labels; their selection summaries remain desktop-only. A compact
+estimate/Enquire bar carries the exact current draft; Customise further stays
+beside the choices. Inclusions and supporting reading use disclosures, and the
+built evidence appears before that reading on small phones.
+
+The mobile preview is a single-tap entry into a native modal dialog. The same
+viewer remains mounted: resizing preserves its orbit direction. The X or Escape
+closes it, restores focus and page position, unlocks scrolling and reveals the
+enquiry bar. The preview overlay accepts vertical scrolling outside fullscreen.
+Desktop keeps inline rotation, Plan and Built example.
+Crossing into the mobile layout returns Built example or Plan to the selected
+3D design because the desktop view tabs are hidden there. Ordinary selection
+changes retain the current view, including Plan recovery when 3D is unavailable.
+Verify repeated opening, nonzero scroll return, keyboard trapping/closing, rotation, responsive changes,
+and exact enquiry handoff. Physical-phone performance still needs device review.
+
+## Pergolas selection hub (21 September 2026)
+
+Owner-approved product selection: `/products` leads with three equal Pitched, Gable
+and Box cards beneath a compact introduction. Matched existing house-attached
+roofline illustrations replace unrelated project photographs in this comparison;
+real project evidence remains below. Each card states the same 6 x 3 m acrylic,
+open-sided example plus its attachment, using canonical product defaults and
+existing price hooks. Development prices remain draft; unavailable/partial
+prices never become invented offers. Product links preserve any saved choices,
+which the example note explains. No WebGL scene runs on the hub.
+Hip is removed from the featured cards, comparison and hub ItemList, while its
+canonical detail page and other contextual discovery remain. The optional roof
+comparison follows the cards; accessories, project proof and help follow below.
+Production release is authorised after checks; pricing uses the existing approved version.
+
+## Shared product/design controls (21 September 2026)
+
+Owner-approved reference: the mobile configurator's bold, clear controls and
+review presentation. Pitched, gable and box product pages and the desktop
+configurator now share this foundation locally; production release remains separate.
+
+- DimensionControl owns the thin architectural track, square thumb, ticks,
+  direct metre input, select-all on focus, keyboard behaviour and reserved
+  validation region. New product/configurator dimension controls must reuse it;
+  do not recreate native accented range bars. Callers retain their constraints.
+- design-controls.module.css owns black primary design actions, outlined secondary
+  actions and strong selected-card borders. ArrowUpRight is the SVG CTA arrow;
+  do not use font arrow characters for these actions. Back/next directional
+  navigation retains its meaning. Editorial site navigation remains unchanged.
+- Product previews and desktop Review share mobile studio lighting/materials and
+  an illustrative furnished setting. Detailed editing uses the same treatment
+  without furniture. Existing adaptive detail, on-demand rendering and plan
+  recovery remain. Furniture is unpriced and uses the existing clearance rules.
+- PergolaFootprint is the shared quiet plan for mobile Size and product Plan;
+  it consumes solved geometry. The detailed desktop plan remains available for
+  roof fall, side editing and inspection. Domain rendering stays in configurator.
+- Product mobile choices include the current estimate beside the controls;
+  draft, tailored and unavailable states stay explicit. No pricing rules move
+  into the UI foundation. Current selections must survive enquiry, full designer,
+  return and reload. Choice panels reserve space; warnings stay relevant.
+
+Working specimens: /__foundation/marketing#design-controls. The catalogue uses
+actual controls and links to the product/designer patterns; it is not a parallel
+implementation. Verify click-to-select text, keyboard slider input, invalid and
+out-of-range values, stable panels, small/large furniture, same-design prices,
+and responsive transitions when extending these components.
+
+## Local product-selection trial (21 September 2026)
+
+The pitched, gable and box-perimeter routes open with one integrated model, identity, estimate
+and selection area: size, acrylic/solid/mixed roof, and four blind arrangements.
+Marketing foundation type, colours and actions remain the UI owner. The built
+project photograph is available through Built example; existing product evidence
+stays below. Size/Roof/Sides tabs use a stable shared panel region, visual choices,
+keyboard navigation and explicit current-choice summaries. The trial is local,
+not a production release or approval of a new standard offer. The owner approved
+extending the pitched experience to gable and box on 21 September.
+
+ProductSelector owns the limited controls, ProductModel consumes the existing
+preview, and productSelection converts choices into a canonical preview draft.
+The region reserves model and changing-copy space; roof/side choices do not
+move the following controls. St Heliers has an explicit roof-shape/footprint
+starting point with unsupported tint, custom frame and height disclosed. The
+product page's lower next-step action returns to its own selection section so it
+cannot accidentally reopen a different saved configurator draft.
+The global saved-design bar is omitted on all three for the same reason; the
+page's enquiry and customisation actions carry its current product selection.
+Each family keeps separate session choices and uses its own roof illustrations.
+Attachment assumptions remain explicit. Existing roof projection limits apply
+before model and price updates; a resulting size adjustment is explained in the
+reserved status region. Existing built photographs remain project references,
+not representations of the customer's selected dimensions or price.
+
+
 Status: Current marketing-only UI contract with approved public-route adoptions.
 
 This document owns the Architectural Editorial UI system demonstrated at the standalone internal route `/__foundation/marketing`. It applies only to `apps/marketing`; it does not describe or set direction for the staff portal. Existing checked-in marketing routes and their rendered behavior are canonical. The catalogue documents shared owners and regression examples for current consumers, not a blanket instruction to restyle public routes. A new route adoption or broader visual change still requires separate, explicit approval.
@@ -19,7 +127,7 @@ Response wording uses the approved claims register.
 
 Cost-guide and pergola-product decision panels link to the existing designer
 and contextual help; configured designs needing individual quotes are not
-relabeled bespoke. The product hub compares the four governed forms. Hip and
+relabeled bespoke. The product hub features Pitched, Gable and Box. Hip and
 accessory products retain their specific brief CTA; only Pitched, Gable and Box
 offer the designer, matching its current supported forms. Guide navigation presents related
 decisions instead of implying a required sequence. No generic price example or
@@ -110,7 +218,7 @@ Shared owners under components/marketing-foundation/editorial/:
 - EditorialFacts, MeasurementGroups and RoofApproaches: contiguous summary
   rules, readable full-width specification rows and exploratory roof comparison.
 
-Quiet motion uses small arrivals and brief state changes; reduced-motion wins.
+Quiet motion uses small arrivals and brief state changes; reduced-motion wins. In the product/configurator viewer, finishes and side selections keep the camera fixed. Dimension changes preserve the angle and settle framing gently; direct orbit input interrupts framing. Furniture waits for a sizing pause before changing arrangement and never scales to fit. Price loading must not change the canvas dimensions. Review actual continuous edits as well as settled screens.
 Gable roof exploration persists in the URL and does not become an engineered
 selection or an enquiry field. Other products retain only supported choices.
 Project filtering and view scale belong to the collection. Case studies use
@@ -917,3 +1025,27 @@ The owner-endorsed roof-choice interaction is the mobile benchmark: a clear choi
 Review/Explore roof shading filters subpixel profile normals while retaining the solved sheet and silhouette. Upholstery has restrained seams and sheen; contact cues sit above paving. Explore fits the complete product with a size-aware opening angle rather than cropping the posts with a fixed zoom multiplier. These finishes preserve fixed-size furniture and demand rendering, and do not alter the clean earlier choices. Fine silhouette aliasing at low pixel density remains possible.
 
 Review furniture uses charcoal upholstered dining chairs with curved backs and angular black frames, following the owner's dark-chair reference. Arrangements must demonstrate useful capacity, especially the popular 6 x 3 m footprint, rather than merely pass a collision check. Full-size lounge and dining groups can sit side by side in wide spaces or in sequence in deep spaces, with connected access and seating facing into the usable area. Shallow spaces use real compact furnishings or a sofa/bench setting; furniture is never scaled down to fill a gap. The compact four-place table pairs two dark chairs with a two-place bench. Larger social settings use a 2400 mm sofa with two lounge chairs; the L lounge remains available where its proportions fit. Review daylight balances a softer key with fill/environment, with quiet glazing, plaster and paving variation. Earlier choice views remain unchanged.
+
+### Side orientation across product and configurator views
+
+Opening names retain the existing customer-design contract: left/right are named
+looking out from the house (or rear of a freestanding pergola). House-at-top plans
+now face the house, matching the default garden-facing 3D view: home-left appears
+on the viewer's right. Product side diagrams, full plans and size footprints use
+this same projection. Reflect rendered geometry only; keep labels readable and
+keep stored opening IDs, pricing and saved design positions unchanged. Verify
+both asymmetric left/right selections in plan, 3D and enquiry after camera/view
+changes; a symmetric all-sides fixture cannot establish orientation parity.
+
+## Homepage product entry (21 September 2026)
+The homepage reuses the product hub cards and example-price owner. Its compact mobile variant stacks three image/text cards; visible links lead to the product pages and the comparison hub. Bespoke and commercial/professional pathways stay visible below. Keep price/status space stable while estimates load; retain the shared arrow and focus treatments. Cards use h3 beneath the section h2; hub cards remain h2 beneath its h1.
+
+## Portrait roofline image trial (21 September 2026)
+The owner rejected the compact homepage thumbnail treatment as too weak. An isolated, noindex /review/portrait-rooflines page trials three full-width 4:5 mobile images, with title, estimate and action underneath. Model screenshots at 1600 mm eye height and about 30 degrees to the frontage guide generated structure; furniture is newly generated using model placement as a layout template. Keep the gable apex, pitched fall and box perimeter visible. This trial does not replace homepage imagery; desktop compositions follow owner feedback. Generated images remain illustrative, not dimensional or engineering evidence.
+
+Homepage roofline selection uses full-width 4:5 furnished model-based portraits, short descriptions and compact shared example pricing. Common GST/site qualifications remain visible; complete example specifications and illustration exclusions sit in an accessible details disclosure. Bespoke and professional pathways remain visible. Do not restore the previous thumbnail/text split on mobile.
+
+### Product mobile refinement (21 September 2026)
+Product estimate totals use the shared nearest-5-dollar display formatter; the pricing result and shared estimate payload retain their exact values. Breakdowns disclose the display rounding. Product viewers show a labelled starting illustration until the first rendered frame, with mobile pixel ratio capped at 1.25 and reduced foliage/shadow detail. Mobile Roof/Sides panels size to content; the side diagram is retired in favour of four labelled presets and the live model. Mobile Customise further enters Edit your design with product choices retained; normal shared/project links keep their prior Review entry. The product hub uses the approved portrait roofline imagery on all breakpoints.
+
+Size-plan framing stays fixed during pointer/keyboard slider gestures; the footprint and dimension labels update in that fixed viewport and may be clipped. Release refits over650ms with smooth proportional zoom and no overshoot; new input interrupts at the current scale. Typed values refit on commit. Reduced-motion preference fits immediately. Shared footprint applies this to mobile sizing and product Plan views; surrounding layout remains fixed.

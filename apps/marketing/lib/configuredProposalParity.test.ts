@@ -21,10 +21,17 @@ it('preserves the v2.7 recorded proposals except the documented mixed-roof takeo
     // Provenance: pricing-review-2026-09-11/adapter.ts and package-review.md.
     const corrected = calculateConfiguratorPricing(draft, config);
     expect(corrected.siteInputs!.pergolas[0].modules[0].mixed_roof).toEqual({
-      mode:'acrylic_bays', acrylic_bays_by_plane:{main:2},
+      mode:'acrylic_bays', acrylic_bays_by_plane:{main:4},
     });
     expect(corrected.base!.costingWarnings).toEqual([]);
-    expect(corrected.estimate).toMatchObject({status:'priced',amount:18128,excluded:[]});
+    expect(corrected.estimate).toMatchObject({status:'priced',excluded:[]});
+    // Owner's 21 September equal-thirds layout has four bays here. Preserve the
+    // earlier two-bay proposal evidence explicitly instead of treating it as the
+    // current design or lowering a rate to retain its old total.
+    const twoBaySite = structuredClone(corrected.siteInputs!);
+    twoBaySite.pergolas[0].modules[0].mixed_roof = { mode:'acrylic_bays', acrylic_bays_by_plane:{main:2} };
+    const twoBayPrice = calculateConfiguredCustomerPriceV1({site:twoBaySite,config,footprintM2:18,level:'ground',roofStyle:'pitched'});
+    expect(Math.round(twoBayPrice.price!.incGst)).toBe(18128);
     const historicalSite = structuredClone(corrected.siteInputs!);
     historicalSite.pergolas[0].modules[0].mixed_roof = {
       mode:'area_override', acrylic_area_m2:3.5760679331494534,

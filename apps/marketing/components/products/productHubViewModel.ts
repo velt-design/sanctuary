@@ -48,7 +48,7 @@ const productHubGuideLinks = [
 ] as const;
 
 export function buildProductHubViewModel() {
-  const pergolaForms = getProductsByCategory("pergolas");
+  const pergolaForms = getProductsByCategory("pergolas").filter(product => product.slug !== 'hip');
   const comparisonRows = pergolaForms.map((product) => {
     const comparison = comparisonBySlug[product.slug];
     if (!comparison) {

@@ -1,3 +1,4 @@
+import ProjectDesignStartingPoint from '@/components/products/ProjectDesignStartingPoint';
 import type { ReactNode } from 'react';
 import type { Project } from '@/data/projects';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
@@ -41,5 +42,5 @@ export default function ProjectDetailContent({nextProjectNavigation, project, re
       )
     : `/projects/${slug}`;
 
-  return <EditorialProjectContent nextProjectNavigation={nextProjectNavigation} project={project} enquiryHref={enquiryHref} relatedProjects={relatedProjects} projectHref={projectHref} />;
+  return <EditorialProjectContent designStartingPoint={project.slug === 'st-heliers-townhouse' ? <ProjectDesignStartingPoint /> : undefined} nextProjectNavigation={nextProjectNavigation} project={project} enquiryHref={enquiryHref} relatedProjects={relatedProjects} projectHref={projectHref} />;
 }

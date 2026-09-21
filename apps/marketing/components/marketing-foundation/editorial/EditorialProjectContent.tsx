@@ -9,8 +9,8 @@ import ProjectGallery from '@/app/projects/ProjectGallery';
 import styles from './composition.module.css';
 import opening from '@/app/projects/projectOpening.module.css';
 
-type Props = { nextProjectNavigation?: ReactNode; project: Project; enquiryHref: string; relatedProjects: Project[]; projectHref: (slug: string) => string };
-export default function EditorialProjectContent({ nextProjectNavigation, project, enquiryHref, relatedProjects, projectHref }: Props) {
+type Props = { nextProjectNavigation?: ReactNode; designStartingPoint?: ReactNode; project: Project; enquiryHref: string; relatedProjects: Project[]; projectHref: (slug: string) => string };
+export default function EditorialProjectContent({ nextProjectNavigation, designStartingPoint, project, enquiryHref, relatedProjects, projectHref }: Props) {
   const warkworth = project.slug === 'warkworth-outdoor-room';
   const hero = warkworth ? project.gallery[0] : project.caseStudyHeroImage ?? project.heroImage;
   const detail = project.gallery.find(image => image.src !== hero.src && image.src !== project.heroImage.src);
@@ -24,6 +24,7 @@ export default function EditorialProjectContent({ nextProjectNavigation, project
       ...(project.stats.width && project.stats.depth ? [{ label:'Footprint',value:<MeasurementGroups value={project.stats.width+' × '+project.stats.depth} /> }] : []),
       ...(project.year ? [{label:'Completed',value:project.year}] : []),
     ]} /></div></Container>
+    {designStartingPoint}
     <section id="project-story" className={styles.section}><Container width="wide" className={styles.storyGrid}>
       <div><Eyebrow>01 / The brief</Eyebrow><Heading>{warkworth ? <>A room beside<br />the house.</> : 'Designed for this place.'}</Heading></div>
       <div className={styles.storyCopy}><p className={styles.lead}>{project.constraint}</p>{project.description.slice(warkworth ? 1 : 0).map(text => <Text key={text}>{text}</Text>)}</div>
