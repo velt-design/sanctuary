@@ -1,5 +1,17 @@
 # Project Operational Command Centre Architecture
 
+## Email reading continuity (21 September 2026)
+
+Within a mounted project page, `ProjectEmailReadingProvider` retains only open
+message/history identifiers and the earlier-email disclosure state across
+Overview and Commercial tabs. It is keyed to project and customer identity,
+bounded to 128 open keys, and never persists correspondence or permission data.
+Returning to Overview still performs the existing authorized correspondence
+read; no email text is shown while that read is pending. Unavailable access or
+connection state clears remembered disclosures. A full page reload resets them.
+The Read message control precedes the changing preview/body so opening a reply
+does not move the control. This increment is preview work, not released.
+
 ## Current clarity increment (17 September 2026)
 
 The current owner agreement and release evidence live in
@@ -7,8 +19,8 @@ The current owner agreement and release evidence live in
 reporting/access-link fixes are deployed. A protected Portal candidate has read
 real correspondence and opened its original Outlook message. The global Portal
 correspondence flag is enabled following the approved PR145 production release.
-The subsequent performance changes in PR153 remain protected-preview work;
-see the roadmap for exact release revisions and outstanding staff verification.
+The subsequent performance changes in PR153 were released as 6dee988 on
+18 September; see the roadmap for evidence and outstanding staff verification.
 
 The owner has deferred unused lead/quote follow-ups and sent/reply recording.
 Migration `20260917000002_defer_project_follow_ups.sql` cancels active cadence

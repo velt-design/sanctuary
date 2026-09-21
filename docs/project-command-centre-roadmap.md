@@ -1,4 +1,45 @@
 # Project Operational Command Centre Roadmap
+## Current Portal journey trial - 21 September 2026
+
+Owner task: Review Velt OS direction chats (01a0a7f8-d1c5-73c3-b810-20a01e469fed).
+Scope authorized by Jordan's "go ahead": inspect the live project journey, fix
+highest-impact friction in a preview, independent delivery review, then owner task
+attempt. No new production release, sends, reminders, AI summaries or migrations.
+Current live baseline verified: origin/main7b189bf6, deployment
+dpl_3aXiCAPBeA3Kjt5X6biew9tesLo5. PR153 was released as6dee988 on18September;
+older pending-release/performance status below is historical, not current.
+Working version: C:/Dev/sanctuary-project-journey-20260921,
+branch codex/project-journey-20260921 from7b189bf6. Previous dirty worktree retained.
+
+Task: from Projects, find the latest customer reply and current agreed quote,
+open the reply, inspect the quote and return. Reference: owner-approved Portal
+email reader and commercial card, preserving Portal components and source truth.
+Checks: important facts remain distinguishable; disclosure controls stay in place
+and reading state returns after authorized reads; real desktop review link works.
+Use a synthetic equivalent for shareable tests; private live customer evidence
+stays out of repository files. Relevant dimensions: outcome, usability, clarity,
+visual/accessibility, system fit, maintainability, reliability, privacy, performance
+and handover. No product or commercial assumptions need changing.
+
+Baseline: builder found the linked reply and accepted current quote from the
+normal Projects list. Quote navigation works. Returning to Overview took4997ms
+in one browser-tool timed sample; the previously open reply was closed. This is
+not a percentile, new first-time benchmark or ordinary-staff proof. Opening a
+message removes its teaser above the disclosure, moving the control unexpectedly.
+Implemented, pending browser verification: preserve only reading presentation
+across this mounted project, retain fresh authorization before displaying emails,
+and keep the message disclosure in a stable position. All 157 focused overview
+and tab tests, Portal type checking, changed-file ESLint, architecture:changed,
+docs:impact, docs:guard, text:mojibake and diff whitespace checks passed.
+Next: protected preview of the real journey and independent delivery review.
+Recheck latency without claiming this meets the outstanding 1-2 second target.
+Staff acceptance and procedure effectiveness await a real human task attempt.
+Publication review: the outgoing source/tests/docs were inspected for the public
+repository; tests use synthetic messages. No customer correspondence, screenshots,
+credentials, signed links or local evidence artifacts are included. Production
+alias changes and release remain outside this stage's authority.
+
+## Historical performance implementation and evidence
 ## Active customer-email performance goal — 17 September 2026
 
 Owner authorized a goal loop targeting saved-email visibility within 1–2 seconds, with first-time versus saved measurements and honest reporting of unmet targets. Preserve all access/customer/connection revocation, matching, encryption/retention, source links and timestamps. No redesign, sends, bulk backfill, AI summaries, new service or higher limits. New performance revisions require separate production release authority. The prior ordinary-staff live check remains explicitly outstanding, moved post-release by Jordan.
