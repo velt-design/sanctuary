@@ -16,8 +16,7 @@
 :global(body):has(.page) :global(header.site),
 :global(body):has(.page) :global(.product-subnav),
 :global(body):has(.page) :global(footer),
-:global(body):has(.page) :global(.consent-banner),
-:global(body):has(.page) :global(.design-continuation-bar) { display: none !important; }
+:global(body):has(.page) :global(.consent-banner) { display: none !important; }
 :global(html):has(.page), :global(body):has(.page) { height: auto !important; overflow-x: clip !important; overflow-y: visible !important; background: #e9eae6; }
 :global(body[data-scroll-locked]):has(.page) { overflow: hidden !important; }
 .page button { cursor: pointer; }

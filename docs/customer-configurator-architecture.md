@@ -5513,7 +5513,12 @@ Confirm hosted pricing parity, staff receipt/revision/save-to-quote and worker
 readiness separately. Real-phone validation and production activation remain
 pending. No production configuration or email delivery was changed in this pass.
 
-### Persistent design continuation bar (local candidate, 2026-09-15)
+### Persistent design continuation bar (retired, 2026-09-22)
+
+The owner requested removal of the site-wide Start/Continue designing bar.
+Its layout mount, component, styles and dedicated hook are removed. Existing
+product/configurator entry links and saved draft/rail resume behavior remain.
+The description below is historical and no longer describes the active UI.
 
 Owner-approved public-site bar replaces the preview-only launcher. It uses a
 charcoal border, square corners and translucent grey glass. Homepage visibility
