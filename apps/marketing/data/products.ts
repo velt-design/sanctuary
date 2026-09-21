@@ -810,10 +810,10 @@ export const products: ProductRecord[] = [
       },
     ],
     hero: {
-      src: '/images/project-tamaki-dr-01.jpg',
-      alt: 'Pitched Sanctuary pergola framing the seating area at Lilliput Mini Golf',
-      caption: 'Lilliput Mini Golf',
-      detail: 'Pitched roof · Tamaki Drive',
+      src: '/images/project-tindalls-bay-03.jpg',
+      alt: 'Tindalls Bay patio with dining area, mesh blinds and mixed roof zones',
+      caption: 'Tindalls Bay',
+      detail: 'Pitched roof · Hibiscus Coast',
       objectPosition: '50% 42%',
     },
     gallery: [
@@ -833,9 +833,9 @@ export const products: ProductRecord[] = [
     ],
     evidence: {
       status: 'governed',
-      projectSlug: 'lilliput-mini-golf',
+      projectSlug: 'tindalls-bay-pavilion',
       relevance:
-        'A shallow pitched frame was coordinated with existing foundations, services, sightlines and a wider renovation scope.',
+        'Mixed roof zones shelter the patio while retaining daylight around the home. This bespoke project shows possibilities beyond the starting design above.',
     },
     guide: {
       href: '/pitched-pergolas-auckland',
@@ -934,7 +934,7 @@ export const products: ProductRecord[] = [
       summary:
         'Understand ridge height, end treatments, roofing choices and the measurements that shape a gable design.',
     },
-    alternatives: ['pitched', 'hip'],
+    alternatives: ['pitched', 'box-perimeter'],
     relatedProducts: ['acrylic-infill-panels', 'downlights', 'led-strip-lighting'],
     metadata: {
       title: 'Gable Pergolas Auckland',
@@ -1114,7 +1114,7 @@ export const products: ProductRecord[] = [
       summary:
         'See why house geometry, measured levels and project scope shape a custom pergola before components are selected.',
     },
-    alternatives: ['pitched', 'hip'],
+    alternatives: ['pitched', 'gable'],
     relatedProducts: ['downlights', 'led-strip-lighting', 'drop-down-blinds'],
     metadata: {
       title: 'Box-Perimeter Pergolas Auckland',

@@ -23,6 +23,7 @@ export default function BlindControls({ guided = false, detailsOnly = false }: {
   return <section className={css.controls} aria-label="Sides & privacy">
     {!detailsOnly && <><div className={styles.sectionLabel}><h2>Sides & privacy</h2></div>
     <p className={styles.small}>{guided ? 'First, choose where you would like privacy or shelter. Then choose what goes there.' : 'Choose a space between the posts, then choose a blind or screen. Select a space to see it highlighted in the view.'}</p>
+    <p className={styles.small}>Side names look out from the house or rear of the pergola. The plan faces the house, like the default 3D view.</p>
     <div className={css.openingGroups}>{(['front','left','right'] as const).map(side=><fieldset key={side} className={css.openingGroup}><legend>{side==='front'?'Front · garden-facing':side==='left'?'Left side':'Right side'}</legend><div className={css.openings}>{openings.filter(o=>o.side===side).map(o=><button key={o.id} aria-pressed={selected===o.id} onClick={()=>{select(o.id);setNotice('');}}><strong>{o.label}</strong><span>{(o.width/1000).toFixed(2)} m wide</span><small>{({acrylic:'Acrylic panels',timber:'Timber slats',aluminium:'Aluminium slats'} as const)[panels.find(p=>p.opening===o.id)?.kind as 'acrylic'|'timber'|'aluminium']??(blinds.some(b=>b.opening===o.id)?'Ziptrak blind':'Open')}</small></button>)}</div></fieldset>)}</div>
     {!opening && <p className={styles.small} role="status">Select a space above. It will be outlined in the view.</p>}</>}
     {opening && <>

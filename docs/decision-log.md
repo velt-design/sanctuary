@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-09-21 — Keep scene framing independent of option and price updates
+
+The furnished desktop rollout passed settled-view checks but owner use exposed
+rough continuous resizing and camera jumps. Recreated scene objects, roof finish
+bounds and changing price-summary height were incorrectly treated as framing
+changes. The preview now keys framing to structural choices, reserves price
+space, and separates furniture arrangement from each slider increment. Review
+real drags, rapid changes, interrupted framing and idle rendering; a correct
+final screenshot is not evidence of a calm transition. Owners:
+customer-configurator-architecture.md and marketing-ui-foundation.md.
+
 ## 2026-09-18 — Keep interface transitions independent of renderer availability
 
 The day/night clock initially lived inside the lazy WebGL scene. An early Night

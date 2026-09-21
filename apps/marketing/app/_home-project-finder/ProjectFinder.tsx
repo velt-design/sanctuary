@@ -1,13 +1,10 @@
 'use client';
-import { openConfigurator } from '../../components/configurator-prototype/configuratorOverlay';
+import HomePergolaSelection from './HomePergolaSelection';
 
-import Image from 'next/image';
 import {
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent,
-  type MouseEvent,
 } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
 import { Container } from '../../components/marketing-foundation/Primitives';
@@ -21,7 +18,6 @@ import {
   PROJECT_FINDER_HOME_PATH,
   PROJECT_FINDER_STATE_EVENT,
   commercialProfessionalPathLabels,
-  projectFinderHomeDirections,
   type CommercialProfessionalPath,
   type ProjectFinderHomeDirection,
   type ProjectPriority,
@@ -54,7 +50,6 @@ import {
 import ProjectFinderResult from './ProjectFinderResult';
 import { pushProjectFinderEvent } from './ProjectFinderTracker';
 import styles from './projectFinderHomepage.module.css';
-import previewStyles from './homepageDesignerPreview.module.css';
 
 type ProjectFinderProps = {
   initialState: ProjectFinderState;
@@ -289,42 +284,6 @@ export default function ProjectFinder({
     commitState(nextState, method);
   };
 
-  const handleDirectionKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) => {
-    let nextIndex: number | null = null;
-    const lastIndex = projectFinderHomeDirections.length - 1;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      nextIndex = index === lastIndex ? 0 : index + 1;
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      nextIndex = index === 0 ? lastIndex : index - 1;
-    } else if (event.key === 'Home') {
-      nextIndex = 0;
-    } else if (event.key === 'End') {
-      nextIndex = lastIndex;
-    }
-    if (nextIndex === null) return;
-    event.preventDefault();
-    chooseDirection(projectFinderHomeDirections[nextIndex], 'keyboard');
-  };
-
-  const handleDirectionClick = (
-    event: MouseEvent<HTMLButtonElement>,
-    direction: ProjectFinderHomeDirection,
-  ) => {
-    if (direction === 'cover') {
-      track('project_direction_select', {
-        project_direction: direction,
-        source_component: 'project_finder',
-        step_number: 1,
-      });
-      openConfigurator(buildHomeConfiguratorHref(state.priorities));
-      return;
-    }
-    chooseDirection(direction, event.detail === 0 ? 'keyboard' : 'pointer');
-  };
-
   const chooseProfessionalPath = (
     professionalPath: CommercialProfessionalPath,
     method: InputMethod,
@@ -393,8 +352,8 @@ export default function ProjectFinder({
     setLimitMessage('');
     commitState({}, 'history');
     window.requestAnimationFrame(() => {
-      document.querySelector<HTMLButtonElement>(
-        '[data-project-direction="cover"]',
+      document.querySelector<HTMLAnchorElement>(
+        '#project-finder-opening a',
       )?.focus();
     });
   };
@@ -413,78 +372,7 @@ export default function ProjectFinder({
 
   return (
     <div data-project-finder-interactive>
-      <section
-        className={styles.finder}
-        id="project-finder"
-        aria-labelledby="project-finder-heading"
-      >
-        <Container
-          data-project-finder-opening
-          id="project-finder-opening"
-          width="wide"
-        >
-          <header className={styles.finderHeader}>
-            <p className={styles.eyebrow}>Find your starting point</p>
-            <h2 id="project-finder-heading">
-              Which starting point best describes your project?
-            </h2>
-            <p>Choose the closest direction. You can change it at any time.</p>
-          </header>
-
-          <fieldset
-            className={styles.directionFieldset}
-            role="radiogroup"
-            aria-labelledby="project-finder-heading"
-          >
-            <legend className="visually-hidden">Choose a project direction</legend>
-            <div className={`${styles.directionGrid} ${styles.primaryDirectionGrid}`}>
-              {projectFinderHomeDirections.map((direction, index) => {
-                const content = projectDirectionContent[direction];
-                const choiceMedia = media.choiceByDirection[direction];
-                const selected = state.project === direction;
-                return (
-                  <button
-                    aria-checked={selected}
-                    aria-describedby={`project-direction-${direction}-description`}
-                    className={`${styles.directionCard} ${direction === 'cover' ? previewStyles.designerCard : ''}`}
-                    data-project-direction={direction}
-                    data-selected={selected ? 'true' : 'false'}
-                    key={direction}
-                    onClick={(event) => handleDirectionClick(event, direction)}
-                    onKeyDown={(event) => handleDirectionKeyDown(event, index)}
-                    role="radio"
-                    tabIndex={selected || (!state.project && index === 0) ? 0 : -1}
-                    type="button"
-                  >
-                    <span className={`${styles.directionImage} ${direction === 'cover' ? previewStyles.preview : ''}`}>
-                      <Image
-                        alt={choiceMedia.alt}
-                        fill
-                        loading="lazy"
-                        sizes="(max-width: 760px) calc(100vw - 2.5rem), (max-width: 900px) 36vw, (max-width: 1100px) 33vw, 420px"
-                        src={choiceMedia.src}
-                        style={{ objectPosition: choiceMedia.objectPosition }}
-                      />
-                    </span>
-                    <span className={styles.directionNumber} aria-hidden="true">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <span className={styles.directionCopy}>
-                      <strong>{content.label}</strong>
-                      <span id={`project-direction-${direction}-description`}>
-                        {content.description}
-                      </span>
-                    </span>
-                    <span className={styles.directionState} aria-hidden="true">
-                      {direction === 'cover' ? 'Start designing' : selected ? 'Selected' : 'Choose'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-        </Container>
-      </section>
+      <HomePergolaSelection onSelect={chooseDirection} selected={state.project}/>
 
       {state.project === 'commercial-professional' ? (
         <CommercialProfessionalChooser

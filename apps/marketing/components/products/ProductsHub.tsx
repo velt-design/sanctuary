@@ -1,5 +1,4 @@
 import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
-import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import editorial from '@/components/marketing-foundation/editorial/editorial.module.css';
 import JsonLd from '@/components/JsonLd';
 import {
@@ -14,13 +13,11 @@ import {
   ProjectStory,
 } from '@/components/marketing-foundation/Patterns';
 import {
-  productCategories,
   products,
 } from '@/data/products';
 import { absoluteUrl } from '@/lib/seo';
-import ProductCard from './ProductCard';
-import ProductFormComparison from './ProductFormComparison';
-import DesignNextSteps from '../journey/DesignNextSteps';
+import PergolaSelection from './PergolaSelection';
+import { buildAssistedEnquiryHref } from '@/lib/configuratorEntry';
 import { buildProductHubViewModel } from './productHubViewModel';
 import styles from './product-pages.module.css';
 
@@ -28,7 +25,6 @@ export default function ProductsHub() {
   const {
     guideLinks,
     optionGateways,
-    pergolaForms,
     projectStories,
   } = buildProductHubViewModel();
 
@@ -53,8 +49,8 @@ export default function ProductsHub() {
             '@context': 'https://schema.org',
             '@type': 'ItemList',
             name: 'Sanctuary pergola products',
-            numberOfItems: products.length,
-            itemListElement: products.map((product, index) => ({
+            numberOfItems: products.filter(product => product.slug !== 'hip').length,
+            itemListElement: products.filter(product => product.slug !== 'hip').map((product, index) => ({
               '@type': 'ListItem',
               position: index + 1,
               name: product.name,
@@ -64,34 +60,17 @@ export default function ProductsHub() {
         ]}
       />
 
-      <EditorialLandingHero id="products-title" eyebrow="Pergola forms and details" title="Choose your pergola form." intro="Add screens, lighting or heating." image="/images/project-riverhead-gable-01.jpg" alt="Riverhead gable pavilion beside a pool and garden" objectPosition="50% 38%" caption="Riverhead Gable Pavilion"><TextLink href="#pergola-forms">Compare roof forms</TextLink></EditorialLandingHero>
-    <Section tone="warm" id="pergola-forms">
-        <Container width="wide">
-          <div className={styles.chapterHeading}>
-            <div>
-              <Eyebrow>{productCategories[0].label}</Eyebrow>
-              <Heading>{productCategories[0].heading}</Heading>
-            </div>
-            <Text size="large">{productCategories[0].introduction}</Text>
-          </div>
-          <div className={styles.formGrid} data-product-form-grid>
-            {pergolaForms.map((product, index) => (
-              <ProductCard
-                key={product.slug}
-                product={product}
-                priority={index === 0}
-                number={index + 1}
-              />
-            ))}
-          </div>
-          <ProductFormComparison />
-        </Container>
+      <PergolaSelection />
+      <Section id="bespoke-design" tone="warm">
+        <Container width="wide"><div className={styles.sectionHeadingRow}>
+          <div><Eyebrow>Bespoke design</Eyebrow><Heading>A different shape.<br/>A particular space.</Heading></div>
+          <div><Text>Work with us on a pergola designed around your home. Share your ideas, photos or plans, and we’ll help shape the design.</Text><TextLink href={buildAssistedEnquiryHref({ sourcePath: '/products', sourceComponent: 'product_cta' }, 'bespoke')}>Discuss a bespoke design</TextLink></div>
+        </div></Container>
       </Section>
-
-      <DesignNextSteps sourcePath="/products" />
 
       <Section tone="neutral">
         <Container width="wide">
+          <div className={styles.sectionHeadingRow}><div><Eyebrow>The finishing details</Eyebrow><Heading>Make it yours.</Heading></div><Text>Add privacy, shelter or a little more time outside.</Text></div>
           <div className={styles.optionGatewayGrid}>
             {optionGateways.map(
               ({ category, products: optionProducts }, index) => (
@@ -126,7 +105,7 @@ export default function ProductsHub() {
           <div className={styles.sectionHeadingRow}>
             <div>
               <Eyebrow>Built example</Eyebrow>
-              <Heading>One brief, one response.</Heading>
+              <Heading>Made for a real home.</Heading>
             </div>
           </div>
           <div className={styles.projectGrid} data-product-project-grid>
@@ -145,6 +124,8 @@ export default function ProductsHub() {
           </div>
         </Container>
       </Section>
+
+
 
       <Section tone="warm">
         <Container>

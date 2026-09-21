@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Pergola Forms, Screens, Lighting & Heating',
+  title: 'Pitched, Gable & Box Pergolas',
   description:
-    'Compare four custom pergola forms plus screens, blinds, lighting and heating. See built Sanctuary projects, honest trade-offs and what your site needs to resolve.',
+    'Find your Sanctuary pergola. Compare Pitched, Gable and Box rooflines, then personalise your size, roofing and sides. Explore built projects and integrated options.',
   alternates: { canonical: '/products' },
   openGraph: {
     url: '/products',

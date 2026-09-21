@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { AmbientLight, DirectionalLight } from 'three';
 import { useNightAmount } from './DayNightTransition';
 
-export default function PreviewLighting({ studio = false, review = false }: { studio?: boolean; review?: boolean }) {
+export default function PreviewLighting({ studio = false, review = false, reducedDetail = false }: { studio?: boolean; review?: boolean; reducedDetail?: boolean }) {
   const amount = useNightAmount();
   const ambient = useRef<AmbientLight>(null);
   const sun = useRef<DirectionalLight>(null);
@@ -20,7 +20,7 @@ export default function PreviewLighting({ studio = false, review = false }: { st
   }, -1);
   return <>
     <ambientLight ref={ambient} intensity={.65} />
-    <directionalLight castShadow={studio} shadow-mapSize={[2048,2048]} shadow-camera-left={-12000} shadow-camera-right={12000} shadow-camera-top={12000} shadow-camera-bottom={-12000} shadow-camera-near={100} shadow-camera-far={40000} shadow-bias={-.0002} shadow-normalBias={6} shadow-radius={review ? 6 : 4} ref={sun} position={studio ? [-3000,6000,8000] : [3500,4500,8000]} intensity={2.2} color="#fff8ed" />
+    <directionalLight castShadow={studio} shadow-mapSize={reducedDetail ? [1024,1024] : [2048,2048]} shadow-camera-left={-12000} shadow-camera-right={12000} shadow-camera-top={12000} shadow-camera-bottom={-12000} shadow-camera-near={100} shadow-camera-far={40000} shadow-bias={-.0002} shadow-normalBias={6} shadow-radius={review ? 6 : 4} ref={sun} position={studio ? [-3000,6000,8000] : [3500,4500,8000]} intensity={2.2} color="#fff8ed" />
     <directionalLight ref={fill} position={[-4000, -2000, 5000]} intensity={1.15} color="#e4edf3" />
     <directionalLight ref={moon} position={[3000, -2000, 8000]} intensity={0} color="#adc2dc" />
     {/* Capture once and fade its contribution; toggles never rebuild the environment. */}

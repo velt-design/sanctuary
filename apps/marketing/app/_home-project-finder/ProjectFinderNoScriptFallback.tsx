@@ -2,8 +2,10 @@ import Link from 'next/link';
 import styles from './projectFinderHomepage.module.css';
 
 const fallbackPaths = [
-  { href: '/simple-pergolas-auckland', label: 'Simple cover' },
-  { href: '/custom-pergolas-auckland', label: 'Custom design' },
+  { href: '/products/pergolas/pitched', label: 'Pitched pergola' },
+  { href: '/products/pergolas/gable', label: 'Gable pergola' },
+  { href: '/products/pergolas/box-perimeter', label: 'Box pergola' },
+  { href: '/custom-pergolas-auckland', label: 'Bespoke design' },
 ] as const;
 
 const professionalFallbackPaths = [
@@ -24,13 +26,13 @@ export default function ProjectFinderNoScriptFallback({
         className={styles.noScript}
         aria-labelledby="project-finder-no-script-heading"
       >
-        <p className={styles.eyebrow}>Find your starting point</p>
+        <p className={styles.eyebrow}>Made for your home</p>
         <h2 id="project-finder-no-script-heading">
-          Choose the path that best fits your project.
+          Find your pergola.
         </h2>
         <p>
-          The visual finder needs JavaScript. You can still explore each
-          project pathway or start an enquiry directly.
+          Interactive estimates need JavaScript. Explore our pergolas,
+          discuss a bespoke design or start an enquiry directly.
         </p>
         <ul>
           {fallbackPaths.map((path) => (

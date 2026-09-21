@@ -165,7 +165,7 @@ for (const viewport of viewports) {
     const main = page.locator('main[data-homepage-variant="project_finder_home_v2"]');
     await expect(main.getByRole('heading', { level: 1, name: 'Outdoor spaces designed around the way you live.' })).toBeVisible();
     await expect(main.locator('[data-homepage-hero-arrow="continue"]')).toHaveAttribute('data-project-finder-event', 'project_finder_start_click');
-    await expect(main.getByRole('heading', { name: 'Which starting point best describes your project?' })).toBeAttached();
+    await expect(main.getByRole('heading', { name: 'Find your pergola.' })).toBeAttached();
     await expect(main.getByRole('radio')).toHaveCount(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });

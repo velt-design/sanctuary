@@ -35,5 +35,5 @@ export function roofFinishDescription(roof: PreviewRoofChoices) {
   const f = getRoofFinish(roof);
   if (f.material === 'acrylic') return 'Acrylic roof';
   return `${f.profile === 'tray' ? `Tray ${f.trayWidth} mm` : f.profile === 'trapezoidal' ? 'Trapezoidal' : 'Corrugated'} Colorsteel · ${f.ceiling?.startsWith('thermopine') ? 'ThermoPine' : 'Cedar'} ceiling${f.ceiling ? ' · ' + f.ceiling.split('-')[1] + ' mm boards' : ''}`
-    + (f.material === 'combination' ? ` · ${f.layout === 'central' ? 'Central' : 'House-side'} skylight · ${f.acrylicBays} acrylic ${f.acrylicBays === 1 ? 'bay' : 'bays'}` : '');
+    + (f.material === 'combination' ? ` · ${f.layout === 'central' ? 'Central skylight · equal thirds' : 'House-side skylight · equal halves'}` : '');
 }

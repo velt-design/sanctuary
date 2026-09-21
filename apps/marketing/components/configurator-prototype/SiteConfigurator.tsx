@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { isConfiguratorEntry, OPEN_CONFIGURATOR_EVENT, rememberConfiguratorSource } from './configuratorOverlay';
+import { rememberConfiguratorReturn, restoreConfiguratorScroll } from './configuratorReturn';
 const Dialog = dynamic(() => import('./ConfiguratorDialog'), { ssr: false });
 
 export default function SiteConfigurator() {
@@ -10,6 +11,7 @@ export default function SiteConfigurator() {
   const [open, setOpen] = useState(false);
   const [visited, setVisited] = useState(false);
   useEffect(() => { setOpen(false); setVisited(false); }, [pathname]);
+  useEffect(() => restoreConfiguratorScroll(), [pathname]);
   useEffect(() => {
     const show = () => { setVisited(true); setOpen(true); };
     const click = (event: MouseEvent) => {
@@ -17,6 +19,7 @@ export default function SiteConfigurator() {
       const link = event.target instanceof Element ? event.target.closest('a') : null;
       if (!link || link.target || link.hasAttribute('download')) return;
       const destination = new URL(link.href);
+      rememberConfiguratorReturn(destination);
       if (window.location.pathname === '/design-enquiry' && destination.origin === window.location.origin
         && destination.pathname === '/design-enquiry' && link.closest('dialog[open]')) {
         event.preventDefault(); event.stopPropagation(); setOpen(false);

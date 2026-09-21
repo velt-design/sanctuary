@@ -18,7 +18,7 @@ const subscribe = (notify: () => void) => {
 const currentRoof = () => new URLSearchParams(window.location.search).get('roof') ?? 'acrylic';
 const serverRoof = () => 'acrylic';
 
-export default function RoofApproaches({ options }: { options: string[] }) {
+export default function RoofApproaches({ options, designHref }: { options: string[]; designHref?: string }) {
   const requested = useSyncExternalStore(subscribe, currentRoof, serverRoof);
   const index = Math.max(0, references.findIndex(item => item.id === requested));
   const selected = references[index];
@@ -29,7 +29,7 @@ export default function RoofApproaches({ options }: { options: string[] }) {
   return <div className={styles.roofGrid}>
     <div className={styles.roofControls}><noscript><style>{`.${styles.roofOptions}{display:none}`}</style><p>Roof approaches</p><ul className={styles.staticOptions}>{options.map(option => <li key={option}>{option}</li>)}</ul></noscript><fieldset className={styles.roofOptions}><legend>Compare roof approaches</legend>{references.map((item, itemIndex) => <label key={item.id}><input type="radio" aria-label={`0${itemIndex + 1} ${item.label}: ${item.emphasis}`} name="roof-approach" checked={selected.id === item.id} onChange={() => change(item.id)} /><span className={styles.optionNumber}>0{itemIndex + 1}</span><span>{item.label}<small>{item.emphasis}</small></span><span aria-hidden="true">{selected.id === item.id ? '✓' : '+'}</span></label>)}</fieldset></div>
       <div className={styles.roofCopy} aria-live="polite" aria-atomic="true"><p>{selected.label} roofing</p><Text>{selectedCopy}</Text></div>
-      <div className={styles.roofCaveat}><Text size="small">Explore the approaches here. Roofing, structure and suitability are confirmed for your site before specification.</Text></div>
+      <div className={styles.roofCaveat}><Text size="small">{designHref ? <>These photographs compare materials; they do not change your design or estimate. <a href={designHref}>Choose your roof in your design above.</a></> : 'Explore the approaches here. Roofing, structure and suitability are confirmed for your site before specification.'}</Text></div>
     <div key={selected.id} className={styles.roofImage}><Figure image={selected.image} alt={selected.alt} caption={selected.caption} ratio="standard" sizes="(max-width: 760px) 100vw, 50vw" /><p className={styles.imageNote}>Material reference · each project is individually specified</p></div>
   </div>;
 }

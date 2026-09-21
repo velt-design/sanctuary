@@ -118,7 +118,8 @@ async function projectFinderEvents(page: Page) {
 }
 
 async function selectDirection(page: Page, direction: string) {
-  await page.locator(`[data-project-direction="${direction}"]`).click();
+  if (direction === 'cover') await page.goto('/?project=cover');
+  else await page.locator(`[data-project-direction="${direction}"]`).click();
   if (direction === 'commercial-professional') {
     await expect(page.locator('[data-professional-path-chooser]')).toBeVisible();
     return;
@@ -205,19 +206,15 @@ test('project finder is the indexable live homepage and the prototype URL redire
     'href',
     '/contact?enquiry_type=residential&source_path=%2F&source_component=footer&source_experience=project-finder-home-v1#contact-form',
   );
-  await expect(page.locator('[data-project-direction]')).toHaveCount(3);
-  await expect(page.getByRole('radio', { name: /Design your pergola/ })).toBeVisible();
-  await expect(page.getByRole('radio', { name: /Custom design/ })).toBeVisible();
-  await expect(page.getByRole('radio', { name: /Commercial \/ Professional/ }))
-    .toBeVisible();
+  await expect(page.locator('[data-product-type]')).toHaveCount(3);
+  await expect(page.getByRole('link', { name: 'Explore Pitched' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Bespoke design/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Commercial & professionals/ })).toBeVisible();
   await expect(page.locator('[data-professional-path-chooser]')).toHaveCount(0);
-  await expect(page.locator('[data-project-direction] img')).toHaveCount(3);
+  await expect(page.locator('[data-product-type] img')).toHaveCount(3);
   await expect(page.getByRole('heading', { name: 'A few spaces we’ve built.' })).toBeVisible();
   await expect(page.locator('[data-project-evidence]')).toHaveCount(2);
-  await expect(page.locator('[data-project-evidence="dairy-flat-estate"] a')).toHaveAttribute('href', '/projects/dairy-flat-estate');
-  await expect(page.locator('[data-project-direction="cover"]')).toContainText('Start designing');
-  await expect(page.locator('[data-project-direction] img').first())
-    .toHaveAttribute('loading', 'lazy');
+  await expect(page.locator('[data-product-type] img').first()).toHaveAttribute('loading', 'lazy');
   await expect(page.getByRole('img', {
     name: 'Interior outdoor room with cedar ceiling, pendant lighting and lounge seating',
   }).first()).toHaveAttribute('fetchpriority', 'high');
@@ -250,7 +247,7 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await continueArrow.click();
   await expect(page.getByRole('heading', {
     level: 2,
-    name: 'Which starting point best describes your project?',
+    name: 'Find your pergola.',
   })).toBeInViewport();
   await expect(header).toHaveAttribute('data-hero-navigation', 'solid');
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'auto' }));
@@ -433,25 +430,14 @@ test('mobile art direction and native scrolling follow the automatic story revea
   await page.mouse.wheel(0, 900);
   const finderHeading = page.getByRole('heading', {
     level: 2,
-    name: 'Which starting point best describes your project?',
+    name: 'Find your pergola.',
   });
   await expect(finderHeading).toBeInViewport();
 
-  const primaryDirections = page.locator('[data-project-direction]');
-  await expect(primaryDirections).toHaveCount(3);
-  await expect(primaryDirections.locator('img')).toHaveCount(3);
-  await expect(page.locator('[data-project-direction="cover"] img')).toBeVisible();
-  expect(await page.locator('[data-project-direction]:not([data-project-direction="cover"]) img').evaluateAll((images) => (
-    images.every((image) => image.getClientRects().length === 0)
-  ))).toBe(true);
-  const simpleCoverTitle = page.getByRole('radio', { name: /Design your pergola/ })
-    .locator('strong');
-  const optionTitleSize = await simpleCoverTitle.evaluate((element) => (
-    Number.parseFloat(getComputedStyle(element).fontSize)
-  ));
-  expect(optionTitleSize).toBeGreaterThanOrEqual(36);
-
-  await page.getByRole('radio', { name: /Commercial \/ Professional/ }).click();
+  await expect(page.locator('[data-product-type]')).toHaveCount(3);
+  await expect(page.locator('[data-product-type] img')).toHaveCount(3);
+  await expect(page.getByRole('link', { name: 'Compare pergolas' })).toBeVisible();
+  await page.getByRole('button', { name: /^Commercial & professionals/ }).click();
   await expect(page.locator('[data-professional-path]').first().locator('img'))
     .toBeVisible();
   await expectNoHorizontalOverflow(page);
@@ -590,7 +576,7 @@ test('the production finder stays within its repeatable interaction and layout b
       }
     ).__projectFinderPerformance;
     const control = document.querySelector<HTMLButtonElement>(
-      '[role="radio"][data-project-direction="bespoke"]',
+      'button[data-project-direction="bespoke"]',
     );
     const finder = document.querySelector(
       '[data-project-finder-interactive]',
@@ -665,19 +651,14 @@ test('the two residential directions give one useful pathway and two governed re
   }
 });
 
-test('Design your pergola opens the full designer directly', async ({
-  page,
-}) => {
+test('homepage roofline opens its product page and returns to the range', async ({ page }) => {
   await setAnalyticsConsent(page, false);
   await page.goto('/');
-  await page.locator('[data-project-direction="cover"]').click();
-  const designer = page.getByRole('dialog', { name: 'Design your pergola', exact: true });
-  await expect(designer).toBeVisible();
-  await expect(designer.getByRole('heading', { name: 'Size & shape', exact: true })).toBeVisible();
-  await expect(designer.getByRole('button', {name: '3D', exact: true})).toBeVisible();
-  await designer.getByRole('button', { name: 'Close configurator', exact: true }).click();
-  await expect(designer).not.toBeVisible();
-  await expect(page.locator('[data-project-direction="cover"]')).toBeFocused();
+  await page.getByRole('link', { name: 'Explore Gable' }).click();
+  await expect(page).toHaveURL(/products\/pergolas\/gable/);
+  await expect(page.getByRole('heading', { name: 'Gable pergola.', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('link', { name: 'Explore Gable' })).toBeVisible();
 });
 
 test('commercial and professional choices reveal tailored results and evidence', async ({
@@ -882,11 +863,10 @@ test('URL state is canonical, refreshable and restored by browser history', asyn
   await expect(page).toHaveURL(/project=bespoke$/);
   await page.goBack();
   await expect(page).toHaveURL(/project=cover$/);
-  await expect(page.locator('button[data-project-direction="cover"]'))
-    .toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
   await page.goForward();
   await expect(page.locator('button[data-project-direction="bespoke"]'))
-    .toHaveAttribute('aria-checked', 'true');
+    .toHaveAttribute('aria-expanded', 'true');
   await page.reload();
   await expect(page.locator('[data-project-finder-result="bespoke"]')).toBeVisible();
 
@@ -913,18 +893,16 @@ test('URL state is canonical, refreshable and restored by browser history', asyn
   await expect(page.locator('[data-professional-path-chooser]')).toBeVisible();
 });
 
-test('keyboard selection uses roving radio behavior and predictable focus', async ({
+test('keyboard pathways use ordinary buttons and preserve predictable result focus', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
   await page.goto('/');
-  const cover = page.locator('[data-project-direction="cover"]');
-  await cover.focus();
-  await cover.press('ArrowDown');
+  await page.getByRole('button', { name: /^Bespoke design/ }).press('Enter');
   await expect(page).toHaveURL(/project=bespoke$/);
   await expect(page.locator('button[data-project-direction="bespoke"]'))
-    .toHaveAttribute('aria-checked', 'true');
+    .toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('heading', {
     level: 2,
     name: 'Custom pergola design',
@@ -933,7 +911,8 @@ test('keyboard selection uses roving radio behavior and predictable focus', asyn
 
   const bespoke = page.locator('button[data-project-direction="bespoke"]');
   await bespoke.focus();
-  await bespoke.press('ArrowDown');
+  await bespoke.press('Tab');
+  await page.getByRole('button', { name: /^Commercial & professionals/ }).press('Enter');
   await expect(page).toHaveURL(/project=commercial-professional$/);
   await expect(page.getByRole('heading', {
     level: 2,
@@ -1078,9 +1057,9 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
   })).toBeVisible();
   await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('[data-project-finder-interactive]')).toBeHidden();
-  await expect(page.getByRole('link', { name: 'Simple cover' }))
-    .toHaveAttribute('href', '/simple-pergolas-auckland');
-  await expect(page.getByRole('link', { name: 'Custom design' }))
+  await expect(page.getByRole('link', { name: 'Pitched pergola' }))
+    .toHaveAttribute('href', '/products/pergolas/pitched');
+  await expect(page.getByRole('link', { name: 'Bespoke design' }))
     .toHaveAttribute('href', '/custom-pergolas-auckland');
   await expect(page.getByRole('link', { name: 'Extending a Venue' }))
     .toHaveAttribute('href', '/commercial-pergolas-auckland');
@@ -1091,7 +1070,7 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
   await context.close();
 });
 
-test('direction cards stay compact on mobile and avoid narrow tablet columns', async ({
+test('homepage products stack on mobile and align in columns on tablet', async ({
   page,
 }) => {
   await setAnalyticsConsent(page, false);
@@ -1100,21 +1079,16 @@ test('direction cards stay compact on mobile and avoid narrow tablet columns', a
 
   for (const width of [320, 390, 430]) {
     await page.setViewportSize({ width, height: 900 });
-    const cards = await page.locator('[data-project-direction]').evaluateAll((elements) => (
-      elements.map((element) => {
-        const card = element.getBoundingClientRect();
-        const image = element.querySelector('img')?.getBoundingClientRect();
-        return { direction: element.getAttribute('data-project-direction'), cardHeight: card.height, imageWidth: image?.width ?? 0 };
-      })
-    ));
+    const cards = await page.locator('[data-product-type]').evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      const image = element.querySelector('img')!.getBoundingClientRect();
+      return { width: rect.width, height: rect.height, imageWidth: image.width };
+    }));
+    expect(cards).toHaveLength(3);
     for (const card of cards) {
-      if (card.direction === 'cover') {
-        expect(card.cardHeight).toBeLessThan(450);
-        expect(card.imageWidth).toBeGreaterThan(200);
-      } else {
-        expect(card.cardHeight).toBeLessThan(230);
-        expect(card.imageWidth).toBeLessThanOrEqual(116);
-      }
+      expect(card.height).toBeLessThan(520);
+      expect(card.imageWidth).toBeGreaterThan(80);
+      expect(card.imageWidth).toBeLessThan(card.width / 2);
     }
     if (width === 320) {
       const proofTop = await page.locator('[aria-label="Why Sanctuary"]')
@@ -1126,16 +1100,13 @@ test('direction cards stay compact on mobile and avoid narrow tablet columns', a
 
   for (const width of [768, 900]) {
     await page.setViewportSize({ width, height: 1024 });
-    const cards = await page.locator('[data-project-direction]').evaluateAll((elements) => (
-      elements.map((element) => {
-        const rect = element.getBoundingClientRect();
-        return { width: rect.width, height: rect.height };
-      })
-    ));
-    for (const card of cards) {
-      expect(card.width).toBeGreaterThan(width * .75);
-      expect(card.height).toBeLessThan(320);
-    }
+    const cards = await page.locator('[data-product-type]').evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, top: rect.top };
+    }));
+    expect(cards).toHaveLength(3);
+    expect(new Set(cards.map(card => Math.round(card.top))).size).toBe(1);
+    for (const card of cards) expect(card.width).toBeGreaterThan(180);
     await expectNoHorizontalOverflow(page);
   }
 

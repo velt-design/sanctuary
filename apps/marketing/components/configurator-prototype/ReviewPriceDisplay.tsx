@@ -1,3 +1,4 @@
+import { formatEstimate } from '../../lib/estimateDisplay';
 import type { ReviewPrice } from '../../lib/configuratorReviewPrice';
 
 import styles from './prototype.module.css';
@@ -11,7 +12,7 @@ export default function ReviewPriceDisplay({ value, expanded = false, part = 'al
   return <>
     {part !== 'details' && <>
     <p className={styles.eyebrow}>{expanded ? 'DRAFT PRICE' : 'DRAFT PRICE · OWNER REVIEW'}</p>
-    <p className={styles.priceValue}>{reviewMoney(value.amount)}</p>
+    <p className={styles.priceValue}>{formatEstimate(value.amount)}</p>
     <p className={styles.small}>Including GST · {value.excluded.length ? 'Pergola subtotal' : 'Pergola estimate'}</p>
     </>}
     {part !== 'summary' && <>
@@ -23,7 +24,7 @@ export default function ReviewPriceDisplay({ value, expanded = false, part = 'al
       <dl>{value.breakdown.map((line,index)=><div key={index} style={{padding:'12px 0',borderBottom:'1px solid currentColor'}}>
         <dt style={{display:'flex',justifyContent:'space-between',gap:16}}><span>{line.label}{line.provisional?' · provisional':''}</span><strong>{reviewMoney(line.amount)}</strong></dt>
         <dd className={styles.small} style={{margin:'6px 0 0'}}>{expanded ? <details><summary>Allowance details</summary>{line.detail}</details> : line.detail}</dd>
-      </div>)}</dl>
+      </div>)}</dl><p className={styles.small}>Estimate total rounded to the nearest $5.</p>
     </Breakdown>}
     {!expanded && <p className={styles.small}>{value.basis}. This is a review estimate, not a published quote.</p>}
   </>}</>;

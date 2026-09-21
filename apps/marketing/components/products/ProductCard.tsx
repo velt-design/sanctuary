@@ -1,54 +1,21 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import type { ProductRecord } from '@/data/products';
-import styles from './product-pages.module.css';
+import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
+import { Heading } from '../marketing-foundation/Primitives';
+import { PRODUCT_DESIGNS, type ProductDesignType } from './productDesigns';
+import ProductExamplePrice from './ProductExamplePrice';
+import styles from './product-hub.module.css';
 
-type ProductCardProps = {
-  product: ProductRecord;
-  priority?: boolean;
-  compact?: boolean;
-  number?: number;
-};
+type ProductCardProps = { type: ProductDesignType; title: string; description: string; connection: string; priority?: boolean; compact?: boolean };
 
-export default function ProductCard({
-  product,
-  priority = false,
-  compact = false,
-  number,
-}: ProductCardProps) {
-  return (
-    <article className={compact ? styles.productCardCompact : styles.productCard}>
-      <Link
-        href={product.route}
-        className={styles.productCardLink}
-        aria-label={`Explore ${product.name}`}
-      >
-        <div className={styles.productCardMedia}>
-          <Image
-            src={product.hero.src}
-            alt={product.hero.alt}
-            fill
-            priority={priority}
-            sizes={
-              compact
-                ? '(max-width: 640px) 112px, (max-width: 1100px) 50vw, 33vw'
-                : '(max-width: 720px) 100vw, 50vw'
-            }
-            style={{ objectPosition: product.hero.objectPosition }}
-          />
-          {number ? (
-            <span className={styles.productCardIndex} aria-hidden="true">
-              {String(number).padStart(2, '0')}
-            </span>
-          ) : null}
-        </div>
-        <div className={styles.productCardBody}>
-          <p className={styles.productCardGroup}>{product.categoryLabel}</p>
-          <h3 className={styles.productCardTitle}>{product.name}</h3>
-          <p className={styles.productCardSummary}>{product.indexSummary}</p>
-          <span className={styles.productCardAction}>Explore this choice</span>
-        </div>
-      </Link>
-    </article>
-  );
+export default function ProductCard({ type, title, description, connection, priority = false, compact = false }: ProductCardProps) {
+  return <article className={`${styles.card} ${compact ? styles.compactCard : ''}`} data-product-type={type}>
+    <div className={styles.image}><Image src={`/images/portrait-roofline-trial/${PRODUCT_DESIGNS[type].imageFamily}-${type === 'gable' ? 'v1' : 'v2'}.webp`} alt={`${title} pergola illustration, attached to a house with acrylic roofing and open sides`} width={1120} height={1400} sizes="(max-width:760px) 100vw, 33vw" priority={priority}/><span>Design illustration</span></div>
+    <div className={styles.body}>
+      <Heading as={compact ? 'h3' : 'h2'} variant="card">{title}</Heading><p className={styles.description}>{description}</p>
+      <div className={styles.spec}><span>6 × 3 m example</span><span>Acrylic roof · Open sides</span><small>{connection} · Ground level</small></div>
+      <ProductExamplePrice type={type}/>
+      <Link className={styles.explore} href={`/products/pergolas/${type}`}>Explore {title} <ArrowUpRight/></Link>
+    </div>
+  </article>;
 }

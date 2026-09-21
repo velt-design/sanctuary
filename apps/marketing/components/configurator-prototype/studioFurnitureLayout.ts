@@ -5,6 +5,12 @@ type Post = { x: number; y: number; radius: number };
 export const FURNITURE_AISLE = 650;
 const edge = 150;
 const kinds = Object.keys(furnitureCatalog) as FurnitureKind[];
+export function furnitureFits(item: FurniturePlacement, extents: Bounds, posts: Post[]) {
+  const b = item.bounds;
+  return b.minX >= extents.minX + edge - .001 && b.maxX <= extents.maxX - edge + .001
+    && b.minY >= extents.minY + FURNITURE_AISLE - .001 && b.maxY <= extents.maxY - edge + .001
+    && !posts.some(p => p.x + p.radius + 100 > b.minX && p.x - p.radius - 100 < b.maxX && p.y + p.radius + 100 > b.minY && p.y - p.radius - 100 < b.maxY);
+}
 function footprint(kind: FurnitureKind, rotated: boolean) {
   const [w,d] = furnitureCatalog[kind].size;
   return rotated ? [d,w] : [w,d];
@@ -18,7 +24,7 @@ export function studioFurnitureLayout(extents: Bounds, posts: Post[] = [], prefe
   const inner={minX:extents.minX+edge,maxX:extents.maxX-edge,minY:extents.minY+FURNITURE_AISLE,maxY:extents.maxY-edge};
   const w=inner.maxX-inner.minX,d=inner.maxY-inner.minY;
   const candidates: {items:FurniturePlacement[];score:number}[]=[];
-  const fits=({bounds:b}:FurniturePlacement)=>b.minX>=inner.minX-.001&&b.maxX<=inner.maxX+.001&&b.minY>=inner.minY-.001&&b.maxY<=inner.maxY+.001&&!posts.some(p=>p.x+p.radius+100>b.minX&&p.x-p.radius-100<b.maxX&&p.y+p.radius+100>b.minY&&p.y-p.radius-100<b.maxY);
+  const fits=(item:FurniturePlacement)=>furnitureFits(item,extents,posts);
   const add=(items:FurniturePlacement[])=>{
     if(!items.every(fits))return;
     // A casual bench place is useful, but should not displace more comfortable

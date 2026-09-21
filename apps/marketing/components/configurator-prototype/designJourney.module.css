@@ -26,14 +26,16 @@
 @media(max-width:720px){.overview{padding:14px 18px}.overview>.eyebrow{display:none}.overview h2{font-size:23px;margin:0 0 6px}.overview>p{font-size:12px;margin:6px 0 12px}.cards{gap:8px;margin:12px 0}.cards button{padding:12px 14px;gap:5px}.cards strong{font-size:14px}.cards .selection{font-size:12px;padding-left:38px}.cards .cardBenefit{display:none}.cards small{font-size:10px;padding-left:38px}.overview .note{font-size:11px;margin-top:12px}.review{padding:18px}.review h2{font-size:23px}.row{padding:12px 0}.row p{font-size:12px}}
 
 .reviewSettings summary{font-size:11px;min-height:32px;cursor:pointer;color:var(--color-text-secondary);padding:8px 0}.reviewSettings p{margin-top:4px!important}@media(max-width:720px){.reviewSettings summary{min-height:44px}}
-.estimate .draftNote{color:#979a94;font:inherit;font-size:85%;letter-spacing:inherit;margin-left:.08em}
+.estimate .draftNote{display:block;color:var(--color-text-secondary);font:500 10px/1.4 var(--font-body);letter-spacing:.08em;margin-top:4px}
 
 .estimate{container-type:inline-size;container-name:estimate-price}
-@container estimate-price (max-width:340px){.draftNote{display:none}}
 
-.estimate .priceLink strong:has(.draftNote){display:flex;align-items:center;white-space:nowrap}
+
+.estimate .priceLink strong:has(.draftNote){display:block;white-space:normal}
 
 @media (min-width: 1001px) {
+  /* Loading, draft and tailored-price states share a stable viewer boundary. */
+  .estimate .priceLink { min-height: 64px; display: flex; align-items: center; }
   .review, .overview { padding: 28px; }
   .overview h2, .review h2 { font-size: 32px; line-height: 1.12; font-weight: 450; letter-spacing: -.045em; margin: 10px 0 16px; }
   .overview > p, .review p { font-size: 13px; line-height: 1.65; }
@@ -69,3 +71,5 @@
  --color-text-subtle:var(--theme-selected-subtle,#5f635c);
  color:var(--color-text-primary);
 }
+
+.next {display:flex;align-items:center;justify-content:space-between;background:var(--color-text-primary);border-color:var(--color-text-primary);color:var(--color-canvas);font-size:16px}.next svg {width:24px;height:24px}

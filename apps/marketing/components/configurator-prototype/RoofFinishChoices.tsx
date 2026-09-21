@@ -1,4 +1,4 @@
-import { roofFinishBayLimit, type RepresentativeRoofFinish } from '@sp/geometry';
+import { type RepresentativeRoofFinish } from '@sp/geometry';
 import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import type { PreviewRoofChoices } from './GableChoices';
 import { allowsHouseBand, getRoofFinish } from './roofFinish';
@@ -7,10 +7,9 @@ import finishStyles from './roofFinish.module.css';
 import ui from './sectionControls.module.css';
 import {RoofMaterialDiagram} from './DesignIllustrations';
 
-export default function RoofFinishChoices({ roof, input, onChange, hideMaterial = false }: { hideMaterial?: boolean; roof: PreviewRoofChoices; input: SimpleCoverInput; onChange: (roof: PreviewRoofChoices) => void }) {
+export default function RoofFinishChoices({ roof, onChange, hideMaterial = false }: { hideMaterial?: boolean; roof: PreviewRoofChoices; input: SimpleCoverInput; onChange: (roof: PreviewRoofChoices) => void }) {
   const finish = getRoofFinish(roof);
   const change = (patch: Partial<RepresentativeRoofFinish>) => onChange({ ...roof, finish: { ...finish, ...patch } });
-  const max = roofFinishBayLimit(input.widthMm, input.projectionMm, roof.family, roof.orientation);
   return <div className={finishStyles.controls}>
     <fieldset hidden={hideMaterial} className={`${styles.choices} ${ui.material}`}><legend>Roof material</legend>
       {(['acrylic', 'solid', 'combination'] as const).map(material => <label key={material} data-selected={finish.material === material}>
@@ -42,12 +41,7 @@ export default function RoofFinishChoices({ roof, input, onChange, hideMaterial 
         {(['central', ...(allowsHouseBand(roof) ? ['house'] : [])] as ('central' | 'house')[]).map(layout => <label key={layout} data-selected={finish.layout === layout}>
           <input type="radio" name="skylight-layout" checked={finish.layout === layout} onChange={() => change({ layout })} />{layout === 'central' ? 'Central band' : 'House-side band'}</label>)}
       </fieldset>
-      <div className={finishStyles.bays}><span>Skylight width · roof bays</span><div role="group" aria-label="Skylight bays">
-        <button type="button" aria-label="Remove acrylic bay" disabled={finish.acrylicBays <= 1} onClick={() => change({ acrylicBays: finish.acrylicBays - 1 })}>−</button>
-        <output aria-live="polite">{finish.acrylicBays}</output>
-        <button type="button" aria-label="Add acrylic bay" disabled={finish.acrylicBays >= max} onClick={() => change({ acrylicBays: finish.acrylicBays + 1 })}>+</button>
-      </div></div>
-      <p className={styles.small}>{finish.layout === 'central' ? 'The band stays centred as you add bays.' : 'The band grows outward from the house.'} {roof.family === 'gable' ? 'Each bay continues across both roof slopes.' : ''}</p>
+      <p className={styles.small}>{finish.layout === 'central' ? 'Three equal sections: solid, acrylic, solid.' : 'Two equal sections: acrylic beside the house, solid towards the garden.'} The proportions stay the same as you resize.</p>
     </div>}
   </div>;
 }

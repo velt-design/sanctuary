@@ -17,6 +17,16 @@ function render(element: React.ReactNode) {
 }
 
 describe('decision support journey boundaries', () => {
+  it('returns product selections to their own handoff instead of opening an unrelated saved designer', () => {
+    const host = render(<DesignNextSteps sourcePath="/products/pergolas/pitched" sourceProduct="pitched" selectionHref="#your-pitched-pergola" />);
+    const links = Array.from(host.querySelectorAll('a'));
+    expect(links[0].getAttribute('href')).toBe('#your-pitched-pergola');
+    expect(links[0].textContent).toContain('Return to your design');
+    expect(links[0].hasAttribute('data-journey-destination')).toBe(false);
+    expect(links[1].getAttribute('href')).toContain('source_product=pitched');
+    expect(links[1].getAttribute('href')).toContain('enquiry_intent=bespoke');
+  });
+
   it('keeps product help context while opening the existing unseeded designer', () => {
     const host = render(<DesignNextSteps sourcePath="/products/pergolas/gable" sourceProduct="gable" />);
     const links = Array.from(host.querySelectorAll('a'));
@@ -44,9 +54,9 @@ describe('decision support journey boundaries', () => {
     expect(pergolaCostConfig.showDesignNextSteps).toBe(true);
   });
 
-  it('provides a linked comparison for every governed pergola form', () => {
+  it('compares the three featured pergola forms without promoting Hip', () => {
     const host = render(<ProductFormComparison />);
-    const forms = products.filter(product => product.categorySlug === 'pergolas');
+    const forms = products.filter(product => product.categorySlug === 'pergolas' && product.slug !== 'hip');
     expect(host.querySelectorAll('[role="rowheader"]')).toHaveLength(forms.length);
     for (const product of forms) expect(host.querySelector(`a[href="${product.route}"]`)).not.toBeNull();
     expect(host.querySelectorAll('[data-label="Check on your site"]')).toHaveLength(forms.length);

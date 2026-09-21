@@ -19,9 +19,9 @@ it('removes lights and their charge when batten gaps shrink, without silently re
 });
 for(const orientation of ['parallel','away'] as const)it(`only lights internal acrylic rafters, mirrored for ${orientation} gables`,()=>{
  const g=solvePergolaPreview(input,{...roof,orientation}).geometry!,sites=pergolaLightSites(g.assembly,g.covering);
- // Four acrylic bays have three internal rafters on each slope: 6 rafters,
- // two lights each. The two timber/acrylic boundary rafters are excluded.
- expect(layoutRafterLights(sites.rafters,'high')).toHaveLength(12);
+ // The central third has four bays on the 7.3m run, three on the 4m run.
+ // Material-boundary rafters are excluded; each internal rafter has two lights.
+ expect(layoutRafterLights(sites.rafters,'high')).toHaveLength(orientation==='parallel'?12:8);
  expect(layoutRafterLights(sites.rafters,'medium')).toHaveLength(8);
  expect(layoutRafterLights(sites.rafters,'low')).toHaveLength(4);
  for(const s of sites.rafters){
@@ -42,7 +42,7 @@ it('keeps batten-obstructed positions unavailable instead of fitting through tim
 for(const orientation of ['parallel','away'] as const)it(`moves lights into batten gaps and mirrors ${orientation} gables`,()=>{
  const g=solvePergolaPreview(input,{...roof,orientation,roofBattens:{profile:'65x39',edge:false,gap:65,customGap:false}}).geometry!;
  const sites=pergolaLightSites(g.assembly,g.covering),lights=layoutRafterLights(sites.rafters,'high');
- expect(lights).toHaveLength(12);
+ expect(lights).toHaveLength(orientation==='parallel'?12:8);
  const axis=orientation==='parallel'?'y':'x',along=axis==='x'?'y':'x';
  const ridge=g.assembly.members.find(m=>m.role==='ridge')!.centerline.start[axis];
  for(const s of lights)expect(lights.some(other=>other!==s&&Math.abs(other.point[axis]-(2*ridge-s.point[axis]))<.1&&Math.abs(other.point[along]-s.point[along])<.1)).toBe(true);

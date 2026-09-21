@@ -12,7 +12,7 @@ export default function DesignContinuationBar() {
   const pathname = usePathname();
   const { started, dismissed } = useDesignContinuation();
   const [pastOpening, setPastOpening] = useState(false);
-  const excluded = /^\/(design-enquiry|contact|quote|invoice|staff|api|__foundation|qa)(\/|$)/.test(pathname);
+  const excluded = /^\/products\/pergolas\/(pitched|gable|box-perimeter)\/?$/.test(pathname) || /^\/(design-enquiry|contact|quote|invoice|staff|api|__foundation|qa)(\/|$)/.test(pathname);
 
 
   useEffect(() => {

@@ -13,6 +13,7 @@ import {
 import { WARKWORTH_EXTERIOR_IMAGE, WARKWORTH_EXTERIOR_OBJECT_POSITION } from '@/lib/projectImageFraming';
 import styles from './catalogue.module.css';
 import { shouldShowMarketingFoundation } from './foundationAccess';
+import DesignControlsSpecimen from '@/components/marketing-foundation/DesignControlsSpecimen';
 
 export const metadata: Metadata = { title: 'Marketing UI Foundation', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -43,6 +44,7 @@ export default function MarketingFoundationPage() {
     <div className={styles.masthead}><Container width="wide"><div className={styles.mastheadGrid}><div><Eyebrow>Sanctuary Pergolas</Eyebrow><Heading as="h1" variant="display">Architectural Editorial UI Foundation</Heading></div><Text size="large" className={styles.summary}>A restrained, image-led system for presenting permanent outdoor architecture with clarity and technical credibility.</Text></div></Container></div>
 
     <Section tone="elevated" id="patterns"><Container width="wide"><div className={styles.sectionHead}><Heading>Navigation states</Heading><Text>The internal navigation is keyboard operable; these specimens define its solid, image-overlay, and collapsed marketing states.</Text></div><NavigationStates /></Container></Section>
+    <Section id="design-controls"><Container width="wide"><Heading>Product and design controls</Heading><Text>The mobile design journey sets the shared interaction standard.</Text><DesignControlsSpecimen/></Container></Section>
     <MarketingHero kind="homepage" />
     <Section tone="warm"><Container width="wide"><div className={styles.sectionHead}><Heading>Project hero</Heading><Text>A project-first variation leads with photography, title, location, project type, roof form, and year.</Text></div></Container><MarketingHero kind="project" /></Section>
 

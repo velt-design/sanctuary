@@ -60,7 +60,7 @@ describe('solid and combination roof preview', () => {
     expect(brief.estimate).toBeNull();
     expect(brief.roofMaterials).toEqual(['acrylic', 'timber']);
     expect(brief.description).toContain('Tray 500 mm');
-    expect(brief.description).toContain('2 acrylic bays');
+    expect(brief.description).toContain('equal thirds');
   });
   it('solid removes roof glazing but retains selected gable-end infills', () => {
     const result = solvePergolaPreview(INITIAL_INPUT, { ...INITIAL_ROOF, family: 'gable', infills: true,
@@ -80,17 +80,34 @@ describe('solid and combination roof preview', () => {
     expect(large.geometry).toBeUndefined();
     expect(large.messages[0].message).toContain('deeper perimeter');
   });
-  it('keeps house-side glazing at the house while added bays grow outwards', () => {
+  it('keeps house-side glazing at the house and splits the run equally, including old bay selections', () => {
     for (const acrylicBays of [1, 2, 3]) {
       const result = solvePergolaPreview({ ...INITIAL_INPUT, projectionMm: 5000 }, { ...INITIAL_ROOF, family: 'gable', orientation: 'away',
         finish: { ...DEFAULT_ROOF_FINISH, material: 'combination', layout: 'house', acrylicBays } });
       for (const region of result.geometry!.covering!.regions.filter(r => r.material === 'acrylic')) {
         const ys = region.boundary.map(p => p.y);
         expect(Math.min(...ys)).toBeCloseTo(25);
-        expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(620 * acrylicBays);
+        const plane = result.geometry!.assembly.roofPlanes[0];
+        const run = plane.boundary.map(p => p.y);
+        expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo((Math.max(...run) - Math.min(...run)) / 2);
       }
     }
   });
+  for (const family of ['mono', 'gable', 'box'] as const) for (const widthMm of [3000, 6000, 9000]) for (const orientation of ['parallel', 'away'] as const) {
+    it(`keeps ${family} ${orientation} ${widthMm}mm central roof sections in equal thirds`, () => {
+      const axis = family === 'gable' && orientation === 'away' ? 'y' : 'x';
+      const result = solvePergolaPreview({ ...INITIAL_INPUT, widthMm }, { ...INITIAL_ROOF, family, orientation,
+        finish: { ...DEFAULT_ROOF_FINISH, material: 'combination' } });
+      const regions = result.geometry!.covering!.regions;
+      for (let index = 0; index < result.geometry!.assembly.roofPlanes.length; index++) {
+        const spans = regions.filter(r => r.id === `skylight-${index}` || r.id.startsWith(`solid-${index}-`))
+          .map(r => Math.max(...r.boundary.map(p => p[axis])) - Math.min(...r.boundary.map(p => p[axis])));
+        expect(spans).toHaveLength(3);
+        expect(spans[0]).toBeCloseTo(spans[1]);
+        expect(spans[1]).toBeCloseTo(spans[2]);
+      }
+    });
+  }
   it.each([null, { ...DEFAULT_ROOF_FINISH, profile: ['tray'] }, { ...DEFAULT_ROOF_FINISH, acrylicBays: Infinity },
     { ...DEFAULT_ROOF_FINISH, trayWidth: 350 }])('rejects malformed finish choices', finish => {
     expect(parsePreviewDraft({ version: 1, input: INITIAL_INPUT, roof: { ...INITIAL_ROOF, finish } })).toBeNull();

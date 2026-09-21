@@ -1,12 +1,14 @@
 import { Soft, Leg, LoungeChair } from './StudioFurniturePieces';
-import { useRef } from 'react';
+import { memo, useLayoutEffect, useRef } from 'react';
+import { useThree } from '@react-three/fiber';
 import type { Group } from 'three';
 import { useStudioFurnitureEvidence } from './useStudioFurnitureEvidence';
 import StudioFurnitureAdditions from './StudioFurnitureAdditions';
 import StudioContactShadow from './StudioContactShadow';
 import Chair from './StudioDiningChair';
 import type { GeometryPlanViewModel } from '@sp/geometry';
-import { studioFurnitureLayout } from './studioFurnitureLayout';
+import type { FurniturePlacement } from './studioFurnitureLayout';
+import { useFurnitureLayout } from './useFurnitureLayout';
 
 const frame = '#292b29', fabric = '#ded8ca', stone = '#b5afa2';
 function Lounge() {
@@ -73,12 +75,17 @@ function Dining() {
     {[-1,1].flatMap(side => [-700,0,700].map(x => <group key={`${side}-${x}`} position={[x,side*830,0]} rotation={[0,0,side===1?0:Math.PI]}><Chair/></group>))}
   </group>;
 }
+const FurniturePiece = memo(function FurniturePiece({ kind }: { kind: FurniturePlacement['kind'] }) {
+  return kind==='lounge'?<Lounge/>:kind==='dining'?<Dining/>:kind==='bistro'?<Bistro/>:kind==='compact'||kind==='small-lounge'?<CompactLounge chair={kind==='small-lounge'}/>:<StudioFurnitureAdditions kind={kind}/>;
+});
 export default function StudioFurniture({ plan, floor }: { plan: GeometryPlanViewModel; floor: number }) {
   const root=useRef<Group>(null);
   const choice = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('furniture') : null;
-  const layout = studioFurnitureLayout(plan.extents, plan.members.posts.map(p => ({ x:p.centerline.start.x, y:p.centerline.start.y, radius:p.profile.widthMm/2 })), choice === 'social' || choice === 'mixed' ? choice : undefined);
+  const layout = useFurnitureLayout(plan, choice === 'social' || choice === 'mixed' ? choice : undefined);
+  const { gl, invalidate } = useThree();
+  useLayoutEffect(() => { gl.shadowMap.needsUpdate = true; invalidate(); }, [layout, gl, invalidate]);
   useStudioFurnitureEvidence(root,layout);
   return <group ref={root} name="illustrative-outdoor-furniture">{layout.map((item,i) => <group key={`${item.kind}-${i}`} name={`illustrative-${item.kind}`} position={[item.x,item.y,floor+4]} rotation={[0,0,item.rotation]}>
-    {item.kind==='lounge'?<Lounge/>:item.kind==='dining'?<Dining/>:item.kind==='bistro'?<Bistro/>:item.kind==='compact'||item.kind==='small-lounge'?<CompactLounge chair={item.kind==='small-lounge'}/>:<StudioFurnitureAdditions kind={item.kind}/>}
+    <FurniturePiece kind={item.kind}/>
   </group>)}</group>;
 }
