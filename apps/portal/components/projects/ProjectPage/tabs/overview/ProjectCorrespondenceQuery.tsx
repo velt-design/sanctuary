@@ -6,6 +6,7 @@ import { correspondenceContextSchema, CORRESPONDENCE_MAX_AGE_MS, type ProjectCor
 import ProjectCorrespondenceCard from './ProjectCorrespondenceCard';
 import type { EmailProjectContext } from './projectEmailGroups';
 import { useProjectCorrespondenceWarmRead } from './ProjectCorrespondenceWarmRead';
+import { useProjectEmailReadingState } from './ProjectEmailReadingState';
 
 type ReadState = { state: 'not_connected' | 'available' | 'loading' | 'refreshing' | 'ready' | 'stale' | 'error'; context?: ProjectCorrespondenceContext };
 function evidenceState(context: ProjectCorrespondenceContext): 'ready' | 'stale' {
@@ -21,8 +22,10 @@ function oldestObservation(context: ProjectCorrespondenceContext) {
 export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding, project }: {
   projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext;
 }) {
-  // Remounting by project prevents even a one-frame display of another job's mail.
-  return <CorrespondenceRead key={projectId} projectId={projectId} onAccessEnding={onAccessEnding} project={project} />;
+  const { scope } = useProjectEmailReadingState();
+  // Only the email read remounts when customer identity hydrates or changes.
+  // Commercial editors elsewhere in the same provider must retain their drafts.
+  return <CorrespondenceRead key={JSON.stringify([projectId, scope])} projectId={projectId} onAccessEnding={onAccessEnding} project={project} />;
 }
 
 function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext }) {

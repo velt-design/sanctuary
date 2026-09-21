@@ -19,7 +19,7 @@ describe('private correspondence lifecycle', () => {
       observedAt: correspondenceFixture.observedAt, url: 'https://outlook.office.com/mail/id/reading-one',
       bodyText: 'Could you confirm the installation week? '.repeat(12), truncated: false, association: 'customer_address_only' }] };
     mocks.api.mockResolvedValueOnce({ state: 'ready', context });
-    const screen = (tab: boolean, scope = 'project-customer') => <ProjectEmailReadingProvider key={scope}>
+    const screen = (tab: boolean, scope = 'project-customer') => <ProjectEmailReadingProvider scope={scope}>
       {tab ? <ProjectCorrespondenceQuery projectId="proj_1" /> : <p>Current quote</p>}
     </ProjectEmailReadingProvider>;
     const view = renderIntoDocument(screen(true));
@@ -44,7 +44,10 @@ describe('private correspondence lifecycle', () => {
     expect(message().open).toBe(false);
     await act(async () => { message().open = true; message().dispatchEvent(new Event('toggle')); });
     mocks.api.mockResolvedValueOnce({ state: 'ready', context });
-    view.rerender(screen(true, 'different-customer')); await flush();
+    view.rerender(screen(true, 'different-customer'));
+    expect(view.container.textContent).not.toContain('Could you confirm');
+    await flush();
+    expect(mocks.api.mock.calls.map(call => call[1].method)).toEqual(['GET', 'GET', 'GET', 'GET', 'GET']);
     expect(message().open).toBe(false);
     view.unmount();
   });

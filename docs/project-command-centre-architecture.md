@@ -6,6 +6,9 @@ Within a mounted project page, `ProjectEmailReadingProvider` retains only open
 message/history identifiers and the earlier-email disclosure state across
 Overview and Commercial tabs. It is keyed to project and customer identity,
 bounded to 128 open keys, and never persists correspondence or permission data.
+Identity changes reset only the provider's disclosure state and remount the
+correspondence read. They must not remount the surrounding tab editors: project
+placeholders can hydrate customer identity while staff have unsaved drafts.
 Returning to Overview still performs the existing authorized correspondence
 read; no email text is shown while that read is pending. Unavailable access or
 connection state clears remembered disclosures. A full page reload resets them.

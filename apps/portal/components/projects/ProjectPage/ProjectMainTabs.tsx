@@ -42,7 +42,7 @@ export default function ProjectMainTabs({
       role="tabpanel"
       data-project-active-tab={activeTab}
     >
-      <ProjectEmailReadingProvider key={JSON.stringify([snapshot.project.id, snapshot.project.contactId, snapshot.project.contactEmail])}>
+      <ProjectEmailReadingProvider scope={JSON.stringify([snapshot.project.id, snapshot.project.contactId, snapshot.project.contactEmail])}>
       <div
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
