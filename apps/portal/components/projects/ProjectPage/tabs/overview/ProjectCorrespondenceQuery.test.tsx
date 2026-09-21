@@ -4,6 +4,7 @@ import { renderIntoDocument } from '../../../../../../../test/reactHarness';
 import { correspondenceFixture } from '@/app/qa/project-command-centre-fixture/correspondenceFixture';
 import { ApiError } from '@/lib/repo/apiClient';
 import ProjectCorrespondenceQuery from './ProjectCorrespondenceQuery';
+import { ProjectEmailReadingProvider } from './ProjectEmailReadingState';
 
 const mocks = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/lib/repo/apiClient', async () => ({ ...await vi.importActual<object>('@/lib/repo/apiClient'), apiJson: mocks.api }));
@@ -12,6 +13,44 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); 
 const flush = async () => { await act(async () => { await Promise.resolve(); }); };
 
 describe('private correspondence lifecycle', () => {
+  it('restores an opened message on tab return only after a fresh access check, and clears it after denial', async () => {
+    const context = { ...correspondenceFixture, messages: [{ id: 'reading-one', subject: 'Installation question',
+      from: 'customer@example.test', sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt,
+      observedAt: correspondenceFixture.observedAt, url: 'https://outlook.office.com/mail/id/reading-one',
+      bodyText: 'Could you confirm the installation week? '.repeat(12), truncated: false, association: 'customer_address_only' }] };
+    mocks.api.mockResolvedValueOnce({ state: 'ready', context });
+    const screen = (tab: boolean, scope = 'project-customer') => <ProjectEmailReadingProvider scope={scope}>
+      {tab ? <ProjectCorrespondenceQuery projectId="proj_1" /> : <p>Current quote</p>}
+    </ProjectEmailReadingProvider>;
+    const view = renderIntoDocument(screen(true));
+    await flush();
+    const message = () => Array.from(view.container.querySelectorAll('details')).find(details => details.querySelector('summary')?.textContent === 'Read message')!;
+    await act(async () => { message().open = true; message().dispatchEvent(new Event('toggle')); });
+    view.rerender(screen(false));
+    let resolve: (reply: unknown) => void = () => {};
+    mocks.api.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    view.rerender(screen(true));
+    expect(view.container.textContent).not.toContain('Could you confirm');
+    await act(async () => resolve({ state: 'ready', context }));
+    expect(message().open).toBe(true);
+    expect(mocks.api.mock.calls.map(call => call[1].method)).toEqual(['GET', 'GET']);
+    view.rerender(screen(false));
+    mocks.api.mockRejectedValueOnce(new ApiError('Denied', { status: 403, body: null }));
+    view.rerender(screen(true)); await flush();
+    expect(view.container.textContent).not.toContain('Could you confirm');
+    view.rerender(screen(false));
+    mocks.api.mockResolvedValueOnce({ state: 'ready', context });
+    view.rerender(screen(true)); await flush();
+    expect(message().open).toBe(false);
+    await act(async () => { message().open = true; message().dispatchEvent(new Event('toggle')); });
+    mocks.api.mockResolvedValueOnce({ state: 'ready', context });
+    view.rerender(screen(true, 'different-customer'));
+    expect(view.container.textContent).not.toContain('Could you confirm');
+    await flush();
+    expect(mocks.api.mock.calls.map(call => call[1].method)).toEqual(['GET', 'GET', 'GET', 'GET', 'GET']);
+    expect(message().open).toBe(false);
+    view.unmount();
+  });
   it.each([true, false])('measures committed evidence and only labels a matching document clock (%s)', async direct => {
     vi.stubEnv('NEXT_PUBLIC_PORTAL_EMAIL_TIMING', 'true');
     let clock = 0;

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { act } from 'react';
 import { renderIntoDocument } from '../../../../../../../test/reactHarness';
 import { correspondenceFixture } from '@/app/qa/project-command-centre-fixture/correspondenceFixture';
 import ProjectCorrespondenceCard from './ProjectCorrespondenceCard';
@@ -6,6 +7,23 @@ import { correspondenceSourceHref } from './projectCorrespondencePresentation';
 
 afterEach(() => { document.body.innerHTML = ''; });
 describe('ProjectCorrespondenceCard', () => {
+  it('clears remembered disclosures when a ready response reports a mailbox failure', async () => {
+    const context = { ...correspondenceFixture, messages: [{ id: 'mail-recovery', subject: 'Project question',
+      from: 'customer@example.test', sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt,
+      observedAt: correspondenceFixture.observedAt, url: 'https://outlook.office.com/mail/id/recovery',
+      bodyText: 'Please confirm the installation arrangements. '.repeat(12), truncated: false, association: 'customer_address_only' as const }] };
+    const view = renderIntoDocument(<ProjectCorrespondenceCard context={context} state="ready" />);
+    const message = () => Array.from(view.container.querySelectorAll('details')).find(details => details.querySelector('summary')?.textContent === 'Read message')!;
+    await act(async () => { message().open = true; message().dispatchEvent(new Event('toggle')); });
+    expect(message().open).toBe(true);
+    view.rerender(<ProjectCorrespondenceCard state="ready" context={{ ...context,
+      limitations: ['Outlook correspondence is unavailable or has not been checked.', 'Mailbox checks are paused by the connection controls.'] }} />);
+    expect(view.container.textContent).toContain('Conversations unavailable');
+    expect(view.container.textContent).not.toContain('Please confirm the installation');
+    view.rerender(<ProjectCorrespondenceCard context={context} state="ready" />);
+    expect(message().open).toBe(false);
+    view.unmount();
+  });
   it.each([
     'Outlook returned more data than this check permits.',
     'The hourly mailbox check limit has been reached. Try again later.',
@@ -55,7 +73,7 @@ describe('ProjectCorrespondenceCard', () => {
     const view = renderIntoDocument(<ProjectCorrespondenceCard context={context} state="ready" />);
     const article = view.container.querySelector('article')!;
     expect(article.textContent).toContain('From customer@example.test');
-    expect(article.querySelector('blockquote')?.closest('details')?.open).toBe(true);
+    expect(article.querySelector(':scope > blockquote')?.closest('details')?.open).toBe(true);
     expect(article.closest('details')?.textContent).toContain('project match unconfirmed');
     expect(article.querySelector(':scope > details blockquote')?.textContent).toBe(bodyText);
     expect(article.querySelector('script')).toBeNull();

@@ -21,7 +21,7 @@ vi.mock('./projectTabModules', () => ({
       data-view={view}
       data-project-name={projectName}
       data-calculator-workspace={String(Boolean(calculatorWorkspace))}
-    />
+    ><input aria-label="Unsaved draft" defaultValue="" /></div>
   ),
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
 }));
@@ -35,6 +35,19 @@ const snapshot = {
 } as any;
 
 describe('ProjectMainTabs', () => {
+  it.each(['quotes', 'invoices', 'estimates'])('preserves the %s editor while customer identity hydrates', view => {
+    mockSearchParams = `tab=${view}`;
+    const rendered = renderIntoDocument(<ProjectMainTabs host="host" snapshot={snapshot} tab={view} />);
+    const input = rendered.container.querySelector('input')!;
+    input.value = 'Unsaved staff edit';
+    for (const contactEmail of ['customer@example.test', 'updated@example.test']) {
+      rendered.rerender(<ProjectMainTabs host="host" snapshot={{ ...snapshot,
+        project: { ...snapshot.project, contactId: 'contact-one', contactEmail } }} tab={view} />);
+      expect(rendered.container.querySelector('input')).toBe(input);
+      expect(rendered.container.querySelector('input')?.value).toBe('Unsaved staff edit');
+    }
+    rendered.unmount();
+  });
   beforeEach(() => {
     replaceMock.mockReset();
     mockSearchParams = 'tab=estimates';
