@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { AlertBanner, Badge, Button, Card, DataStatePanel, LoadingSkeleton } from '@/components/ui/foundation';
 import type { EmailProjectContext } from './projectEmailGroups';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { correspondenceSourceHref, type ProjectCorrespondenceContext } from './projectCorrespondencePresentation';
 import styles from './ProjectCorrespondenceCard.module.css';
 import ProjectEmailMessages from './ProjectEmailMessages';
+import { useProjectEmailReadingState } from './ProjectEmailReadingState';
 
 const topics = { agreement: 'Agreement evidence in emails', job_status: 'Job position', next_action: 'Suggested next step' };
 const kinds = { recorded: 'AI summary of records', interpretation: 'AI interpretation', recommendation: 'Suggestion', unknown: 'Not established' };
@@ -27,16 +28,18 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
   sample?: boolean;
   project?: EmailProjectContext;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [earlierOpen, setEarlierOpen] = useState(false);
+  const reading = useProjectEmailReadingState();
+  const expanded = new Set([...reading.open].filter(key => key.startsWith('message:')).map(key => key.slice(8)));
+  const earlierOpen = reading.open.has('earlier');
   // The deployed receiver preserves this explicit failure limitation even when
   // project records are available. An empty mail array alone is not a failure.
   const mailUnavailable = context?.limitations.includes('Outlook correspondence is unavailable or has not been checked.') === true;
   const mailFailure = context?.limitations.find(value => safeMailFailures.has(value));
-  const onExpand = (id: string, open: boolean) => setExpanded(previous => {
-    if (previous.has(id) === open) return previous;
-    const next = new Set(previous); if (open) next.add(id); else next.delete(id); return next;
-  });
+  useEffect(() => {
+    if (state === 'error' || state === 'not_connected' || state === 'available' || mailUnavailable) reading.clear();
+  }, [state, mailUnavailable, reading.clear]);
+  const onExpand = (id: string, open: boolean) => reading.set(`message:${id}`, open);
+  const setEarlierOpen = (open: boolean) => reading.set('earlier', open);
   const sources = new Map(context?.sources.map((source) => [source.id, source]));
   const correspondence = context?.sources.filter((source) => source.association === 'customer_address_only').sort((a, b) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt)) ?? [];
   return <Card className={styles.card} id="customer-emails" tabIndex={-1} title="Customer emails" padding="compact" aria-label="Customer conversations"

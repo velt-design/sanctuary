@@ -27,13 +27,13 @@ export default function ProjectEmailMessages({ messages, sample, project = {}, e
         </div>
         {message.projectLink?.state === 'conflicting' ? <p className={styles.explanation}>References more than one project.</p> : null}
         {referencesProjectQuote(message, project.quoteRef) && !message.subject?.includes(project.quoteRef ?? '') ? <p className={styles.quoteMatch}>Quote {project.quoteRef}</p> : null}
+        {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => { if (event.target === event.currentTarget) onExpand(message.id, event.currentTarget.open); }}>
+          <summary>Read message</summary><ProjectEmailReader text={message.bodyText} messageId={message.id} />
+        </details> : null}
         {!(expandable && expanded.has(message.id)) ? <>
           <blockquote className={styles.messagePreview}>{preview || 'Message text unavailable in this check.'}{preview.length === 200 ? '…' : ''}</blockquote>
           {hasHistory ? <p className={styles.explanation}>Includes earlier conversation</p> : null}
         </> : null}
-        {expandable ? <details className={styles.sources} open={expanded.has(message.id)} onToggle={event => { if (event.target === event.currentTarget) onExpand(message.id, event.currentTarget.open); }}>
-          <summary>Read message</summary><ProjectEmailReader text={message.bodyText} />
-        </details> : null}
         {message.truncated ? <p className={styles.explanation}>Part of this message was omitted by the read limit. Open the original for the rest.</p> : null}
         {sample ? <p className={styles.explanation}>Sample message — there is no original email to open.</p>
           : href ? <a href={href} target="_blank" rel="noopener noreferrer">Open original email in Outlook ↗</a> : <p>Source link unavailable</p>}

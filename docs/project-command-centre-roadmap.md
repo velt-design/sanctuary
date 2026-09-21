@@ -1,4 +1,87 @@
 # Project Operational Command Centre Roadmap
+## Current Portal journey trial - 21 September 2026
+
+Owner task: Review Velt OS direction chats (01a0a7f8-d1c5-73c3-b810-20a01e469fed).
+Scope authorized by Jordan's "go ahead": inspect the live project journey, fix
+highest-impact friction in a preview, independent delivery review, then owner task
+attempt. Jordan subsequently reported "great works fine" and approved merge and
+production release once checks pass (21 September, same owner task, "yes").
+Release authority covers the approved PR169 fix after checks and production verification; no
+sends, reminders, AI summaries, migrations or new email-speed changes.
+Release paused: hosted tests passed a0a6c774, but GitHub's required conversation
+gate caught a commercial-editor remount regression when customer data hydrates.
+The merge was refused; no override or production change occurred. Necessary
+correction stays within the approved feature: reset disclosure state without
+remounting unrelated editors; remount only the correspondence read on identity
+change. Tests cover retained quote/invoice/estimate editor nodes and unsaved
+input, plus fresh authorization and no old email display on identity change.
+Independent second focused recheck closed this finding (45 affected tests);
+the builder's full 237 project-page tests, Portal type checking, lint and changed
+architecture/documentation guards pass. Next: corrected protected preview and
+fresh hosted checks before merge. Earlier review-ready statements below apply only to the
+normal email journey, not this subsequently discovered integration edge case.
+Current live baseline verified: origin/main7b189bf6, deployment
+dpl_3aXiCAPBeA3Kjt5X6biew9tesLo5. PR153 was released as6dee988 on18September;
+older pending-release/performance status below is historical, not current.
+Working version: C:/Dev/sanctuary-project-journey-20260921,
+branch codex/project-journey-20260921 from7b189bf6. Previous dirty worktree retained.
+
+Task: from Projects, find the latest customer reply and current agreed quote,
+open the reply, inspect the quote and return. Reference: owner-approved Portal
+email reader and commercial card, preserving Portal components and source truth.
+Checks: important facts remain distinguishable; disclosure controls stay in place
+and reading state returns after authorized reads; real desktop review link works.
+Use a synthetic equivalent for shareable tests; private live customer evidence
+stays out of repository files. Relevant dimensions: outcome, usability, clarity,
+visual/accessibility, system fit, maintainability, reliability, privacy, performance
+and handover. No product or commercial assumptions need changing.
+
+Baseline: builder found the linked reply and accepted current quote from the
+normal Projects list. Quote navigation works. Returning to Overview took4997ms
+in one browser-tool timed sample; the previously open reply was closed. This is
+not a percentile, new first-time benchmark or ordinary-staff proof. Opening a
+message removes its teaser above the disclosure, moving the control unexpectedly.
+Implemented at a0a6c774 in draft PR169. Corrected protected deployment
+dpl_9ue3Cbt2E8BbtuvCpUhyykt9JPYY uses the existing staff review alias; the
+production alias remains on dpl_3aXiCAPBeA3Kjt5X6biew9tesLo5. Builder verified
+the normal Projects-to-reply-to-current-quote-and-return journey with authorized
+real reads. Reply and quoted-history disclosures restore on return. Repeated
+keyboard open/collapse keeps the settled control at the same document position.
+No customer record was edited and no email sent. The new mounted read measured
+4112ms on entry and 2917ms on return (individual instrumented observations, not
+percentiles or proof of improvement against a comparable controlled baseline).
+The earlier 1-2 second performance target remains unmet.
+All 233 project-page tests, Portal type checking, changed-file ESLint,
+architecture:changed, docs:impact, docs:guard, text:mojibake and diff whitespace
+checks passed. Hosted Portal Quality/performance checks remain running.
+Independent reviewer journey_trial_review completed the normal entry and return
+journey, keyboard/focus and desktop-emulated 390px layout checks. One finding:
+an explicit mailbox-unavailable limitation in a ready response did not clear
+remembered disclosures. Accepted and corrected with a recovery regression;
+35 affected tests and changed-file lint pass. The independent focused recheck
+closed the finding. Builder verified corrected hosted access, full reload reset,
+and quote/Overview return restoring the opened reply. Corrected return measured
+2659ms from mail mount; one full document reload took 10306ms to committed mail
+(1511ms from mail mount). This separates page-start time from the email read and
+does not establish a speed gain. No further performance work is claimed here.
+Independent bounded assessments: outcome/usability, clarity, visual/keyboard,
+system fit/maintainability, privacy, reliability and desktop handover each 8/10,
+supported by the observed journey, boundary tests and working protected access.
+Jordan accepted the review experience with "great works fine". Physical-phone
+behavior and ordinary-staff acceptance remain unverified; broader loading
+performance is still below the agreed target. Hosted CI remains running and
+production unchanged. Next authorized action: complete the existing release
+checks, merge exact approved head, deploy and verify the read-only live journey.
+This is one successful owner review, not proof of general procedure effectiveness. This trial
+caught one requirement gap before owner review; that alone does not prove less
+rework or better human task completion.
+Publication review: the outgoing source/tests/docs were inspected for the public
+repository; tests use synthetic messages. No customer correspondence, screenshots,
+credentials, signed links or local evidence artifacts are included. Production
+alias changes and release were outside the preview stage's authority; the later
+explicit approval above supersedes that boundary for this revision only.
+
+## Historical performance implementation and evidence
 ## Active customer-email performance goal — 17 September 2026
 
 Owner authorized a goal loop targeting saved-email visibility within 1–2 seconds, with first-time versus saved measurements and honest reporting of unmet targets. Preserve all access/customer/connection revocation, matching, encryption/retention, source links and timestamps. No redesign, sends, bulk backfill, AI summaries, new service or higher limits. New performance revisions require separate production release authority. The prior ordinary-staff live check remains explicitly outstanding, moved post-release by Jordan.

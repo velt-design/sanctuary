@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { coerceProjectTab, type ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import layout from './ProjectPage.module.css';
+import { ProjectEmailReadingProvider } from './tabs/overview/ProjectEmailReadingState';
 import {
   CommercialTab,
   OverviewTab,
@@ -41,6 +42,7 @@ export default function ProjectMainTabs({
       role="tabpanel"
       data-project-active-tab={activeTab}
     >
+      <ProjectEmailReadingProvider scope={JSON.stringify([snapshot.project.id, snapshot.project.contactId, snapshot.project.contactEmail])}>
       <div
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
@@ -65,6 +67,7 @@ export default function ProjectMainTabs({
         ) : null}
         {activeTab === 'job-packs' ? <JobPacksTab projectId={snapshot.project.id} /> : null}
       </div>
+      </ProjectEmailReadingProvider>
     </section>
   );
 }
