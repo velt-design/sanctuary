@@ -17,8 +17,7 @@
 ## Current homepage entry (21 September 2026)
 
 The approved replacement for the primary starting-point cards is **Find your
-pergola**: Pitched, Gable and Box link to their product pages. Each uses the shared
-product card, roofline illustration and canonical 6 x 3 m acrylic/open-side
+pergola**: Pitched, Gable and Box link to their product pages. Each uses a dedicated homepage card, approved roofline portrait and canonical 6 x 3 m acrylic/open-side
 example price, including GST and labelled as an installed estimate subject to
 site confirmation. Approved pricing comes from the existing pricing service;
 unavailable or partial prices never become a misleading total. No new rates.

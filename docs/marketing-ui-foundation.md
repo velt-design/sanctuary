@@ -6,9 +6,7 @@ The hub introduces bespoke design alongside the roofline choice, with a dedicate
 section immediately after the three cards. Hub and product bespoke links use the
 existing bespoke enquiry intent, not Help me choose. Gable direction uses the
 foundation segmented radio style (dark selected state, visible keyboard focus).
-Sides retain four standard configurations, with one labelled House/Left/Front/Right
-plan highlighting selected blind edges beside the controls. The plan stays in a
-stable region; other combinations remain available in the full designer.
+Sides retain four labelled standard configurations that update the live 3D model. The separate side diagram is removed; other combinations remain available in the full designer.
 Pitched now features the governed residential Tindalls Bay project, explicitly
 identified as bespoke evidence. Featured product alternatives link the three
 current families; the canonical Hip route is retained.

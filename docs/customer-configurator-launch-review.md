@@ -14,8 +14,7 @@ version pinned for that deployment. Public 6×3m acrylic/open-side baseline pric
 are Pitched $11,706, Gable $15,362 and Box $15,630 including GST. Independent
 preview review confirms product-to-enquiry price parity, exact design details and
 unsent-field preservation through editing. No enquiry was submitted in this
-verification. Product-page production rollout and requested physical-phone check
-remain outstanding; no new pricebook was published.
+verification. Production release and live verification were authorised by the owner on 21 September; rollout is pending the required repository checks. The final independent hosted mobile/desktop journey found no material blocker. Physical-phone performance is not benchmarked. No new pricebook was published; displayed estimate totals now round to the nearest $5 while exact amounts remain in the pricing and handoff contracts.
 
 ## Historical launch-review evidence (16 September)
 
