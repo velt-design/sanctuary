@@ -26,14 +26,28 @@ normal Projects list. Quote navigation works. Returning to Overview took4997ms
 in one browser-tool timed sample; the previously open reply was closed. This is
 not a percentile, new first-time benchmark or ordinary-staff proof. Opening a
 message removes its teaser above the disclosure, moving the control unexpectedly.
-Implemented, pending browser verification: preserve only reading presentation
-across this mounted project, retain fresh authorization before displaying emails,
-and keep the message disclosure in a stable position. All 157 focused overview
-and tab tests, Portal type checking, changed-file ESLint, architecture:changed,
-docs:impact, docs:guard, text:mojibake and diff whitespace checks passed.
-Next: protected preview of the real journey and independent delivery review.
-Recheck latency without claiming this meets the outstanding 1-2 second target.
-Staff acceptance and procedure effectiveness await a real human task attempt.
+Implemented at 962059ca in draft PR169. Protected deployment
+dpl_H8v9R9LbtR8Lv3eGw9dsW8pqDDob uses the existing staff review alias; the
+production alias remains on dpl_3aXiCAPBeA3Kjt5X6biew9tesLo5. Builder verified
+the normal Projects-to-reply-to-current-quote-and-return journey with authorized
+real reads. Reply and quoted-history disclosures restore on return. Repeated
+keyboard open/collapse keeps the settled control at the same document position.
+No customer record was edited and no email sent. The new mounted read measured
+4112ms on entry and 2917ms on return (individual instrumented observations, not
+percentiles or proof of improvement against a comparable controlled baseline).
+The earlier 1-2 second performance target remains unmet.
+All 233 project-page tests, Portal type checking, changed-file ESLint,
+architecture:changed, docs:impact, docs:guard, text:mojibake and diff whitespace
+checks passed. Hosted Portal Quality/performance checks remain running.
+Independent reviewer journey_trial_review completed the normal entry and return
+journey, keyboard/focus and desktop-emulated 390px layout checks. One finding:
+an explicit mailbox-unavailable limitation in a ready response did not clear
+remembered disclosures. Accepted and corrected with a recovery regression;
+35 affected tests and changed-file lint pass. Focused independent recheck and
+the corrected protected preview are next. Normal UI evidence is reusable.
+Staff acceptance and procedure effectiveness remain unverified. This trial
+caught one requirement gap before owner review; that alone does not prove less
+rework or better human task completion.
 Publication review: the outgoing source/tests/docs were inspected for the public
 repository; tests use synthetic messages. No customer correspondence, screenshots,
 credentials, signed links or local evidence artifacts are included. Production

@@ -31,13 +31,13 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
   const reading = useProjectEmailReadingState();
   const expanded = new Set([...reading.open].filter(key => key.startsWith('message:')).map(key => key.slice(8)));
   const earlierOpen = reading.open.has('earlier');
-  useEffect(() => {
-    if (state === 'error' || state === 'not_connected' || state === 'available') reading.clear();
-  }, [state, reading.clear]);
   // The deployed receiver preserves this explicit failure limitation even when
   // project records are available. An empty mail array alone is not a failure.
   const mailUnavailable = context?.limitations.includes('Outlook correspondence is unavailable or has not been checked.') === true;
   const mailFailure = context?.limitations.find(value => safeMailFailures.has(value));
+  useEffect(() => {
+    if (state === 'error' || state === 'not_connected' || state === 'available' || mailUnavailable) reading.clear();
+  }, [state, mailUnavailable, reading.clear]);
   const onExpand = (id: string, open: boolean) => reading.set(`message:${id}`, open);
   const setEarlierOpen = (open: boolean) => reading.set('earlier', open);
   const sources = new Map(context?.sources.map((source) => [source.id, source]));
