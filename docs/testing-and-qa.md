@@ -1408,3 +1408,27 @@ The actual-schema rollback contract `supabase/tests/xero_finance_full_schema.sql
 
 Finance saved-link contract: supabase/tests/xero_mapping_status.sql runs in the finance database matrix and rolls back fixtures for absent, active and revoked links, wrong tenant, revoked actor and denied browser execution. Mapping route/component tests also cover renamed contacts and provider failures without customer creation.
 `supabase/tests/xero_separate_setup.sql` covers cross-scope non-mutation, duplicate retries, command-scope conflicts, tax rejection, denied browser grants and revoked approvers. Form/API cases verify customer submissions omit accounting fields and default submissions omit the customer choice.
+
+Marketing & Sales hub extension: the same focused Marketing Performance command now
+executes the forward hub read in PGlite, including developer denial, manual/archived
+projects, original-source retention, event-date boundaries, reversals and portfolio
+bounds. The nested `hub` API suite checks private/no-store, malformed evidence and
+identity denial. `hub.test.ts` covers view/filter populations and saved-query round trips.
+Fixture data includes earlier manual paid projects, missing receipts and reversed
+payments. Browser review must test all four views, metric-to-record reconciliation,
+saved views, project drilldown/Back, failure recovery and optional created-date filtering.
+Hosted staging and production read-only aggregate evidence remain private and are
+summarized in the existing working record; fixture interactions do not establish a
+live business workflow or human usability acceptance.
+
+Representative marketing hub review data: add `?representative=1` to the local
+fixture URL for 1,200 fictional projects, 1,052 receipts, missing history and
+dated quote/payment activity. The default small fixture remains available. Both
+use the existing development-only gate; no real customer rows are bundled.
+Run `npx vitest run apps/portal/app/qa/marketing-performance-fixture/representativeFixture.test.ts`
+for scenario consistency, receipt/project reconciliation and refund evidence.
+
+Marketing hub charts: `charts.test.ts` verifies source numerators/denominators,
+partial Auckland weeks/DST, unknown stages and filter serialization. Browser
+checks must click graphical segments as well as table alternatives, reconcile
+records, and return from a project with measure/rate/filter choices preserved.

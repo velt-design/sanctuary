@@ -5762,3 +5762,18 @@ still rejected infills and rewrote the request as Bespoke before server costing.
 Current UI eligibility now uses current policy; historical server calculations
 retain explicit configuration semantics. Verify the real eligibility-to-state
 hook boundary when changing commercial classification, not only engine totals.
+
+## 2026-09-22 — Reconcile report populations before calling business metrics accurate
+
+Owner review exposed a semantic gap despite passing technical count checks: an enquiry
+cohort with newer payment evidence was presented with labels that looked like whole-
+business totals. Dashboard stages include projects without saved receipts and legacy
+paid status. A matching SQL count is insufficient proof of business completeness.
+
+Use explicit receipt-date, event-date and current-portfolio views; show reconciliation,
+missing assessments/history and payment-evidence gaps beside the relevant measures.
+Keep pipeline status, current commercial truth and dated ledger activity distinct.
+Do not invent historical receipts or attribution to force totals to agree. Verification
+must include representative manual/archived projects and the owner's actual comparison.
+Owner: `docs/marketing-performance.md`; contracts/tests: `lib/marketingPerformance/hub.ts`
+and `test/marketing-performance-read.test.ts`.

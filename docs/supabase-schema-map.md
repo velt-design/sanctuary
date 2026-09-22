@@ -1,6 +1,7 @@
 # Supabase Schema Map
 
 
+
 Praxis finance-history candidate (not installed): migration `20260922053002`
 adds only service-role-executable `xero_customer_history_binding(actor,project,tenant,sourceKey,connectionId,environment)`.
 It verifies database-owned source identity, reuses `xero_require_payment_approver`, checks active Portal membership and confirmed, non-deleted/non-banned `auth.users` identity and
@@ -21,7 +22,8 @@ bounded counts, quality classification and existing domain designer labels.
 The migration is not installed by local implementation.
 
 
-## Marketing Performance (staging/local)
+## Marketing Performance and Marketing & Sales hub
+
 
 `20260922000002_marketing_performance_read.sql` adds the read-only
 `marketing_performance_read(date,date)` snapshot. Forward migration
@@ -37,7 +39,23 @@ identifier, contact detail or provider result is exposed. At most 366 Auckland d
 and 2,000 cohort rows; overflow fails closed. The API uses the caller's auth client.
 Missing historical visit timestamps are explicit, with current confirmed status as
 the remaining evidence. See `marketing-performance.md` for denominators, historical
-limits, known-test exclusion and staging-only installation evidence.
+limits, known-test exclusion and environment installation evidence. The original read is live. The hub extension below is installed in staging and production; the app rollout is tracked in PR178.
+
+`20260922070001_marketing_sales_hub.sql` adds `marketing_sales_hub_read(date,date)`.
+It first calls the existing developer-guarded enquiry reader, then projects the whole
+project portfolio (at most 5,000 projects) and at most 10,000 dated sales events;
+overflow fails closed. Original consent-permitted enquiry source stays authoritative.
+Current owner uses `project_owner_assignments`, stage uses `projects.pipeline_stage`,
+state uses `project_operational_states` with archived precedence. It includes manual
+and historical projects without fabricating receipts. Portfolio includes the known
+test project for reconciliation; enquiry/sales reads retain its established exclusion.
+Quote sent/accepted dates count version events, including later-superseded history.
+`project_payment_entries.occurred_at` owns dated payments, reversals and adjustments;
+net recorded receipts sum PAYMENT and REVERSAL only. PAID invoices with paid_at are
+separate status events and never added to receipt money. Payment-verified project
+facts retain the current commercial-acceptance/Xero-match rule. No new write path,
+provider integration or raw customer correspondence is exposed. Saved filter views
+are optional browser-local preferences, not stored report records or tracking context.
 
 ## Portal Action Delegation
 
