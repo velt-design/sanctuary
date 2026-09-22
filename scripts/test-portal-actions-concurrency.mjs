@@ -84,10 +84,14 @@ try {
   docker(['run', '--detach', '--pull=never', '--network=none', '--name', name,
     '--env', 'POSTGRES_PASSWORD=synthetic-portal-actions-only', image]);
   created = true;
+  // The image's temporary init server accepts Unix-socket connections before
+  // shutting down. Only the final daemon listens on TCP; probe container-local
+  // loopback so readiness cannot succeed against that temporary server.
+  // Keep SQL failures fail-fast below: only startup readiness is polled.
   await waitFor(() => {
-    const probe = spawnSync('docker', ['exec', name, 'pg_isready', '-U', 'postgres'], { encoding: 'utf8', timeout: 5_000 });
+    const probe = spawnSync('docker', ['exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], { encoding: 'utf8', timeout: 5_000 });
     return probe.status === 0;
-  }, 'PostgreSQL readiness', 30_000);
+  }, 'final PostgreSQL daemon readiness', 30_000);
   const version = await success("select current_setting('server_version_num');", 'database_identity');
   assert.equal(Math.trunc(Number(version) / 10_000), 17);
   process.stdout.write(`portal-actions-concurrency: PostgreSQL ${version}, image ${docker(['inspect', '--format', '{{.Image}}', name])}\n`);
