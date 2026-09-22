@@ -156,6 +156,7 @@ async function firstProjectDetailRoute(page: Page): Promise<string | null> {
 async function openFresh(page: Page, route: string) {
   await page.goto("about:blank");
   await page.goto(route);
+  if (route === "/staff/ui-foundation") await page.getByRole("tab", { name: "Components & tokens", exact: true }).click();
 }
 
 test.describe.configure({ mode: "serial" });
