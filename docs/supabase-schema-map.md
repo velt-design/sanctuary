@@ -1,5 +1,23 @@
 # Supabase Schema Map
 
+## Marketing Performance (staging/local)
+
+`20260922000002_marketing_performance_read.sql` adds the read-only
+`marketing_performance_read(date,date)` snapshot. Forward migration
+`20260922000003_marketing_performance_developer_access.sql` additionally requires
+the current `auth.users` identity to have the verified email
+`jordan@sanctuarypergolas.co.nz`, alongside authenticated UID and
+`has_portal_access`. Install both in one transaction on a new environment to avoid
+an intermediate staff-wide read. It projects bounded enquiry IDs, project IDs/names, permitted
+source/campaign labels, the existing qualification reader, confirmed visit evidence,
+sent quotes, current accepted commercial scope, verified payment evidence and closed
+outcomes. No new table grant, browser Supabase access, raw customer payload, click
+identifier, contact detail or provider result is exposed. At most 366 Auckland days
+and 2,000 cohort rows; overflow fails closed. The API uses the caller's auth client.
+Missing historical visit timestamps are explicit, with current confirmed status as
+the remaining evidence. See `marketing-performance.md` for denominators, historical
+limits, known-test exclusion and staging-only installation evidence.
+
 Project follow-up retirement (local, not installed): migration
 `20260917000002_defer_project_follow_ups.sql` replaces new-project cadence
 initialization and reminder reconciliation, rejects new sent/reply confirmations,

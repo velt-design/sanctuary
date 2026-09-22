@@ -26,6 +26,9 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 
 ## Canonical Reference Docs
 
+Marketing Performance implementation, definitions, spend proposal and review evidence:
+`marketing-performance.md` (staging/local feature; not released to production).
+
 | Doc | Status | Use When |
 | --- | --- | --- |
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |

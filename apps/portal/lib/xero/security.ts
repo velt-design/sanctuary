@@ -4,9 +4,7 @@ export const XERO_SCOPES = 'offline_access accounting.contacts.read accounting.i
 export const XERO_PAGE = '/staff/developer/xero';
 export const XERO_CALLBACK = '/api/integrations/xero/callback';
 
-export function isDeveloper(user: { email?: string; email_confirmed_at?: string } | null): boolean {
-  return Boolean(user?.email_confirmed_at && user.email?.toLowerCase() === 'jordan@sanctuarypergolas.co.nz');
-}
+export { isDeveloper } from '@/lib/developerAccess';
 
 export function equalSecret(left: string, right: string): boolean {
   const a = Buffer.from(left); const b = Buffer.from(right);

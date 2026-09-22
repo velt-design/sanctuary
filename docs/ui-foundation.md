@@ -73,6 +73,18 @@ authoritative.
 
 ## Production Patterns
 
+Marketing Performance is a developer-only staging/local composition of StaffPageHeader, PageLayout,
+Card, MetricGrid, foundation form controls, table primitives and failed-read AlertBanner. Its
+comparison and evidence tables use stable scroll regions; filters persist in the
+URL. One-click date shortcuts apply inclusive Auckland ranges. Source ranking and
+qualification/win rates use explicit denominators. Informational context lives in
+quiet preview labels and metric-local notes, following owner feedback on banner
+clutter; actionable read failures retain retry. Change over time compares equal
+adjacent enquiry periods, with a weekly per-day bar chart and an accessible exact
+count table; comparison failure does not masquerade as zero. It introduces no
+shared-token change. The non-production synthetic mirror is
+`/qa/marketing-performance-fixture`; see `marketing-performance.md` for review limits.
+
 Finance clarity work composes existing Foundation view buttons, labelled search controls and data states within the existing Finance route. View selection remains server-owned before pagination. This adoption does not move payment/transfer commands or change the shared visual system; release evidence and remaining usability gaps are in `xero-connection.md`.
 
 The catalogue renders the actual exported search/filter bar, selection table, pagination, modal, drawer, alerts, data states, permission/read-only controls, calculator notices, NZD financial summary, task/schedule feedback, and sticky action bar. Forced interaction states stay in catalogue markup via `data-visual-state`; they are not component props. Demo-only helpers are not exported.
