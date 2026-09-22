@@ -17,6 +17,9 @@ playwright-report
 test-results
 coverage
 *.log
+.local-evidence
+*.local.json
+**/supabase/.temp
 
 **/.next-*
 

@@ -13,6 +13,21 @@ plus3 caller-role and3 private-table denials, using minimal prerequisite tables.
 Neither is a full production-schema or live Xero proof. Existing finance
 and Praxis regressions remain required; do not enable from synthetic evidence alone.
 
+Marketing Performance: `npx vitest run test/marketing-performance-read.test.ts apps/portal/app/api/staff/v1/marketing-performance apps/portal/lib/marketingPerformance apps/portal/components/marketingPerformance` exercises the exact
+read migrations in disposable PGlite and their developer-only API contract. The
+page and navigation tests additionally cover other admins, unverified identity
+and lookalike email denial; the database uses current verified auth identity.
+It includes origin
+credit/repeats, Auckland dates, missing attribution, actual qualification correction,
+commercial acceptance tombstones, payment reversal, known tests and fail-closed bounds,
+inclusive date shortcuts/leap years, ranking totals and return-position restoration.
+Trend tests reconcile partial/zero weekly buckets and Auckland boundaries;
+paired-read tests cover stale request cancellation and independently failed comparison.
+`/qa/marketing-performance-fixture` needs `ENABLE_PORTAL_QA_FIXTURES=1` and a
+non-production build. Its synthetic project drilldown is not live workflow proof.
+The authenticated staging journey, full-schema rehearsal, read-only production
+reconciliation and independent delivery review belong in `marketing-performance.md`.
+
 Follow-up deferral: `npm run test:portal:project-work` includes
 `test/project-follow-up-retirement.test.ts`, covering cancellation audit/replay,
 preserved manual work and correction history, no fabricated new-project work,
