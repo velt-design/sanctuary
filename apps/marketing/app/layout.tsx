@@ -9,7 +9,6 @@ import './globals.css';
 import '@/styles/header.css';
 import Header from '@/components/Header';
 import SiteConfigurator from '@/components/configurator-prototype/SiteConfigurator';
-import DesignContinuationBar from '@/components/configurator-prototype/DesignContinuationBar';
 import ProductSubHeader from '@/components/ProductSubHeader';
 import SiteFooter from '@/components/SiteFooter';
 import FooterVisibilityGate from '@/components/FooterVisibilityGate';
@@ -162,7 +161,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <SiteFooter reviewRating={review.rating} reviewCount={review.count} />
           </FooterVisibilityGate>
           <MetaPixel />
-          <DesignContinuationBar />
           <SiteConfigurator />
           <ArchiproPixel />
         </ConsentProvider>
