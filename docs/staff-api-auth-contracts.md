@@ -1,5 +1,31 @@
 # Staff API And Auth Contracts
 
+## Assigned email review routes (local, unreleased)
+
+- GET /api/staff/v1/email-review and batch/item reads use auth-bound staff
+  context. The RPC rechecks assigned-reviewer or admin access; staff membership
+  alone does not expose another reviewer's batch.
+- Item commands at /api/staff/v1/email-review/[batchId]/items/[itemId] require
+  same-origin JSON, current staff identity, command ID and expected revision.
+  Approval requires confirmed prerequisites and a selected imported thread
+  matching the recipient. Context acknowledgement is explicit and hash-bound.
+- /api/admin/email-review/import and /reviewers require admin context.
+  Import is bounded and idempotent by command/source identity and payload hash.
+- /api/admin/email-review/[batchId]/dispatch and its prepare, claim, result and
+  cancel action routes require current admin identity. Mutations additionally
+  require same-origin JSON. Claims are bounded to ten and cannot replay an
+  attempted reply payload.
+
+Adapters live in apps/portal/lib/emailReview and call narrow RPCs using the
+auth-bound client, not a service-role actor substitute. SQL repeats validation
+because authenticated callers can invoke RPCs directly. Private tables have no
+direct API-role grants. Responses are private/no-store, no-referrer and nosniff;
+never log imported correspondence. Revision, approval-hash or current
+project/contact conflicts require re-review. Approval and preparation make no
+external email call. See automation-email-audit.md for uncertain-attempt and
+Outlook evidence rules. These routes are locally implemented and unreleased.
+
+
 Local correspondence extension: the server optionally signs
 `includeMessageLineage:true` only after the receiver rollout flag is enabled.
 Velt returns whitelisted bounded reply IDs; the Portal computes message links

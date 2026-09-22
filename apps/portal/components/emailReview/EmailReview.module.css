@@ -1,0 +1,25 @@
+.toolbar,.actions,.counts { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.toolbar { padding:16px 0; align-items:end; }
+.toolbar > * { flex:1; min-width:160px; }
+.search { display:flex; align-items:end; gap:8px; }
+.search > div { flex:1; }
+.counts { min-height:42px; font-variant-numeric:tabular-nums; }
+.workspace { display:grid; grid-template-columns:minmax(260px,31%) minmax(0,1fr); border:1px solid var(--ui-border); background:var(--ui-surface-primary); height:calc(100dvh - 320px); min-height:530px; }
+.list { overflow:auto; border-right:1px solid var(--ui-border); }
+.row { display:block; text-align:left; width:100%; min-height:88px; padding:16px; border:0; border-bottom:1px solid var(--ui-border); background:transparent; color:inherit; cursor:pointer; }
+.row[aria-current=true] { background:var(--ui-surface-secondary); box-shadow:inset 3px 0 var(--ui-action); }
+.row strong,.row small { display:block; overflow-wrap:anywhere; }
+.row small { margin-top:6px; }
+.detail { overflow:auto; padding:24px; min-width:0; }
+.editor { display:grid; gap:18px; }
+.editor textarea { line-height:1.65; min-height:260px; resize:vertical; }
+.editor fieldset { border:0; padding:0; margin:0; min-width:0; display:grid; gap:16px; }
+.notice { border:1px solid var(--ui-status-warning-border); background:var(--ui-status-warning-bg); padding:14px; line-height:1.5; overflow-wrap:anywhere; }
+.error { border:1px solid var(--ui-status-error-border); padding:14px; background:var(--ui-status-error-bg); }
+.status { min-height:26px; margin:8px 0; }
+.context { white-space:pre-wrap; line-height:1.6; }
+.actions { position:sticky; bottom:-24px; background:var(--ui-surface-primary); padding:16px 0; border-top:1px solid var(--ui-border); }
+.import { margin:16px 0; padding:20px; border:1px solid var(--ui-border); display:grid; gap:16px; }
+.back { display:none; }
+.row:focus-visible,.editor a:focus-visible { outline:3px solid var(--ui-action); outline-offset:-3px; }
+@media(max-width:760px) { .workspace { grid-template-columns:1fr; height:calc(100dvh - 320px); } .detail { padding:16px; } .list { border-right:0; } .selected .list { display:none; } .workspace:not(.selected) .detail { display:none; } .back { display:block; margin-bottom:16px; } .actions { bottom:-16px; } }
