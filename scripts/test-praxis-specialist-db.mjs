@@ -56,10 +56,25 @@ try{
       select ('10000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,'20000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','done','2020-09-20','2020-09-18' from generate_series(1,65) i;
     insert into public.design_package_requests(id,project_id,status,assigned_designer) values('40000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','OPEN','11111111-1111-4111-8111-111111111111');`);
   const snapshot=()=>sql("select md5(string_agg(row_to_json(t)::text,'' order by id)) from public.scheduled_jobs t");const before=snapshot();
-  const migration=read('supabase/migrations/20260922000003_praxis_specialist_workload.sql');
+  // Apply the exact merged marketing functions alongside the specialist view.
+  // Minimal auth prerequisites prove access isolation, not the entire marketing schema.
+  sql(`create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
+    insert into auth.users values('90000000-0000-4000-8000-000000000001','ordinary@example.test',now());
+    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+    create function public.has_portal_access() returns boolean language sql stable as $$select auth.uid() is not null$$;`);
+  sql('begin;'+read('supabase/migrations/20260922000002_marketing_performance_read.sql')+read('supabase/migrations/20260922000003_marketing_performance_developer_access.sql')+'commit;');
+  const marketingDefinition=()=>sql("select md5(pg_get_functiondef(oid)||coalesce(proacl::text,'')) from pg_proc where oid='public.marketing_performance_read(date,date)'::regprocedure");
+  const marketingBefore=marketingDefinition();
+  const migration=read('supabase/migrations/20260922053001_praxis_specialist_workload.sql');
   sql(migration.replace(/commit;\s*$/,'rollback;'));
   assert.equal(sql("select to_regclass('praxis_reporting.specialist_workload_v1') is null"),'t');
   sql(migration);assert.equal(snapshot(),before);
+  assert.equal(marketingDefinition(),marketingBefore,'Specialist apply must preserve the marketing function and ACL.');
+  const marketingCall="select public.marketing_performance_read('2020-09-01','2020-09-22')";
+  const readerMarketing=sql(marketingCall,true,true);
+  assert.notEqual(readerMarketing.status,0);assert.match(readerMarketing.stderr,/permission denied/i);
+  const ordinaryMarketing=sql("set role authenticated;set request.jwt.claim.sub='90000000-0000-4000-8000-000000000001';"+marketingCall,false,true);
+  assert.notEqual(ordinaryMarketing.status,0);assert.match(ordinaryMarketing.stderr,/Developer access required/);
   assert.equal(sql('select count(*) from praxis_reporting.specialist_workload_v1',true),'66');
   const rows=JSON.parse(sql("select json_agg(t) from (select * from praxis_reporting.specialist_workload_v1 order by domain,record_id) t",true));
   assert.equal(rows[0].domain,'design');assert.equal(rows[0].payload.identityKey,'11111111-1111-4111-8111-111111111111');
@@ -73,7 +88,7 @@ try{
   }
   assert.equal(sql("select has_table_privilege('anon','praxis_reporting.specialist_workload_v1','select') or has_table_privilege('authenticated','praxis_reporting.specialist_workload_v1','select') or has_table_privilege('service_role','praxis_reporting.specialist_workload_v1','select')"),'f');
   if(process.env.PRAXIS_SPECIALIST_NATIVE_ROWS_PATH){const fs=await import('node:fs');fs.writeFileSync(process.env.PRAXIS_SPECIALIST_NATIVE_ROWS_PATH,JSON.stringify(rows));}
-  console.log(`PASS: PostgreSQL17 (${bin?'native':'Docker'}) specialist exact migration rollback/apply,66 safe source rows, preserved inconsistent dates, unchanged business rows, reporting-only access and base/write denials.`);
+  console.log(`PASS: PostgreSQL17 (${bin?'native':'Docker'}) specialist exact migration rollback/apply,66 safe source rows, preserved inconsistent dates, unchanged business rows, reporting-only access and base/write denials; merged marketing function/ACL unchanged, reporting caller and ordinary staff denied marketing access.`);
 }finally{
   if(started){if(bin)success(run('pg_ctl',['-D',data,'-m','fast','-w','stop']));else success(docker(['rm','--force','--volumes',container]));}
   if(directory){

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import {PGlite} from '@electric-sql/pglite';
-import {readFileSync,writeFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,readdirSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
 const mocks=vi.hoisted(()=>({query:vi.fn()}));
@@ -14,6 +14,12 @@ const query=()=>parseSpecialistQuery(new URL('https://test.invalid/?start=2020-0
 let db:PGlite,asOf='2020-09-22T08:00:00Z';
 const read=()=>readPraxisSpecialistWorkload(query(),config,id(99));
 const file=(p:string)=>readFileSync(p,'utf8');
+it('reserves a unique specialist migration version after the marketing migrations',()=>{
+  const files=readdirSync('supabase/migrations');
+  expect(files.filter(name=>name.startsWith('20260922053001_'))).toEqual(['20260922053001_praxis_specialist_workload.sql']);
+  expect(files).not.toContain('20260922000003_praxis_specialist_workload.sql');
+  expect(files).toContain('20260922000003_marketing_performance_developer_access.sql');
+});
 beforeAll(async()=>{
   db=new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create role sanctuary_praxis_reader;
@@ -25,7 +31,7 @@ beforeAll(async()=>{
   const bootstrap=file('supabase/migrations/20260916000002_praxis_reporting_current_bootstrap.sql');
   await db.exec(bootstrap.slice(bootstrap.indexOf('create or replace function praxis_reporting.forbidden_nested_key_v1'),bootstrap.indexOf('create or replace view praxis_reporting.enquiry_requests_v1')));
   await db.exec(file('supabase/migrations/20260917000001_praxis_projection_aggregate_bounds.sql'));
-  await db.exec(file('supabase/migrations/20260922000003_praxis_specialist_workload.sql'));
+  await db.exec(file('supabase/migrations/20260922053001_praxis_specialist_workload.sql'));
   mocks.query.mockImplementation(async(strings:TemplateStringsArray,...values:unknown[])=>{
     if(strings.join('').includes('transaction_timestamp()'))return [{as_of:asOf}];
     return (await db.query(strings.reduce((text,p,i)=>text+(i?`$${i}`:'')+p,''),values)).rows;

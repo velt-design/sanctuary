@@ -70,7 +70,7 @@ Never commit real env files. `.env*` is ignored.
 
 The local `/api/integrations/praxis/v1/specialist-workload` candidate reads
 installation and drafting records through the reviewed, unapplied
-`20260922000003_praxis_specialist_workload.sql` reporting view. Existing reporting
+`20260922053001_praxis_specialist_workload.sql` reporting view. Existing reporting
 login, source identity, bearer authentication and eight-second read transaction
 are reused. No auth-table grant, credential, installation command or design write
 is added. Manual workload v1/v2 remain unchanged. Database installation and live

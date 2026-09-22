@@ -1,7 +1,7 @@
 # Supabase Schema Map
 
 Local specialist workload reporting: migration
-`20260922000003_praxis_specialist_workload.sql` creates the security-barrier
+`20260922053001_praxis_specialist_workload.sql` creates the security-barrier
 `praxis_reporting.specialist_workload_v1` union of canonical installation jobs
 and design requests, with project archival context and crew labels. Only the
 existing `sanctuary_praxis_reader` group gets SELECT. Public, anon, authenticated
