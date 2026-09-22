@@ -1,6 +1,6 @@
 # Supabase Schema Map
 
-Praxis finance-history candidate (not installed): migration `20260922000002`
+Praxis finance-history candidate (not installed): migration `20260922053002`
 adds only service-role-executable `xero_customer_history_binding(actor,project,tenant,sourceKey,connectionId,environment)`.
 It verifies database-owned source identity, reuses `xero_require_payment_approver`, checks active Portal membership and confirmed, non-deleted/non-banned `auth.users` identity and
 the pinned finance tenant, and returns only the current project/contact mapping.

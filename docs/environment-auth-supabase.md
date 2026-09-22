@@ -7,7 +7,7 @@ source capability only with `PRAXIS_XERO_FINANCE_ACTOR_ID` bound to a confirmed
 existing Portal finance actor and existing `XERO_PAYMENT_MATCHING_ENABLED=true`.
 Both new variables are unset/default-off in this candidate; no real actor was
 selected or configured. Source bearer authentication alone is insufficient.
-The read-only application RPC in `20260922000002_praxis_finance_history_binding.sql`
+The read-only application RPC in `20260922053002_praxis_finance_history_binding.sql`
 rechecks database-owned source identity, active Portal membership, the existing current finance grant, confirmed/non-deleted/non-banned identity, tenant and
 unrevoked project-contact mapping. It does not grant finance access or expose the
 vault to the Praxis reporting LOGIN. Source binding and configured actor are

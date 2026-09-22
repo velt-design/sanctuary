@@ -26,7 +26,7 @@ it('executes exact mapping migration with current grants, confirmed identity and
       insert into private.xero_customer_mappings values('${tenant}','${contact}','${external}',now(),null);`);
     const existing = await readFile('supabase/migrations/20260914000003_xero_deposit_commands.sql', 'utf8');
     await db.exec(existing.slice(0, existing.indexOf('create function public.xero_approve_deposit_match')) + '\ncommit;');
-    const migration = await readFile('supabase/migrations/20260922000002_praxis_finance_history_binding.sql', 'utf8');
+    const migration = await readFile('supabase/migrations/20260922053002_praxis_finance_history_binding.sql', 'utf8');
     await db.exec(migration);
     const sql = `select public.xero_customer_history_binding('${actor}','${project}','${tenant}','synthetic','${project}','test') as binding`;
     await db.exec('set role service_role');
