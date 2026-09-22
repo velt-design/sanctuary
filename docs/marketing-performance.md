@@ -1,6 +1,6 @@
 # Marketing Performance and Marketing & Sales hub
 
-Current stage: **production release approved; release checks in progress** (22 September 2026). Owning task: Marketing Performance. Branch `codex/marketing-sales-hub-20260922`; the reviewed UI extends the Jordan-only report released in PR174. The owner's latest "push live" authorizes publishing this reviewed batch and installing its read-only hub function. Current preview is verified; production postflight remains pending. Next: integrate current main, pass release gates, install the exact read function and verify the canonical Portal page.
+Current stage: **approved production rollout; database ready** (22 September 2026). Owning task: Marketing Performance. Release PR178 extends the Jordan-only report released in PR174. The owner's latest "push live" authorizes publishing this reviewed batch and installing its read-only hub function. Exact production rollback rehearsal, installation, reconciliation and identity-denial assertions passed; postflight confirms the installed function matches the reviewed body and migration ledger. No business records changed. The application rollout and canonical-domain postflight are tracked in [PR178](https://github.com/velt-design/sanctuary/pull/178); merge only after all required checks pass. The verified review preview remains available while release completes.
 
 Live route: https://portal.sanctuarypergolas.co.nz/staff/marketing-performance . Access remains restricted to verified `jordan@sanctuarypergolas.co.nz` plus existing Portal membership, independently enforced by page, API and database. Other staff/admins are denied. No business-record cleanup, tracking changes, vendor integrations, spending or customer messages are authorized.
 
@@ -50,7 +50,7 @@ Owners: `lib/marketingPerformance/` (contracts, selectors, charts, overview and 
 
 ## Verification and review
 
-Implemented and verified before release: 83 focused tests across reporting and shared overlay owners, full lint, Portal typecheck, architecture/docs checks and optimized hosted build. Earlier exact-SQL tests and staging full-schema rehearsal cover the forward function, access denial, dates, reversals and portfolio bounds. Fresh release gates and production evidence will supersede this preflight status.
+Implemented and verified before release: 94 focused tests across reporting, exact SQL, fixtures and shared overlay owners, full lint, Portal typecheck, architecture/docs checks and optimized hosted build. Earlier exact-SQL tests and staging full-schema rehearsal cover the forward function, access denial, dates, reversals and portfolio bounds. Current-main architecture, strict decomposition and documentation guards also pass. Final CI/deployment evidence is attached to PR178.
 
 Builder verification used a private frozen production snapshot and independently reconciled receipt/project populations, all age buckets and monthly quote/payment values. Both protected APIs matched the captured payload; other staff and anonymous identities were denied, private/no-store headers were present, and artifact/fixture routes exposed no data. Real chart -> live project -> Back passed. Real records, SQL outputs, screenshots and authentication evidence remain in ignored private storage, not source fixtures or public documentation.
 

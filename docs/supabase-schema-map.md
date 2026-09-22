@@ -16,7 +16,7 @@ identifier, contact detail or provider result is exposed. At most 366 Auckland d
 and 2,000 cohort rows; overflow fails closed. The API uses the caller's auth client.
 Missing historical visit timestamps are explicit, with current confirmed status as
 the remaining evidence. See `marketing-performance.md` for denominators, historical
-limits, known-test exclusion and environment installation evidence. The original read is live; the hub extension below is staging-only.
+limits, known-test exclusion and environment installation evidence. The original read is live. The hub extension below is installed in staging and production; the app rollout is tracked in PR178.
 
 `20260922070001_marketing_sales_hub.sql` adds `marketing_sales_hub_read(date,date)`.
 It first calls the existing developer-guarded enquiry reader, then projects the whole
