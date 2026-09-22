@@ -3,6 +3,17 @@ import { z } from 'zod';
 import { supabaseServiceRole } from '../supabaseClient';
 import type { XeroFinanceContact, XeroRevenueAccount, XeroRevenueTax } from '../xero/financeMappingProvider';
 import { validateCustomerRequest, type CustomerCreationRepository } from '../xero/customerCreation';
+import { customerHistoryBinding } from '../xero/customerHistoryContract';
+
+/** App-owned read RPC retains current confirmed-user/finance-grant checks; no broad private-table access. */
+export async function financeCustomerHistoryBinding(actor: string, projectId: string, tenantId: string,
+  source: { sourceKey: string; connectionId: string; environment: string }, signal: AbortSignal) {
+  const result = await supabaseServiceRole.rpc('xero_customer_history_binding', { p_actor: actor, p_project_id: projectId, p_tenant_id: tenantId,
+    p_source_key: source.sourceKey, p_connection_id: source.connectionId, p_environment: source.environment }).abortSignal(signal);
+  const parsed = customerHistoryBinding.safeParse(result.data);
+  if (result.error || !parsed.success || parsed.data.projectId !== projectId || parsed.data.tenantId !== tenantId) throw new Error('HISTORY_AUTHORITY_UNAVAILABLE');
+  return parsed.data;
+}
 const contextSchema = z.object({ invoiceId: z.string().uuid(), invoiceRef: z.string(), customerName: z.string(),
   sourceContactId: z.string().uuid(), subtotalCents: z.number().int().nonnegative(), taxCents: z.number().int().nonnegative() });
 export async function financeMappingContext(actor: string, invoiceId: string) {

@@ -1,5 +1,44 @@
 # Xero connection
 
+## Customer finance history candidate (local, default off; 22 September 2026)
+
+`GET /api/integrations/praxis/v1/finance-history` accepts `projectId`, `from` and
+`to` (1–90 accounting dates through today in Pacific/Auckland). Existing source
+bearer/binding checks are necessary but not sufficient: the separate explicit
+finance configuration below binds a confirmed Portal finance actor. The caller
+cannot select an actor or tenant. Current grant and customer mapping are checked
+before each provider read and publication; interactive `pilotAccess` is unchanged.
+
+`customerHistory` reuses the encrypted broker and current scopes, including its
+normal credential renewal. No observation/import/allocation/reconciliation/send
+command is invoked. It enumerates all mapped-contact invoices, including earlier
+invoices, then linked invoice payments and direct RECEIVE records within the period.
+Contact-wide history is not project allocation. Invoice currency, payment Amount
+in invoice currency and provider rate are retained without inventing bank currency.
+
+Pages contain100 rows with stable ID ordering, terminal short-page verification,
+duplicate denial and a ten-page bound. Whole reads are bounded to60 requests and
+75 seconds; each response is capped at2MB. Incomplete, malformed, unsupported
+currency, changed identity or provider errors withhold the whole report. These
+sequential reads expose their read window; they cannot prove an atomic snapshot.
+Unsupported filters fail closed without broader/name-based fallback.
+
+Invoice balances/credits and Portal representations are not additional cash.
+Direct receipts and invoice payments remain separate: no combined cash/profit total.
+Credit notes, prepayments, overpayments, refunds, other contacts and costs are
+excluded. Draft/deleted/voided records are history, not collectible balances.
+Missing/merged/archived contacts require review, never automatic relinking.
+Absence does not prove never paid. This is not full financial context or a release.
+
+Official API references checked:
+[Invoices](https://developer.xero.com/documentation/api/accounting/invoices)
+(ContactIDs, paging/order and currency),
+[Payments](https://developer.xero.com/documentation/api/accounting/payments)
+(invoice-ID/date filters; Amount in invoice currency, BankAmount in account currency),
+[Bank transactions](https://developer.xero.com/documentation/api/accounting/banktransactions)
+and [official SDK](https://xeroapi.github.io/xero-node/accounting/) (paged reads).
+No live API call proves this candidate; reconciliation remains an activation gate.
+
 ## Read-only finance summary (released and source-verified, 2026-09-17)
 
 Jordan's current accountant-informed decision is to keep bank reconciliation

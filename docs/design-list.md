@@ -82,6 +82,13 @@ The Drafting Queue shares the spreadsheet shell with Running Jobs. It should kee
 
 ## Verification
 
+The local Praxis specialist-workload reader exposes these canonical requests
+through a sanitized reporting view, with the same domain designer roster. It
+does not mirror generic work items or change the Drafting Queue. Current status,
+period completion and inconsistent dates are separate; DONE with an assigned
+designer does not prove that designer performed the work. The connector contract,
+coverage and pending activation are owned by `environment-auth-supabase.md`.
+
 ```bash
 npm run test:portal -- apps/portal/lib/designPackages
 npm run test:portal -- apps/portal/app/staff/projects/design-packages
