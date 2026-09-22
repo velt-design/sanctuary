@@ -32,6 +32,10 @@ migrations and both runtime switches before relying on its availability. It expo
 RPCs and the existing lost-conversion owner; no service credential reaches the
 agent. Execution accepts only a saved command ID, never an actor or replacement
 project/payload. Responses are private/no-store and errors exclude database text.
+The shared service-role architecture registry and Portal boundary test approve
+only `apps/portal/lib/integrations/portalActions/server.ts` for this exception.
+Delegated bearer grants have no staff cookie session; authority is checked by
+the scoped database RPCs. This approval does not extend to sibling adapters.
 
 Admin-session same-origin `POST /api/admin/portal-actions/grants` validates the
 exact manifest and returns a 256-bit opaque token once. Only its domain-separated
