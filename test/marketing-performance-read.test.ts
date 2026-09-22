@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { reportSchema, summarize, filteredRows, validPeriod, aucklandDay, UNKNOWN_SOURCE } from '../apps/portal/lib/marketingPerformance/contract';
+import { hubSchema } from '../apps/portal/lib/marketingPerformance/hub';
 
 const db = new PGlite();
 const id = (n: number) => `11111111-1111-4111-8111-${String(n).padStart(12, '0')}`;
@@ -107,7 +108,41 @@ it('excludes only the known labelled test and retains missing projects and conse
   expect(report.rows.find(row => row.enquiryId === id(14))).toMatchObject({ projectId:null,qualification:'unavailable',source:null,origin:false });
   expect(summarize(report.rows).unlinked).toBe(1);
 });
+it('reads the whole portfolio separately from enquiry cohorts and dated sales activity', async () => {
+  await db.exec(`reset role;
+    alter table projects add column created_at timestamptz default '2026-09-01';
+    alter table projects add column pipeline_stage text default 'NEW';
+    alter table projects add column archived_at timestamptz;
+    alter table deposit_invoices add column id uuid default gen_random_uuid();
+    alter table deposit_invoices add column paid_at timestamptz;
+    create table project_owner_assignments(project_id uuid primary key,owner_key text);
+    create table project_payment_entries(id uuid primary key,project_id uuid,entry_type text,amount_inc_gst_cents integer,occurred_at timestamptz,reverses_entry_id uuid);
+    insert into projects(id,name,created_at,pipeline_stage,archived_at) values ('${id(3)}','Synthetic legacy settled','2024-01-01','PAID',now());
+    insert into project_payment_entries values ('${id(70)}','${id(3)}','PAYMENT',25000,'2026-08-31T12:00:00Z',null),('${id(71)}','${id(3)}','REVERSAL',-25000,'2026-09-02T00:00:00Z','${id(70)}');
+  `);
+  await db.exec(sql('20260922070001_marketing_sales_hub'));
+  const get=async(start='2026-09-01',end='2026-09-22')=>hubSchema.parse((await db.query<{value:unknown}>('select marketing_sales_hub_read($1,$2) value',[start,end])).rows[0].value);
+  await db.exec(`set role authenticated; set test.uid='${id(93)}'`);
+  await expect(get()).rejects.toThrow('Developer access');
+  await db.exec(`set test.uid='${id(94)}'`); await expect(get()).rejects.toThrow('Developer access');
+  await db.exec(`set test.uid='${id(90)}'`);
+  const hub=await get();
+  expect(hub.projects).toHaveLength(3);
+  expect(hub.projects.find(p=>p.id===id(3))).toMatchObject({receiptCount:0,originId:null,source:null,state:'ARCHIVED',stage:'PAID',paymentVerified:false});
+  expect(hub.enquiries.rows.some(r=>r.projectId===id(3))).toBe(false);
+  expect(hub.events.filter(e=>e.projectId===id(3)).map(e=>[e.kind,e.amountCents])).toEqual([['reversal',-25000],['payment',25000]]);
+  expect((await get('2026-09-01','2026-09-01')).events).toHaveLength(1);
+  expect((await get('2026-08-31','2026-08-31')).events).toHaveLength(0);
+  expect(hub.projects.find(p=>p.id===id(1))?.source).toBe('google'); // Meta repeat cannot rewrite the origin.
+  expect(hub.events.filter(e=>e.kind==='quote_sent')).toHaveLength(1);
+  expect(JSON.stringify(hub)).not.toMatch(/raw_payload|customerBrief|email|reference|note|payment_method/);
+  await db.exec('reset role; begin');
+  await db.exec("insert into projects(id,name) select gen_random_uuid(),'Synthetic capacity' from generate_series(1,5000)");
+  await expect(get()).rejects.toThrow('portfolio exceeds');
+  await db.exec('rollback');
+});
 it('fails closed above the read bound instead of displaying truncated totals', async () => {
+  await db.exec('reset role');
   await db.exec(`insert into enquiry_requests select gen_random_uuid(),null,'2026-09-01'::timestamptz,'{}'::jsonb,'{}'::jsonb from generate_series(1,2001)`);
   await expect(read()).rejects.toThrow('shorter period');
 });

@@ -2,7 +2,7 @@
 
 This repo uses Supabase for app data and Supabase Auth for the staff portal.
 
-Marketing Performance is a developer-only staged feature: the page and API require
+Marketing Performance is a developer-only feature: the page and API require
 an existing Portal session and verified `jordan@sanctuarypergolas.co.nz` identity.
 The database read independently checks the current verified `auth.users` email
 and Portal access; a stale JWT email cannot retain access after an email change.

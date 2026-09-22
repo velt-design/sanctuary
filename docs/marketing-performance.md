@@ -1,89 +1,19 @@
-# Marketing Performance - working agreement and delivery evidence
+# Marketing Performance and Marketing & Sales hub
 
-Owning task: Marketing Performance, 22 September 2026.
-Workspace: `C:/Dev/sanctuary-marketing-performance-20260922`, branch
-`codex/marketing-performance-20260922`, base main `b465222b` (updated 22 September).
-Current: date shortcuts, source ranking, prior-period comparison and weekly trend
-implemented. 29 focused tests, lint, Portal typecheck, architecture/docs/brand guards
-pass. Hosted Preview build Ready (27s). Independent trend review and exact hosted
-browser verification pass. UI ready for owner review; no production release.
-Historical data cleanliness remains unresolved: the report excludes only the known
-exact test IDs, not all historical tests. The owner approved the two specific
-receipt-link corrections, now committed in production and verified by a separate
-read at 04:20 UTC on 22 September. All other receipt fields and both project rows
-were preserved; the ambiguous match remains unlinked. The private backfill review
-retains the evidence and staff qualification queue. Historical test exclusions
-still need an auditable agreed approach. Physical-phone/human acceptance remains
-unverified. This correction does not release the reporting feature.
-Current next stage: execute the owner-approved developer-only release. Page/API/current database
-identity now restrict reporting to verified `jordan@sanctuarypergolas.co.nz` with
-Portal access; other staff/admins have no Marketing menu entry. Staging migration
-rehearsal and installation passed; hosted allow/deny checks and independent access
-review passed. 118 focused tests, lint, typecheck and architecture/docs/text guards
-pass. Updated hosted Preview is Ready on current main, with staging data only.
-Owner approved this exact restricted production release on 22 September. Release
-and production verification are in progress; do not treat preview evidence as live.
+Current stage: **approved production rollout; database ready** (22 September 2026). Owning task: Marketing Performance. Release PR178 extends the Jordan-only report released in PR174. The owner's latest "push live" authorizes publishing this reviewed batch and installing its read-only hub function. Exact production rollback rehearsal, installation, reconciliation and identity-denial assertions passed; postflight confirms the installed function matches the reviewed body and migration ledger. No business records changed. The application rollout and canonical-domain postflight are tracked in [PR178](https://github.com/velt-design/sanctuary/pull/178); merge only after all required checks pass. The verified review preview remains available while release completes.
 
-Current restricted preview:
-https://sanctuary-portal-lku3rfpq1-jordans-projects-43df95bd.vercel.app/staff/marketing-performance
-Sign in with Jordan's existing staging account; this supersedes earlier preview
-URLs below. Production account access is not a promise of shared staging credentials.
+Live route: https://portal.sanctuarypergolas.co.nz/staff/marketing-performance . Access remains restricted to verified `jordan@sanctuarypergolas.co.nz` plus existing Portal membership, independently enforced by page, API and database. Other staff/admins are denied. No business-record cleanup, tracking changes, vendor integrations, spending or customer messages are authorized.
 
-## Agreement, decisions and authority
+## Agreement and current experience
 
-- Owner **yes** to the explicit restricted production release question
-  (22 September): authorizes publishing this reviewed feature and installing its
-  two report migrations, with access limited to Jordan. This supersedes the
-  original no-release boundary for this feature only. No additional business data
-  corrections, test exclusion decisions, qualification writes, spending or customer
-  communications are included.
-
-- Owner latest request (22 September): consider production release, but restrict
-  this page to `jordan@sanctuarypergolas.co.nz` for now. Developer-only access is
-  implemented; broader staff access is superseded. Existing Portal access and
-  email verification remain required. Preparing/reviewing the release does not
-  supersede the original explicit production release prohibition.
-
-- Original owner request: a bounded staff report connecting observed marketing
-  activity to authoritative enquiries/projects, with drill-down, unknown attribution,
-  explicit definitions and reliable costs only. No advertising management, tracking
-  persistence, customer-form changes, CAPI repair or automated vendor integration.
-- Owner spend reply: **Show unavailable costs; propose CSV import.** No spend ledger
-  or persistence added. Missing spend never means zero.
-- Owner screenshot feedback: add fast7/30/90-day and year-to-date choices; remove
-  warning banners. Implemented also12months and previousYTD, retaining custom dates.
-  PreviousYTD means1January to the same calendar date last year, with leap-day clamp.
-  Informational banners superseded by quiet preview labels and metric-local notes.
-  Actionable failed-read errors retain Retry. Added ranking/rates and awaiting-review.
-- Latest owner reply: **yes** to previous-period comparisons and weekly enquiry
-  trend; asks whether backfill is possible. UI/read implementation and investigation
-  authorized; production import or historical mutation was not authorized then.
-- Subsequent **go ahead** (22 September) progressed the backfill investigation and
-  concrete review batch. The original explicit production-mutation prohibition
-  remained the boundary pending approval of the exact proposed correction.
-  Private evidence and review: `.local-evidence/backfill-review.md` (ignored,
-  untracked, excluded from deployment). Two proposed links pass read-only contact,
-  null-link, same-Auckland-day origin and attachment checks. No writes rehearsed.
-  Test-labelled historical submissions materially limit interpretation of totals;
-  no automatic classification, deletion, qualification or attribution reconstruction.
-- Owner **approved** the exact two links in the immediately preceding review
-  request (22 September). This supersedes the mutation prohibition only for those
-  links. A guarded transaction revalidated contacts, null links, prior origins,
-  same NZ date and zero attachments, changed exactly two project_id fields, and
-  asserted complete preservation of other receipt fields and project rows.
-  Separate post-commit read confirmed persisted links and origins; the held match
-  remains unlinked. Private audit: `backfill-approved-links-result.json` and
-  `backfill-postcommit.json` under `.local-evidence`; ignored and untracked.
-- No production release, other database mutation, spending increase or customer messages.
-  Staging received only the read RPC/migration ledger after rollback rehearsal.
-  Existing Vercel Preview project is used with deployment-specific staging credentials;
-  staff access remains authoritative. No Git commits/history/PR were published.
-- Overlap check: separate business-overview lane owns Praxis overview/workload and
-  its dirty files. This worktree does not change that work.
-
-Authoritative docs: `platform-workflow.md`, `security-privacy-quality.md`,
-`automation-email-audit.md`, `supabase-schema-map.md`, `quotes-invoices-job-packs.md`,
-`staff-api-auth-contracts.md`, `ui-foundation.md`, `testing-and-qa.md`.
+- Original outcome: connect observed marketing activity to authoritative enquiries and projects, with checkable records, unknown attribution and reliable costs only.
+- Owner approved unavailable costs and a proposed CSV import, rather than new spend persistence or integrations.
+- Owner requested quick 7/30/90-day, year-to-date, previous year-to-date and 12-month ranges; custom dates remain. No informational warning banners; definitions and missing-evidence explanations are contextual.
+- Owner comparison against the project pipeline exposed different populations. Four explicit views now separate current Business overview, receipt-date Enquiries, event-date Sales activity and current Project portfolio. No synthetic receipts or attribution are invented to reconcile them.
+- Owner approved a flexible visual hub: source/rate charts, weekly and monthly trends, current stage composition, open-project age, evidence filters, optional project-created dates and browser-local saved views.
+- Owner requested major UI simplification using the Sanctuary configurator's ethos: dominant visuals, compact choices and contextual detail. The reference was inspected at `/configurator-preview` (ConfiguratorDialog/previewShell owners), including Plan recovery, Pitched/Gable changes and closing. Portal Foundation controls, cards, typography, tokens and Drawer remain authoritative. No marketing styling was imported.
+- The compact toolbar, filter/saved-view drawers, fixed filter-chip row and chart help compose existing owners. Counts still lead to records; project navigation and Back preserve choices and reading position.
+- Earlier backfill approval covered exactly two evidenced receipt-to-project links, completed and privately audited. An ambiguous candidate remains untouched. This release authorizes no additional historical mutations. Earlier preview-only release boundaries are superseded only by the latest "push live" instruction.
 
 ## Metric contract and implementation
 
@@ -98,164 +28,46 @@ Authoritative docs: `platform-workflow.md`, `security-privacy-quality.md`,
 | Source/coverage | Consent-permitted saved UTM, never reconstructed. Source-known receipts / included receipts. Campaign-only stays unknown source. Customer-reported source and platform claims remain distinct/unavailable. | Consent/missing-source tests; visible unknown group |
 | Exclusions | Exact existing Praxis labelled-test IDs reused. No universal spam/test classifier; others remain included. Lost/not-qualified are not automatically spam. | SQL tests and disclosure |
 | Drop-off | Missing stage evidence and recorded lost projects; open or skipped-stage journeys are not inferred losses. | Source and supporting-record views |
-| Money/spend | Counts only; quoted value, accepted value and receipts are not labelled revenue. Spend/costs unavailable. | UI and owner decision |
+| Money/spend | Receipt-cohort outcomes are counts; sales money is net recorded receipts. Quoted value, accepted value and receipts are not labelled revenue. Spend/costs unavailable. | UI and owner decision |
 | Prior period | Adjacent equal inclusive day count, same source/campaign. Received/current qualified counts only; no wins comparison. Zero baseline has no invented growth%. | Date/zero tests; qualified-as-of/age caveat beside comparison |
-| Weekly trend | Monday-Sunday buckets clipped to selected dates; bar height enquiries per included day. Exact count/day table includes empty weeks and retains expanded choice. | Sums and Auckland boundary tests; browser review |
+| Weekly trend | Monday-Sunday buckets clipped to selected dates. Source chart counts receipts; the supporting historical trend uses enquiries per included day. Exact count/day tables include empty weeks. | Sums and Auckland boundary tests; browser review |
 | Failures/privacy | Each current/prior read independently verified; missing prior never zero. Current failure shows no totals. Abort/sequence guards. Staff RPC/API, private no-store, minimal fields. | Permission/API and paired-read race/failure tests |
 
-Read path: `marketing_performance_read(date,date)` is one bounded statement per
-period (up to366days,2000receipts; overflow fails closed). New UI uses two parallel
-calls through the unchanged staff API. Source/campaign filtering reuses both complete
-snapshots, including options present only in prior data. No business writes.
-Named owners: `lib/marketingPerformance/{contract,dateRanges,trends}.ts`,
-`components/marketingPerformance/`, staff route and API, migration
-`20260922000002_marketing_performance_read.sql`. Existing large shell/proxy receive
-only exact QA-path allowlist additions; extraction would broaden risk/scope.
 
-Main revalidation: campaignSession retains30-minute consent-gated tab context;
-ContactEnquiryForm posts `/api/enquiry` and emits browser Meta Lead after success.
-Server Meta lead remains on legacy `/api/contact`. Downstream GA4 deliveries are
-not authoritative outcome evidence. Earlier research visits cannot be reconstructed.
+## Hub populations and sources
 
-## Checks and independent review
+`marketing_sales_hub_read(date,date)` first calls the existing guarded receipt reader. It returns the whole current project portfolio (maximum 5,000) and selected-period dated commercial events (maximum 10,000); overflow fails unavailable. Receipt reads remain bounded to 366 inclusive Auckland dates and 2,000 receipts. Browser filters operate over the complete bounded response, never a silently truncated set.
 
-- 29 current focused tests pass: SQL/API boundaries; dates/ranking; weekly sums,
- partial/empty buckets; comparison zero/failure and stale paired reads; return scroll.
- Prior94-test permission/navigation/shell run remains valid for unchanged shared code.
- Focused lint, Portal TypeScript, optimized hosted build and architecture/docs/brand
- guards pass. Earlier package/cache/text guards also passed; final diff checked.
-- Actual staging schema: full rollback rehearsal, then exact read RPC installed.
- Missing confirmed_at is disclosed; no staged business records altered. Production
- receipt/older-period reconciliation and backfill coverage audit use BEGIN READ ONLY /
- ROLLBACK, aggregate output only. Synthetic positives complement actual read evidence.
-- Reference: owner-endorsed Portal Foundation, Projects Index filters/record links.
- Reused StaffPageHeader, PageLayout, Card, MetricGrid, Input/Select/Button and tables.
- No shared tokens, marketing styling or chart dependencies introduced.
-- Initial independent review caught lost reading position; two bounded corrections
- preserved footprint and scroll during/after Back. Source/filter/evidence retained.
- Owner feedback then identified banner clutter/date effort missed by the initial
- review; quiet contextual notes and one-click ranges addressed it. Independent
- refinement review passed with no material findings, including390px and keyboard.
-- Latest trend source identity: `.local-evidence/trends-review-version.json`,20files,
- zero drift at deployment. Independent trend review passed with no material findings. Builder
- ratings do not substitute for independent evidence or owner acceptance.
+Portfolio stage comes from `projects.pipeline_stage`; owner from `project_owner_assignments`; state from `project_operational_states`, with archive precedence. Manual and older projects are included even without receipts. The known test project remains labelled in the portfolio for reconciliation; receipt/sales populations retain established exclusions. Suspected tests are evidence candidates, not automatic exclusions.
 
-Private evidence is ignored by Git info/exclude and explicit Vercel exclusions:
-`.local-evidence/` includes SQL rehearsals/aggregates, logs and frozen manifests.
-Latest upload manifest has4316files and zero private-evidence/credential files.
-No new media: unchanged public-main assets only. One-time staging staff login tokens
-are consumed/deleted; no auth email, permission/password change or credential output.
-The root local build wrapper misidentifies another active dev/Codex process as a
-conflicting build despite isolated output; direct isolated and hosted optimized
-builds pass without interrupting other work. Do not report the wrapper itself passed.
+Overview age means Auckland calendar days from project creation to the read timestamp for ACTIVE/WAITING projects. It is not inactivity, time in stage or overdue work. Buckets partition those projects, including future-date evidence when present. Age inspection sorts oldest first and disables the optional project-created date restriction.
 
-## Review access and remaining limits
+Sales activity counts dated quote-version sends/acceptances, including later superseded history. These are not current accepted-scope project counts. Net recorded receipts sum dated PAYMENT and REVERSAL ledger entries; adjustments and invoice-paid status events are separate, not additional money. Unknown amounts remain unavailable. Quoted value, accepted value and receipts are never combined as revenue.
 
-Latest hosted preview (supersedes the two earlier URLs):
-[Marketing Performance preview](https://sanctuary-portal-k0d1d4ako-jordans-projects-43df95bd.vercel.app/staff/marketing-performance)
-Exact hosted staff page verified: comparison dates/counts, filtered weekly totals and disclosure; Chrome review tab retained. Preview reads staging test records, not live
-business results. Another device needs staging staff sign-in; physical-phone use
-has not been verified. Local populated synthetic preview remains at
-`http://127.0.0.1:3024/qa/marketing-performance-fixture`; its sample project is not
-the actual project workflow. Staging normal project/Original enquiry supplies that
-journey evidence. Hosted fixture routes stay disabled in production-mode builds.
+Source evidence is the original consent-permitted saved receipt. Customer-reported source and Google/Meta attribution claims remain separate from verified business outcomes. Main revalidation found the existing 30-minute consent-gated tab context, `/api/enquiry` browser Meta Lead and legacy `/api/contact` server Lead; none establishes earlier research visits or current CAPI parity. Analytics delivery is not outcome evidence.
 
-Qualification remains configured-residential only. No universal spam classifier,
-complete historical attribution or end-of-period qualification snapshot is claimed.
-Spend remains unavailable. Legacy CAPI/current-form parity is a recommendation,
-not implemented scope. Human acceptance and any production rollout remain separate.
+Owners: `lib/marketingPerformance/` (contracts, selectors, charts, overview and dates), `components/marketingPerformance/` (views and controls), the staff page/two protected APIs, and migration `20260922070001_marketing_sales_hub.sql`. Recharts is reused consistently through a bounded feature chart layer; Portal components own surrounding UI. Chart alternatives expose exact counts, dates and denominators to keyboard users. Stable plot heights and disabled entrance animation preserve layout.
 
-## Backfill recommendation - proposed, not executed
+## Verification and review
 
-Existing historic receipts/linked outcomes will be read automatically on release;
-the staging preview's small totals are not the production dataset. The private
-aggregate audit identifies existing unlinked receipts, eligible unreviewed records,
-and projects lacking a receipt. Its earliest receipt does not prove complete earlier
-history. No source/referral fields exist on contacts/projects, and existing contact/
-project import tools do not import authoritative enquiry receipts.
+Implemented and verified before release: 94 focused tests across reporting, exact SQL, fixtures and shared overlay owners, full lint, Portal typecheck, architecture/docs checks and optimized hosted build. Earlier exact-SQL tests and staging full-schema rehearsal cover the forward function, access denial, dates, reversals and portfolio bounds. Current-main architecture, strict decomposition and documentation guards also pass. Final CI/deployment evidence is attached to PR178.
 
-1. Prepare a dry-run match list for existing unlinked receipts -> existing projects,
-   keeping receipt IDs, original dates and evidence. Flag ambiguity/duplicates;
-   do not match solely on a similar name or create repeat projects silently.
-2. Staff assess eligible receipts through Original enquiry. Record decisions now,
-   without backdating or forcing legacy/commercial leads into inapplicable criteria.
-3. For genuinely missing enquiries, prepare a small import from original emails,
-   CRM or CSV exports: stable external ID, received date, target project, provenance,
-   review status and any permitted source evidence. Preview each write first.
-   Do not replay intake emails, analytics, jobs or customer notifications.
-4. Restore observed source only from exact original evidence under applicable
-   consent. Customer recollection stays separately labelled. Platform-attributed
-   totals do not establish unique receipt attribution; no invented research history.
-5. Reconcile visit/quote/acceptance/payment records through existing governed owners,
-   not report-specific stage flags. Preserve quoted, accepted and received values.
+Builder verification used a private frozen production snapshot and independently reconciled receipt/project populations, all age buckets and monthly quote/payment values. Both protected APIs matched the captured payload; other staff and anonymous identities were denied, private/no-store headers were present, and artifact/fixture routes exposed no data. Real chart -> live project -> Back passed. Real records, SQL outputs, screenshots and authentication evidence remain in ignored private storage, not source fixtures or public documentation.
 
-Recommended first batch: match existing unlinked receipts and perform eligible
-qualification reviews. Next input for older history: original enquiry email/export.
-Production backfill requires the concrete reviewed batch and separate write authority;
-no importer, historical mutation or broader qualification policy was implemented.
+The independent delivery reviewer exercised normal entry, locating important figures, all four views, chart/table inspection, editing/cancelling filters, saving/restoring choices, project return, keyboard focus and desktop/mobile-size layouts. Corrections closed: native query writers now allow Next to synchronize return URLs; payment dots remain clickable; shared overlay locking restores reading position and nested styles; backdrop close restores trigger focus. No material finding remained. Drawer/Modal/Schedule consumers retain their lock contract. Physical-phone testing is unverified; viewport checks do not establish physical-device acceptance.
 
-Spend CSV proposal remains separate: inclusive Auckland dates, exact source/campaign,
-NZD amount, tax basis, evidence reference, preparer/verification time; reject duplicate
-or overlapping coverage, mixed currency/tax basis and unverified/partial coverage.
-Verified zero differs from absent spend. Cost ratios use covered spend / qualified
-enquiries or unique won origin projects; no denominator means unavailable. Period
-spend is not necessarily acquisition cost of that enquiry cohort.
-Final independent trend review:12vs4 synthetic enquiries and4vs1 qualified reconcile;
-weekly5+7+0+0 totals12 over6/7/7/2days. Previous-only source selection, zero baseline,
-prior-only failure and both-failed state, rapid/custom periods all passed. Expanded
-weekly detail plus filter/evidence choices and scroll survived actual project Back
-(y2019) and390px sample Back(y3625.5). No correction round required for this stage.
-Reviewer inspected backfill framing, not the private aggregate audit/import batch.
+Agent evidence assessment before release: correctness and system fit meet the 8/10 review standard through exact SQL/data reconciliation and existing business owners; clarity/visual/journey/recovery meet it after independent corrections; security, maintainability and performance meet it through guarded bounded reads, focused owners and hosted build. Production handover remains pending live postflight. Ratings do not replace owner acceptance or access checks.
 
-Compact assessment: outcome/correctness8/10 (tests and actual read reconciliation);
-usability/clarity8/10 (independent tasks, dates/denominators and unknown history);
-visual/accessibility8/10 (Foundation,390px, keyboard disclosure); system fit,
-maintainability and reliability8/10 (existing truth owners, bounded named read hook,
-independent failures/races and stable return); privacy/security8/10 (staff boundaries,
-minimal reads and reviewed payload exclusions); performance/cost8/10 within bounded
-scope (two capped reads, client filters, no integration/library; production-scale
-latency not independently measured); desktop handover8/10 (working hosted exact
-page verified). These are reasoned assessments, not owner acceptance; physical-phone
-use remains unverified. This assessment preceded the two subsequently approved
-receipt-link corrections recorded above. No reporting production release performed.
+## Preview and publication boundaries
 
-## Developer-only release preparation (22 September)
+The reviewed private hosted preview uses staging authentication and an explicitly labelled frozen real snapshot, not a live feed. The local development fixture uses fictional records only. Neither is the production data path. `MARKETING_PERFORMANCE_PREVIEW=production-snapshot` is preview-only and fails closed outside Vercel Preview; artifact reads occur after authorization. Packaging copies must be removed after each approved preview. Production uses the database RPC, with snapshot mode absent and no private artifact deployed.
 
-Owner's latest restriction is enforced in three places: verified server identity
-on the page and API, current verified auth identity plus Portal access inside the
-RPC, and shared sidebar/rail/drawer visibility. Xero reuses the same extracted
-developer predicate without changing its access. An admin role alone is insufficient.
-The forward migration preserves the previously applied staging migration unchanged.
+Before publication, inspect the complete outgoing commit/diff, docs, fixtures and deployment manifest. Keep private snapshots, credentials, customer identities, financial values and rendered customer media out of Git/public assets. The private historical working evidence is retained under ignored `.local-evidence/`; this compact record owns current decisions and status.
 
-Verification: 118 focused SQL/API/page/navigation/return/date/trend/shell/proxy tests
-pass; the reviewer independently ran 18 boundary tests and inspected the hosted
-Dashboard-to-Marketing-to-project-and-Back journey. Date/source selections and
-scroll remained intact, including the mobile drawer. Builder observed other-staff
-menu omission and direct-page 404. Real hosted HTTP reads with existing staging
-identities returned developer 200 with report, other-staff 403 without report,
-anonymous 401 without report; every response was private/no-store. Staging full-schema
-rollback rehearsal and installed migration both exercised actual authenticated
-role allow/deny. Production read-only preflight confirms existing dependencies,
-Jordan's verified Portal identity and no report function/migration installation.
+## Remaining limits and proposed next inputs
 
-Exact private artifacts: `developer-review-version.json`, `developer-http-verification.json`,
-`developer-staging-rehearsal.json`, `developer-staging-install.json`,
-`developer-production-preflight.json`, and final check logs under `.local-evidence`.
-Ignored/untracked evidence stays excluded from Vercel uploads; no private backfill
-records or credentials are in the feature source. Shared navigation filtering was
-extracted into its existing owner; no new policy branch was added to shell layout.
+Historical receipts, qualification assessments, visit timestamps and payment evidence are incomplete. Current pipeline status is not proof of a dated payment. Missing source stays unknown, never direct traffic. No universal spam classifier or reconstructed attribution is claimed. Previous periods with no saved receipts are not proof of no historical enquiries.
 
-Independent access-stage assessment: security/correctness and system fit 8/10;
-journey/reliability 8/10 with observed hosted evidence. Builder final HTTP checks
-close the reviewer's stated API verification limit. Physical-phone and human
-acceptance remain unverified; fixture data never establishes production outcomes.
+Backfill requires original evidence: review exact existing receipt/project matches; assess eligible enquiries through Original enquiry without backdating; prepare imports with external ID, original received date, project link, provenance and explicit consent-permitted source. Do not replay intake messages, analytics or jobs. Any further write batch needs its own concrete review and authorization.
 
-Prepared release: install both reporting migrations atomically (so the temporary
-staff-wide version is never committed), then deploy the Portal against existing
-production configuration, never promote the staging-configured preview. The exact
-guarded SQL batch is `developer-production-install-PENDING-APPROVAL.sql`, not run.
-No business-record writes are part of this release. Postflight must verify Jordan's
-report plus other-staff/anonymous denial, real period totals and project navigation.
-Historical test cleanup and qualification assessment remain separate outstanding
-business-data work; costs stay unavailable. No production release, Git push or
-merge has been performed for the feature.
+Proposed spend CSV (not implemented): period start/end, observed source, campaign, currency (NZD), amount and evidence reference. Validate overlapping/duplicate periods, currency and source matching, preview rejected/unmatched rows, and retain provenance before persistence. Costs remain unavailable until reliable spend and a defensible matching denominator exist. No Google/Meta claimed conversions are summed into unique business outcomes.

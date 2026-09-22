@@ -65,7 +65,10 @@ export function Drawer({
       className={styles.overlay}
       data-drawer-overlay="true"
       onMouseDown={(event) => {
-        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+        if (closeOnBackdrop && event.target === event.currentTarget) {
+          event.preventDefault();
+          onClose();
+        }
       }}
     >
       <aside

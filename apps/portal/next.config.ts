@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   experimental: { externalDir: true },
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   outputFileTracingIncludes: {
+    ...(process.env.MARKETING_PERFORMANCE_PREVIEW === 'production-snapshot' ? {
+      '/api/staff/v1/marketing-performance': ['./.private-preview/marketing-hub.json'],
+      '/api/staff/v1/marketing-performance/hub': ['./.private-preview/marketing-hub.json'],
+    } : {}),
     '/api/qa/design-booklet-workbench/pdf': designBookletSharpRuntimeFiles,
     '/api/staff/v1/design-booklets/pdf': designBookletSharpRuntimeFiles,
     '/api/staff/v1/projects/*/design-booklet/assets/complete': designBookletSharpRuntimeFiles,

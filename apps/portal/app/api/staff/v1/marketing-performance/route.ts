@@ -1,6 +1,8 @@
 import { requireStaffContext, jsonError, jsonOk } from '@/lib/api/staffApi';
 import { reportSchema, validPeriod } from '@/lib/marketingPerformance/contract';
 import { isDeveloper } from '@/lib/developerAccess';
+import { readPreviewSnapshot } from '@/lib/marketingPerformance/readSnapshot';
+import { SnapshotCoverageError } from '@/lib/marketingPerformance/snapshotData';
 
 export const runtime = 'nodejs';
 function privateResponse<T extends Response>(response: T): T {
@@ -16,6 +18,8 @@ export async function GET(request: Request) {
   if ([...query.keys()].some(key => !['start', 'end'].includes(key) || query.getAll(key).length !== 1)
     || !validPeriod(start, end)) return privateResponse(jsonError('Choose up to 366 days ending today or earlier.', 400));
   try {
+    const snapshot=await readPreviewSnapshot(start,end,true);
+    if(snapshot)return privateResponse(jsonOk({report:snapshot.enquiries}));
     const { data, error } = await staff.supabase.rpc('marketing_performance_read', { p_start: start, p_end: end });
     if (error) {
       if (error.code === '42501') return privateResponse(jsonError('Developer access is required.', 403));
@@ -26,7 +30,8 @@ export async function GET(request: Request) {
     if (!report.success || report.data.start !== start || report.data.end !== end)
       return privateResponse(jsonError('The reporting evidence could not be verified. Retry before using these totals.', 503));
     return privateResponse(jsonOk({ report: report.data }));
-  } catch {
+  } catch (error) {
+    if(error instanceof SnapshotCoverageError)return privateResponse(jsonError(error.message,422));
     return privateResponse(jsonError('Marketing reporting could not be loaded. Please retry.', 503));
   }
 }

@@ -236,3 +236,7 @@ and has no implied completion sequence.
 - Credential-free visual review may use `/qa/ui-foundation-fixture` only with the explicit portal QA flag; this must never replace staff-route auth smoke.
 
 Finance navigation uses the existing sidebar/rail/drawer items and styling. Its visibility comes from the server-verified finance user identity, checked against the current authenticated client identity; a generic admin role is insufficient. Finance routes and commands retain independent current-grant checks. Invoice references in Finance lead to the project Commercial/invoices view. This addition does not expose developer connection controls or change the shell layout.
+
+## Reading position in overlays (22 September 2026)
+
+The shared Portal scroll lock now holds the document at its captured position with scrollbar compensation, rather than clamping root height and losing scroll. The existing Modal, Drawer and Schedule fullscreen consumers retain the same lock/unlock contract. Nested locks release only after the last close; original inline styles and scroll position are restored. This correction was found during the Marketing hub information-drawer review. Unit evidence includes nested locks/style restoration; browser evidence includes opening help below the fold, Escape/focus return and preserved reading position. No portal token or cross-route visual migration.

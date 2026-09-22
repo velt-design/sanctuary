@@ -6,7 +6,7 @@ vi.mock('@/lib/api/staffApi', () => ({ requireStaffContext: mocks.auth,
   jsonOk: (value: unknown) => Response.json(value) }));
 vi.mock('@/lib/marketingPerformance/readSnapshot',()=>({readPreviewSnapshot:mocks.snapshot}));
 import { GET } from './route';
-import { fixtureReport } from '@/app/qa/marketing-performance-fixture/fixtures';
+import { hubFixture as fixtureReport } from '@/app/qa/marketing-performance-fixture/hubFixtures';
 const request = (query = 'start=2026-09-01&end=2026-09-22') => new Request(`https://portal.example.test/api/staff/v1/marketing-performance?${query}`);
 beforeEach(() => { vi.clearAllMocks(); mocks.snapshot.mockResolvedValue(null); mocks.auth.mockResolvedValue({ok:true,session:{user:{email:'jordan@sanctuarypergolas.co.nz',email_confirmed_at:'2026-01-01'}},supabase:{rpc:mocks.rpc}}); mocks.rpc.mockResolvedValue({ data:fixtureReport,error:null }); });
 it('denies other staff/admins and unverified or lookalike emails before any RPC', async () => {
@@ -30,9 +30,9 @@ it('rejects invalid dates, unknown parameters and duplicate parameters before RP
 });
 it('returns a complete validated report and rejects mismatched or duplicate evidence', async () => {
   const result = await GET(request()); expect(result.status).toBe(200); expect(result.headers.get('cache-control')).toBe('private, no-store');
-  expect((await result.json()).report.rows).toHaveLength(12);
+  expect((await result.json()).report.enquiries.rows).toHaveLength(12);
   mocks.rpc.mockResolvedValue({data:{...fixtureReport,end:'2026-09-21'},error:null}); expect((await GET(request())).status).toBe(503);
-  mocks.rpc.mockResolvedValue({data:{...fixtureReport,rows:[fixtureReport.rows[0],fixtureReport.rows[0]]},error:null}); expect((await GET(request())).status).toBe(503);
+  mocks.rpc.mockResolvedValue({data:{...fixtureReport,events:[fixtureReport.events[0],fixtureReport.events[0]]},error:null}); expect((await GET(request())).status).toBe(503);
 });
 it('does not return raw database failures or partial totals', async () => {
   for (const [code,status] of [['42501',403],['54000',422],['PGRST202',503]]) {
@@ -41,8 +41,9 @@ it('does not return raw database failures or partial totals', async () => {
   }
 });
 
+
 it('serves protected snapshots without RPC and fails closed on snapshot errors',async()=>{
-  mocks.snapshot.mockResolvedValue({enquiries:fixtureReport});
+  mocks.snapshot.mockResolvedValue({...fixtureReport});
   const good=await GET(request());expect(good.status).toBe(200);expect(mocks.rpc).not.toHaveBeenCalled();
   mocks.snapshot.mockRejectedValue(new Error('private snapshot content'));
   const bad=await GET(request());expect(bad.status).toBe(503);expect(await bad.text()).not.toContain('private snapshot content');
