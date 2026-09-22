@@ -61,7 +61,12 @@ export const NAV_ITEMS = [
       { key: 'pricebook-calculator', label: 'Calculator', href: '/staff/calculator' },
     ],
   },
-  { key: 'access', label: 'Access', href: '/admin/access', Icon: KeyRound, adminOnly: true },
+  { key: 'access', label: 'Access', href: '/admin/access', Icon: KeyRound, adminOnly: true,
+    children: [
+      { key: 'staff-access', label: 'Staff access', href: '/admin/access' },
+      { key: 'portal-actions', label: 'Agent connections', href: '/admin/portal-actions' },
+    ],
+  },
 ] as const;
 
 export function visibleNavItems(role?: string | null, financeAccess = false, email?: string | null) {

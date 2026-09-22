@@ -23,6 +23,99 @@ The in-progress `POST /api/integrations/xero/worker` is a server-to-server bound
 
 This doc is the current-state reference for staff, admin, and public-token route boundaries. Use it before editing API routes, Supabase access, auth checks, diagnostics, or server-owned side effects.
 
+## Portal action connection under development
+
+The adapter is activated separately in each environment. Confirm the installed
+migrations and both runtime switches before relying on its availability. It exposes
+`GET /api/integrations/portal-actions/v1/connection`, `GET .../projects` and
+`POST .../commands`. The server-only service-role exception is limited to those
+RPCs and the existing lost-conversion owner; no service credential reaches the
+agent. Execution accepts only a saved command ID, never an actor or replacement
+project/payload. Responses are private/no-store and errors exclude database text.
+The shared service-role architecture registry and Portal boundary test approve
+only `apps/portal/lib/integrations/portalActions/server.ts` for this exception.
+Delegated bearer grants have no staff cookie session; authority is checked by
+the scoped database RPCs. This approval does not extend to sibling adapters.
+
+Admin-session same-origin `POST /api/admin/portal-actions/grants` validates the
+exact manifest and returns a 256-bit opaque token once. Only its domain-separated
+SHA-256 hash is stored. `POST .../grants/revoke` accepts `{grantId}` and remains
+available with the application kill switch off. Admin `GET .../grants` returns
+bounded metadata without token hashes or approval payloads, including recovery
+when a one-time issuance response was lost. Issuance derives the approver
+from the authenticated database session. Grants expire within 30 days, actions
+within 24 hours, with at most 1,000 named read projects and 100 exact close/reopen
+actions. Complete/financial actions, messages and generic database access are
+excluded. Lost close outcomes and explicit reasons retain canonical semantics.
+
+The admin-only `/admin/portal-actions` screen is linked from Access. It imports
+an exact JSON manifest, uses `POST .../grants/preview` for current named projects,
+states, versions and eligibility, and refreshes that preview before issuance.
+Changed or ineligible projects stop issuance. Preview does not reserve state;
+execution independently checks it. The credential stays in memory until copied
+once, then is cleared. Lost issuance responses require inventory inspection and
+revocation before another attempt. Admin mutation origins must match the pinned
+`PORTAL_ACTIONS_ORIGIN`; internal request-host rewrites are not trusted.
+
+Migration `20260922042401_project_state_command_core.sql` extracts the canonical
+command into a private explicit-actor owner, preserving the public staff wrapper
+and business body. No session identity is forged. Migration
+`20260922042402_portal_action_grants.sql` owns private grants, frozen approvals
+and atomic delegated receipts linked to the existing domain command receipts.
+Every execution rechecks current admin membership, revocation, installation
+identity, expiry, project scope and row version. Grant/membership/project/state
+locks serialize revocation and writes; receipt replay cannot consume a second
+action. Closed projects keep their pipeline stage. Only NEW, CONTACTED,
+SITE_VISIT, QUOTING and SENT are eligible; archived or advanced stages fail.
+Stale conflicts become PT409 rather than retriable database serialization errors.
+
+Both switches default off: `PORTAL_ACTIONS_ENABLED=1` plus explicit
+`PORTAL_ACTIONS_ENVIRONMENT=staging|production`, and the separate database-owned
+`private.portal_action_installation` enabled/environment row. No general-purpose
+activation endpoint exists. Verify the actual app/database destination before
+any installation activation; no token or environment can activate it themselves.
+The existing synthetic-only AI worker/approvals and read-only Praxis connection
+remain unchanged. This connection is a bounded task delegation, not new generic
+AI execution authority.
+
+After a committed command, the route calls the existing lost-conversion owner
+and independently reads scoped project state. A failed read reports
+`committed: true, readBackRequired: true`; never send a new command ID to repair
+an uncertain response. `conversionStatus: attempted` is not proof of delivery:
+the existing conversion owner can swallow audit insertion failures. Same-ID
+replay retains that owner's repair policy. The Node client in
+`scripts/lib/portal-actions-client.mjs` validates fresh environment/identity,
+refuses redirects, bounds response/time and never automatically retries writes.
+
+`npm run portal:actions -- connect --base-url <origin> --environment staging`
+opens a hidden-input connection prompt when run in a terminal and accepts piped
+stdin for automation. Tokens are never accepted as command arguments. The agent
+opens that prompt in the task terminal with the correct checkout, destination
+and environment; the owner pastes the one-time copied key there and presses
+Enter, never into chat. The Windows client encrypts its complete local
+connection with current-user DPAPI in LocalAppData/Sanctuary/PortalActions, with
+current-user/SYSTEM-only access. It pins the verified environment and actor,
+refuses to overwrite an existing connection, and supports health, projects,
+execute by saved command ID, and disconnect. Disconnect removes only local
+access; server revocation is a separate explicit action. Never put the token in
+command arguments, a checkout, a synced folder or a report.
+
+Focused checks: `npx vitest run apps/portal/lib/integrations/portalActions
+test/portal-action-grants.test.ts test/project-state-command-core.test.ts`, and
+`node --test scripts/lib/portal-actions-client.test.mjs`. PGlite tests use minimal
+synthetic schema; the core integration uses actual canonical helpers, while
+grant-only tests use a labelled core stub. `node scripts/test-portal-actions-concurrency.mjs`
+uses a cached PostgreSQL 17 image without network or published ports: seven
+real locking/revocation/expiry/rollback scenarios pass with a synthetic core.
+Full-schema staging rollback rehearsal and a real authenticated admin API /
+installed Windows client trial passed: scoped read, close, same-ID replay,
+revocation denial and reopen. Independent SQL read-back confirmed two canonical
+and two delegated receipts, two history events, retained stage and restored
+active state. Test grants were revoked, temporary accounts demoted/banned and
+local credentials disconnected. These proofs use synthetic staging projects.
+Browser delivery review and production release/access verification remain
+separate pending gates. Local tests do not prove production availability.
+
 ## Route Families
 
 - Staff correspondence uses `GET/POST /api/staff/v1/projects/[projectId]/correspondence` with staff authentication, auth-bound project visibility, same-origin empty POST and final access rechecks. All signed-in staff are the approved audience. The signed Velt receiver is deployed and real mail was verified in a protected Portal candidate; the global Portal flag remains off. The local UI reads mail on opening after an access/configuration check; AI requires a separate explicit request. No browser-supplied email/actor or forwarded owner cookie is accepted. Protocol, cache lifetime and release boundaries are owned by `project-command-centre-architecture.md`.
