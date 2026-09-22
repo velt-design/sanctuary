@@ -20,17 +20,17 @@ export default function EmailDispatchPanel({batchId,canManage,reviewEditing=fals
   async function change(action:'prepare'|'cancel') {
     setBusy(true);setError('');
     try{setData(await apiJson<DispatchOverview>(action==='prepare'?endpoint:`${endpoint}/cancel`,{method:'POST',body:JSON.stringify({commandId:crypto.randomUUID()})}));onChanged?.();}
-    catch{setError('The batch could not be updated. Finish reviewing every item, then refresh and try again. No email was sent.');}
+    catch{setError('The batch could not be updated. Refresh the current project details and try again. No email was sent.');}
     finally{setBusy(false);}
   }
-  if(!canManage)return <p className="text-sm">Ticking off a message saves your approval. Jordan will arrange sending after the review is complete.</p>;
+  if(!canManage)return <p className="text-sm">Accept saves the message for sending. Jordan will arrange sending.</p>;
   return <details className={styles.import}>
     <summary className="cursor-pointer font-medium">Sending after review</summary>
     <div className="mt-3 space-y-3">
-      <p className="text-sm">Once every message is approved or skipped, prepare the approved batch. This locks those versions for sending as Outlook replies from info@sanctuarypergolas.co.nz, signed Ellen. Preparing does not send emails.</p>
+      <p className="text-sm">Prepare the accepted messages whenever they are ready. Pending messages stay in review. This locks those versions for sending through Outlook from info@sanctuarypergolas.co.nz, signed Ellen. Preparing does not send emails.</p>
       {data&&<p role="status" className="text-sm">{data.counts.ready} ready · {data.counts.attempting} awaiting confirmation · {data.counts.sent} sent · {data.counts.uncertain} need checking</p>}
       <div className="flex flex-wrap gap-3">
-        <Button variant="secondary" disabled={reviewEditing||busy||!data} onClick={()=>void change('prepare')}>Prepare approved batch</Button>
+        <Button variant="secondary" disabled={reviewEditing||busy||!data} onClick={()=>void change('prepare')}>Prepare accepted messages</Button>
         <Button variant="secondary" disabled={reviewEditing||busy||!data?.counts.ready} onClick={()=>void change('cancel')}>Return unsent messages to review</Button>
         <Button variant="quiet" disabled={busy} onClick={()=>void refresh()}>Refresh send progress</Button>
       </div>

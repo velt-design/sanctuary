@@ -144,6 +144,9 @@ jobs:
       - name: Portal action delegation contracts and local client
         run: npm run test:portal:actions
 
+      - name: Portal email review and Outlook attempt contracts
+        run: npm run test:portal:email-review
+
       - name: Prepare disposable Portal action database
         run: docker pull postgres:17-alpine
 
