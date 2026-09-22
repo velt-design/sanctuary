@@ -15,6 +15,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/dashboard/getDashboardData.ts',
   'apps/portal/lib/dashboard/getDashboardSnapshotCached.ts',
   'apps/portal/lib/estimates/server.ts',
+  'apps/portal/lib/integrations/portalActions/server.ts', // Default-dark bearer adapter; exact stored grants and actions rechecked by private SQL owners.
   'apps/portal/lib/invoices/adminPayments.ts',
   'apps/portal/lib/invoices/automaticInvoicePaymentRepository.ts', // Cron-owned recording; SQL rechecks the enabled tenant, exact invoice and ledger evidence.
   'apps/portal/lib/invoices/drafts.ts', // Admin-gated invoice reads/previews; mutations use auth-bound RPCs.

@@ -8,6 +8,9 @@
   ],
   "scripts": {
     "test:xero:db": "node scripts/test-xero-connection-db.mjs",
+    "test:portal:actions:db": "node scripts/test-portal-actions-concurrency.mjs",
+    "portal:actions": "node scripts/portal-actions.mjs",
+    "test:portal:actions": "vitest run test/portal-action-grants.test.ts test/project-state-command-core.test.ts && node --test scripts/lib/portal-actions-client.test.mjs scripts/lib/portal-actions-credential-store.test.mjs scripts/lib/portal-actions-prompt.test.mjs",
     "test:praxis:customer:db": "node scripts/test-praxis-customer-read-db.mjs",
     "dev": "node -e \"console.log('Use: npm run dev:marketing, npm run dev:portal, or npm run dev:worker')\"",
     "dev:marketing": "npm --prefix apps/marketing run dev",

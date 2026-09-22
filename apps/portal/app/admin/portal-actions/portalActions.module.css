@@ -1,0 +1,35 @@
+.page { color: var(--ui-text); }
+.sections { display: grid; gap: 24px; margin-top: 24px; min-width: 0; }
+.row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.muted { color: var(--ui-text-muted); font-size: var(--ui-font-size-small); line-height: 1.6; }
+.fileLabel { display: grid; gap: 8px; font-weight: 600; margin: 8px 0; }
+.fileLabel input { max-width: 100%; min-height: 44px; font: inherit; }
+.manifest { margin: 16px 0; }
+.manifest summary, .inventory summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
+.manifest label { display: block; margin-bottom: 8px; }
+.manifest pre { overflow: auto; max-height: 260px; padding: 16px; background: var(--ui-surface-secondary); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.feedback { min-height: 72px; padding: 12px 0; line-height: 1.6; overflow-wrap: anywhere; }
+.reviewSlot { height: 560px; overflow: auto; scrollbar-gutter: stable; }
+.summary { display: flex; align-items: start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.summary p, .project p { margin: 8px 0; line-height: 1.5; overflow-wrap: anywhere; }
+.reviewList { max-height: 460px; min-height: 220px; overflow: auto; border: 1px solid var(--ui-border); scrollbar-gutter: stable; }
+.project { padding: 16px; border-bottom: 1px solid var(--ui-border); }
+.project:last-child { border-bottom: 0; }
+.conflict { color: var(--ui-text); border-left: 3px solid var(--ui-border-strong); padding: 8px 12px; background: var(--ui-surface-secondary); font-weight: 600; }
+.approval { display: grid; gap: 16px; justify-items: start; padding: 20px 0; border-top: 1px solid var(--ui-border); }
+.approval label { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.approval input { width: 20px; height: 20px; accent-color: var(--ui-action); flex-shrink: 0; }
+.credential { min-height: 180px; padding: 16px; border: 1px solid var(--ui-border); background: var(--ui-surface-secondary); }
+.credential p { max-width: 70ch; line-height: 1.5; }
+.inventory { min-height: 160px; }
+.inventory code { overflow-wrap: anywhere; }
+.revoke { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-height: 56px; margin-top: 12px; }
+.page :is(summary,input,textarea):focus-visible, .reviewList:focus-visible { outline: 2px solid var(--ui-text-strong); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .sections { gap: 16px; }
+  .summary { display: grid; gap: 12px; }
+  .reviewList { max-height: 420px; }
+  .project { padding: 12px; }
+  .credential { min-height: 230px; }
+  .approval { justify-items: stretch; }
+}

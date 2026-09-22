@@ -141,6 +141,15 @@ jobs:
       - name: Portal Project Work V2 contract gate
         run: npm run test:portal:project-work
 
+      - name: Portal action delegation contracts and local client
+        run: npm run test:portal:actions
+
+      - name: Prepare disposable Portal action database
+        run: docker pull postgres:17-alpine
+
+      - name: Portal action concurrent command boundaries
+        run: npm run test:portal:actions:db
+
       - name: Commercial database and invoice draft contracts
         run: npm run test:commercial:db
 

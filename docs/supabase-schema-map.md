@@ -18,6 +18,20 @@ Missing historical visit timestamps are explicit, with current confirmed status 
 the remaining evidence. See `marketing-performance.md` for denominators, historical
 limits, known-test exclusion and staging-only installation evidence.
 
+## Portal Action Delegation
+
+Portal action delegation (installed and tested in staging; not production):
+`20260922042401_project_state_command_core.sql` extracts the existing state-command
+business body to a private explicit-actor core, retaining the auth-bound public
+wrapper. `20260922042402_portal_action_grants.sql` adds private installation,
+grant, frozen approval and atomic receipt tables, all denied to API roles.
+Authenticated admins issue/review/list/revoke through narrow RPCs; service-role
+execution accepts a token hash, exact environment and saved command ID only.
+Scope/expiry/current membership/stage/version/revocation are checked inside the
+transaction. No AI synthetic-table or Praxis permission is widened. Both app and
+database switches are off by default. See [staff API contracts](staff-api-auth-contracts.md#portal-action-connection-under-development)
+for the runtime contract and remaining live verification.
+
 Project follow-up retirement (local, not installed): migration
 `20260917000002_defer_project_follow_ups.sql` replaces new-project cadence
 initialization and reminder reconciliation, rejects new sent/reply confirmations,
@@ -671,3 +685,4 @@ Unapplied migration21 adds request window_started_at and private append-only xer
 
 Finance clarity: xero_finance_mapping_status(actor, invoice, tenant) is a service-role-only read boundary returning the current source-contact link or explicit null. It enforces the existing finance grant and configured tenant; revoked mappings are absent. Migration 20260915000003 adds no table writes or browser grants.
 Finance setup separation: `xero_finance_save_setup` accepts the explicitly validated customer/defaults operation through the server-only finance boundary. It serializes on the existing control row, rechecks actor/customer/tenant, records operation-scoped immutable evidence and rejects command-ID reuse across scopes. Customer operations only update the customer mapping; defaults operations only update accounting defaults after tax validation against the basis invoice. Migration 20260915000004 also returns current defaults from the status reader. Existing invoice/transfer/payment records are outside both commands.
+
