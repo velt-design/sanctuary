@@ -39,6 +39,20 @@ Missing historical visit timestamps are explicit, with current confirmed status 
 the remaining evidence. See `marketing-performance.md` for denominators, historical
 limits, known-test exclusion and staging-only installation evidence.
 
+## Portal Action Delegation
+
+Portal action delegation uses the following forward migrations:
+`20260922042401_project_state_command_core.sql` extracts the existing state-command
+business body to a private explicit-actor core, retaining the auth-bound public
+wrapper. `20260922042402_portal_action_grants.sql` adds private installation,
+grant, frozen approval and atomic receipt tables, all denied to API roles.
+Authenticated admins issue/review/list/revoke through narrow RPCs; service-role
+execution accepts a token hash, exact environment and saved command ID only.
+Scope/expiry/current membership/stage/version/revocation are checked inside the
+transaction. No AI synthetic-table or Praxis permission is widened. Both app and
+database switches are off by default. See [staff API contracts](staff-api-auth-contracts.md#portal-action-connection-under-development)
+for the runtime contract and remaining live verification.
+
 Project follow-up retirement (local, not installed): migration
 `20260917000002_defer_project_follow_ups.sql` replaces new-project cadence
 initialization and reminder reconciliation, rejects new sent/reply confirmations,

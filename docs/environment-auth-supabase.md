@@ -77,6 +77,9 @@ Common optional or feature-specific variables:
 - `PORTAL_TEST_EMAIL`
 - `PORTAL_TEST_PASSWORD`
 - `PORTAL_BASE_URL`
+- `PORTAL_ACTIONS_ENABLED` (default off; exactly `1` enables the bounded delegated-action adapter only when the database installation switch is also enabled)
+- `PORTAL_ACTIONS_ENVIRONMENT` (`staging` or `production`; must match the independently configured database installation identity and issued grant; see [staff API contracts](staff-api-auth-contracts.md#portal-action-connection-under-development))
+- `PORTAL_ACTIONS_ORIGIN` (exact trusted HTTPS Portal origin for admin review/issuance/revocation; loopback HTTP is accepted only for staging; missing or malformed configuration denies these POSTs)
 - `PORTAL_DRAWING_URL`
 - `NEXTAUTH_SECRET` or `AUTH_SECRET` for legacy NextAuth-backed paths.
 - `PRAXIS_SANCTUARY_DATABASE_URL` (server-only connection string for the dedicated Praxis reporting LOGIN; every non-loopback target must declare `sslmode=verify-full`, which uses the Node platform trust store and verifies the database hostname; never use a service-role or owner connection)
