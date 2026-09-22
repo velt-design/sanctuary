@@ -53,7 +53,9 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/schedule-ops-fixture' ||
     pathname === '/qa/finance-payment-fixture' ||
     pathname === '/qa/xero-summary-fixture' ||
-    pathname === '/qa/enquiry-qualification-fixture'
+    pathname === '/qa/enquiry-qualification-fixture' ||
+    pathname === '/qa/marketing-performance-fixture' ||
+    pathname === '/qa/marketing-performance-fixture/project'
   );
 }
 

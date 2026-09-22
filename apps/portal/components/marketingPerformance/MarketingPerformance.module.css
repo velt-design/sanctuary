@@ -1,0 +1,46 @@
+.page { display: grid; gap: 20px; }
+.environmentLabel { margin: -8px 0 0; color: var(--ui-text-muted); font-size: 13px; }
+.rangeShortcuts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.rangeShortcuts > span { flex-basis: 100%; min-height: 20px; }
+.comparisonToolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+.comparisonToolbar > :last-child { width: 210px; }
+.cellDetail { display: block; margin-top: 6px; color: var(--ui-text-muted); font-size: 12px; white-space: nowrap; }
+.periodComparison { overflow-x: auto; }
+.periodComparison table { min-width: 520px; }
+.comparisonNote { min-height: 48px; }
+.trendHeading { font-size: 16px; margin: 12px 0 0; }
+.weeklyBars { display: flex; gap: 4px; height: 140px; border-bottom: 1px solid var(--ui-border); }
+.weeklyColumn { display: flex; align-items: end; justify-content: center; flex: 1; min-width: 0; }
+.weeklyColumn span { display: block; width: 100%; max-width: 64px; background: var(--ui-text-muted); }
+.partialWeek { opacity: .55; border-top: 2px dashed var(--ui-text); }
+.trendAxis { display: flex; justify-content: space-between; font-size: 12px; color: var(--ui-text-muted); margin: 8px 0; }
+.weeklyTable { max-height: 260px; overflow: auto; }
+.weeklyTable table { min-width: 430px; }
+.filters { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(180px, 1.4fr) minmax(180px, 1.4fr) auto; align-items: end; gap: 12px; }
+.filterNote { min-height: 48px; padding-top: 12px; color: var(--ui-text-muted); font-size: 13px; }
+.results { display: grid; gap: 20px; min-height: 780px; align-content: start; }
+.readStatus { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; min-height: 44px; }
+.coverage { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 16px; background: var(--ui-surface-secondary); border: 1px solid var(--ui-border); font-size: 14px; }
+.twoColumns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.muted { color: var(--ui-text-muted); font-size: 13px; line-height: 1.6; }
+.tableScroll { max-width: 100%; overflow-x: auto; }
+.comparisonTable { height: 280px; overflow-y: auto; }
+.evidenceTable { height: 460px; overflow-y: auto; }
+.tableScroll table { min-width: 860px; font-variant-numeric: tabular-nums; }
+.tableScroll th, .tableScroll td { vertical-align: top; }
+.caption { text-align: left; padding: 12px 16px; font-size: 13px; color: var(--ui-text-muted); }
+.source { min-width: 180px; max-width: 290px; overflow-wrap: anywhere; }
+.source span { display: block; margin-top: 4px; color: var(--ui-text-muted); font-size: 12px; font-weight: 400; }
+.source a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ui-action-text); text-decoration: underline; }
+.costs { display: grid; grid-template-columns: 1fr auto; gap: 12px; font-size: 14px; }
+.costs dd { margin: 0; color: var(--ui-text-muted); }
+.evidenceToolbar, .pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 12px; }
+.evidenceToolbar > :first-child { width: min(320px, 65%); }
+.pagination { justify-content: flex-end; padding: 16px 0 0; font-size: 13px; }
+.outcome { display: block; margin-top: 8px; }
+.definitions { display: grid; grid-template-columns: 180px 1fr; gap: 16px; font-size: 14px; line-height: 1.6; }
+.definitions dt { font-weight: 600; }
+.definitions dd { margin: 0; }
+.page summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; text-decoration: underline; }
+@media (max-width: 1100px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters > button { justify-self: start; } }
+@media (max-width: 650px) { .twoColumns { grid-template-columns: minmax(0, 1fr); } .definitions { grid-template-columns: 1fr; gap: 8px; } .definitions dd { margin-bottom: 12px; } .page { gap: 16px; } .filters { gap: 12px 8px; } .coverage { flex-direction: column; } .pagination { justify-content: space-between; } }

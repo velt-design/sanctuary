@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
-import { NAV_ITEMS } from './navItems';
+import { visibleNavItems } from './navItems';
 import UserMenu from './UserMenu';
 import styles from './SidebarRail.module.css';
 import { useQueryClient } from '@tanstack/react-query';
@@ -58,7 +58,7 @@ export default function SidebarRail({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const visibleItems = NAV_ITEMS.filter((item) => (!item.adminOnly || role === 'admin') && (!('financeOnly' in item) || financeAccess));
+  const visibleItems = visibleNavItems(role, financeAccess, email);
   const queryClient = useQueryClient();
   const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
 

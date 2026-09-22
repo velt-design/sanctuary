@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { NAV_ITEMS } from './navItems';
+import { NAV_ITEMS, visibleNavItems } from './navItems';
 import UserMenu from './UserMenu';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import {
@@ -126,7 +126,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
   const prefetchedRef = useRef(new Set<string>());
 
   const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
-  const visibleItems = NAV_ITEMS.filter((item) => (!item.adminOnly || role === 'admin') && (!('financeOnly' in item) || financeAccess));
+  const visibleItems = visibleNavItems(role, financeAccess, email);
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const today = useMemo(() => todayYmd(), []);
   const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';

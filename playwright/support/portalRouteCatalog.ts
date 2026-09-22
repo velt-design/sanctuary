@@ -43,6 +43,14 @@ export interface PortalRouteCatalogEntry {
 }
 
 export const portalRouteCatalog = [
+  { id: 'marketing-performance', category: 'core', routePattern: '/staff/marketing-performance', requiredRole: 'staff',
+    ownerDoc: 'docs/marketing-performance.md', expectedHeading: 'Marketing Performance', expectedShell: 'portal-shell',
+    dataRequirement: 'scenario_required', smokeStatus: 'catalog-only', debugExportStatus: 'not-applicable',
+    notes: 'Jordan-only verified developer access in addition to Portal role; requires both marketing_performance_read migrations. Other staff/admins must be denied.' },
+  { id: 'marketing-performance-fixture', category: 'diagnostic', routePattern: '/qa/marketing-performance-fixture', requiredRole: 'fixture',
+    ownerDoc: 'docs/marketing-performance.md', expectedHeading: 'Marketing Performance', expectedShell: 'fixture-shell',
+    dataRequirement: 'fixture_flag', smokeStatus: 'fixture-only', debugExportStatus: 'not-applicable',
+    notes: 'Synthetic reporting and evidence links; ENABLE_PORTAL_QA_FIXTURES=1 and non-production only.' },
   { id: 'xero-developer', category: 'diagnostic', routePattern: '/staff/developer/xero', requiredRole: 'staff',
     ownerDoc: 'docs/xero-connection.md', expectedHeading: 'Xero developer connection', expectedShell: 'portal-shell',
     dataRequirement: 'scenario_required', smokeStatus: 'catalog-only', debugExportStatus: 'not-applicable',
