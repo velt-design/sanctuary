@@ -7,7 +7,9 @@ import {
   BookOpen,
   KeyRound,
   Wallet,
+  ChartNoAxesCombined,
 } from 'lucide-react';
+import { isDeveloperEmail } from '@/lib/developerAccess';
 
 export const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', href: '/dashboard', Icon: Home, adminOnly: false },
@@ -46,6 +48,7 @@ export const NAV_ITEMS = [
     ],
   },
   { key: 'finance', label: 'Finance', href: '/staff/payments', Icon: Wallet, adminOnly: false, financeOnly: true },
+  { key: 'marketing-performance', label: 'Marketing', href: '/staff/marketing-performance', Icon: ChartNoAxesCombined, adminOnly: false, developerOnly: true },
   { key: 'imports', label: 'Imports', href: '/imports', Icon: ArrowDownToLine, adminOnly: false },
   {
     key: 'pricebook',
@@ -60,3 +63,9 @@ export const NAV_ITEMS = [
   },
   { key: 'access', label: 'Access', href: '/admin/access', Icon: KeyRound, adminOnly: true },
 ] as const;
+
+export function visibleNavItems(role?: string | null, financeAccess = false, email?: string | null) {
+  return NAV_ITEMS.filter(item => (!item.adminOnly || role === 'admin')
+    && (!('financeOnly' in item) || financeAccess)
+    && (!('developerOnly' in item) || isDeveloperEmail(email)));
+}

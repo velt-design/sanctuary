@@ -10,6 +10,11 @@ Mark delivery completed records physical delivery independently from payment. A 
 
 ## Lead Capture
 
+The staged, Jordan-only Marketing Performance page at `/staff/marketing-performance` reports
+enquiry-date cohorts and current linked business evidence. It does not combine
+period sales with cohort outcomes or use analytics delivery as conversion truth.
+Definitions, exclusions and release status: `marketing-performance.md`.
+
 Public enquiries start in `apps/marketing`.
 
 - Primary public flows: `/contact` and the shared embedded enquiry form on

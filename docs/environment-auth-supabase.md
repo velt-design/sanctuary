@@ -2,6 +2,15 @@
 
 This repo uses Supabase for app data and Supabase Auth for the staff portal.
 
+Marketing Performance is a developer-only staged feature: the page and API require
+an existing Portal session and verified `jordan@sanctuarypergolas.co.nz` identity.
+The database read independently checks the current verified `auth.users` email
+and Portal access; a stale JWT email cannot retain access after an email change.
+Other staff/admins receive page 404 and API 403, and cannot invoke the report RPC.
+Navigation uses an email hint only; it grants no access. `lib/developerAccess.ts`
+owns the existing verified developer predicate, also re-exported by Xero security.
+See `marketing-performance.md` for current installation and release evidence.
+
 ## Read First
 
 - Use `## Core Environment Variables` before running local portal, browser, email, Supabase, or operational commands.
