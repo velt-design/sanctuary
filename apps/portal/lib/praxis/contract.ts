@@ -84,6 +84,7 @@ export type PraxisHealthResponse = {
 export type PraxisErrorCode =
   | 'INVALID_QUERY'
   | 'SNAPSHOT_TOO_LARGE'
+  | 'WORKLOAD_SNAPSHOT_CHANGED'
   | 'UNAUTHORIZED'
   | 'SOURCE_BINDING_MISMATCH'
   | 'CONNECTOR_NOT_CONFIGURED'
