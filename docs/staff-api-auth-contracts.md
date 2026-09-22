@@ -25,8 +25,8 @@ This doc is the current-state reference for staff, admin, and public-token route
 
 ## Portal action connection under development
 
-Local application candidate with migrations installed and enabled in staging
-for synthetic acceptance testing; not released or enabled in production. The adapter exposes
+The adapter is activated separately in each environment. Confirm the installed
+migrations and both runtime switches before relying on its availability. It exposes
 `GET /api/integrations/portal-actions/v1/connection`, `GET .../projects` and
 `POST .../commands`. The server-only service-role exception is limited to those
 RPCs and the existing lost-conversion owner; no service credential reaches the
