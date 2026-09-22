@@ -74,3 +74,5 @@
   display: grid;
   gap: var(--ui-space-4);
 }
+
+.rowClickable > [data-column="Name"] { min-width: 200px; }

@@ -20,7 +20,7 @@
 
 @media (max-width: 767px) {
   .action {
-    min-width: 0;
+    min-width: 220px;
     max-width: none;
   }
 }

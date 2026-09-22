@@ -234,8 +234,8 @@ describe('ProjectsIndexClient', () => {
     const headers = Array.from(rendered.container.querySelectorAll('th')).map((th) => th.textContent ?? '');
     expect(headers).toEqual([
       'Name',
-      'Owner',
       'Next attention',
+      'Owner',
       'Client',
       'Phone',
       'Address',

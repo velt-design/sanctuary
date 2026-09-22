@@ -61,11 +61,6 @@ export default function ProjectIndexAccountabilityCells({
 
   return (
     <>
-      <TableCell data-column="Owner">
-        <Badge tone={!owner && ownerRequired ? 'warning' : 'neutral'}>
-          {owner?.displayName ?? 'Unassigned'}
-        </Badge>
-      </TableCell>
       <TableCell data-column="Next attention">
         <div className={styles.action}>
           <strong>{title}</strong>
@@ -81,6 +76,11 @@ export default function ProjectIndexAccountabilityCells({
           </div>
         </Drawer>
         </span>
+      </TableCell>
+      <TableCell data-column="Owner">
+        <Badge tone={!owner && ownerRequired ? 'warning' : 'neutral'}>
+          {owner?.displayName ?? 'Unassigned'}
+        </Badge>
       </TableCell>
     </>
   );

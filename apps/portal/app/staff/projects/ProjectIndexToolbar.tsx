@@ -15,8 +15,9 @@ const fields = [
   { key: 'ownerFilter', id: 'projectOwnerFilter', label: 'Owner', options: PROJECTS_INDEX_OWNER_OPTIONS },
 ] as const;
 
-export default function ProjectIndexToolbar({ view, onChange, onReset }: {
+export default function ProjectIndexToolbar({ view, onChange, onReset, disabled = false }: {
   view: ProjectIndexView;
+  disabled?: boolean;
   onChange: (patch: Partial<ProjectIndexView>) => void;
   onReset: () => void;
 }) {
@@ -25,19 +26,19 @@ export default function ProjectIndexToolbar({ view, onChange, onReset }: {
   return <section className={styles.root} aria-label="Search and filter projects">
     <div className={styles.toolbar}>
       <label className={styles.search} htmlFor="projectSearch"><span>Search projects</span>
-        <Input id="projectSearch" value={view.query} placeholder="Name, client, phone or address…" onChange={(event) => onChange({ query: event.target.value })} />
+        <Input disabled={disabled} id="projectSearch" value={view.query} placeholder="Name, client, phone or address…" onChange={(event) => onChange({ query: event.target.value })} />
       </label>
-      <label htmlFor="projectSort"><span>Sort</span><Select id="projectSort" value={view.sort} onChange={(event) => onChange({ sort: event.target.value as ProjectIndexView['sort'] })}>
+      <label htmlFor="projectSort"><span>Sort</span><Select disabled={disabled} id="projectSort" value={view.sort} onChange={(event) => onChange({ sort: event.target.value as ProjectIndexView['sort'] })}>
         <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name_asc">Name A–Z</option><option value="name_desc">Name Z–A</option>
       </Select></label>
-      <Button variant="secondary" onClick={() => setDraft({ ...view })}>Filters{applied.length ? ` (${applied.length})` : ''}</Button>
+      <Button disabled={disabled} variant="secondary" onClick={() => setDraft({ ...view })}>Filters{applied.length ? ` (${applied.length})` : ''}</Button>
     </div>
     <div className={styles.applied} aria-label="Applied project filters">
       <span className={styles.scope}>{view.archiveFilter === 'archived' ? 'Archived projects' : view.archiveFilter === 'all' ? 'Including archived' : 'Excluding archived'}</span>
-      {applied.map((field) => <Button key={field.key} variant="quiet" size="small" aria-label={`Remove ${field.label.toLowerCase()} filter`} onClick={() => onChange({ [field.key]: 'all', ...(field.key === 'stateFilter' ? { archiveFilter: 'active' } : {}) })}>
+      {applied.map((field) => <Button disabled={disabled} key={field.key} variant="quiet" size="small" aria-label={`Remove ${field.label.toLowerCase()} filter`} onClick={() => onChange({ [field.key]: 'all', ...(field.key === 'stateFilter' ? { archiveFilter: 'active' } : {}) })}>
         {field.label}: {field.options.find((option) => option.value === view[field.key])?.label} ×
       </Button>)}
-      {applied.length || view.query || view.archiveFilter !== 'active' ? <Button size="small" variant="quiet" onClick={onReset}>Clear all</Button> : null}
+      {applied.length || view.query || view.archiveFilter !== 'active' ? <Button disabled={disabled} size="small" variant="quiet" onClick={onReset}>Clear all</Button> : null}
     </div>
     <Drawer open={draft !== null} title="Project filters" onClose={() => setDraft(null)}>
       {draft ? <form className={styles.form} onSubmit={(event) => {

@@ -164,3 +164,14 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 - Editing old applied migrations without explicit direction.
 - Treating docs-only tasks as a reason to skip stale-link and stale-status checks.
 - Running broad formatting or cleanup across unrelated files.
+
+## Portal authentication ownership
+
+Jordan's standing instruction (23 September 2026): never ask him to sign in to
+Portal for agent development, preview, testing or review. Investigate and reuse
+existing approved agent credentials, sessions and auth tooling first; separate
+preview origins are an agent responsibility. If recovery is outside current
+authority, report the concrete technical blocker and continue independent work,
+without asking Jordan to perform a login. Preserve roles, authentication and
+privacy boundaries. Document a reusable access method without storing secrets
+in repository content. Do not equate a login page with a verified UI preview.

@@ -1,10 +1,14 @@
 'use client';
 
-import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import ProjectIndexToolbar from '@/app/staff/projects/ProjectIndexToolbar';
+import { parseProjectIndexView } from '@/app/staff/projects/projectIndexView';
+import { ButtonLink, Card, LoadingSkeleton, PageLayout } from '@/components/ui/foundation';
 import HeaderActions from '@/components/layout/HeaderActions';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import type { PortalInstantRoute } from '@/lib/portalInstantRoutes';
 import styles from './ProjectsIndexPendingFrame.module.css';
+import indexStyles from '@/app/staff/projects/ProjectsIndexClient.module.css';
 
 type ProjectsIndexPendingFrameProps = {
   instantRoute?: PortalInstantRoute;
@@ -19,6 +23,8 @@ export default function ProjectsIndexPendingFrame({
   description,
   projectLabel,
 }: ProjectsIndexPendingFrameProps = {}) {
+  const params = useSearchParams();
+  const view = parseProjectIndexView(new URLSearchParams(params?.toString() ?? ''));
   if (instantRoute !== 'projects-index') {
     const visibleTitle = instantRoute === 'project-detail' && projectLabel?.trim()
       ? projectLabel.trim()
@@ -49,68 +55,21 @@ export default function ProjectsIndexPendingFrame({
   }
 
   return (
-    <main
-      className={styles.page}
-      data-projects-index-state="pending"
-      data-ui-foundation-consumer="projects-pending"
-      data-projects-index-background-ready="false"
-      aria-label="Opening projects"
-    >
-      <StaffPageHeader
-        variant="index"
-        title="Projects"
-        right={
-          <HeaderActions className={styles.actions}>
-            <Link className={styles.action} href="/staff/projects/design-packages">
-              Drafting Queue
-            </Link>
-            <Link className={styles.action} href="/staff/projects/running-jobs">
-              Running Jobs
-            </Link>
-            <Link className={styles.action} href="/staff/projects/new">
-              New Project
-            </Link>
-          </HeaderActions>
-        }
-      />
-
-      <div className={styles.stack}>
-        <section className={styles.section} aria-label="Filters">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Filters</h2>
-          </div>
-          <div className={styles.sectionBody}>
-            <div className={styles.formGrid} aria-busy="true">
-              <div className={styles.field}>
-                <label htmlFor="projectSearchPending">Search</label>
-                <input id="projectSearchPending" placeholder="Name, client, phone, address…" disabled />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="projectStatusPending">Status</label>
-                <select id="projectStatusPending" defaultValue="all" disabled>
-                  <option value="all">All</option>
-                </select>
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="projectArchivePending">Archive</label>
-                <select id="projectArchivePending" defaultValue="active" disabled>
-                  <option value="active">Active</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.section} aria-label="Projects list" aria-busy="true">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>All Projects</h2>
-            <span className={styles.muted}>Updating…</span>
-          </div>
-          <div className={styles.sectionBody}>
-            <p className={styles.note}>Updating projects…</p>
-          </div>
-        </section>
+    <PageLayout width="full" density="compact" className={indexStyles.page}
+      data-projects-index-state="pending" data-ui-foundation-consumer="projects-pending"
+      data-projects-index-background-ready="false" aria-label="Opening projects">
+      <StaffPageHeader variant="index" title="Projects" count="Loading projects"
+        primaryAction={{ label: 'New project', href: '/staff/projects/new' }}
+        right={<HeaderActions>
+          <ButtonLink variant="tertiary" href="/staff/projects/design-packages">Drafting Queue</ButtonLink>
+          <ButtonLink variant="secondary" href="/staff/projects/running-jobs">Running Jobs</ButtonLink>
+        </HeaderActions>} />
+      <div className={indexStyles.stack}>
+        <ProjectIndexToolbar view={view} disabled onChange={() => {}} onReset={() => {}} />
+        <Card title="Projects" padding="none" aria-label="Projects list" action={<span className={styles.muted}>Updating…</span>}>
+          <LoadingSkeleton rows={5} columns={4} label="Updating projects…" />
+        </Card>
       </div>
-    </main>
+    </PageLayout>
   );
 }

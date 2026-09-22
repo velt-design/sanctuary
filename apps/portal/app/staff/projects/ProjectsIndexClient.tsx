@@ -291,8 +291,8 @@ export default function ProjectsIndexClient({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Owner</TableHead>
                       <TableHead>Next attention</TableHead>
+                      <TableHead>Owner</TableHead>
                       <TableHead>Client</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Address</TableHead>

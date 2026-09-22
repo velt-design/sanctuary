@@ -379,8 +379,10 @@ The Projects toolbar keeps search and sort visible. Journey, stage, state, owner
 and page size use a draft drawer; Apply commits them together and resets the page,
 while Cancel/Escape preserve the current list. Applied filters are individually
 removable, with archive scope visible. The existing URL and user-scoped return
-position owner remains authoritative. Owner and next attention appear before
-contact/lifecycle columns. Supporting reasons open in a focus-managed drawer;
+position owner remains authoritative. Next attention follows the project name, before owner and contact/lifecycle
+columns. Project names and next actions retain readable minimum widths, with
+horizontal scrolling contained in the table. The route pending frame composes
+the same toolbar and layout with disabled controls and URL-selected values. Supporting reasons open in a focus-managed drawer;
 titles, due wording and missing-owner warnings remain visible. Inline edits,
 lifecycle corrections, delivery actions, archive/delete and protected detail
 navigation retain their existing owners. Header counts never turn missing reads
