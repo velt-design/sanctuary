@@ -1,5 +1,13 @@
 # Supabase Schema Map
 
+Praxis finance-history candidate (not installed): migration `20260922000002`
+adds only service-role-executable `xero_customer_history_binding(actor,project,tenant,sourceKey,connectionId,environment)`.
+It verifies database-owned source identity, reuses `xero_require_payment_approver`, checks active Portal membership and confirmed, non-deleted/non-banned `auth.users` identity and
+the pinned finance tenant, and returns only the current project/contact mapping.
+No new grant table, private-table access or vault privilege is given to reporting,
+authenticated or anonymous roles. The application owns broker access; source bearer
+authentication additionally requires the explicitly configured finance capability.
+
 Project follow-up retirement (local, not installed): migration
 `20260917000002_defer_project_follow_ups.sql` replaces new-project cadence
 initialization and reminder reconciliation, rejects new sent/reply confirmations,

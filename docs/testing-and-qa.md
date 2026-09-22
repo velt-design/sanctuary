@@ -1,5 +1,18 @@
 # Testing And QA
 
+Finance-history candidate: `npx vitest run apps/portal/lib/xero/customerHistory.test.ts
+apps/portal/lib/xero/customerHistoryProvider.test.ts apps/portal/lib/praxis/finance-history.test.ts
+test/praxis-finance-history-db.test.ts` exercises synthetic identity, date/currency,
+separate families, complete bounded paging, duplicate denial, authority changes,
+GET-only transport and no-store/error privacy. The PGlite test executes the exact
+new migration and existing grant-check function against minimal prerequisite tables:
+role denial, revoked grants/mappings, inactive/unconfirmed actors and wrong database
+source binding/tenant. A separate local disposable PostgreSQL17 rehearsal passed
+the exact migration rollback/apply and the same12 authority/identity denial cases,
+plus3 caller-role and3 private-table denials, using minimal prerequisite tables.
+Neither is a full production-schema or live Xero proof. Existing finance
+and Praxis regressions remain required; do not enable from synthetic evidence alone.
+
 Follow-up deferral: `npm run test:portal:project-work` includes
 `test/project-follow-up-retirement.test.ts`, covering cancellation audit/replay,
 preserved manual work and correction history, no fabricated new-project work,

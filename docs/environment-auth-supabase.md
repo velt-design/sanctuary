@@ -1,5 +1,26 @@
 # Environment, Auth, And Supabase
 
+## Praxis finance history candidate — inactive
+
+`PRAXIS_XERO_FINANCE_READ_ENABLED=true` explicitly enables the new finance-history
+source capability only with `PRAXIS_XERO_FINANCE_ACTOR_ID` bound to a confirmed
+existing Portal finance actor and existing `XERO_PAYMENT_MATCHING_ENABLED=true`.
+Both new variables are unset/default-off in this candidate; no real actor was
+selected or configured. Source bearer authentication alone is insufficient.
+The read-only application RPC in `20260922000002_praxis_finance_history_binding.sql`
+rechecks database-owned source identity, active Portal membership, the existing current finance grant, confirmed/non-deleted/non-banned identity, tenant and
+unrevoked project-contact mapping. It does not grant finance access or expose the
+vault to the Praxis reporting LOGIN. Source binding and configured actor are
+server-controlled, not request parameters. Existing interactive finance auth remains
+unchanged. Provider reads can perform normal broker token renewal, but no accounting
+or Portal financial-record writes occur.
+
+This adds configuration and an additive RPC candidate, not activation permission.
+Review exact target/migration, source-to-actor delegation and live coverage before
+enabling; current earlier release approval does not include this feature. Gate-off
+withholds new and in-progress results at the next authority check. No credentials,
+scope expansion, production migration or grant changes were performed.
+
 This repo uses Supabase for app data and Supabase Auth for the staff portal.
 
 ## Read First
