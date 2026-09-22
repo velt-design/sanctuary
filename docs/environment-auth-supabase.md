@@ -1,5 +1,13 @@
 # Environment, Auth, And Supabase
 
+## Praxis opening-brief source candidate
+
+The local `/api/integrations/praxis/v1/briefing` GET candidate uses existing bearer/source binding verification and the restricted repeatable-read reporting transaction. No query parameters, provider calls, source mutation, new grants or migration are added. It reads existing enquiry/project/contact/quote, manual-work and specialist-work safe projections. Missing optional projections produce explicit unavailable domains; source authentication/database failure rejects the read.
+
+`sanctuary.praxis.briefing.v1` returns six complete compact current-record domains (1,000 records each, overflow unavailable) and a global 256 KiB ceiling (overflow rejects the whole response). Archived/cancelled records remain; only established labelled test records and the existing manual non-manual/retirement exclusions apply. Missing manual V2 models/states or project inventory coverage make that domain unavailable. Customer names and bounded nullable contact email support the existing project drill-down identity check; notes, email bodies and costing payloads are excluded. Contact email is compared with fresh customer context rather than bypassing identity validation. Stable fingerprints include sorted IDs and business facts, not retrieval or record-update timestamps. Differences between snapshots are net observed states, not all intermediate events. Date anomalies remain explicit raw operational dates. Business-wide cash is explicitly unavailable.
+
+This source does not save a visit cursor or baseline, initiate work, or deliver a briefing; Velt owns those controls. It is a local candidate, not deployed evidence.
+
 ## Praxis finance history candidate — inactive
 
 `PRAXIS_XERO_FINANCE_READ_ENABLED=true` explicitly enables the new finance-history

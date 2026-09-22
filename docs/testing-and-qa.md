@@ -1,5 +1,11 @@
 # Testing And QA
 
+## Opening-brief source verification
+
+`npx vitest run test/praxis-briefing-read.test.ts apps/portal/app/api/integrations/praxis/v1/routes.test.ts` tests complete compact populations, equal totals with changed records, stable business fingerprints despite provenance-only updates, exclusions, missing/invalid domains, overflow and whole-response size. Route tests preserve exact bearer/binding authorization and GET-only access.
+
+`PRAXIS_DISPOSABLE_POSTGRES_BIN` selects local PostgreSQL 17 binaries for `node scripts/test-praxis-briefing-db.mjs`. This starts/removes an isolated local fixture cluster and reruns the same actual SQL with a SELECT-only role plus denied-write proof. Its prerequisites are synthetic safe-view-shaped tables, not a full migration replay or live database proof. No new migration or reporting privilege is required. Optional `PRAXIS_BRIEFING_WIRE_PATH` exports a synthetic reader response to a caller-selected private evidence location for consumer interoperability.
+
 
 Finance-history candidate: `npx vitest run apps/portal/lib/xero/customerHistory.test.ts
 apps/portal/lib/xero/customerHistoryProvider.test.ts apps/portal/lib/praxis/finance-history.test.ts
