@@ -1,13 +1,13 @@
 # Testing And QA
 
-## Email review queue and Outlook dispatch (local, unreleased)
+## Email review queue and Outlook dispatch
 
 Focused synthetic checks:
 
-    npx vitest run test/email-review-queue.test.ts test/email-review-dispatch-migration.test.ts apps/portal/lib/emailReview
+    npm run test:portal:email-review
 
 The test/email-review*.test.ts SQL suites use isolated PGlite fixtures with actual
-queue/dispatch migrations and minimal synthetic dependencies. Cover reviewer/admin
+all three queue/dispatch/acceptance migrations and minimal synthetic dependencies. Cover reviewer/admin
 denial, private-table privileges, import replay, stale revision/context, approval
 invalidation, frozen payloads, bounded claims, claim replay without reply payload,
 cancellation of unattempted entries and uncertain/sent evidence reconciliation.
@@ -15,9 +15,12 @@ Library tests cover input and HTTP boundaries. Passing isolated tests does not
 prove full-schema staging migration, real Outlook delivery or production readiness.
 
 Verify the staff journey separately: assigned-batch discovery, search/filter and
-pagination, evidence and original-thread review, editing, save/reload, explicit
-prerequisite/thread confirmation, skip/unapprove, changed-context recovery and
-stable controls while loading. Admin preparation must not send email.
+pagination, editing then atomic acceptance, unchanged acceptance, no-thread and
+fresh-subject acceptance, optional skip, reload, changed-context recovery and
+stable controls while loading. Admin preparation must allow pending drafts and never send email.
+Test exact fallback policy and actual-mode recording: a positively absent anchor
+permits an exact-content fresh fallback, but an uncertain reply cannot change
+mode or be retried. Preserve legacy approval hashes and frozen dispatch data.
 The /qa/email-review-fixture preview uses synthetic content and cannot prove an
 authenticated live send. Real Outlook attempts need separately authorized
 recipients and actual outbound evidence. Do not send customer messages as tests

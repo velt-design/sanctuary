@@ -34,4 +34,3 @@ export const emailReviewApi: EmailReviewApi = {
 export function safeEvidenceUrl(value: string): string | undefined {
   try { const url = new URL(value); return url.protocol === 'https:' ? url.href : undefined; } catch { return undefined; }
 }
-export function replySubject(subject: string): string { return /^re:/i.test(subject) ? subject : `Re: ${subject}`; }

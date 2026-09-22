@@ -36,22 +36,19 @@ export function parseReviewImport(value: unknown): EmailReviewImport {
   return { commandId: reviewUuid(v.commandId), sourceKey: str(v.sourceKey, 200), title: str(v.title, 300), reviewerId: reviewUuid(v.reviewerId), items };
 }
 export function parseReviewCommand(value: unknown): EmailReviewCommand {
-  const v = record(value); keys(v, ['commandId','expectedRevision','action','to','subject','body','note','prerequisitesConfirmed','threadConfirmed','acknowledgeContextChange','expectedContextHash','threadMessageId']);
-  if (!Number.isSafeInteger(v.expectedRevision) || (v.expectedRevision as number) < 1 || !['save','approve','skip','unapprove'].includes(String(v.action))) fail();
+  const v = record(value); keys(v, ['commandId','expectedRevision','action','to','subject','body','note','acknowledgeContextChange','expectedContextHash']);
+  if (!Number.isSafeInteger(v.expectedRevision) || (v.expectedRevision as number) < 1 || !['save','accept','skip','unapprove'].includes(String(v.action))) fail();
   const action = v.action as EmailReviewCommand['action'];
-  if (action !== 'save' && ['to','subject','body','acknowledgeContextChange','threadMessageId'].some(k => k in v)) fail();
-  if (action === 'save' && !['to','subject','body','threadMessageId'].some(k => k in v) && v.acknowledgeContextChange !== true) fail();
-  if ('prerequisitesConfirmed' in v && typeof v.prerequisitesConfirmed !== 'boolean') fail();
+  if (!['save','accept'].includes(action) && ['to','subject','body','acknowledgeContextChange','expectedContextHash'].some(k => k in v)) fail();
+  if (action === 'save' && !['to','subject','body'].some(k => k in v) && v.acknowledgeContextChange !== true) fail();
   if ('acknowledgeContextChange' in v && typeof v.acknowledgeContextChange !== 'boolean') fail();
-  if (action === 'skip' && (typeof v.note !== 'string' || !v.note.trim())) fail();
-  if (action === 'approve' && (v.prerequisitesConfirmed !== true || v.threadConfirmed !== true)) fail();
-  if (v.acknowledgeContextChange === true && (typeof v.expectedContextHash !== 'string' || !/^[a-f0-9]{64}$/.test(v.expectedContextHash))) fail();
+  if (action === 'accept' && !['to','subject','body','expectedContextHash'].every(k => k in v)) fail();
+  if (action === 'accept' || v.acknowledgeContextChange === true || 'expectedContextHash' in v) {
+    if (typeof v.expectedContextHash !== 'string' || !/^[a-f0-9]{64}$/.test(v.expectedContextHash)) fail();
+  }
   return { commandId: reviewUuid(v.commandId), expectedRevision: v.expectedRevision as number, action,
     ...('to' in v ? {to:recipient(v.to)} : {}), ...('subject' in v ? {subject:subject(v.subject)} : {}),
     ...('body' in v ? {body:str(v.body,20000)} : {}), ...('note' in v ? {note:str(v.note,2000,true)} : {}),
-    ...(v.prerequisitesConfirmed !== undefined ? {prerequisitesConfirmed:v.prerequisitesConfirmed as boolean} : {}),
-    ...(v.threadConfirmed !== undefined ? {threadConfirmed:v.threadConfirmed === true} : {}),
-    ...('threadMessageId' in v ? {threadMessageId:v.threadMessageId === null ? null : str(v.threadMessageId,2000)} : {}),
-    ...(v.acknowledgeContextChange !== undefined ? {acknowledgeContextChange:v.acknowledgeContextChange as boolean} : {}),
-    ...(v.expectedContextHash !== undefined ? {expectedContextHash:str(v.expectedContextHash,64)} : {}) };
+    ...('acknowledgeContextChange' in v ? {acknowledgeContextChange:v.acknowledgeContextChange as boolean} : {}),
+    ...('expectedContextHash' in v ? {expectedContextHash:v.expectedContextHash as string} : {}) };
 }

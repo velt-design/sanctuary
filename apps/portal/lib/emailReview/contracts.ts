@@ -11,14 +11,11 @@ export type EmailReviewImport = {
   commandId: string; sourceKey: string; title: string; reviewerId: string; items: EmailReviewImportItem[];
 };
 export type EmailReviewCommand = {
-  commandId: string; expectedRevision: number; action: 'save' | 'approve' | 'skip' | 'unapprove';
+  commandId: string; expectedRevision: number; action: 'save' | 'accept' | 'skip' | 'unapprove';
   to?: string; subject?: string; body?: string; note?: string;
-  prerequisitesConfirmed?: boolean;
-  threadConfirmed?: boolean;
   /** Explicitly accept freshly displayed project/contact context while saving; invalidates approval. */
   acknowledgeContextChange?: boolean;
   expectedContextHash?: string;
-  threadMessageId?: string | null;
 };
 export type EmailReviewCounts = { all: number; draft: number; approved: number; skipped: number };
 export type EmailReviewBatch = { id: string; sourceKey: string; title: string; reviewerId: string; createdAt: string; counts: EmailReviewCounts };
@@ -36,7 +33,7 @@ export type EmailReviewItem = EmailReviewSummary & {
   body: string; prerequisites: string[]; evidence: EmailReviewEvidence[]; context: string;
   savedProjectContext: EmailReviewProjectContext; currentProjectContext: EmailReviewProjectContext;
   currentContextHash: string;
-  threads: EmailReviewThread[]; threadMessageId: string | null;
+  threads: EmailReviewThread[]; threadMessageId: string | null; deliveryMode: 'reply' | 'new';
   dispatchId: string | null;
   approvedAt: string | null; approvedBy: string | null; approvalHash: string | null;
   events: { id: string; action: string; actorId: string; revision: number; note: string | null; createdAt: string }[];

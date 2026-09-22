@@ -1,14 +1,15 @@
 # Staff API And Auth Contracts
 
-## Assigned email review routes (local, unreleased)
+## Assigned email review routes
 
 - GET /api/staff/v1/email-review and batch/item reads use auth-bound staff
   context. The RPC rechecks assigned-reviewer or admin access; staff membership
   alone does not expose another reviewer's batch.
 - Item commands at /api/staff/v1/email-review/[batchId]/items/[itemId] require
   same-origin JSON, current staff identity, command ID and expected revision.
-  Approval requires confirmed prerequisites and a selected imported thread
-  matching the recipient. Context acknowledgement is explicit and hash-bound.
+  The accept command requires the exact current to/subject/body and displayed
+  context hash. It saves and accepts atomically. Skip has an optional note.
+  Thread choice and delivery mode are server-derived, not client authority.
 - /api/admin/email-review/import and /reviewers require admin context.
   Import is bounded and idempotent by command/source identity and payload hash.
 - /api/admin/email-review/[batchId]/dispatch and its prepare, claim, result and
@@ -29,7 +30,9 @@ direct API-role grants. Responses are private/no-store, no-referrer and nosniff;
 never log imported correspondence. Revision, approval-hash or current
 project/contact conflicts require re-review. Approval and preparation make no
 external email call. See automation-email-audit.md for uncertain-attempt and
-Outlook evidence rules. These routes are locally implemented and unreleased.
+Outlook evidence rules. PR #181 released the baseline. The acceptance flow requires forward migration
+20260923020001 before application rollout; production verification is retained
+in the private release record.
 
 
 Local correspondence extension: the server optionally signs
