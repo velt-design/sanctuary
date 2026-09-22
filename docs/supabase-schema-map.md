@@ -1,5 +1,32 @@
 # Supabase Schema Map
 
+## Email review and Outlook attempt ledger (local, unreleased)
+
+Migration 20260923010001_email_review_queue.sql owns private.email_review_batches,
+email_review_items, email_review_events and email_review_receipts. Batches bind
+source imports to assigned reviewers. Items retain editable content, evidence,
+prerequisites, thread candidates and saved project context. Events and receipts
+retain revisions, actors, hashes and replay results. Public email_review_import,
+email_review_read, email_review_command and email_review_reviewers RPCs enforce
+current Portal membership and reviewer/admin access in-band.
+
+Migration 20260923010002_email_review_dispatch.sql adds
+private.email_review_dispatches and public.email_review_dispatch. Frozen payloads
+include approved content, thread, recipient, project context and hash. Batch locks
+serialize review changes, preparation and claims. Live-intent uniqueness prevents
+a second active dispatch for an item; outbound Outlook message IDs are unique.
+Prepare/claim recheck approval and context. Attempt identity and immutable sent
+evidence protect result replay; uncertain attempts remain held. There is no
+provider call or scheduled retry.
+
+All five tables enable RLS and revoke direct access from PUBLIC, anon,
+authenticated and service_role. Private helpers are not exposed to API roles;
+authenticated execution of narrow public RPCs still requires actor checks.
+These are local migration contracts, not evidence of production installation.
+The feature owner is automation-email-audit.md; auth-bound adapters live in
+apps/portal/lib/emailReview.
+
+
 
 
 Praxis finance-history candidate (not installed): migration `20260922053002`

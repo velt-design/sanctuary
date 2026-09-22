@@ -21,6 +21,7 @@ export const NAV_ITEMS = [
     adminOnly: false,
     children: [
       { key: 'work-queue', label: 'Work Queue', href: '/staff/projects/work-queue' },
+      { key: 'email-review', label: 'Email Review', href: '/staff/email-review' },
       { key: 'new-project', label: 'New Project', href: '/staff/projects/new' },
       { key: 'design-list', label: 'Drafting Queue', href: '/staff/projects/design-packages' },
       { key: 'running-jobs', label: 'Running Jobs', href: '/staff/projects/running-jobs' },
