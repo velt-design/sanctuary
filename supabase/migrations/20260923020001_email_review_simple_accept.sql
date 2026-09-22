@@ -5,6 +5,9 @@ alter table private.email_review_items
  add column approval_version smallint not null default 1 check(approval_version in (1,2));
 alter table private.email_review_items add constraint email_review_delivery_consistent
  check(approval_version=1 or (delivery_mode='new' and thread_message_id is null) or (delivery_mode='reply' and (status<>'approved' or thread_message_id is not null)));
+alter table private.email_review_dispatches
+ add column actual_delivery_mode text check(actual_delivery_mode in ('reply','new')),
+ add column fallback_reason text check(fallback_reason='anchor_not_found_before_send');
 
 create function private.email_review_delivery(p_threads jsonb,p_to text,p_subject text) returns jsonb
 language plpgsql immutable set search_path=pg_catalog as $$
@@ -23,7 +26,7 @@ revoke all on function private.email_review_delivery(jsonb,text,text) from publi
 create or replace function private.email_review_approval_content(i private.email_review_items) returns jsonb language sql immutable set search_path=pg_catalog as $$
  select jsonb_build_object('itemId',i.id,'projectId',i.project_id,'revision',i.revision,'to',i.to_email,'subject',i.subject,'body',i.body,
  'prerequisites',i.prerequisites,'evidence',i.evidence,'context',i.context,'projectContext',i.saved_project_context,
- 'thread',(select t from jsonb_array_elements(i.threads) t where t->>'messageId'=i.thread_message_id),'cc','[]'::jsonb,'bcc','[]'::jsonb)||case when i.approval_version=2 then jsonb_build_object('deliveryMode',i.delivery_mode) else '{}'::jsonb end
+ 'thread',(select t from jsonb_array_elements(i.threads) t where t->>'messageId'=i.thread_message_id),'cc','[]'::jsonb,'bcc','[]'::jsonb)||case when i.approval_version=2 then jsonb_build_object('deliveryMode',i.delivery_mode,'allowFreshFallback',i.delivery_mode='reply') else '{}'::jsonb end
 $$;
 create or replace function private.email_review_item_json(i private.email_review_items,p_detail boolean) returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,private as $$
 declare c jsonb:=private.email_review_project_context(i.project_id); result jsonb;
@@ -116,6 +119,15 @@ begin
  insert into private.email_review_receipts values(cmd,actor,h,result,clock_timestamp());
  return result;
 end $$;
+create or replace function private.email_review_dispatch_overview(p_batch uuid) returns jsonb language sql stable security definer set search_path=pg_catalog,private as $$
+ select jsonb_build_object('batchId',p_batch,'prepared',exists(select 1 from private.email_review_dispatches where batch_id=p_batch and state<>'cancelled'),
+ 'counts',jsonb_build_object('ready',count(*) filter(where state='ready'),'attempting',count(*) filter(where state='attempting'),
+ 'sent',count(*) filter(where state='sent'),'uncertain',count(*) filter(where state='uncertain'),'cancelled',count(*) filter(where state='cancelled')),
+ 'items',coalesce(jsonb_agg(jsonb_build_object('id',id,'itemId',item_id,'projectName',payload->'projectContext'->>'name',
+ 'to',payload->>'to','subject',payload->>'subject','state',state,'attemptId',attempt_id,'attemptedAt',attempted_at,'sentAt',sent_at,
+ 'actualDeliveryMode',actual_delivery_mode,'fallbackReason',fallback_reason,'outlookMessageId',outlook_message_id,'outlookWebLink',outlook_web_link) order by created_at,id),'[]'))
+ from private.email_review_dispatches where batch_id=p_batch
+$$;
 create or replace function public.email_review_dispatch(p_batch_id uuid,p_action text,p_input jsonb default '{}'::jsonb) returns jsonb
 language plpgsql security definer set search_path=pg_catalog,public,private as $$
 declare admin boolean:=private.email_review_actor(); actor uuid:=auth.uid(); b private.email_review_batches;
@@ -162,7 +174,7 @@ begin
      if i.dispatch_id is distinct from d.id or d.payload->>'approvalHash' is distinct from i.approval_hash then raise exception using errcode='PT409',message='Dispatch changed'; end if;
      update private.email_review_dispatches set state='attempting',attempt_id=gen_random_uuid(),attempted_at=clock_timestamp() where id=d.id returning * into d;
      replies:=replies||jsonb_build_array(jsonb_build_object('id',d.id,'attemptId',d.attempt_id,'itemId',i.id,'projectId',i.project_id,
-       'mailbox',d.payload->>'mailbox','deliveryMode',coalesce(d.payload->>'deliveryMode','reply'),'messageId',d.payload->'thread'->>'messageId','to',d.payload->>'to','subject',d.payload->>'subject','body',d.payload->>'body','approvalHash',i.approval_hash));
+       'mailbox',d.payload->>'mailbox','deliveryMode',coalesce(d.payload->>'deliveryMode','reply'),'allowFreshFallback',coalesce((d.payload->>'allowFreshFallback')::boolean,false),'messageId',d.payload->'thread'->>'messageId','to',d.payload->>'to','subject',d.payload->>'subject','body',d.payload->>'body','approvalHash',i.approval_hash));
      insert into private.email_review_events(item_id,actor_id,action,revision,content_hash) values(i.id,actor,'outlook_attempt_started',i.revision,i.approval_hash);
    end loop;
    result:=jsonb_build_object('replayed',false,'replies',replies);
@@ -175,11 +187,18 @@ begin
    end loop;
    result:=private.email_review_dispatch_overview(b.id);
  else
-   if exists(select 1 from jsonb_object_keys(p_input) k where k not in ('intentId','attemptId','outcome','outlookMessageId','outlookWebLink','note')) then raise exception using errcode='22023',message='Invalid result'; end if;
+   if exists(select 1 from jsonb_object_keys(p_input) k where k not in ('intentId','attemptId','outcome','outlookMessageId','outlookWebLink','note','actualDeliveryMode','fallbackReason')) then raise exception using errcode='22023',message='Invalid result'; end if;
    outcome:=p_input->>'outcome';
    if outcome is null or outcome not in ('sent','uncertain') or length(coalesce(p_input->>'note',''))>2000 then raise exception using errcode='22023',message='Invalid result'; end if;
    select * into d from private.email_review_dispatches where id=(p_input->>'intentId')::uuid and batch_id=b.id for update;
    if not found or d.attempt_id is distinct from (p_input->>'attemptId')::uuid or d.state not in ('attempting','uncertain','sent') then raise exception using errcode='PT409',message='Attempt unavailable'; end if;
+   if d.payload ? 'deliveryMode' then
+     if coalesce(p_input->>'actualDeliveryMode','') not in ('reply','new') then raise exception using errcode='22023',message='Actual delivery mode required'; end if;
+     if p_input->>'actualDeliveryMode' is distinct from d.payload->>'deliveryMode' then
+       if (d.payload->>'deliveryMode'='reply' and p_input->>'actualDeliveryMode'='new' and d.payload->'allowFreshFallback'='true'::jsonb and p_input->>'fallbackReason'='anchor_not_found_before_send') is distinct from true then raise exception using errcode='22023',message='Unapproved delivery mode'; end if;
+     elsif p_input ? 'fallbackReason' then raise exception using errcode='22023',message='Unexpected fallback reason'; end if;
+     if d.state in ('uncertain','sent') and (d.actual_delivery_mode is distinct from p_input->>'actualDeliveryMode' or d.fallback_reason is distinct from p_input->>'fallbackReason') then raise exception using errcode='PT409',message='Attempt delivery mode is immutable'; end if;
+   elsif p_input ?| array['actualDeliveryMode','fallbackReason'] then raise exception using errcode='22023',message='Legacy attempt uses its original delivery policy'; end if;
    if outcome='sent' and (length(btrim(coalesce(p_input->>'outlookMessageId',''))) not between 1 and 2000
      or p_input->>'outlookMessageId' ~ E'[\r\n]' or length(coalesce(p_input->>'outlookWebLink',''))>4000
      or coalesce(p_input->>'outlookWebLink','') !~ '^https://outlook\.(office\.com|office365\.com)/') then raise exception using errcode='22023',message='Outlook evidence required'; end if;
@@ -188,7 +207,7 @@ begin
      if outcome<>'sent' or d.outlook_message_id is distinct from p_input->>'outlookMessageId' or d.outlook_web_link is distinct from p_input->>'outlookWebLink' then raise exception using errcode='PT409',message='Sent evidence is immutable'; end if;
      return private.email_review_dispatch_overview(b.id);
    end if;
-   update private.email_review_dispatches set state=outcome,note=p_input->>'note',
+   update private.email_review_dispatches set state=outcome,note=p_input->>'note',actual_delivery_mode=p_input->>'actualDeliveryMode',fallback_reason=p_input->>'fallbackReason',
      sent_at=case when outcome='sent' then clock_timestamp() end,outlook_message_id=p_input->>'outlookMessageId',outlook_web_link=p_input->>'outlookWebLink' where id=d.id;
    select * into i from private.email_review_items where id=d.item_id;
    insert into private.email_review_events(item_id,actor_id,action,revision,note,content_hash) values(i.id,actor,'outlook_'||outcome,i.revision,p_input->>'note',i.approval_hash);
