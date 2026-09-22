@@ -7,12 +7,13 @@ import * as healthRoute from './health/route';
 import * as marketingRoute from './marketing/route';
 import * as overviewRoute from './overview/route';
 import * as workloadRoute from './workload/route';
+import * as specialistRoute from './specialist-workload/route';
 
 afterEach(() => vi.restoreAllMocks());
 
 describe('Praxis integration route surface', () => {
   it('exports GET only for context and health', () => {
-    for (const route of [contextRoute, healthRoute, marketingRoute, overviewRoute, workloadRoute]) {
+    for (const route of [contextRoute, healthRoute, marketingRoute, overviewRoute, workloadRoute, specialistRoute]) {
       expect(typeof route.GET).toBe('function');
       expect(route).not.toHaveProperty('POST');
       expect(route).not.toHaveProperty('PUT');
@@ -41,7 +42,7 @@ describe('Praxis integration route surface', () => {
     }
   });
 
-  it.each([marketingRoute, overviewRoute, workloadRoute])('rejects aggregate reads before database work without exact bearer and source identity', async route => {
+  it.each([marketingRoute, overviewRoute, workloadRoute, specialistRoute])('rejects aggregate reads before database work without exact bearer and source identity', async route => {
     const prior = process.env;
     process.env = { ...prior, PRAXIS_SANCTUARY_DATABASE_URL: 'postgres://reader:synthetic@db.example.test/postgres?sslmode=verify-full',
       PRAXIS_SANCTUARY_READ_TOKEN: 'synthetic-token-at-least-thirty-two-characters', PRAXIS_SANCTUARY_SOURCE_KEY: 'sanctuary',

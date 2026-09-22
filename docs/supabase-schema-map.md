@@ -1,5 +1,6 @@
 # Supabase Schema Map
 
+
 Praxis finance-history candidate (not installed): migration `20260922053002`
 adds only service-role-executable `xero_customer_history_binding(actor,project,tenant,sourceKey,connectionId,environment)`.
 It verifies database-owned source identity, reuses `xero_require_payment_approver`, checks active Portal membership and confirmed, non-deleted/non-banned `auth.users` identity and
@@ -7,6 +8,18 @@ the pinned finance tenant, and returns only the current project/contact mapping.
 No new grant table, private-table access or vault privilege is given to reporting,
 authenticated or anonymous roles. The application owns broker access; source bearer
 authentication additionally requires the explicitly configured finance capability.
+
+Local specialist workload reporting: migration
+`20260922053001_praxis_specialist_workload.sql` creates the security-barrier
+`praxis_reporting.specialist_workload_v1` union of canonical installation jobs
+and design requests, with project archival context and crew labels. Only the
+existing `sanctuary_praxis_reader` group gets SELECT. Public, anon, authenticated
+and service-role view grants are explicitly revoked; no base or auth access is
+added. The projection excludes notes, pricing, private metadata and scheduling
+write state. Dates and namespace keys remain source facts; TypeScript owns the
+bounded counts, quality classification and existing domain designer labels.
+The migration is not installed by local implementation.
+
 
 ## Marketing Performance (staging/local)
 

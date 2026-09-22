@@ -1,5 +1,6 @@
 # Testing And QA
 
+
 Finance-history candidate: `npx vitest run apps/portal/lib/xero/customerHistory.test.ts
 apps/portal/lib/xero/customerHistoryProvider.test.ts apps/portal/lib/praxis/finance-history.test.ts
 test/praxis-finance-history-db.test.ts` exercises synthetic identity, date/currency,
@@ -12,6 +13,28 @@ the exact migration rollback/apply and the same12 authority/identity denial case
 plus3 caller-role and3 private-table denials, using minimal prerequisite tables.
 Neither is a full production-schema or live Xero proof. Existing finance
 and Praxis regressions remain required; do not enable from synthetic evidence alone.
+
+Specialist workload source checks: `npx vitest run test/praxis-specialist-workload-read.test.ts`
+executes the exact view and production sanitizer using synthetic PostgreSQL
+records, then the actual reader/classification/pagination. It covers complete
+counts beyond50 rows, identity filtering, historical date reversals, NZ dates,
+archive/cancelled/unassigned coverage, malformed evidence, bounds and changed
+snapshots. `node scripts/test-praxis-specialist-db.mjs` uses the same disposable
+PostgreSQL17 Docker/native modes as the manual-workload harness and proves exact
+migration rollback/apply, safe field projection, unchanged business rows and
+real reporting/base/write denial. It also installs the exact merged marketing
+read/access functions with minimal auth prerequisites, verifies their definition
+and ACL stay unchanged, and denies marketing access to the reporting caller and
+ordinary staff. Marketing business results remain covered by its own schema tests.
+The specialist version `20260922053001` follows the marketing migrations and has
+a focused uniqueness assertion. The harness never targets a live database.
+Optional `PRAXIS_SPECIALIST_NATIVE_ROWS_PATH` bridges synthetic native SQL rows
+into the projection test; `PRAXIS_SPECIALIST_FIXTURE_PATH` exports a synthetic
+wire for paired consumer validation. Keep private outputs outside the repository.
+The dedicated Praxis CI runs both the native harness and reader tests. Preserve
+Portal typecheck, lint, architecture and existing manual-workload regression gates;
+local tests do not establish live activation or production latency.
+
 
 Marketing Performance: `npx vitest run test/marketing-performance-read.test.ts apps/portal/app/api/staff/v1/marketing-performance apps/portal/lib/marketingPerformance apps/portal/components/marketingPerformance` exercises the exact
 read migrations in disposable PGlite and their developer-only API contract. The

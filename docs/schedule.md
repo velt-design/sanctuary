@@ -22,6 +22,13 @@ fixtures is deferred to a dedicated test-maintenance change.
 
 ## Views
 
+The local Praxis specialist-workload reader uses `scheduled_jobs` and
+`schedule_crews` directly through a sanitized reporting view. It does not read
+legacy task mirrors, change saved dates, infer installation capacity or derive
+eligible unscheduled jobs from pipeline stages. Current work, period completions
+and historical date inconsistencies remain distinct. Reporting activation and
+the exact bounded contract are owned by `environment-auth-supabase.md`.
+
 Schedule has two normal staff views:
 
 - Board: crew lanes, unscheduled jobs, drag/drop assignment and reorder.
