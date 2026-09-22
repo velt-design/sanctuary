@@ -29,7 +29,7 @@ export default function PerformanceEvidence({ rows, synthetic }: { rows: Marketi
   const saveSelection = (nextEvidence: string, nextPage: number) => {
     const url = new URL(window.location.href);
     url.searchParams.set('evidence', nextEvidence); url.searchParams.set('page', String(nextPage));
-    window.history.replaceState(window.history.state, '', url); setEvidence(nextEvidence); setPage(nextPage);
+    window.history.replaceState(null, '', url); setEvidence(nextEvidence); setPage(nextPage);
   };
   const visible = rows.filter(row => evidence === 'all' || (evidence === 'qualified' || evidence === 'unreviewed' ? row.qualification === evidence
     : evidence === 'lost' ? row.origin && row.closedOutcome?.startsWith('LOST_')

@@ -4,6 +4,16 @@ This doc combines operational controls for tracking, consent, security, and qual
 
 ## Portal One-Time Authentication
 
+Marketing report snapshot previews require explicit owner authority for the
+private destination and audience. The opt-in `production-snapshot` mode is
+preview-environment-only and reads a fixed server artifact only after the
+verified developer plus Portal staff gate. Both report APIs are private/no-store;
+the artifact must never be in Git, public assets, client imports or general
+deployment inputs. Trace it only into the protected server handlers for the
+authorized preview, then archive the local packaging copy outside deploy inputs.
+Keep capture dates/outcome freshness and live-project links explicit. See
+`marketing-performance.md` for the current preview evidence and release boundary.
+
 Controlled local/staging one-time staff sign-in exchanges a hashed Supabase
 `magiclink` token at `/login/callback`. The server must verify the token through
 the anon-key auth client, durably set the resulting session cookie, remove the

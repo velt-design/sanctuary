@@ -102,6 +102,8 @@ Do not duplicate detailed rules from canonical docs here. Link to them, then kee
 
 ## Current Readiness Snapshot
 
+Marketing & Sales hub (2026-09-22): owner approved the reviewed Jordan-only visual hub for production release. Exact forward read-function rollback rehearsal on production passed, including reconciliation and developer/other-staff/anonymous assertions. Independent UI and outgoing-payload reviews passed. Current-main CI, installation and live postflight are pending; `marketing-performance.md` owns current evidence and limits.
+
 Configurator continuation (2026-09-15): the protected staff calculation failure is
 Vercel machine authentication, with a preview-only server credential fix and
 focused route tests. The ScheduleClient CI failure was a timing-dependent query

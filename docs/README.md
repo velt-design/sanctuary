@@ -27,7 +27,7 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 ## Canonical Reference Docs
 
 Marketing Performance implementation, definitions, spend proposal and review evidence:
-`marketing-performance.md` (staging/local feature; not released to production).
+`marketing-performance.md` (Jordan-only report live; four-view visual Business Overview / Marketing & Sales hub approved for release; see its current release status).
 
 | Doc | Status | Use When |
 | --- | --- | --- |

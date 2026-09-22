@@ -1,0 +1,31 @@
+.grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:20px; min-width:0; }
+.grid > * { min-width:0; }
+.note { font-size:13px; line-height:1.5; color:var(--ui-text-muted); margin:12px 0; }
+.plot { height:280px; min-width:0; }
+.sourcePlot { height:280px; overflow-y:auto; min-width:0; }
+.portfolioPlot { height:390px; min-width:0; }
+.legend { display:flex; flex-wrap:wrap; gap:8px 16px; min-height:32px; align-items:center; font-size:12px; }
+.legend span { display:inline-flex; gap:6px; align-items:center; overflow-wrap:anywhere; }
+.legend i { width:10px; height:10px; display:inline-block; flex-shrink:0; }
+.controls { display:grid; grid-template-columns:minmax(0,1fr) minmax(100px,.65fr); gap:12px; }
+.data { max-height:280px; overflow:auto; font-size:13px; }
+.data table { width:100%; border-collapse:collapse; text-align:left; font-variant-numeric:tabular-nums; }
+.data th,.data td { border-bottom:1px solid var(--ui-border); padding:6px 8px; }
+.data th { font-weight:500; }
+.data button { text-decoration:underline; }
+.plot :global(.recharts-tooltip-wrapper), .sourcePlot :global(.recharts-tooltip-wrapper), .portfolioPlot :global(.recharts-tooltip-wrapper) { font-size:12px; }
+@media(max-width:1000px) { .grid { grid-template-columns:minmax(0,1fr); } }
+
+.overviewNumbers { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; padding:4px 0 12px; }
+.overviewNumbers > * { display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:8px 24px; border:0; border-left:1px solid var(--ui-border); background:none; color:var(--ui-text); text-align:left; }
+.overviewNumbers > :first-child { border-left:0; padding-left:0; }
+.overviewNumbers span { font-size:12px; color:var(--ui-text-muted); }
+.overviewNumbers strong { font-family:var(--ui-font-display); font-size:44px; line-height:1.15; font-weight:500; }
+.overviewNumbers small { font-size:11px; color:var(--ui-text-muted); }
+.overviewNumbers button { cursor:pointer; }
+.overviewNumbers button:hover { background:var(--ui-surface-secondary); }
+.help { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ui-text-muted); padding-left:0; }
+.explanation { font-size:14px; line-height:1.7; }
+@media(max-width:650px) { .overviewNumbers > * { padding:8px 12px; } .overviewNumbers strong { font-size:34px; } .overviewNumbers span { font-size:11px; } }
+
+.agePlot { margin-top:32px; }
