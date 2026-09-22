@@ -9,6 +9,8 @@ on:
       - "apps/portal/lib/praxis/**"
       - "scripts/test-praxis-context-reporting-*.mjs"
       - "scripts/test-praxis-workload-db.mjs"
+      - "scripts/test-praxis-specialist-db.mjs"
+      - "test/praxis-specialist-workload-read.test.ts"
       - "supabase/migrations/*praxis*.sql"
       - "supabase/tests/praxis*.sql"
       - "test/praxis-context*.test.ts"
@@ -25,6 +27,8 @@ on:
       - "apps/portal/lib/praxis/**"
       - "scripts/test-praxis-context-reporting-*.mjs"
       - "scripts/test-praxis-workload-db.mjs"
+      - "scripts/test-praxis-specialist-db.mjs"
+      - "test/praxis-specialist-workload-read.test.ts"
       - "supabase/migrations/*praxis*.sql"
       - "supabase/tests/praxis*.sql"
       - "test/praxis-context*.test.ts"
@@ -64,8 +68,11 @@ jobs:
       - name: Workload projection PostgreSQL 17 denial and rollback proof
         run: node scripts/test-praxis-workload-db.mjs
 
+      - name: Specialist projection PostgreSQL 17 denial and rollback proof
+        run: node scripts/test-praxis-specialist-db.mjs
+
       - name: Endpoint and contract tests
-        run: npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-context-migration.test.ts test/praxis-marketing-read.test.ts test/praxis-overview-read.test.ts test/praxis-workload-read.test.ts
+        run: npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-context-migration.test.ts test/praxis-marketing-read.test.ts test/praxis-overview-read.test.ts test/praxis-workload-read.test.ts test/praxis-specialist-workload-read.test.ts
 
       - name: Typecheck
         run: npm run typecheck

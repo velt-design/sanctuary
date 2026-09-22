@@ -1,5 +1,16 @@
 # Supabase Schema Map
 
+Local specialist workload reporting: migration
+`20260922000003_praxis_specialist_workload.sql` creates the security-barrier
+`praxis_reporting.specialist_workload_v1` union of canonical installation jobs
+and design requests, with project archival context and crew labels. Only the
+existing `sanctuary_praxis_reader` group gets SELECT. Public, anon, authenticated
+and service-role view grants are explicitly revoked; no base or auth access is
+added. The projection excludes notes, pricing, private metadata and scheduling
+write state. Dates and namespace keys remain source facts; TypeScript owns the
+bounded counts, quality classification and existing domain designer labels.
+The migration is not installed by local implementation.
+
 Project follow-up retirement (local, not installed): migration
 `20260917000002_defer_project_follow_ups.sql` replaces new-project cadence
 initialization and reminder reconciliation, rejects new sent/reply confirmations,

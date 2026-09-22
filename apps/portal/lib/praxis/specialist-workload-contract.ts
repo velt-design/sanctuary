@@ -1,0 +1,21 @@
+export type SpecialistDomain = 'installation' | 'design';
+type SpecialistBucket = 'current' | 'completed' | 'inconsistent';
+export type SpecialistIdentity = { kind:'crew'|'designer'; key:string|null; displayName:string; nameKnown:boolean; active:boolean|null };
+export type SpecialistQuery = { start:string;end:string;limit:number;offset:number;snapshot:string|null;
+  filter:{domain:'all'|SpecialistDomain;bucket:'all'|SpecialistBucket;identity:null|{kind:'crew'|'designer';key:string|null}} };
+export type SpecialistCounts = Record<SpecialistBucket,number>;
+export type SpecialistIssue = 'missingProject'|'archivedCurrent'|'missingCompletion'|'futureActualDate'|'finishBeforeStart'|'completionWithoutDone';
+export type SpecialistDetail = { recordId:string;projectId:string;projectName:string|null;domain:SpecialistDomain;
+  status:string;bucket:SpecialistBucket;identity:SpecialistIdentity;archived:boolean;recordedAt:string;issues:SpecialistIssue[];
+  dates: {kind:'installation';plannedStart:string|null;forecastStart:string|null;forecastEndExclusive:string|null;actualStart:string|null;actualFinish:string|null}
+    | {kind:'design';requestedAt:string;dueAt:string|null;startedAt:string|null;completedAt:string|null;cancelledAt:string|null} };
+export type SpecialistCoverage = { totalRecords:number;cancelledRecords:number;archivedRecords:number;excludedArchivedRecords:number;
+  completedOutsidePeriod:number;excludedTestRecords:number };
+export type SpecialistQuality = Record<SpecialistIssue|'missingStart'|'unassignedCurrent'|'undatedCurrent'|'inactiveCrew'|'unknownIdentityName',number>;
+export type SpecialistWorkload = { schemaVersion:'sanctuary.praxis.specialist-workload.v1';requestId:string;snapshot:string;
+  source:{sourceKey:string;connectionId:string;environment:string;authority:'canonical';asOf:string;retrievedAt:string};
+  query:SpecialistQuery;timezone:'Pacific/Auckland';counts:Record<SpecialistDomain,SpecialistCounts>;
+  assignments:{identity:SpecialistIdentity;counts:SpecialistCounts}[];
+  coverage:Record<SpecialistDomain,SpecialistCoverage>;qualityCounts:Record<SpecialistDomain,SpecialistQuality>;
+  details:{total:number;returned:number;limit:number;offset:number;nextOffset:number|null;truncated:boolean;
+    matchingCounts:Record<SpecialistDomain,SpecialistCounts>;items:SpecialistDetail[]};limitations:string[] };

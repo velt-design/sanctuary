@@ -59,6 +59,43 @@ Never commit real env files. `.env*` is ignored.
 
 ## Praxis Read Connector Setup
 
+The local `/api/integrations/praxis/v1/specialist-workload` candidate reads
+installation and drafting records through the reviewed, unapplied
+`20260922000003_praxis_specialist_workload.sql` reporting view. Existing reporting
+login, source identity, bearer authentication and eight-second read transaction
+are reused. No auth-table grant, credential, installation command or design write
+is added. Manual workload v1/v2 remain unchanged. Database installation and live
+verification are separate release operations.
+
+The exact versioned wire is owned by `specialist-workload-contract.ts`. Requests
+accept `start`, `end` (1–90 NZ dates through today), `limit` (1–50, default20),
+`domain`, `bucket`, `identityKind`, `identityKey`, `offset` and `snapshot`.
+Crew and domain-designer UUID namespaces remain separate; a kind with no key
+selects that domain's unassigned records. Designer display names come from the
+existing Drafting Queue roster, never an inferred auth-user match.
+
+Complete counts and assignment aggregates precede filtering and pagination.
+Current means nonterminal, nonarchived work without an identified status/date
+conflict. Completed means a current DONE record with a valid finish in the period,
+without a reversed/future finish or other classified inconsistency. Missing start
+dates are visible quality gaps, not inferred durations. Historical anomalies remain
+in the inconsistent bucket regardless of the completion period. Clean archived
+terminal records, cancellations, outside-period completions and the exact existing
+measurement project are separately accounted for. Quality counts overlap and must
+not be summed as workload. DONE design assignment is not proof of performer.
+
+All safe rows are validated before any aggregate or filter; omissions, invalid
+shapes, more than10000 source rows or more than200 aggregate identities withhold
+the report. Pages order by domain, bucket and record UUID. The SHA256 fingerprint
+includes the full safe projection, roster, source binding, period/filter and NZ day;
+offset, limit and observation time are excluded. Later pages require the original
+snapshot; a changed snapshot returns409 `WORKLOAD_SNAPSHOT_CHANGED` without rows.
+An offset0 Previous request retains its fingerprint. This detects change rather
+than holding a database transaction across requests. Installation dates remain
+calendar dates; design dates remain timestamps, grouped using Pacific/Auckland.
+Today is partial as of the source snapshot. No capacity, duration, performance,
+legacy task mirror or stage-based unscheduled-job inference is supplied.
+
 The locally implemented `/api/integrations/praxis/v1/workload` endpoint requires
 the reviewed `20260922000001_praxis_staff_workload.sql` migration (not installed
 by implementation). It grants only SELECT on the sanitised `workload_v1` view

@@ -1,5 +1,21 @@
 # Testing And QA
 
+Specialist workload source checks: `npx vitest run test/praxis-specialist-workload-read.test.ts`
+executes the exact view and production sanitizer using synthetic PostgreSQL
+records, then the actual reader/classification/pagination. It covers complete
+counts beyond50 rows, identity filtering, historical date reversals, NZ dates,
+archive/cancelled/unassigned coverage, malformed evidence, bounds and changed
+snapshots. `node scripts/test-praxis-specialist-db.mjs` uses the same disposable
+PostgreSQL17 Docker/native modes as the manual-workload harness and proves exact
+migration rollback/apply, safe field projection, unchanged business rows and
+real reporting/base/write denial. It never targets a live database.
+Optional `PRAXIS_SPECIALIST_NATIVE_ROWS_PATH` bridges synthetic native SQL rows
+into the projection test; `PRAXIS_SPECIALIST_FIXTURE_PATH` exports a synthetic
+wire for paired consumer validation. Keep private outputs outside the repository.
+The dedicated Praxis CI runs both the native harness and reader tests. Preserve
+Portal typecheck, lint, architecture and existing manual-workload regression gates;
+local tests do not establish live activation or production latency.
+
 Follow-up deferral: `npm run test:portal:project-work` includes
 `test/project-follow-up-retirement.test.ts`, covering cancellation audit/replay,
 preserved manual work and correction history, no fabricated new-project work,
