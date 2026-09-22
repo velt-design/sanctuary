@@ -24,3 +24,6 @@
     max-width: none;
   }
 }
+
+.details { justify-self: start; padding: 0; border: 0; background: transparent; color: var(--ui-text-muted); font: inherit; font-size: var(--ui-font-size-caption); text-decoration: underline; cursor: pointer; }
+.details:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }

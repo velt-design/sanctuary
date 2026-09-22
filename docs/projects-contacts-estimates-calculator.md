@@ -372,3 +372,19 @@ Manual or browser checks should cover:
 - Save locally and confirm the outcome state follows the estimate entity queue; error/conflict blocks quote handoff while queued, syncing, synced, and offline states retain the local-first path.
 - Create a design request from an estimate and confirm Design List receives the request.
 - Create an add-on estimate with no pergolas, add an **Existing pergola infill**, select its independent aluminium finish, save it, and confirm the estimate/quote contains an infill accessory line without a synthetic pergola.
+
+## Projects clarity pilot (review branch)
+
+The Projects toolbar keeps search and sort visible. Journey, stage, state, owner
+and page size use a draft drawer; Apply commits them together and resets the page,
+while Cancel/Escape preserve the current list. Applied filters are individually
+removable, with archive scope visible. The existing URL and user-scoped return
+position owner remains authoritative. Owner and next attention appear before
+contact/lifecycle columns. Supporting reasons open in a focus-managed drawer;
+titles, due wording and missing-owner warnings remain visible. Inline edits,
+lifecycle corrections, delivery actions, archive/delete and protected detail
+navigation retain their existing owners. Header counts never turn missing reads
+into zero. No aggregate is inferred from a bounded page of records.
+
+Verification/status lives in the single clarity programme record in
+`ui-foundation.md`. The pilot is not an authorised production release.

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'r
 import type { Project } from '@/lib/types/project';
 import { projectStatusLabel } from '@/lib/types/project';
 import styles from './ProjectsIndexClient.module.css';
+import ProjectIndexToolbar from './ProjectIndexToolbar';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
@@ -26,9 +27,6 @@ import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpen
 import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
-  PROJECT_JOURNEY_FILTER_OPTIONS,
-  PROJECT_STAGE_FILTER_OPTIONS,
-  PROJECT_STATE_FILTER_OPTIONS,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
 import { useProjectIndexView } from './useProjectIndexView';
@@ -42,14 +40,6 @@ import ProjectDeliveryAction from '@/components/projects/ProjectDeliveryAction';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
-import type {
-  ProjectsIndexJourneyFilter,
-  ProjectsIndexOwnerFilter,
-  ProjectsIndexPageSize,
-  ProjectsIndexSort,
-  ProjectsIndexStateFilter,
-} from '@/lib/projects/projectsIndexContract';
-import { PROJECTS_INDEX_OWNER_OPTIONS } from '@/lib/projects/projectsIndexContract';
 import {
   AlertBanner,
   Button,
@@ -61,7 +51,6 @@ import {
   LoadingSkeleton,
   PageLayout,
   Pagination,
-  SearchFilterBar,
   Table,
   TableBody,
   TableCell,
@@ -95,13 +84,7 @@ export default function ProjectsIndexClient({
     initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()),
   );
   const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, archiveFilter, sort, page, pageSize } = view;
-  const setQuery = (query: string) => updateView({ query });
-  const setJourneyFilter = (journeyFilter: ProjectsIndexJourneyFilter) => updateView({ journeyFilter });
-  const setStageFilter = (stageFilter: NonNullable<Project['status']> | 'all') => updateView({ stageFilter });
-  const setOwnerFilter = (ownerFilter: ProjectsIndexOwnerFilter) => updateView({ ownerFilter });
-  const setSort = (sort: ProjectsIndexSort) => updateView({ sort });
   const setPage = (page: number) => updateView({ page }, false);
-  const setPageSize = (pageSize: ProjectsIndexPageSize) => updateView({ pageSize });
   const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -263,8 +246,7 @@ export default function ProjectsIndexClient({
       <StaffPageHeader
         title="Projects"
         variant="index"
-        description="Search, update and continue work across the project pipeline."
-        count={`${projectsIndex.data?.projects.totalCount ?? projects.length} projects`}
+        count={projectsIndex.data ? `${projectsIndex.data.projects.totalCount} projects` : projectsIndex.state === 'unavailable' || projectsIndex.state === 'refresh-failed' ? 'Projects unavailable' : 'Loading projects'}
         primaryAction={{ label: 'New project', href: '/staff/projects/new' }}
         right={
           <HeaderActions>
@@ -282,30 +264,10 @@ export default function ProjectsIndexClient({
         truncated={projectsIndex.data?.projects.truncated ?? false}
       />
       <div className={styles.stack}>
-        <Card title="Filters" padding="compact" aria-label="Filters">
-            <SearchFilterBar
-              query={query}
-              onQueryChange={setQuery}
-              searchId="projectSearch"
-              queryPlaceholder="Name, client, phone or address…"
-              collapseFiltersOnNarrow
-              filters={[
-                { id: 'projectJourneyFilter', label: 'Journey', value: journeyFilter, onChange: (value) => setJourneyFilter(value as ProjectsIndexJourneyFilter), options: [...PROJECT_JOURNEY_FILTER_OPTIONS] },
-                { id: 'projectStageFilter', label: 'Stage', value: stageFilter, onChange: (value) => setStageFilter(value as NonNullable<Project['status']> | 'all'), options: [...PROJECT_STAGE_FILTER_OPTIONS] },
-                { id: 'projectStateFilter', label: 'State', value: stateFilter, onChange: (value) => {
-                  const nextState = value as ProjectsIndexStateFilter;
-                  updateView({ stateFilter: nextState, archiveFilter: nextState === 'ARCHIVED' ? 'archived' : 'active' });
-                }, options: [...PROJECT_STATE_FILTER_OPTIONS] },
-                { id: 'projectOwnerFilter', label: 'Owner', value: ownerFilter, onChange: (value) => setOwnerFilter(value as ProjectsIndexOwnerFilter), options: [...PROJECTS_INDEX_OWNER_OPTIONS] },
-                { id: 'projectSort', label: 'Sort', value: sort, onChange: (value) => setSort(value as ProjectsIndexSort), options: [{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name_asc', label: 'Name A–Z' }, { value: 'name_desc', label: 'Name Z–A' }] },
-                { id: 'projectPageSize', label: 'Rows', value: String(pageSize), onChange: (value) => setPageSize(Number(value) as ProjectsIndexPageSize), options: [{ value: '50', label: '50 rows' }, { value: '25', label: '25 rows' }, { value: '100', label: '100 rows' }] },
-              ]}
-              onClearAll={resetView}
-            />
-        </Card>
+        <ProjectIndexToolbar view={view} onChange={updateView} onReset={resetView} />
 
         <Card
-          title="All Projects"
+          title="Projects"
           padding="none"
           aria-label="Projects list"
           action={(
@@ -329,14 +291,14 @@ export default function ProjectsIndexClient({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Next attention</TableHead>
                       <TableHead>Client</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Address</TableHead>
                       <TableHead>Journey</TableHead>
                       <TableHead>Stage</TableHead>
                       <TableHead>State</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Next attention</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -427,6 +389,7 @@ export default function ProjectsIndexClient({
                           }}
                         >
                           <TableCell data-column="Name">{renderEditable('name', nameValue, 'Project name', true)}</TableCell>
+                          <ProjectIndexAccountabilityCells project={p} />
                           <TableCell data-column="Client" className={styles.muted}>{clientLabel}</TableCell>
                           <TableCell data-column="Phone">
                             {renderEditable(
@@ -442,7 +405,6 @@ export default function ProjectsIndexClient({
                             stageBusy={isStatusBusyRow}
                             onCorrectStage={setStageCorrectionTarget}
                           />
-                          <ProjectIndexAccountabilityCells project={p} />
                           <TableCell data-column="Actions">
                             <div className={styles.rowActions}>
                               {!p.isArchived && p.effectiveState !== 'CLOSED' ? <ProjectDeliveryAction projectId={p.id} host={host}

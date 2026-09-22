@@ -234,14 +234,14 @@ describe('ProjectsIndexClient', () => {
     const headers = Array.from(rendered.container.querySelectorAll('th')).map((th) => th.textContent ?? '');
     expect(headers).toEqual([
       'Name',
+      'Owner',
+      'Next attention',
       'Client',
       'Phone',
       'Address',
       'Journey',
       'Stage',
       'State',
-      'Owner',
-      'Next attention',
       'Actions',
     ]);
     expect(prefetchQuery).not.toHaveBeenCalled();
@@ -273,8 +273,9 @@ describe('ProjectsIndexClient', () => {
       <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
 
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent?.startsWith('Filters'))!.click());
     const values = (id: string) => Array.from(
-      rendered.container.querySelectorAll<HTMLSelectElement>(`#${id} option`),
+      document.querySelectorAll<HTMLSelectElement>(`#${id} option`),
     ).map((option) => option.value);
     expect(values('projectJourneyFilter')).toEqual([
       'all',
@@ -330,12 +331,14 @@ describe('ProjectsIndexClient', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
-    const state = rendered.container.querySelector('#projectStateFilter') as HTMLSelectElement;
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent?.startsWith('Filters'))!.click());
+    const state = document.querySelector('#projectStateFilter') as HTMLSelectElement;
 
     act(() => {
       state.value = 'ARCHIVED';
       state.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    act(() => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
 
     expect(rendered.container.textContent).not.toContain('Deck Build');
     expect(rendered.container.textContent).toContain('Updating projects…');

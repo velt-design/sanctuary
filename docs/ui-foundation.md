@@ -68,14 +68,15 @@ migration or production release.
 
 ## Clarity programme working record
 
-Current stage: **Foundation guidance and examples verified in a hosted preview**,
-not merged or released. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
+Current stage: **Projects clarity pilot implemented; authenticated browser review blocked on staff sign-in**. Foundation PR180 is approved for merge after refreshed CI. The earlier Foundation example remains verified in a hosted preview, not yet merged or released. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
 (existing Vercel preview sign-in may be required). Deployment
 `dpl_DX2bATH5NFYc6PttTAPQC9T3RxfC` passed optimized build and typecheck.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
 PRs. Current branch `codex/portal-foundation-clarity-20260923`, base `54ceef1`.
-User approval: 23 September "go ahead" to steps 1 and 2 only: guidance plus working
-Foundation examples, independent review and preview; no production release.
+Initial approval: 23 September "go ahead" to Foundation guidance and examples.
+Superseded by the later same-task "go ahead with those 3 points": merge Foundation
+after checks, then a separate Projects -> detail pilot and independent journey
+review before wider rollout. Pilot merge/release and business writes remain excluded.
 The completed Marketing & Sales release remains separately recorded in
 `marketing-performance.md` and PR178. Its local postflight note is preserved in its
 original worktree. Open PRs were checked; none owns the catalogue paths.
@@ -114,10 +115,9 @@ needed. Private verification artifacts remain ignored in `.local-evidence/`.
 Review device: hosted desktop access verified; phone-width browser checks passed.
 Physical-phone access and human unassisted acceptance remain unverified. This
 fictional instructional task does not prove live business-data coverage. No new
-business assumptions, API, dependency or permission changes. Next: owner review of
-this first bounded PR; automated PR checks remain required before any merge.
-Projects -> project detail is the proposed next pilot, not part of this PR. Wider
-route rollout and production releases retain separate authority.
+business assumptions, API, dependency or permission changes in Foundation. Its
+PR180 checks rerun after updating to main ff3f858. The now-authorised Projects
+pilot is recorded below; wider route rollout and pilot release remain excluded.
 
 ## Owners
 
@@ -327,3 +327,52 @@ Finance navigation uses the existing sidebar/rail/drawer items and styling. Its 
 ## Reading position in overlays (22 September 2026)
 
 The shared Portal scroll lock now holds the document at its captured position with scrollbar compensation, rather than clamping root height and losing scroll. The existing Modal, Drawer and Schedule fullscreen consumers retain the same lock/unlock contract. Nested locks release only after the last close; original inline styles and scroll position are restored. This correction was found during the Marketing hub information-drawer review. Unit evidence includes nested locks/style restoration; browser evidence includes opening help below the fold, Escape/focus return and preserved reading position. No portal token or cross-route visual migration.
+
+### Projects clarity pilot — current stage (23 September 2026)
+
+Owner approved merging Foundation PR180 after checks, then a separate Projects ->
+project detail pilot and complete-journey review before wider rollout. PR180 was
+updated for newer main and its required checks are rerunning; no bypass permitted.
+Pilot branch: `codex/projects-clarity-20260923`; builder owns index presentation,
+filter composition and evidence in this record. No pilot production release or
+business-data writes are authorised.
+
+Task: find a project, identify its next attention, open detail and return to the
+same list context. Reference: Marketing & Sales compact toolbar and Foundation
+Apply/Cancel drawers. Preserve existing StaffPageHeader, Drawer, Table, index
+query/state controller, project instant navigation and authoritative nextAction.
+Live baseline inspected: populated 50-row page with exact server-filtered count;
+six visible selects precede the table, next attention is beyond the initial wide
+viewport, and repeated reasons consume row height. Counts remain server-owned;
+no aggregate charts derived from partial pages. No new business definitions.
+
+Implemented; browser verification pending: compact search/sort with draft filter drawer and removable
+applied choices; earlier next-attention column with contextual supporting detail;
+all current edits/actions and access/error states retained; filter/page/scroll
+return preserved; keyboard/mobile and loading transitions checked; independent
+read-only delivery review; hosted preview and separate unmerged PR. Existing
+detail workflow remains the destination, not a replacement commercial workflow.
+Relevant review dimensions: correctness, usability, clarity, visuals/accessibility,
+system fit, maintainability, recovery, security and handover. No new integrations
+or processing costs. Wider rollout waits for this pilot's owner review.
+
+Pilot evidence: 27 focused tests across index, toolbar, attention cells and existing
+return-position owner passed. Portal typecheck, full lint, architecture/docs guards
+and final hosted build passed. Independent source review caught a portal keyboard
+event-isolation defect; corrected and independently rerun (3 attention tests pass).
+Tab/Escape now reach the shared Drawer; Enter/Space remain isolated from row open.
+No numerical usability/visual/handover pass assigned without browser evidence.
+
+Final protected candidate: https://sanctuary-portal-g42racwxh-jordans-projects-43df95bd.vercel.app/staff/projects
+Deployment `dpl_DKByEXwZqfdRQ5eB1B7vLJG9h6ay`. This is the actual staff route, not
+a synthetic reporting fixture. Anonymous access redirects to existing Vercel SSO;
+the authorised browser reaches staff login. Jordan was asked to sign in. The
+previous gytgaigdf candidate is superseded by this keyboard-corrected version.
+Actual data read/render, mobile layout, focus containment and filter/page/scroll
+return remain unverified. The reviewer specifically requires actual browser Back
+after filtered page 2; do not infer this from unit history serialization. No real
+customer payload or media added to Git or deployment; private logs excluded by
+Git info/exclude and .vercelignore. Header/data owners preserved; toolbar extracted
+to its own tested route-local component. Next authorised action: after staff
+sign-in, inspect the final candidate and independently review the complete journey,
+fix material issues within this pilot, then present the separate unmerged PR.

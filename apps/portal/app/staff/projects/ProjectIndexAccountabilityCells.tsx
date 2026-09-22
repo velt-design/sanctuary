@@ -1,3 +1,7 @@
+'use client';
+
+import { useState } from 'react';
+import { Drawer } from '@/components/ui/drawer/Drawer';
 import { projectOwnerOption, PROJECT_OWNER_REQUIRED_STAGES } from '@/lib/projects/commandCentre/projectOwners';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectsIndexProject } from '@/lib/projects/projectsIndexContract';
@@ -28,6 +32,7 @@ export default function ProjectIndexAccountabilityCells({
 }: {
   project: ProjectsIndexProject;
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const stage = normalizePipelineStageKey(project.status ?? 'NEW');
   const owner = projectOwnerOption(project.projectOwnerKey);
   const ownerRequired = Boolean(stage && PROJECT_OWNER_REQUIRED_STAGES.has(stage));
@@ -64,9 +69,18 @@ export default function ProjectIndexAccountabilityCells({
       <TableCell data-column="Next attention">
         <div className={styles.action}>
           <strong>{title}</strong>
-          {reason ? <span>{reason}</span> : null}
+          {reason ? <button type="button" className={styles.details} aria-label={`Attention details for ${project.projectName ?? project.name ?? 'project'}`} onClick={(event) => { event.stopPropagation(); setDetailsOpen(true); }} onKeyDown={(event) => event.stopPropagation()}>Details</button> : null}
           {due ? <small>When: {due}</small> : null}
         </div>
+        <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}>
+        <Drawer open={detailsOpen} title="Next attention" onClose={() => setDetailsOpen(false)}>
+          <div>
+            <h3>{title}</h3>
+            {due ? <p>{due}</p> : null}
+            <p>{reason}</p>
+          </div>
+        </Drawer>
+        </span>
       </TableCell>
     </>
   );
