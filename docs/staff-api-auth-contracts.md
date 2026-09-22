@@ -16,6 +16,12 @@
   require same-origin JSON. Claims are bounded to ten and cannot replay an
   attempted reply payload.
 
+Email review mutations pin the browser Origin to the server-configured
+EMAIL_REVIEW_ORIGIN. Do not compare it to Next's rewritten internal request URL
+or trust forwarded host headers. Missing/invalid configuration fails closed;
+HTTPS is required except for an explicitly configured loopback HTTP origin in
+development. Configure the exact preview/production Portal origin before use.
+
 Adapters live in apps/portal/lib/emailReview and call narrow RPCs using the
 auth-bound client, not a service-role actor substitute. SQL repeats validation
 because authenticated callers can invoke RPCs directly. Private tables have no

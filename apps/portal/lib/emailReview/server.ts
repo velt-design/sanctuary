@@ -22,7 +22,15 @@ export async function reviewBody(request: Request, limit: number): Promise<unkno
   } catch { throw new EmailReviewInputError(); } finally { reader.releaseLock(); }
 }
 export function reviewSameOrigin(request: Request) {
-  try { return request.headers.get('origin')===new URL(request.url).origin; } catch { return false; }
+  // Next can rewrite request.url to an internal host; pin the public origin.
+  try {
+    const configured=process.env.EMAIL_REVIEW_ORIGIN;
+    if(!configured)return false;
+    const url=new URL(configured);
+    const loopback=process.env.NODE_ENV!=='production' && url.protocol==='http:' && ['127.0.0.1','localhost','[::1]'].includes(url.hostname);
+    if(url.username||url.password||url.search||url.hash||url.pathname!=='/'||(url.protocol!=='https:'&&!loopback))return false;
+    return request.headers.get('origin')===url.origin;
+  } catch { return false; }
 }
 type Target = {batchId?:string;itemId?:string};
 export async function readReview(request: Request, target: Target = {}) {

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach,describe,it,expect,vi } from 'vitest';
+import { afterEach,beforeEach,describe,it,expect,vi } from 'vitest';
 const mocks=vi.hoisted(()=>({rpc:vi.fn(),admin:vi.fn()}));
 vi.mock('server-only',()=>({}));
 vi.mock('@/lib/api/adminApi',()=>({requireAdminContext:mocks.admin}));
@@ -7,7 +7,8 @@ import { dispatchRequest } from './server';
 import { parseDispatchResult } from './validation';
 const id='00000000-0000-4000-8000-000000000001';
 const req=(data:unknown,origin='https://portal.example.invalid')=>new Request('https://portal.example.invalid/api/dispatch',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(data)});
-beforeEach(()=>{vi.clearAllMocks();mocks.admin.mockResolvedValue({ok:true,supabase:{rpc:mocks.rpc}});mocks.rpc.mockResolvedValue({data:{replayed:false,replies:[]},error:null});});
+afterEach(()=>vi.unstubAllEnvs());
+beforeEach(()=>{vi.stubEnv('EMAIL_REVIEW_ORIGIN','https://portal.example.invalid');vi.clearAllMocks();mocks.admin.mockResolvedValue({ok:true,supabase:{rpc:mocks.rpc}});mocks.rpc.mockResolvedValue({data:{replayed:false,replies:[]},error:null});});
 describe('Outlook dispatch boundary',()=>{
  it('rejects cross-origin and non-admin before accessing dispatches',async()=>{expect((await dispatchRequest(req({},'https://evil.invalid'),id,'claim')).status).toBe(403);expect(mocks.admin).not.toHaveBeenCalled();mocks.admin.mockResolvedValue({ok:false,response:new Response(null,{status:403})});expect((await dispatchRequest(req({}),id,'read')).status).toBe(403);expect(mocks.rpc).not.toHaveBeenCalled();});
  it('claims only a bounded batch through the authenticated RPC with no implicit retry',async()=>{const response=await dispatchRequest(req({commandId:id,limit:10}),id,'claim');expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toBe('private, no-store');expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('email_review_dispatch',{p_batch_id:id,p_action:'claim',p_input:{commandId:id,limit:10}});});

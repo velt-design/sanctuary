@@ -1,5 +1,18 @@
 # Environment, Auth, And Supabase
 
+## Email review candidate — not released
+
+EMAIL_REVIEW_ORIGIN pins the exact public origin accepted for authenticated
+email-review mutations. Set it to https://portal.sanctuarypergolas.co.nz only for
+the production Portal, or the exact protected preview origin for that preview.
+Loopback HTTP is supported for local development. Missing or invalid values
+deny mutations; forwarded request headers cannot select this trust boundary.
+The page still needs normal Supabase staff/admin authentication and the two
+email-review migrations. This candidate installs no Outlook credentials, email
+worker or automatic sender. Do not enable QA fixtures in production. See
+staff-api-auth-contracts.md and automation-email-audit.md for the review and
+separate operator-send boundaries.
+
 ## Praxis finance history candidate — inactive
 
 `PRAXIS_XERO_FINANCE_READ_ENABLED=true` explicitly enables the new finance-history

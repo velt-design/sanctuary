@@ -1,16 +1,20 @@
 // @vitest-environment node
-import { beforeEach,describe,it,expect,vi } from 'vitest';
+import { afterEach,beforeEach,describe,it,expect,vi } from 'vitest';
 const mocks=vi.hoisted(()=>({rpc:vi.fn(),staff:vi.fn(),admin:vi.fn()}));
 vi.mock('server-only',()=>({}));
 vi.mock('@/lib/api/staffApi',()=>({requireStaffContext:mocks.staff}));
 vi.mock('@/lib/api/adminApi',()=>({requireAdminContext:mocks.admin}));
-import { readReview,mutateReview,reviewBody,readReviewers } from './server';
+import { readReview,mutateReview,reviewBody,readReviewers,reviewSameOrigin } from './server';
 import { GET as getBatches } from '../../app/api/staff/v1/email-review/route';
 const id='00000000-0000-4000-8000-000000000001';
 const target={batchId:id,itemId:id};
 const request=(body:unknown,origin='https://portal.example.invalid')=>new Request('https://portal.example.invalid/api/review',{method:'PATCH',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});
-beforeEach(()=>{vi.clearAllMocks();const auth={ok:true,supabase:{rpc:mocks.rpc},session:{role:'staff'}};mocks.staff.mockResolvedValue(auth);mocks.admin.mockResolvedValue(auth);mocks.rpc.mockResolvedValue({data:{item:{id}},error:null});});
+afterEach(()=>vi.unstubAllEnvs());
+beforeEach(()=>{vi.stubEnv('EMAIL_REVIEW_ORIGIN','https://portal.example.invalid');vi.clearAllMocks();const auth={ok:true,supabase:{rpc:mocks.rpc},session:{role:'staff'}};mocks.staff.mockResolvedValue(auth);mocks.admin.mockResolvedValue(auth);mocks.rpc.mockResolvedValue({data:{item:{id}},error:null});});
 describe('email review API boundary',()=>{
+ it('uses pinned public origin despite internal Next URL and ignores spoofed forwarding headers',()=>{expect(reviewSameOrigin(new Request('http://localhost:3194/internal',{headers:{origin:'https://portal.example.invalid'}}))).toBe(true);expect(reviewSameOrigin(new Request('http://localhost:3194/internal',{headers:{origin:'https://evil.invalid','x-forwarded-host':'evil.invalid',host:'evil.invalid'}}))).toBe(false);});
+ it.each(['','http://public.invalid','https://user:pass@portal.example.invalid','https://portal.example.invalid/path','https://portal.example.invalid/?x=1','https://portal.example.invalid/#x'])('rejects absent or invalid public-origin configuration: %s',origin=>{vi.stubEnv('EMAIL_REVIEW_ORIGIN',origin);expect(reviewSameOrigin(request({}))).toBe(false);});
+ it('allows loopback HTTP only outside production and rejects missing Origin',()=>{vi.stubEnv('EMAIL_REVIEW_ORIGIN','http://127.0.0.1:3194');vi.stubEnv('NODE_ENV','development');expect(reviewSameOrigin(request({},'http://127.0.0.1:3194'))).toBe(true);expect(reviewSameOrigin(new Request('http://127.0.0.1:3194'))).toBe(false);vi.stubEnv('NODE_ENV','production');expect(reviewSameOrigin(request({},'http://127.0.0.1:3194'))).toBe(false);});
  it('uses authenticated RPC only and preserves private cache policy',async()=>{const r=await getBatches(new Request('https://portal.example.invalid/api/review'));expect(r.status).toBe(200);expect(r.headers.get('cache-control')).toBe('private, no-store');expect(mocks.rpc).toHaveBeenCalledWith('email_review_read',expect.objectContaining({p_batch_id:null,p_item_id:null}));});
  it('denies anonymous access before RPC',async()=>{mocks.staff.mockResolvedValue({ok:false,response:new Response(null,{status:401})});expect((await readReview(new Request('https://portal.example.invalid'))).status).toBe(401);expect(mocks.rpc).not.toHaveBeenCalled();});
  it('rejects missing/cross-origin mutations before auth or database',async()=>{expect((await mutateReview(request({},'https://evil.invalid'),target)).status).toBe(403);expect(mocks.staff).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();});
