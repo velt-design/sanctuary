@@ -630,6 +630,31 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 ## Praxis Reporting Tests
 
+`npx vitest run test/praxis-workload-read.test.ts` exercises actual aggregate SQL
+with synthetic manual-work populations, assignment/recorder separation, NZ
+completion dates, state/exclusion coverage, reopening and omissions beyond the
+detail limit. It also proves v1 compatibility, v2 exact identity filtering,
+125-record pagination, complete overdue counts, snapshot-change restarts and
+NZ midnight/DST boundaries. `node scripts/test-praxis-workload-db.mjs` runs the
+exact forward migration and existing sanitiser in an isolated disposable
+`postgres:17-alpine` Docker container (or `PRAXIS_REPORTING_DB_IMAGE`, requiring
+PostgreSQL17), without host ports, external networking or repository mounts.
+`PRAXIS_DISPOSABLE_POSTGRES_BIN=<absolute PostgreSQL17 bin directory>` selects
+the alternative local disposable native cluster. Both paths check rollback/replay,
+unchanged business rows, narrow staff-name projection, retirement rules and
+base/auth/write denial using the reporting LOGIN with read-only defaults off.
+No remote database URL is accepted. These checks do not install the migration
+or establish live staff roster/coverage accuracy.
+The dedicated Praxis workflow runs this same workload migration/grant harness
+and both overview/workload aggregate test files. Changes to either test or the
+workload harness trigger that workflow, independently of application changes.
+
+`npx vitest run test/praxis-overview-read.test.ts` executes the business overview
+SQL against synthetic PGlite reporting views, including complete counts beyond
+the detail limit, stale SENT/accepted exclusions, missing evidence and customer
+identity/freshness. Route tests cover the shared authentication boundary.
+These tests do not prove deployed grants, live freshness or production latency.
+
 The native customer-read harness also applies the forward aggregate-bounds
 correction (`20260917000001`), verifies rollback/replay and unchanged function
 grants/business rows, and runs `supabase/tests/praxis_projection_aggregate_bounds.sql`.

@@ -8,10 +8,13 @@ on:
       - "apps/portal/app/api/integrations/praxis/**"
       - "apps/portal/lib/praxis/**"
       - "scripts/test-praxis-context-reporting-*.mjs"
+      - "scripts/test-praxis-workload-db.mjs"
       - "supabase/migrations/*praxis*.sql"
       - "supabase/tests/praxis*.sql"
       - "test/praxis-context*.test.ts"
       - "test/praxis-marketing*.test.ts"
+      - "test/praxis-overview-read.test.ts"
+      - "test/praxis-workload-read.test.ts"
       - "package.json"
       - "package-lock.json"
   push:
@@ -21,10 +24,13 @@ on:
       - "apps/portal/app/api/integrations/praxis/**"
       - "apps/portal/lib/praxis/**"
       - "scripts/test-praxis-context-reporting-*.mjs"
+      - "scripts/test-praxis-workload-db.mjs"
       - "supabase/migrations/*praxis*.sql"
       - "supabase/tests/praxis*.sql"
       - "test/praxis-context*.test.ts"
       - "test/praxis-marketing*.test.ts"
+      - "test/praxis-overview-read.test.ts"
+      - "test/praxis-workload-read.test.ts"
       - "package.json"
       - "package-lock.json"
   workflow_dispatch:
@@ -55,8 +61,11 @@ jobs:
       - name: Fast projection and rollback proof
         run: npm run test:praxis:db:fast
 
+      - name: Workload projection PostgreSQL 17 denial and rollback proof
+        run: node scripts/test-praxis-workload-db.mjs
+
       - name: Endpoint and contract tests
-        run: npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-context-migration.test.ts test/praxis-marketing-read.test.ts
+        run: npx vitest run apps/portal/lib/praxis apps/portal/app/api/integrations/praxis/v1/routes.test.ts test/praxis-context-migration.test.ts test/praxis-marketing-read.test.ts test/praxis-overview-read.test.ts test/praxis-workload-read.test.ts
 
       - name: Typecheck
         run: npm run typecheck

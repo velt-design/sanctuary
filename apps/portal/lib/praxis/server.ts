@@ -89,7 +89,7 @@ export type PraxisServerDependencies = {
 
 export class PraxisConnectorError extends Error {
   constructor(
-    readonly status: 400 | 401 | 403 | 503,
+    readonly status: 400 | 401 | 403 | 409 | 503,
     readonly code: PraxisErrorCode,
     message: string,
     readonly retryable = false,

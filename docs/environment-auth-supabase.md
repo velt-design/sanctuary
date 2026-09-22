@@ -59,6 +59,96 @@ Never commit real env files. `.env*` is ignored.
 
 ## Praxis Read Connector Setup
 
+The locally implemented `/api/integrations/praxis/v1/workload` endpoint requires
+the reviewed `20260922000001_praxis_staff_workload.sql` migration (not installed
+by implementation). It grants only SELECT on the sanitised `workload_v1` view
+to the existing reporting group. Project/model/state/owner/work-item joins
+remain source-owned. Staff labels use the existing roster's full-name, name,
+display-name precedence for eligible portal users, without its email fallback;
+no auth metadata, emails or base/auth table grants cross the reporting boundary.
+Owner labels reuse the existing project-owner roster. Unknown labels remain
+explicit, and staff UUIDs and business-owner keys are never conflated.
+
+`sanctuary.praxis.workload.v1` accepts `start`, `end` (1–90 New Zealand calendar
+dates through today, using Pacific/Auckland for validation and completion grouping)
+and optional `limit` (1–50, default20). Complete totals precede bounded details.
+Today's counts cover a partial day, only up to the source snapshot (`asOf`).
+Future completion timestamps remain invalid evidence and withhold the report.
+It reports explicit manual OPEN/BLOCKED tasks, currently-DONE items completed
+in the period, and open tasks on closed/archived projects as inconsistencies.
+WAITING tasks retain their state. Reopened work is not currently completed;
+completion recorder does not establish performer. Retired call/site-visit
+identities, nonmanual cadences/reviews and cancelled records are excluded from
+actionable totals; exclusion and missing-model/state coverage stay visible.
+The schema requires due dates; corrupt/omitted evidence fails unavailable.
+Current assignments and completion recorders have separate totals and labels.
+This is recorded workload, not staff performance, labour hours or capacity;
+crew installations and specialist work remain outside this contract.
+Live activation must separately prove the view, binding, freshness and latency.
+
+Workload pagination is locally implemented as explicit `version=2` on the same
+workload route; requests without a version retain the v1 wire. No additional
+reporting view, grants, credentials or production operations are introduced.
+The flattened URL adds `bucket` (`all`, `open`, `blocked`, `completed`,
+`inconsistent`), `identityKind`/`identityKey`, `due` (`all`, `beforeToday`),
+`offset` and `snapshot`. Missing values normalize to all/no identity/offset0/
+null snapshot; explicit empty, duplicate or unknown parameters are rejected.
+Staff UUIDs, project-owner keys and unassigned identities remain distinct.
+`completionRecorder` requires the completed bucket and permits an absent key
+for an unknown recorder. `beforeToday` requires the open or blocked bucket.
+
+The `sanctuary.praxis.workload.v2` response echoes normalized nested
+`query.filter: {bucket, identity: {kind, key} | null, due}` and the requested
+snapshot (null for a fresh request). Global counts, assignments and coverage
+remain complete and unfiltered; `details.total` and `details.matchingCounts`
+describe the filtered set. `details.offset`, `nextOffset` (null at the end),
+`returned` and `limit` describe the current page; `truncated` means this page
+is not the entire matching set, including later/final pages with offset>0.
+Global `dueCounts` and each assignment report `openOverdue` and
+`blockedPastDue`. These are overlapping subsets, not additional workload.
+Overdue uses the Portal portfolio queue's rule: due NZ calendar date before
+today; a timestamp earlier today is still due today. This differs from the
+project primary-action urgency rank's instant-based comparison.
+
+Every page orders by bucket, due timestamp and work-item UUID in one source
+read transaction. Top-level `snapshot` is SHA256 over the complete safe source
+projection plus binding, period/filter, authoritative labels and NZ calendar
+day; request times, offset and limit are excluded. Offset>0 requires a matching
+snapshot; offset0 may supply one when navigating back. Changed evidence or a
+changed NZ day returns `409 WORKLOAD_SNAPSHOT_CHANGED` without rows, requiring
+a fresh read before joining pages. This is change detection, not a database
+snapshot held across requests. Consumers must audit all normalized query
+fields and must not append results after this error. Whole-population invalid
+or omitted evidence still withholds a filtered or paginated report.
+Actual-SQL synthetic tests cover 125 tied-date records, filtered identities
+beyond the first20, recorder separation, complete totals, changed evidence,
+binding/filter mismatch, NZ midnight/DST and v1 compatibility. The optional
+`PRAXIS_WORKLOAD_V2_FIXTURE_PATH` test output contains synthetic evidence only
+for paired consumer validation. Implementation and local tests do not prove
+live activation or production response latency.
+
+The locally implemented business overview endpoint
+`/api/integrations/praxis/v1/overview?limit=20` returns
+`sanctuary.praxis.overview.v1` using the same authenticated binding, restricted
+reporting role and repeatable-read transaction. It reads only existing projects,
+contacts, quotes and quote-version views; no migration or new grant is required.
+Complete project/stage and quote-attention totals are computed before limiting
+the detail list (1–50 rows). The exact labelled measurement project is excluded.
+`activeProjects` means nonarchived, since the newer project work state is absent
+from these views. A stage is not acceptance, cash or scheduling readiness.
+Attention lists nonsuperseded SENT versions, one per quote, oldest sent first,
+excluding archived projects and quotes with any accepted version. Expiry is
+labelled separately and does not imply an unanswered email or authorised chase.
+Canonical project/contact IDs support the existing customer drilldown. Missing,
+omitted, invalid or orphaned evidence withholds the whole overview, including
+records beyond the detail limit. Names, nullable identity fields and timestamps
+must satisfy the consumer contract; sent/source timestamps cannot postdate the
+transaction. Cash, actual costs,
+profitability and staff workload remain explicitly unavailable. Source identity,
+transaction timestamp and retrieval timestamp accompany every result.
+This is local implementation, not deployment or live completeness proof;
+activation still needs an authenticated live read and statement-budget check.
+
 The marketing endpoint `/api/integrations/praxis/v1/marketing` adds complete
 period-activity counts to this same restricted connector. It accepts 1–90
 completed UTC-cutoff dates and an optional equal earlier comparison, computes
