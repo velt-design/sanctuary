@@ -1,5 +1,6 @@
 import { z } from 'zod';
-export const BRIEFING_LIMIT = 1000;
+export const BRIEFING_LIMIT = 5000;
+export const BRIEFING_MAX_BYTES = 2 * 1024 * 1024;
 export const BRIEFING_SCHEMA = 'sanctuary.praxis.briefing.v1' as const;
 const id=z.string().uuid(),text=z.string().min(1).max(256),stamp=z.string().datetime({offset:true}).transform(v=>new Date(v).toISOString());
 const day=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v);
@@ -7,7 +8,7 @@ const briefingFacts = {
   enquiries:z.object({contactId:id.nullable(),enquiryType:text.nullable(),createdAt:stamp}).strict(),
   projects:z.object({name:text,contactId:id,contactName:text,contactEmail:z.string().max(254).nullable(),stage:z.string().max(100).nullable(),archivedAt:stamp.nullable(),createdAt:stamp}).strict(),
   quoteVersions:z.object({quoteId:id,quoteRef:z.string().max(100).nullable(),versionNumber:z.number().int().positive(),status:text,
-    sentAt:stamp.nullable(),acceptedAt:stamp.nullable(),supersededAt:stamp.nullable(),expiresAt:stamp.nullable(),totalIncGstCents:z.number().int().nonnegative().safe()}).strict(),
+    sentAt:stamp.nullable(),acceptedAt:stamp.nullable(),supersededAt:stamp.nullable(),expiresAt:z.union([day,stamp]).nullable(),totalIncGstCents:z.number().int().nonnegative().safe()}).strict(),
   manualWork:z.object({title:z.string().min(1).max(160),status:z.enum(['OPEN','BLOCKED','DONE','CANCELLED']),projectState:z.enum(['ACTIVE','WAITING','CLOSED','ARCHIVED']),
     identityKind:z.enum(['staff','projectOwner','unassigned']),identityKey:z.string().max(100).nullable(),identityName:text,
     dueAt:stamp,completedAt:stamp.nullable(),completedBy:id.nullable()}).strict(),

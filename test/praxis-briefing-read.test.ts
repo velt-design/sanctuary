@@ -47,7 +47,7 @@ beforeEach(async()=>{
 const read=()=>readPraxisBriefing(config,id(99));
 describe('complete compact briefing source SQL',()=>{
   it('exports all six compact families and strict identities with contact identity email but without notes/messages; preserves anomalies',async()=>{
-    const value=await read();for(const domain of Object.values(value.domains))expect(domain).toMatchObject({status:'available',complete:true,count:1,limit:1000});
+    const value=await read();for(const domain of Object.values(value.domains))expect(domain).toMatchObject({status:'available',complete:true,count:1,limit:5000});
     expect(JSON.stringify(value)).not.toMatch(/not exported|notes/);
     expect(value.domains.projects.status==='available'&&value.domains.projects.records[0]!.facts.contactEmail).toBe('synthetic@example.invalid');
     expect(value.cash).toEqual({status:'unavailable',reason:'business_cash_not_projected'});
@@ -73,9 +73,44 @@ describe('complete compact briefing source SQL',()=>{
     await db.exec(`insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload) select ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${id(1)}',payload from generate_series(1,55) n cross join praxis_reporting.enquiry_requests_v1;`);
     expect((await read()).domains.enquiries).toMatchObject({status:'available',count:56});
   });
+  it('preserves date-only expiry and normalizes timestamp offsets without inventing a date timezone',async()=>{
+    for(const [input,expected] of [['2026-10-01','2026-10-01'],['2026-10-01T12:00:00+12:00','2026-10-01T00:00:00.000Z'],[null,null]]) {
+      await db.exec(`update praxis_reporting.quote_versions_v1 set payload=jsonb_set(payload,'{expiresAt}','${JSON.stringify(input)}'::jsonb)`);
+      const value=await read();expect(value.domains.quoteVersions.status==='available'&&value.domains.quoteVersions.records[0]!.facts.expiresAt).toBe(expected);
+    }
+    await db.exec("update praxis_reporting.quote_versions_v1 set payload=jsonb_set(payload,'{expiresAt}','\"2026-02-30\"')");
+    expect((await read()).domains.quoteVersions).toMatchObject({status:'unavailable',reason:'invalid_projection'});
+  });
+  it('captures a complete synthetic business population above the former limit, including all project work coverage',async()=>{
+    await db.exec(`insert into praxis_reporting.contacts_v1(id,payload)
+      select ('50000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
+        jsonb_build_object('name','Synthetic customer '||n,'email','synthetic-'||n||'@example.invalid') from generate_series(1,1197) n;
+      insert into praxis_reporting.projects_v1(id,project_id,parent_id,payload)
+      select ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,
+        ('50000000-0000-4000-8000-'||lpad(((n-1)%1197+1)::text,12,'0'))::uuid,
+        jsonb_set(jsonb_set(payload,'{name}',to_jsonb('Synthetic project '||n)),'{contactId}',to_jsonb('50000000-0000-4000-8000-'||lpad(((n-1)%1197+1)::text,12,'0')))
+        from generate_series(1,1309) n cross join praxis_reporting.projects_v1;
+      insert into praxis_reporting.workload_v1(project_id,work_item_id,payload,omission_count)
+        select id,null,'{"modelVersion":2,"statePresent":true}',0 from praxis_reporting.projects_v1 where id<>'${id(1)}';
+      insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload)
+        select ('30000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${id(1)}',payload from generate_series(1,1166) n cross join praxis_reporting.enquiry_requests_v1;
+      insert into praxis_reporting.quote_versions_v1(id,project_id,parent_id,payload)
+        select ('40000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,project_id,parent_id,
+          jsonb_set(jsonb_set(payload,'{versionNumber}',to_jsonb(n+1)),'{expiresAt}',case when n%3=0 then 'null'::jsonb when n%3=1 then '"2026-10-01"'::jsonb else '"2026-10-01T00:00:00Z"'::jsonb end)
+        from generate_series(1,626) n cross join praxis_reporting.quote_versions_v1;`);
+    const value=await read();
+    for(const [name,count] of Object.entries({projects:1310,enquiries:1167,quoteVersions:627,manualWork:1,installation:1,design:1})) {
+      const domain=value.domains[name as keyof typeof value.domains];
+      expect(domain).toMatchObject({status:'available',complete:true,count,limit:5000});
+      if(domain.status==='available')expect(domain.records).toHaveLength(count);
+    }
+    expect(Buffer.byteLength(JSON.stringify(value))).toBeGreaterThan(262144);
+    expect(Buffer.byteLength(JSON.stringify(value))).toBeLessThan(2*1024*1024);
+    if(process.env.PRAXIS_BRIEFING_SCALE_WIRE_PATH)writeFileSync(process.env.PRAXIS_BRIEFING_SCALE_WIRE_PATH,JSON.stringify(value));
+  });
   it('withholds overflow as unavailable, not a truncated complete array',async()=>{
-    await db.exec(`insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload) select ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${id(1)}',payload from generate_series(1,1000) n cross join praxis_reporting.enquiry_requests_v1;`);
-    expect((await read()).domains.enquiries).toEqual({status:'unavailable',reason:'record_limit',limit:1000});
+    await db.exec(`insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload) select ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${id(1)}',payload from generate_series(1,5000) n cross join praxis_reporting.enquiry_requests_v1;`);
+    expect((await read()).domains.enquiries).toEqual({status:'unavailable',reason:'record_limit',limit:5000});
   });
   it('retains archived/cancelled current records and excludes only established test records',async()=>{
     await db.exec(`update praxis_reporting.projects_v1 set payload=jsonb_set(payload,'{archivedAt}','"2026-09-20T00:00:00Z"');update praxis_reporting.workload_v1 set payload=jsonb_set(payload,'{status}','"CANCELLED"');
@@ -93,8 +128,8 @@ describe('complete compact briefing source SQL',()=>{
     await db.exec('alter table praxis_reporting.specialist_workload_v1 rename to held_specialist');
     try {const value=await read();expect(value.domains.design).toMatchObject({status:'unavailable',reason:'projection_missing'});expect(value.domains.enquiries).toMatchObject({status:'available'});}finally{await db.exec('alter table praxis_reporting.held_specialist rename to specialist_workload_v1');}
   });
-  it('rejects the whole snapshot exceeding256KiB rather than dropping families',async()=>{
-    await db.exec(`insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload) select ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${id(1)}',jsonb_set(payload,'{enquiryType}',to_jsonb(repeat('x',256))) from generate_series(1,700) n cross join praxis_reporting.enquiry_requests_v1;`);
+  it('rejects the whole snapshot exceeding2MiB rather than dropping families',async()=>{
+    await db.exec(`insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload) select ('20000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'${id(1)}',jsonb_set(payload,'{enquiryType}',to_jsonb(repeat('x',256))) from generate_series(1,4500) n cross join praxis_reporting.enquiry_requests_v1;`);
     await expect(read()).rejects.toThrow('payload limit');
   });
   it('rejects caller filters and cursor attempts',()=>{expect(()=>parseBriefingQuery(new URL('https://example.invalid/?limit=20'))).toThrow();expect(()=>parseBriefingQuery(new URL('https://example.invalid/'))).not.toThrow();});
