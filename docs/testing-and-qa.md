@@ -1,5 +1,30 @@
 # Testing And QA
 
+## Email review queue and Outlook dispatch (local, unreleased)
+
+Focused synthetic checks:
+
+    npx vitest run test/email-review-queue.test.ts test/email-review-dispatch-migration.test.ts apps/portal/lib/emailReview
+
+The test/email-review*.test.ts SQL suites use isolated PGlite fixtures with actual
+queue/dispatch migrations and minimal synthetic dependencies. Cover reviewer/admin
+denial, private-table privileges, import replay, stale revision/context, approval
+invalidation, frozen payloads, bounded claims, claim replay without reply payload,
+cancellation of unattempted entries and uncertain/sent evidence reconciliation.
+Library tests cover input and HTTP boundaries. Passing isolated tests does not
+prove full-schema staging migration, real Outlook delivery or production readiness.
+
+Verify the staff journey separately: assigned-batch discovery, search/filter and
+pagination, evidence and original-thread review, editing, save/reload, explicit
+prerequisite/thread confirmation, skip/unapprove, changed-context recovery and
+stable controls while loading. Admin preparation must not send email.
+The /qa/email-review-fixture preview uses synthetic content and cannot prove an
+authenticated live send. Real Outlook attempts need separately authorized
+recipients and actual outbound evidence. Do not send customer messages as tests
+or automatically retry an uncertain result. Keep private correspondence out of
+repository fixtures, logs and published screenshots.
+
+
 ## Opening-brief source verification
 
 `npx vitest run test/praxis-briefing-read.test.ts apps/portal/app/api/integrations/praxis/v1/routes.test.ts` tests complete compact populations, equal totals with changed records, stable business fingerprints despite provenance-only updates, exclusions, missing/invalid domains, 5,001-row overflow and the 2 MiB whole-response bound. The full-scale synthetic case has 1,310 projects, 1,198 contacts, 1,167 enquiries and 627 quote versions, including null, date-only and timestamp expiries; all project work-model coverage must reconcile. Invalid calendar dates still withhold the whole quote domain. Route tests preserve exact bearer/binding authorization and GET-only access.

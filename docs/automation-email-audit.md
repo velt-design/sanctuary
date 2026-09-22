@@ -1,5 +1,48 @@
 # Automation, Email, And Audit
 
+## Assigned email review and Outlook dispatch (local, unreleased)
+
+The /staff/email-review implementation stores an admin-imported batch in a
+private queue assigned to a current Portal reviewer. Reviewers edit, approve,
+skip or remove approval. Approval records a revision and content hash; it does
+not send email or enqueue provider work. Saving changes invalidates approval.
+Project/contact context, recipient, original Outlook thread and prerequisites
+require explicit review; context acknowledgement uses a freshly displayed hash.
+
+An admin prepares dispatch only when no drafts remain and at least one item is
+approved. Preparation freezes approved payloads and locks review edits.
+Preparation and claim recheck approval and current project context: only
+unarchived ACTIVE CONTACTED or SENT projects qualify. Claims return at most ten
+exact reply payloads. Replayed claims return no payload, and attempting or
+uncertain entries cannot be reclaimed automatically. Only never-attempted ready
+entries can be cancelled back to editable drafts.
+
+The authorized operator uses the existing Outlook connection for the actual
+reply. This adds no provider, worker, timer or automatic retry. A sent result
+requires the actual outbound Outlook message ID and HTTPS Outlook link. The
+ledger validates their shape and attempt identity; it does not independently
+query Outlook to prove delivery. Ambiguous provider results remain held for
+evidence reconciliation rather than retry or a delivery claim.
+
+For an authorized send, first confirm the connected mailbox identity and check
+the original conversation for newer replies. Claim one bounded group, then use
+Outlook's reply operation with the returned raw message ID, exact approved body
+and explicit approved To recipient. Use reply-all false and empty CC/BCC; a
+source message may itself be a sent message, so do not infer the recipient from
+the reply default. The reply subject is inherited from the selected conversation
+and is read-only during review. Inspect the resulting Sent Items evidence before
+recording sent; a null/accepted connector result alone is insufficient. The
+admin-only controls expose claimed payloads and accept bounded result records;
+Ellen does not copy or send messages individually. No scheduled executor is
+installed by this feature.
+
+Owners: apps/portal/lib/emailReview and its dispatch module; migrations
+20260923010001_email_review_queue.sql and
+20260923010002_email_review_dispatch.sql. These are local, unreleased contracts,
+not evidence of installed production schema or verified live delivery. Real
+correspondence remains private; repository fixtures must be synthetic.
+
+
 Local correspondence identity reader: `@sp/email-provider` performs bounded
 read-only Resend GETs for persisted provider IDs, validating the returned ID and
 complete To-recipient set before returning only an RFC Message-ID. Portal selects
