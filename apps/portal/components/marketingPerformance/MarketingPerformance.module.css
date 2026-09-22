@@ -1,4 +1,9 @@
 .page { display: grid; gap: 20px; }
+.hubFilters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.hubActions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.hubActions label { font-size: 13px; }
+.page .metricButton { font-family: var(--ui-font-display); font-size: 26px; line-height: 1.2; padding: 4px 0; min-height: 44px; text-align: left; text-decoration:none; }
+@media (max-width: 950px) { .hubFilters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .environmentLabel { margin: -8px 0 0; color: var(--ui-text-muted); font-size: 13px; }
 .rangeShortcuts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .rangeShortcuts > span { flex-basis: 100%; min-height: 20px; }
@@ -44,3 +49,23 @@
 .page summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; text-decoration: underline; }
 @media (max-width: 1100px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters > button { justify-self: start; } }
 @media (max-width: 650px) { .twoColumns { grid-template-columns: minmax(0, 1fr); } .definitions { grid-template-columns: 1fr; gap: 8px; } .definitions dd { margin-bottom: 12px; } .page { gap: 16px; } .filters { gap: 12px 8px; } .coverage { flex-direction: column; } .pagination { justify-content: space-between; } }
+
+.toolbar { display:flex; align-items:end; gap:16px; padding:0 0 16px; border-bottom:1px solid var(--ui-border); }
+.toolbar > :first-child { width:180px; flex-shrink:0; }
+.toolbarActions { display:flex; gap:8px; margin-left:auto; }
+.toolbarActions button,.filterChips button { display:inline-flex; align-items:center; gap:8px; }
+.dateLabel { color:var(--ui-text-muted); font-size:12px; }
+.filterChips { display:flex; align-items:center; height:36px; gap:6px; margin-top:-12px; overflow-x:auto; white-space:nowrap; font-size:12px; color:var(--ui-text-muted); }
+.filterChips button { flex-shrink:0; border:1px solid var(--ui-border); font-size:12px; }
+.filterDrawer .hubFilters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.filterDrawer .rangeShortcuts { gap:4px; }
+.filterDrawer .rangeShortcuts button { padding:8px; }
+.reportFooter { display:flex; gap:16px; justify-content:space-between; align-items:center; border-top:1px solid var(--ui-border); padding-top:12px; color:var(--ui-text-muted); font-size:12px; }
+.contextLine { display:flex; align-items:center; gap:12px; font-size:12px; color:var(--ui-text-muted); }
+.coverageTrack { width:110px; height:5px; background:var(--ui-border); }
+.coverageTrack span { display:block; height:100%; background:#276987; }
+@media(max-width:650px) { .toolbar { flex-wrap:wrap; gap:8px; } .toolbar > :first-child { flex:1; } .dateLabel { order:3; padding:0; } .toolbarActions { margin-left:0; } .toolbarActions button { font-size:12px; } .reportFooter { flex-wrap:wrap; } }
+
+.metrics { display:grid; gap:0; }
+.metrics > :last-child { justify-self:end; }
+.recordId { font-size:10px!important; opacity:.7; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

@@ -4,13 +4,14 @@ import { filteredRows, type Filters, type MarketingReport, type MarketingRow } f
 import { comparisonMetrics, countChange, previousPeriod, weeklyEnquiries } from '@/lib/marketingPerformance/trends';
 import styles from './MarketingPerformance.module.css';
 
-export default function PerformanceTrends({ rows, filters, previous, comparisonError, onRetry }: {
-  rows: MarketingRow[]; filters: Filters; previous: MarketingReport | null; comparisonError: string; onRetry: () => void;
+export default function PerformanceTrends({ rows, filters, previous, comparisonError, onRetry, earliestReceipt }: {
+  rows: MarketingRow[]; filters: Filters; previous: MarketingReport | null; comparisonError: string; onRetry: () => void; earliestReceipt?:string|null;
 }) {
   const [weeklyOpen, setWeeklyOpen] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('weekly') === '1');
   const dates = previousPeriod(filters.start, filters.end);
   const current = comparisonMetrics(rows);
   const prior = previous ? comparisonMetrics(filteredRows(previous, filters)) : null;
+  const incompleteHistory = !earliestReceipt || dates.start < new Intl.DateTimeFormat('en-CA',{timeZone:'Pacific/Auckland'}).format(new Date(earliestReceipt));
   const weeks = weeklyEnquiries(rows, filters.start, filters.end);
   const peak = Math.max(0, ...weeks.map(week => week.dailyAverage));
   return <Card title="Change over time" padding="compact">
@@ -21,7 +22,7 @@ export default function PerformanceTrends({ rows, filters, previous, comparisonE
           ['Enquiries received', 'enquiries'], ['Qualified enquiries', 'qualified'],
         ] as const).map(([label, metric]) => <TableRow key={metric}>
           <TableHead scope="row">{label}</TableHead><TableCell>{current[metric]}</TableCell><TableCell>{prior ? prior[metric] : 'Unavailable'}</TableCell>
-          <TableCell>{prior ? countChange(current[metric], prior[metric]) : 'Unavailable'}</TableCell>
+          <TableCell>{incompleteHistory ? 'Not comparable — incomplete receipt history' : prior ? countChange(current[metric], prior[metric]) : 'Unavailable'}</TableCell>
         </TableRow>)}</TableBody></Table>
     </div>
     <p className={styles.muted}>Qualification uses current staff assessments, not status at period end: {current.eligible} eligible / {current.unreviewed} awaiting review now{prior ? `; ${prior.eligible} eligible / ${prior.unreviewed} awaiting review in the previous cohort` : ''}. Older cohorts have had longer to progress; wins are not compared.</p>
@@ -41,7 +42,7 @@ export default function PerformanceTrends({ rows, filters, previous, comparisonE
       const open = event.currentTarget.open; setWeeklyOpen(open);
       const url = new URL(window.location.href);
       if (open) url.searchParams.set('weekly', '1'); else url.searchParams.delete('weekly');
-      window.history.replaceState(window.history.state, '', url);
+      window.history.replaceState(null, '', url);
     }}><summary>Weekly counts and included days</summary>
       <div className={styles.weeklyTable} tabIndex={0} role="region" aria-label="Weekly enquiry counts">
         <Table><TableHeader><TableRow><TableHead scope="col">Included dates (NZ)</TableHead><TableHead scope="col">Days</TableHead><TableHead scope="col">Enquiries</TableHead><TableHead scope="col">Per day</TableHead></TableRow></TableHeader>

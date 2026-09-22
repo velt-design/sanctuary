@@ -102,6 +102,8 @@ Do not duplicate detailed rules from canonical docs here. Link to them, then kee
 
 ## Current Readiness Snapshot
 
+Marketing & Sales hub (2026-09-22): owner approved the reviewed Jordan-only visual hub for production release. Exact forward read-function rollback rehearsal on production passed, including reconciliation and developer/other-staff/anonymous assertions. Independent UI and outgoing-payload reviews passed. The exact read function is now installed in production, with matching-body and privilege postflight. Application CI/deployment and canonical-domain postflight are tracked in PR178; `marketing-performance.md` owns current evidence and limits.
+
 Configurator continuation (2026-09-15): the protected staff calculation failure is
 Vercel machine authentication, with a preview-only server credential fix and
 focused route tests. The ScheduleClient CI failure was a timing-dependent query

@@ -5,7 +5,7 @@ export const NO_CAMPAIGN = 'No recorded campaign';
 export const stages = ['visit', 'quote', 'accepted', 'won'] as const;
 export type Stage = typeof stages[number];
 export const stageLabels: Record<Stage, string> = {
-  visit: 'Confirmed visits', quote: 'Quotes sent', accepted: 'Accepted quotes', won: 'Won projects',
+  visit: 'Recorded confirmations', quote: 'Sent-quote evidence', accepted: 'Current accepted scope', won: 'Payment-verified projects',
 };
 export const rowSchema = z.object({
   enquiryId: z.string().uuid(), receivedAt: z.string().datetime({ offset: true }),
