@@ -19,19 +19,19 @@ This hub's UI and existing business measures remain unchanged.
 
 ## Current working record — visual follow-on handoff (23 September 2026)
 
-Status: first batch implemented; technical/browser checks passing, independent review pending. Not released.
+Status: ready for owner review; implemented and independently reviewed. Not released.
 The existing hub is live; the prior PR178 rollout paragraph is superseded by the
 reported 23 September live inspection. Fresh API/RPC coverage and local browser validation passed for this batch;
-protected hosted review and independent acceptance remain pending.
+hosted preview and independent delivery review are complete within their stated limits.
 Owning task: existing Marketing Performance task. Sole writer: root, isolated
 `C:/Dev/sanctuary-marketing-visuals-20260923`, branch
-`codex/marketing-visuals-20260923`, based on current main `c6c1c62c`.
+`codex/marketing-visuals-20260923`, based on main `c6c1c62c`; reviewed runtime revision `c4d2c821`.
 Open PRs checked: no marketing visual owner overlaps. Work Queue and recorded
 commitments belong to the separate Review Sanctuary and Velt OS task.
 
 Authority: Jordan approved implementation and review of this bounded batch on
 23 September. Production release, provider adapters, spending, customer messages
-and business-data mutations remain outside this approval. Next action: independently review the hosted preview and fix material findings. Fresh authenticated live API
+and business-data mutations remain outside this approval. Next action: Jordan reviews the preview; a separate release instruction is required. Fresh authenticated live API
 and RPC reconciliation passed for the 366-day read ending 23 September; private
 counts/coverage/payload evidence is in `.local-evidence/coverage.local.json`.
 Qualification is wholly unassessed/unavailable in this read; source coverage is
@@ -56,6 +56,40 @@ establish live editing capability. No snapshot/customer data is packaged.
 Publication review: all changed source/docs/fixtures inspected; private capture,
 credentials and evidence are git-ignored, untracked and excluded by .vercelignore.
 Only fictional fixtures leave the private workspace. No shared UI owner changed.
+
+Final evidence: 62 focused tests (including actual SQL/API denial and fixture
+production-denial cases), six browser journeys, Portal typecheck, full lint plus
+changed-file lint after correction, docs guard and batch architecture checks pass.
+No touched warning/critical files. Hosted optimized build passed at deployment
+`dpl_GzP93BU95HYFBHQPm4fLQTLW5o2q` (runtime `c4d2c821`):
+https://sanctuary-portal-fplj41sjx-jordans-projects-43df95bd.vercel.app/qa/marketing-performance-fixture?representative=1&view=sales
+Same path with `view=enquiries` opens the comparison. Builder verified hosted
+fictional label, unavailable qualification, explicit pending inspection and exact
+seven-record drill. No Portal sign-in needed for synthetic QA; staff/API protections
+are unchanged. Local equivalent remains on port3065. No production deployment,
+new integration, spend, customer message or business-data mutation occurred.
+
+Independent delivery review caught unavailable qualification incorrectly paired
+with0% and zero-result inspection. A failing regression reproduced it; correction
+removed the misleading rate, linked explicitly to awaiting assessments and kept
+no-eligible cells informational. Independent recheck closed it; assessed zero
+remains0%. Other independently exercised journeys: exact quote bucket and source
+records, actual receipt-point/keyboard drill, signed receipts excluding invoice
+status, source/campaign/saved grouping restore, fictional project/Back and390px
+stable plots without document overflow. One bounded correction round; no owner
+intervention required. Reviewer did not independently verify production aggregates,
+forced-failure recovery, final hosted build or physical-phone/live editing.
+Builder evidence covers the first three; physical-phone and live editing remain
+unverified. Synthetic drill-through does not establish full live project editing.
+
+Evidence-backed assessment: correctness, usability, clarity, visual/accessibility
+and fit meet8/10 within preview scope after the independent correction; source
+reconciliation and dated-record contracts substantiate this. Maintainability,
+recovery/security and performance meet8/10 through shared calculation/rendering
+owners, denial/failed-read tests, unchanged bounded reads and optimized build.
+Handover meets8/10 for verified hosted review access; human acceptance is pending.
+Private capture stays local, final outgoing source/fixtures/commits were reviewed,
+and temporary production key material was removed after read-only validation.
 
 ### First batch and acceptance criteria
 
