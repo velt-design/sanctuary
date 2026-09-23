@@ -68,11 +68,11 @@ migration or production release.
 
 ## Clarity programme working record
 
-Current stage: **Projects clarity pilot implemented in an authenticated staging preview; independent correction review passed; [review PR183](https://github.com/velt-design/sanctuary/pull/183) published**. Foundation PR180 is approved for merge after refreshed CI. The earlier Foundation example remains verified in a hosted preview, not yet merged or released. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
-(existing Vercel preview sign-in may be required). Deployment
+Current stage: **Projects clarity pilot implemented in an authenticated staging preview; independent correction review passed; [review PR183](https://github.com/velt-design/sanctuary/pull/183) published**. Foundation PR180 merged to main as `e8d1158` on 23 September after all required checks passed. The Projects pilot is ready for owner review and is not live; its PR merge checks remain separate from the completed staging review. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
+Agent-managed preview access is required; never assign sign-in to Jordan. Deployment
 `dpl_DX2bATH5NFYc6PttTAPQC9T3RxfC` passed optimized build and typecheck.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
-PRs. Current branch `codex/portal-foundation-clarity-20260923`, base `54ceef1`.
+PRs. Current branch `codex/projects-clarity-20260923`, base `e8d1158`. Foundation history: `codex/portal-foundation-clarity-20260923`, initial base `54ceef1`.
 Initial approval: 23 September "go ahead" to Foundation guidance and examples.
 Superseded by the later same-task "go ahead with those 3 points": merge Foundation
 after checks, then a separate Projects -> detail pilot and independent journey
@@ -116,7 +116,7 @@ Review device: hosted desktop access verified; phone-width browser checks passed
 Physical-phone access and human unassisted acceptance remain unverified. This
 fictional instructional task does not prove live business-data coverage. No new
 business assumptions, API, dependency or permission changes in Foundation. Its
-PR180 checks passed after updating to main ff3f858; checks are refreshing again after main advanced to 3f8963b (Foundation head 6750b8c). The now-authorised Projects
+PR180 final head `6750b8c` passed every required check (Portal Quality run `35801553638`) and merged as `e8d1158`. The now-authorised Projects
 pilot is recorded below; wider route rollout and pilot release remain excluded.
 
 ## Owners
@@ -331,12 +331,12 @@ The shared Portal scroll lock now holds the document at its captured position wi
 ### Projects clarity pilot — current stage (23 September 2026)
 
 **Current:** implemented and independently reviewed in authenticated staging.
-Foundation PR180 is authorised for merge when refreshed checks pass; the pilot
-remains a separate, unmerged review batch. Builder owns branch
+Foundation PR180 has merged after all checks; PR183 remains a separate,
+unmerged review batch against main. Builder owns branch
 `codex/projects-clarity-20260923`. No pilot production release or business-data
-writes are authorised. Review PR183 is published, temporarily stacked on PR180. Next action: complete
-the Foundation merge gates, retarget the pilot to main, and retain it for owner
-acceptance before rollout. Focused 28-test suite also passed after rebasing onto
+writes are authorised. Review PR183 is published and rebased onto merged main. Next boundary: owner
+acceptance and explicit pilot release authority, with PR checks passing before
+any merge. No further implementation approval is needed for material corrections. Focused 28-test suite also passed after rebasing onto
 the refreshed Foundation head 6750b8c.
 
 **Agreement:** find a project, identify its next attention, open detail and return
@@ -406,3 +406,4 @@ finishing the already-authorised Foundation merge and pilot PR publication.
 Jordan had to prompt continuation. No new approval was needed; the existing
 stage-continuation rule was missed. Work resumed with PR183 publication and
 Foundation merge checks; authentication recovery alone did not finish the task.
+The approved Foundation merge and separate pilot PR publication are now complete.
