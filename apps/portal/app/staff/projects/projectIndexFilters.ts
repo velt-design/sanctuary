@@ -54,6 +54,7 @@ export const PROJECT_STAGE_FILTER_OPTIONS = [
 
 export const PROJECT_STATE_FILTER_OPTIONS = [
   { value: 'all', label: 'All states' },
+  { value: 'OPEN', label: 'Open (active + waiting)' },
   ...PROJECT_EFFECTIVE_STATES.map((state) => ({
     value: state,
     label: state.charAt(0) + state.slice(1).toLowerCase(),
@@ -152,7 +153,9 @@ export function filterProjectsForIndex(
       if (journey.phase !== filters.journeyFilter) return false;
     }
 
-    if (filters.stateFilter !== 'all' && project.effectiveState !== filters.stateFilter) return false;
+    if (filters.stateFilter === 'OPEN') {
+      if (isArchived || (project.effectiveState !== 'ACTIVE' && project.effectiveState !== 'WAITING')) return false;
+    } else if (filters.stateFilter !== 'all' && project.effectiveState !== filters.stateFilter) return false;
 
     if (
       filters.ownerFilter !== 'all'

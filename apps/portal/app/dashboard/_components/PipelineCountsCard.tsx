@@ -16,10 +16,12 @@ const OPERATIONAL_STATES = ['ACTIVE', 'WAITING', 'CLOSED', 'ARCHIVED'] as const;
 
 export default function PipelineCountsCard({
   counts,
+  countsAvailable = true,
   stateCounts,
   stateCountsAvailable = true,
 }: {
   counts: PipelineCounts;
+  countsAvailable?: boolean;
   stateCounts?: ProjectOperationalStateCounts;
   stateCountsAvailable?: boolean;
 }) {
@@ -40,7 +42,7 @@ export default function PipelineCountsCard({
     <section className={`${styles.section} ${dash.card} ${dash.pipelineCard}`} aria-label="Project portfolio">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Project portfolio</h2>
-        <span className={dash.sectionMeta}>Journey and state</span>
+        <span className={dash.sectionMeta}>{countsAvailable ? 'Journey and state' : 'Journey counts unavailable'}</span>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody} ${dash.cardBodyNoScroll}`}>
         <div className={dash.pipelineStrip}>
@@ -54,12 +56,13 @@ export default function PipelineCountsCard({
                   href={journeyHref(phase)}
                 >
                   <span className={dash.pipelineLabel}>{PROJECT_JOURNEY_PHASE_LABELS[phase]}</span>
-                  <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{count}</span>
+                  <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{countsAvailable ? count : '—'}</span>
                 </ProjectsIndexLink>
               );
             })}
           </div>
         </div>
+        <p className={dash.pipelineScope}>Enquiry and Proposal show active and waiting projects.</p>
         <div
           className={dash.projectStateGrid}
           aria-label="Project operational states"

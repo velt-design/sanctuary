@@ -21,7 +21,7 @@ export function siteVisitsHref() {
 }
 
 export function journeyHref(journey: string) {
-  return projectsHref({ journey });
+  return projectsHref({ journey, state: journey === 'ENQUIRY' || journey === 'PROPOSAL' ? 'OPEN' : undefined });
 }
 
 export function projectStateHref(state: string) {

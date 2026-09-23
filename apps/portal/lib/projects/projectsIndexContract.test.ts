@@ -15,6 +15,7 @@ describe('projects index filter contract', () => {
   it('accepts current effective states including archived', () => {
     expect(isProjectsIndexStateFilter('ACTIVE')).toBe(true);
     expect(isProjectsIndexStateFilter('WAITING')).toBe(true);
+    expect(isProjectsIndexStateFilter('OPEN')).toBe(true);
     expect(isProjectsIndexStateFilter('CLOSED')).toBe(true);
     expect(isProjectsIndexStateFilter('ARCHIVED')).toBe(true);
     expect(isProjectsIndexStateFilter('LOST')).toBe(false);

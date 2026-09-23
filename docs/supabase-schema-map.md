@@ -659,6 +659,16 @@ schema claim.
 - Admin correction RPCs: `project_confirmation_retraction_command()` and exact-signal/version `project_confirmation_retraction_review_command()`. The former Contacted classifier, evidence helper, and one-project migration RPCs are retired and have no `public`, `anon`, `authenticated`, or `service_role` execution grant.
 - Site-visit automation support: `site_visit_events`
 - Dashboard/supporting RPC: `dashboard_snapshot_v1()`
+- Journey counts: `staff_dashboard_pipeline_counts_v1()` (forward migration
+  `20260923030001_dashboard_open_pipeline_counts.sql`) is an authenticated,
+  `SECURITY INVOKER`, uncapped aggregate. Its `open_enquiry_proposal_v1` scope
+  includes unarchived Active/Waiting projects in Enquiry/Proposal and all
+  unarchived projects in Confirmed/Delivery/Settled. Missing work-model/state
+  rows fail closed. The dashboard does not reuse legacy snapshot counts when
+  this read fails or cached data lacks the scope marker. Early-journey links
+  use the same `OPEN` state predicate in `staff_projects_index_v3` before
+  pagination; later-journey and separate Closed/Archived links retain their
+  existing populations. `OPEN` is a read filter, not a new operational state.
 - Personal dashboard tasks: `portal_dashboard_tasks`
 
 Primary write path:
