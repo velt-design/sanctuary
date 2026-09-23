@@ -4,12 +4,16 @@ The approved [business connection target](target-architecture.md#business-connec
 places Sanctuary business integrations here and sends refined, evidenced results
 to Velt. This is a staged transition: Meta/GA4/Google Ads readers and the
 Sanctuary mailbox consumer still exist in Velt. Portal correspondence still
-depends on that Velt service. A local, default-off Meta candidate now owns provider
+depends on that Velt service. The default-off Meta pilot owns provider
 access, normalization and optional retention in `lib/marketingIntegrations/meta`.
 It exposes `/api/integrations/praxis/v1/marketing/meta` via the existing pinned
 Praxis caller identity. Migration `20260923050001` adds private controls, ordered
 operation claims, body-free audit, seven-day retention and hourly expiry purge.
-No production migration, credential change or cutover has occurred.
+PR187 deployed the implementation and migration on 23 September 2026. Separate
+server credentials are provisioned for bounded owner-authorized validation;
+source database authority remains disabled outside that proof. Velt's active
+source remains direct. Deployment is not evidence of completed live parity or
+authorization to cut over or retire existing credentials.
 
 Configuration requires `SANCTUARY_META_REPORTS_ENABLED`,
 `SANCTUARY_META_ASSIGNMENT_VERIFIED`, `SANCTUARY_META_ACTOR_ID`,
