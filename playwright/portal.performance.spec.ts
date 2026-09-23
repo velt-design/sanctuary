@@ -410,7 +410,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     () => page.waitForURL(/\/staff\/projects(?:\?|$)/),
     async () => {
       await expect(page.getByRole('heading', { name: 'Projects', exact: true, level: 1 })).toBeVisible();
-      await expect(page.getByRole('region', { name: 'Filters' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Search and filter projects' })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Projects list' })).toBeVisible();
       await expect(page.locator('[data-projects-index-state]')).toBeVisible();
     },
