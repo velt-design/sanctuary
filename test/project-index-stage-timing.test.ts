@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const db = new PGlite();
-const migration = readFileSync('supabase/migrations/20260923040001_project_index_stage_timing.sql', 'utf8');
+const migration = readFileSync('supabase/migrations/20260923060001_project_index_stage_timing.sql', 'utf8');
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const call = (sort: string, page = 1, order = 'null') => `select public.staff_projects_index_v4(p_sort => '${sort}', p_page => ${page}, p_page_size => 10, p_due_project_ids => ${order}) as result`;
 async function report(sql: string) { return (await db.query<{result: { totalCount: number; rows: Array<{id: string; stage_changed_at: string | null}> }}>(sql)).rows[0].result; }

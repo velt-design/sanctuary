@@ -784,7 +784,7 @@ Finance setup separation: `xero_finance_save_setup` accepts the explicitly valid
 
 
 Projects stage timing (PR183; staging only): migration
-`20260923040001_project_index_stage_timing.sql` adds nullable
+`20260923060001_project_index_stage_timing.sql` adds nullable
 `projects.stage_changed_at`, maintained by the insert/update trigger
 `projects_capture_stage_changed_at`. No existing timestamps are inferred/backfilled.
 The invoker-rights `staff_projects_index_v4` retains Portal access/row security,

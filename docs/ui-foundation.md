@@ -68,7 +68,30 @@ migration or production release.
 
 ## Clarity programme working record
 
-### Active bounded stage: remaining Project pages (23 September)
+### Active bounded stage: Projects journey audit and release (23 September)
+
+Owner request: "lets clean projects up, do a test audit for user journey and
+experience, then push this live". This supersedes the earlier no-release boundary
+for the combined Projects list, Overview and commercial-tab batch only. Customer
+writes/sends, unrelated feature activation and historical date backfill remain
+excluded. Root is the sole writer in `C:/Dev/sanctuary-overview-clarity-20260923`.
+Main733726c is integrated at89623b0; PR186 will target main and supersede PR183.
+
+Current status: audit/release in progress, not live. Prior presentation evidence
+below remains valid; one independent read-only reviewer checks remaining normal
+entry/filter/detail/return, keyboard, reload and recovery gaps. Required release
+CI and read-only production postflight remain pending. Acceptance includes saved
+filter context, truthful commercial summaries, accessible stable layouts, staff
+permissions and no business-row changes from the additive schema installation.
+
+Production preflight: stage column/v4 absent, 1,312 projects; completed physical
+backup dated2026-09-23. Main already uses migration20260923040001 for Praxis.
+Projects therefore uses unique20260923060001 with the same SQL body. Staging has
+the pilot schema but no Projects migration ledger entry; preserve its existing
+ledger and install/record the exact uniquely named body after rollback rehearsal.
+No blanket migration push or unrelated migration installation is authorised.
+
+### Reviewed stage: remaining Project pages (23 September)
 
 Owner request: "great, now do the other project pages", after accepting the
 no-sign-in Overview preview. This expands the prior Overview-only boundary to
@@ -543,7 +566,8 @@ fabricated staging history. Live saves, physical-phone acceptance and
 production-scale next-action-sort latency remain unverified. Owner need not sign in.
 
 Overlap resolved: PR184 merged as bc7ac36 and owns migration 20260923030001.
-This pilot uses 20260923040001. Main was merged into the pilot; v4 preserves the
+The pilot originally used20260923040001; the combined release uses20260923060001
+to avoid main's subsequent Praxis version collision. Main was merged into the pilot; v4 preserves the
 exact OPEN predicate (unarchived ACTIVE/WAITING). A disposable database regression
 checks both new sorts against 23 matching records from 25; independent review
 confirmed filtering precedes sorting/paging. No other branch was edited.
