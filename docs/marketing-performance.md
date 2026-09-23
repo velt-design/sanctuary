@@ -19,23 +19,43 @@ This hub's UI and existing business measures remain unchanged.
 
 ## Current working record — visual follow-on handoff (23 September 2026)
 
-Status: handoff reconciled; first batch scoped, not implemented or released.
+Status: first batch implemented; technical/browser checks passing, independent review pending. Not released.
 The existing hub is live; the prior PR178 rollout paragraph is superseded by the
-reported 23 September live inspection. Fresh business-data coverage and browser
-validation remain pending for this new batch, not assumed from older evidence.
+reported 23 September live inspection. Fresh API/RPC coverage and local browser validation passed for this batch;
+protected hosted review and independent acceptance remain pending.
 Owning task: existing Marketing Performance task. Sole writer: root, isolated
 `C:/Dev/sanctuary-marketing-visuals-20260923`, branch
 `codex/marketing-visuals-20260923`, based on current main `c6c1c62c`.
 Open PRs checked: no marketing visual owner overlaps. Work Queue and recorded
 commitments belong to the separate Review Sanctuary and Velt OS task.
 
-Authority: architecture-task handoff preparation only. This records a proposed
-implementation batch; it does not start implementation or authorize a release,
-provider adapter, spending, customer messages or business-data mutations. Earlier
-release approvals apply to their reviewed batches only. Next action: implement
-this bounded visual batch when authorized, beginning with fresh read-only data
-coverage and existing chart/filter contract checks. No new business definition
-is proposed; any incompatible source evidence must be surfaced before changing it.
+Authority: Jordan approved implementation and review of this bounded batch on
+23 September. Production release, provider adapters, spending, customer messages
+and business-data mutations remain outside this approval. Next action: independently review the hosted preview and fix material findings. Fresh authenticated live API
+and RPC reconciliation passed for the 366-day read ending 23 September; private
+counts/coverage/payload evidence is in `.local-evidence/coverage.local.json`.
+Qualification is wholly unassessed/unavailable in this read; source coverage is
+sparse. Synthetic cases must additionally cover reversals and assessed enquiries.
+No new business definition is proposed. Relevant review dimensions: correctness,
+journey, clarity, visual/accessibility, fit, maintainability, recovery/security,
+performance and handover; no commercial or write-workflow acceptance is claimed.
+
+Implementation evidence: shared `SalesActivity` owns Overview/Sales rendering;
+`salesActivity` owns clipped Monday-Sunday/monthly aggregation. `salesBucket`
+round-trips in URLs/saved views. `SourceOutcomes` reuses `sourceMeasures` and
+summarize; aligned bars show the displayed population percentage, not a funnel.
+Existing detailed source measure controls and source/campaign comparison remain.
+Live read schema and source reconciliation passed (264 date/source buckets and
+20 source/outcome cells). Fixture journeys passed: bucket switching and stable
+chart size, keyboard selection, repeated-submission exclusion from project
+outcomes, reversals, saved views, project/Back/reload, failed reads and 390px
+reduced-motion containment. No real financial actions or customer writes tested.
+Hosted fixture access is explicitly opt-in on Vercel Preview and remains forbidden
+in production. Its project drill-through is synthetic and read-only; it cannot
+establish live editing capability. No snapshot/customer data is packaged.
+Publication review: all changed source/docs/fixtures inspected; private capture,
+credentials and evidence are git-ignored, untracked and excluded by .vercelignore.
+Only fictional fixtures leave the private workspace. No shared UI owner changed.
 
 ### First batch and acceptance criteria
 

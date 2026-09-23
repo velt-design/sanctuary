@@ -6,6 +6,7 @@ import { chartMetrics, enquiryWeeks, sourceColour, sourceMeasures, type ChartMet
 import type { MarketingRow } from '@/lib/marketingPerformance/contract';
 import type { HubFilters } from '@/lib/marketingPerformance/hub';
 import ReportDetail from './ReportDetail';
+import SourceOutcomes from './SourceOutcomes';
 import styles from './HubCharts.module.css';
 
 export default function EnquiryCharts({rows,filters,apply}:{rows:MarketingRow[];filters:HubFilters;apply:(f:HubFilters)=>void}) {
@@ -15,7 +16,7 @@ export default function EnquiryCharts({rows,filters,apply}:{rows:MarketingRow[];
   const inspectSource=(source:string)=>apply({...filters,source,inspect:metric==='enquiries'?'all':metric==='won'?'payment':metric});
   const inspectWeek=(index:number,source?:string)=>{const w=weeks[index];if(w)apply({...filters,start:w.start,end:w.end,source:source??filters.source,inspect:'all'});};
   const denominator=metric==='enquiries'?'all filtered submissions':metric==='qualified'?'eligible enquiries in that source (including those awaiting assessment)':'unique origin projects in that source';
-  return <div className={styles.grid}>
+  return <><SourceOutcomes rows={rows} filters={filters} apply={apply}/><div className={styles.grid}>
     <Card title="Enquiries over time" padding="compact">
       <p className={styles.note}>Weekly submissions · By observed source</p>
       <div className={styles.legend}>{sources.map(source=><span key={source}><i style={{background:sourceColour(source)}}/>{source}</span>)}</div>
@@ -54,5 +55,5 @@ export default function EnquiryCharts({rows,filters,apply}:{rows:MarketingRow[];
       <div className={styles.data}><table><thead><tr><th>Source / inspect</th><th>{chartMetrics[metric]}</th>{scale==='rate'&&<th>Count / denominator</th>}</tr></thead><tbody>{measures.map(m=><tr key={m.source}><th><Button variant="quiet" onClick={()=>inspectSource(m.source)}>{m.source}</Button></th><td>{m.display}{metric==='qualified'&&m.unreviewed>0?<small> · {m.unreviewed} awaiting assessment</small>:null}</td>{scale==='rate'&&<td>{m.count} / {m.denominator}</td>}</tr>)}</tbody></table></div>
       <ReportDetail title="Source performance"><p>Click a bar for its records. Submissions and unique projects are different units. Unknown is grey, not direct traffic. A missing assessment is not a failed qualification. Later project outcomes belong to the original enquiry; platform-attributed conversions are excluded.</p></ReportDetail>
     </Card>
-  </div>;
+  </div></>;
 }

@@ -42,3 +42,12 @@ export function portfolioStages(projects:HubProject[]) {
     return {...stage, total:rows.length,values:portfolioStates.map(state=>rows.filter(p=>p.state===state).length)};
   });
 }
+
+export function sourceOutcomes(rows:MarketingRow[]) {
+  const metrics=Object.keys(chartMetrics) as ChartMetric[];
+  const columns=metrics.map(metric=>({metric,measures:sourceMeasures(rows,metric,'count')}));
+  return sourceMeasures(rows,'enquiries','count').map(({source})=>({source,cells:columns.map(({metric,measures})=>{
+    const measure=measures.find(m=>m.source===source)!;
+    return {...measure,metric,width:measure.unavailable||!measure.denominator?0:100*measure.count/measure.denominator};
+  })}));
+}

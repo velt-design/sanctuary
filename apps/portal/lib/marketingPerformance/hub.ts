@@ -42,9 +42,9 @@ export function evidenceForView(view:HubView) {
   return evidenceOptions.filter(([key]) => view==='enquiries' ? key!=='no_receipt'
     : !['qualified','unreviewed','visit','quote','accepted','unlinked'].includes(key));
 }
-export type HubFilters = Filters & { view: HubView; owner: string; stage: string; state: string; evidence: string; created: boolean; kind:string; inspect:string; chartMetric:string; chartScale:string; age:string };
+export type HubFilters = Filters & { view: HubView; owner: string; stage: string; state: string; evidence: string; created: boolean; kind:string; inspect:string; chartMetric:string; chartScale:string; salesBucket: 'week' | 'month'; age:string };
 export function hubDefaults(filters: Filters): HubFilters {
-  return { ...filters, view: 'enquiries', owner: '', stage: '', state: '', evidence: 'all', created: false, kind:'', inspect:'all', chartMetric:'enquiries', chartScale:'count', age:'' };
+  return { ...filters, view: 'enquiries', owner: '', stage: '', state: '', evidence: 'all', created: false, kind:'', inspect:'all', chartMetric:'enquiries', chartScale:'count', salesBucket:'month', age:'' };
 }
 export function parseHubFilters(query: URLSearchParams, fallback: Filters): HubFilters {
   const base = hubDefaults(fallback);
@@ -52,6 +52,7 @@ export function parseHubFilters(query: URLSearchParams, fallback: Filters): HubF
   base.stage=base.stage==='__unknown'?'__unknown':normalizePipelineStageKey(base.stage)??'';
   const metric=query.get('chartMetric'); if(metric&&['enquiries','qualified','quote','accepted','won'].includes(metric))base.chartMetric=metric;
   if(query.get('chartScale')==='rate')base.chartScale='rate';
+  if(query.get('salesBucket')==='week')base.salesBucket='week';
   if(base.state && !['ACTIVE','WAITING','CLOSED','ARCHIVED','UNKNOWN'].includes(base.state)) base.state='';
   if(base.owner!=='unassigned' && !PROJECT_OWNER_OPTIONS.some(o=>o.key===base.owner)) base.owner='';
   const view = query.get('view'); if (views.some(v => v.key === view)) base.view = view as HubView;
