@@ -1,6 +1,6 @@
 # Supabase Schema Map
 
-## Email review and Outlook attempt ledger (local, unreleased)
+## Email review and Outlook attempt ledger
 
 Migration 20260923010001_email_review_queue.sql owns private.email_review_batches,
 email_review_items, email_review_events and email_review_receipts. Batches bind
@@ -22,7 +22,16 @@ provider call or scheduled retry.
 All five tables enable RLS and revoke direct access from PUBLIC, anon,
 authenticated and service_role. Private helpers are not exposed to API roles;
 authenticated execution of narrow public RPCs still requires actor checks.
-These are local migration contracts, not evidence of production installation.
+The two baseline migrations were released in PR #181. Forward migration
+20260923020001_email_review_simple_accept.sql adds item delivery_mode and
+approval_version, plus dispatch actual_delivery_mode and fallback_reason.
+Version 1 approval content and existing rows are preserved. Version 2 hashes
+bind deliveryMode and allowFreshFallback. The new accept command atomically
+saves current edits and accepts against the displayed context hash; unique
+matching replies are automatic and other messages use fresh delivery. Preparing
+accepted items does not require the rest of the batch to be reviewed.
+Apply this migration before the acceptance UI rollout. Production verification
+is retained in the private release record.
 The feature owner is automation-email-audit.md; auth-bound adapters live in
 apps/portal/lib/emailReview.
 

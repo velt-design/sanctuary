@@ -18,9 +18,11 @@ export function parseDispatchClaim(value: unknown) {
   return {commandId:reviewUuid(data.commandId),limit:Number(data.limit)};
 }
 export function parseDispatchResult(value: unknown): DispatchResult {
-  const data=record(value); keys(data,['intentId','attemptId','outcome','outlookMessageId','outlookWebLink','note']);
+  const data=record(value); keys(data,['intentId','attemptId','outcome','outlookMessageId','outlookWebLink','note','actualDeliveryMode','fallbackReason']);
   if (!['sent','uncertain'].includes(String(data.outcome))) throw new EmailReviewInputError();
   if (data.note!==undefined && (typeof data.note!=='string' || data.note.length>2000 || data.note.includes('\0'))) throw new EmailReviewInputError();
+  if (data.actualDeliveryMode!==undefined && !['reply','new'].includes(String(data.actualDeliveryMode))) throw new EmailReviewInputError();
+  if (data.fallbackReason!==undefined && (data.fallbackReason!=='anchor_not_found_before_send' || data.actualDeliveryMode!=='new')) throw new EmailReviewInputError();
   if (data.outcome==='sent') {
     if (typeof data.outlookMessageId!=='string' || !data.outlookMessageId.trim() || data.outlookMessageId.length>2000 || /[\r\n\0]/.test(data.outlookMessageId)) throw new EmailReviewInputError();
     try {
@@ -30,5 +32,7 @@ export function parseDispatchResult(value: unknown): DispatchResult {
   } else if (data.outlookMessageId!==undefined || data.outlookWebLink!==undefined) throw new EmailReviewInputError();
   return {intentId:reviewUuid(data.intentId),attemptId:reviewUuid(data.attemptId),outcome:data.outcome as DispatchResult['outcome'],
     ...(data.outcome==='sent'?{outlookMessageId:data.outlookMessageId as string,outlookWebLink:data.outlookWebLink as string}:{}),
+    ...(data.actualDeliveryMode!==undefined?{actualDeliveryMode:data.actualDeliveryMode as 'reply'|'new'}:{}),
+    ...(data.fallbackReason!==undefined?{fallbackReason:data.fallbackReason as 'anchor_not_found_before_send'}:{}),
     ...(data.note!==undefined?{note:data.note as string}:{})};
 }

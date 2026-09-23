@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "test:portal:email-review": "vitest run test/email-review-queue.test.ts test/email-review-dispatch-migration.test.ts test/email-review-simple-accept.test.ts apps/portal/lib/emailReview apps/portal/components/emailReview",
     "test:xero:db": "node scripts/test-xero-connection-db.mjs",
     "test:portal:actions:db": "node scripts/test-portal-actions-concurrency.mjs",
     "portal:actions": "node scripts/portal-actions.mjs",

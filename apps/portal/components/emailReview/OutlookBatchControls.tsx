@@ -37,7 +37,7 @@ export default function OutlookBatchControls({ batchId, disabled = false, onChan
     try {
       const next = await apiJson<DispatchClaim>(`${endpoint}/claim`, { method: 'POST', body: JSON.stringify({ commandId: claimId.current, limit: 10 }) });
       setClaim(next); setUncertainClaim(next.replayed);
-      setMessage(next.replayed ? 'This claim was already used. Its reply payload cannot be retrieved again. Check Outlook records and reconcile every attempted message using send progress below. Do not send or allocate a replacement group.' : `${next.replies.length} replies claimed. No email has been sent by this page.`);
+      setMessage(next.replayed ? 'This claim was already used. Its reply payload cannot be retrieved again. Check Outlook records and reconcile every attempted message using send progress below. Do not send or allocate a replacement group.' : `${next.replies.length} messages claimed. No email has been sent by this page.`);
       if (!next.replayed && !next.replies.length) { claimId.current = null; try { sessionStorage.removeItem(storageKey); } catch { /* Empty claim has no work to recover. */ } }
       onChanged?.();
     }
@@ -61,10 +61,10 @@ export default function OutlookBatchControls({ batchId, disabled = false, onChan
     } catch { setMessage(`${completed} results recorded. Remaining rows are kept below; verify send progress before retrying a result with an uncertain save. Never retry the Outlook email automatically.`); onChanged?.(); }
     finally { setBusy(false); }
   }
-  return <details className={styles.import}><summary>Outlook batch controls</summary><p>Admin controls for the connected Outlook agent. Starting a group reserves up to 10 approved replies. The agent sends them through Outlook and records the outcome here. This page cannot send email.</p>
+  return <details className={styles.import}><summary>Outlook batch controls</summary><p>Admin controls for the connected Outlook agent. Starting a group reserves up to 10 accepted messages. The frozen deliveryMode selects a reply or a new email. The agent sends them through Outlook and records the outcome here. This page cannot send email.</p>
     <Button variant="secondary" disabled={disabled || busy || Boolean(claim?.replies.length) || Boolean(claim?.replayed)} onClick={start}>{uncertainClaim ? 'Recover same claim' : 'Start next 10'}</Button>
-    {claim && <Textarea label="Claimed Outlook reply payload" readOnly rows={10} value={JSON.stringify(claim, null, 2)} />}
-    <Textarea label="Outlook results JSON" rows={8} value={results} disabled={disabled || busy} onChange={event => setResults(event.target.value)} helperText="Array of results with intentId, attemptId, outcome (sent or uncertain) and Outlook receipt fields. Mark an ambiguous send uncertain; never resend it automatically." />
+    {claim && <Textarea label="Claimed Outlook message payload" readOnly rows={10} value={JSON.stringify(claim, null, 2)} />}
+    <Textarea label="Outlook results JSON" rows={8} value={results} disabled={disabled || busy} onChange={event => setResults(event.target.value)} helperText="Results need intentId, attemptId, outcome and actualDeliveryMode. Sent results also need Outlook receipts. A permitted fresh fallback needs fallbackReason: anchor_not_found_before_send. Never resend an uncertain attempt." />
     <Button disabled={disabled || busy || !results.trim()} onClick={record}>Record Outlook results</Button><p role="status">{message}</p>
   </details>;
 }

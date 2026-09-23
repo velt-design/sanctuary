@@ -1,7 +1,8 @@
+import { reviewDelivery } from '@/lib/emailReview/delivery';
 import type { EmailReviewBatch, EmailReviewCounts, EmailReviewItem } from '@/lib/emailReview/contracts';
 import { type EmailReviewApi, ReviewRequestError } from '@/components/emailReview/api';
 
-export const fixtureStorageKey = 'sanctuary.synthetic-email-review.v1';
+export const fixtureStorageKey = 'sanctuary.synthetic-email-review.v2';
 export function fixtureItems(): EmailReviewItem[] {
   return Array.from({ length: 30 }, (_, index) => {
     const number = index + 1;
@@ -16,7 +17,7 @@ export function fixtureItems(): EmailReviewItem[] {
       context: 'Synthetic example: the customer asked about a pergola. Review the conversation before following up.',
       savedProjectContext: context, currentProjectContext: { ...context, stateVersion: index === 3 ? 2 : 1 }, currentContextHash: `example-context-${number}`,
       threads: index === 4 ? [] : [{ messageId: `example-message-${number}`, webLink: 'https://example.invalid/conversation', subject: `Example pergola ${number}`, matchedRecipient: context.contactEmail }],
-      threadMessageId: index === 4 ? null : `example-message-${number}`, dispatchId: null,
+      threadMessageId: index === 4 ? null : `example-message-${number}`, dispatchId: null, deliveryMode: index === 4 ? 'new' : 'reply',
       approvedAt: index === 1 ? '2026-09-01T00:00:00Z' : null, approvedBy: index === 1 ? 'example-reviewer' : null, approvalHash: null, events: [],
     };
   });
@@ -41,13 +42,13 @@ export function createFixtureApi(storage?: Pick<Storage, 'getItem' | 'setItem'>)
       if (failure) { failure = false; throw new Error('Synthetic unavailable service'); }
       if (conflict) { conflict = false; row.revision++; row.body += '\n\nSynthetic edit from another reviewer.'; persist(); throw new ReviewRequestError(409, 'Synthetic conflict'); }
       if (row.revision !== command.expectedRevision || row.dispatchId) throw new ReviewRequestError(409, 'Revision changed');
-      if (command.action === 'approve' && (!command.prerequisitesConfirmed || !command.threadConfirmed || !row.threadMessageId || row.contextChanged)) throw new ReviewRequestError(422, 'Checks required');
-      if (command.action === 'skip' && !command.note?.trim()) throw new ReviewRequestError(422, 'Note required');
-      if (command.action === 'save') {
-        row.to = command.to ?? row.to; row.subject = command.subject ?? row.subject; row.body = command.body ?? row.body; row.threadMessageId = command.threadMessageId ?? null; row.status = 'draft';
-        if (command.acknowledgeContextChange && command.expectedContextHash === row.currentContextHash) { row.contextChanged = false; row.savedProjectContext = clone(row.currentProjectContext); }
-      } else row.status = command.action === 'approve' ? 'approved' : command.action === 'skip' ? 'skipped' : 'draft';
-      row.revision++; row.updatedAt = new Date().toISOString(); row.approvedAt = row.status === 'approved' ? row.updatedAt : null;
+      if (command.action === 'accept' && command.expectedContextHash !== row.currentContextHash) throw new ReviewRequestError(409, 'Context changed');
+      if (command.action === 'save' || command.action === 'accept') {
+        row.to = command.to ?? row.to; row.subject = command.subject ?? row.subject; row.body = command.body ?? row.body;
+        const delivery = reviewDelivery(row.threads, row.to, row.subject); row.subject = delivery.subject; row.threadMessageId = delivery.threadMessageId; row.deliveryMode = delivery.mode;
+        row.status = command.action === 'accept' ? 'approved' : 'draft';
+        if (command.action === 'accept' || (command.acknowledgeContextChange && command.expectedContextHash === row.currentContextHash)) { row.contextChanged = false; row.savedProjectContext = clone(row.currentProjectContext); }
+      } else row.status = command.action === 'skip' ? 'skipped' : 'draft';      row.revision++; row.updatedAt = new Date().toISOString(); row.approvedAt = row.status === 'approved' ? row.updatedAt : null;
       row.events.push({ id: command.commandId, actorId: 'example-reviewer', action: command.action, revision: row.revision, note: command.note ?? null, createdAt: row.updatedAt });
       persist(); return clone(row);
     },

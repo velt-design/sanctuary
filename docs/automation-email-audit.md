@@ -1,47 +1,66 @@
 # Automation, Email, And Audit
 
-## Assigned email review and Outlook dispatch (local, unreleased)
+## Assigned email review and Outlook dispatch
 
-The /staff/email-review implementation stores an admin-imported batch in a
-private queue assigned to a current Portal reviewer. Reviewers edit, approve,
-skip or remove approval. Approval records a revision and content hash; it does
-not send email or enqueue provider work. Saving changes invalidates approval.
-Project/contact context, recipient, original Outlook thread and prerequisites
-require explicit review; context acknowledgement uses a freshly displayed hash.
+PR #181 released the initial private review queue and Outlook attempt ledger.
+The acceptance flow below requires forward migration
+20260923020001_email_review_simple_accept.sql before application rollout.
+Production verification is retained in the private release record.
 
-An admin prepares dispatch only when no drafts remain and at least one item is
-approved. Preparation freezes approved payloads and locks review edits.
-Preparation and claim recheck approval and current project context: only
-unarchived ACTIVE CONTACTED or SENT projects qualify. Claims return at most ten
-exact reply payloads. Replayed claims return no payload, and attempting or
-uncertain entries cannot be reclaimed automatically. Only never-attempted ready
-entries can be cancelled back to editable drafts.
+The /staff/email-review page lets the assigned reviewer read a message, revise
+its recipient, subject or body, and choose **Accept** (or **Save and accept**
+when edited). This atomically saves the displayed message and records its exact
+revision/hash. It does not send email. Skip needs no note; Save draft remains
+available for unfinished work. Context, source caveats and history are collapsed;
+actual project/contact changes remain visible. Acceptance compares the freshly
+displayed context hash and revision, so a concurrent change keeps edits in the
+editor for recovery rather than accepting unseen details.
 
-The authorized operator uses the existing Outlook connection for the actual
-reply. This adds no provider, worker, timer or automatic retry. A sent result
-requires the actual outbound Outlook message ID and HTTPS Outlook link. The
-ledger validates their shape and attempt identity; it does not independently
-query Outlook to prove delivery. Ambiguous provider results remain held for
-evidence reconciliation rather than retry or a delivery claim.
+The server selects one recipient-matching conversation automatically when the
+approved subject matches its reply subject. Missing or ambiguous conversations,
+or an edited subject, use a fresh email. The fresh subject's Re prefixes are
+removed visibly before acceptance. The approved recipient, subject and body are
+frozen with an explicit deliveryMode. No prerequisite or thread checkboxes are
+required and the application does not manufacture those confirmations.
 
-For an authorized send, first confirm the connected mailbox identity and check
-the original conversation for newer replies. Claim one bounded group, then use
-Outlook's reply operation with the returned raw message ID, exact approved body
-and explicit approved To recipient. Use reply-all false and empty CC/BCC; a
-source message may itself be a sent message, so do not infer the recipient from
-the reply default. The reply subject is inherited from the selected conversation
-and is read-only during review. Inspect the resulting Sent Items evidence before
-recording sent; a null/accepted connector result alone is insufficient. The
-admin-only controls expose claimed payloads and accept bounded result records;
-Ellen does not copy or send messages individually. No scheduled executor is
-installed by this feature.
+Admins can prepare currently accepted messages while pending drafts remain
+editable. Preparation freezes only accepted, unprepared items. Prepare/claim
+recheck the approval hash and current project context: only unarchived ACTIVE
+CONTACTED or SENT projects qualify. Claims contain at most ten exact messages;
+replayed claims return no payload. Attempted or uncertain entries cannot be
+reclaimed automatically; only never-attempted ready entries can be cancelled.
+Sending controls sit below the review workspace, separate from Ellen's task.
 
-Owners: apps/portal/lib/emailReview and its dispatch module; migrations
-20260923010001_email_review_queue.sql and
-20260923010002_email_review_dispatch.sql. These are local, unreleased contracts,
-not evidence of installed production schema or verified live delivery. Real
-correspondence remains private; repository fixtures must be synthetic.
+The operator uses the existing Outlook connection, not a new provider or worker.
+For reply mode use reply_to_email with the raw messageId, exact approved body,
+explicit To, reply_all=false and empty CC/BCC. For new mode use send_email with
+exact To/subject/text_content, save_to_sent_items=true and empty CC/BCC. Confirm
+the mailbox identity before execution. The Portal itself never calls either
+operation. Both connector operations can return null; inspect Sent Items for the
+actual outbound ID and link before recording sent. A null/accepted response is
+not delivery evidence and must never cause an automatic resend.
 
+A v2 reply approval also binds allowFreshFallback=true. If a lookup positively
+establishes the original message cannot be found **before any send operation**,
+the operator may send a fresh email with the exact approved recipient, subject
+and body (including any approved Re prefix). Record actualDeliveryMode=new and
+fallbackReason=anchor_not_found_before_send. Missing evidence, a timeout or an
+uncertain send is not this condition and must never trigger fallback. Record an
+uncertain outcome with the actual attempted mode instead. Mode/reason cannot
+change after an uncertain or sent outcome; later evidence can resolve that same
+attempt, not authorize another send.
+
+Sent results require actual Outlook message ID/link. The ledger validates their
+shape and attempt identity, not remote delivery independently. V2 results,
+including uncertainty, require actualDeliveryMode. Existing v1 approvals and
+frozen dispatches retain their exact original hash and reply-only policy.
+
+Owners: apps/portal/lib/emailReview and its dispatch module. Deployed migrations
+20260923010001_email_review_queue.sql and 20260923010002_email_review_dispatch.sql
+are immutable. Forward 20260923020001_email_review_simple_accept.sql adds the
+acceptance/delivery policy while preserving existing draft contents, approvals,
+receipts and dispatches. Correspondence remains private; all repository fixtures
+must be synthetic. No customer messages are sent as feature tests.
 
 Local correspondence identity reader: `@sp/email-provider` performs bounded
 read-only Resend GETs for persisted provider IDs, validating the returned ID and
