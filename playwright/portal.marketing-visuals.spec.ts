@@ -71,3 +71,12 @@ test('mobile and reduced-motion charts contain overflow and remain keyboard insp
   await expect(page.getByRole('region',{name:'Quote activity trend'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+test('unassessed qualification opens pending records without implying a zero conversion rate',async({page})=>{
+  await page.goto(`${fixture}?representative=1&view=enquiries`);await ready(page);
+  const cell=page.getByRole('button',{name:'Inspect awaiting assessments from google: 7 of 7 eligible',exact:true});
+  await expect(cell).toContainText('Unavailable');await expect(cell).not.toContainText('%');
+  await cell.press('Enter');
+  await expect(page.locator('#hub-record-count')).toContainText('7 submissions match');
+  await expect(page).toHaveURL(/inspect=unreviewed/);
+});
