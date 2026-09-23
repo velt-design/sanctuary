@@ -125,6 +125,9 @@ for (const scenario of COMMAND_CENTRE_FIXTURE_SCENARIOS) {
       '[data-portal-qa-fixture="project-command-centre"]',
     );
     await expect(fixture).toHaveAttribute("data-fixture-scenario", scenario);
+    // The outer server shell can arrive before the client fixture. Wait for its
+    // existing readiness signal before deciding whether a disclosure exists.
+    await expect(fixture.locator('[data-command-centre-fixture-hydrated="true"]')).toHaveCount(1);
     const details = fixture.locator('summary', { hasText: 'Quote & design details' });
     if (await details.count()) await details.click();
     for (const expected of COMMERCIAL_SCENARIO_EXPECTATIONS[scenario]) {

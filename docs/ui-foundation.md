@@ -117,6 +117,10 @@ coherent compact commercial sample. This was a verification-coverage omission,
 not new owner direction. Independent read-only inspection found no weakened test
 coverage. Full CI is rerun for this final test/fixture correction; live writes and
 physical-phone acceptance remain outside the evidence.
+CI caught a timing gap in six conditional disclosure checks: the server shell
+could arrive before the client fixture, so an immediate count skipped opening
+the detail. The tests now wait for the existing fixture-ready signal before that
+decision; no sleep, weakened assertion or product behaviour change is introduced.
 
 Release assessment: correctness, journey/clarity, visual accessibility and system
 fit meet8/10 for this bounded cleanup, supported by the independent populated
