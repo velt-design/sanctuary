@@ -2,9 +2,9 @@ import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { seal,unseal,XERO_SCOPES } from './security';
 import { XERO_INVOICE_SCOPES } from './oauthScopes';
-const mocks=vi.hoisted(()=>({session:vi.fn(),attempt:vi.fn(),consume:vi.fn(),connect:vi.fn(),access:vi.fn(),verify:vi.fn(),read:vi.fn()}));
+const mocks=vi.hoisted(()=>({session:vi.fn(),attempt:vi.fn(),consume:vi.fn(),connect:vi.fn(),access:vi.fn(),verify:vi.fn(),read:vi.fn(),granted:vi.fn()}));
 vi.mock('@/lib/auth',()=>({getPortalSession:mocks.session}));
-vi.mock('./store',()=>({saveAttempt:mocks.attempt,consumeAttempt:mocks.consume,connect:mocks.connect,access:mocks.access,verifyConnection:mocks.verify,readAccounting:mocks.read}));
+vi.mock('./store',()=>({grantedConsentScopes:mocks.granted,saveAttempt:mocks.attempt,consumeAttempt:mocks.consume,connect:mocks.connect,access:mocks.access,verifyConnection:mocks.verify,readAccounting:mocks.read}));
 import { POST as start } from '../../app/api/integrations/xero/start/route';
 import { GET as callback } from '../../app/api/integrations/xero/callback/route';
 import { POST as review } from '../../app/api/integrations/xero/review/route';
@@ -15,18 +15,43 @@ beforeEach(()=>{
   vi.resetAllMocks();
   for(const [name,value] of Object.entries({XERO_ENABLED:'true',XERO_PORTAL_ORIGIN:origin,XERO_TOKEN_ENCRYPTION_KEY:key.toString('base64'),XERO_TENANT_ID:'11111111-1111-4111-8111-111111111111',XERO_DATABASE_URL:'postgres://test@localhost/test',XERO_CLIENT_ID:'test-client',XERO_CLIENT_SECRET:'private-secret'}))vi.stubEnv(name,value);
   mocks.session.mockResolvedValue({user:{id:'user-1',email:'jordan@sanctuarypergolas.co.nz',email_confirmed_at:'today'},role:'staff'});
-  mocks.consume.mockResolvedValue(true);
+  mocks.consume.mockResolvedValue(true);mocks.granted.mockResolvedValue([]);
 });
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe('Xero HTTP integration',()=>{
+  it('requires transaction-level preservation when saving a successful bound report consent', async () => {
+    vi.stubEnv('XERO_REPORT_CONSENT_ENABLED', 'true');
+    mocks.granted.mockResolvedValue(XERO_SCOPES.split(' '));
+    const response = await start(new Request(`${origin}?mode=reports`, { method: 'POST', headers: { origin } }));
+    const cookie = response.headers.get('set-cookie')!.match(/__Host-xero-state=([^;]+)/)![1];
+    const state = unseal<{ state: string; scopes: string }>(decodeURIComponent(cookie), key);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ access_token: 'synthetic-access', refresh_token: 'synthetic-refresh', expires_in: 1800, scope: state.scopes })));
+    const result = await callback(new NextRequest(`${origin}?state=${state.state}&code=synthetic`, { headers: { cookie: `__Host-xero-state=${cookie}` } }));
+    expect(result.headers.get('location')).toContain('connection=connected');
+    expect(mocks.connect).toHaveBeenCalledWith(expect.objectContaining({ scopes: state.scopes.split(' ') }), 'user-1', true);
+  });
+  it('binds report-only consent to existing grants and rejects disabled or modified callbacks', async () => {
+    vi.stubEnv('XERO_REPORT_CONSENT_ENABLED', 'true'); vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED', 'true');
+    mocks.granted.mockResolvedValue(XERO_SCOPES.split(' '));
+    const response = await start(new Request(`${origin}?mode=reports`, { method: 'POST', headers: { origin } }));
+    const destination = new URL((await response.json()).authorizationUrl);
+    expect(destination.searchParams.get('scope')).toContain('accounting.reports.profitandloss.read');
+    expect(destination.searchParams.get('scope')!.split(' ')).not.toContain('accounting.invoices');
+    const cookie = response.headers.get('set-cookie')!.match(/__Host-xero-state=([^;]+)/)![1];
+    const state = unseal<{ state: string }>(decodeURIComponent(cookie), key);
+    vi.stubEnv('XERO_REPORT_CONSENT_ENABLED', 'false');
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    const result = await callback(new NextRequest(`${origin}?state=${state.state}&code=synthetic`, { headers: { cookie: `__Host-xero-state=${cookie}` } }));
+    expect(result.headers.get('location')).toContain('connection=failed'); expect(fetcher).not.toHaveBeenCalled();
+  });
   it('binds expanded consent to the initiating attempt and refuses it after consent is disabled',async()=>{
     vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED','true');
     const response=await start(new Request(origin,{method:'POST',headers:{origin}}));
     const url=new URL((await response.json()).authorizationUrl);
-    expect(url.searchParams.get('scope')).toBe(XERO_INVOICE_SCOPES);
+    expect(url.searchParams.get('scope')!.split(' ').sort()).toEqual(XERO_INVOICE_SCOPES.split(' ').sort());
     const cookie=response.headers.get('set-cookie')!.match(/__Host-xero-state=([^;, ]+)/)![1];
     const bound=unseal<{scopes:string}>(cookie,key);
-    expect(bound.scopes).toBe(XERO_INVOICE_SCOPES);
+    expect(bound.scopes.split(' ').sort()).toEqual(XERO_INVOICE_SCOPES.split(' ').sort());
     vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED','false');
     const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
     const returned=await callback(new NextRequest(`${origin}?state=${url.searchParams.get('state')}&code=c`,{headers:{cookie:`__Host-xero-state=${cookie}`}}));
@@ -65,7 +90,7 @@ describe('Xero HTTP integration',()=>{
     expect(response.headers.get('set-cookie')).toMatch(/Secure/i);
     const destination=new URL((await response.json()).authorizationUrl);
     expect(destination.origin).toBe('https://login.xero.com');
-    expect(destination.searchParams.get('scope')).toBe(XERO_SCOPES);
+    expect(destination.searchParams.get('scope')!.split(' ').sort()).toEqual(XERO_SCOPES.split(' ').sort());
     expect(mocks.attempt).toHaveBeenCalledOnce();
   });
   it('consumes one-use state before exchanging and rejects replay',async()=>{
@@ -73,6 +98,7 @@ describe('Xero HTTP integration',()=>{
     const cookie=seal({state:'bound-state',userId:'user-1',expires:Date.now()+600000},key);
     const req=()=>new NextRequest(`${origin}/api/integrations/xero/callback?state=bound-state&code=private-code`,{headers:{cookie:`__Host-xero-state=${cookie}`}});
     const first=await callback(req());expect(first.headers.get('location')).toContain('connection=connected');expect(mocks.connect).toHaveBeenCalledOnce();
+    expect(mocks.connect).toHaveBeenCalledWith(expect.any(Object),'user-1',true);
     mocks.consume.mockResolvedValue(false);
     expect((await callback(req())).headers.get('location')).toContain('connection=failed');
     expect(fetcher).toHaveBeenCalledOnce();

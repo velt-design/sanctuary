@@ -40,6 +40,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/scheduling/scheduleCommands.ts',
   'apps/portal/lib/scheduling/scheduleReadiness.ts',
   'apps/portal/lib/scheduling/scheduleV2Server.ts',
+  'apps/portal/lib/xero/financePositionAuthority.ts', // Server-only organisation finance read; SQL rechecks current actor grant, source binding and pinned tenant. No credential/table grant.
 ] as const;
 
 const COMPATIBILITY_CLIENT_PATTERN = /\bsupabaseServer\b|\bgetSupabaseServer\s*\(/;

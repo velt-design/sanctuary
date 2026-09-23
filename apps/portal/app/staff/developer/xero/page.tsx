@@ -43,6 +43,10 @@ export default async function XeroDeveloperPage({ searchParams }: { searchParams
       </Card>
       {!connection.connected && <Connect connected={false} />}
       <details><summary>Developer connection checks</summary>
+        {process.env.XERO_REPORT_CONSENT_ENABLED === 'true' && <section aria-label="Xero report permission">
+          <p>Allow this connection to read Bank Summary, Profit and Loss, and organisation settings. Existing permissions are preserved; this action does not add invoice or contact management permission. Xero asks an authorised person to confirm. Bank reconciliation stays manual.</p>
+          <Connect connected={connection.connected} reports />
+        </section>}
         {process.env.XERO_INVOICE_CONSENT_ENABLED === 'true' && <p>Connecting requests Xero permission to manage invoices and contacts, and to read accounting settings. The portal uses this access for draft invoices and explicitly confirmed customer creation. Automatic transfers require separate activation; finance reviews drafts before posting.</p>}
         <p>Renewal runs daily and before reads. A stale verification date needs developer investigation. Connecting does not record portal payments or post Xero invoices.</p>
         {connection.connected && <Connect connected />}

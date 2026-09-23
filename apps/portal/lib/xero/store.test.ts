@@ -3,10 +3,10 @@ import { seal,unseal } from './security';
 const mocks=vi.hoisted(()=>({postgres:vi.fn(),token:vi.fn(),connections:vi.fn(),read:vi.fn()}));
 vi.mock('postgres',()=>({default:mocks.postgres}));
 vi.mock('./provider',async importOriginal=>({...await importOriginal<typeof import('./provider')>(),tokenRequest:mocks.token,connections:mocks.connections,accountingRead:mocks.read}));
-import { access,connect,readAccounting } from './store';
+import { access,connect,readAccounting,grantedConsentScopes } from './store';
 import { XeroError } from './provider';
 import { supabaseCa } from './supabaseCa';
-import { XERO_INVOICE_SCOPES } from './oauthScopes';
+import { XERO_INVOICE_SCOPES, XERO_REPORT_READ_SCOPES } from './oauthScopes';
 
 const tenant='11111111-1111-4111-8111-111111111111';const key=Buffer.alloc(32,1);
 let row: {tenant_id:string;encrypted_tokens:string;last_error:string|null};
@@ -18,8 +18,9 @@ beforeEach(()=>{
   const sql=Object.assign(async(strings:TemplateStringsArray,...values:unknown[])=>{
     const query=strings.join('?');writes.push(query);
     if(query.includes('from pg_roles where'))return[{connector:true,only_connector:true}];
-    if(query.includes('select *'))return[row];
+    if(query.includes('select *') || query.includes('select tenant_id,encrypted_tokens'))return[row];
     if(query.includes('set encrypted_tokens')){if(failSave)throw new Error('DB_WRITE_FAILURE');row.encrypted_tokens=String(values[0]);}
+    if(query.includes('set tenant_id=')){if(failSave)throw new Error('DB_WRITE_FAILURE');row.tenant_id=String(values[0]);row.encrypted_tokens=String(values[2]);}
     if(query.includes('set last_error='))row.last_error=String(values[0]);
     return[];
   },{begin:async(fn:(tx:unknown)=>Promise<unknown>)=>fn(sql),end:vi.fn()});
@@ -27,6 +28,45 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllEnvs());
 describe('durable Xero renewal',()=>{
+  it('preserves a new report grant against a still-valid legacy callback while accepting an unchanged old grant', async () => {
+    const legacy = { accessToken: 'legacy', refreshToken: 'legacy-refresh', expiresAt: 1 };
+    mocks.connections.mockResolvedValue([{ tenantId: tenant, tenantName: 'Synthetic organisation' }]);
+    await expect(connect(legacy, 'legacy-callback', true)).resolves.toBeUndefined();
+    const base = await grantedConsentScopes();
+    await connect({ ...legacy, accessToken: 'reports', scopes: [...base, ...XERO_REPORT_READ_SCOPES] }, 'report-callback', true);
+    const saved = row.encrypted_tokens; writes = [];
+    await expect(connect(legacy, 'legacy-callback', true)).rejects.toThrow('XERO_GRANT_CHANGED_DURING_CONSENT');
+    expect(row.encrypted_tokens).toBe(saved);
+    expect(writes.some(query => query.includes('update xero_private.connection') || query.includes('insert into xero_private.events'))).toBe(false);
+  });
+  it('rejects an older consent after a concurrent broader grant was saved, preserving the newer credentials', async () => {
+    const base = ['offline_access', 'accounting.contacts.read', 'accounting.invoices.read', 'accounting.payments.read', 'accounting.banktransactions.read'];
+    row.encrypted_tokens = seal({ accessToken: 'initial', refreshToken: 'initial-refresh', expiresAt: 1, scopes: base }, key);
+    // Callback A checked this grant before exchanging its code.
+    expect(await grantedConsentScopes()).toEqual(base);
+    const older = { accessToken: 'A', refreshToken: 'A-refresh', expiresAt: 2, scopes: [...base, ...XERO_REPORT_READ_SCOPES] };
+    const newer = { accessToken: 'B', refreshToken: 'B-refresh', expiresAt: 3, scopes: [...older.scopes, 'accounting.invoices', 'accounting.contacts'] };
+    mocks.connections.mockResolvedValue([{ tenantId: tenant, tenantName: 'Synthetic organisation' }]);
+    // Callback B completes while A's exchange is in flight.
+    await connect(newer, 'B', true);
+    const saved = row.encrypted_tokens; writes = [];
+    await expect(connect(older, 'A', true)).rejects.toThrow('XERO_GRANT_CHANGED_DURING_CONSENT');
+    expect(row.encrypted_tokens).toBe(saved); expect(unseal(saved, key)).toMatchObject(newer);
+    expect(writes.some(query => query.includes('for update'))).toBe(true);
+    expect(writes.some(query => query.includes('update xero_private.connection') || query.includes('insert into xero_private.events'))).toBe(false);
+    // Same/superset consent remains a valid replacement under that lock.
+    await expect(connect({ ...newer, accessToken: 'C' }, 'C', true)).resolves.toBeUndefined();
+  });
+  it('returns only encrypted grant metadata and renews reports without rollout flags', async () => {
+    const scopes = [...XERO_INVOICE_SCOPES.split(' '), ...XERO_REPORT_READ_SCOPES];
+    row.encrypted_tokens = seal({ accessToken: 'expired', refreshToken: 'original', expiresAt: 0, scopes }, key);
+    vi.stubEnv('XERO_REPORT_CONSENT_ENABLED', 'false');
+    expect(await grantedConsentScopes()).toEqual(scopes);
+    expect(writes.some(query => query.includes('update '))).toBe(false);
+    mocks.token.mockResolvedValue({ accessToken: 'new', refreshToken: 'rotated', expiresAt: Date.now() + 1800000, scopes });
+    await access(); expect(mocks.token.mock.calls[0][3]).toEqual(scopes);
+    expect(unseal(row.encrypted_tokens, key)).toMatchObject({ refreshToken: 'rotated', scopes });
+  });
   it('passes the encrypted existing grant through renewal instead of current rollout flags',async()=>{
     const scopes=XERO_INVOICE_SCOPES.split(' ');
     row.encrypted_tokens=seal({accessToken:'expired',refreshToken:'original',expiresAt:0,scopes},key);
