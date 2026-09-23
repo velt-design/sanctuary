@@ -442,3 +442,7 @@ with no geocoding or persistence changes. Estimate lists retain their current
 calculator action, while Rename and Duplicate use the existing keyboard-accessible
 overflow menu. Duplicate still creates a revision through the original URL and
 controller. Calculator editing, locks and costing remain unchanged.
+
+### Saved estimate selection continuity
+
+ProjectCalculatorTab delegates temporary-to-durable estimate selection to useProjectEstimateSelection. Saving a new estimate keeps the same calculator mounted across query-cache and alias-store publication, preserving newer unsaved input. Reloading a provisional link waits for local-store hydration, then normalizes only the validated current-project estimate/revision ID; unrelated URL selections stay intact. Historical records remain locked and unknown or other-project IDs are not treated as pending saves. Tests exercise the real query cache and alias store on separate transition ticks; authenticated save/reload proof is distinct from the mocked calculator integration test.
