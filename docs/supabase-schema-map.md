@@ -1,5 +1,25 @@
 # Supabase Schema Map
 
+## Meta source ownership candidate
+
+`20260923050001_sanctuary_meta_reporting.sql` adds private Meta control,
+operation, optional snapshot and append-only event tables. All direct table access
+is revoked, including service_role. Only `sanctuary_meta_command` and the expiry
+purge are service-role executable; the command checks current confirmed staff,
+source identity, pinned account/binding and generation before ordered work.
+The server-only bearer adapter needs this narrow RPC because it has no staff
+session cookie; an auth-bound browser client is not an equivalent authority.
+Provider credentials never enter these tables. No enabled control is provisioned.
+Saved bodies require explicit retention intent and expire after seven days;
+page-only refresh stores only operation/audit metadata. Delete invalidates pending
+completion and delivery. Hourly cron purges expired/disabled evidence. Local only;
+installation and activation remain distinct from local implementation evidence.
+The exact migration subsequently passed rollback-only rehearsal against both
+current staging and production schemas on 23 September (SHA-256
+`ea914f34fb2053abd0a447f5aa8980b4c6468d8d2e146fe08e7cbef8b29b0931`).
+It left no new tables, cron job or ledger entry. Pilot deployment/provisioning is
+now owner-authorized; switching Velt's active source remains explicitly prohibited.
+
 ## Organisation finance read candidate
 
 `20260923040001_praxis_finance_position.sql` adds only the service-role executable
