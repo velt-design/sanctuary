@@ -1,5 +1,69 @@
 # Xero connection
 
+## Organisation financial context candidate (23 September 2026)
+
+Local implementation, default off; no production report read or consent proof is
+claimed. `GET /api/integrations/praxis/v1/finance-position?from=YYYY-MM-DD&to=YYYY-MM-DD&basis=accrual|cash`
+returns version `sanctuary.praxis.finance-position.v1`. It reuses the encrypted
+Xero broker and existing delegated finance actor, pinned tenant and current grant.
+The new organisation authority RPC removes the project/contact mapping requirement
+only for this explicitly organisation-scoped read. It grants no table or credential
+access. Every provider page and publication checks current authority.
+
+The five independently labelled domains are organisation metadata, Bank Summary,
+Profit and Loss, current authorised outstanding sales invoices and current
+authorised outstanding bills. Reports use explicit dates (1–366 NZ accounting
+dates through today); P&L uses explicit accrual/cash basis and standard layout.
+Full report row types, labels, cells and attributes are retained. No economic
+total is guessed from ambiguous headings. Current invoice balances are a separate
+checked-time population, not historical balances at the selected report end.
+All records in a successful family remain available for drilldown; duplicate
+IDs, invalid records or overflow make that family unavailable, never truncated.
+Invoice amounts are decimal strings in each document's currency. They are not
+summed across currencies or added again to payment/credit cash flows.
+
+Bank Summary describes recorded accounting balances and movements, not bank
+statement balances or spendable cash. Bills describe booked commitments only;
+unentered bills, purchase orders, payroll, tax and other future obligations are
+not a complete forecast. There is no bank reconciliation or accounting write.
+
+Collection uses fixed GET endpoints only, 100 invoices/page, at most 5,000 per
+invoice family plus a sentinel read, 2 MiB per provider response and whole wire,
+and report limits of 2,000 rows/eight nested levels. Provider collection stops at
+40 seconds; the 45-second outer window reserves authority/finalisation time.
+Provider failures or missing scopes remain explicit unavailable domains alongside
+verified domains; caller cancellation or authority failure rejects the response.
+These are safety bounds, not proof of live volumes, report shape or latency.
+
+`XERO_REPORT_CONSENT_ENABLED=true` exposes a separate developer action to add
+`accounting.settings.read`, `accounting.reports.banksummary.read` and
+`accounting.reports.profitandloss.read`. It unions those reads with the current
+encrypted grant, preserving existing invoice/contact management rights without
+introducing them. The legacy base scope constant is unchanged, including old-token
+renewal fallback. Consent mode and exact grants are bound into the existing
+expiring, one-use OAuth attempt. Report grant renewal remains valid when rollout
+flags are off. Existing daily renewal is reused; no new schedule is introduced.
+Before persisting a new bound consent, the connection transaction rechecks the
+latest encrypted grant under its existing row lock. A concurrently completed
+broader grant cannot be overwritten by an older, narrower consent response.
+This also covers still-valid pre-deployment attempts without a consent-mode field;
+unchanged legacy grants continue to work, but cannot remove newly granted reports.
+Provider consent by an authorised person is still required; scope changes alone
+cannot grant report access, and the Xero authorising user must have report rights.
+
+Read contract: `apps/portal/lib/xero/financePositionContract.ts`; reader/provider:
+`financePosition.ts` / `financePositionProvider.ts`; authority migration:
+`20260923040001_praxis_finance_position.sql`. Runtime enablement uses separate
+`PRAXIS_XERO_FINANCE_POSITION_ENABLED`, the existing actor/tenant configuration and
+`XERO_PAYMENT_MATCHING_ENABLED`; it does not enable customer-history reads or writes.
+
+Official references: [granular scopes and reauthorisation](https://developer.xero.com/faq/granular-scopes),
+[report endpoints, report permissions, row format and P&L basis](https://developer.xero.com/documentation/api/accounting/reports),
+[scope mapping maintained by Xero](https://github.com/XeroAPI/xero-prompt-library/blob/main/javascript/SKILL.md).
+Live acceptance must compare the same explicit period/basis with Xero, distinguish
+booked bank and statement balances, verify complete invoice/bill populations and
+measure collection inside the existing consumer lease before declaring ready.
+
 ## Customer finance history candidate (local, default off; 22 September 2026)
 
 `GET /api/integrations/praxis/v1/finance-history` accepts `projectId`, `from` and

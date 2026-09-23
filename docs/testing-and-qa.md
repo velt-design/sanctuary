@@ -1,5 +1,20 @@
 # Testing And QA
 
+## Organisation finance candidate
+
+Focused source checks: `vitest run apps/portal/lib/xero/financePosition.test.ts
+apps/portal/lib/xero/financePositionProvider.test.ts apps/portal/lib/praxis/finance-position.test.ts
+test/praxis-finance-position-db.test.ts apps/portal/lib/xero/oauthScopes.test.ts
+apps/portal/lib/xero/routes.test.ts apps/portal/lib/xero/store.test.ts`.
+They cover separate dated reports/current populations, complete paging/overflow,
+missing scopes, exact GETs, malformed evidence, cancellation, current authority,
+retained management grants, disabled consent and legacy renewal. The isolated SQL
+test applies the exact new authority migration against minimal synthetic prerequisites
+and checks roles, private tables, null identities and grant/source revocation.
+Native PostgreSQL 17 rehearsal of the same migration is additional evidence, not
+full-schema or production proof. Actual Xero report shape, volume, latency and
+same-period/basis reconciliation remain release acceptance work after consent.
+
 ## Email review queue and Outlook dispatch
 
 Focused synthetic checks:

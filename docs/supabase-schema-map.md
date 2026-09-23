@@ -1,5 +1,16 @@
 # Supabase Schema Map
 
+## Organisation finance read candidate
+
+`20260923040001_praxis_finance_position.sql` adds only the service-role executable
+`xero_finance_position_binding(actor, tenant, sourceKey, connectionId, environment)`.
+It reuses current finance grant, confirmed/nondeleted/nonbanned staff/admin identity,
+DB-owned Praxis source identity and pinned transfer-control tenant. Returned data
+is only tenant ID and organisation scope. It does not require project/contact
+mapping, grant new finance actors, expose credential tables or mutate accounting.
+Customer-history mapping authority remains unchanged. Local implementation only;
+production migration and activation require reviewed release authority.
+
 ## Email review and Outlook attempt ledger
 
 Migration 20260923010001_email_review_queue.sql owns private.email_review_batches,
