@@ -16,6 +16,7 @@ it('executes source claim, every-page fences, retention, deletion and revocation
    insert into auth.users values('${actor}',now(),null,null);insert into public.portal_users values('${actor}','staff');
    insert into praxis_reporting.source_identity_v1 values(true,'synthetic','${connection}','test');`);
   await db.exec(await readFile('supabase/migrations/20260923050001_sanctuary_meta_reporting.sql', 'utf8'));
+  await db.exec(await readFile('supabase/migrations/20260923050002_sanctuary_meta_scoped_deletes.sql', 'utf8'));
   await db.exec(`insert into private.sanctuary_meta_control(actor_id,account_id,binding_hash,enabled,expires_at,source_key,connection_id,environment)
    values('${actor}','123','${binding}',true,now()+interval '1 day','synthetic','${connection}','test')`);
   const command = async (action: string, operation: string | null = null, query: string | null = null, step: string | null = null, payload: string | null = null) =>

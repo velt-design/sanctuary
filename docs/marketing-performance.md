@@ -3,14 +3,17 @@
 Connection ownership follow-on (23 September 2026): Jordan approved a
 marketing-first inventory and migration scope under the
 [business connection ownership decision](target-architecture.md#business-connection-ownership-owner-decision-23-september-2026).
-The first locally implemented provider move is the existing bounded Meta campaign reader
+The first implemented provider move is the existing bounded Meta campaign reader
 from Velt to Sanctuary. It does not change this hub's populations, definitions,
 Jordan-only audience or current unavailable-spend behavior. Platform-attributed
 leads stay separate from verified business outcomes. Matching spend to enquiry
 cohorts requires explicit evidence; a provider report is not sufficient to
 enable cost-per-qualified-enquiry or cost-per-win. The paired Velt delivery
-record owns migration progress. The new source path is default-off and has not
-been deployed or activated; this hub's UI and existing live data remain unchanged.
+record owns migration progress. PR187 deployed the default-off source path and
+migration on 23 September 2026. Separate credentials support bounded authorized
+validation; source DB authority stays disabled outside proof and Velt's active
+source remains direct. Live parity and cutover are separate gates. This hub's UI
+and existing live data remain unchanged.
 
 Current stage: **approved production rollout; database ready** (22 September 2026). Owning task: Marketing Performance. Release PR178 extends the Jordan-only report released in PR174. The owner's latest "push live" authorizes publishing this reviewed batch and installing its read-only hub function. Exact production rollback rehearsal, installation, reconciliation and identity-denial assertions passed; postflight confirms the installed function matches the reviewed body and migration ledger. No business records changed. The application rollout and canonical-domain postflight are tracked in [PR178](https://github.com/velt-design/sanctuary/pull/178); merge only after all required checks pass. The verified review preview remains available while release completes.
 
