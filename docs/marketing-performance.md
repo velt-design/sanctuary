@@ -9,13 +9,78 @@ Jordan-only audience or current unavailable-spend behavior. Platform-attributed
 leads stay separate from verified business outcomes. Matching spend to enquiry
 cohorts requires explicit evidence; a provider report is not sufficient to
 enable cost-per-qualified-enquiry or cost-per-win. The paired Velt delivery
-record owns migration progress. PR187 deployed the default-off source path and
-migration on 23 September 2026. Separate credentials support bounded authorized
-validation; source DB authority stays disabled outside proof and Velt's active
-source remains direct. Live parity and cutover are separate gates. This hub's UI
-and existing live data remain unchanged.
+record owns migration progress. PR187 deployed the source path; PR188 corrected
+snapshot cleanup while preserving the production safeupdate guard. On 23 September
+Jordan subsequently approved step 4, and Velt's active Meta source switched to
+Sanctuary after parity/lifecycle proof. Normal Analytics and the built-in Praxis
+review were verified against the source report. Source authority expires with the
+existing credential on 9 October; direct Velt authority remains for rollback.
+This hub's UI and existing business measures remain unchanged.
 
-Current stage: **approved production rollout; database ready** (22 September 2026). Owning task: Marketing Performance. Release PR178 extends the Jordan-only report released in PR174. The owner's latest "push live" authorizes publishing this reviewed batch and installing its read-only hub function. Exact production rollback rehearsal, installation, reconciliation and identity-denial assertions passed; postflight confirms the installed function matches the reviewed body and migration ledger. No business records changed. The application rollout and canonical-domain postflight are tracked in [PR178](https://github.com/velt-design/sanctuary/pull/178); merge only after all required checks pass. The verified review preview remains available while release completes.
+## Current working record — visual follow-on handoff (23 September 2026)
+
+Status: handoff reconciled; first batch scoped, not implemented or released.
+The existing hub is live; the prior PR178 rollout paragraph is superseded by the
+reported 23 September live inspection. Fresh business-data coverage and browser
+validation remain pending for this new batch, not assumed from older evidence.
+Owning task: existing Marketing Performance task. Sole writer: root, isolated
+`C:/Dev/sanctuary-marketing-visuals-20260923`, branch
+`codex/marketing-visuals-20260923`, based on current main `c6c1c62c`.
+Open PRs checked: no marketing visual owner overlaps. Work Queue and recorded
+commitments belong to the separate Review Sanctuary and Velt OS task.
+
+Authority: architecture-task handoff preparation only. This records a proposed
+implementation batch; it does not start implementation or authorize a release,
+provider adapter, spending, customer messages or business-data mutations. Earlier
+release approvals apply to their reviewed batches only. Next action: implement
+this bounded visual batch when authorized, beginning with fresh read-only data
+coverage and existing chart/filter contract checks. No new business definition
+is proposed; any incompatible source evidence must be surfaced before changing it.
+
+### First batch and acceptance criteria
+
+- Sales activity: reuse the Overview's quote-version sent/accepted count and net
+  recorded receipt trends in the Sales view. Use weekly/monthly buckets, clipped
+  to inclusive Auckland dates, with empty buckets and partial-period boundaries
+  handled explicitly. Counts and money use separate axes/charts. Payment reversals
+  and unavailable amounts retain the existing contract; never label this revenue.
+- Enquiries: aligned source/outcome comparison for submissions, eligible
+  qualification, sent-quote projects, current accepted scope and payment-verified
+  projects. Show each population/denominator through compact contextual detail,
+  with explicit unknown coverage. These are not unique people or a shrinking
+  funnel; skipped stages and absent evidence do not establish losses.
+- Reconciliation: each bucket/series total matches its selected underlying records;
+  chart selection opens exactly the dated events or source cohort represented.
+  Verify repeated submissions, multiple quote versions, withdrawn acceptance,
+  reversals, missing amounts/source, date boundaries and zero/unavailable states.
+- Journey: retain source/campaign/date filters, saved views, keyboard equivalents,
+  record-to-project drill-through and Back selections/reading position. Verify
+  changes, loading, errors and return in stable chart regions without layout jumps.
+- Reference/owners: preserve the owner-endorsed dominant visuals and compact
+  controls; current Portal Foundation tokens/drawers and Recharts remain owners.
+  Reuse `BusinessOverview.tsx`, `EnquiryCharts.tsx`, `HubRecords.tsx` and
+  `lib/marketingPerformance/{overview,charts,contract}`. No new chart library or
+  copied aggregation policy. Extract a shared trend owner only if reuse needs it.
+- Readiness: focused calculation/contract tests, required repository checks and
+  independent delivery review of normal entry through records/project/return.
+  Provide protected hosted review access using existing agent-managed facilities;
+  distinguish synthetic preview evidence, real-data reconciliation and physical
+  phone acceptance. Do not ask Jordan to arrange sign-in. Review complete outgoing
+  commits and rendered artifacts: public GitHub receives synthetic examples only.
+
+Meta campaign visuals remain a separate proposal requiring a Jordan-authorized
+Portal adapter. The received cutover record reports source production `c6c1c62c`
+and Velt verified code `8c07b538`; authority expires
+`2026-10-09T03:14:00.250Z`. This batch changes neither source/credential controls
+nor retained direct-Velt rollback authority. No provider conversions or spend are
+joined to business outcomes without separately established evidence.
+
+Continuity sources: architecture-task handoff received 23 September; source note
+`2ccff233` in `C:/Dev/sanctuary-connection-ownership-20260923` and paired migration
+record `de0f7fe` in `C:/Dev/velt-sanctuary-ownership-20260923`.
+Their cutover status is carried forward as reported evidence, not a fresh runtime
+verification. Only the relevant source-note facts are reconciled here; no branch
+cherry-pick. This document remains the single working record for the visual batch.
 
 Live route: https://portal.sanctuarypergolas.co.nz/staff/marketing-performance . Access remains restricted to verified `jordan@sanctuarypergolas.co.nz` plus existing Portal membership, independently enforced by page, API and database. Other staff/admins are denied. No business-record cleanup, tracking changes, vendor integrations, spending or customer messages are authorized.
 
