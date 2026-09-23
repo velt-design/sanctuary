@@ -95,7 +95,11 @@ no historical dates assigned, exact ledger-body MD5c10edcb3c454b05b60a6300449b4d
 Production rollback rehearsal passed with1,312 rows unchanged, all six state
 populations matching v3/v4 and anonymous execution denied. Production installation
 is still pending release gates. Focused release regression:369 tests across70 files
-pass. The independent reviewer is investigating Job Pack reload/return behaviour.
+pass. Independent audit found a valid Job Pack reload being normalised to Overview
+before the complete snapshot arrived. The header now preserves the requested pack
+tab/sheet while summary-only data loads; complete no-pack results still normalise.
+Regression tests cover both Materials and Summary links and the frame's readiness
+handoff. Connected recheck and final CI remain pending.
 
 ### Reviewed stage: remaining Project pages (23 September)
 

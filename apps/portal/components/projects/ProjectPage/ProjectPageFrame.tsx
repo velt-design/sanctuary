@@ -97,6 +97,7 @@ export default function ProjectPageFrame({
             host={host}
             tab={tab}
             ownerControlsPaused={snapshotState !== "fresh"}
+            tabAvailabilityReady={snapshotContentReady}
             optimisticTab={optimisticTab}
             onTabSelect={selectTab}
           />

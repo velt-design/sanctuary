@@ -14,6 +14,7 @@ export default function ProjectHeader({
   host,
   tab,
   ownerControlsPaused,
+  tabAvailabilityReady = true,
   optimisticTab,
   onTabSelect,
 }: {
@@ -22,6 +23,7 @@ export default function ProjectHeader({
   host: string;
   tab: string;
   ownerControlsPaused?: boolean;
+  tabAvailabilityReady?: boolean;
   optimisticTab?: ProjectNavigationTabKey | null;
   onTabSelect?: (tab: ProjectNavigationTabKey) => void;
 }) {
@@ -54,6 +56,7 @@ export default function ProjectHeader({
       <div data-project-header-row="tabs">
         <ProjectTabNavigation
           hasJobPacks={Boolean(project.hasJobPacks)}
+          tabAvailabilityReady={tabAvailabilityReady}
           host={host}
           initialTab={tab}
           projectId={project.id}
