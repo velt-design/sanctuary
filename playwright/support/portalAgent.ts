@@ -6,6 +6,7 @@ export {
 
 interface OpenPortalPageOptions {
   heading?: string | RegExp;
+  headingLevel?: number;
   timeout?: number;
 }
 
@@ -52,6 +53,7 @@ export async function openPortalPage(page: Page, route: string, options: OpenPor
     await expect(
       page.getByRole('heading', {
         name: options.heading,
+        level: options.headingLevel,
         exact: typeof options.heading === 'string',
       }),
     ).toBeVisible({ timeout });

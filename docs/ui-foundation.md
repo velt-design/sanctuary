@@ -68,6 +68,26 @@ migration or production release.
 
 ## Clarity programme working record
 
+Latest owner refinement (23 September, Closed/location screenshot): show only
+Closed for closed rows and keep a visible location in Project identity. Use a
+saved Auckland suburb or outside town/city where comma/newline-separated address
+text supports it; retain ambiguous address text instead of inventing geography.
+No structured locality fields exist in the current Project contract. Full address
+and editing remain in Contact & location. Closed rows show no running stage age
+because the prior stage timestamp is not a closure timestamp. Verified with 33
+focused tests, full lint, architecture/docs guard and hosted optimized build.
+Independent review verified Closed/location presentation at 1440px and 390px;
+the final single-locality postcode correction was source-reviewed and unit-tested.
+Current preview: https://sanctuary-portal-96dczkx1i-jordans-projects-43df95bd.vercel.app/staff/projects
+(`dpl_ExKsudxcpi7tuHVCtWakteGBFbdK`). Prior previews below are superseded.
+No business writes. This small refinement meets the existing preview quality
+standard for correctness, clarity and system fit; free-text locality precision,
+physical-phone acceptance and release readiness retain the stated limits.
+Same PR183 and no production release. Earlier PR checks exposed a remaining
+ambiguous Projects heading in the shared browser preflight; its callers now
+specify level 1. A separate background-job CI container failed to start; no claim
+of passing release checks is made. Fresh checks run on the published batch.
+
 Current stage: **Projects six-column/date refinement implemented and independently reviewed in staging; [review PR183](https://github.com/velt-design/sanctuary/pull/183) remains unmerged, not live.** Foundation PR180 merged as `e8d1158`. Main's open-pipeline correction `bc7ac36` is integrated and its OPEN population is preserved by the new reader. See the refinement evidence below for the current preview and limits. The refinement is published in PR183 (implementation revision 1337804); fresh PR-wide checks are reported on that PR. Staging review is not production release authority.
 Agent-managed preview access is required; never assign sign-in to Jordan.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded

@@ -227,7 +227,7 @@ describe('ProjectsIndexClient', () => {
     expect((rendered.container.querySelector('#projectSearch') as HTMLInputElement | null)?.value).toBe('deck');
     expect(rendered.container.textContent).toContain('Deck Build');
     expect(rendered.container.textContent).not.toContain('021 123 4567');
-    expect(rendered.container.textContent).not.toContain('12 Beach Road');
+    expect(rendered.container.textContent).toContain('12 Beach Road');
     expect(rendered.container.textContent).toContain('Waiting');
 
     const headers = Array.from(rendered.container.querySelectorAll('th')).map((th) => th.textContent ?? '');

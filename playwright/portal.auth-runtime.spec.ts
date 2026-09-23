@@ -11,7 +11,7 @@ test.describe.configure({ mode: 'serial' });
 test('authenticated portal runtime is ready for smoke and performance gates', async ({ page }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { phase: 'auth-runtime' }, async () => {
     await openPortalPage(page, '/dashboard', { heading: 'Dashboard' });
-    await openPortalPage(page, '/staff/projects', { heading: 'Projects' });
+    await openPortalPage(page, '/staff/projects', { heading: 'Projects', headingLevel: 1 });
     await expectVisiblePortalProject(page);
 
     await openPortalPage(page, '/staff/contacts', { heading: 'Contacts' });

@@ -5,6 +5,12 @@ import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 
 const project = { id: 'proj_1', createdAt: '2026-07-31T00:00:00Z', updatedAt: '2026-09-23T00:00:00Z', status: 'SENT', effectiveState: 'WAITING' } as const;
 describe('Project lifecycle summary', () => {
+  it('shows only Closed and does not present the former stage age as time closed', () => {
+    const rendered = renderIntoDocument(<Table><TableBody><TableRow><ProjectIndexLifecycleCells project={{ ...project, effectiveState: 'CLOSED', stageChangedAt: '2026-09-20T13:00:00Z' }} /></TableRow></TableBody></Table>);
+    expect(rendered.container.querySelector('[data-column="Stage"]')?.textContent).toBe('Closed');
+    expect(rendered.container.querySelector('[data-column="Time in stage"]')?.textContent).toBe('—');
+    rendered.unmount();
+  });
   it('combines stage and exception state without inferring an age from other dates', () => {
     const rendered = renderIntoDocument(<Table><TableBody><TableRow><ProjectIndexLifecycleCells project={project} /></TableRow></TableBody></Table>);
     expect(rendered.container.querySelector('[data-column="Stage"]')?.textContent).toContain('Waiting');

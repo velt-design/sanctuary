@@ -82,3 +82,4 @@
 
 .projectIdentity { width: 220px; }
 .projectIdentity a { white-space: normal; text-align: left; overflow-wrap: anywhere; justify-content: flex-start; }
+.projectIdentity .projectLocation { color: var(--ui-text); overflow-wrap: anywhere; }

@@ -37,6 +37,7 @@ import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
 import ProjectStageCorrectionDialog from '@/components/projects/ProjectStageCorrectionDialog';
 import ProjectIndexActions from './ProjectIndexActions';
+import { projectLocation } from './projectLocation';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
@@ -394,6 +395,7 @@ export default function ProjectsIndexClient({
                                 event.preventDefault(); prepareProjectOpen(p.id); openProject(p.id);
                               }}>{nameValue || 'Unnamed project'}</ButtonLink>
                             <small>{clientLabel}</small>
+                            <small className={styles.projectLocation}>{projectLocation(p)}</small>
                           </div></TableCell>
                           <ProjectIndexLifecycleCells project={p} />
                           <ProjectIndexAccountabilityCells project={p} />

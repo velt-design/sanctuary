@@ -409,6 +409,13 @@ archive/restore and delete keep their existing controllers and guards. The menu
 is portalled to avoid clipping in the scrollable table; supporting drawers keep
 keyboard focus and reading position. Journey remains a server filter.
 
+Closed rows show only Closed rather than their former stage, and their running
+stage age is not displayed as a closure age. Project identity includes location:
+`projectLocation` summarises comma/newline-separated saved addresses to an Auckland
+suburb or outside town/city, stripping country/postcode. Ambiguous free text stays
+verbatim; missing addresses use recorded region or Location not recorded. This is
+display-only, without geocoding, new persistence or changes to the full address.
+
 `staff_projects_index_v4` adds nullable `stage_changed_at` and server pagination
 for `stage_oldest`/`next_action_asc`. v3 remains unchanged for existing consumers.
 Stage timing records new inserts and actual stage changes prospectively, including
