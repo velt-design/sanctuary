@@ -99,7 +99,35 @@ pass. Independent audit found a valid Job Pack reload being normalised to Overvi
 before the complete snapshot arrived. The header now preserves the requested pack
 tab/sheet while summary-only data loads; complete no-pack results still normalise.
 Regression tests cover both Materials and Summary links and the frame's readiness
-handoff. Connected recheck and final CI remain pending.
+handoff. Independent connected recheck passed on release candidate461229c at
+https://sanctuary-portal-9q2vgpdu2-jordans-projects-43df95bd.vercel.app
+(deployment dpl_2wTiNKruNdcpfkog3MXEaYCHXezz): both sheets retain selection on
+fresh load, Back returns to the pack list, browser Back restores Materials, and
+a confirmed no-pack project normalises truthfully. Filtered Projects -> commercial
+tabs -> reload -> return also retained the selected stage/sort and three results.
+Final focused regression:394 tests across72 files pass, including cached-data
+failure/retry and access-ending denial cases. Portal typecheck and architecture
+advisory pass; no touched warning/critical files. All83 Overview/story browser
+tests pass locally, including desktop/mobile widths, keyboard/reduced motion,
+editing/close confirmation, commercial navigation and denied-refresh recovery.
+The old browser assertions still expected pre-cleanup labels/disclosures/order;
+they now exercise the approved details controls while retaining visibility and
+exception checks. The long-name shell fixture is preserved separately from the
+coherent compact commercial sample. This was a verification-coverage omission,
+not new owner direction. Independent read-only inspection found no weakened test
+coverage. Full CI is rerun for this final test/fixture correction; live writes and
+physical-phone acceptance remain outside the evidence.
+
+Release assessment: correctness, journey/clarity, visual accessibility and system
+fit meet8/10 for this bounded cleanup, supported by the independent populated
+journeys and verified navigation correction. Maintainability meets8/10 using
+existing owners and a small explicit readiness contract. Recovery/security meet
+8/10 for retained access/error contracts and focused denial/retry tests; induced
+live service failure and live financial mutations are not newly accepted.
+Performance and production handover remain unverified until their final gates.
+Physical-phone acceptance remains unverified. No customer records or sends were
+used to prove writes. Outgoing commits/PR/fixtures were inspected: private local
+evidence is untracked and deployment-excluded; only synthetic examples published.
 
 ### Reviewed stage: remaining Project pages (23 September)
 

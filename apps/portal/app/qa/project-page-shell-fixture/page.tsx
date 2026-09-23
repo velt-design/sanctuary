@@ -14,10 +14,10 @@ const v2Snapshot: ProjectPageSnapshot = {
   workModel: 'v2',
   project: {
     id: 'proj_fixture_shell',
-    name: 'Sample project - Takapuna outdoor living',
-    stage: 'deposit',
+    name: 'Alexandra Montgomery and Christopher Williamson - North Harbour outdoor living project',
+    stage: 'sent',
     contactId: 'contact_fixture',
-    contactName: 'Sample customer',
+    contactName: 'Alexandra Montgomery and Christopher Williamson',
     contactEmail: 'aroha@example.invalid',
     contactPhone: '021 555 0100',
     siteAddress: 'Synthetic address, Takapuna, Auckland',
@@ -26,7 +26,7 @@ const v2Snapshot: ProjectPageSnapshot = {
     hasJobPacks: true,
     owner: { key: 'jordan', displayName: 'Jordan' },
   },
-  pipeline: { stage: 'deposit' },
+  pipeline: { stage: 'sent' },
   activity: [],
   emails: [],
   notes: [],
@@ -46,7 +46,13 @@ export default async function ProjectPageShellFixture({
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
   const params = await searchParams;
-  const snapshot = v2Snapshot;
+  // Keep long-name shell regression coverage separate from the coherent
+  // accepted-agreement example used for the commercial presentation preview.
+  const snapshot: ProjectPageSnapshot = params.commercial === '1'
+    ? { ...v2Snapshot, project: { ...v2Snapshot.project,
+        name: 'Sample project - Takapuna outdoor living', stage: 'deposit', contactName: 'Sample customer',
+      }, pipeline: { stage: 'deposit' } }
+    : v2Snapshot;
   const tab = coerceProjectTab(params.tab, snapshot.project.hasJobPacks ?? false);
   const calculatorWorkspace = tab === 'estimates'
     && Boolean(params.estimateId?.trim() || params.fromEstimateId?.trim() || params.newDesign === '1');
