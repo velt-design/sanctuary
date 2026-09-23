@@ -9,6 +9,7 @@ import { listVisibleDashboardTasks } from './tasks';
 import { listDashboardRecentEstimates } from './operationalLists';
 import { getProjectWorkQueue } from '@/lib/projects/workItems/repository';
 import { getProjectOperationalStateCounts } from '@/lib/projects/workItems/stateCounts';
+import { DASHBOARD_PIPELINE_COUNTS_SCOPE, getDashboardPipelineCounts } from './pipelineCounts';
 
 type SnapshotKpis = {
   new_leads?: number;
@@ -89,6 +90,7 @@ export async function getDashboardData(opts: {
     personalTasks,
     projectWorkQueue,
     projectStateCounts,
+    pipelineCounts,
   ] = await Promise.all([
     getDashboardSnapshotCached(opts.queueMode) as Promise<SnapshotData>,
     listDashboardRecentEstimates(supabaseServiceRole),
@@ -99,6 +101,9 @@ export async function getDashboardData(opts: {
       : Promise.resolve(null),
     opts.supabase
       ? getProjectOperationalStateCounts(opts.supabase).catch(() => null)
+      : Promise.resolve(null),
+    opts.supabase
+      ? getDashboardPipelineCounts(opts.supabase).catch(() => null)
       : Promise.resolve(null),
   ]);
 
@@ -147,11 +152,6 @@ export async function getDashboardData(opts: {
     hrefSiteVisits: siteVisitsHref(),
   };
 
-  const pipelineCounts: Record<string, number> = {};
-  for (const [key, value] of Object.entries(snapshot?.pipeline_counts ?? {})) {
-    pipelineCounts[key] = asNumber(value);
-  }
-
   return {
     updatedAtIso: asString(snapshot?.updated_at) || new Date().toISOString(),
     kpis: {
@@ -165,7 +165,9 @@ export async function getDashboardData(opts: {
     projectStateCountsAvailable: projectStateCounts !== null,
     schedule,
     siteVisits,
-    pipelineCounts,
+    pipelineCounts: pipelineCounts ?? {},
+    pipelineCountsScope: DASHBOARD_PIPELINE_COUNTS_SCOPE,
+    pipelineCountsAvailable: pipelineCounts !== null,
     recentEstimates,
     recentActivity,
     personalTasks,

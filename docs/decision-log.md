@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-09-23 — Match opportunity counts and their project lists
+
+Closed enquiries were still included in the dashboard journey totals. Enquiry
+and Proposal now measure unarchived Active/Waiting projects, with the same
+server-side `OPEN` predicate on their paginated drilldowns. Later journeys keep
+all unarchived projects: closed paid work belongs in Settled history. A changed
+metric must carry its population through links and cache compatibility; an old
+all-state cached count is not a valid fallback. Owner: supabase-schema-map.md.
+
 ## 2026-09-21 — Keep scene framing independent of option and price updates
 
 The furnished desktop rollout passed settled-view checks but owner use exposed

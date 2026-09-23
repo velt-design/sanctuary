@@ -39,7 +39,9 @@ describe('PipelineCountsCard', () => {
     );
 
     expect(markup).toContain('Project portfolio');
-    expect(markup).toContain('href="/staff/projects?journey=ENQUIRY"');
+    expect(markup).toContain('href="/staff/projects?journey=ENQUIRY&amp;state=OPEN"');
+    expect(markup).toContain('href="/staff/projects?journey=PROPOSAL&amp;state=OPEN"');
+    expect(markup).toContain('href="/staff/projects?journey=SETTLED"');
     expect(markup).toMatch(/Enquiry<\/span><span[^>]*>5</);
     expect(markup).toMatch(/Proposal<\/span><span[^>]*>15</);
     expect(markup).toMatch(/Confirmed<\/span><span[^>]*>7</);

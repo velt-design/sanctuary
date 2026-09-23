@@ -6,6 +6,11 @@ const listVisibleDashboardTasks = vi.fn();
 const listDashboardRecentEstimates = vi.fn();
 const getProjectWorkQueue = vi.fn();
 const getProjectOperationalStateCounts = vi.fn();
+const getDashboardPipelineCounts = vi.fn();
+vi.mock('./pipelineCounts', () => ({
+  DASHBOARD_PIPELINE_COUNTS_SCOPE: 'open_enquiry_proposal_v1',
+  getDashboardPipelineCounts: (...args: unknown[]) => getDashboardPipelineCounts(...args),
+}));
 
 vi.mock('./getDashboardSnapshotCached', () => ({
   getDashboardSnapshotCached: (...args: unknown[]) => getDashboardSnapshotCached(...args),
@@ -37,6 +42,14 @@ vi.mock('@/lib/supabaseClient', () => ({
 }));
 
 describe('getDashboardData', () => {
+  it('does not substitute the old snapshot counts when the scoped RPC fails', async () => {
+    getDashboardPipelineCounts.mockRejectedValueOnce(new Error('unavailable'));
+    const { getDashboardData } = await import('./getDashboardData');
+    const data = await getDashboardData({ queueMode: 'today', supabase: { rpc: vi.fn() } as never });
+    expect(data.pipelineCounts).toEqual({});
+    expect(data.pipelineCountsAvailable).toBe(false);
+    expect(data.pipelineCountsScope).toBe('open_enquiry_proposal_v1');
+  });
   beforeEach(() => {
     vi.resetModules();
     getDashboardSnapshotCached.mockReset();
@@ -44,6 +57,7 @@ describe('getDashboardData', () => {
     listVisibleDashboardTasks.mockReset();
     listDashboardRecentEstimates.mockReset();
     getProjectWorkQueue.mockReset();
+    getDashboardPipelineCounts.mockReset().mockResolvedValue({ NEW: 2 });
     getProjectOperationalStateCounts.mockReset().mockResolvedValue({
       ACTIVE: 1,
       WAITING: 0,
@@ -107,7 +121,8 @@ describe('getDashboardData', () => {
     expect(listDashboardRecentEstimates).toHaveBeenCalledTimes(1);
     expect(listVisibleDashboardTasks).toHaveBeenCalledWith(expect.anything(), 'user_1');
     expect(data.kpis.newLeads).toBe(2);
-    expect(data.pipelineCounts.NEW).toBe(2);
+    expect(data.pipelineCounts).toEqual({});
+    expect(data.pipelineCountsAvailable).toBe(false);
     expect(data.recentActivity).toHaveLength(1);
     expect(data.personalTasks).toHaveLength(1);
     expect(data.recentEstimates[0]?.customerPriceIncGst).toBe(1437.5);

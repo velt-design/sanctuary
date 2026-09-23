@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
+import { parseProjectIndexView, projectIndexViewHref } from './projectIndexView';
 import {
   buildContactsById,
   filterProjectsForIndex,
@@ -54,6 +55,19 @@ const allFilters = {
 } as const;
 
 describe('projectIndexFilters', () => {
+  it('parses OPEN as active plus waiting and excludes closed/archive records', () => {
+    const filters = parseProjectsIndexFilters(new URLSearchParams('state=OPEN&archive=all'));
+    expect(filters.stateFilter).toBe('OPEN');
+    expect(filters.archiveFilter).toBe('active');
+    const view = parseProjectIndexView(new URLSearchParams('journey=ENQUIRY&state=OPEN&page=3'));
+    const restored = parseProjectIndexView(new URL(projectIndexViewHref(view), 'https://portal.invalid').searchParams);
+    expect(restored).toMatchObject({ journeyFilter: 'ENQUIRY', stateFilter: 'OPEN', page: 3 });
+    const extra: Project[] = [
+      { ...projects[0], id: 'closed', effectiveState: 'CLOSED' },
+      { ...projects[0], id: 'archived', effectiveState: 'ARCHIVED', isArchived: true },
+    ];
+    expect(filterProjectsForIndex([...projects, ...extra], new Map(), filters).map((row) => row.id)).toEqual(['proj_1', 'proj_2']);
+  });
   it('parses journey, detailed stage, and server-owned state filters', () => {
     expect(
       parseProjectsIndexFilters(

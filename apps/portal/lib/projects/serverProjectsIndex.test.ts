@@ -23,6 +23,14 @@ const params = {
 } as const;
 
 describe('loadProjectsIndexData', () => {
+  it('forwards the OPEN population and journey stages before pagination', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { rows: [], totalCount: 0, page: 2, pageSize: 50 }, error: null });
+    const result = await loadProjectsIndexData({ ...params, state: 'OPEN', status: 'all', page: 2 }, { rpc } as any);
+    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v3', expect.objectContaining({
+      p_state: 'OPEN', p_stages: ['SITE_VISIT', 'QUOTING', 'SENT'], p_page: 2,
+    }));
+    expect(result.projects.page).toBe(2);
+  });
   it('maps one bounded project page with server-owned state', async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: {

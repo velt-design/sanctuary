@@ -298,6 +298,7 @@ describe('ProjectsIndexClient', () => {
     ]);
     expect(values('projectStateFilter')).toEqual([
       'all',
+      'OPEN',
       'ACTIVE',
       'WAITING',
       'CLOSED',

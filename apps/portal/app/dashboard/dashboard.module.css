@@ -327,6 +327,12 @@
   overscroll-behavior-inline: contain;
 }
 .pipelineGrid { display: grid; min-width: 560px; }
+.pipelineScope {
+  margin: 0;
+  padding: 6px 10px;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+}
 .pipelineCell {
   display: grid;
   align-content: space-between;
