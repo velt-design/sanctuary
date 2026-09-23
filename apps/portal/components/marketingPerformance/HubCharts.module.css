@@ -29,3 +29,23 @@
 @media(max-width:650px) { .overviewNumbers > * { padding:8px 12px; } .overviewNumbers strong { font-size:34px; } .overviewNumbers span { font-size:11px; } }
 
 .agePlot { margin-top:32px; }
+
+.trendToolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; min-height:76px; }
+.trendToolbar > :first-child { width:150px; flex-shrink:0; }
+.comparisonCaption { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; margin:12px 0; color:var(--ui-text-muted); font-size:12px; }
+.outcomeScroll { height:320px; overflow:auto; }
+.outcomeTable { width:100%; min-width:780px; table-layout:fixed; border-collapse:collapse; text-align:left; font-variant-numeric:tabular-nums; }
+.outcomeTable th,.outcomeTable td { padding:12px 10px; border-bottom:1px solid var(--ui-border); vertical-align:top; }
+.outcomeTable thead th { position:sticky; top:0; z-index:1; background:var(--ui-surface-primary); font-size:12px; font-weight:600; }
+.outcomeTable th:first-child { width:22%; }
+.outcomeTable th small { display:block; color:var(--ui-text-muted); font-size:11px; font-weight:400; margin-top:4px; }
+.outcomeTable tbody th { font-size:13px; font-weight:500; overflow-wrap:anywhere; }
+.outcomeTable tbody th i { display:inline-block; width:9px; height:9px; margin-right:7px; }
+.outcomeCell { display:flex; flex-direction:column; gap:6px; width:100%; min-height:64px; padding:0; background:none; border:0; color:var(--ui-text); text-align:left; cursor:pointer; }
+.outcomeCell:hover .cellValue { text-decoration:underline; }
+.outcomeCell:focus-visible { outline:2px solid var(--ui-text); outline-offset:4px; }
+.cellValue { font-size:19px; font-weight:600; }
+.cellValue small,.outcomeCell > small { font-size:11px; font-weight:400; color:var(--ui-text-muted); }
+.cellTrack { height:6px; width:100%; background:var(--ui-border); display:block; }
+.cellTrack > span { display:block; height:100%; }
+@media(max-width:650px) { .trendToolbar { align-items:flex-start; } .trendToolbar .note { font-size:11px; } }

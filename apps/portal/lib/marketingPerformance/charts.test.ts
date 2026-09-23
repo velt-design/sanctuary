@@ -1,6 +1,6 @@
 import { expect,it } from 'vitest';
 import { representativeFixture as hub, representativeFilters } from '@/app/qa/marketing-performance-fixture/representativeFixture';
-import { enquiryWeeks, portfolioStages, sourceMeasures } from './charts';
+import { enquiryWeeks, portfolioStages, sourceMeasures, sourceOutcomes } from './charts';
 import { aucklandDay, UNKNOWN_SOURCE } from './contract';
 import { hubDefaults, selectHub, parseHubFilters, hubQuery } from './hub';
 
@@ -38,4 +38,23 @@ it('portfolio segments retain unknown stages and match exact intersection filter
   }
   const saved={...f,stage:'__unknown',chartMetric:'won',chartScale:'rate'};
   expect(parseHubFilters(hubQuery(saved),representativeFilters)).toEqual(saved);
+});
+
+it('aligned outcome cells keep source order and exact record populations across columns',()=>{
+  const rows=[...hub.enquiries.rows];
+  rows[0]={...rows[0],qualification:'qualified'};
+  rows[1]={...rows[1],qualification:'not_qualified'};
+  const data={...hub,enquiries:{...hub.enquiries,rows}};
+  const f=hubDefaults(representativeFilters);
+  for(const group of sourceOutcomes(rows))for(const cell of group.cells){
+    const inspect=cell.metric==='enquiries'?'all':cell.metric==='won'?'payment':cell.metric;
+    expect(selectHub(data,{...f,source:group.source,inspect}).enquiries).toHaveLength(cell.count);
+    expect(cell.width).toBeGreaterThanOrEqual(0);expect(cell.width).toBeLessThanOrEqual(100);
+  }
+  expect(sourceOutcomes([])).toEqual([]);
+  const repeat={...rows[0],origin:false,qualification:'unreviewed' as const};
+  const cells=sourceOutcomes([repeat])[0].cells;
+  expect(cells.find(c=>c.metric==='enquiries')?.count).toBe(1);
+  expect(cells.find(c=>c.metric==='qualified')).toMatchObject({count:0,denominator:1,unavailable:true});
+  expect(cells.find(c=>c.metric==='won')).toMatchObject({count:0,denominator:0});
 });

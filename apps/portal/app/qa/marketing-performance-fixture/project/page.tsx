@@ -5,7 +5,7 @@ import { representativeFixture } from '../representativeFixture';
 import { fixtureReport, historicalFixtureRows } from '../fixtures';
 import { hubFixture } from '../hubFixtures';
 export default async function FixtureProject({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() !== '1') notFound();
+  if ((process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview') || process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() !== '1') notFound();
   const params = await searchParams;
   const returnQuery = typeof params.return === 'string' && params.return.startsWith('?') ? params.return : '';
   const representative=new URLSearchParams(returnQuery).get('representative')==='1';
