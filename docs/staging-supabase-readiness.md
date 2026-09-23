@@ -8,6 +8,16 @@ Production ref `iytanftukulcnavossmd` is a refusal value in this workflow. Nothi
 
 ## 2026-09-11 Delivery And Invoice Rollout
 
+### 2026-09-23 Projects stage timing
+
+Migration`20260923060001_project_index_stage_timing.sql` was rollback-rehearsed and
+installed with the exact canonical-LF body (MD5`c10edcb3c454b05b60a6300449b4d801`).
+The prior pilot schema existed without a Projects ledger entry; no historical
+ledger was changed. The unique version avoids main's separate Praxis0040001.
+All39 project rows and existing dates were preserved; no historical date was
+inferred. Six state-filter populations matched the existing reader and anonymous
+execution was denied. No unrelated migration or feature was installed.
+
 The eight 20260911 delivery/invoice migrations passed a combined rollback rehearsal and were applied with exact canonical-LF bodies recorded under their unambiguous versions. Postflight matched every stored body to source. Existing commercial row counts were unchanged by migration. Authenticated browser verification then created a labelled synthetic project and verified delivery completion, persistent draft editing, standalone issue/value and audited void. See quotes-invoices-job-packs.md for the retained QA record and deployment evidence.
 
 The apparent missing 20260724/20260728/20260731 versions are the existing underscore-named repository families; their stored SQL matches after statement/line-ending normalization. The separate marketing email-correlation entry 20260909000001 is retained without alteration. No historical ledger repair or blanket push was performed.

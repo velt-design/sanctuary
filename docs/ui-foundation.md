@@ -90,6 +90,12 @@ Projects therefore uses unique20260923060001 with the same SQL body. Staging has
 the pilot schema but no Projects migration ledger entry; preserve its existing
 ledger and install/record the exact uniquely named body after rollback rehearsal.
 No blanket migration push or unrelated migration installation is authorised.
+Unique-version staging install passed after rollback rehearsal:39 rows unchanged,
+no historical dates assigned, exact ledger-body MD5c10edcb3c454b05b60a6300449b4d801.
+Production rollback rehearsal passed with1,312 rows unchanged, all six state
+populations matching v3/v4 and anonymous execution denied. Production installation
+is still pending release gates. Focused release regression:369 tests across70 files
+pass. The independent reviewer is investigating Job Pack reload/return behaviour.
 
 ### Reviewed stage: remaining Project pages (23 September)
 
