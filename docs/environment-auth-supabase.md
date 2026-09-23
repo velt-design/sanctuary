@@ -1,5 +1,32 @@
 # Environment, Auth, And Supabase
 
+## Sanctuary-owned GA4 candidate — disabled until provisioned
+
+Source configuration requires `SANCTUARY_GA4_REPORTS_ENABLED=true`,
+`SANCTUARY_GA4_ACTOR_ID`, `SANCTUARY_GA4_PROPERTY_ID`,
+`SANCTUARY_GA4_BINDING_SHA256`, `SANCTUARY_GA4_VAULT_ID`,
+`SANCTUARY_GA4_CREDENTIAL_ITEM_ID`, `SANCTUARY_GA4_CLIENT_ID`,
+`SANCTUARY_GA4_CLIENT_SECRET` and `SANCTUARY_GA4_SERVICE_ACCOUNT_TOKEN`.
+`SANCTUARY_GA4_VELT_AUTHORITY_KEY` is a separate 43–256 character callback signing
+key shared with the paired Velt deployment; it is not a provider token. Fixed
+callback: `https://velt.systems/api/connections/sanctuary-ga4/authority`.
+
+Credentials remain server-only. The config hash binds the exact actor, property,
+vault/item and deployed credential authority; the mutable refresh token remains
+in its existing vault item. Changing deployment authority requires separately
+updating the disabled database control. Migration `20260923070001` provisions no
+enabled control or grant. It requires an active authenticated source actor and
+current pinned source identity on every operation. Delete works while collection
+is disabled and does not require Google/vault credentials, but still requires
+the existing Praxis bearer and exact source control association.
+
+The pinned `@1password/sdk` 0.5.0 adapter preserves existing item fields and
+confirms a strictly newer version after rotation. Timeouts can hide successful
+writes, so runtime never retries them. Before re-enabling or restoring Velt's
+direct collector, reconcile source operation evidence and the current vault item.
+Application roles cannot release quarantine or change the source control.
+No new schedule, subscription, customer-data write or Google permission is added.
+
 ## Organisation finance candidate gates
 
 `PRAXIS_XERO_FINANCE_POSITION_ENABLED` defaults off and independently gates the

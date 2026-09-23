@@ -1,5 +1,27 @@
 # Testing And QA
 
+## Sanctuary-owned GA4 candidate
+
+Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4
+test/sanctuary-ga4-sql.test.ts test/sanctuary-ga4-http-sql.test.ts`, Portal
+typecheck and scoped lint. These use synthetic provider/vault data and the actual
+`20260923070001` SQL body. Coverage includes rotated/nonrotated tokens, exact
+scope/property/item versions, unknown effects, lease expiry, disable/re-enable,
+query/hash association, seven-day retention, deletion races and delivery fencing.
+The six HTTP-to-SQL regressions preserve end-to-end composition proof rather than
+mocking the database's lifecycle decisions.
+
+On 23 September the 21 SQL/HTTP cases also passed native PostgreSQL 17.6 with
+safeupdate loaded, including explicit rejection of an unqualified delete. That
+native substrate used synthetic identities and a cron stub. A separate exact
+production-schema rollback rehearsal verified actual roles, actor/source
+prerequisites, RPC lifecycle and pg_cron registration, then independently checked
+no GA4 object/job/ledger residue and unchanged Meta state. It did not call Google
+or the vault. Neither check establishes live provider coverage, cross-system
+writer cutover or owner journey usability; those remain activation gates in the
+paired Velt delivery record. Never put private reports or credential evidence in
+test fixtures or CI artifacts.
+
 ## Sanctuary-owned Meta candidate
 
 Focused checks: `vitest run apps/portal/lib/marketingIntegrations/meta

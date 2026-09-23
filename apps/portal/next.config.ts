@@ -11,6 +11,7 @@ const designBookletSharpRuntimeFiles = [
 const nextConfig: NextConfig = {
   ...(playwrightDistDir ? { distDir: playwrightDistDir } : {}),
   experimental: { externalDir: true },
+  serverExternalPackages: ['@1password/sdk'],
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   outputFileTracingIncludes: {
     ...(process.env.MARKETING_PERFORMANCE_PREVIEW === 'production-snapshot' ? {
