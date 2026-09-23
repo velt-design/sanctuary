@@ -7,9 +7,9 @@
 .hero { display: grid; grid-template-columns: 176px minmax(0, 1fr); border: var(--ui-border-width) solid var(--ui-border-strong); background: var(--ui-surface-primary); }
 .heroBrand { display: flex; flex-direction: column; min-height: 316px; padding: var(--ui-space-4); background: var(--ui-surface-inverse); color: var(--ui-text-inverse); }
 .heroBrand p,
-.heroBrand h1 { margin: 0; font-family: var(--ui-font-display); font-weight: 700; line-height: 0.9; text-transform: uppercase; }
+.heroBrand .brandTitle { margin: 0; font-family: var(--ui-font-display); font-weight: 700; line-height: 0.9; text-transform: uppercase; }
 .heroBrand p { font-size: 28px; }
-.heroBrand h1 { margin-top: 4px; color: var(--ui-action); font-size: 27px; }
+.heroBrand .brandTitle { margin-top: 4px; color: var(--ui-action); font-size: 27px; }
 .heroBrand > span { margin-top: var(--ui-space-5); color: color-mix(in srgb, var(--ui-text-inverse) 80%, transparent); font-size: 10px; line-height: 1.5; }
 .heroMeta { display: flex; align-items: center; gap: 8px; margin-top: auto; font-size: 9px; font-weight: 600; text-transform: uppercase; }
 .heroMeta i { width: 10px; height: 10px; background: var(--ui-action); }

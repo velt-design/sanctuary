@@ -1460,3 +1460,5 @@ Marketing hub charts: `charts.test.ts` verifies source numerators/denominators,
 partial Auckland weeks/DST, unknown stages and filter serialization. Browser
 checks must click graphical segments as well as table alternatives, reconcile
 records, and return from a project with measure/rate/filter choices preserved.
+
+Foundation clarity examples: `npx vitest run apps/portal/app/staff/ui-foundation apps/portal/app/qa/ui-foundation-fixture` covers matching source/date records, draft cancellation, detail return, missing-data recovery and saved preferences across remount. Browser review starts at Page patterns, then confirms Components & tokens remains accessible. Check all four example data states at desktop and phone widths without control movement, keyboard chart actions, drawer focus/scroll restoration and saved restoration after reload. The data-free fixture uses the existing explicit QA flag; it proves the instructional example, not live business-data completeness.

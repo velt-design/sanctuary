@@ -60,7 +60,7 @@ export function FoundationTokensSection({
       <section className={styles.hero} aria-labelledby="foundation-title">
         <div className={styles.heroBrand}>
           <p>Sanctuary<br />Staff Portal</p>
-          <h1 id="foundation-title">UI Foundation</h1>
+          <h2 id="foundation-title" className={styles.brandTitle}>Components &amp; tokens</h2>
           <span>High-contrast. Architectural.<br />Built for Sanctuary Pergolas staff.</span>
           <div className={styles.heroMeta}><i aria-hidden="true" /> Version 1.0 <b /> 21 July 2026</div>
         </div>

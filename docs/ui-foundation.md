@@ -32,6 +32,93 @@ path removable. Behavioural owners, API contracts, cache/local-first
 semantics, permissions, accessibility and performance boundaries remain
 authoritative.
 
+## Clear pages, useful detail
+
+Owner-endorsed direction (23 September 2026): apply the clarity demonstrated by
+Marketing & Sales to future authorised Portal improvements. The aim is less
+reading to understand the state and next action, not fewer capabilities.
+
+- Start from the user's decision. Put the important status, figure and next action
+  first; use concise labels and a small number of meaningful summaries.
+- Use charts for patterns and comparisons, tables for exact records, and familiar
+  controls for decisions. A chart is optional, not a requirement for every page.
+  Label the population, period, units and missing evidence. Make segments lead to
+  matching records; provide an equally capable keyboard/text alternative.
+- Keep frequent controls visible and group less-used filters in a labelled drawer.
+  Applied choices stay visible and removable. Editing is a draft until Apply;
+  Cancel changes nothing. Preserve selections when returning from detail.
+- Put definitions and secondary explanation beside their subject, available on
+  demand. Never hide a blocking error, required instruction, destructive consequence,
+  missing-data qualification or approval needed to act safely. Brevity must not
+  remove the evidence needed to interpret a number.
+- Reserve space for changing content. Keep controls and reading position steady
+  during loading, filtering and drawer transitions. Missing reads are unavailable,
+  not zero. Recovery must retain the user's choices and provide a clear action.
+- Reuse the existing component owners and tokens. Prefer composing them before
+  creating a new variant; name a demonstrated gap if a variant is necessary.
+  Specialist schedules, commercial editing and dense operational tables retain
+  their useful detail and business contracts.
+
+For each bounded UI PR, name the user task, reference and component owners, then
+verify first comprehension, editing/cancellation, loading/failure, keyboard and
+mobile-size use, and return with saved choices. Check the complete task, not only
+individual controls. Preserve independent delivery review and separate owner
+acceptance from agent verification. These principles do not grant a cross-route
+migration or production release.
+
+## Clarity programme working record
+
+Current stage: **Foundation guidance and examples verified in a hosted preview**,
+not merged or released. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
+(existing Vercel preview sign-in may be required). Deployment
+`dpl_DX2bATH5NFYc6PttTAPQC9T3RxfC` passed optimized build and typecheck.
+Owning task: continue Marketing & Sales clarity across the Portal through bounded
+PRs. Current branch `codex/portal-foundation-clarity-20260923`, base `54ceef1`.
+User approval: 23 September "go ahead" to steps 1 and 2 only: guidance plus working
+Foundation examples, independent review and preview; no production release.
+The completed Marketing & Sales release remains separately recorded in
+`marketing-performance.md` and PR178. Its local postflight note is preserved in its
+original worktree. Open PRs were checked; none owns the catalogue paths.
+
+Reference: released Marketing & Sales, especially `HubToolbar`, `ReportDetail`,
+`BusinessOverview`, and the shared Button/Select/Card/MetricGrid/Drawer owners.
+The same review scenario is source filter -> source count -> matching records ->
+inspect -> return; filter cancellation and saved-view restoration must preserve
+context. Catalogue records are fictional and isolated from business APIs. This is
+an instructional composition, not a proposed replacement business workflow.
+No unresolved business-definition decision is needed for this bounded example.
+
+Acceptance: guidance implemented in this owner and linked from the agent playbook;
+compact example, exact source/date record counts, draft/apply/cancel, detail return,
+saved restoration across remount, loading/empty/unavailable recovery and preserved
+catalogue verified. Eight focused tests, full lint, Portal typecheck and
+architecture/docs guards pass. Existing catalogue browser regression helper selects
+the Components & tokens tab; the new default instructional task was exercised in
+actual local and hosted browsers. Preview inspection confirmed no real data files,
+credentials, new media or private evidence in the outgoing deployment.
+
+One independent read-only reviewer found no material issues. Observed: seven-day
+Google selection reconciles to two enquiries/one linked fictional project/two known
+sources; saved restore and Cancel preserve choices; unavailable Retry retains the
+selection and state-control position; keyboard source selection, drawer focus/scroll
+return and 390px no-overflow checks pass. Builder repeated the hosted count ->
+record -> return journey, checked stable metric height across available/unavailable
+at 390px, and preserved filters when switching catalogue tabs. Prior Marketing &
+Sales evidence remains valid for the unchanged shared owners; this catalogue uses
+simple labelled button bars for three categories rather than introducing another
+chart abstraction. Relevant dimensions meet the 8/10 review standard through this
+concrete evidence: correctness/journey/clarity, visual/accessibility/system fit,
+maintainability/recovery/privacy/cost and preview handover. No correction round was
+needed. Private verification artifacts remain ignored in `.local-evidence/`.
+
+Review device: hosted desktop access verified; phone-width browser checks passed.
+Physical-phone access and human unassisted acceptance remain unverified. This
+fictional instructional task does not prove live business-data coverage. No new
+business assumptions, API, dependency or permission changes. Next: owner review of
+this first bounded PR; automated PR checks remain required before any merge.
+Projects -> project detail is the proposed next pilot, not part of this PR. Wider
+route rollout and production releases retain separate authority.
+
 ## Owners
 
 - Semantic tokens: `apps/portal/components/ui/foundation/foundation.tokens.css`
