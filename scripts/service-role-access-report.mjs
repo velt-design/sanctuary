@@ -96,6 +96,9 @@ function isApprovedServerFlow(file) {
   // calls scoped grant RPCs (which recheck authority) and the existing lost-
   // conversion owner; see docs/staff-api-auth-contracts.md. No general DB access.
   if (file === 'apps/portal/lib/integrations/portalActions/server.ts') return true;
+  // Server-only delegated finance read. The one RPC rechecks current finance
+  // grant, confirmed staff identity, canonical source and pinned tenant; no table or credential access.
+  if (file === 'apps/portal/lib/xero/financePositionAuthority.ts') return true;
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
   if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) return true;

@@ -1,5 +1,18 @@
 # Staff API And Auth Contracts
 
+## Praxis organisation finance candidate
+
+`GET /api/integrations/praxis/v1/finance-position` accepts only `from`, `to` and
+explicit `basis=accrual|cash`, with duplicate/unknown fields denied. Existing
+machine bearer and exact source binding are mandatory. The server-selected
+finance actor and tenant cannot be supplied by a caller. Separate default-off
+activation and current DB grant/source/tenant checks fence all reads and final
+publication. Source records stay evidence data. Failed authority returns no
+earlier partial report. Provider-family unavailability is explicit in the versioned
+response. The existing developer-only same-origin OAuth start accepts optional
+`mode=reports`; its exact scope set and prior grant are sealed into the one-use
+callback state. This action adds report/settings reads, never new management scopes.
+
 ## Assigned email review routes
 
 - GET /api/staff/v1/email-review and batch/item reads use auth-bound staff

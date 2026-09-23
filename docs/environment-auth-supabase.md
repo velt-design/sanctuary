@@ -1,5 +1,17 @@
 # Environment, Auth, And Supabase
 
+## Organisation finance candidate gates
+
+`PRAXIS_XERO_FINANCE_POSITION_ENABLED` defaults off and independently gates the
+Praxis organisation read. It also requires existing `XERO_PAYMENT_MATCHING_ENABLED`,
+`PRAXIS_XERO_FINANCE_ACTOR_ID` and pinned `XERO_TENANT_ID`, with current database
+authority checked before provider pages and finalisation. Install the reviewed
+`20260923040001_praxis_finance_position.sql` before activation.
+`XERO_REPORT_CONSENT_ENABLED` defaults off and controls only the separate developer
+report-consent action; it does not enable reads or invoice/contact writes.
+See `xero-connection.md` for the exact narrow scopes and preserved existing grants.
+No new credential store, login role or renewal schedule is introduced.
+
 ## Email review deployment
 
 EMAIL_REVIEW_ORIGIN pins the exact public origin accepted for authenticated

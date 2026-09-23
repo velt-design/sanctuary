@@ -2,7 +2,7 @@ import 'server-only';
 import postgres from 'postgres';
 import { rootCertificates } from 'node:tls';
 import { supabaseCa } from './supabaseCa';
-import { config, seal, unseal } from './security';
+import { config, seal, unseal, XERO_SCOPES } from './security';
 import { accountingRead, connections, tokenRequest, type Tokens, XeroError } from './provider';
 
 async function withDatabase<T>(work: (db: ReturnType<typeof postgres>) => Promise<T>): Promise<T> {
@@ -39,7 +39,7 @@ export async function consumeAttempt(stateHash: string, userId: string) {
   });
 }
 
-export async function connect(tokens: Tokens, userId: string) {
+export async function connect(tokens: Tokens, userId: string, preserveGrantedScopes = false) {
   const cfg = config();
   if (!cfg.tenantId) throw new Error('XERO_ORGANISATION_NOT_PINNED');
   const organisations = await connections(tokens.accessToken);
@@ -47,7 +47,15 @@ export async function connect(tokens: Tokens, userId: string) {
   if (!tenant) throw new Error('XERO_WRONG_ORGANISATION');
   await withDatabase(async db => {
     await db.begin(async tx => {
-      await tx`select singleton from xero_private.connection where singleton for update`;
+      const [current] = await tx`select tenant_id,encrypted_tokens from xero_private.connection where singleton for update`;
+      if (preserveGrantedScopes && current?.encrypted_tokens) {
+        if (current.tenant_id !== cfg.tenantId) throw new Error('XERO_WRONG_ORGANISATION');
+        // Consent can race another callback during token exchange. Check the latest
+        // encrypted grant under the same lock as replacement, not only before OAuth.
+        const granted = unseal<Tokens>(current.encrypted_tokens, cfg.key).scopes ?? XERO_SCOPES.split(' ');
+        const incoming = tokens.scopes ?? XERO_SCOPES.split(' ');
+        if (granted.some(scope => !incoming.includes(scope))) throw new Error('XERO_GRANT_CHANGED_DURING_CONSENT');
+      }
       await tx`update xero_private.connection set tenant_id=${tenant.tenantId}, tenant_name=${tenant.tenantName}, encrypted_tokens=${seal(tokens,cfg.key)},
         connected_by=${userId}, connected_at=now(), last_verified_at=now(), last_error=null where singleton`;
       await tx`insert into xero_private.events(actor_id,event,tenant_id) values (${userId},'connected',${tenant.tenantId})`;
@@ -61,6 +69,17 @@ export async function status() {
     if (!row) throw new Error('XERO_STORE_UNAVAILABLE');
     return { connected: Boolean(row.tenant_id), organisation: row.tenant_name, connectedAt: row.connected_at,
       lastVerifiedAt: row.last_verified_at, error: row.last_error };
+  });
+}
+
+/** Scope metadata only; credential material stays inside the existing encrypted connector boundary. */
+export async function grantedConsentScopes(): Promise<string[]> {
+  const cfg = config();
+  return withDatabase(async db => {
+    const [row] = await db`select tenant_id,encrypted_tokens from xero_private.connection where singleton`;
+    if (!row?.encrypted_tokens) return [];
+    if (row.tenant_id !== cfg.tenantId) throw new Error('XERO_WRONG_ORGANISATION');
+    return unseal<Tokens>(row.encrypted_tokens, cfg.key).scopes ?? XERO_SCOPES.split(' ');
   });
 }
 

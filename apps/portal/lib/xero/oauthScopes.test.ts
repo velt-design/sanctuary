@@ -1,8 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { consentScopes, validateTokenScopes, XERO_INVOICE_SCOPES } from './oauthScopes';
+import { boundConsentScopes, consentScopes, validateTokenScopes, XERO_INVOICE_SCOPES, XERO_REPORT_READ_SCOPES } from './oauthScopes';
 import { XERO_SCOPES } from './security';
 afterEach(() => vi.unstubAllEnvs());
 describe('Xero grant boundaries', () => {
+  it('adds only read-only report permissions, preserves existing writes, and renews with rollout off', () => {
+    vi.stubEnv('XERO_REPORT_CONSENT_ENABLED', 'true'); vi.stubEnv('XERO_TENANT_ID', 'pinned'); vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED', 'true');
+    const read = boundConsentScopes('reports', XERO_SCOPES.split(' '));
+    expect(read.split(' ')).toEqual(expect.arrayContaining([...XERO_REPORT_READ_SCOPES]));
+    expect(read.split(' ')).not.toContain('accounting.invoices'); expect(read.split(' ')).not.toContain('accounting.contacts');
+    const managed = boundConsentScopes('reports', XERO_INVOICE_SCOPES.split(' '));
+    expect(managed.split(' ')).toContain('accounting.invoices'); expect(managed.split(' ')).toContain('accounting.contacts');
+    vi.stubEnv('XERO_REPORT_CONSENT_ENABLED', 'false'); vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED', 'false');
+    expect(validateTokenScopes(managed, managed.split(' '))).toContain('accounting.reports.profitandloss.read');
+    expect(() => boundConsentScopes('reports', managed.split(' '))).toThrow('REPORT_CONSENT_DISABLED');
+    expect(boundConsentScopes('connection', managed.split(' '))).toBe(managed);
+    expect(() => validateTokenScopes(managed + ' accounting.payments', managed.split(' '))).toThrow('EXCESS_SCOPE');
+  });
   it('requires separate consent configuration and a pinned organisation', () => {
     vi.stubEnv('XERO_INVOICE_TRANSFERS_ENABLED', 'true');
     vi.stubEnv('XERO_INVOICE_CONSENT_ENABLED', 'false');
