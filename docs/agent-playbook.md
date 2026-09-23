@@ -17,6 +17,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Run `git status --short`; identify unrelated worktree changes and leave them untouched.
 - For parallel or dirty-tree work, run `npm run worktree:status`; set `WORKTREE_OWNER_PATTERNS` when the task has a clear owned path lane.
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
+- For authorised UI work, apply the task-first clarity principles in [the Portal UI contract](ui-foundation.md#clear-pages-useful-detail). Use the Foundation examples to check composition, recovery and stable context; they do not authorise migrating another route or replacing specialist detail.
 - Read `docs/maintainability-principles.md` when the task is a bugfix, migration, interaction wiring change, or touches a known large-file hotspot.
 - For dense owner docs, read the smallest relevant section first, then follow links only when the touched path crosses that boundary.
 - Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
