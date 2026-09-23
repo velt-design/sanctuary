@@ -51,7 +51,7 @@ describe('ProjectIndexAccountabilityCells', () => {
     expect(rendered.container.textContent).toContain(
       'Finalise and send the draft quote',
     );
-    expect(rendered.container.textContent).toContain('When: Ready now');
+    expect(rendered.container.textContent).toContain('Ready now');
     rendered.unmount();
   });
 

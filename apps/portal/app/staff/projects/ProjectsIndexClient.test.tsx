@@ -226,26 +226,26 @@ describe('ProjectsIndexClient', () => {
     );
     expect((rendered.container.querySelector('#projectSearch') as HTMLInputElement | null)?.value).toBe('deck');
     expect(rendered.container.textContent).toContain('Deck Build');
-    expect(rendered.container.textContent).toContain('021 123 4567');
-    expect(rendered.container.textContent).toContain('12 Beach Road');
-    expect(rendered.container.textContent).toContain('Proposal');
+    expect(rendered.container.textContent).not.toContain('021 123 4567');
+    expect(rendered.container.textContent).not.toContain('12 Beach Road');
     expect(rendered.container.textContent).toContain('Waiting');
 
     const headers = Array.from(rendered.container.querySelectorAll('th')).map((th) => th.textContent ?? '');
-    expect(headers).toEqual([
-      'Name',
-      'Next attention',
-      'Owner',
-      'Client',
-      'Phone',
-      'Address',
-      'Journey',
-      'Stage',
-      'State',
-      'Actions',
-    ]);
+    expect(headers).toEqual(['Project', 'Stage', 'Time in stage', 'Next action', 'Owner', 'Actions']);
     expect(prefetchQuery).not.toHaveBeenCalled();
 
+    rendered.unmount();
+  });
+
+  it('allows Escape from a contact field button to close the drawer without a write', async () => {
+    const rendered = renderIntoDocument(<ProjectsIndexClient initialFilters={ALL_FILTERS} />);
+    act(() => rendered.container.querySelector<HTMLButtonElement>('[aria-label="Actions for Deck Build"]')!.click());
+    await act(async () => { Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(item => item.textContent === 'Contact & location')!.click(); await new Promise(resolve => setTimeout(resolve, 40)); });
+    const fieldButton = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find(button => button.textContent === '021 123 4567')!;
+    act(() => fieldButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(apiJsonMock).not.toHaveBeenCalled();
+    expect(openProject).not.toHaveBeenCalled();
     rendered.unmount();
   });
 
@@ -403,9 +403,9 @@ describe('ProjectsIndexClient', () => {
 
   it.each([
     ['hover', 'mouseover', 'tr'],
-    ['focus', 'focusin', 'a'],
+    ['focus', 'focusin', 'tr'],
     ['touch', 'touchstart', 'tr'],
-    ['pointer down', 'pointerdown', 'a'],
+    ['pointer down', 'pointerdown', 'tr'],
   ])('preloads the project route and snapshot on %s intent', (_label, eventName, selector) => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
@@ -446,20 +446,12 @@ describe('ProjectsIndexClient', () => {
     rendered.unmount();
   });
 
-  it('prepares the project before the Open link handles navigation', () => {
+  it('prepares the project before the Open menu action handles navigation', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
-    const link = rendered.container.querySelector('a[href="/staff/projects/proj_1"]');
-    link?.addEventListener('click', (event) => event.preventDefault());
-
-    act(() => {
-      link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
-
-    expect(link?.getAttribute('href')).toBe('/staff/projects/proj_1');
-    expect(prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
-    expect(prefetchQuery).toHaveBeenCalled();
+    act(() => rendered.container.querySelector<HTMLButtonElement>('[aria-label="Actions for Deck Build"]')!.click());
+    act(() => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find((item) => item.textContent === 'Open project')!.click());
     expect(openProject).toHaveBeenCalledWith('proj_1');
 
     rendered.unmount();
@@ -473,14 +465,17 @@ describe('ProjectsIndexClient', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient initialFilters={ALL_FILTERS} />,
     );
-    const nameButton = Array.from(rendered.container.querySelectorAll('tbody button')).find(
+    act(() => rendered.container.querySelector<HTMLButtonElement>('[aria-label="Actions for Deck Build"]')!.click());
+    await act(async () => { Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(item => item.textContent === 'Contact & location')!.click(); await new Promise(resolve => setTimeout(resolve, 40)); });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 40)); });
+    const nameButton = Array.from(document.querySelectorAll('[role="dialog"] button')).find(
       (button) => button.textContent?.trim() === 'Deck Build',
     );
 
     await act(async () => {
       nameButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
-    const editor = rendered.container.querySelector('tbody input[type="text"]') as HTMLInputElement;
+    const editor = document.querySelector('[role="dialog"] input[type="text"]') as HTMLInputElement;
 
     await act(async () => {
       changeInputValue(editor, 'Instant Deck');
@@ -488,8 +483,8 @@ describe('ProjectsIndexClient', () => {
       await Promise.resolve();
     });
 
-    expect(rendered.container.querySelector('tbody input[type="text"]')).toBeNull();
-    expect(rendered.container.textContent).toContain('Saving…');
+    expect(document.querySelector('[role="dialog"] input[type="text"]')).toBeNull();
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Saving…');
     expect(apiJsonMock).toHaveBeenCalledWith(
       '/api/projects/proj_1/details',
       expect.objectContaining({ method: 'PATCH' }),

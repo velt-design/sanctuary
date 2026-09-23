@@ -390,3 +390,32 @@ into zero. No aggregate is inferred from a bounded page of records.
 
 Verification/status lives in the single clarity programme record in
 `ui-foundation.md`. The pilot is not an authorised production release.
+
+
+Projects column/date refinement (PR183, staging review; not production): the
+index now defaults to Project (client underneath), Stage (non-active/missing-state
+badge), Time in stage, Next action, Owner and an existing PortalMenu. Project names
+remain real links with modifier-click/new-tab behavior; editing moves to Contact
+& location with phone/address and created date. Stage correction, delivery,
+archive/restore and delete keep their existing controllers and guards. The menu
+is portalled to avoid clipping in the scrollable table; supporting drawers keep
+keyboard focus and reading position. Journey remains a server filter.
+
+`staff_projects_index_v4` adds nullable `stage_changed_at` and server pagination
+for `stage_oldest`/`next_action_asc`. v3 remains unchanged for existing consumers.
+Stage timing records new inserts and actual stage changes prospectively, including
+correction to a different stage. Same-stage and unrelated edits preserve the date;
+submitted timestamp overrides are ignored. No historical backfill: automation
+events can deduplicate repeat entries and cannot establish current-stage age.
+The display uses Auckland calendar days plus the exact Auckland date; missing,
+invalid or future dates show Unknown. An optimistic correction clears the date
+until authoritative refresh; rejection restores its prior evidence.
+
+Next-action sorting obtains the existing authoritative full work queue, rejects
+incomplete source inventories, orders only dated selected actions ascending and
+passes ordered IDs to the bounded reader before filtering/pagination. It reuses
+that queue for displayed summaries, not legacy follow_up_date. Undated/no-action
+projects follow dated projects; deterministic project/creation tie-breaking
+preserves pagination. This sort costs a portfolio queue read (existing 5000-row
+completeness cap); ordinary sorts still enrich only the returned project page.
+The additive migration is required before activating this application version.

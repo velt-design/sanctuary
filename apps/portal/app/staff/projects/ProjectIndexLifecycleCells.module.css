@@ -1,12 +1,3 @@
-.statusCell {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--ui-space-2);
-}
-
-.journeyLabel {
-  color: var(--ui-text-strong);
-  font-size: var(--ui-font-size-small);
-  font-weight: 650;
-}
+.statusCell, .age { display: grid; justify-items: start; gap: var(--ui-space-1); }
+.age { min-width: 110px; }
+.age time, .age small { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }

@@ -61,11 +61,11 @@ export default function ProjectIndexAccountabilityCells({
 
   return (
     <>
-      <TableCell data-column="Next attention">
+      <TableCell data-column="Next action">
         <div className={styles.action}>
           <strong>{title}</strong>
           {reason ? <button type="button" className={styles.details} aria-label={`Attention details for ${project.projectName ?? project.name ?? 'project'}`} onClick={(event) => { event.stopPropagation(); setDetailsOpen(true); }} onKeyDown={(event) => event.stopPropagation()}>Details</button> : null}
-          {due ? <small>When: {due}</small> : null}
+          {due ? <small>{due}</small> : null}
         </div>
         <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}>
         <Drawer open={detailsOpen} title="Next attention" onClose={() => setDetailsOpen(false)}>

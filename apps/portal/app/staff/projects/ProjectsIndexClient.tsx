@@ -36,7 +36,7 @@ import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
 import ProjectStageCorrectionDialog from '@/components/projects/ProjectStageCorrectionDialog';
-import ProjectDeliveryAction from '@/components/projects/ProjectDeliveryAction';
+import ProjectIndexActions from './ProjectIndexActions';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
@@ -207,13 +207,15 @@ export default function ProjectsIndexClient({
 
   const handleEditKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
-      event.stopPropagation();
+      if (event.key === 'Enter' || event.key === 'Escape' || event.key === ' ') event.stopPropagation();
       if (event.key === 'Enter') {
         event.preventDefault();
         void commitEdit();
       } else if (event.key === 'Escape') {
         event.preventDefault();
+        const fieldContainer = event.currentTarget.parentElement;
         cancelEdit();
+        window.requestAnimationFrame(() => fieldContainer?.querySelector<HTMLButtonElement>('button')?.focus());
       }
     },
     [cancelEdit, commitEdit],
@@ -290,15 +292,11 @@ export default function ProjectsIndexClient({
                 <Table aria-label="Projects">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Next attention</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Address</TableHead>
-                      <TableHead>Journey</TableHead>
+                      <TableHead>Project</TableHead>
                       <TableHead>Stage</TableHead>
-                      <TableHead>State</TableHead>
+                      <TableHead>Time in stage</TableHead>
+                      <TableHead>Next action</TableHead>
+                      <TableHead>Owner</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -354,7 +352,7 @@ export default function ProjectsIndexClient({
                               e.stopPropagation();
                               beginEdit(p, field, currentValue);
                             }}
-                            onKeyDown={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
                           >
                             {currentValue || <span className={styles.muted}>{placeholder}</span>}
                             {isSavingCell ? <span className={styles.syncStatus}>Saving…</span> : null}
@@ -388,82 +386,26 @@ export default function ProjectsIndexClient({
                             }
                           }}
                         >
-                          <TableCell data-column="Name">{renderEditable('name', nameValue, 'Project name', true)}</TableCell>
+                          <TableCell data-column="Project"><div className={styles.projectIdentity}>
+                            <ButtonLink variant="quiet" size="small" href={projectDetailHref(p.id)} prefetch={false} data-project-open="true"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                                event.preventDefault(); prepareProjectOpen(p.id); openProject(p.id);
+                              }}>{nameValue || 'Unnamed project'}</ButtonLink>
+                            <small>{clientLabel}</small>
+                          </div></TableCell>
+                          <ProjectIndexLifecycleCells project={p} />
                           <ProjectIndexAccountabilityCells project={p} />
-                          <TableCell data-column="Client" className={styles.muted}>{clientLabel}</TableCell>
-                          <TableCell data-column="Phone">
-                            {renderEditable(
-                              'phone',
-                              phoneValue,
-                              phoneEditable ? 'Add phone' : 'No contact linked',
-                              phoneEditable,
-                            )}
-                          </TableCell>
-                          <TableCell data-column="Address">{renderEditable('address', addressValue, 'Add address', true)}</TableCell>
-                          <ProjectIndexLifecycleCells
-                            project={p}
-                            stageBusy={isStatusBusyRow}
-                            onCorrectStage={setStageCorrectionTarget}
-                          />
                           <TableCell data-column="Actions">
-                            <div className={styles.rowActions}>
-                              {!p.isArchived && p.effectiveState !== 'CLOSED' ? <ProjectDeliveryAction projectId={p.id} host={host}
-                                completed={p.status === 'COMPLETED' || p.status === 'PAID'} disabled={isStatusBusyRow} /> : null}
-                              <ButtonLink
-                                variant="quiet"
-                                size="small"
-                                href={projectDetailHref(p.id)}
-                                prefetch={false}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                                  e.preventDefault();
-                                  prepareProjectOpen(p.id);
-                                  openProject(p.id);
-                                }}
-                                onFocus={() => prepareProjectOpen(p.id)}
-                                onMouseEnter={() => prepareProjectOpen(p.id)}
-                                onPointerDown={() => prepareProjectOpen(p.id)}
-                                onTouchStart={() => prepareProjectOpen(p.id)}
-                              >
-                                Open
-                              </ButtonLink>
-                              {isAdmin ? (<>
-                              <Button
-                                type="button"
-                                variant="quiet"
-                                size="small"
-                                disabled={isArchiveBusy}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleArchive(p);
-                                }}
-                                onKeyDown={(e) => e.stopPropagation()}
-                              >
-                                {isArchiveBusy
-                                  ? p.isArchived
-                                    ? 'Restoring…'
-                                    : 'Archiving…'
-                                  : p.isArchived
-                                    ? 'Unarchive'
-                                    : 'Archive'}
-                              </Button>
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteTarget(p);
-                                    setDeleteConfirmText('');
-                                    setDeleteReason('');
-                                  }}
-                                  onKeyDown={(e) => e.stopPropagation()}
-                                >
-                                  Delete
-                                </Button>
-                              </>) : null}
-                            </div>
+                            <ProjectIndexActions project={p} host={host} client={clientLabel} nameEditor={renderEditable('name', nameValue, 'Project name', true)}
+                              phone={renderEditable('phone', phoneValue, phoneEditable ? 'Add phone' : 'No contact linked', phoneEditable)}
+                              address={renderEditable('address', addressValue, 'Add address', true)}
+                              stageBusy={isStatusBusyRow} archiveBusy={isArchiveBusy} isAdmin={isAdmin}
+                              onOpen={() => { prepareProjectOpen(p.id); openProject(p.id); }}
+                              onCorrect={() => setStageCorrectionTarget(p)}
+                              onArchive={() => toggleArchive(p)}
+                              onDelete={() => { setDeleteTarget(p); setDeleteConfirmText(''); setDeleteReason(''); }} />
                           </TableCell>
                         </TableRow>
                       );

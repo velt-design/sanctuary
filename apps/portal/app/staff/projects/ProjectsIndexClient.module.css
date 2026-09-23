@@ -75,4 +75,10 @@
   gap: var(--ui-space-4);
 }
 
-.rowClickable > [data-column="Name"] { min-width: 200px; }
+.rowClickable > [data-column="Project"] { min-width: 200px; }
+
+.projectIdentity { display: grid; justify-items: start; gap: var(--ui-space-1); }
+.projectIdentity small { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); padding-left: var(--ui-space-1); }
+
+.projectIdentity { width: 220px; }
+.projectIdentity a { white-space: normal; text-align: left; overflow-wrap: anywhere; justify-content: flex-start; }

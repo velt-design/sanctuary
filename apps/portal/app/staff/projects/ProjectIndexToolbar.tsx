@@ -29,7 +29,7 @@ export default function ProjectIndexToolbar({ view, onChange, onReset, disabled 
         <Input disabled={disabled} id="projectSearch" value={view.query} placeholder="Name, client, phone or address…" onChange={(event) => onChange({ query: event.target.value })} />
       </label>
       <label htmlFor="projectSort"><span>Sort</span><Select disabled={disabled} id="projectSort" value={view.sort} onChange={(event) => onChange({ sort: event.target.value as ProjectIndexView['sort'] })}>
-        <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name_asc">Name A–Z</option><option value="name_desc">Name Z–A</option>
+        <option value="stage_oldest">Longest in stage</option><option value="next_action_asc">Next action due</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name_asc">Name A–Z</option><option value="name_desc">Name Z–A</option>
       </Select></label>
       <Button disabled={disabled} variant="secondary" onClick={() => setDraft({ ...view })}>Filters{applied.length ? ` (${applied.length})` : ''}</Button>
     </div>

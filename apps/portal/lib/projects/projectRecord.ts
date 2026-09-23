@@ -46,6 +46,7 @@ export function mapProjectRecord(row: Record<string, unknown>): Project {
     id: appIdFromUuid('proj', typeof row.id === 'string' ? row.id : ''),
     createdAt,
     updatedAt,
+    stageChangedAt: typeof row.stage_changed_at === 'string' ? row.stage_changed_at : null,
     ...(contactId ? { contactId } : null),
     projectName,
     name: projectName,

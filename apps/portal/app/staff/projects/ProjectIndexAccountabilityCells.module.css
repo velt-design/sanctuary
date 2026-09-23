@@ -2,7 +2,8 @@
   display: grid;
   gap: var(--ui-space-1);
   min-width: 220px;
-  max-width: 420px;
+  width: 240px;
+  max-width: 240px;
 }
 
 .action strong {
@@ -21,7 +22,8 @@
 @media (max-width: 767px) {
   .action {
     min-width: 220px;
-    max-width: none;
+    width: 220px;
+    max-width: 220px;
   }
 }
 

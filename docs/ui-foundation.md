@@ -68,7 +68,7 @@ migration or production release.
 
 ## Clarity programme working record
 
-Current stage: **Projects clarity pilot implemented in an authenticated staging preview; independent correction review passed; [review PR183](https://github.com/velt-design/sanctuary/pull/183) published**. Foundation PR180 merged to main as `e8d1158` on 23 September after all required checks passed. The Projects pilot is ready for owner review and is not live; its PR merge checks remain separate from the completed staging review. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
+Current stage: **Projects pilot column/date refinement in progress (owner approved 23 September); previous independent review covers the earlier version only; [review PR183](https://github.com/velt-design/sanctuary/pull/183) published**. Foundation PR180 merged to main as `e8d1158` on 23 September after all required checks passed. The Projects pilot is ready for owner review and is not live; its PR merge checks remain separate from the completed staging review. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
 Agent-managed preview access is required; never assign sign-in to Jordan. Deployment
 `dpl_DX2bATH5NFYc6PttTAPQC9T3RxfC` passed optimized build and typecheck.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
@@ -407,3 +407,35 @@ Jordan had to prompt continuation. No new approval was needed; the existing
 stage-continuation rule was missed. Work resumed with PR183 publication and
 Foundation merge checks; authentication recovery alone did not finish the task.
 The approved Foundation merge and separate pilot PR publication are now complete.
+
+
+### Approved column/date refinement (23 September 2026)
+
+Owner accepted six default columns: Project (client below), Stage (exception state
+badge), Time in stage (age and exact date), Next action (due), Owner, and actions.
+Keep contact details, editing, delivery, correction, archive/delete accessible in
+contextual controls. Keep Journey as a filter. Add whole-result Longest in stage
+and Next action due sorting; never sort only the visible page.
+
+Evidence before implementation: staging has 39 projects and only three stage
+change automation events. No stage timestamp column exists. AutomationRunner
+stage events are idempotent by project/type/stage/primary ID, so they cannot prove
+latest entry after repeat transitions; silent corrections also bypass that feed.
+Decision: nullable database-owned stage_changed_at captured on future insert/stage
+change, no historical backfill or updated_at substitution. Historical age Unknown.
+An additive v4 read function preserves v3 consumers. Next-action ranking reuses
+the authoritative full work queue with its existing completeness guards, passes
+only dated project IDs into the bounded index sort, and reuses the same selected
+action in displayed rows. Fail closed if source coverage exceeds existing limits.
+
+Scope: same PR183, no production migration/release, no business-data backfill.
+Staging schema rehearsal and disposable synthetic SQL checks support the preview.
+Acceptance pending: six-column journey, contact edit/cancel and all actions,
+unknown/valid/future dates, Auckland day boundaries, global sorting before paging,
+permissions, stable loading/filter/return, independent delivery review. Prior
+ratings are superseded for changed behavior. Owner need not sign in.
+
+Overlap check: PR184 touches Projects filter/contracts/tests and owns migration
+version 20260923030001. This pilot uses 20260923040001 to avoid a duplicate
+version; its v4 reader and UI changes stay isolated. Reconcile PR184 if it reaches
+main before this pilot is released; no changes to that branch were made.

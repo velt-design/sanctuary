@@ -760,3 +760,13 @@ Unapplied migration21 adds request window_started_at and private append-only xer
 
 Finance clarity: xero_finance_mapping_status(actor, invoice, tenant) is a service-role-only read boundary returning the current source-contact link or explicit null. It enforces the existing finance grant and configured tenant; revoked mappings are absent. Migration 20260915000003 adds no table writes or browser grants.
 Finance setup separation: `xero_finance_save_setup` accepts the explicitly validated customer/defaults operation through the server-only finance boundary. It serializes on the existing control row, rechecks actor/customer/tenant, records operation-scoped immutable evidence and rejects command-ID reuse across scopes. Customer operations only update the customer mapping; defaults operations only update accounting defaults after tax validation against the basis invoice. Migration 20260915000004 also returns current defaults from the status reader. Existing invoice/transfer/payment records are outside both commands.
+
+
+Projects stage timing (PR183; staging only): migration
+`20260923040001_project_index_stage_timing.sql` adds nullable
+`projects.stage_changed_at`, maintained by the insert/update trigger
+`projects_capture_stage_changed_at`. No existing timestamps are inferred/backfilled.
+The invoker-rights `staff_projects_index_v4` retains Portal access/row security,
+filter-before-pagination and v3 limits, adds stage timing and optional bounded
+ordered UUIDs for authoritative next-action sorting. Existing v3 is unchanged.
+No new role or production installation is authorised by this implementation.

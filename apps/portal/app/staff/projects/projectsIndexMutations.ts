@@ -165,9 +165,10 @@ function patchStage(
   host: string,
   fallbackProject: Project,
   status: ProjectStatus,
+  stageChangedAt: string | null = null,
 ) {
   const current = cachedProject(queryClient, host, fallbackProject.id) ?? fallbackProject;
-  upsertProjectListItem(queryClient, host, { ...current, status });
+  upsertProjectListItem(queryClient, host, { ...current, status, stageChangedAt });
 
   const stage = normalizePipelineStageKey(status) ?? 'new';
   patchProjectReadModels(queryClient, host, fallbackProject.id, (response) => ({
@@ -197,7 +198,7 @@ export async function correctProjectIndexStage(args: {
     void invalidateProjectReadCaches(queryClient, host, project.id, { includeProjectsList: false });
     return result;
   } catch (error) {
-    patchStage(queryClient, host, project, previousStatus);
+    patchStage(queryClient, host, project, previousStatus, project.stageChangedAt ?? null);
     throw error;
   }
 }

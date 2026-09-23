@@ -21,7 +21,7 @@ import type {
 } from '@/lib/projects/workItems/types';
 
 const PROJECTS_INDEX_ARCHIVE_FILTERS = ['active', 'archived', 'all'] as const;
-const PROJECTS_INDEX_SORTS = ['newest', 'oldest', 'name_asc', 'name_desc'] as const;
+const PROJECTS_INDEX_SORTS = ['newest', 'oldest', 'name_asc', 'name_desc', 'stage_oldest', 'next_action_asc'] as const;
 const PROJECTS_INDEX_PAGE_SIZES = [25, 50, 100] as const;
 
 export type ProjectsIndexArchiveFilter = (typeof PROJECTS_INDEX_ARCHIVE_FILTERS)[number];
