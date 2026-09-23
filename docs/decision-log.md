@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-09-23 — Verify the RPC session, not only its database role
+
+The Meta pilot passed a rollback-only service-role SQL rehearsal but failed
+through PostgREST: `authenticator` preloads `safeupdate`, while the CLI session
+did not. Report replacement and deletion lacked an explicit row condition.
+Use the saved-report singleton key in those statements and preserve the guard.
+For privileged RPC changes, inspect relevant login-session settings and exercise
+the real HTTP path; `SET ROLE` alone does not reproduce them. Owners:
+`testing-and-qa.md` and `architecture.md`.
+
 ## 2026-09-23 — Match opportunity counts and their project lists
 
 Closed enquiries were still included in the dashboard journey totals. Enquiry

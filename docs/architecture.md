@@ -36,6 +36,10 @@ HTTP cannot be recalled. The endpoint signs no arbitrary URLs and supports no
 advertising writes. Page-only requests do not save a report body; retained reports
 require explicit signed intent. This new Meta capability uses a narrow service-role
 RPC; the existing low-privilege Praxis reporting connector described below is unchanged.
+The saved-report table is a single-row store. Its deletion, replacement and
+authority invalidation must explicitly target `singleton = true`; PostgREST
+loads the database safe-update guard and rejects unqualified deletes. The
+forward correction preserves that guard, source authority and audit history.
 Failures emit only fixed action/stage labels and an allowlisted database error
 code for diagnosis. Raw exceptions, provider responses, report bodies, identities
 and credentials are excluded from these logs; public errors remain generic.

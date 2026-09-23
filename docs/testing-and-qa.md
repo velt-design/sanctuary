@@ -16,7 +16,20 @@ and both deletion/completion orderings in isolated PostgreSQL 17; it explicitly
 uses synthetic prerequisites and a cron persistence double. The exact migration
 also passed rollback-only rehearsals on the current staging and production schemas
 on 23 September, with real pg_cron, denied direct table/browser access, no enabled
-control and unchanged business counts. No production installation is implied.
+control and unchanged business counts. The pilot migration was subsequently
+installed under separate authorization. Initial live validation found that a
+CLI rehearsal using `SET ROLE service_role` had not loaded PostgREST
+`authenticator` session settings: its `safeupdate` guard rejected unqualified
+saved-report deletes. Rehearse the forward correction against the actual schema,
+then require real HTTP completion/deletion evidence with that guard unchanged.
+A role-only SQL rehearsal cannot prove the PostgREST session path. Set
+`SANCTUARY_META_SAFEUPDATE=true` before running the native script to use the
+existing Supabase PostgreSQL 17 image and load the real guard in every connection.
+That mode reproduces the original failure, then verifies correction rollback,
+completion/deletion concurrency, stale reads and control invalidation. The
+forward migration changes only four singleton-scoped deletes and preserves the
+function catalog/permissions. Its actual-production-schema rollback rehearsal
+passed; live HTTP proof remains a separate gate.
 `SANCTUARY_META_SYNTHETIC_WIRE_PATH` optionally writes the source HTTP test's
 synthetic response for the immediate paired consumer-wire test. Never use real
 provider records. No live Meta, production grants or owner journey is proven by
