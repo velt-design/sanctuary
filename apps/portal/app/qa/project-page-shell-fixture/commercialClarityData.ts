@@ -9,8 +9,8 @@ const estimate: EstimateMeta = {
   jobPackGeneratedAt: null, jobPackQuoteVersionId: null,
 };
 export const estimates: EstimateMeta[] = [
-  { ...estimate, id: 'est_clarity_3', createdAt: '2026-08-11T03:00:00Z', isActiveDraft: true, hasSentQuote: false },
-  { ...estimate, id: 'est_clarity_2', createdAt: '2026-08-11T02:00:00Z' },
+  { ...estimate, id: 'est_clarity_3', createdAt: '2026-08-11T03:00:00Z', isActiveDraft: true, hasSentQuote: false, internalName: 'Screen option', versionLabel: 'V3' },
+  { ...estimate, id: 'est_clarity_2', createdAt: '2026-08-11T02:00:00Z', internalName: 'Louvre roof - agreed design', versionLabel: 'V2' },
   estimate,
 ];
 const quote: QuoteVersion = {
@@ -21,8 +21,8 @@ const quote: QuoteVersion = {
   totals: { totalIncGstCents: 2665687, totalExGstCents: 2317989, gstCents: 347698 }, pricingSource: 'calculator_live',
 };
 export const quotes: QuoteVersion[] = [
-  { ...quote, id: 'qv_clarity_3', versionNumber: 3, status: 'ACCEPTED', sourceEstimateVersionId: 'est_clarity_2', acceptedAt: '2026-08-15T01:00:00Z' },
-  { ...quote, id: 'qv_clarity_2', versionNumber: 2, status: 'DRAFT', sentAt: null, expiresAt: null },
+  { ...quote, id: 'qv_clarity_3', versionNumber: 3, status: 'ACCEPTED', customerName: 'Sample customer', sourceEstimateVersionLabel: 'V2', sourceEstimateVersionId: 'est_clarity_2', acceptedAt: '2026-08-15T01:00:00Z' },
+  { ...quote, id: 'qv_clarity_2', versionNumber: 2, internalName: 'Earlier design', status: 'DRAFT', sentAt: null, expiresAt: null },
   quote,
 ];
 export const invoice: DepositInvoiceSummary = {

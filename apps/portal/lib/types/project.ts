@@ -111,6 +111,7 @@ export type Project = {
   id: string;
   createdAt: string;
   updatedAt?: string;
+  stageChangedAt?: string | null; // DB-recorded current-stage entry; never inferred.
   version?: number;
 
   // v1.5+ canonical fields

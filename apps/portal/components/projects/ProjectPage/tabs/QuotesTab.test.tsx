@@ -305,6 +305,16 @@ describe('QuotesTab draft ownership UI', () => {
     rendered.unmount();
   });
 
+  it('opens a quote in Quotes when the previous commercial tab URL has not settled', () => {
+    searchParamsValue = 'tab=invoices&campaign=winter';
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId={null} />);
+    const row = rendered.container.querySelector<HTMLTableRowElement>('tr[aria-label="Open Q-1001, Q-1001 version 1"]');
+    expect(row).not.toBeNull();
+    act(() => row?.click());
+    expect(replace).toHaveBeenLastCalledWith('?tab=quotes&campaign=winter&quoteId=qv_1');
+    rendered.unmount();
+  });
+
   it('returns to the quote list on the first Back to quotes click while the URL commit is pending', () => {
     const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
     const back = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
@@ -315,7 +325,7 @@ describe('QuotesTab draft ownership UI', () => {
     expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-quotes-view="detail"]')).toBeNull();
     expect(replace).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith('?');
+    expect(replace).toHaveBeenCalledWith('?tab=quotes');
     rendered.unmount();
   });
 

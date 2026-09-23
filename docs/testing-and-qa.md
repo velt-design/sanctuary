@@ -1499,3 +1499,25 @@ checks must click graphical segments as well as table alternatives, reconcile
 records, and return from a project with measure/rate/filter choices preserved.
 
 Foundation clarity examples: `npx vitest run apps/portal/app/staff/ui-foundation apps/portal/app/qa/ui-foundation-fixture` covers matching source/date records, draft cancellation, detail return, missing-data recovery and saved preferences across remount. Browser review starts at Page patterns, then confirms Components & tokens remains accessible. Check all four example data states at desktop and phone widths without control movement, keyboard chart actions, drawer focus/scroll restoration and saved restoration after reload. The data-free fixture uses the existing explicit QA flag; it proves the instructional example, not live business-data completeness.
+
+
+Projects column/date pilot: `npx vitest run test/project-index-stage-timing.test.ts
+apps/portal/app/staff/projects apps/portal/lib/projects/serverProjectsIndex.test.ts`
+covers actual additive SQL on disposable PGlite prerequisites, historical unknowns,
+prospective capture, timestamp override denial, unrelated edits, stage re-entry,
+whole-result sorting before pagination, access/completeness denial, Auckland DST,
+optimistic rollback, contact/action disclosure and existing list journeys. Minimal
+SQL prerequisites do not establish full-schema readiness; a separate staging
+rollback rehearsal and authenticated hosted inspection remain required. Browser
+project discovery uses `a[data-project-open]` and the level-one Projects heading.
+
+## Project clarity preview checks (23 September 2026)
+
+`npx vitest run apps/portal/components/projects/ProjectPage` covers the project
+composition, quote/invoice state, calculator revision navigation and new overflow
+Duplicate journey. The QA-only `/qa/project-page-shell-fixture?commercial=1&tab=quotes`
+uses actual commercial components with synthetic records. Its boundary intercepts
+API requests and returns an explicit unavailable result; staff document links stay
+in the fixture. This is presentation evidence, not proof of saving, sending or
+financial writes. QA routes require ENABLE_PORTAL_QA_FIXTURES=1; normal staff routes
+retain authentication. Use the separate connected staging journey for live reads.

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'r
 import type { Project } from '@/lib/types/project';
 import { projectStatusLabel } from '@/lib/types/project';
 import styles from './ProjectsIndexClient.module.css';
+import ProjectIndexToolbar from './ProjectIndexToolbar';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
@@ -26,9 +27,6 @@ import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpen
 import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
-  PROJECT_JOURNEY_FILTER_OPTIONS,
-  PROJECT_STAGE_FILTER_OPTIONS,
-  PROJECT_STATE_FILTER_OPTIONS,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
 import { useProjectIndexView } from './useProjectIndexView';
@@ -38,18 +36,11 @@ import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
 import ProjectStageCorrectionDialog from '@/components/projects/ProjectStageCorrectionDialog';
-import ProjectDeliveryAction from '@/components/projects/ProjectDeliveryAction';
+import ProjectIndexActions from './ProjectIndexActions';
+import { projectLocation } from '@/lib/projects/projectLocation';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
-import type {
-  ProjectsIndexJourneyFilter,
-  ProjectsIndexOwnerFilter,
-  ProjectsIndexPageSize,
-  ProjectsIndexSort,
-  ProjectsIndexStateFilter,
-} from '@/lib/projects/projectsIndexContract';
-import { PROJECTS_INDEX_OWNER_OPTIONS } from '@/lib/projects/projectsIndexContract';
 import {
   AlertBanner,
   Button,
@@ -61,7 +52,6 @@ import {
   LoadingSkeleton,
   PageLayout,
   Pagination,
-  SearchFilterBar,
   Table,
   TableBody,
   TableCell,
@@ -95,13 +85,7 @@ export default function ProjectsIndexClient({
     initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()),
   );
   const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, archiveFilter, sort, page, pageSize } = view;
-  const setQuery = (query: string) => updateView({ query });
-  const setJourneyFilter = (journeyFilter: ProjectsIndexJourneyFilter) => updateView({ journeyFilter });
-  const setStageFilter = (stageFilter: NonNullable<Project['status']> | 'all') => updateView({ stageFilter });
-  const setOwnerFilter = (ownerFilter: ProjectsIndexOwnerFilter) => updateView({ ownerFilter });
-  const setSort = (sort: ProjectsIndexSort) => updateView({ sort });
   const setPage = (page: number) => updateView({ page }, false);
-  const setPageSize = (pageSize: ProjectsIndexPageSize) => updateView({ pageSize });
   const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -224,13 +208,15 @@ export default function ProjectsIndexClient({
 
   const handleEditKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
-      event.stopPropagation();
+      if (event.key === 'Enter' || event.key === 'Escape' || event.key === ' ') event.stopPropagation();
       if (event.key === 'Enter') {
         event.preventDefault();
         void commitEdit();
       } else if (event.key === 'Escape') {
         event.preventDefault();
+        const fieldContainer = event.currentTarget.parentElement;
         cancelEdit();
+        window.requestAnimationFrame(() => fieldContainer?.querySelector<HTMLButtonElement>('button')?.focus());
       }
     },
     [cancelEdit, commitEdit],
@@ -263,8 +249,7 @@ export default function ProjectsIndexClient({
       <StaffPageHeader
         title="Projects"
         variant="index"
-        description="Search, update and continue work across the project pipeline."
-        count={`${projectsIndex.data?.projects.totalCount ?? projects.length} projects`}
+        count={projectsIndex.data ? `${projectsIndex.data.projects.totalCount} projects` : projectsIndex.state === 'unavailable' || projectsIndex.state === 'refresh-failed' ? 'Projects unavailable' : 'Loading projects'}
         primaryAction={{ label: 'New project', href: '/staff/projects/new' }}
         right={
           <HeaderActions>
@@ -282,30 +267,10 @@ export default function ProjectsIndexClient({
         truncated={projectsIndex.data?.projects.truncated ?? false}
       />
       <div className={styles.stack}>
-        <Card title="Filters" padding="compact" aria-label="Filters">
-            <SearchFilterBar
-              query={query}
-              onQueryChange={setQuery}
-              searchId="projectSearch"
-              queryPlaceholder="Name, client, phone or address…"
-              collapseFiltersOnNarrow
-              filters={[
-                { id: 'projectJourneyFilter', label: 'Journey', value: journeyFilter, onChange: (value) => setJourneyFilter(value as ProjectsIndexJourneyFilter), options: [...PROJECT_JOURNEY_FILTER_OPTIONS] },
-                { id: 'projectStageFilter', label: 'Stage', value: stageFilter, onChange: (value) => setStageFilter(value as NonNullable<Project['status']> | 'all'), options: [...PROJECT_STAGE_FILTER_OPTIONS] },
-                { id: 'projectStateFilter', label: 'State', value: stateFilter, onChange: (value) => {
-                  const nextState = value as ProjectsIndexStateFilter;
-                  updateView({ stateFilter: nextState, archiveFilter: nextState === 'ARCHIVED' ? 'archived' : 'active' });
-                }, options: [...PROJECT_STATE_FILTER_OPTIONS] },
-                { id: 'projectOwnerFilter', label: 'Owner', value: ownerFilter, onChange: (value) => setOwnerFilter(value as ProjectsIndexOwnerFilter), options: [...PROJECTS_INDEX_OWNER_OPTIONS] },
-                { id: 'projectSort', label: 'Sort', value: sort, onChange: (value) => setSort(value as ProjectsIndexSort), options: [{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name_asc', label: 'Name A–Z' }, { value: 'name_desc', label: 'Name Z–A' }] },
-                { id: 'projectPageSize', label: 'Rows', value: String(pageSize), onChange: (value) => setPageSize(Number(value) as ProjectsIndexPageSize), options: [{ value: '50', label: '50 rows' }, { value: '25', label: '25 rows' }, { value: '100', label: '100 rows' }] },
-              ]}
-              onClearAll={resetView}
-            />
-        </Card>
+        <ProjectIndexToolbar view={view} onChange={updateView} onReset={resetView} />
 
         <Card
-          title="All Projects"
+          title="Projects"
           padding="none"
           aria-label="Projects list"
           action={(
@@ -328,15 +293,11 @@ export default function ProjectsIndexClient({
                 <Table aria-label="Projects">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Address</TableHead>
-                      <TableHead>Journey</TableHead>
+                      <TableHead>Project</TableHead>
                       <TableHead>Stage</TableHead>
-                      <TableHead>State</TableHead>
+                      <TableHead>Time in stage</TableHead>
+                      <TableHead>Next action</TableHead>
                       <TableHead>Owner</TableHead>
-                      <TableHead>Next attention</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -392,7 +353,7 @@ export default function ProjectsIndexClient({
                               e.stopPropagation();
                               beginEdit(p, field, currentValue);
                             }}
-                            onKeyDown={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
                           >
                             {currentValue || <span className={styles.muted}>{placeholder}</span>}
                             {isSavingCell ? <span className={styles.syncStatus}>Saving…</span> : null}
@@ -426,82 +387,27 @@ export default function ProjectsIndexClient({
                             }
                           }}
                         >
-                          <TableCell data-column="Name">{renderEditable('name', nameValue, 'Project name', true)}</TableCell>
-                          <TableCell data-column="Client" className={styles.muted}>{clientLabel}</TableCell>
-                          <TableCell data-column="Phone">
-                            {renderEditable(
-                              'phone',
-                              phoneValue,
-                              phoneEditable ? 'Add phone' : 'No contact linked',
-                              phoneEditable,
-                            )}
-                          </TableCell>
-                          <TableCell data-column="Address">{renderEditable('address', addressValue, 'Add address', true)}</TableCell>
-                          <ProjectIndexLifecycleCells
-                            project={p}
-                            stageBusy={isStatusBusyRow}
-                            onCorrectStage={setStageCorrectionTarget}
-                          />
+                          <TableCell data-column="Project"><div className={styles.projectIdentity}>
+                            <ButtonLink variant="quiet" size="small" href={projectDetailHref(p.id)} prefetch={false} data-project-open="true"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                                event.preventDefault(); prepareProjectOpen(p.id); openProject(p.id);
+                              }}>{nameValue || 'Unnamed project'}</ButtonLink>
+                            <small>{clientLabel}</small>
+                            <small className={styles.projectLocation}>{projectLocation(p)}</small>
+                          </div></TableCell>
+                          <ProjectIndexLifecycleCells project={p} />
                           <ProjectIndexAccountabilityCells project={p} />
                           <TableCell data-column="Actions">
-                            <div className={styles.rowActions}>
-                              {!p.isArchived && p.effectiveState !== 'CLOSED' ? <ProjectDeliveryAction projectId={p.id} host={host}
-                                completed={p.status === 'COMPLETED' || p.status === 'PAID'} disabled={isStatusBusyRow} /> : null}
-                              <ButtonLink
-                                variant="quiet"
-                                size="small"
-                                href={projectDetailHref(p.id)}
-                                prefetch={false}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                                  e.preventDefault();
-                                  prepareProjectOpen(p.id);
-                                  openProject(p.id);
-                                }}
-                                onFocus={() => prepareProjectOpen(p.id)}
-                                onMouseEnter={() => prepareProjectOpen(p.id)}
-                                onPointerDown={() => prepareProjectOpen(p.id)}
-                                onTouchStart={() => prepareProjectOpen(p.id)}
-                              >
-                                Open
-                              </ButtonLink>
-                              {isAdmin ? (<>
-                              <Button
-                                type="button"
-                                variant="quiet"
-                                size="small"
-                                disabled={isArchiveBusy}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleArchive(p);
-                                }}
-                                onKeyDown={(e) => e.stopPropagation()}
-                              >
-                                {isArchiveBusy
-                                  ? p.isArchived
-                                    ? 'Restoring…'
-                                    : 'Archiving…'
-                                  : p.isArchived
-                                    ? 'Unarchive'
-                                    : 'Archive'}
-                              </Button>
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteTarget(p);
-                                    setDeleteConfirmText('');
-                                    setDeleteReason('');
-                                  }}
-                                  onKeyDown={(e) => e.stopPropagation()}
-                                >
-                                  Delete
-                                </Button>
-                              </>) : null}
-                            </div>
+                            <ProjectIndexActions project={p} host={host} client={clientLabel} nameEditor={renderEditable('name', nameValue, 'Project name', true)}
+                              phone={renderEditable('phone', phoneValue, phoneEditable ? 'Add phone' : 'No contact linked', phoneEditable)}
+                              address={renderEditable('address', addressValue, 'Add address', true)}
+                              stageBusy={isStatusBusyRow} archiveBusy={isArchiveBusy} isAdmin={isAdmin}
+                              onOpen={() => { prepareProjectOpen(p.id); openProject(p.id); }}
+                              onCorrect={() => setStageCorrectionTarget(p)}
+                              onArchive={() => toggleArchive(p)}
+                              onDelete={() => { setDeleteTarget(p); setDeleteConfirmText(''); setDeleteReason(''); }} />
                           </TableCell>
                         </TableRow>
                       );

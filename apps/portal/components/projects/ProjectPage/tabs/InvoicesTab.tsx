@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import styles from './InvoicesTab.module.css';
+import InvoiceScheduleTotals from './InvoiceScheduleTotals';
 import {
   Badge,
   AlertBanner,
@@ -383,7 +384,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       <div className={styles.header}>
         <h3 className={styles.title}>Invoices</h3>
         <p className={styles.subtitle}>
-          Invoices are created from the accepted quote payment schedule. Each invoice is either open, paid in full, or void.
+          NZD inc GST · payment schedule, money received and invoice history.
         </p>
       </div>
 
@@ -415,20 +416,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           headingLevel={4}
           aria-label="Invoice schedule"
         >
-          <MetricGrid
-            ariaLabel="Accepted project quote payment totals"
-            columns={4}
-            items={[
-              { label: 'Job total', value: formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quotes and issued standalone work' },
-              ...((schedule.standaloneTotalIncGstCents ?? 0) > 0 ? [
-                { label: 'Accepted quote value', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
-                { label: 'Standalone invoice value', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Issued, non-void standalone work' },
-              ] : []),
-              { label: 'Recorded payments', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Net project payment ledger' },
-              { label: 'Open invoice balance', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid; excludes work still to invoice' },
-              { label: 'Still to invoice', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: 'Agreed work not yet covered by payments or open invoices' },
-            ]}
-          />
+          <InvoiceScheduleTotals schedule={schedule} />
           {schedule.overCommittedIncGstCents > 0 ? (
             <AlertBanner tone="warning" title="Commercial total needs reconciliation">
               Payments plus open invoices exceed the current billable project value by {formatMoneyFromCents(schedule.overCommittedIncGstCents)}. Review historical invoices and payment allocations before creating another invoice.
@@ -486,7 +474,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       {isAdmin && schedule?.paymentEntries ? (
         <Card title="Payments & credits" eyebrow={`${schedule.paymentEntries.length} ledger ${schedule.paymentEntries.length === 1 ? 'entry' : 'entries'}`} padding="none" headingLevel={4} aria-label="Payments and credits">
           <div className={styles.paymentToolbar}>
-            <p>Actual money received is recorded independently from whole invoices. Allocations apply credit to the current schedule.</p>
+            <p>Record money received, then allocate it to the payment schedule.</p>
             <div className={styles.actions}>
               <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('PAYMENT')}>Record payment</Button>
               <Button type="button" size="small" variant="secondary" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('ADJUSTMENT')}>Add adjustment</Button>
@@ -532,7 +520,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           <TableRow>
             <TableHead>Invoice</TableHead>
             <TableHead>Quote</TableHead>
-            <TableHead>Amount</TableHead>
+            <TableHead>Amount inc GST</TableHead>
             <TableHead>Due</TableHead>
             <TableHead>Delivery</TableHead>
             <TableHead>Actions</TableHead>
@@ -582,7 +570,9 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                   <div className={styles.meta}>
                     <span>{invoice.sentAt ? `Sent ${formatDateTime(invoice.sentAt)}` : 'Not delivered yet'}</span>
                     {invoice.lastDeliveryAttemptAt ? (
-                      <span className={styles.muted}>Last attempt {formatDateTime(invoice.lastDeliveryAttemptAt)}</span>
+                      invoice.lastDeliveryError || invoice.finalFailure || invoice.lastDeliveryStatus === 'FAILED'
+                        ? <span className={styles.muted}>Last attempt {formatDateTime(invoice.lastDeliveryAttemptAt)}</span>
+                        : <details className={styles.deliveryDetails}><summary>Delivery details</summary><span className={styles.muted}>Last attempt {formatDateTime(invoice.lastDeliveryAttemptAt)}</span></details>
                     ) : null}
                     {invoice.lastDeliveryStatus === 'FAILED' && !invoice.finalFailure ? (
                       <span className={styles.muted}>Retry available - the prepared message will be reused safely.</span>

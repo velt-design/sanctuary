@@ -1,0 +1,6 @@
+.trigger { display: inline-flex; align-items: center; justify-content: center; width: var(--ui-control-md); min-height: var(--ui-control-md); border: var(--ui-border-width) solid var(--ui-border); border-radius: var(--ui-radius-control); background: var(--ui-surface-elevated); color: var(--ui-text-strong); cursor: pointer; }
+.trigger:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }
+.destructive { color: var(--ui-destructive); }
+.details { display: grid; gap: var(--ui-space-4); }
+.details h3, .details h4, .details p { margin: 0; }
+.details h4 { margin-bottom: var(--ui-space-1); color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }

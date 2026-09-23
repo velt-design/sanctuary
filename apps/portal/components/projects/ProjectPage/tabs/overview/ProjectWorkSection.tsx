@@ -38,6 +38,7 @@ import {
   isProhibitedProjectWorkPrimary,
 } from "./projectWorkVisibilityPolicy";
 import styles from "./ProjectWorkSection.module.css";
+import ProjectActionContext from './ProjectActionContext';
 
 type SharedProps = {
   projectId: string;
@@ -306,9 +307,6 @@ export default function ProjectWorkSection({
             }
             footer={
               <div className={styles.commandArea}>
-                <span className={styles.commandLabel}>
-                  {primary.href ? "Open the tools for this step" : "Update assigned work"}
-                </span>
                 <div className={styles.inlineActions}>
                   {active && controller.primary.kind === "needsTriage" ? (
                     <Button disabled={controller.stale} aria-expanded={controller.controlsOpen}
@@ -356,11 +354,6 @@ export default function ProjectWorkSection({
               </div>
             }
           >
-            {primary.reason ? (
-              <p className={styles.reason} data-primary-work-reason="true">
-                {primary.reason}
-              </p>
-            ) : null}
             {primary.details.length ? (
               <KeyValueGrid
                 className={styles.primaryFacts}
@@ -374,17 +367,9 @@ export default function ProjectWorkSection({
                 items={primary.details}
               />
             ) : null}
-            {primary.expectedResult ? (
-              <KeyValueGrid
-                columns={1}
-                items={[
-                  {
-                    label: "Expected result",
-                    value: primary.expectedResult,
-                  },
-                ]}
-              />
-            ) : null}
+            <ProjectActionContext reason={primary.reason} expectedResult={primary.expectedResult}
+              essential={controller.primary.kind === 'recovery' || controller.primary.kind === 'stateReview'
+                || controller.primary.kind === 'needsTriage' || primary.tone === 'critical'} />
             {primary.primaryItem?.priority === "CRITICAL" &&
             primary.primaryItem.priorityReason ? (
               <AlertBanner tone="blocking" title="Critical work">

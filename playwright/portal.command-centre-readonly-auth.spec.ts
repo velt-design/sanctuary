@@ -47,7 +47,7 @@ test("authenticated Projects and Dashboard expose portfolio journey and state wi
           );
         });
 
-        await openPortalPage(page, "/staff/projects", { heading: "Projects" });
+        await openPortalPage(page, "/staff/projects", { heading: "Projects", headingLevel: 1 });
         const projectsResponse = await projectsResponsePromise;
         expectPrivateNoStore(projectsResponse);
         await expect(
@@ -132,7 +132,7 @@ test("authenticated Project Overview is one read-only command-centre surface", a
       testInfo,
       { phase: "command-centre-readonly-auth" },
       async () => {
-        await openPortalPage(page, "/staff/projects", { heading: "Projects" });
+        await openPortalPage(page, "/staff/projects", { heading: "Projects", headingLevel: 1 });
         await expectVisiblePortalProject(page);
 
         const projectsTable = page.getByRole("table", { name: "Projects" });

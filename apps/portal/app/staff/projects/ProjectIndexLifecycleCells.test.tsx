@@ -1,66 +1,33 @@
-import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Table, TableBody, TableRow } from '@/components/ui/foundation';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 
-const project = {
-  id: 'proj_1',
-  createdAt: '2026-07-31T00:00:00.000Z',
-  projectName: 'Deck Build',
-  status: 'SENT',
-  operationalState: 'WAITING',
-  effectiveState: 'WAITING',
-} as const;
-
-describe('ProjectIndexLifecycleCells', () => {
-  it('renders canonical journey, detailed stage, and server-owned state', () => {
-    const rendered = renderIntoDocument(
-      <Table>
-        <TableBody>
-          <TableRow>
-            <ProjectIndexLifecycleCells
-              project={project}
-              stageBusy={false}
-              onCorrectStage={() => {}}
-            />
-          </TableRow>
-        </TableBody>
-      </Table>,
-    );
-
-    expect(rendered.container.querySelector('[data-column="Journey"]')?.textContent).toBe('Proposal');
-    expect(rendered.container.querySelector('[data-column="State"]')?.textContent).toBe('Waiting');
-    expect(rendered.container.textContent).toContain('Sent');
-    expect(rendered.container.querySelector('button')?.textContent).toBe('Correct');
+const project = { id: 'proj_1', createdAt: '2026-07-31T00:00:00Z', updatedAt: '2026-09-23T00:00:00Z', status: 'SENT', effectiveState: 'WAITING' } as const;
+describe('Project lifecycle summary', () => {
+  it('shows only Closed and does not present the former stage age as time closed', () => {
+    const rendered = renderIntoDocument(<Table><TableBody><TableRow><ProjectIndexLifecycleCells project={{ ...project, effectiveState: 'CLOSED', stageChangedAt: '2026-09-20T13:00:00Z' }} /></TableRow></TableBody></Table>);
+    expect(rendered.container.querySelector('[data-column="Stage"]')?.textContent).toBe('Closed');
+    expect(rendered.container.querySelector('[data-column="Time in stage"]')?.textContent).toBe('—');
     rendered.unmount();
   });
-
-  it('does not invent missing state and preserves the stage correction callback', () => {
-    const onCorrectStage = vi.fn();
-    const rendered = renderIntoDocument(
-      <Table>
-        <TableBody>
-          <TableRow>
-            <ProjectIndexLifecycleCells
-              project={{ ...project, operationalState: undefined, effectiveState: undefined }}
-              stageBusy={false}
-              onCorrectStage={onCorrectStage}
-            />
-          </TableRow>
-        </TableBody>
-      </Table>,
-    );
-    const button = rendered.container.querySelector('button') as HTMLButtonElement;
-
-    act(() => {
-      button.click();
-    });
-
-    expect(rendered.container.querySelector('[data-column="State"]')?.textContent).toBe('Unavailable');
-    expect(onCorrectStage).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'proj_1' }),
-    );
+  it('combines stage and exception state without inferring an age from other dates', () => {
+    const rendered = renderIntoDocument(<Table><TableBody><TableRow><ProjectIndexLifecycleCells project={project} /></TableRow></TableBody></Table>);
+    expect(rendered.container.querySelector('[data-column="Stage"]')?.textContent).toContain('Waiting');
+    expect(rendered.container.querySelector('[data-column="Time in stage"]')?.textContent).toContain('Unknown');
+    expect(rendered.container.querySelector('[data-column="Journey"]')).toBeNull();
+    rendered.unmount();
+  });
+  it('renders age and the Auckland recorded date when evidence is known', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-23T01:00:00Z'));
+    const rendered = renderIntoDocument(<Table><TableBody><TableRow><ProjectIndexLifecycleCells project={{ ...project, stageChangedAt: '2026-09-20T13:00:00Z' }} /></TableRow></TableBody></Table>);
+    expect(rendered.container.querySelector('[data-column="Time in stage"]')?.textContent).toContain('2 days');
+    expect(rendered.container.querySelector('time')?.textContent).toBe('21 Sept 2026');
+    rendered.unmount(); vi.useRealTimers();
+  });
+  it('keeps missing state explicit', () => {
+    const rendered = renderIntoDocument(<Table><TableBody><TableRow><ProjectIndexLifecycleCells project={{ ...project, effectiveState: undefined }} /></TableRow></TableBody></Table>);
+    expect(rendered.container.textContent).toContain('State unavailable');
     rendered.unmount();
   });
 });

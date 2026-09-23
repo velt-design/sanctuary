@@ -165,7 +165,7 @@ test('Standalone quote and print URLs redirect to the canonical Commercial owner
   const projects = page.getByRole('region', { name: 'Projects list' });
   await expect(projects).toBeVisible({ timeout: 60_000 });
   await expect(projects.getByRole('status')).toHaveCount(0, { timeout: 60_000 });
-  const projectHref = await projects.getByRole('link', { name: 'Open' }).first().getAttribute('href');
+  const projectHref = await projects.locator('a[data-project-open]').first().getAttribute('href');
   expect(projectHref, 'The authenticated browser account needs at least one active project.').toBeTruthy();
   const projectId = new URL(projectHref as string, page.url()).pathname.split('/').filter(Boolean).at(-1);
   expect(projectId).toBeTruthy();

@@ -66,7 +66,7 @@ async function discoverCommercialRoute(page: Page) {
   const projects = page.getByRole('region', { name: 'Projects list' });
   await expect(projects).toBeVisible({ timeout: 60_000 });
   await expect(projects.getByRole('status')).toHaveCount(0, { timeout: 60_000 });
-  const hrefs = await projects.getByRole('link', { name: 'Open' }).evaluateAll((links) =>
+  const hrefs = await projects.locator('a[data-project-open]').evaluateAll((links) =>
     links.slice(0, 8).map((link) => (link as HTMLAnchorElement).href),
   );
   expect(hrefs.length, 'The authenticated browser account needs at least one active project.').toBeGreaterThan(0);

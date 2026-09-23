@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-const migration = readFileSync('supabase/migrations/20260923030001_dashboard_open_pipeline_counts.sql', 'utf8');
+// Execute the committed LF migration payload on Windows checkouts too. The old
+// stored function is deliberately CRLF below to retain the regression scenario.
+const migration = readFileSync('supabase/migrations/20260923030001_dashboard_open_pipeline_counts.sql', 'utf8').replace(/\r\n/g, '\n');
 const indexMigration = readFileSync('supabase/migrations/20260731000003_project_pipeline_accountability_reads.sql', 'utf8');
 const signature = 'public.staff_projects_index_v3(text,text,text,text,date,integer,integer,text,text,text[],text)';
 const db = new PGlite();

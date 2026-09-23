@@ -8,6 +8,7 @@ import {
   type ProjectJourneyPhase,
 } from '@/lib/projects/projectJourney';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
+import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { mapProjectRecord } from './projectRecord';
 import { getAuthoritativeProjectWorkQueue } from './workItems/teamQueue';
 import type {
@@ -37,7 +38,7 @@ function isMissingFunction(error: unknown): boolean {
   const message = typeof candidate.message === 'string' ? candidate.message : '';
   return code === 'PGRST202'
     || code === '42883'
-    || /staff_projects_index_v[123]|schema cache|function .* does not exist/i.test(message);
+    || /staff_projects_index_v[1234]|schema cache|function .* does not exist/i.test(message);
 }
 
 function readPayload(value: unknown): RpcPayload {
@@ -83,7 +84,17 @@ export async function loadProjectsIndexData(
   supabase?: SupabaseClient,
 ): Promise<Pick<ProjectsIndexResponse, 'projects' | 'contacts'>> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  const result = await client.rpc('staff_projects_index_v3', {
+  // Resolve the same selected action shown in each row before global pagination.
+  // The existing queue reader rejects incomplete/truncated source inventories.
+  const sortedQueue = params.sort === 'next_action_asc'
+    ? await getAuthoritativeProjectWorkQueue(client)
+    : null;
+  const dueProjectIds = sortedQueue
+    ? sortedQueue.entries.filter((entry) => entry.dueAt && Number.isFinite(Date.parse(entry.dueAt)))
+        .sort((a, b) => Date.parse(a.dueAt!) - Date.parse(b.dueAt!) || a.projectId.localeCompare(b.projectId))
+        .map((entry) => uuidFromAppId(entry.projectId, 'proj'))
+    : null;
+  const result = await client.rpc('staff_projects_index_v4', {
     p_archive: params.archive,
     p_search: params.search,
     p_status: params.status,
@@ -95,6 +106,7 @@ export async function loadProjectsIndexData(
     p_state: params.state,
     p_stages: stagesForProjectsIndex(params),
     p_owner: params.owner,
+    p_due_project_ids: dueProjectIds,
   });
   if (result.error) {
     if (isMissingFunction(result.error)) throw new ProjectsIndexSchemaError();
@@ -104,12 +116,12 @@ export async function loadProjectsIndexData(
   const payload = readPayload(result.data);
   const rawRows = (Array.isArray(payload.rows) ? payload.rows : []) as Record<string, unknown>[];
   const mappedProjects = rawRows.map(mapProjectRecord);
-  const queue = mappedProjects.length
+  const queue = sortedQueue ?? (mappedProjects.length
     ? await getAuthoritativeProjectWorkQueue(client, {
         projectIds: mappedProjects.map((project) => project.id),
         limit: mappedProjects.length,
       })
-    : { entries: [] };
+    : { entries: [] });
   const queueByProjectId = new Map(
     queue.entries.map((entry) => [entry.projectId, entry]),
   );

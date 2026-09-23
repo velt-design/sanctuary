@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
 import { Table, TableBody, TableRow } from '@/components/ui/foundation';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import type { ProjectsIndexProject } from '@/lib/projects/projectsIndexContract';
@@ -50,7 +51,24 @@ describe('ProjectIndexAccountabilityCells', () => {
     expect(rendered.container.textContent).toContain(
       'Finalise and send the draft quote',
     );
-    expect(rendered.container.textContent).toContain('When: Ready now');
+    expect(rendered.container.textContent).toContain('Ready now');
+    rendered.unmount();
+  });
+
+  it('opens and closes supporting attention without opening the project row', () => {
+    const open = vi.fn();
+    const rendered = renderIntoDocument(<Table><TableBody><TableRow onClick={open}>
+      <ProjectIndexAccountabilityCells project={project()} />
+    </TableRow></TableBody></Table>);
+    act(() => rendered.container.querySelector<HTMLButtonElement>('[aria-label="Attention details for Deck Build"]')!.click());
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Open the project to review future work');
+    act(() => document.querySelector<HTMLButtonElement>('[role="dialog"] button')!.click());
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(open).not.toHaveBeenCalled();
+    act(() => rendered.container.querySelector<HTMLButtonElement>('[aria-label="Attention details for Deck Build"]')!.click());
+    act(() => document.querySelector<HTMLButtonElement>('[role="dialog"] button')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(open).not.toHaveBeenCalled();
     rendered.unmount();
   });
 

@@ -1,0 +1,14 @@
+.root { display: grid; gap: var(--ui-space-2); }
+.toolbar { display: flex; align-items: end; gap: var(--ui-space-3); }
+.toolbar label, .form label { display: grid; gap: var(--ui-space-1); font-size: var(--ui-font-size-small); }
+.search { flex: 1; min-width: 0; }
+.applied { display: flex; align-items: center; gap: var(--ui-space-2); height: 44px; overflow-x: auto; white-space: nowrap; }
+.applied > * { flex-shrink: 0; }
+.scope { font-size: var(--ui-font-size-caption); color: var(--ui-text-muted); }
+.form { display: grid; gap: var(--ui-space-4); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); }
+@media (max-width: 600px) {
+  .toolbar { flex-wrap: wrap; }
+  .search { flex-basis: 100%; }
+  .toolbar > label:not(.search) { flex: 1; }
+}

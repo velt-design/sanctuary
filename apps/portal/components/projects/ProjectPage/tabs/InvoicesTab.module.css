@@ -168,3 +168,11 @@
     flex-direction: column;
   }
 }
+
+.deliveryDetails summary { cursor: pointer; color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
+.deliveryDetails summary:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-space-1); }
+
+/* Override the shared desktop table minimum without depending on CSS chunk order. */
+@media (max-width: 720px) {
+  .wrapper .invoiceTable { min-width: 0; max-width: 100%; width: 100%; }
+}

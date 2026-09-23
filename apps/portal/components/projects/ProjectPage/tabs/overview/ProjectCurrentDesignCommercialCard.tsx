@@ -74,9 +74,11 @@ function badgeTone(
 export default function ProjectCurrentDesignCommercialCard({
   data,
   projectId,
+  previewOnly = false,
 }: {
   data: ProjectCommandCentreCurrentDesign;
   projectId?: string;
+  previewOnly?: boolean;
 }) {
   return (
     <Card
@@ -210,18 +212,18 @@ export default function ProjectCurrentDesignCommercialCard({
             <summary>Quote history</summary>
             <p><strong>Current agreement: {quoteVersionLabel(data)}</strong></p>
             <p>Earlier accepted versions are retained. The price and design above use the newest accepted version.</p>
-            <ButtonLink variant="tertiary" size="small" href={data.links.quotes}>View quote history</ButtonLink>
+            <ButtonLink disabled={previewOnly} variant="tertiary" size="small" href={data.links.quotes}>View quote history</ButtonLink>
           </details>
         ) : null}
 
         <div className={styles.links}>
           {data.links.quote ? (
-            <ButtonLink variant="tertiary" size="small" href={data.links.quote}>
+            <ButtonLink disabled={previewOnly} variant="tertiary" size="small" href={data.links.quote}>
               View current quote
             </ButtonLink>
           ) : null}
           {data.links.estimate ? (
-            <ButtonLink
+            <ButtonLink disabled={previewOnly}
               variant="tertiary"
               size="small"
               href={data.links.estimate}
@@ -229,7 +231,7 @@ export default function ProjectCurrentDesignCommercialCard({
               View source design
             </ButtonLink>
           ) : null}
-          <ButtonLink
+          <ButtonLink disabled={previewOnly}
             variant="tertiary"
             size="small"
             href={
@@ -241,7 +243,7 @@ export default function ProjectCurrentDesignCommercialCard({
             Open booklet workbench
           </ButtonLink>
           {!data.links.quote ? (
-            <ButtonLink
+            <ButtonLink disabled={previewOnly}
               variant="tertiary"
               size="small"
               href={data.links.quotes}
@@ -250,7 +252,7 @@ export default function ProjectCurrentDesignCommercialCard({
             </ButtonLink>
           ) : null}
           {!data.links.estimate ? (
-            <ButtonLink
+            <ButtonLink disabled={previewOnly}
               variant="tertiary"
               size="small"
               href={data.links.designs}

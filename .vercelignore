@@ -32,3 +32,4 @@ coverage
 /*.pub
 /.mcp.json
 /docs
+/.local-evidence/

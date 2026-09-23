@@ -332,7 +332,7 @@ async function measureProjectTab(
 async function firstProjectOpenLink(page: Page): Promise<Locator> {
   const projects = page.getByRole('region', { name: 'Projects list' });
   await expect(projects).toBeVisible({ timeout: 60_000 });
-  const openLink = projects.getByRole('link', { name: 'Open' }).first();
+  const openLink = projects.locator('a[data-project-open]').first();
   await expect(openLink).toBeVisible({ timeout: 60_000 });
   return openLink;
 }
@@ -387,7 +387,7 @@ test('captures cold portal route metrics', async ({ browser, page }) => {
     page.getByRole('heading', { name: 'Dashboard', exact: true }),
   );
   await measureColdRoute(page, 'projects-cold', () =>
-    page.getByRole('heading', { name: 'Projects', exact: true }),
+    page.getByRole('heading', { name: 'Projects', exact: true, level: 1 }),
   );
   await measureColdRoute(page, 'contacts-cold', () =>
     page.getByRole('heading', { name: 'Contacts', exact: true }),
@@ -409,8 +409,8 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     () => projectsNavLink.dispatchEvent('click'),
     () => page.waitForURL(/\/staff\/projects(?:\?|$)/),
     async () => {
-      await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
-      await expect(page.getByRole('region', { name: 'Filters' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Projects', exact: true, level: 1 })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Search and filter projects' })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Projects list' })).toBeVisible();
       await expect(page.locator('[data-projects-index-state]')).toBeVisible();
     },
@@ -536,7 +536,7 @@ test('captures warm Contacts navigation', async ({ page }) => {
 test('captures warm navigation to the remaining instant-shell routes', async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto('/staff/projects');
-  await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Projects', exact: true, level: 1 })).toBeVisible({ timeout: 60_000 });
   await measurePortalShellNavigation(page, {
     name: 'projects-to-dashboard',
     link: page.getByRole('link', { name: 'Dashboard', exact: true }).first(),

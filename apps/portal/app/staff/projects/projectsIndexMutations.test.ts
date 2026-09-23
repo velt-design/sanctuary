@@ -23,6 +23,7 @@ const project: Project = {
   siteAddress: '1 Old Road',
   address: '1 Old Road',
   status: 'NEW',
+  stageChangedAt: '2026-09-01T00:00:00Z',
   isArchived: false,
   operationalState: 'ACTIVE',
   effectiveState: 'ACTIVE',
@@ -135,10 +136,12 @@ describe('projectsIndexMutations', () => {
     });
 
     expect(client.getQueryData<Project[]>(qk.projects.list('host', 'active'))?.[0].status).toBe('CONTACTED');
+    expect(client.getQueryData<Project[]>(qk.projects.list('host', 'active'))?.[0].stageChangedAt).toBeNull();
 
     request.reject(new Error('stage rejected'));
     await expect(save).rejects.toThrow('stage rejected');
     expect(client.getQueryData<Project[]>(qk.projects.list('host', 'active'))?.[0].status).toBe('NEW');
+    expect(client.getQueryData<Project[]>(qk.projects.list('host', 'active'))?.[0].stageChangedAt).toBe(project.stageChangedAt);
   });
 
   it('leaves server-filtered index membership unchanged during a stage correction', async () => {

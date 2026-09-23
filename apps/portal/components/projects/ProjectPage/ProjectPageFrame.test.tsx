@@ -25,11 +25,12 @@ vi.mock("@/components/ui/toast/ToastProvider", () => ({
 vi.mock("@/lib/repo/projectsRepo", () => ({ deleteProject: vi.fn() }));
 
 vi.mock("./ProjectTabNavigation", () => ({
-  default: ({ initialTab, optimisticTab, onTabSelect }: any) => (
+  default: ({ initialTab, optimisticTab, onTabSelect, tabAvailabilityReady }: any) => (
     <nav
       data-testid="header-tabs"
       data-tab={initialTab}
       data-optimistic-tab={optimisticTab ?? ""}
+      data-availability-ready={String(tabAvailabilityReady)}
     >
       <button type="button" onClick={() => onTabSelect?.("job-packs")}>
         Job Packs
@@ -75,6 +76,13 @@ const snapshot = {
 } as any;
 
 describe("ProjectPageFrame", () => {
+  it("keeps summary-only tab availability unresolved", () => {
+    const rendered = renderIntoDocument(
+      <ProjectPageFrame snapshot={snapshot} host="host" tab="job-packs" snapshotContentReady={false} snapshotState="summary" />,
+    );
+    expect(rendered.container.querySelector('[data-testid="header-tabs"]')?.getAttribute('data-availability-ready')).toBe('false');
+    rendered.unmount();
+  });
   afterEach(() => {
     mockSearchParams = "tab=activity";
     document.body.innerHTML = "";
@@ -97,8 +105,7 @@ describe("ProjectPageFrame", () => {
     expect(rendered.container.textContent).toContain("New");
     expect(rendered.container.textContent).toContain("Jordan");
     expect(rendered.container.textContent).not.toContain("proj_123");
-    expect(rendered.container.textContent).not.toContain("Alex");
-    expect(rendered.container.textContent).not.toContain("North");
+    expect(rendered.container.textContent).toContain("Alex · North");
     expect(rendered.container.textContent).toContain("Projects");
     expect(rendered.container.textContent).toContain("Design Workbench");
     expect(rendered.container.textContent).toContain("More");

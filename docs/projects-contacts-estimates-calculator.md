@@ -380,3 +380,65 @@ Manual or browser checks should cover:
 - Save locally and confirm the outcome state follows the estimate entity queue; error/conflict blocks quote handoff while queued, syncing, synced, and offline states retain the local-first path.
 - Create a design request from an estimate and confirm Design List receives the request.
 - Create an add-on estimate with no pergolas, add an **Existing pergola infill**, select its independent aluminium finish, save it, and confirm the estimate/quote contains an infill accessory line without a synthetic pergola.
+
+## Projects clarity pilot (review branch)
+
+The Projects toolbar keeps search and sort visible. Journey, stage, state, owner
+and page size use a draft drawer; Apply commits them together and resets the page,
+while Cancel/Escape preserve the current list. Applied filters are individually
+removable, with archive scope visible. The existing URL and user-scoped return
+position owner remains authoritative. Next attention follows the project name, before owner and contact/lifecycle
+columns. Project names and next actions retain readable minimum widths, with
+horizontal scrolling contained in the table. The route pending frame composes
+the same toolbar and layout with disabled controls and URL-selected values. Supporting reasons open in a focus-managed drawer;
+titles, due wording and missing-owner warnings remain visible. Inline edits,
+lifecycle corrections, delivery actions, archive/delete and protected detail
+navigation retain their existing owners. Header counts never turn missing reads
+into zero. No aggregate is inferred from a bounded page of records.
+
+Verification/status lives in the single clarity programme record in
+`ui-foundation.md`. The pilot is not an authorised production release.
+
+
+Projects column/date refinement (PR183, staging review; not production): the
+index now defaults to Project (client underneath), Stage (non-active/missing-state
+badge), Time in stage, Next action, Owner and an existing PortalMenu. Project names
+remain real links with modifier-click/new-tab behavior; editing moves to Contact
+& location with phone/address and created date. Stage correction, delivery,
+archive/restore and delete keep their existing controllers and guards. The menu
+is portalled to avoid clipping in the scrollable table; supporting drawers keep
+keyboard focus and reading position. Journey remains a server filter.
+
+Closed rows show only Closed rather than their former stage, and their running
+stage age is not displayed as a closure age. Project identity includes location:
+`projectLocation` summarises comma/newline-separated saved addresses to an Auckland
+suburb or outside town/city, stripping country/postcode. Ambiguous free text stays
+verbatim; missing addresses use recorded region or Location not recorded. This is
+display-only, without geocoding, new persistence or changes to the full address.
+
+`staff_projects_index_v4` adds nullable `stage_changed_at` and server pagination
+for `stage_oldest`/`next_action_asc`. v3 remains unchanged for existing consumers.
+Stage timing records new inserts and actual stage changes prospectively, including
+correction to a different stage. Same-stage and unrelated edits preserve the date;
+submitted timestamp overrides are ignored. No historical backfill: automation
+events can deduplicate repeat entries and cannot establish current-stage age.
+The display uses Auckland calendar days plus the exact Auckland date; missing,
+invalid or future dates show Unknown. An optimistic correction clears the date
+until authoritative refresh; rejection restores its prior evidence.
+
+Next-action sorting obtains the existing authoritative full work queue, rejects
+incomplete source inventories, orders only dated selected actions ascending and
+passes ordered IDs to the bounded reader before filtering/pagination. It reuses
+that queue for displayed summaries, not legacy follow_up_date. Undated/no-action
+projects follow dated projects; deterministic project/creation tie-breaking
+preserves pagination. This sort costs a portfolio queue read (existing 5000-row
+completeness cap); ordinary sorts still enrich only the returned project page.
+The additive migration is required before activating this application version.
+
+## Project entry-page clarity (23 September 2026 preview)
+
+Project headers reuse `lib/projects/projectLocation.ts` for saved locality text,
+with no geocoding or persistence changes. Estimate lists retain their current
+calculator action, while Rename and Duplicate use the existing keyboard-accessible
+overflow menu. Duplicate still creates a revision through the original URL and
+controller. Calculator editing, locks and costing remain unchanged.

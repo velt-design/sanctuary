@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
 import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
@@ -17,8 +17,8 @@ type ScheduleResponse = {
   impacts?: Array<{ before_start: string | null; after_start: string | null }>;
 };
 
-export default function ProjectDeliveryAction({ projectId, host, completed = false, disabled = false, onRefresh }: {
-  projectId: string; host: string; completed?: boolean; disabled?: boolean; onRefresh?: () => void;
+export default function ProjectDeliveryAction({ projectId, host, completed = false, disabled = false, onRefresh, renderTrigger }: {
+  projectId: string; host: string; completed?: boolean; disabled?: boolean; onRefresh?: () => void; renderTrigger?: (open: () => void) => ReactNode;
 }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -73,10 +73,10 @@ export default function ProjectDeliveryAction({ projectId, host, completed = fal
   }
 
   return (
-    <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-      <Button type="button" variant="secondary" size="small" disabled={disabled} onClick={() => void load()}>
+    <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}>
+      {renderTrigger ? renderTrigger(() => { if (!disabled) void load(); }) : <Button type="button" variant="secondary" size="small" disabled={disabled} onClick={() => void load()}>
         {completed ? 'Delivery completed' : 'Mark delivery completed'}
-      </Button>
+      </Button>}
       <PipelineModal open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}
         title={completed ? 'Delivery completion' : 'Mark delivery completed'}
         description="Delivery completion does not record payment or archive this project."

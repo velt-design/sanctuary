@@ -20,7 +20,7 @@ const v2Snapshot: ProjectPageSnapshot = {
     contactName: 'Alexandra Montgomery and Christopher Williamson',
     contactEmail: 'aroha@example.invalid',
     contactPhone: '021 555 0100',
-    siteAddress: 'Apartment 14, 1847 Great North Road, Point Chevalier, Auckland',
+    siteAddress: 'Synthetic address, Takapuna, Auckland',
     region: 'Auckland',
     quoteRef: 'Q-2042',
     hasJobPacks: true,
@@ -46,7 +46,13 @@ export default async function ProjectPageShellFixture({
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
   const params = await searchParams;
-  const snapshot = v2Snapshot;
+  // Keep long-name shell regression coverage separate from the coherent
+  // accepted-agreement example used for the commercial presentation preview.
+  const snapshot: ProjectPageSnapshot = params.commercial === '1'
+    ? { ...v2Snapshot, project: { ...v2Snapshot.project,
+        name: 'Sample project - Takapuna outdoor living', stage: 'deposit', contactName: 'Sample customer',
+      }, pipeline: { stage: 'deposit' } }
+    : v2Snapshot;
   const tab = coerceProjectTab(params.tab, snapshot.project.hasJobPacks ?? false);
   const calculatorWorkspace = tab === 'estimates'
     && Boolean(params.estimateId?.trim() || params.fromEstimateId?.trim() || params.newDesign === '1');
@@ -58,9 +64,11 @@ export default async function ProjectPageShellFixture({
   return (
     <main
       className={`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ''}`}
+      style={params.commercial === '1' ? { padding: '24px', maxWidth: '1600px', margin: '0 auto' } : undefined}
       data-portal-qa-fixture="project-page-shell"
       data-project-work-fixture-model={snapshot.workModel}
     >
+      {params.commercial === '1' ? <p>Sample project · no live data. Explore Commercial and Job Packs. Server actions are unavailable in this preview.</p> : null}
       <FixtureLocalFirstBoundary>
         {params.commercial === '1' ? <CommercialClarityBoundary>{frame}</CommercialClarityBoundary> : frame}
       </FixtureLocalFirstBoundary>
