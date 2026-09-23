@@ -9,13 +9,132 @@ Jordan-only audience or current unavailable-spend behavior. Platform-attributed
 leads stay separate from verified business outcomes. Matching spend to enquiry
 cohorts requires explicit evidence; a provider report is not sufficient to
 enable cost-per-qualified-enquiry or cost-per-win. The paired Velt delivery
-record owns migration progress. PR187 deployed the default-off source path and
-migration on 23 September 2026. Separate credentials support bounded authorized
-validation; source DB authority stays disabled outside proof and Velt's active
-source remains direct. Live parity and cutover are separate gates. This hub's UI
-and existing live data remain unchanged.
+record owns migration progress. PR187 deployed the source path; PR188 corrected
+snapshot cleanup while preserving the production safeupdate guard. On 23 September
+Jordan subsequently approved step 4, and Velt's active Meta source switched to
+Sanctuary after parity/lifecycle proof. Normal Analytics and the built-in Praxis
+review were verified against the source report. Source authority expires with the
+existing credential on 9 October; direct Velt authority remains for rollback.
+This hub's UI and existing business measures remain unchanged.
 
-Current stage: **approved production rollout; database ready** (22 September 2026). Owning task: Marketing Performance. Release PR178 extends the Jordan-only report released in PR174. The owner's latest "push live" authorizes publishing this reviewed batch and installing its read-only hub function. Exact production rollback rehearsal, installation, reconciliation and identity-denial assertions passed; postflight confirms the installed function matches the reviewed body and migration ledger. No business records changed. The application rollout and canonical-domain postflight are tracked in [PR178](https://github.com/velt-design/sanctuary/pull/178); merge only after all required checks pass. The verified review preview remains available while release completes.
+## Current working record — visual follow-on handoff (23 September 2026)
+
+Status: ready for owner review; implemented and independently reviewed. Not released.
+The existing hub is live; the prior PR178 rollout paragraph is superseded by the
+reported 23 September live inspection. Fresh API/RPC coverage and local browser validation passed for this batch;
+hosted preview and independent delivery review are complete within their stated limits.
+Owning task: existing Marketing Performance task. Sole writer: root, isolated
+`C:/Dev/sanctuary-marketing-visuals-20260923`, branch
+`codex/marketing-visuals-20260923`, based on main `c6c1c62c`; reviewed runtime revision `c4d2c821`.
+Open PRs checked: no marketing visual owner overlaps. Work Queue and recorded
+commitments belong to the separate Review Sanctuary and Velt OS task.
+
+Authority: Jordan approved implementation and review of this bounded batch on
+23 September. Production release, provider adapters, spending, customer messages
+and business-data mutations remain outside this approval. Next action: Jordan reviews the preview; a separate release instruction is required. Fresh authenticated live API
+and RPC reconciliation passed for the 366-day read ending 23 September; private
+counts/coverage/payload evidence is in `.local-evidence/coverage.local.json`.
+Qualification is wholly unassessed/unavailable in this read; source coverage is
+sparse. Synthetic cases must additionally cover reversals and assessed enquiries.
+No new business definition is proposed. Relevant review dimensions: correctness,
+journey, clarity, visual/accessibility, fit, maintainability, recovery/security,
+performance and handover; no commercial or write-workflow acceptance is claimed.
+
+Implementation evidence: shared `SalesActivity` owns Overview/Sales rendering;
+`salesActivity` owns clipped Monday-Sunday/monthly aggregation. `salesBucket`
+round-trips in URLs/saved views. `SourceOutcomes` reuses `sourceMeasures` and
+summarize; aligned bars show the displayed population percentage, not a funnel.
+Existing detailed source measure controls and source/campaign comparison remain.
+Live read schema and source reconciliation passed (264 date/source buckets and
+20 source/outcome cells). Fixture journeys passed: bucket switching and stable
+chart size, keyboard selection, repeated-submission exclusion from project
+outcomes, reversals, saved views, project/Back/reload, failed reads and 390px
+reduced-motion containment. No real financial actions or customer writes tested.
+Hosted fixture access is explicitly opt-in on Vercel Preview and remains forbidden
+in production. Its project drill-through is synthetic and read-only; it cannot
+establish live editing capability. No snapshot/customer data is packaged.
+Publication review: all changed source/docs/fixtures inspected; private capture,
+credentials and evidence are git-ignored, untracked and excluded by .vercelignore.
+Only fictional fixtures leave the private workspace. No shared UI owner changed.
+
+Final evidence: 62 focused tests (including actual SQL/API denial and fixture
+production-denial cases), six browser journeys, Portal typecheck, full lint plus
+changed-file lint after correction, docs guard and batch architecture checks pass.
+No touched warning/critical files. Hosted optimized build passed at deployment
+`dpl_GzP93BU95HYFBHQPm4fLQTLW5o2q` (runtime `c4d2c821`):
+https://sanctuary-portal-fplj41sjx-jordans-projects-43df95bd.vercel.app/qa/marketing-performance-fixture?representative=1&view=sales
+Same path with `view=enquiries` opens the comparison. Builder verified hosted
+fictional label, unavailable qualification, explicit pending inspection and exact
+seven-record drill. No Portal sign-in needed for synthetic QA; staff/API protections
+are unchanged. Local equivalent remains on port3065. No production deployment,
+new integration, spend, customer message or business-data mutation occurred.
+
+Independent delivery review caught unavailable qualification incorrectly paired
+with0% and zero-result inspection. A failing regression reproduced it; correction
+removed the misleading rate, linked explicitly to awaiting assessments and kept
+no-eligible cells informational. Independent recheck closed it; assessed zero
+remains0%. Other independently exercised journeys: exact quote bucket and source
+records, actual receipt-point/keyboard drill, signed receipts excluding invoice
+status, source/campaign/saved grouping restore, fictional project/Back and390px
+stable plots without document overflow. One bounded correction round; no owner
+intervention required. Reviewer did not independently verify production aggregates,
+forced-failure recovery, final hosted build or physical-phone/live editing.
+Builder evidence covers the first three; physical-phone and live editing remain
+unverified. Synthetic drill-through does not establish full live project editing.
+
+Evidence-backed assessment: correctness, usability, clarity, visual/accessibility
+and fit meet8/10 within preview scope after the independent correction; source
+reconciliation and dated-record contracts substantiate this. Maintainability,
+recovery/security and performance meet8/10 through shared calculation/rendering
+owners, denial/failed-read tests, unchanged bounded reads and optimized build.
+Handover meets8/10 for verified hosted review access; human acceptance is pending.
+Private capture stays local, final outgoing source/fixtures/commits were reviewed,
+and temporary production key material was removed after read-only validation.
+
+### First batch and acceptance criteria
+
+- Sales activity: reuse the Overview's quote-version sent/accepted count and net
+  recorded receipt trends in the Sales view. Use weekly/monthly buckets, clipped
+  to inclusive Auckland dates, with empty buckets and partial-period boundaries
+  handled explicitly. Counts and money use separate axes/charts. Payment reversals
+  and unavailable amounts retain the existing contract; never label this revenue.
+- Enquiries: aligned source/outcome comparison for submissions, eligible
+  qualification, sent-quote projects, current accepted scope and payment-verified
+  projects. Show each population/denominator through compact contextual detail,
+  with explicit unknown coverage. These are not unique people or a shrinking
+  funnel; skipped stages and absent evidence do not establish losses.
+- Reconciliation: each bucket/series total matches its selected underlying records;
+  chart selection opens exactly the dated events or source cohort represented.
+  Verify repeated submissions, multiple quote versions, withdrawn acceptance,
+  reversals, missing amounts/source, date boundaries and zero/unavailable states.
+- Journey: retain source/campaign/date filters, saved views, keyboard equivalents,
+  record-to-project drill-through and Back selections/reading position. Verify
+  changes, loading, errors and return in stable chart regions without layout jumps.
+- Reference/owners: preserve the owner-endorsed dominant visuals and compact
+  controls; current Portal Foundation tokens/drawers and Recharts remain owners.
+  Reuse `BusinessOverview.tsx`, `EnquiryCharts.tsx`, `HubRecords.tsx` and
+  `lib/marketingPerformance/{overview,charts,contract}`. No new chart library or
+  copied aggregation policy. Extract a shared trend owner only if reuse needs it.
+- Readiness: focused calculation/contract tests, required repository checks and
+  independent delivery review of normal entry through records/project/return.
+  Provide protected hosted review access using existing agent-managed facilities;
+  distinguish synthetic preview evidence, real-data reconciliation and physical
+  phone acceptance. Do not ask Jordan to arrange sign-in. Review complete outgoing
+  commits and rendered artifacts: public GitHub receives synthetic examples only.
+
+Meta campaign visuals remain a separate proposal requiring a Jordan-authorized
+Portal adapter. The received cutover record reports source production `c6c1c62c`
+and Velt verified code `8c07b538`; authority expires
+`2026-10-09T03:14:00.250Z`. This batch changes neither source/credential controls
+nor retained direct-Velt rollback authority. No provider conversions or spend are
+joined to business outcomes without separately established evidence.
+
+Continuity sources: architecture-task handoff received 23 September; source note
+`2ccff233` in `C:/Dev/sanctuary-connection-ownership-20260923` and paired migration
+record `de0f7fe` in `C:/Dev/velt-sanctuary-ownership-20260923`.
+Their cutover status is carried forward as reported evidence, not a fresh runtime
+verification. Only the relevant source-note facts are reconciled here; no branch
+cherry-pick. This document remains the single working record for the visual batch.
 
 Live route: https://portal.sanctuarypergolas.co.nz/staff/marketing-performance . Access remains restricted to verified `jordan@sanctuarypergolas.co.nz` plus existing Portal membership, independently enforced by page, API and database. Other staff/admins are denied. No business-record cleanup, tracking changes, vendor integrations, spending or customer messages are authorized.
 

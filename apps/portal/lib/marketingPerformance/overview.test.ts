@@ -1,6 +1,6 @@
 import { expect,it } from 'vitest';
 import { representativeFixture as hub, representativeFilters } from '@/app/qa/marketing-performance-fixture/representativeFixture';
-import { ageDistribution, monthlyActivity, projectAge } from './overview';
+import { ageDistribution, monthlyActivity, salesActivity, projectAge } from './overview';
 import { hubDefaults, selectHub, hubQuery, parseHubFilters, type HubEvent } from './hub';
 
 it('age buckets partition active/waiting projects and drill into exactly those IDs',()=>{
@@ -35,4 +35,28 @@ it('months reconcile event IDs and signed cash, excluding invoice statuses and a
   expect(monthlyActivity(events,'2026-09-01','2026-09-22')[0]).toMatchObject({receipts:-60,receiptEntries:2});
   expect(monthlyActivity([...events,{...entry,id:'missing',amountCents:null}],'2026-09-01','2026-09-22')[0]).toMatchObject({receipts:null,missing:1});
   expect(monthlyActivity([],'2024-02-29','2024-03-01').map(m=>[m.start,m.end])).toEqual([['2024-02-29','2024-02-29'],['2024-03-01','2024-03-01']]);
+});
+
+it('weekly and monthly sales partition inclusive event dates and reconcile every event and receipt',()=>{
+  for(const bucket of ['week','month'] as const){
+    const rows=salesActivity(hub.events,hub.start,hub.end,bucket);
+    expect(rows[0].start).toBe(hub.start);expect(rows.at(-1)?.end).toBe(hub.end);
+    expect(rows.reduce((n,r)=>n+r.sent,0)).toBe(hub.events.filter(e=>e.kind==='quote_sent').length);
+    expect(rows.reduce((n,r)=>n+r.accepted,0)).toBe(hub.events.filter(e=>e.kind==='quote_accepted').length);
+    expect(rows.reduce((n,r)=>n+r.receiptEntries,0)).toBe(hub.events.filter(e=>['payment','reversal'].includes(e.kind)).length);
+    for(const row of rows){
+      const exact=hub.events.filter(e=>e.day>=row.start&&e.day<=row.end);
+      expect(exact.filter(e=>e.kind==='quote_sent')).toHaveLength(row.sent);
+      if(!row.missing)expect(row.receipts! * 100).toBeCloseTo(exact.filter(e=>['payment','reversal'].includes(e.kind)).reduce((n,e)=>n+e.amountCents!,0));
+    }
+    const saved={...hubDefaults(representativeFilters),salesBucket:bucket};
+    expect(parseHubFilters(hubQuery(saved),representativeFilters)).toEqual(saved);
+  }
+  expect(salesActivity([],'2024-02-29','2024-03-04','week').map(r=>[r.start,r.end,r.partial])).toEqual([
+    ['2024-02-29','2024-03-03',true],['2024-03-04','2024-03-04',true]
+  ]);
+  expect(salesActivity([],'2026-09-21','2026-09-28','week').map(r=>[r.start,r.end,r.partial])).toEqual([
+    ['2026-09-21','2026-09-27',false],['2026-09-28','2026-09-28',true]
+  ]);
+  expect(parseHubFilters(new URLSearchParams('salesBucket=bogus'),representativeFilters).salesBucket).toBe('month');
 });

@@ -9,6 +9,7 @@ import { TabNavigation } from '@/components/ui/foundation/FoundationOperational'
 import { defaultFilters, validPeriod, summarize, rate, type Filters } from '@/lib/marketingPerformance/contract';
 import { hubDefaults, hubQuery, parseHubFilters, selectHub, views, eventLabels, evidenceForView, type HubFilters as FiltersState } from '@/lib/marketingPerformance/hub';
 import BusinessOverview from './BusinessOverview';
+import SalesActivity from './SalesActivity';
 import HubToolbar from './HubToolbar';
 import { Drawer } from '@/components/ui/drawer/Drawer';
 import HubMetrics from './HubMetrics';
@@ -63,6 +64,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
         {applied.view==='enquiries'&&<div className={styles.contextLine}><div className={styles.coverageTrack}><span style={{width:rate(totals.attributed,totals.enquiries)}}/></div><span>{rate(totals.attributed,totals.enquiries)} source known · {totals.enquiries-totals.attributed} unknown</span><Button variant="quiet" onClick={()=>setInfo(true)}>How it’s counted</Button></div>}
         {applied.view==='enquiries'&&<EnquiryCharts rows={selected.enquiries} filters={applied} apply={apply}/>}
         {applied.view==='portfolio'&&<PortfolioChart projects={selected.projects} filters={applied} apply={apply}/>}
+        {applied.view==='sales'&&<SalesActivity events={selected.events} filters={applied} apply={apply}/>}
         {applied.view==='sales'&&<Select label="Sales events to inspect" value={eventKind} onChange={e=>inspectEvents(e.target.value)}><option value="">All event types</option><option value="receipts">Payments and reversals</option>{Object.entries(eventLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</Select>}
         <HubRecords productionSnapshot={productionSnapshot} hub={hub} filters={applied} synthetic={synthetic} eventKind={eventKind} apply={apply}/>
         </>}
