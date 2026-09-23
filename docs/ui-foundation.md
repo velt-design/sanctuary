@@ -68,7 +68,7 @@ migration or production release.
 
 ## Clarity programme working record
 
-Current stage: **Projects clarity pilot implemented in an authenticated staging preview; independent correction review passed; separate PR preparation in progress**. Foundation PR180 is approved for merge after refreshed CI. The earlier Foundation example remains verified in a hosted preview, not yet merged or released. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
+Current stage: **Projects clarity pilot implemented in an authenticated staging preview; independent correction review passed; [review PR183](https://github.com/velt-design/sanctuary/pull/183) published**. Foundation PR180 is approved for merge after refreshed CI. The earlier Foundation example remains verified in a hosted preview, not yet merged or released. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
 (existing Vercel preview sign-in may be required). Deployment
 `dpl_DX2bATH5NFYc6PttTAPQC9T3RxfC` passed optimized build and typecheck.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
@@ -116,7 +116,7 @@ Review device: hosted desktop access verified; phone-width browser checks passed
 Physical-phone access and human unassisted acceptance remain unverified. This
 fictional instructional task does not prove live business-data coverage. No new
 business assumptions, API, dependency or permission changes in Foundation. Its
-PR180 checks passed after updating to main ff3f858; checks are refreshing again after main advanced to 0376364. The now-authorised Projects
+PR180 checks passed after updating to main ff3f858; checks are refreshing again after main advanced to 3f8963b (Foundation head 6750b8c). The now-authorised Projects
 pilot is recorded below; wider route rollout and pilot release remain excluded.
 
 ## Owners
@@ -334,8 +334,10 @@ The shared Portal scroll lock now holds the document at its captured position wi
 Foundation PR180 is authorised for merge when refreshed checks pass; the pilot
 remains a separate, unmerged review batch. Builder owns branch
 `codex/projects-clarity-20260923`. No pilot production release or business-data
-writes are authorised. Next action: publish the reviewed pilot PR, complete the
-Foundation merge gates, and retain the pilot for owner acceptance before rollout.
+writes are authorised. Review PR183 is published, temporarily stacked on PR180. Next action: complete
+the Foundation merge gates, retarget the pilot to main, and retain it for owner
+acceptance before rollout. Focused 28-test suite also passed after rebasing onto
+the refreshed Foundation head 6750b8c.
 
 **Agreement:** find a project, identify its next attention, open detail and return
 to the same list context. Reference: Marketing & Sales compact toolbar and
@@ -398,3 +400,9 @@ Workspace AGENTS records private helper locations; `docs/agent-playbook.md`
 records the standing instruction without secrets. Separate preview origins are
 agent setup work. If recovery exceeds authority, report the technical blocker
 without assigning a login task to Jordan.
+
+Continuity correction: the builder ended the access-recovery turn before
+finishing the already-authorised Foundation merge and pilot PR publication.
+Jordan had to prompt continuation. No new approval was needed; the existing
+stage-continuation rule was missed. Work resumed with PR183 publication and
+Foundation merge checks; authentication recovery alone did not finish the task.
