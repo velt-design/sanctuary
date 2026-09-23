@@ -72,12 +72,12 @@
 }
 
 .primaryAction > header {
-  padding: var(--ui-space-4);
+  padding: var(--ui-space-3);
 }
 
 .primaryAction > header h3 {
   max-width: none;
-  font-size: var(--ui-font-size-detail-title);
+  font-size: var(--ui-font-size-card-heading);
 }
 
 .primaryAction > div {
@@ -90,8 +90,12 @@
 }
 
 .primaryFacts > div {
-  padding: var(--ui-space-2) var(--ui-space-3);
+  padding: var(--ui-space-1) 0;
 }
+
+.actionContext summary { cursor: pointer; color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
+.actionContext summary:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 3px; }
+.actionContextBody { display: grid; gap: var(--ui-space-2); padding-block: var(--ui-space-2); }
 
 .inlineActions,
 .badges,

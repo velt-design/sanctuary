@@ -434,3 +434,11 @@ projects follow dated projects; deterministic project/creation tie-breaking
 preserves pagination. This sort costs a portfolio queue read (existing 5000-row
 completeness cap); ordinary sorts still enrich only the returned project page.
 The additive migration is required before activating this application version.
+
+## Project entry-page clarity (23 September 2026 preview)
+
+Project headers reuse `lib/projects/projectLocation.ts` for saved locality text,
+with no geocoding or persistence changes. Estimate lists retain their current
+calculator action, while Rename and Duplicate use the existing keyboard-accessible
+overflow menu. Duplicate still creates a revision through the original URL and
+controller. Calculator editing, locks and costing remain unchanged.

@@ -14,19 +14,19 @@ const v2Snapshot: ProjectPageSnapshot = {
   workModel: 'v2',
   project: {
     id: 'proj_fixture_shell',
-    name: 'Alexandra Montgomery and Christopher Williamson - North Harbour outdoor living project',
-    stage: 'sent',
+    name: 'Sample project - Takapuna outdoor living',
+    stage: 'deposit',
     contactId: 'contact_fixture',
-    contactName: 'Alexandra Montgomery and Christopher Williamson',
+    contactName: 'Sample customer',
     contactEmail: 'aroha@example.invalid',
     contactPhone: '021 555 0100',
-    siteAddress: 'Apartment 14, 1847 Great North Road, Point Chevalier, Auckland',
+    siteAddress: 'Synthetic address, Takapuna, Auckland',
     region: 'Auckland',
     quoteRef: 'Q-2042',
     hasJobPacks: true,
     owner: { key: 'jordan', displayName: 'Jordan' },
   },
-  pipeline: { stage: 'sent' },
+  pipeline: { stage: 'deposit' },
   activity: [],
   emails: [],
   notes: [],
@@ -58,9 +58,11 @@ export default async function ProjectPageShellFixture({
   return (
     <main
       className={`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ''}`}
+      style={params.commercial === '1' ? { padding: '24px', maxWidth: '1600px', margin: '0 auto' } : undefined}
       data-portal-qa-fixture="project-page-shell"
       data-project-work-fixture-model={snapshot.workModel}
     >
+      {params.commercial === '1' ? <p>Sample project · no live data. Explore Commercial and Job Packs. Server actions are unavailable in this preview.</p> : null}
       <FixtureLocalFirstBoundary>
         {params.commercial === '1' ? <CommercialClarityBoundary>{frame}</CommercialClarityBoundary> : frame}
       </FixtureLocalFirstBoundary>

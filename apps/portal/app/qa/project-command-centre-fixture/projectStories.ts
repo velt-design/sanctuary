@@ -13,7 +13,7 @@ export function projectStory(name: ProjectStory) {
     name === 'enquiry' ? 'no-current-design' : name === 'quote' ? 'sent-revision' : 'accepted-newer-estimate'
   ]);
   const item: ProjectWorkItem = { ...work.projectWork.openItems[0],
-    dueAt: '2026-09-17T05:00:00Z', createdAt: '2026-09-16T01:00:00Z', updatedAt: '2026-09-16T01:00:00Z',
+    dueAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), createdAt: '2026-09-16T01:00:00Z', updatedAt: '2026-09-16T01:00:00Z',
   };
   work.project = { name: `Aroha Smith · ${storyNames[name]}`, contactName: 'Aroha Smith', owner: { key: 'jordan', displayName: 'Jordan' } };
   work.stage = name === 'enquiry' ? 'new' : name === 'quote' ? 'sent' : 'deposit';

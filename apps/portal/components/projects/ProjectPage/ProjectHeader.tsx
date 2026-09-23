@@ -6,6 +6,7 @@ import ProjectHeaderOwnerControl from "./ProjectHeaderOwnerControl";
 import StaffPageHeader from "@/components/layout/StaffPageHeader";
 import { Card, ProjectStageBadge } from "@/components/ui/foundation";
 import styles from "./ProjectPage.module.css";
+import { projectLocation } from '@/lib/projects/projectLocation';
 
 export default function ProjectHeader({
   project,
@@ -36,6 +37,7 @@ export default function ProjectHeader({
           className={styles.mastheadHeader}
           variant="detail"
           title={project.name}
+          subtitle={<>{project.contactName || 'Customer not recorded'} · {projectLocation(project)}</>}
           titleAccessory={<ProjectStageBadge stage={project.stage} compact />}
           meta={
             <ProjectHeaderOwnerControl

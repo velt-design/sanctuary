@@ -17,7 +17,8 @@ describe('ProjectPaymentPosition', () => {
     const text = view.container.textContent;
     expect(text).toContain('$13,328.44');
     expect(text).toContain('$13,328.43');
-    expect(text).toContain('does not mean the whole job is paid');
+    expect(text).toContain('does not mean paid in full');
+    expect(view.container.querySelector('details')?.open).toBe(false);
     expect(view.container.querySelector('a')?.getAttribute('href')).toBe('/staff/projects/proj_1?tab=invoices');
     view.unmount();
   });

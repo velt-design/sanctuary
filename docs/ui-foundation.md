@@ -68,6 +68,92 @@ migration or production release.
 
 ## Clarity programme working record
 
+### Active bounded stage: remaining Project pages (23 September)
+
+Owner request: "great, now do the other project pages", after accepting the
+no-sign-in Overview preview. This expands the prior Overview-only boundary to
+Estimates, Quotes, Invoices and Job Packs. Same worktree and one writer; open PRs
+checked with no overlapping presentation owner. Overview remains implemented,
+not released; its outstanding full-journey review is retained in this batch.
+
+Reference: approved Overview / Marketing clarity, using Portal component owners.
+Acceptance: concise first layer, visible status/amount/date and primary action;
+secondary actions and audit details on demand; current accepted scopes remain
+separate from historical versions, payments and outstanding invoices. Keep errors,
+financial exceptions, permissions, URL navigation and specialist editing intact.
+Use actual list components in a no-login synthetic preview; independently inspect
+keyboard, narrow layout, details and return. Live sending/payment mutations and
+production release remain outside authority. Calculator geometry/costing and
+spreadsheet engines are preserved; this is their project entry-page presentation.
+Relevant dimensions: correctness, usability, clarity, accessibility, system fit,
+maintainability, recovery/security, performance and review access.
+Current status: ready for owner review as a bounded presentation preview, not live.
+Final hosted preview: https://sanctuary-portal-4zef76itb-jordans-projects-43df95bd.vercel.app/qa/project-page-shell-fixture?commercial=1&tab=quotes
+(deployment dpl_BWDiwhzLiDAxjRXL5iiNYLV4Uyqq; same final code as this branch).
+The same deployment exposes the compact Overview sample at
+`/qa/project-command-centre-fixture?story=installation` without sign-in.
+Independent review completed with two bounded correction passes. Quote navigation
+and matching V2 scope passed; the final390px Estimates table measures325px, first
+and last menus retain horizontal reading position, Escape restores focus, and
+Invoices/Job Packs fit their containers. Root cause was equal-specificity mobile
+rules being overridden by the shared desktop table minimum; route-scoped selectors
+now win without changing Foundation or spreadsheet-engine behaviour.
+
+Assessment: correctness, usability/clarity, visual accessibility and system fit
+meet8/10 for this presentation slice, backed by independent task walkthroughs and
+commercial reconciliation. Maintainability meets8/10: existing owners reused,
+InvoiceScheduleTotals extracted, action context named, no new access/data owner.
+Verification/handover meets8/10 for a no-login synthetic review and connected
+read-only staging journey. Security/recovery retain existing gates and passing
+unit coverage; full failure recovery is not newly accepted. Performance has a
+successful optimized build and prior base CI but no new production-scale proof.
+Live writes and physical-device acceptance are separate unverified dimensions.
+Publication review: outgoing source, fixtures, documentation and PR text contain
+synthetic examples only; no private media, credentials or local evidence is
+tracked/selected. Only this bounded branch delta above71ef63a is being published. 238
+ProjectPage tests pass, Portal typecheck, full lint and architecture advisory pass.
+Projects PR183 base now has all CI checks passing but remains unmerged.
+Independent review of hosted4n5 found a rapid tab-selection race, a clipped390px
+estimate menu and a synthetic V1/V2 label mismatch. Source corrections include a
+regression proving quote selection sets tab=quotes even from a stale invoice URL,
+right-aligned narrow-screen menu, and matching synthetic provenance. Existing
+connected staging reads verified Projects -> Overview -> Estimates -> draft quote
+and return; Rename was opened and cancelled without editing or saving. Review
+access is provided by synthetic no-login pages; server commands are denied there.
+Full write journeys, production data coverage and physical phone use are unverified.
+Calculator/workbench and spreadsheet engines are retained, not redesigned.
+Overview booking dates remain unresolved: existing read model has no bounded
+visit/install date projection; work-item due dates are not substituted.
+
+### Prior stage: Project Overview clarity (23 September)
+
+Owner approved the next Overview pilot, then requested a localhost or preview
+link requiring no sign-in. Worktree `C:/Dev/sanctuary-overview-clarity-20260923`,
+branch `codex/overview-clarity-20260923`, stacked on Projects PR183 at 71ef63a.
+The existing Projects implementation remains unmerged; its quality gate passed,
+and its performance gate's old Filters selector was corrected at the base above.
+Open PRs and active work were checked; none owns Overview presentation.
+
+Outcome: identify customer/location/stage/owner, the authoritative next action,
+current commercial price and recorded payment position without reading repeated
+explanations. Reference: approved compact Marketing & Sales and Projects list,
+using existing Portal tokens/components. Owners: ProjectHeader, OrientationBand,
+WorkSection/controllers, CommercialDetails/current-design selector, payment query,
+correspondence reader and responsive OverviewLayout. Preserve their contracts,
+editing, blocked/stale/access states, email precedence and reading continuity.
+No new business definitions or tracking, customer communications, record writes,
+production release or schema change. One separate stacked review PR.
+
+Acceptance: normal Projects -> Overview -> commercial -> return journey with
+saved context; obvious action and distinct proposed/agreed/paid values; keyboard
+details, editing without save, stable transitions; desktop/mobile containment;
+independent delivery review and no-login synthetic hosted example alongside the
+agent-connected staff preview. Fixture success is not proof of live writes.
+Upcoming visit/install facts: inspect existing read ownership before showing
+dates; work deadlines cannot be relabelled as bookings. Relevant dimensions are
+correctness, usability/clarity, accessibility, system fit/maintainability,
+recovery/security, performance and handover. No broader tab redesign is included.
+
 Latest owner refinement (23 September, Closed/location screenshot): show only
 Closed for closed rows and keep a visible location in Project identity. Use a
 saved Auckland suburb or outside town/city where comma/newline-separated address
@@ -88,7 +174,7 @@ ambiguous Projects heading in the shared browser preflight; its callers now
 specify level 1. A separate background-job CI container failed to start; no claim
 of passing release checks is made. Fresh checks run on the published batch.
 
-Current stage: **Projects six-column/date refinement implemented and independently reviewed in staging; [review PR183](https://github.com/velt-design/sanctuary/pull/183) remains unmerged, not live.** Foundation PR180 merged as `e8d1158`. Main's open-pipeline correction `bc7ac36` is integrated and its OPEN population is preserved by the new reader. See the refinement evidence below for the current preview and limits. The refinement is published in PR183 (implementation revision 1337804); fresh PR-wide checks are reported on that PR. Staging review is not production release authority.
+Earlier Projects stage: **Projects six-column/date refinement implemented and independently reviewed in staging; [review PR183](https://github.com/velt-design/sanctuary/pull/183) remains unmerged, not live.** Foundation PR180 merged as `e8d1158`. Main's open-pipeline correction `bc7ac36` is integrated and its OPEN population is preserved by the new reader. See the refinement evidence below for the current preview and limits. The refinement is published in PR183 (implementation revision 1337804); fresh PR-wide checks are reported on that PR. Staging review is not production release authority.
 Agent-managed preview access is required; never assign sign-in to Jordan.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
 PRs. Current branch `codex/projects-clarity-20260923`, integrated main `bc7ac36`. Foundation history: `codex/portal-foundation-clarity-20260923`, initial base `54ceef1`.

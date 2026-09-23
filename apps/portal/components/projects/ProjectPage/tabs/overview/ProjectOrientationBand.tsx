@@ -257,7 +257,7 @@ export default function ProjectOrientationBand({
       data-operational-state={operationalState ?? undefined}
     >
       <header className={styles.orientationHeader}>
-        <h2>Project context</h2>
+        <h2>Project details</h2>
         <div className={styles.overviewActions}>
           {detailsActions}
           <Suspense
@@ -281,7 +281,7 @@ export default function ProjectOrientationBand({
 
       {!isEditing ? (
         <details className={styles.contextDetails}>
-        <summary>{displayed.contactName || 'Customer details'} · {displayed.siteAddress || 'Site not provided'} <span>Contact & project details</span></summary>
+        <summary>Contact, address & reference</summary>
         <div className={styles.orientationSummary}>
           <ProjectJourneyStatus
             stage={project.stage}

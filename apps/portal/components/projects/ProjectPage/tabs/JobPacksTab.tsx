@@ -146,7 +146,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>Job Packs</h3>
-          <p className={styles.subtitle}>Open an estimate version to view its job pack in the shared spreadsheet template.</p>
+          <p className={styles.subtitle}>Materials and installation details · saved estimate versions.</p>
         </div>
       </div>
 
@@ -169,13 +169,13 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
       ) : null}
 
       {jobPacksQuery.data?.length ? (
-        <Table aria-label="Job packs">
+        <Table aria-label="Job packs" className={styles.packTable}>
             <TableHeader>
               <TableRow>
                 <TableHead>Design</TableHead>
                 <TableHead>Quote</TableHead>
                 <TableHead>Generated</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Quote status</TableHead><TableHead>Open</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -184,6 +184,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
                   key={jobPack.id}
                   className={styles.rowClickable}
                   tabIndex={0}
+                  aria-label={`Open job pack ${jobPack.estimateVersionLabel}, ${jobPack.quoteRef}`}
                   onMouseEnter={() => prefetchDetail(jobPack.estimateId)}
                   onFocus={() => prefetchDetail(jobPack.estimateId)}
                   onClick={() => updateParams({ estimateId: jobPack.estimateId, sheet: 'materials' })}
@@ -194,9 +195,9 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
                   }}
                 >
                   <TableCell>{jobPack.estimateVersionLabel}</TableCell>
-                  <TableCell>{`${jobPack.quoteRef} • V${jobPack.quoteVersionNumber}`}</TableCell>
-                  <TableCell>{formatDate(jobPack.createdAt)}</TableCell>
-                  <TableCell><Badge tone={jobPack.quoteStatus === 'DECLINED' ? 'neutral' : 'info'}>{jobPack.quoteStatus}</Badge></TableCell>
+                  <TableCell data-label="Quote">{`${jobPack.quoteRef} • V${jobPack.quoteVersionNumber}`}</TableCell>
+                  <TableCell data-label="Generated">{formatDate(jobPack.createdAt)}</TableCell>
+                  <TableCell data-label="Quote status"><Badge tone={jobPack.quoteStatus === 'DECLINED' ? 'neutral' : 'info'}>{jobPack.quoteStatus}</Badge></TableCell><TableCell><span className={styles.openPack}>Open pack →</span></TableCell>
                 </TableRow>
               ))}
             </TableBody>

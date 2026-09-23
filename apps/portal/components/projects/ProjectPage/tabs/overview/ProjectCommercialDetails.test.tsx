@@ -23,9 +23,9 @@ describe('compact commercial position', () => {
     view.unmount();
   });
   it.each([
-    ['sent-revision', 'Proposed price: $1,750.00'],
-    ['accepted-newer-estimate', 'Agreed price: $1,750.00'],
-    ['no-current-design', 'No price prepared yet'],
+    ['sent-revision', 'Proposed price$1,750.00'],
+    ['accepted-newer-estimate', 'Agreed price$1,750.00'],
+    ['no-current-design', 'Current estimateNot prepared'],
   ] as const)('keeps %s distinct without showing secondary detail by default', (scenario, expected) => {
     const view = renderIntoDocument(<ProjectCommercialDetails data={commandCentreFixtures[scenario]}><p>Payment evidence</p></ProjectCommercialDetails>);
     expect(view.container.querySelector('summary')?.textContent).toContain(expected);

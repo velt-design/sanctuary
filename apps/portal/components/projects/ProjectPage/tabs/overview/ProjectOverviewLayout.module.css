@@ -4,10 +4,10 @@
   max-width: var(--ui-content-max);
   margin-inline: auto;
   grid-template-areas:
-    "orientation orientation"
     "exception exception"
     "project-work commercial"
-    "recent admin";
+    "recent admin"
+    "orientation orientation";
   grid-template-columns: minmax(0, 1.65fr) minmax(360px, 1fr);
   align-items: start;
   gap: var(--ui-grid-gutter);
@@ -16,9 +16,9 @@
 
 .layout:not([data-has-exception]) {
   grid-template-areas:
-    "orientation orientation"
     "project-work commercial"
-    "recent admin";
+    "recent admin"
+    "orientation orientation";
 }
 
 .layout > * {
@@ -65,20 +65,20 @@
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) {
     grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr);
     /* Let the lower row absorb the spanning email panel's height, not the work row. */
-    grid-template-rows: auto auto min-content minmax(0, 1fr);
+    grid-template-rows: auto min-content minmax(0, 1fr) auto;
     grid-template-areas:
-      "orientation orientation"
       "exception exception"
       "project-work recent"
-      "commercial recent";
+      "commercial recent"
+      "orientation orientation";
   }
 
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]):not([data-has-exception]) {
-    grid-template-rows: auto min-content minmax(0, 1fr);
+    grid-template-rows: min-content minmax(0, 1fr) auto;
     grid-template-areas:
-      "orientation orientation"
       "project-work recent"
-      "commercial recent";
+      "commercial recent"
+      "orientation orientation";
   }
 
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) .recent {
@@ -92,21 +92,21 @@
 
 .layout[data-overview-composition="stacked"] {
   grid-template-areas:
-    "orientation"
     "exception"
     "project-work"
-    "commercial"
     "recent"
+    "commercial"
+    "orientation"
     "admin";
   grid-template-columns: minmax(0, 1fr);
 }
 
 .layout[data-overview-composition="stacked"]:not([data-has-exception]) {
   grid-template-areas:
-    "orientation"
     "project-work"
-    "commercial"
     "recent"
+    "commercial"
+    "orientation"
     "admin";
 }
 

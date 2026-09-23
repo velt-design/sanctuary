@@ -42,7 +42,7 @@ export function selectEstimateForCommercialScope(
 
 export function formatMoneyFromCents(value: number): string {
   if (!Number.isFinite(value)) return "—";
-  return `$${(value / 100).toFixed(2)}`;
+  return new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(value / 100);
 }
 
 export function formatDateShort(value: string | null | undefined): string {

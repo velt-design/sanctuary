@@ -49,3 +49,19 @@
   flex: 1;
   min-width: 0;
 }
+
+.openPack { color: var(--ui-text-strong); font-weight: 600; white-space: nowrap; }
+.rowClickable:hover { background: var(--ui-surface-secondary); }
+@media (max-width: 720px) {
+  .packTable, .packTable tbody { display: block; min-width: 0; }
+  .packTable thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .packTable tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-bottom: var(--ui-border-width) solid var(--ui-border); }
+  .packTable td { display: block; min-width: 0; border: 0; overflow-wrap: anywhere; }
+  .packTable td:first-child, .packTable td:last-child { grid-column: 1 / -1; }
+  .packTable td[data-label]::before { content: attr(data-label); display: block; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); margin-bottom: var(--ui-space-1); }
+}
+
+/* Override the shared desktop table minimum without depending on CSS chunk order. */
+@media (max-width: 720px) {
+  .wrapper .packTable { min-width: 0; max-width: 100%; width: 100%; }
+}

@@ -37,7 +37,7 @@ import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
 import ProjectStageCorrectionDialog from '@/components/projects/ProjectStageCorrectionDialog';
 import ProjectIndexActions from './ProjectIndexActions';
-import { projectLocation } from './projectLocation';
+import { projectLocation } from '@/lib/projects/projectLocation';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';

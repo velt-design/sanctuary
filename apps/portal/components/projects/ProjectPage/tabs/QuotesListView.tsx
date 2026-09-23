@@ -129,7 +129,7 @@ export default function QuotesListView({
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>Quotes</h3>
-          <p className={styles.subtitle}>Accepted work is shown first. Drafts and earlier versions remain below for reference.</p>
+          <p className={styles.subtitle}>Agreed scope first · all amounts NZD inc GST</p>
         </div>
         <button
           type="button"
@@ -146,7 +146,8 @@ export default function QuotesListView({
             <div key={quote.id} className={styles.acceptedSummary}>
               <div>
                 <strong>{quote.internalName || (quote.commercialScopeKind === 'add_on' ? 'Accepted add-on' : 'Accepted base agreement')}</strong>
-                <p>{quote.quoteRef} v{quote.versionNumber} · {formatMoneyFromCents(quote.totals.totalIncGstCents)} inc GST</p>
+                <p>{quote.quoteRef} v{quote.versionNumber}</p>
+                <strong className={styles.acceptedAmount}>{formatMoneyFromCents(quote.totals.totalIncGstCents)} <small>inc GST</small></strong>
               </div>
               <Button variant="secondary" size="small" onClick={() => selectQuote(quote.id)}>Open {quote.quoteRef} v{quote.versionNumber}</Button>
             </div>
@@ -205,13 +206,10 @@ export default function QuotesListView({
             <thead>
               <tr>
                 <th>Quote</th>
-                <th>From design</th>
-                <th>Issue date</th>
-                <th>Expiry</th>
+                <th>Dates</th>
                 <th>Status</th>
                 <th>Amount (inc GST)</th>
-                <th>PDF</th>
-                <th>Actions</th>
+                                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -256,18 +254,17 @@ export default function QuotesListView({
                         <small>{`${quoteRefLabel} · v${quote.versionNumber}`}</small>
                         {quote.commercialScopeKind === "add_on" ? <Badge tone="info">Add-on</Badge> : null}
                       </span>
-                    </td>
-                    <td data-label="Source estimate" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                    <span className={styles.documentSource} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                       {quote.sourceEstimateVersionId ? <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(quote.projectId)}?tab=estimates&estimateId=${encodeURIComponent(quote.sourceEstimateVersionId)}`}>
                         {sourceEstimate ? estimateDisplayName(sourceEstimate, estimates) : quote.sourceEstimateVersionLabel}
                       </ButtonLink> : 'No source estimate'}
+                    </span>
                     </td>
-                    <td data-label="Issued">
+                    <td data-label="Dates"><div className={styles.documentIdentity}><span>Issued{' '}
                       {quote.status === "DRAFT"
                         ? "—"
                         : formatDateShort(quote.sentAt)}
-                    </td>
-                    <td data-label={quote.status === 'ACCEPTED' ? 'Original expiry' : 'Expiry'}>
+                    </span><small>{quote.status === 'ACCEPTED' ? 'Original expiry: ' : 'Expires: '}
                       {quote.expiresAt ? (
                         <span
                           className={expired ? styles.expiredText : undefined}
@@ -278,7 +275,7 @@ export default function QuotesListView({
                       ) : (
                         "—"
                       )}
-                    </td>
+                    </small></div></td>
                     <td data-label="Status">
                       <QuoteStatusBadge
                         status={quote.status}
@@ -297,7 +294,11 @@ export default function QuotesListView({
                     <td data-label="Amount inc GST">
                       {formatMoneyFromCents(quote.totals.totalIncGstCents)}
                     </td>
-                    <td data-label="PDF">
+                    <td
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                    <span className={styles.documentSource}>
                       {isLocalQuoteId(quote.id) || quoteSyncPending ? (
                         <span className={styles.linkMuted}>Syncing</span>
                       ) : quote.pdfFileId ? (
@@ -310,11 +311,7 @@ export default function QuotesListView({
                       ) : (
                         "—"
                       )}
-                    </td>
-                    <td
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
-                    >
+                    </span>
                       <OverflowMenu
                         label={`Actions for ${quote.quoteRef} version ${quote.versionNumber}`}
                         menuLabel={`${quote.quoteRef} v${quote.versionNumber}`}

@@ -97,8 +97,7 @@ describe("ProjectPageFrame", () => {
     expect(rendered.container.textContent).toContain("New");
     expect(rendered.container.textContent).toContain("Jordan");
     expect(rendered.container.textContent).not.toContain("proj_123");
-    expect(rendered.container.textContent).not.toContain("Alex");
-    expect(rendered.container.textContent).not.toContain("North");
+    expect(rendered.container.textContent).toContain("Alex · North");
     expect(rendered.container.textContent).toContain("Projects");
     expect(rendered.container.textContent).toContain("Design Workbench");
     expect(rendered.container.textContent).toContain("More");

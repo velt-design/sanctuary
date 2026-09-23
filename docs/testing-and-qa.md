@@ -1473,3 +1473,14 @@ optimistic rollback, contact/action disclosure and existing list journeys. Minim
 SQL prerequisites do not establish full-schema readiness; a separate staging
 rollback rehearsal and authenticated hosted inspection remain required. Browser
 project discovery uses `a[data-project-open]` and the level-one Projects heading.
+
+## Project clarity preview checks (23 September 2026)
+
+`npx vitest run apps/portal/components/projects/ProjectPage` covers the project
+composition, quote/invoice state, calculator revision navigation and new overflow
+Duplicate journey. The QA-only `/qa/project-page-shell-fixture?commercial=1&tab=quotes`
+uses actual commercial components with synthetic records. Its boundary intercepts
+API requests and returns an explicit unavailable result; staff document links stay
+in the fixture. This is presentation evidence, not proof of saving, sending or
+financial writes. QA routes require ENABLE_PORTAL_QA_FIXTURES=1; normal staff routes
+retain authentication. Use the separate connected staging journey for live reads.
