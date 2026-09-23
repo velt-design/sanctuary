@@ -9,7 +9,7 @@ const migration = readFileSync(new URL('../supabase/migrations/20260923050001_sa
 const actor = '10000000-0000-4000-8000-000000000001', connection = '20000000-0000-4000-8000-000000000001';
 const literal = (value) => value === null ? 'null' : `'${String(value).replaceAll("'", "''")}'`;
 function docker(args, input) {
- const result = spawnSync('docker', args, { encoding:'utf8', input, maxBuffer:8*1024*1024 });
+ const result = spawnSync('docker', args, { encoding:'utf8', input, maxBuffer:8*1024*1024, windowsHide:true });
  if (result.status !== 0) throw new Error(result.stderr || result.error?.message || 'Docker failed');
  return result.stdout.trim();
 }
@@ -20,7 +20,7 @@ const query = JSON.stringify({start:'2026-08-01',end:'2026-08-07',retain:true});
 const payload = () => JSON.stringify({version:'sanctuary-meta-campaigns-v1',source:'meta',complete:true,period:{start:'2026-08-01',end:'2026-08-07'},fetchedAt:new Date().toISOString()});
 const call = (db,...values) => JSON.parse(sql('set role service_role;'+command(...values),db));
 function session(db,name) {
- const child=spawn('docker',args(db),{stdio:['pipe','pipe','pipe']}); let out='',err='';
+ const child=spawn('docker',args(db),{stdio:['pipe','pipe','pipe'],windowsHide:true}); let out='',err='';
  child.stdout.on('data',chunk=>{out+=chunk;}); child.stderr.on('data',chunk=>{err+=chunk;});
  const done=new Promise(resolve=>child.on('exit',code=>resolve({code,out,err})));
  child.stdin.write(`set application_name=${literal(name)};\n`);
