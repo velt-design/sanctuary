@@ -20,6 +20,26 @@ current pinned source identity on every operation. Delete works while collection
 is disabled and does not require Google/vault credentials, but still requires
 the existing Praxis bearer and exact source control association.
 
+Validation uses an explicitly finite source-control `expires_at`, no more than
+two hours, alongside Velt's bounded validation grant. For ongoing production,
+an operator may explicitly set `expires_at = 'infinity'::timestamptz` to preserve
+the existing renewable GA4 workflow, after verifying the reused credential's
+actual authority, expiry and Google consent restrictions. This is ongoing
+revocable application authority, not a claim that Google or 1Password credentials
+never expire. Do not copy Meta's separate thirty-day token policy onto GA4 or
+leave the validation deadline in the production control.
+
+A verified finite credential deadline instead needs a recorded operator and
+renewal handling before cutover. Control expiry blocks reads and delivery one
+minute early; changing it increments the generation and clears the saved report.
+Renew only after settling active operations, then collect and verify a fresh
+report. The runtime does not renew this control or the 1Password service account.
+Ongoing authority retains default-disabled provisioning, the per-refresh signed
+Velt authority checks, operator disable/rebinding and generation fences, quotas,
+credential-failure quarantine and seven-day report retention. Record the actual
+credential evidence and chosen control policy in the existing rollout record;
+neither a successful test nor `infinity` establishes live credential longevity.
+
 The pinned `@1password/sdk` 0.5.0 adapter preserves existing item fields and
 confirms a strictly newer version after rotation. Timeouts can hide successful
 writes, so runtime never retries them. Before re-enabling or restoring Velt's

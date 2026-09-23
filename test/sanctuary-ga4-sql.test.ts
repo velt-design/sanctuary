@@ -122,3 +122,27 @@ it('purges expired snapshots without releasing credential quarantine',async()=>{
  const uncertain=await claim();await command('before',uncertain,{step:'vault_auth',evidence:{}});await command('finish',uncertain,{evidence:{outcome:'uncertain'}});
  await db.query('select public.sanctuary_ga4_purge()');await expect(claim()).rejects.toThrow('writer unresolved');
 });
+it('keeps explicit ongoing authority while enforcing report retention and revocation generations',async()=>{
+ await db.exec("update private.sanctuary_ga4_control set expires_at='infinity' where singleton=true");
+ await enable();const op=await claim(),saved=await ready(op);await command('complete',op,{payload:saved.payload});
+ const first=await command('read');expect(Date.parse(String(first.expiresAt))-Date.parse(saved.value.fetchedAt)).toBe(7*86400000);
+ // Move the stored clocks forward relative to now without sleeping: a completed
+ // writer is old, while its replacement report still has one day of retention.
+ await db.exec(`reset role;update private.sanctuary_ga4_operations set created_at=now()-interval '120 days',expires_at=now()-interval '120 days'+interval '120 seconds' where id='${op}';
+ update private.sanctuary_ga4_snapshot set fetched_at=now()-interval '6 days',expires_at=now()+interval '1 day' where singleton=true;set role service_role`);
+ expect((await command('read')).status).toBe('available');await command('deliver',op);
+ await db.exec("reset role;update private.sanctuary_ga4_snapshot set fetched_at=now()-interval '8 days',expires_at=now()-interval '1 day' where singleton=true;set role service_role");
+ await db.query('select public.sanctuary_ga4_purge()');expect(await command('read')).toEqual({status:'missing'});
+ await expect(command('deliver',op)).rejects.toThrow('delivery unavailable');
+ const next=await claim(),pending=await ready(next);
+ await db.exec('reset role;update private.sanctuary_ga4_control set enabled=false where singleton=true;set role service_role');
+ await expect(command('read')).rejects.toThrow('authority');await expect(command('complete',next,{payload:pending.payload})).rejects.toThrow('authority');
+ await enable();await expect(command('complete',next,{payload:pending.payload})).rejects.toThrow('authority expired');
+ await command('finish',next,{evidence:{outcome:'report_failed'}});await claim();
+});
+it('keeps finite validation authority expiry effective',async()=>{
+ await enable();const op=await claim(),saved=await ready(op);await command('complete',op,{payload:saved.payload});
+ await db.exec("reset role;update private.sanctuary_ga4_control set expires_at=now()+interval '30 seconds' where singleton=true;set role service_role");
+ await expect(claim()).rejects.toThrow('authority');await expect(command('read')).rejects.toThrow('authority');
+ await expect(command('deliver',op)).rejects.toThrow('authority');await command('delete');
+});
