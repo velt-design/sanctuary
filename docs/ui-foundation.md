@@ -68,7 +68,7 @@ migration or production release.
 
 ## Clarity programme working record
 
-Current stage: **Projects six-column/date refinement implemented and independently reviewed in staging; [review PR183](https://github.com/velt-design/sanctuary/pull/183) remains unmerged, not live.** Foundation PR180 merged as `e8d1158`. Main's open-pipeline correction `bc7ac36` is integrated and its OPEN population is preserved by the new reader. See the refinement evidence below for the current preview and limits. Fresh PR checks remain pending publication of this batch; staging review is not production release authority.
+Current stage: **Projects six-column/date refinement implemented and independently reviewed in staging; [review PR183](https://github.com/velt-design/sanctuary/pull/183) remains unmerged, not live.** Foundation PR180 merged as `e8d1158`. Main's open-pipeline correction `bc7ac36` is integrated and its OPEN population is preserved by the new reader. See the refinement evidence below for the current preview and limits. The refinement is published in PR183 (implementation revision 1337804); fresh PR-wide checks are reported on that PR. Staging review is not production release authority.
 Agent-managed preview access is required; never assign sign-in to Jordan.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
 PRs. Current branch `codex/projects-clarity-20260923`, integrated main `bc7ac36`. Foundation history: `codex/portal-foundation-clarity-20260923`, initial base `54ceef1`.
@@ -481,5 +481,4 @@ Publication review: inspected outgoing branch commits, final source/test/doc dif
 and PR body for the existing GitHub audience. Only source, synthetic tests and
 reusable guidance are included. No private logs, customer media, credentials or
 auth helpers are tracked; private evidence is also explicitly deployment-excluded.
-No screenshots or recordings are published. Next authorised action is publication
-of this review batch and checks; owner acceptance/release authority remains separate.
+No screenshots or recordings are published. The review batch is published; the next authorised action is collecting its checks. Owner acceptance/release authority remains separate.
