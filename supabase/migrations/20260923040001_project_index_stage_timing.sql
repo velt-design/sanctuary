@@ -92,7 +92,7 @@ begin
       ) as stage_filters,
       case
         when upper(btrim(coalesce(p_state, 'all'))) in (
-          'ALL','ACTIVE','WAITING','CLOSED','ARCHIVED'
+          'ALL','OPEN','ACTIVE','WAITING','CLOSED','ARCHIVED'
         ) then upper(btrim(coalesce(p_state, 'all')))
         else 'ALL'
       end as state_filter,
@@ -176,6 +176,11 @@ begin
       )
       and (
         input.state_filter = 'ALL'
+        or (
+          input.state_filter = 'OPEN'
+          and project.archived_at is null
+          and state.state in ('ACTIVE','WAITING')
+        )
         or case
           when project.archived_at is not null then 'ARCHIVED'
           else state.state

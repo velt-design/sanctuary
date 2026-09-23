@@ -68,11 +68,10 @@ migration or production release.
 
 ## Clarity programme working record
 
-Current stage: **Projects pilot column/date refinement in progress (owner approved 23 September); previous independent review covers the earlier version only; [review PR183](https://github.com/velt-design/sanctuary/pull/183) published**. Foundation PR180 merged to main as `e8d1158` on 23 September after all required checks passed. The Projects pilot is ready for owner review and is not live; its PR merge checks remain separate from the completed staging review. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
-Agent-managed preview access is required; never assign sign-in to Jordan. Deployment
-`dpl_DX2bATH5NFYc6PttTAPQC9T3RxfC` passed optimized build and typecheck.
+Current stage: **Projects six-column/date refinement implemented and independently reviewed in staging; [review PR183](https://github.com/velt-design/sanctuary/pull/183) remains unmerged, not live.** Foundation PR180 merged as `e8d1158`. Main's open-pipeline correction `bc7ac36` is integrated and its OPEN population is preserved by the new reader. See the refinement evidence below for the current preview and limits. Fresh PR checks remain pending publication of this batch; staging review is not production release authority.
+Agent-managed preview access is required; never assign sign-in to Jordan.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
-PRs. Current branch `codex/projects-clarity-20260923`, base `e8d1158`. Foundation history: `codex/portal-foundation-clarity-20260923`, initial base `54ceef1`.
+PRs. Current branch `codex/projects-clarity-20260923`, integrated main `bc7ac36`. Foundation history: `codex/portal-foundation-clarity-20260923`, initial base `54ceef1`.
 Initial approval: 23 September "go ahead" to Foundation guidance and examples.
 Superseded by the later same-task "go ahead with those 3 points": merge Foundation
 after checks, then a separate Projects -> detail pilot and independent journey
@@ -328,9 +327,9 @@ Finance navigation uses the existing sidebar/rail/drawer items and styling. Its 
 
 The shared Portal scroll lock now holds the document at its captured position with scrollbar compensation, rather than clamping root height and losing scroll. The existing Modal, Drawer and Schedule fullscreen consumers retain the same lock/unlock contract. Nested locks release only after the last close; original inline styles and scroll position are restored. This correction was found during the Marketing hub information-drawer review. Unit evidence includes nested locks/style restoration; browser evidence includes opening help below the fold, Escape/focus return and preserved reading position. No portal token or cross-route visual migration.
 
-### Projects clarity pilot — current stage (23 September 2026)
+### Projects clarity pilot — earlier evidence (23 September 2026)
 
-**Current:** implemented and independently reviewed in authenticated staging.
+**Earlier version, superseded by the column/date refinement below:** implemented and independently reviewed in authenticated staging.
 Foundation PR180 has merged after all checks; PR183 remains a separate,
 unmerged review batch against main. Builder owns branch
 `codex/projects-clarity-20260923`. No pilot production release or business-data
@@ -430,12 +429,57 @@ action in displayed rows. Fail closed if source coverage exceeds existing limits
 
 Scope: same PR183, no production migration/release, no business-data backfill.
 Staging schema rehearsal and disposable synthetic SQL checks support the preview.
-Acceptance pending: six-column journey, contact edit/cancel and all actions,
-unknown/valid/future dates, Auckland day boundaries, global sorting before paging,
-permissions, stable loading/filter/return, independent delivery review. Prior
-ratings are superseded for changed behavior. Owner need not sign in.
+Verified: six-column journey, contact edit/cancel, modal cancellation and focus
+return, unknown/valid/future dates, Auckland day boundaries, global sorting before
+paging, access denial, stable filter/return and independent delivery review.
+Known dates and multi-page sort order are demonstrated in disposable tests, not
+fabricated staging history. Live saves, physical-phone acceptance and
+production-scale next-action-sort latency remain unverified. Owner need not sign in.
 
-Overlap check: PR184 touches Projects filter/contracts/tests and owns migration
-version 20260923030001. This pilot uses 20260923040001 to avoid a duplicate
-version; its v4 reader and UI changes stay isolated. Reconcile PR184 if it reaches
-main before this pilot is released; no changes to that branch were made.
+Overlap resolved: PR184 merged as bc7ac36 and owns migration 20260923030001.
+This pilot uses 20260923040001. Main was merged into the pilot; v4 preserves the
+exact OPEN predicate (unarchived ACTIVE/WAITING). A disposable database regression
+checks both new sorts against 23 matching records from 25; independent review
+confirmed filtering precedes sorting/paging. No other branch was edited.
+
+Technical evidence: 127 tests across 26 focused files pass, including four real
+SQL tests in disposable PGlite. Portal typecheck, full lint and hosted optimized
+build passed before integration; final integrated build/checks are recorded with
+the published revision. Stage capture handles insert, transition/re-entry,
+unrelated edits and spoofed supplied dates. Existing historical rows remain null.
+Staging additive schema rehearsal compared 39 records with zero business-row
+changes and zero invented dates. The final v4 OPEN predicate was installed in
+staging only. Production requires the ordered migration before application rollout.
+
+Independent review caught drawer keyboard propagation, desktop overflow from
+long project names, and focus returning to a removed menu item. All were fixed
+and independently rechecked in the hosted UI. The final focus check covered phone
+edit cancellation, drawer Escape, stage Cancel and archive Cancel: each returned
+to a usable control/the persistent Actions trigger. No records were saved.
+Desktop six-column fit, 390px table-only scrolling, readable menu, and Quoting +
+Next action due -> detail -> Back with three matching results were demonstrated.
+
+Assessment within this preview scope: outcome/correctness and system fit meet
+8/10 through authoritative definitions, prospective timing and global SQL order;
+usability/clarity/accessibility meet 8/10 through the independent task, layout and
+keyboard evidence. Maintainability improves by extracting ProjectIndexActions
+from ProjectsIndexClient while preserving existing mutation controllers. Security
+and recovery retain staff/admin boundaries, denial checks and unknown evidence.
+Production performance and physical-device/human acceptance remain unverified;
+no uplift or complete live-write workflow is claimed. Handover requires the final
+connected preview and fresh PR checks below; no production release is authorised.
+
+Final hosted preview: https://sanctuary-portal-kfn546yab-jordans-projects-43df95bd.vercel.app/staff/projects
+(`dpl_CJ2xEPZxzYw9f3Dwix1kfNoiRAvR`, integrated main plus the OPEN compatibility
+patch). Optimized build/typecheck passed; builder opened the authenticated normal
+route and verified all six headings and 25 existing synthetic staging records.
+Prior g1sl0wqf0 preview holds the independent final focus evidence; UI source is
+unchanged in the integrated candidate. This is staging, not production reporting.
+The new SQL regression is included in the existing Project Work CI gate.
+
+Publication review: inspected outgoing branch commits, final source/test/doc diff
+and PR body for the existing GitHub audience. Only source, synthetic tests and
+reusable guidance are included. No private logs, customer media, credentials or
+auth helpers are tracked; private evidence is also explicitly deployment-excluded.
+No screenshots or recordings are published. Next authorised action is publication
+of this review batch and checks; owner acceptance/release authority remains separate.

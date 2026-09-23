@@ -58,6 +58,19 @@ describe('Projects timing database contract', () => {
       expect((await report(`select public.staff_projects_index_v4(p_status => 'QUOTING') as result`)).totalCount).toBe(0);
     } finally { await db.exec('rollback'); }
   });
+  it('preserves the merged open-pipeline filter with both new sorts', async () => {
+    await db.exec('begin');
+    try {
+      await db.exec(`update project_operational_states set state='CLOSED' where project_id='${id(1)}'; update project_operational_states set state='WAITING' where project_id='${id(2)}'; update projects set archived_at=now() where id='${id(3)}'`);
+      for (const sort of ['stage_oldest', 'next_action_asc']) {
+        const result = await report(`select public.staff_projects_index_v4(p_archive => 'all', p_state => 'OPEN', p_sort => '${sort}', p_page_size => 100) as result`);
+        expect(result.totalCount).toBe(23);
+        expect(result.rows.map(row => row.id)).toContain(id(2));
+        expect(result.rows.map(row => row.id)).not.toContain(id(1));
+        expect(result.rows.map(row => row.id)).not.toContain(id(3));
+      }
+    } finally { await db.exec('rollback'); }
+  });
   it('preserves access denial and completeness failure', async () => {
     await db.exec('begin');
     await db.exec(`set local role authenticated; select set_config('test.portal_access','no',true);`);
