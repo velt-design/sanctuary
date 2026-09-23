@@ -1,5 +1,27 @@
 # Testing And QA
 
+## Sanctuary-owned Meta candidate
+
+Focused checks: `vitest run apps/portal/lib/marketingIntegrations/meta
+test/sanctuary-meta-db.test.ts test/sanctuary-meta-consumer-db.test.ts` plus Portal
+typecheck and changed-file lint. Set `VELT_META_MIGRATION_ROOT` to the paired Velt
+checkout to enable consumer migration proof. Tests cover fixed provider reads,
+null/completeness handling, caller/account authority, signed originating-operation
+checks, page-only nonretention, retained evidence, revocation, delivery after
+deletion, rollback and shared budgets with the separate Outlook pool intact.
+SQL uses actual new migrations in isolated PGlite with minimal prerequisites;
+this fixture alone does not establish current-schema or native concurrency proof.
+`node test/sanctuary-meta-native.mjs` additionally exercises real concurrent claims
+and both deletion/completion orderings in isolated PostgreSQL 17; it explicitly
+uses synthetic prerequisites and a cron persistence double. The exact migration
+also passed rollback-only rehearsals on the current staging and production schemas
+on 23 September, with real pg_cron, denied direct table/browser access, no enabled
+control and unchanged business counts. No production installation is implied.
+`SANCTUARY_META_SYNTHETIC_WIRE_PATH` optionally writes the source HTTP test's
+synthetic response for the immediate paired consumer-wire test. Never use real
+provider records. No live Meta, production grants or owner journey is proven by
+these fixtures. Real account volume, payload/latency and parity remain unverified.
+
 ## Organisation finance candidate
 
 Focused source checks: `vitest run apps/portal/lib/xero/financePosition.test.ts

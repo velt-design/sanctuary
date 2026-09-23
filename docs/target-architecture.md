@@ -2,6 +2,34 @@
 
 Status: Target contract.
 
+## Business connection ownership (owner decision, 23 September 2026)
+
+Sanctuary owns connections to its business accounts, provider credential use,
+synchronization, domain calculations, business permissions and authoritative
+evidence. Portal and Velt should consume the same Sanctuary-owned facts. Velt
+owns the central conversation, cross-project coordination and presentation;
+it receives versioned, bounded results with dates, coverage, unavailable states
+and access-controlled supporting detail. Model summaries do not replace those
+facts. Shared coding and general research capabilities remain in Velt.
+
+This is the agreed target, not a claim that every connector has moved. Existing
+Velt-owned GA4, Meta, Google Ads and Sanctuary mailbox paths remain transitional.
+In particular, Portal correspondence currently depends on Velt; preserve it
+until a separately verified replacement covers its consumers. Existing Xero
+brokerage and Praxis reporting provide reusable boundary patterns, not permission
+to widen their grants or reuse finance credentials for advertising.
+
+The single cross-repository migration record is Velt's
+[`docs/SANCTUARY_MARKETING_OUTCOMES.md`](https://github.com/velt-design/velt-os/blob/main/docs/SANCTUARY_MARKETING_OUTCOMES.md),
+section **Connection ownership migration — 23 September 2026** (local paired
+candidate until published). Source: Jordan's architecture discussion and
+"go ahead" in task `01a0cbff-4671-7a50-b01f-e3b375756f03`.
+Start with the bounded Meta reporting path; preserve the Marketing & Sales hub's
+definitions and audience. Migration does not authorize ad management, new
+tracking, customer communications, production mutation, activation or spending.
+Local investigation and a reviewable candidate may proceed; release and
+credential cutover require their existing explicit authority.
+
 Configured enquiry qualification (2026-09-17, local implementation): Portal owns
 the staff review form and authenticated HTTP adapter under `lib/projects/qualification`.
 The exact enquiry and its frozen customer brief remain the source; no customer

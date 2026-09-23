@@ -30,6 +30,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/invoices/xeroInvoiceTransferRepository.ts', // Canonical current job lease and frozen provider effect commands.
   'apps/portal/lib/invoices/xeroMatchRepository.ts',
   'apps/portal/lib/marketingAttribution/server.ts',
+  'apps/portal/lib/marketingIntegrations/meta/store.ts', // Server-only delegated Meta lifecycle; one RPC rechecks actor, source, binding, generation and ordered operation. No table access.
   'apps/portal/lib/projects/createProjectCommand.ts',
   'apps/portal/lib/quotes/adminLifecycle.ts',
   'apps/portal/lib/quotes/internalName.server.ts',

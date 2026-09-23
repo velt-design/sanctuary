@@ -1,5 +1,38 @@
 # Architecture
 
+The approved [business connection target](target-architecture.md#business-connection-ownership-owner-decision-23-september-2026)
+places Sanctuary business integrations here and sends refined, evidenced results
+to Velt. This is a staged transition: Meta/GA4/Google Ads readers and the
+Sanctuary mailbox consumer still exist in Velt. Portal correspondence still
+depends on that Velt service. A local, default-off Meta candidate now owns provider
+access, normalization and optional retention in `lib/marketingIntegrations/meta`.
+It exposes `/api/integrations/praxis/v1/marketing/meta` via the existing pinned
+Praxis caller identity. Migration `20260923050001` adds private controls, ordered
+operation claims, body-free audit, seven-day retention and hourly expiry purge.
+No production migration, credential change or cutover has occurred.
+
+Configuration requires `SANCTUARY_META_REPORTS_ENABLED`,
+`SANCTUARY_META_ASSIGNMENT_VERIFIED`, `SANCTUARY_META_ACTOR_ID`,
+`SANCTUARY_META_ACCOUNT_ID`, `SANCTUARY_META_BINDING_SHA256`,
+`SANCTUARY_META_APP_ID`, `SANCTUARY_META_PRINCIPAL_ID`,
+`SANCTUARY_META_BUSINESS_ID`, `SANCTUARY_META_ACCESS_TOKEN`,
+`SANCTUARY_META_APP_SECRET` and `SANCTUARY_META_EXPIRES_AT`.
+Secrets remain server-only and are not stored in reporting tables or wire bodies.
+The source control row separately pins enabled state, expiry, actor, account,
+binding and source identity; migrations provision no active row.
+
+`SANCTUARY_META_VELT_AUTHORITY_KEY` is a dedicated shared signing key, distinct
+from Meta and existing connector credentials. For Velt-initiated refresh only,
+the wrapper checks the originating operation via the fixed
+`https://velt.systems/api/connections/sanctuary-meta/authority` callback before
+and after provider calls and before completion/delivery. This authorizes work;
+no report calculation or provider credential comes from Velt. The common reader
+is independently owned here. Callback outage denies new work. Already-issued
+HTTP cannot be recalled. The endpoint signs no arbitrary URLs and supports no
+advertising writes. Page-only requests do not save a report body; retained reports
+require explicit signed intent. This new Meta capability uses a narrow service-role
+RPC; the existing low-privilege Praxis reporting connector described below is unchanged.
+
 The finance-authorized Xero summary route/page reads fixed paginated invoice and
 payment queries through the existing credential broker. `financeSummaryProvider`
 owns provider reads, `financeSummary` validates/aggregates complete datasets, and
