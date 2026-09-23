@@ -89,6 +89,8 @@ export interface DashboardData {
   schedule: ScheduleSnapshot;
   siteVisits: SiteVisitsSnapshot;
   pipelineCounts: PipelineCounts;
+  pipelineCountsScope?: 'open_enquiry_proposal_v1';
+  pipelineCountsAvailable?: boolean;
   recentEstimates: DashboardRecentEstimate[];
   recentActivity: DashboardRecentActivityItem[];
   personalTasks: DashboardPersonalTask[];

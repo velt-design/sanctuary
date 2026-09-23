@@ -65,6 +65,14 @@ Contacts and projects are staff-owned portal records. Marketing lead capture can
 - Project detail pages use the existing authenticated React Query request to `/api/projects/[projectId]/snapshot`; the server route renders the project shell without repeating that snapshot read.
 - Project Details editing uses the user-owned local-first queue key `portal.project.details.update`. Done closes the editor and exposes the desired values immediately; full normalized drafts remain in the per-user working-copy store until the ordered authenticated API saves finish. Transient/offline failures retain the desired values and retry. Terminal validation, permission, not-found, lock, or conflict responses restore the last confirmed cache values while retaining the rejected working copy for Review/Retry; `401`/`403`/`404` also refresh the protected project read boundary. A confirmed save clears its working copy only when the stored draft still matches that queue item and no newer project-detail save is pending.
 - Archive/restore is an admin-only versioned Project Work command with a required reason. Archive cancels active work and clears compatibility projection; restore does not revive cancelled items.
+- The Projects state filter includes **Open (active + waiting)** (`state=OPEN`).
+  It excludes closed and archived records before pagination, and survives URL
+  navigation and saved position restoration. Dashboard Enquiry/Proposal counts
+  link to this same population. Confirmed/Delivery/Settled retain all unarchived
+  projects; separate Closed/Archived views remain available. The authenticated
+  count RPC and required forward migration are owned in
+  [the schema map](supabase-schema-map.md); old cached all-state journey counts
+  are not shown as a fallback while this contract is unavailable.
 - Focused portal UI browser proof includes Projects Index, Project Detail, and
   the full Contacts workflow. This is regression coverage for the current
   presentation, not a rollout boundary or authority to migrate other routes.

@@ -42,6 +42,7 @@ export default function DashboardView({
         <div className={dash.layout}>
           <PipelineCountsCard
             counts={data.pipelineCounts}
+            countsAvailable={state !== 'refresh-failed' && data.pipelineCountsScope === 'open_enquiry_proposal_v1' && data.pipelineCountsAvailable === true}
             stateCounts={data.projectStateCounts}
             stateCountsAvailable={data.projectStateCountsAvailable !== false}
           />

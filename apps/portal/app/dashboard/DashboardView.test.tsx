@@ -101,6 +101,17 @@ const data: DashboardData = {
 };
 
 describe('DashboardView', () => {
+  it('hides old-scope and failed-refresh journey numbers without changing links', () => {
+    const candidate = { ...data, pipelineCounts: { NEW: 987 } };
+    const old = renderToStaticMarkup(<DashboardView data={candidate} />);
+    expect(old).not.toContain('>987<');
+    expect(old).toContain('Journey counts unavailable');
+    const scoped = { ...candidate, pipelineCountsScope: 'open_enquiry_proposal_v1' as const, pipelineCountsAvailable: true };
+    expect(renderToStaticMarkup(<DashboardView data={scoped} />)).toContain('>987<');
+    const failed = renderToStaticMarkup(<DashboardView data={scoped} state="refresh-failed" />);
+    expect(failed).not.toContain('>987<');
+    expect(failed).toContain('journey=ENQUIRY&amp;state=OPEN');
+  });
   it('renders the concept-led operational dashboard sections', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} />);
 

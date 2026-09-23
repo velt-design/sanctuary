@@ -26,7 +26,7 @@ const PROJECTS_INDEX_PAGE_SIZES = [25, 50, 100] as const;
 
 export type ProjectsIndexArchiveFilter = (typeof PROJECTS_INDEX_ARCHIVE_FILTERS)[number];
 export type ProjectsIndexJourneyFilter = ProjectJourneyPhase | 'all';
-export type ProjectsIndexStateFilter = ProjectEffectiveState | 'all';
+export type ProjectsIndexStateFilter = ProjectEffectiveState | 'OPEN' | 'all';
 export type ProjectsIndexOwnerFilter = ProjectOwnerKey | 'unassigned' | 'all';
 export type ProjectsIndexSort = (typeof PROJECTS_INDEX_SORTS)[number];
 export type ProjectsIndexPageSize = (typeof PROJECTS_INDEX_PAGE_SIZES)[number];
@@ -87,7 +87,7 @@ export function isProjectsIndexJourneyFilter(value: string): value is ProjectsIn
 }
 
 export function isProjectsIndexStateFilter(value: string): value is ProjectsIndexStateFilter {
-  return value === 'all'
+  return value === 'all' || value === 'OPEN'
     || PROJECT_EFFECTIVE_STATES.includes(value as ProjectEffectiveState);
 }
 
