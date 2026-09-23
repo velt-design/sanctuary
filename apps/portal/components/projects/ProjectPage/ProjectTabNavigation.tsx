@@ -15,6 +15,7 @@ import { TabNavigation } from '@/components/ui/foundation';
 
 export default function ProjectTabNavigation({
   hasJobPacks,
+  tabAvailabilityReady = true,
   host,
   initialTab,
   projectId,
@@ -22,6 +23,7 @@ export default function ProjectTabNavigation({
   onTabSelect,
 }: {
   hasJobPacks: boolean;
+  tabAvailabilityReady?: boolean;
   host: string;
   initialTab: string;
   projectId: string;
@@ -33,8 +35,11 @@ export default function ProjectTabNavigation({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const requestedTab = searchParams.get('tab') ?? initialTab;
-  const activeTab = coerceProjectTab(requestedTab, hasJobPacks);
-  const tabs = getAvailableProjectTabs(hasJobPacks);
+  // A summary snapshot has no pack inventory. Preserve a deep link until the
+  // complete snapshot can distinguish an absent pack from an unfinished read.
+  const showJobPacks = hasJobPacks || (!tabAvailabilityReady && requestedTab === 'job-packs');
+  const activeTab = coerceProjectTab(requestedTab, showJobPacks);
+  const tabs = getAvailableProjectTabs(showJobPacks);
   const selectedTab = optimisticTab ?? activeTab;
   const selectedNavigationKey = tabs.find((item) => isProjectNavigationTabSelected(item.navigationKey, selectedTab))?.navigationKey
     ?? 'activity';

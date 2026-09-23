@@ -9,6 +9,7 @@ import {
   DataStatePanel,
   EmptyState,
   LoadingSkeleton,
+  OverflowMenu,
   SearchFilterBar,
   Table,
   TableBody,
@@ -73,7 +74,7 @@ export default function EstimatesListView({
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>Estimates</h3>
-          <p className={styles.subtitle}>Working estimates and quoted designs. An active draft does not replace an accepted quote. Rename alternatives so the team can tell them apart.</p>
+          <p className={styles.subtitle}>Working designs · accepted quotes remain the agreement.</p>
         </div>
         <div className={styles.headerActions}>
           <Button variant="secondary" onClick={onCreateAddOn}>Create add-on estimate</Button>
@@ -153,10 +154,7 @@ export default function EstimatesListView({
                   <TableCell>
                     <span className={styles.estimateIdentity}>
                       <strong>{name}</strong>
-                      <small>
-                        {estimate.internalName ? `Estimate ${estimate.versionLabel} · ` : ''}
-                        {estimate.createdBy || 'Sanctuary staff'}
-                      </small>
+                      {estimate.internalName ? <small>Estimate {estimate.versionLabel}</small> : null}
                       {estimate.commercialScopeKind === 'add_on' ? <Badge tone="info">Add-on</Badge> : null}
                     </span>
                   </TableCell>
@@ -180,8 +178,10 @@ export default function EstimatesListView({
                   >
                     <div className={styles.actions}>
                       <Button size="small" variant="secondary" onClick={open}>{openLabel}</Button>
-                      <Button size="small" variant="quiet" onClick={() => onRename(estimate)}>Rename</Button>
-                      <Button size="small" variant="quiet" onClick={() => onDuplicate(estimate.id)}>Duplicate</Button>
+                      <OverflowMenu label={`Actions for ${name}`} menuLabel={name} items={[
+                        { label: 'Rename', onSelect: () => onRename(estimate) },
+                        { label: 'Duplicate', onSelect: () => onDuplicate(estimate.id) },
+                      ]} />
                     </div>
                   </TableCell>
                 </TableRow>

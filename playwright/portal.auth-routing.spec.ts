@@ -67,7 +67,7 @@ test.describe('portal auth routing public flows', () => {
     await page.waitForURL((url) => url.pathname === '/staff/projects' && url.searchParams.get('q') === 'deck', {
       timeout: 60_000,
     });
-    await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', exact: true, level: 1 })).toBeVisible();
   });
 
   test('renders public login and access-status pages without portal navigation chrome', async ({ page }) => {
@@ -136,12 +136,12 @@ test.describe('portal auth routing authenticated flows', () => {
     await page.goto('/staff/projects');
 
     await expect(portalShellNavigation(page)).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', exact: true, level: 1 })).toBeVisible();
     await expect(page.locator('main[aria-label="Loading projects"]')).toHaveCount(0);
 
     await gate.resolve();
 
-    await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Projects', exact: true, level: 1 })).toBeVisible({ timeout: 60_000 });
   });
 
   test('opens the cached project frame without waiting on the snapshot api route', async ({ page }) => {

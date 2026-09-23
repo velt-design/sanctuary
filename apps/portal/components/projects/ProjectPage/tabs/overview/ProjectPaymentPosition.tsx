@@ -11,11 +11,13 @@ export default function ProjectPaymentPosition({
   schedule,
   saved = false,
   loadedAt,
+  previewOnly = false,
 }: {
   projectId: string;
   schedule: ProjectInvoiceSchedule;
   saved?: boolean;
   loadedAt?: string;
+  previewOnly?: boolean;
 }) {
   const hasAgreement = Boolean(schedule.acceptedQuoteVersionId || schedule.acceptedQuotes?.length);
   return (
@@ -25,15 +27,20 @@ export default function ProjectPaymentPosition({
         <KeyValueGrid columns={2} items={[
           { label: "Recorded payments", value: money.format(schedule.paidIncGstCents / 100) },
           { label: "Open invoice balance", value: money.format(schedule.outstandingIncGstCents / 100) },
-          { label: "Still to invoice", value: money.format(schedule.remainingToInvoiceIncGstCents / 100) },
-          { label: "Accepted agreement", value: hasAgreement ? money.format(schedule.acceptedQuoteTotalIncGstCents / 100) : "Not recorded" },
         ]} />
-        <p className={styles.context}>NZD inc GST · recorded in the project ledger. This is not a live bank balance. An open invoice balance of $0 does not mean the whole job is paid.</p>
-        {loadedAt ? <p className={styles.context}>Ledger loaded {formatPortalDateTime(loadedAt)}</p> : null}
+        <p className={styles.context}>NZD inc GST · project ledger. $0 open invoices does not mean paid in full.</p>
         {schedule.unallocatedCreditIncGstCents > 0 || schedule.overCommittedIncGstCents > 0 ? (
           <AlertBanner tone="warning" title="Payment allocation needs review">Open Invoices to review unallocated credit or amounts above the agreed total.</AlertBanner>
         ) : null}
-        <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}>View invoices and payment evidence</ButtonLink>
+        <details className={styles.details}><summary>Payment breakdown</summary>
+          <KeyValueGrid columns={2} items={[
+            { label: "Still to invoice", value: money.format(schedule.remainingToInvoiceIncGstCents / 100) },
+            { label: "Accepted agreement", value: hasAgreement ? money.format(schedule.acceptedQuoteTotalIncGstCents / 100) : "Not recorded" },
+          ]} />
+          <p className={styles.context}>Recorded payments are not a live bank balance.</p>
+          {loadedAt ? <p className={styles.context}>Ledger loaded {formatPortalDateTime(loadedAt)}</p> : null}
+        </details>
+        <ButtonLink disabled={previewOnly} variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}>Open invoices</ButtonLink>
       </div>
     </Card>
   );

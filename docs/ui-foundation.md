@@ -68,14 +68,185 @@ migration or production release.
 
 ## Clarity programme working record
 
-Current stage: **Foundation guidance and examples verified in a hosted preview**,
-not merged or released. [Review the fictional example](https://sanctuary-portal-mjmxtn7oy-jordans-projects-43df95bd.vercel.app/qa/ui-foundation-fixture)
-(existing Vercel preview sign-in may be required). Deployment
-`dpl_DX2bATH5NFYc6PttTAPQC9T3RxfC` passed optimized build and typecheck.
+### Active bounded stage: Projects journey audit and release (23 September)
+
+Owner request: "lets clean projects up, do a test audit for user journey and
+experience, then push this live". This supersedes the earlier no-release boundary
+for the combined Projects list, Overview and commercial-tab batch only. Customer
+writes/sends, unrelated feature activation and historical date backfill remain
+excluded. Root is the sole writer in `C:/Dev/sanctuary-overview-clarity-20260923`.
+Main733726c is integrated at89623b0; PR186 will target main and supersede PR183.
+
+Current status: audit/release in progress, not live. Prior presentation evidence
+below remains valid; one independent read-only reviewer checks remaining normal
+entry/filter/detail/return, keyboard, reload and recovery gaps. Required release
+CI and read-only production postflight remain pending. Acceptance includes saved
+filter context, truthful commercial summaries, accessible stable layouts, staff
+permissions and no business-row changes from the additive schema installation.
+
+Production preflight: stage column/v4 absent, 1,312 projects; completed physical
+backup dated2026-09-23. Main already uses migration20260923040001 for Praxis.
+Projects therefore uses unique20260923060001 with the same SQL body. Staging has
+the pilot schema but no Projects migration ledger entry; preserve its existing
+ledger and install/record the exact uniquely named body after rollback rehearsal.
+No blanket migration push or unrelated migration installation is authorised.
+Unique-version staging install passed after rollback rehearsal:39 rows unchanged,
+no historical dates assigned, exact ledger-body MD5c10edcb3c454b05b60a6300449b4d801.
+Production rollback rehearsal passed with1,312 rows unchanged, all six state
+populations matching v3/v4 and anonymous execution denied. Production installation
+is still pending release gates. Focused release regression:369 tests across70 files
+pass. Independent audit found a valid Job Pack reload being normalised to Overview
+before the complete snapshot arrived. The header now preserves the requested pack
+tab/sheet while summary-only data loads; complete no-pack results still normalise.
+Regression tests cover both Materials and Summary links and the frame's readiness
+handoff. Independent connected recheck passed on release candidate461229c at
+https://sanctuary-portal-9q2vgpdu2-jordans-projects-43df95bd.vercel.app
+(deployment dpl_2wTiNKruNdcpfkog3MXEaYCHXezz): both sheets retain selection on
+fresh load, Back returns to the pack list, browser Back restores Materials, and
+a confirmed no-pack project normalises truthfully. Filtered Projects -> commercial
+tabs -> reload -> return also retained the selected stage/sort and three results.
+Final focused regression:394 tests across72 files pass, including cached-data
+failure/retry and access-ending denial cases. Portal typecheck and architecture
+advisory pass; no touched warning/critical files. All83 Overview/story browser
+tests pass locally, including desktop/mobile widths, keyboard/reduced motion,
+editing/close confirmation, commercial navigation and denied-refresh recovery.
+The old browser assertions still expected pre-cleanup labels/disclosures/order;
+they now exercise the approved details controls while retaining visibility and
+exception checks. The long-name shell fixture is preserved separately from the
+coherent compact commercial sample. This was a verification-coverage omission,
+not new owner direction. Independent read-only inspection found no weakened test
+coverage. Full CI is rerun for this final test/fixture correction; live writes and
+physical-phone acceptance remain outside the evidence.
+CI caught a timing gap in six conditional disclosure checks: the server shell
+could arrive before the client fixture, so an immediate count skipped opening
+the detail. The tests now wait for the existing fixture-ready signal before that
+decision; no sleep, weakened assertion or product behaviour change is introduced.
+
+Release assessment: correctness, journey/clarity, visual accessibility and system
+fit meet8/10 for this bounded cleanup, supported by the independent populated
+journeys and verified navigation correction. Maintainability meets8/10 using
+existing owners and a small explicit readiness contract. Recovery/security meet
+8/10 for retained access/error contracts and focused denial/retry tests; induced
+live service failure and live financial mutations are not newly accepted.
+Performance and production handover remain unverified until their final gates.
+Physical-phone acceptance remains unverified. No customer records or sends were
+used to prove writes. Outgoing commits/PR/fixtures were inspected: private local
+evidence is untracked and deployment-excluded; only synthetic examples published.
+
+### Reviewed stage: remaining Project pages (23 September)
+
+Owner request: "great, now do the other project pages", after accepting the
+no-sign-in Overview preview. This expands the prior Overview-only boundary to
+Estimates, Quotes, Invoices and Job Packs. Same worktree and one writer; open PRs
+checked with no overlapping presentation owner. Overview remains implemented,
+not released; its outstanding full-journey review is retained in this batch.
+
+Reference: approved Overview / Marketing clarity, using Portal component owners.
+Acceptance: concise first layer, visible status/amount/date and primary action;
+secondary actions and audit details on demand; current accepted scopes remain
+separate from historical versions, payments and outstanding invoices. Keep errors,
+financial exceptions, permissions, URL navigation and specialist editing intact.
+Use actual list components in a no-login synthetic preview; independently inspect
+keyboard, narrow layout, details and return. Live sending/payment mutations and
+production release remain outside authority. Calculator geometry/costing and
+spreadsheet engines are preserved; this is their project entry-page presentation.
+Relevant dimensions: correctness, usability, clarity, accessibility, system fit,
+maintainability, recovery/security, performance and review access.
+Current status: ready for owner review as a bounded presentation preview, not live.
+Final hosted preview: https://sanctuary-portal-4zef76itb-jordans-projects-43df95bd.vercel.app/qa/project-page-shell-fixture?commercial=1&tab=quotes
+(deployment dpl_BWDiwhzLiDAxjRXL5iiNYLV4Uyqq; same final code as this branch).
+The same deployment exposes the compact Overview sample at
+`/qa/project-command-centre-fixture?story=installation` without sign-in.
+Independent review completed with two bounded correction passes. Quote navigation
+and matching V2 scope passed; the final390px Estimates table measures325px, first
+and last menus retain horizontal reading position, Escape restores focus, and
+Invoices/Job Packs fit their containers. Root cause was equal-specificity mobile
+rules being overridden by the shared desktop table minimum; route-scoped selectors
+now win without changing Foundation or spreadsheet-engine behaviour.
+
+Assessment: correctness, usability/clarity, visual accessibility and system fit
+meet8/10 for this presentation slice, backed by independent task walkthroughs and
+commercial reconciliation. Maintainability meets8/10: existing owners reused,
+InvoiceScheduleTotals extracted, action context named, no new access/data owner.
+Verification/handover meets8/10 for a no-login synthetic review and connected
+read-only staging journey. Security/recovery retain existing gates and passing
+unit coverage; full failure recovery is not newly accepted. Performance has a
+successful optimized build and prior base CI but no new production-scale proof.
+Live writes and physical-device acceptance are separate unverified dimensions.
+Publication review: outgoing source, fixtures, documentation and PR text contain
+synthetic examples only; no private media, credentials or local evidence is
+tracked/selected. Only this bounded branch delta above71ef63a is being published. 238
+ProjectPage tests pass, Portal typecheck, full lint and architecture advisory pass.
+Projects PR183 base now has all CI checks passing but remains unmerged.
+Independent review of hosted4n5 found a rapid tab-selection race, a clipped390px
+estimate menu and a synthetic V1/V2 label mismatch. Source corrections include a
+regression proving quote selection sets tab=quotes even from a stale invoice URL,
+right-aligned narrow-screen menu, and matching synthetic provenance. Existing
+connected staging reads verified Projects -> Overview -> Estimates -> draft quote
+and return; Rename was opened and cancelled without editing or saving. Review
+access is provided by synthetic no-login pages; server commands are denied there.
+Full write journeys, production data coverage and physical phone use are unverified.
+Calculator/workbench and spreadsheet engines are retained, not redesigned.
+Overview booking dates remain unresolved: existing read model has no bounded
+visit/install date projection; work-item due dates are not substituted.
+
+### Prior stage: Project Overview clarity (23 September)
+
+Owner approved the next Overview pilot, then requested a localhost or preview
+link requiring no sign-in. Worktree `C:/Dev/sanctuary-overview-clarity-20260923`,
+branch `codex/overview-clarity-20260923`, stacked on Projects PR183 at 71ef63a.
+The existing Projects implementation remains unmerged; its quality gate passed,
+and its performance gate's old Filters selector was corrected at the base above.
+Open PRs and active work were checked; none owns Overview presentation.
+
+Outcome: identify customer/location/stage/owner, the authoritative next action,
+current commercial price and recorded payment position without reading repeated
+explanations. Reference: approved compact Marketing & Sales and Projects list,
+using existing Portal tokens/components. Owners: ProjectHeader, OrientationBand,
+WorkSection/controllers, CommercialDetails/current-design selector, payment query,
+correspondence reader and responsive OverviewLayout. Preserve their contracts,
+editing, blocked/stale/access states, email precedence and reading continuity.
+No new business definitions or tracking, customer communications, record writes,
+production release or schema change. One separate stacked review PR.
+
+Acceptance: normal Projects -> Overview -> commercial -> return journey with
+saved context; obvious action and distinct proposed/agreed/paid values; keyboard
+details, editing without save, stable transitions; desktop/mobile containment;
+independent delivery review and no-login synthetic hosted example alongside the
+agent-connected staff preview. Fixture success is not proof of live writes.
+Upcoming visit/install facts: inspect existing read ownership before showing
+dates; work deadlines cannot be relabelled as bookings. Relevant dimensions are
+correctness, usability/clarity, accessibility, system fit/maintainability,
+recovery/security, performance and handover. No broader tab redesign is included.
+
+Latest owner refinement (23 September, Closed/location screenshot): show only
+Closed for closed rows and keep a visible location in Project identity. Use a
+saved Auckland suburb or outside town/city where comma/newline-separated address
+text supports it; retain ambiguous address text instead of inventing geography.
+No structured locality fields exist in the current Project contract. Full address
+and editing remain in Contact & location. Closed rows show no running stage age
+because the prior stage timestamp is not a closure timestamp. Verified with 33
+focused tests, full lint, architecture/docs guard and hosted optimized build.
+Independent review verified Closed/location presentation at 1440px and 390px;
+the final single-locality postcode correction was source-reviewed and unit-tested.
+Current preview: https://sanctuary-portal-96dczkx1i-jordans-projects-43df95bd.vercel.app/staff/projects
+(`dpl_ExKsudxcpi7tuHVCtWakteGBFbdK`). Prior previews below are superseded.
+No business writes. This small refinement meets the existing preview quality
+standard for correctness, clarity and system fit; free-text locality precision,
+physical-phone acceptance and release readiness retain the stated limits.
+Same PR183 and no production release. Earlier PR checks exposed a remaining
+ambiguous Projects heading in the shared browser preflight; its callers now
+specify level 1. A separate background-job CI container failed to start; no claim
+of passing release checks is made. Fresh checks run on the published batch.
+
+Earlier Projects stage: **Projects six-column/date refinement implemented and independently reviewed in staging; [review PR183](https://github.com/velt-design/sanctuary/pull/183) remains unmerged, not live.** Foundation PR180 merged as `e8d1158`. Main's open-pipeline correction `bc7ac36` is integrated and its OPEN population is preserved by the new reader. See the refinement evidence below for the current preview and limits. The refinement is published in PR183 (implementation revision 1337804); fresh PR-wide checks are reported on that PR. Staging review is not production release authority.
+Agent-managed preview access is required; never assign sign-in to Jordan.
 Owning task: continue Marketing & Sales clarity across the Portal through bounded
-PRs. Current branch `codex/portal-foundation-clarity-20260923`, base `54ceef1`.
-User approval: 23 September "go ahead" to steps 1 and 2 only: guidance plus working
-Foundation examples, independent review and preview; no production release.
+PRs. Current branch `codex/projects-clarity-20260923`, integrated main `bc7ac36`. Foundation history: `codex/portal-foundation-clarity-20260923`, initial base `54ceef1`.
+Initial approval: 23 September "go ahead" to Foundation guidance and examples.
+Superseded by the later same-task "go ahead with those 3 points": merge Foundation
+after checks, then a separate Projects -> detail pilot and independent journey
+review before wider rollout. Pilot merge/release and business writes remain excluded.
 The completed Marketing & Sales release remains separately recorded in
 `marketing-performance.md` and PR178. Its local postflight note is preserved in its
 original worktree. Open PRs were checked; none owns the catalogue paths.
@@ -114,10 +285,9 @@ needed. Private verification artifacts remain ignored in `.local-evidence/`.
 Review device: hosted desktop access verified; phone-width browser checks passed.
 Physical-phone access and human unassisted acceptance remain unverified. This
 fictional instructional task does not prove live business-data coverage. No new
-business assumptions, API, dependency or permission changes. Next: owner review of
-this first bounded PR; automated PR checks remain required before any merge.
-Projects -> project detail is the proposed next pilot, not part of this PR. Wider
-route rollout and production releases retain separate authority.
+business assumptions, API, dependency or permission changes in Foundation. Its
+PR180 final head `6750b8c` passed every required check (Portal Quality run `35801553638`) and merged as `e8d1158`. The now-authorised Projects
+pilot is recorded below; wider route rollout and pilot release remain excluded.
 
 ## Owners
 
@@ -327,3 +497,170 @@ Finance navigation uses the existing sidebar/rail/drawer items and styling. Its 
 ## Reading position in overlays (22 September 2026)
 
 The shared Portal scroll lock now holds the document at its captured position with scrollbar compensation, rather than clamping root height and losing scroll. The existing Modal, Drawer and Schedule fullscreen consumers retain the same lock/unlock contract. Nested locks release only after the last close; original inline styles and scroll position are restored. This correction was found during the Marketing hub information-drawer review. Unit evidence includes nested locks/style restoration; browser evidence includes opening help below the fold, Escape/focus return and preserved reading position. No portal token or cross-route visual migration.
+
+### Projects clarity pilot — earlier evidence (23 September 2026)
+
+**Earlier version, superseded by the column/date refinement below:** implemented and independently reviewed in authenticated staging.
+Foundation PR180 has merged after all checks; PR183 remains a separate,
+unmerged review batch against main. Builder owns branch
+`codex/projects-clarity-20260923`. No pilot production release or business-data
+writes are authorised. Review PR183 is published and rebased onto merged main. Next boundary: owner
+acceptance and explicit pilot release authority, with PR checks passing before
+any merge. No further implementation approval is needed for material corrections. Focused 28-test suite also passed after rebasing onto
+the refreshed Foundation head 6750b8c.
+
+**Agreement:** find a project, identify its next attention, open detail and return
+to the same list context. Reference: Marketing & Sales compact toolbar and
+Foundation Apply/Cancel drawers. Existing StaffPageHeader, Drawer, Table, index
+query/state controller, instant navigation and authoritative nextAction remain
+owners. Live baseline had six selects before the table, attention beyond the
+initial viewport and repeated reasons. Counts remain server-owned; no aggregates
+from partial pages and no new business definitions. Detail remains the existing
+workflow. Broader rollout waits for pilot acceptance.
+
+**Verified implementation:** compact search/sort, draft filter drawer with
+Apply/Cancel, removable applied choices, Next attention second in the table,
+contextual supporting reasons, preserved existing edits/actions/access/error
+owners. Pending and loaded states use the same toolbar/layout, preserving URL
+choices and dimensions. Name and attention stay readable with horizontal overflow
+contained in the table. No dependency, role or data-contract changes.
+
+**Hosted candidate:**
+https://sanctuary-portal-1hcf822gp-jordans-projects-43df95bd.vercel.app/staff/projects
+Deployment `dpl_BqRc9Z26hSxyoLosZAsfS4H5ekRb` passed build/typecheck. This is the
+normal staff route and API with 25 existing synthetic staging rehearsal projects,
+not production reporting. Agent-managed authentication was verified separately in
+the builder and independent review browsers. Earlier gytgaigdf and g42racwxh
+previews are superseded.
+
+**Technical evidence:** 28 focused tests across index, toolbar, attention cells,
+loading shell and return-position owner passed; Portal typecheck, full lint,
+architecture/docs guards and hosted build passed. Return tests cover page-three
+serialization/remount and user isolation. Private evidence stays in ignored local
+storage, explicitly excluded from deployment. Outgoing source/tests/guidance
+contain no new customer payload, credentials or media.
+
+**Independent delivery review:** no material blockers after corrections. Reviewer
+caught a drawer event-isolation defect and mobile attention squeeze; both fixed
+and independently rechecked. Quoting returned three records; project detail
+showed the same next action; actual browser Back preserved filters, results and
+scroll. Earlier below-fold return restored window Y 407.5 exactly. Tab/Escape
+restore focus. At 390px, Name is 200px and Next attention 244px, with table-only
+overflow and no document overflow. Pending-to-loaded controls retain selections,
+chips and toolbar height. Builder also measured unchanged search top (127.5px)
+after adding a filter chip.
+
+Evidence supports 8/10 for outcome/usability/clarity, visual accessibility,
+system fit/maintainability, recovery/security and handover within this read-only
+pilot scope: authoritative controllers are retained, tested return and keyboard
+paths work, and the authenticated preview is reviewable. Performance introduces
+no new reads/integrations and the production build passes; no performance uplift
+claimed. Human acceptance remains separate. Limits: only 25 staging records, so
+browser page-two return is unverified; physical phone, induced read-failure and
+live mutation journeys were not demonstrated. No business writes manufactured
+coverage. The reviewer did not claim broader production readiness.
+
+**Owner intervention and durable resolution:** on 23 September Jordan explicitly
+rejected any further request to sign into Portal for agent work. This supersedes
+the earlier owner-login request. Agents own access setup/recovery and must never
+ask Jordan to log in. The cause was missed reuse of the existing private staging
+helper, not missing owner capability. Reusing that method restored sessions with
+no email, account creation, role/password change or weakened access control.
+Workspace AGENTS records private helper locations; `docs/agent-playbook.md`
+records the standing instruction without secrets. Separate preview origins are
+agent setup work. If recovery exceeds authority, report the technical blocker
+without assigning a login task to Jordan.
+
+Continuity correction: the builder ended the access-recovery turn before
+finishing the already-authorised Foundation merge and pilot PR publication.
+Jordan had to prompt continuation. No new approval was needed; the existing
+stage-continuation rule was missed. Work resumed with PR183 publication and
+Foundation merge checks; authentication recovery alone did not finish the task.
+The approved Foundation merge and separate pilot PR publication are now complete.
+
+
+### Approved column/date refinement (23 September 2026)
+
+Owner accepted six default columns: Project (client below), Stage (exception state
+badge), Time in stage (age and exact date), Next action (due), Owner, and actions.
+Keep contact details, editing, delivery, correction, archive/delete accessible in
+contextual controls. Keep Journey as a filter. Add whole-result Longest in stage
+and Next action due sorting; never sort only the visible page.
+
+Evidence before implementation: staging has 39 projects and only three stage
+change automation events. No stage timestamp column exists. AutomationRunner
+stage events are idempotent by project/type/stage/primary ID, so they cannot prove
+latest entry after repeat transitions; silent corrections also bypass that feed.
+Decision: nullable database-owned stage_changed_at captured on future insert/stage
+change, no historical backfill or updated_at substitution. Historical age Unknown.
+An additive v4 read function preserves v3 consumers. Next-action ranking reuses
+the authoritative full work queue with its existing completeness guards, passes
+only dated project IDs into the bounded index sort, and reuses the same selected
+action in displayed rows. Fail closed if source coverage exceeds existing limits.
+
+Scope: same PR183, no production migration/release, no business-data backfill.
+Staging schema rehearsal and disposable synthetic SQL checks support the preview.
+Verified: six-column journey, contact edit/cancel, modal cancellation and focus
+return, unknown/valid/future dates, Auckland day boundaries, global sorting before
+paging, access denial, stable filter/return and independent delivery review.
+Known dates and multi-page sort order are demonstrated in disposable tests, not
+fabricated staging history. Live saves, physical-phone acceptance and
+production-scale next-action-sort latency remain unverified. Owner need not sign in.
+
+Overlap resolved: PR184 merged as bc7ac36 and owns migration 20260923030001.
+The pilot originally used20260923040001; the combined release uses20260923060001
+to avoid main's subsequent Praxis version collision. Main was merged into the pilot; v4 preserves the
+exact OPEN predicate (unarchived ACTIVE/WAITING). A disposable database regression
+checks both new sorts against 23 matching records from 25; independent review
+confirmed filtering precedes sorting/paging. No other branch was edited.
+
+Technical evidence: 128 tests across 26 focused files pass, including five real
+SQL tests in disposable PGlite. Portal typecheck, full lint and hosted optimized
+build passed before integration; final integrated build/checks are recorded with
+the published revision. Stage capture handles insert, transition/re-entry,
+unrelated edits and spoofed supplied dates. Existing historical rows remain null.
+Staging additive schema rehearsal compared 39 records with zero business-row
+changes and zero invented dates. The final v4 OPEN predicate was installed in
+staging only. Production requires the ordered migration before application rollout.
+
+Independent review caught drawer keyboard propagation, desktop overflow from
+long project names, and focus returning to a removed menu item. All were fixed
+and independently rechecked in the hosted UI. The final focus check covered phone
+edit cancellation, drawer Escape, stage Cancel and archive Cancel: each returned
+to a usable control/the persistent Actions trigger. No records were saved.
+Desktop six-column fit, 390px table-only scrolling, readable menu, and Quoting +
+Next action due -> detail -> Back with three matching results were demonstrated.
+
+Assessment within this preview scope: outcome/correctness and system fit meet
+8/10 through authoritative definitions, prospective timing and global SQL order;
+usability/clarity/accessibility meet 8/10 through the independent task, layout and
+keyboard evidence. Maintainability improves by extracting ProjectIndexActions
+from ProjectsIndexClient while preserving existing mutation controllers. Security
+and recovery retain staff/admin boundaries, denial checks and unknown evidence.
+Production performance and physical-device/human acceptance remain unverified;
+no uplift or complete live-write workflow is claimed. Handover requires the final
+connected preview and fresh PR checks below; no production release is authorised.
+
+Final hosted preview: https://sanctuary-portal-kfn546yab-jordans-projects-43df95bd.vercel.app/staff/projects
+(`dpl_CJ2xEPZxzYw9f3Dwix1kfNoiRAvR`, integrated main plus the OPEN compatibility
+patch). Optimized build/typecheck passed; builder opened the authenticated normal
+route and verified all six headings and 25 existing synthetic staging records.
+Prior g1sl0wqf0 preview holds the independent final focus evidence; UI source is
+unchanged in the integrated candidate. This is staging, not production reporting.
+The new SQL regression is included in the existing Project Work CI gate.
+
+Publication review: inspected outgoing branch commits, final source/test/doc diff
+and PR body for the existing GitHub audience. Only source, synthetic tests and
+reusable guidance are included. No private logs, customer media, credentials or
+auth helpers are tracked; private evidence is also explicitly deployment-excluded.
+No screenshots or recordings are published. The review batch is published; the next authorised action is collecting its checks. Owner acceptance/release authority remains separate.
+
+Final integration correction: the old v3 owner allowlist omitted Ellen and Dave,
+although the current owner contract offers both. V4 now honours all six keys;
+disposable SQL tests prove exact populations. Builder verified the normal staging
+UI: OPEN has 24 records, OPEN + Ellen has 23, OPEN + Dave has none. Independent
+source review compared the complete v4 against v3 plus OPEN and found no further
+supported-contract omission. No rows were changed. The existing Project Work
+gate passed 420 tests; its imported dashboard migration test now normalises the
+new SQL payload to committed LF on Windows while retaining the deliberately CRLF
+old-function scenario. Both SQL suites pass all 11 tests after the owner correction.

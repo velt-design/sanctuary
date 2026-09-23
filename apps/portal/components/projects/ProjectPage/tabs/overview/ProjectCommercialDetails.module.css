@@ -3,3 +3,5 @@
 .details > summary:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
 .hint { display: block; margin-top: var(--ui-space-2); color: var(--ui-text-muted); font-size: var(--ui-font-size-small); font-weight: 400; }
 .content { display: grid; gap: var(--ui-space-3); }
+.label { display: block; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); text-transform: uppercase; letter-spacing: var(--ui-letter-spacing-label); }
+.price { display: block; font-size: var(--ui-font-size-detail-title); margin-top: var(--ui-space-1); color: var(--ui-text-strong); }

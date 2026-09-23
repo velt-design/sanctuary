@@ -1,59 +1,25 @@
 import type { Project } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
-import { resolveProjectJourney } from '@/lib/projects/projectJourney';
-import {
-  Badge,
-  Button,
-  ProjectStageBadge,
-  TableCell,
-} from '@/components/ui/foundation';
+import { Badge, ProjectStageBadge, TableCell } from '@/components/ui/foundation';
+import { projectStageAge } from './projectStageAge';
 import styles from './ProjectIndexLifecycleCells.module.css';
 
-export default function ProjectIndexLifecycleCells({
-  project,
-  stageBusy,
-  onCorrectStage,
-}: {
-  project: Project;
-  stageBusy: boolean;
-  onCorrectStage: (project: Project) => void;
-}) {
+export default function ProjectIndexLifecycleCells({ project }: { project: Project }) {
   const stage = normalizePipelineStageKey(project.status ?? 'NEW');
-  const journey = resolveProjectJourney(stage);
-  const effectiveStateLabel = project.effectiveState
-    ? project.effectiveState.charAt(0) + project.effectiveState.slice(1).toLowerCase()
-    : 'Unavailable';
-
-  return (
-    <>
-      <TableCell data-column="Journey">
-        <span className={styles.journeyLabel}>{journey.phaseLabel}</span>
-      </TableCell>
-      <TableCell data-column="Stage">
-        <div className={styles.statusCell}>
-          <ProjectStageBadge stage={stage ?? 'new'} compact />
-          <Button
-            type="button"
-            variant="quiet"
-            size="small"
-            aria-label={`Correct stage for ${project.projectName || project.name || 'project'}`}
-            disabled={stageBusy}
-            onClick={(event) => {
-              event.stopPropagation();
-              onCorrectStage(project);
-            }}
-            onKeyDown={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            {stageBusy ? 'Saving...' : 'Correct'}
-          </Button>
-        </div>
-      </TableCell>
-      <TableCell data-column="State">
-        <Badge tone={project.effectiveState === 'WAITING' ? 'warning' : 'neutral'}>
-          {effectiveStateLabel}
-        </Badge>
-      </TableCell>
-    </>
-  );
+  const state = project.effectiveState;
+  const age = projectStageAge(project.stageChangedAt);
+  return <>
+    <TableCell data-column="Stage"><div className={styles.statusCell}>
+      {state !== 'CLOSED' ? <ProjectStageBadge stage={stage ?? 'new'} compact /> : null}
+      {state !== 'ACTIVE' ? <Badge tone={state === 'WAITING' ? 'warning' : 'neutral'}>
+        {state ? state.charAt(0) + state.slice(1).toLowerCase() : 'State unavailable'}
+      </Badge> : null}
+    </div></TableCell>
+    <TableCell data-column="Time in stage"><div className={styles.age}>
+      {state === 'CLOSED' ? <span aria-label="Time in stage not applicable for closed projects">—</span> : <>
+        <strong>{age?.label ?? 'Unknown'}</strong>
+        {age ? <time dateTime={project.stageChangedAt!}>{age.date}</time> : <small>No recorded date</small>}
+      </>}
+    </div></TableCell>
+  </>;
 }

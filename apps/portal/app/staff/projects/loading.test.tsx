@@ -9,9 +9,11 @@ describe('ProjectsLoading', () => {
     expect(rendered.container.querySelector('[aria-label="Opening projects"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="Page loading"]')).toBeNull();
     expect(rendered.container.querySelector('[data-projects-index-state="pending"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Filters"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Search and filter projects"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="Projects list"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Updating projects');
+    expect(rendered.container.querySelector<HTMLSelectElement>('#projectSort')?.disabled).toBe(true);
+    expect(rendered.container.querySelector('#projectStatusPending')).toBeNull();
 
     rendered.unmount();
   });

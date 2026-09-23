@@ -125,6 +125,11 @@ for (const scenario of COMMAND_CENTRE_FIXTURE_SCENARIOS) {
       '[data-portal-qa-fixture="project-command-centre"]',
     );
     await expect(fixture).toHaveAttribute("data-fixture-scenario", scenario);
+    // The outer server shell can arrive before the client fixture. Wait for its
+    // existing readiness signal before deciding whether a disclosure exists.
+    await expect(fixture.locator('[data-command-centre-fixture-hydrated="true"]')).toHaveCount(1);
+    const details = fixture.locator('summary', { hasText: 'Quote & design details' });
+    if (await details.count()) await details.click();
     for (const expected of COMMERCIAL_SCENARIO_EXPECTATIONS[scenario]) {
       await expect(fixture).toContainText(expected);
     }
@@ -458,6 +463,7 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
     await expect(
       layout.locator('[data-project-orientation="true"]'),
     ).toBeVisible();
+    await layout.locator('summary', { hasText: 'Quote & design details' }).click();
     await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
     await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
     await expect(
@@ -481,15 +487,9 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
           region.getAttribute("data-project-overview-region"),
         ),
       );
-    if (width <= 768) {
-      expect(regionOrder).toEqual([
-        "project-work", "recent", "commercial", "orientation",
-      ]);
-    } else {
-      expect(regionOrder).toEqual([
-        "orientation", "project-work", "recent", "commercial",
-      ]);
-    }
+    expect(regionOrder).toEqual([
+      "project-work", "recent", "commercial", "orientation",
+    ]);
     await expectNoDocumentOverflow(page);
     await expectNoCroppedOverviewControls(page);
     await testInfo.attach(`overview-${width}x${height}.png`, {
@@ -538,6 +538,7 @@ test("reflows at the effective CSS viewport of 200% browser zoom", async ({
   await expect(
     layout.locator('[data-project-work-section="true"]'),
   ).toBeVisible();
+  await layout.locator('summary', { hasText: 'Quote & design details' }).click();
   await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
   await expect(
     layout.locator('[data-project-orientation="true"]'),
@@ -569,7 +570,7 @@ test("recomposes from available Overview width instead of viewport width", async
       ),
     );
   expect(regionOrder).toEqual([
-    "orientation", "project-work", "recent", "commercial",
+    "project-work", "recent", "commercial", "orientation",
   ]);
   await expectNoDocumentOverflow(page);
 });
@@ -591,10 +592,11 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     }),
   ).toHaveCount(1);
   await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
+  await layout.locator('summary', { hasText: 'Quote & design details' }).click();
   for (const heading of [
     "Project Work",
     "Current design & price",
-    "Project context",
+    "Project details",
     "Recent notes and events",
   ]) {
     await expect(
@@ -733,6 +735,8 @@ test("removes retired cadence while preserving practical work and commercial war
     '[data-command-centre-warning="estimate-price-unavailable"]',
   );
   const metrics = layout.getByLabel("Current design and commercial metrics");
+  // Commercial exceptions bypass the ordinary disclosure and remain first-layer facts.
+  await expect(layout.locator('summary', { hasText: 'Quote & design details' })).toHaveCount(0);
   await expect(warning).toBeVisible();
   await expect(metrics).toBeVisible();
   const [warningTop, metricsTop] = await Promise.all([
@@ -975,7 +979,7 @@ test("routes deterministic V2 command data through the real project shell and Ov
   await expect(layout).toContainText(
     "Project owner:",
   );
-  await layout.locator('summary', { hasText: 'Quote, design & payment details' }).click();
+  await layout.locator('summary', { hasText: 'Quote & design details' }).click();
   await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
   await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
   await expect(
@@ -1120,7 +1124,7 @@ for (const width of [1440, 768, 390]) {
     await page.getByRole('tab', { name: 'Quotes', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Current accepted work' })).toBeVisible();
     const accepted = page.getByRole('row', { name: 'Open Q-CLARITY, Q-CLARITY version 3', exact: true });
-    await expect(accepted.getByText('$26656.87', { exact: true })).toBeVisible();
+    await expect(accepted.getByText('$26,656.87', { exact: true })).toBeVisible();
     await expect(accepted).not.toContainText('(Expired)');
     await expect(accepted.getByRole('link')).toHaveAttribute('href', /estimateId=est_clarity_2/);
     await expectNoDocumentOverflow(page);

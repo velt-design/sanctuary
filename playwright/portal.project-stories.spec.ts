@@ -19,6 +19,8 @@ test('long correspondence does not separate work from commercial facts', async (
     expect(bottom!.y - (top!.y + top!.height)).toBeLessThanOrEqual(24);
   };
   await expect(commercial).toContainText('Current agreement:');
+  // This history-review exception is expanded, unlike an ordinary agreement.
+  await expect(commercial.locator('summary', { hasText: 'Quote & design details' })).toHaveCount(0);
   await expect(commercial.getByRole('link', { name: 'View quote history' })).not.toBeVisible();
   await commercial.locator('summary', { hasText: 'Quote history' }).click();
   await expect(commercial.getByRole('link', { name: 'View quote history' })).toHaveAttribute('href', /tab=quotes/);
@@ -56,7 +58,6 @@ for (const width of [1440, 390]) for (const example of examples) {
     }
     await expect(work).not.toContainText('Review proposal progress');
     await expect(page.getByRole('button', { name: 'Edit details', exact: true })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Correct stage', exact: true })).toBeDisabled();
     const conversations = page.getByRole('region', { name: 'Customer conversations', exact: true });
     const incoming = conversations.locator('article blockquote:visible').filter({ hasText: example.source });
     await expect(incoming).toHaveCount(1);
@@ -82,11 +83,14 @@ for (const width of [1440, 390]) for (const example of examples) {
       await expect(work).toContainText('Jordan');
       await expect(work.getByRole('button', { name: 'Mark complete' })).toBeDisabled();
       await expect(work).not.toContainText('Record email sent');
-      await page.locator('summary', { hasText: 'Quote, design & payment details' }).click();
+      // Recorded payments are useful first-layer facts, independent of quote detail.
+      await expect(page.locator('summary', { hasText: 'Quote & design details' }).locator('..')).not.toHaveAttribute('open', '');
       await expect(page.getByRole('region', { name: 'Payment position', exact: true })).toContainText('$13,325.00');
     }
     await expect(work.getByRole('button', { name: /Record email sent|Record customer reply/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    await page.locator('summary', { hasText: 'Contact, address & reference' }).click();
+    await expect(page.getByRole('button', { name: 'Correct stage', exact: true })).toBeDisabled();
     expect(writes).toEqual([]);
   });
 }

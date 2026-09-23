@@ -221,7 +221,7 @@ export default function OverviewTab({
     );
   } else if (commandQuery.data) {
     commercial = (
-      <ProjectCommercialDetails data={commandQuery.data.currentDesign}>
+      <>
       <Suspense
         fallback={
           <Card padding="compact">
@@ -233,17 +233,19 @@ export default function OverviewTab({
           </Card>
         }
       >
+        <ProjectCommercialDetails data={commandQuery.data.currentDesign}>
         <ProjectCurrentDesignCommercialCard
           data={commandQuery.data.currentDesign}
           projectId={snapshot.project.id}
         />
+        </ProjectCommercialDetails>
         <ProjectPaymentPositionQuery
           projectId={snapshot.project.id}
           host={host}
           onAccessEnding={onAccessEnding}
         />
       </Suspense>
-      </ProjectCommercialDetails>
+      </>
     );
 
     if (workModelMismatch) {

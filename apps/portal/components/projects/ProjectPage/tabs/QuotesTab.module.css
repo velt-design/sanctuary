@@ -1436,3 +1436,11 @@
   margin: var(--ui-space-1) 0 0;
   color: var(--ui-text-muted);
 }
+
+/* Project document lists share the compact Portal hierarchy. */
+.documentSource { display: block; margin-top: var(--ui-space-1); color: var(--ui-text-muted); }
+.acceptedAmount { display: block; margin-top: var(--ui-space-2); font-family: var(--ui-font-display); font-size: var(--ui-font-size-section); font-variant-numeric: tabular-nums; }
+.acceptedAmount small { font-family: var(--ui-font-body); font-size: var(--ui-font-size-caption); font-weight: normal; color: var(--ui-text-muted); }
+.wrapper[data-quotes-view="list"] { gap: var(--ui-density-section-gap); min-width: 0; }
+.wrapper[data-quotes-view="list"] .title { font-family: var(--ui-font-display); font-size: var(--ui-font-size-section); }
+.wrapper[data-quotes-view="list"] .listTable { background: var(--ui-surface-primary); }

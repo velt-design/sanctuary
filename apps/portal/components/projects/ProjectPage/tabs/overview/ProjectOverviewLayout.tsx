@@ -162,11 +162,11 @@ export default function ProjectOverviewLayout({
         </>
       ) : (
         <>
-          {orientationRegion}
           {exceptionRegion}
           {projectWorkRegion}
           {recentRegion}
           {commercialRegion}
+          {orientationRegion}
           {adminRegion}
         </>
       )}

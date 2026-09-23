@@ -2,7 +2,8 @@
   display: grid;
   gap: var(--ui-space-1);
   min-width: 220px;
-  max-width: 420px;
+  width: 240px;
+  max-width: 240px;
 }
 
 .action strong {
@@ -20,7 +21,11 @@
 
 @media (max-width: 767px) {
   .action {
-    min-width: 0;
-    max-width: none;
+    min-width: 220px;
+    width: 220px;
+    max-width: 220px;
   }
 }
+
+.details { justify-self: start; padding: 0; border: 0; background: transparent; color: var(--ui-text-muted); font: inherit; font-size: var(--ui-font-size-caption); text-decoration: underline; cursor: pointer; }
+.details:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }

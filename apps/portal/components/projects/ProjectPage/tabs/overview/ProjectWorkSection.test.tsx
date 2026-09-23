@@ -350,9 +350,9 @@ describe("ProjectWorkSection", () => {
     )!;
 
     expect(valueFor(primaryPanel, "Owner")).toBe("Design specialist");
-    expect(valueFor(primaryPanel, "Expected result")).toBe(
-      "Concept approved for estimating",
-    );
+    const context = primaryPanel.querySelector('details');
+    expect(context?.open).toBe(false);
+    expect(context?.textContent).toContain('Expected result: Concept approved for estimating');
     expect(
       primaryPanel.querySelector<HTMLAnchorElement>("a")?.getAttribute("href"),
     ).toBe(`/staff/projects/${PROJECT_ID}/design`);

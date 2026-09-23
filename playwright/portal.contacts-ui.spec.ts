@@ -192,7 +192,7 @@ test('Contacts detail and CSV review preserve real workflow interactions', async
     await openFresh(page, detailRoute);
     await expect(page.locator('[data-page-header-variant="detail"]:visible')).toHaveCount(1);
     await expect(page.getByRole('heading', { name: 'Contact info' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', level: 1 })).toBeVisible();
     await expectNoDocumentOverflow(page);
     await expectNoLegacyRoundedSurfaces(page.locator('main:visible'));
     await capture(page, 'contact-detail', viewport.name);

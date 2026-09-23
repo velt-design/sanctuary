@@ -654,3 +654,13 @@ access, enable correspondence globally, send mail or authorize a production
 release. Project links are computed from authorized send evidence on the server;
 unconfirmed messages remain explicitly labelled. Local implementation is not
 evidence of historical coverage or live rollout.
+
+
+Projects timing deployment dependency (PR183): install additive migration
+`20260923040001_project_index_stage_timing.sql` before releasing the v4 Projects
+index consumer. The app fails with its existing schema-unavailable state when
+v4 is missing; it does not silently substitute legacy follow-up sorting. Staging
+rehearsal compared all 39 existing project rows before/after and found zero
+business-data changes and zero historical dates assigned. Staging installation
+completed; production installation/release remain unauthorised. Existing staff
+sessions and grants remain the access authority.

@@ -1023,3 +1023,14 @@ Those questions require their owning stage and must not be answered implicitly b
 - Update `portal-production-readiness.md` and `portal-ux-roadmap.md` when readiness or UX status changes.
 - Do not copy the full V1 product specification into this architecture record.
 - Do not mark a later stage complete from partial or Stage 1 evidence.
+
+## Compact Overview presentation preview (23 September 2026)
+
+ProjectHeader includes customer and saved locality. Routine action explanations
+use ProjectActionContext disclosure; critical, triage and recovery guidance stays
+visible. Current commercial price and project payment ledger values are visible
+without expanding quote/design details. Additional payment evidence remains in
+Payment breakdown. Project details follow work, correspondence and commercial
+information while retaining mounted editor state across layout changes. No booked
+visit/install date is inferred from a work-item deadline; that bounded projection
+remains unavailable in this Overview read model.

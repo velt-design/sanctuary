@@ -12,6 +12,7 @@ import {
 import ProjectCurrentDesignCommercialCard from "@/components/projects/ProjectPage/tabs/overview/ProjectCurrentDesignCommercialCard";
 import ProjectPaymentPosition from "@/components/projects/ProjectPage/tabs/overview/ProjectPaymentPosition";
 import ProjectCommercialDetails from "@/components/projects/ProjectPage/tabs/overview/ProjectCommercialDetails";
+import { projectLocation } from '@/lib/projects/projectLocation';
 import ProjectCorrespondenceCard from "@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceCard";
 import { correspondenceFixture } from './correspondenceFixture';
 import { projectPositionLabel } from '@/components/projects/ProjectPage/tabs/overview/projectPositionLabel';
@@ -263,8 +264,8 @@ export default function ProjectCommandCentreFixtureClient({
       </Card>
     ) : viewState === "failed" || viewState === "retry" ? null : (
       <>
-        <ProjectCurrentDesignCommercialCard data={currentDesign} />
-        <ProjectPaymentPosition projectId={project.id} saved={viewState === "stale"} schedule={{
+        <ProjectCommercialDetails data={currentDesign}><ProjectCurrentDesignCommercialCard data={currentDesign} previewOnly={previewOnly} /></ProjectCommercialDetails>
+        <ProjectPaymentPosition projectId={project.id} previewOnly={previewOnly} saved={viewState === "stale"} schedule={{
           acceptedQuoteVersionId: currentDesign.source === "accepted_quote" ? "fixture-accepted" : null,
           acceptedQuoteRef: null,
           acceptedQuoteVersionNumber: null,
@@ -308,6 +309,7 @@ export default function ProjectCommandCentreFixtureClient({
 
   return (
     <div data-command-centre-fixture-hydrated={hydrated ? "true" : "false"}>
+      {previewOnly ? <Card title={project.name} padding="compact"><p>{project.contactName} · {projectLocation(project)} · Owner: {project.owner?.displayName ?? 'Unassigned'}</p></Card> : null}
       <ProjectOverviewLayout
         state={viewState}
         orientation={
@@ -322,7 +324,7 @@ export default function ProjectCommandCentreFixtureClient({
         }
         exception={exception}
         projectWork={projectWork}
-        commercial={previewOnly ? <ProjectCommercialDetails data={currentDesign}>{commercial}</ProjectCommercialDetails> : commercial}
+        commercial={commercial}
         recent={recent}
       />
     </div>

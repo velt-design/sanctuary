@@ -105,7 +105,7 @@ async function expectSharedHeaderGeometry(
 
 async function waitForProjects(page: Page) {
   await page.goto('/staff/projects');
-  await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Projects', exact: true, level: 1 })).toBeVisible();
   await expect(page.locator('main[data-projects-index-state]:visible')).toHaveAttribute(
     'data-projects-index-state',
     /^(fresh|refresh-failed|unavailable)$/,

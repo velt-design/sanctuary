@@ -9,8 +9,9 @@ export default function ProjectCommercialDetails({ data, children }: { data: Pro
   const label = data.source === 'accepted_quote' ? 'Agreed price' : data.source === 'sent_quote' ? 'Proposed price' : data.source === 'draft_quote' ? 'Draft quote' : 'Current estimate';
   return <details className={styles.details}>
     <summary>
-      <span>{cents == null ? (data.source === 'none' ? 'No price prepared yet' : `${label} unavailable`) : `${label}: ${new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 2 }).format(cents / 100)} inc GST`}</span>
-      <span className={styles.hint}>Quote, design & payment details</span>
+      <span className={styles.label}>{label}</span>
+      <strong className={styles.price}>{cents == null ? (data.source === 'none' ? 'Not prepared' : 'Unavailable') : new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 2 }).format(cents / 100)}</strong>
+      <span className={styles.hint}>{cents == null ? '' : 'NZD inc GST · '}Quote & design details</span>
     </summary>
     <div className={styles.content}>{children}</div>
   </details>;

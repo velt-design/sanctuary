@@ -335,3 +335,19 @@ The mapping screen has a separately gated, explicitly confirmed new-Xero-custome
 Finance resume can reuse an unused prepared invoice request through migration21. Only an expired unused window is renewed, with audit; the invoice, request key and job identity remain the same. Possibly dispatched requests still require the separate recovery check. This remains unactivated rollout work; see docs/xero-connection.md.
 
 Finance mapping now reports incomplete portal invoice details separately from an infrastructure failure. The operator is directed to check the linked customer, open/paid status and NZD currency before retrying; the existing SQL eligibility rules are unchanged and no provider request runs before context validation. See `docs/xero-connection.md` for staged walkthrough evidence and the older synthetic fixture limitation.
+
+## Project document clarity preview (23 September 2026)
+
+Quotes group source design with identity and issue/expiry dates in one column;
+current accepted scopes still use the authoritative selector, with prominent
+NZD inclusive-GST amounts. Earlier acceptances and superseded drafts retain their
+status. PDF and administrative actions remain available together. Invoice totals
+are presented by `InvoiceScheduleTotals`, using the existing schedule fields
+without recomputing commercial truth. Routine delivery-attempt details can be
+expanded; failed delivery, payment and void evidence stay visible. Job-pack lists
+label quote status explicitly and retain spreadsheet navigation and mobile labels.
+No lifecycle, payment, PDF, email, permissions or spreadsheet write contracts change.
+
+Quote selection explicitly sets `tab=quotes` when writing its selection URL,
+including an immediate click after an optimistic Commercial tab switch. This
+preserves unrelated filters without allowing a stale Invoices URL to win.

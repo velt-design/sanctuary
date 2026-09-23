@@ -26,7 +26,7 @@ describe('loadProjectsIndexData', () => {
   it('forwards the OPEN population and journey stages before pagination', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { rows: [], totalCount: 0, page: 2, pageSize: 50 }, error: null });
     const result = await loadProjectsIndexData({ ...params, state: 'OPEN', status: 'all', page: 2 }, { rpc } as any);
-    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v3', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v4', expect.objectContaining({
       p_state: 'OPEN', p_stages: ['SITE_VISIT', 'QUOTING', 'SENT'], p_page: 2,
     }));
     expect(result.projects.page).toBe(2);
@@ -76,7 +76,7 @@ describe('loadProjectsIndexData', () => {
       id: 'ct_22222222-2222-4222-8222-222222222222',
       displayName: 'Alex Contact',
     })]);
-    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v3', {
+    expect(rpc).toHaveBeenCalledWith('staff_projects_index_v4', {
       p_archive: 'active',
       p_search: 'deck',
       p_status: 'SENT',
@@ -87,6 +87,7 @@ describe('loadProjectsIndexData', () => {
       p_sort: 'newest',
       p_state: 'WAITING',
       p_owner: 'jordan',
+      p_due_project_ids: null,
       p_stages: ['SENT'],
     });
     expect(getAuthoritativeProjectWorkQueue).toHaveBeenCalledWith(
@@ -110,7 +111,7 @@ describe('loadProjectsIndexData', () => {
     );
 
     expect(rpc).toHaveBeenCalledWith(
-      'staff_projects_index_v3',
+      'staff_projects_index_v4',
       expect.objectContaining({
         p_state: 'all',
         p_stages: ['SITE_VISIT', 'QUOTING', 'SENT'],
@@ -130,7 +131,7 @@ describe('loadProjectsIndexData', () => {
     );
 
     expect(rpc).toHaveBeenCalledWith(
-      'staff_projects_index_v3',
+      'staff_projects_index_v4',
       expect.objectContaining({ p_stages: ['__NO_MATCH__'] }),
     );
   });
@@ -144,4 +145,18 @@ describe('loadProjectsIndexData', () => {
       loadProjectsIndexData(params, { rpc } as any),
     ).rejects.toBeInstanceOf(ProjectsIndexSchemaError);
   });
+});
+
+it('sorts with the displayed authoritative action across the whole result, before paging', async () => {
+  const id1 = 'proj_11111111-1111-4111-8111-111111111111';
+  const id2 = 'proj_22222222-2222-4222-8222-222222222222';
+  getAuthoritativeProjectWorkQueue.mockResolvedValueOnce({ entries: [
+    { projectId: id1, dueAt: '2026-09-24T00:00:00Z', title: 'Later' },
+    { projectId: id2, dueAt: '2026-09-22T00:00:00Z', title: 'Earlier' },
+    { projectId: 'proj_33333333-3333-4333-8333-333333333333', dueAt: null, title: 'Undated' },
+  ] });
+  const rpc = vi.fn().mockResolvedValue({ data: { rows: [{ id: id2.slice(5), pipeline_stage: 'SENT' }], totalCount: 3 }, error: null });
+  const result = await loadProjectsIndexData({ ...params, page: 2, sort: 'next_action_asc' }, { rpc } as any);
+  expect(rpc).toHaveBeenCalledWith('staff_projects_index_v4', expect.objectContaining({ p_page: 2, p_due_project_ids: [id2.slice(5), id1.slice(5)] }));
+  expect(result.projects.rows[0]?.nextAction?.title).toBe('Earlier');
 });

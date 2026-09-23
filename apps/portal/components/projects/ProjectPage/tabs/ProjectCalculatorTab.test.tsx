@@ -195,6 +195,8 @@ describe('ProjectCalculatorTab', () => {
   it('opens Duplicate as a new calculator revision without mutating its source', () => {
     search = 'tab=estimates&campaign=winter';
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const actions = rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Actions for Estimate V2"]');
+    act(() => actions?.click());
     const duplicate = Array.from(rendered.container.querySelectorAll('button'))
       .find((button) => button.textContent === 'Duplicate');
     act(() => duplicate?.click());

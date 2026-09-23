@@ -32,11 +32,11 @@ describe("ProjectOverviewLayout", () => {
         node.getAttribute("data-project-overview-region"),
       ),
     ).toEqual([
-      "orientation",
       "exception",
       "project-work",
       "recent",
       "commercial",
+      "orientation",
       "admin",
     ]);
 

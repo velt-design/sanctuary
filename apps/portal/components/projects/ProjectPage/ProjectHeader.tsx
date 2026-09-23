@@ -6,6 +6,7 @@ import ProjectHeaderOwnerControl from "./ProjectHeaderOwnerControl";
 import StaffPageHeader from "@/components/layout/StaffPageHeader";
 import { Card, ProjectStageBadge } from "@/components/ui/foundation";
 import styles from "./ProjectPage.module.css";
+import { projectLocation } from '@/lib/projects/projectLocation';
 
 export default function ProjectHeader({
   project,
@@ -13,6 +14,7 @@ export default function ProjectHeader({
   host,
   tab,
   ownerControlsPaused,
+  tabAvailabilityReady = true,
   optimisticTab,
   onTabSelect,
 }: {
@@ -21,6 +23,7 @@ export default function ProjectHeader({
   host: string;
   tab: string;
   ownerControlsPaused?: boolean;
+  tabAvailabilityReady?: boolean;
   optimisticTab?: ProjectNavigationTabKey | null;
   onTabSelect?: (tab: ProjectNavigationTabKey) => void;
 }) {
@@ -36,6 +39,7 @@ export default function ProjectHeader({
           className={styles.mastheadHeader}
           variant="detail"
           title={project.name}
+          subtitle={<>{project.contactName || 'Customer not recorded'} · {projectLocation(project)}</>}
           titleAccessory={<ProjectStageBadge stage={project.stage} compact />}
           meta={
             <ProjectHeaderOwnerControl
@@ -52,6 +56,7 @@ export default function ProjectHeader({
       <div data-project-header-row="tabs">
         <ProjectTabNavigation
           hasJobPacks={Boolean(project.hasJobPacks)}
+          tabAvailabilityReady={tabAvailabilityReady}
           host={host}
           initialTab={tab}
           projectId={project.id}

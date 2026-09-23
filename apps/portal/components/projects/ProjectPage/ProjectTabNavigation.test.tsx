@@ -56,6 +56,30 @@ describe('ProjectTabNavigation', () => {
     rendered.unmount();
   });
 
+  it.each(['materials', 'summary'])('preserves a %s pack deep link while its inventory loads', (sheet) => {
+    mockSearchParams = `tab=job-packs&estimateId=est_1&sheet=${sheet}&campaign=winter`;
+    const rendered = renderIntoDocument(
+      <ProjectTabNavigation hasJobPacks={false} tabAvailabilityReady={false} host="host" initialTab="job-packs" projectId="proj_1" />,
+    );
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(rendered.container.querySelector('[aria-selected="true"]')?.textContent).toBe('Job Packs');
+    rendered.unmount();
+    const resolved = renderIntoDocument(
+      <ProjectTabNavigation hasJobPacks tabAvailabilityReady host="host" initialTab="job-packs" projectId="proj_1" />,
+    );
+    expect(replaceMock).not.toHaveBeenCalled();
+    resolved.unmount();
+  });
+
+  it('normalizes a pack route only when the complete inventory confirms no packs', () => {
+    mockSearchParams = 'tab=job-packs&sheet=materials&campaign=winter';
+    const rendered = renderIntoDocument(
+      <ProjectTabNavigation hasJobPacks={false} tabAvailabilityReady host="host" initialTab="job-packs" projectId="proj_1" />,
+    );
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter');
+    rendered.unmount();
+  });
+
   it('normalizes invalid tabs to Overview and preserves unrelated query parameters', () => {
     mockSearchParams = 'tab=details&campaign=winter';
     const rendered = renderIntoDocument(

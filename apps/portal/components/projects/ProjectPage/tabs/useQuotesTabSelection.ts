@@ -131,6 +131,8 @@ export function useQuotesTabSelection({
       createFromEstimateId?: string | null;
     }) => {
       const query = new URLSearchParams(searchParams.toString());
+      // A quote can be selected before Commercial's optimistic tab URL settles.
+      query.set("tab", "quotes");
       if (Object.prototype.hasOwnProperty.call(next, "quoteId")) {
         if (!next.quoteId) {
           query.delete("quoteId");
