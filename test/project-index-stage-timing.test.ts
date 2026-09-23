@@ -71,6 +71,17 @@ describe('Projects timing database contract', () => {
       }
     } finally { await db.exec('rollback'); }
   });
+  it('honours all current owner choices instead of silently widening the population', async () => {
+    await db.exec('begin');
+    try {
+      await db.exec(`insert into project_owner_assignments values ('${id(1)}','ellen'),('${id(2)}','dave')`);
+      for (const [owner, projectId] of [['ellen', id(1)], ['dave', id(2)]]) {
+        const result = await report(`select public.staff_projects_index_v4(p_owner => '${owner}', p_sort => 'stage_oldest') as result`);
+        expect(result.totalCount).toBe(1);
+        expect(result.rows.map(row => row.id)).toEqual([projectId]);
+      }
+    } finally { await db.exec('rollback'); }
+  });
   it('preserves access denial and completeness failure', async () => {
     await db.exec('begin');
     await db.exec(`set local role authenticated; select set_config('test.portal_access','no',true);`);

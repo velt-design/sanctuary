@@ -442,7 +442,7 @@ exact OPEN predicate (unarchived ACTIVE/WAITING). A disposable database regressi
 checks both new sorts against 23 matching records from 25; independent review
 confirmed filtering precedes sorting/paging. No other branch was edited.
 
-Technical evidence: 127 tests across 26 focused files pass, including four real
+Technical evidence: 128 tests across 26 focused files pass, including five real
 SQL tests in disposable PGlite. Portal typecheck, full lint and hosted optimized
 build passed before integration; final integrated build/checks are recorded with
 the published revision. Stage capture handles insert, transition/re-entry,
@@ -482,3 +482,13 @@ and PR body for the existing GitHub audience. Only source, synthetic tests and
 reusable guidance are included. No private logs, customer media, credentials or
 auth helpers are tracked; private evidence is also explicitly deployment-excluded.
 No screenshots or recordings are published. The review batch is published; the next authorised action is collecting its checks. Owner acceptance/release authority remains separate.
+
+Final integration correction: the old v3 owner allowlist omitted Ellen and Dave,
+although the current owner contract offers both. V4 now honours all six keys;
+disposable SQL tests prove exact populations. Builder verified the normal staging
+UI: OPEN has 24 records, OPEN + Ellen has 23, OPEN + Dave has none. Independent
+source review compared the complete v4 against v3 plus OPEN and found no further
+supported-contract omission. No rows were changed. The existing Project Work
+gate passed 420 tests; its imported dashboard migration test now normalises the
+new SQL payload to committed LF on Windows while retaining the deliberately CRLF
+old-function scenario. Both SQL suites pass all 11 tests after the owner correction.

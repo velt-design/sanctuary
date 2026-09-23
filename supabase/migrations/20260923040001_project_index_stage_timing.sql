@@ -98,7 +98,7 @@ begin
       end as state_filter,
       case
         when lower(btrim(coalesce(p_owner, 'all'))) in (
-          'all','unassigned','jordan','jp','joe','bruce'
+          'all','unassigned','ellen','jordan','jp','joe','bruce','dave'
         ) then lower(btrim(coalesce(p_owner, 'all')))
         else 'all'
       end as owner_filter,
