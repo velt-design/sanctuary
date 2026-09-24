@@ -69,3 +69,15 @@
 .metrics { display:grid; gap:0; }
 .metrics > :last-child { justify-self:end; }
 .recordId { font-size:10px!important; opacity:.7; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.sourceStack { display: grid; gap: 20px; }
+.sourceStatus { min-height: 155px; }
+.sourceDefinitions { display: grid; gap: 8px; margin: 0; }
+.sourceDefinitions dt { font-weight: 600; margin-top: 12px; }
+.sourceDefinitions dd { margin: 0; }
+.sourceCampaigns section { padding-block: 16px; border-top: 1px solid var(--ui-border); }
+.sourceCampaigns h3 { margin: 0; font-size: 16px; }
+.sourceCampaigns p { overflow-wrap: anywhere; }
+.sourceCampaigns dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.sourceCampaigns dt { font-size: 13px; color: var(--ui-text-muted); }
+.sourceCampaigns dd { margin: 6px 0 0; font-size: 18px; font-weight: 600; }

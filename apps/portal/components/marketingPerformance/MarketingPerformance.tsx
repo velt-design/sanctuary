@@ -15,6 +15,8 @@ import { Drawer } from '@/components/ui/drawer/Drawer';
 import HubMetrics from './HubMetrics';
 import HubRecords from './HubRecords';
 import HubCompleteness from './HubCompleteness';
+import DataSources from './DataSources';
+import type { MetaEvidenceLoader } from '@/lib/marketingPerformance/dataSources';
 import EnquiryCharts from './EnquiryCharts';
 import PortfolioChart from './PortfolioChart';
 import PerformanceComparison from './PerformanceComparison';
@@ -25,12 +27,12 @@ import { loadReport, type ReportLoader } from './useMarketingReports';
 import useReportReturnPosition from './useReportReturnPosition';
 import styles from './MarketingPerformance.module.css';
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false}: {
-  loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader}: {
+  metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
   const [draft,setDraft]=useState<FiltersState>(()=>({...hubDefaults(initialFilters??defaultFilters()),view:'overview' as const}));
   const [applied,setApplied]=useState<FiltersState|null>(null), [validation,setValidation]=useState(''), [revision,setRevision]=useState(0);
-  const [eventKind,setEventKind]=useState(''),[info,setInfo]=useState(false);
+  const [eventKind,setEventKind]=useState(''),[info,setInfo]=useState(false),[sources,setSources]=useState(false);
   const {hub,previous,busy,error,comparisonError}=useHub(applied,revision,loader,priorLoader);
   const position=useReportReturnPosition(busy);
   useEffect(()=>{
@@ -74,12 +76,13 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
           <details><summary>Enquiry trends and previous-period comparison</summary><PerformanceTrends rows={selected.enquiries} filters={applied} previous={priorFiltered} earliestReceipt={hub.earliestReceipt} comparisonError={comparisonError} onRetry={()=>setRevision(n=>n+1)}/></details>
 
         </>}
-        <footer className={styles.reportFooter}><span>Spend & acquisition cost: unavailable</span><span>{new Date(hub.asOf).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium',timeStyle:'short'})} NZ <Button variant="quiet" onClick={()=>setRevision(n=>n+1)}>Refresh</Button><Button variant="quiet" onClick={()=>setInfo(true)}>Data & definitions</Button></span></footer>
+        <footer className={styles.reportFooter}><span>Acquisition cost: unavailable <Button variant="quiet" onClick={()=>setSources(true)}>Data sources</Button></span><span>{new Date(hub.asOf).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium',timeStyle:'short'})} NZ <Button variant="quiet" onClick={()=>setRevision(n=>n+1)}>Refresh</Button><Button variant="quiet" onClick={()=>setInfo(true)}>Data & definitions</Button></span></footer>
+        <Drawer title="Data sources" open={sources} onClose={()=>setSources(false)}>{sources&&<DataSources hub={hub} loader={metaLoader} synthetic={synthetic}/>}</Drawer>
         <Drawer title="Data & definitions" open={info} onClose={()=>setInfo(false)}>
           <p className={styles.muted}>{previewDescription??'Authoritative saved business records; observed attribution is separate from platform claims.'}</p>
           <HubCompleteness hub={hub} filters={applied} apply={next=>{apply(next);setInfo(false);}}/>
           <PerformanceDefinitions excludedTests={hub.enquiries.excludedTests} unlinked={totals.unlinked}/>
-          <p>Spend is unavailable, not zero. Proposed input: evidence-backed CSV by period, source/campaign and NZD spend. Google and Meta conversion claims are not added to business outcomes.</p>
+          <p>Advertising evidence is available through Data sources when a retained source report exists. Acquisition costs remain unavailable until spend and business outcomes have a verified matching basis. Google and Meta conversion claims are not added to business outcomes.</p>
         </Drawer>
       </>:null}
     </div>
