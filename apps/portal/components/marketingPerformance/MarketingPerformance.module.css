@@ -71,6 +71,7 @@
 .recordId { font-size:10px!important; opacity:.7; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 .sourceStack { display: grid; gap: 20px; }
+.sourceStack > .environmentLabel { margin: 0; }
 .sourceStatus { min-height: 155px; }
 .sourceDefinitions { display: grid; gap: 8px; margin: 0; }
 .sourceDefinitions dt { font-weight: 600; margin-top: 12px; }

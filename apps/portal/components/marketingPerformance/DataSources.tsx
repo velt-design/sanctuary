@@ -27,7 +27,7 @@ export default function DataSources({ hub, loader = loadMetaEvidence, synthetic 
   return <div className={styles.sourceStack}>
     {synthetic && <p className={styles.environmentLabel}>Demo · Fictional business and campaign figures</p>}
     <Card title="Business records" padding="compact">
-      <p>{hub.projects.length.toLocaleString()} projects · {hub.enquiries.rows.length.toLocaleString()} submissions in selected dates.</p>
+      <p>{hub.projects.length.toLocaleString()} projects in current portfolio · {hub.enquiries.rows.length.toLocaleString()} submissions in selected dates.</p>
       <p className={styles.muted}>Read {date(hub.asOf)} NZ. Enquiry history begins {hub.earliestReceipt ? date(hub.earliestReceipt) : 'at an unknown date'}; earlier enquiries are unavailable. Later history may also be incomplete.</p>
     </Card>
     <Card title="Meta advertising" padding="compact">
