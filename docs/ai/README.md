@@ -26,6 +26,8 @@ This directory is the durable home for Sanctuary AI strategy, architecture, deci
 
 Create detailed owner docs only when their implementation slice begins. Until then, keep the master plan proposed and avoid duplicating current repository contracts here.
 
+The repository also includes a dark, offline evaluation harness under `evals/ai/`. Its initial echo-provider suite verifies the runner and deterministic assertion wiring only; it does not evaluate a live model or authorize customer data, provider credentials, network access, or production effects.
+
 ## Current Programme State
 
 - PR-AI-001, master plan and routing: complete.
