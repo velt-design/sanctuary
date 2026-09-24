@@ -1,5 +1,21 @@
 # Staff API And Auth Contracts
 
+## Praxis GA4 source candidate
+
+`/api/integrations/praxis/v1/marketing/ga4` accepts GET `action=refresh|read` or
+DELETE `action=delete`, an empty body and exact existing machine bearer/source
+identity. Only refresh accepts completed `start/end`, optional paired comparison
+dates and `retain=true`; unknown or repeated keys are denied. The property,
+actor and vault item are server/DB pinned, never caller-selected. Refresh also
+requires signed originating Velt operation/binding/query authority and repeated
+callback validation. No browser cookie or provider token is accepted as a
+substitute. Saved reads use source storage, not Google; delete remains possible
+while collection is disabled but requires authenticated current source identity.
+Every response is no-store and bounded; failure logs contain only fixed stages
+and allowlisted SQLSTATE, never report bodies or credentials. The service-role
+adapter exposes one scoped lifecycle RPC and no direct table access. This local
+candidate does not alter staff Outlook, finance or other Portal permissions.
+
 ## Praxis organisation finance candidate
 
 `GET /api/integrations/praxis/v1/finance-position` accepts only `from`, `to` and

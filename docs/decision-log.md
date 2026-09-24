@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-09-23 — Check migration identity before a release rehearsal
+
+The GA4 candidate initially reused `20260923060001`, already assigned to project
+stage timing. Read-only production preflight stopped before applying SQL. The
+candidate moved to unused `20260923070001`, then passed rollback and no-residue
+checks. Check both repository filenames and the deployed ledger before selecting
+release migration identity; a successful isolated SQL test cannot detect a
+collision with a different already-deployed migration. Owners:
+`supabase-schema-map.md` and `testing-and-qa.md`.
+
 ## 2026-09-23 — Verify the RPC session, not only its database role
 
 The Meta pilot passed a rollback-only service-role SQL rehearsal but failed

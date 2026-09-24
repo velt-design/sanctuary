@@ -13,7 +13,8 @@ and access-controlled supporting detail. Model summaries do not replace those
 facts. Shared coding and general research capabilities remain in Velt.
 
 This is the agreed target, not a claim that every connector has moved. Existing
-Velt-owned GA4, Meta, Google Ads and Sanctuary mailbox paths remain transitional.
+Velt-owned GA4, Google Ads and Sanctuary mailbox paths remain transitional;
+Meta now runs through Sanctuary with its direct path retained for rollback.
 In particular, Portal correspondence currently depends on Velt; preserve it
 until a separately verified replacement covers its consumers. Existing Xero
 brokerage and Praxis reporting provide reusable boundary patterns, not permission
@@ -29,6 +30,14 @@ definitions and audience. Migration does not authorize ad management, new
 tracking, customer communications, production mutation, activation or spending.
 Local investigation and a reviewable candidate may proceed; release and
 credential cutover require their existing explicit authority.
+
+Subsequent owner authorization in the same task approved the Meta cutover and
+then one four-point goal covering read-only chat, connection inventory, source
+GA4 implementation and verified GA4 cutover/rollback. This is bounded migration
+authority, not permission for unrelated account changes, retirement, spending or
+customer messages. Current verification and the next release boundary remain in
+the single paired record above. Existing Outlook correspondence/review/send
+workflows are preserved; no duplicate Outlook connection is being created.
 
 Configured enquiry qualification (2026-09-17, local implementation): Portal owns
 the staff review form and authenticated HTTP adapter under `lib/projects/qualification`.
