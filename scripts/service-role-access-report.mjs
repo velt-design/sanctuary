@@ -99,6 +99,9 @@ function isApprovedServerFlow(file) {
   // Server-only delegated finance read. The one RPC rechecks current finance
   // grant, confirmed staff identity, canonical source and pinned tenant; no table or credential access.
   if (file === 'apps/portal/lib/xero/financePositionAuthority.ts') return true;
+  // Machine-authenticated GA4 source lifecycle; SQL pins actor/source/property,
+  // serializes credential intents and retained delivery. No direct table access.
+  if (file === 'apps/portal/lib/marketingIntegrations/ga4/store.ts') return true;
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
   if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) return true;

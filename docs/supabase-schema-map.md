@@ -1,5 +1,20 @@
 # Supabase Schema Map
 
+## GA4 source ownership candidate — not activated
+
+`20260923070001_sanctuary_ga4_reporting.sql` adds private control, operation,
+snapshot and append-only event tables behind `sanctuary_ga4_command`. The
+server-only `marketingIntegrations/ga4/store.ts` uses this service-role RPC because
+the fixed machine caller has no staff cookie. SQL independently verifies the
+confirmed active actor, exact source identity, property, binding, generation,
+vault item and ordered lifecycle. No direct table grants or secrets are added.
+Unresolved credential intents remain quarantined beyond leases and control
+changes. Seven-day/256 KiB retention has qualified-delete and final-delivery
+fences; deleting reports never clears credential uncertainty. The migration
+starts disabled and its purge requires real pg_cron. Source actor/credentials
+are separately provisioned after paired Velt direct-writer exclusion is proven.
+See `testing-and-qa.md` for native and rollback-only exact-schema evidence.
+
 ## Meta source ownership candidate
 
 `20260923050001_sanctuary_meta_reporting.sql` adds private Meta control,

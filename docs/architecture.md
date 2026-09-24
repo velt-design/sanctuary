@@ -2,7 +2,7 @@
 
 The approved [business connection target](target-architecture.md#business-connection-ownership-owner-decision-23-september-2026)
 places Sanctuary business integrations here and sends refined, evidenced results
-to Velt. This is a staged transition: Meta/GA4/Google Ads readers and the
+to Velt. This is a staged transition: rollback Meta and direct GA4/Google Ads readers and the
 Sanctuary mailbox consumer still exist in Velt. Portal correspondence still
 depends on that Velt service. The default-off Meta pilot owns provider
 access, normalization and optional retention in `lib/marketingIntegrations/meta`.
@@ -11,9 +11,10 @@ Praxis caller identity. Migration `20260923050001` adds private controls, ordere
 operation claims, body-free audit, seven-day retention and hourly expiry purge.
 PR187 deployed the implementation and migration on 23 September 2026. Separate
 server credentials are provisioned for bounded owner-authorized validation;
-source database authority remains disabled outside that proof. Velt's active
-source remains direct. Deployment is not evidence of completed live parity or
-authorization to cut over or retire existing credentials.
+PR188 corrected scoped deletion. Jordan then approved the Meta cutover; Velt's
+active Meta source is Sanctuary, with normal refresh, retained reload and Praxis
+receipt verified on 23 September. Direct authority remains for rollback. This
+does not authorize credential retirement or imply GA4 has moved.
 
 Configuration requires `SANCTUARY_META_REPORTS_ENABLED`,
 `SANCTUARY_META_ASSIGNMENT_VERIFIED`, `SANCTUARY_META_ACTOR_ID`,
@@ -43,6 +44,34 @@ forward correction preserves that guard, source authority and audit history.
 Failures emit only fixed action/stage labels and an allowlisted database error
 code for diagnosis. Raw exceptions, provider responses, report bodies, identities
 and credentials are excluded from these logs; public errors remain generic.
+
+### GA4 source candidate — local, not activated
+
+`lib/marketingIntegrations/ga4` owns the fixed five-report GA4 parser, readonly
+Google OAuth/property verification, versioned 1Password refresh-token update and
+seven-day retained report. `/api/integrations/praxis/v1/marketing/ga4` uses the
+existing bearer/source identity plus a separate signed Velt operation callback.
+The 110-second overall deadline preserves individual 15-second credential/admin
+and 45-second report limits. No provider request retries occur.
+
+Migration `20260923070001` provides a default-disabled exact actor/property/vault/
+item/source control, ordered durable intents/results, six claims per hour,
+body-free append-only audit, 256 KiB snapshot and deletion/delivery fences.
+An unresolved credential effect blocks future writers beyond lease expiry and
+disable/re-enable; only reconciled operator recovery can release it. Deletion
+does not clear credential uncertainty. Every singleton delete is qualified for
+the production safeupdate extension. The store's service-role RPC is a narrow
+privileged server flow: browser roles have no table or RPC access, and no secrets
+are stored in application tables. The existing restricted Praxis reader is
+unchanged and supplies the business period-activity counts internally.
+
+Velt retains its single once/day scheduler as orchestration and consumes the
+derived report; no second collector is installed here. Website conversion delivery
+is a separate existing scheduler. Cross-system validation fences Velt's direct
+writer before Sanctuary touches the same rotating credential. Restoring direct
+collection requires source/vault reconciliation, not merely an HTTP failure or
+expired lease. Environment gates and provisioning are documented in
+`environment-auth-supabase.md`; live activation and coverage remain unverified.
 
 The finance-authorized Xero summary route/page reads fixed paginated invoice and
 payment queries through the existing credential broker. `financeSummaryProvider`
