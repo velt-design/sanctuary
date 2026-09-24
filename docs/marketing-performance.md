@@ -1,5 +1,63 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Data-foundation first version (24 September 2026)
+
+Implemented and hosted for protected synthetic review; not released to production.
+Owning task: `01a0d1c6-0fa3-7352-ae7f-c126f1705d27`.
+The private task record and actual coverage evidence live at
+`C:/Dev/sanctuary-marketing-data-20260924/.local-evidence/WORK-RECORD.md`.
+Current main was revalidated at `5dc35ff9`; GA4 PR190 remains separately owned,
+open and inactive. Its owner confirmed no newer cutover or conflicting edits.
+
+The first foundation reuses Sanctuary's existing retained Meta report rather
+than introducing another collector, historical ledger or CSV write path.
+`GET /api/staff/v1/marketing-performance/meta` requires the existing staff session
+and confirmed developer identity, accepts no action/account/date inputs, reads
+only the configured source's saved report, and returns private/no-store evidence.
+It uses the existing source control/generation/binding/identity checks and the
+same snapshot integrity/expiry parser as the integration consumer. No credentials,
+provider refresh, changed retention, database migration or campaign writes are added.
+The existing source read can append its normal technical access audit and remove
+invalid expired cache entries; it never changes business records.
+
+The hub's Data sources drawer shows a report's own seven-day period, fetch time,
+expiry, currency/timezone, returned campaign count, known spend and individual
+platform claims. Report dates are independent of hub filters. Missing spend,
+empty reports, failed reads, stale evidence (over30 hours) and expiry are distinct;
+partial figures and expired totals are withheld. Duplicate campaign identifiers
+are rejected. Check saved report does not renew provider data or retention.
+Acquisition costs remain unavailable: neither campaign-name guessing nor observed
+matching candidates establish complete cohort denominators or causality.
+
+Current coverage investigation used read-only production queries, existing browser
+sessions and real retained source payload validation. It identified sparse permitted
+source evidence, unlinked historical receipts, unassessed qualification, incomplete
+stage-timing history and distinct payment/quote evidence. Detailed counts and real
+payloads remain private. GA4 acquisition/landing/events are currently available in
+Velt's existing report, but its contract has no campaign or person-level joins.
+Google Ads account UI access is verified; its automated report path is disabled or
+incomplete. Customer-reported discovery/referrals are not a verified structured
+reporting dataset. Existing `source=website` intake labels are not discovery answers.
+
+Recommended order: (1) review this retained-Meta and coverage foundation; (2) finish
+the separately owned GA4 move without a second timer; (3) approve and verify the
+existing Google Ads read capability or a bounded export import; (4) agree aggregate
+history retention/backfill, then build a deduplicated campaign/day ledger; (5) validate
+retained campaign identifiers and cohort coverage before cost-per-outcome reporting.
+New integration activation, longer retention, historical writes and Sanctuary release
+remain owner decisions. Existing seven-day snapshots are not durable spend history.
+
+Preview evidence is synthetic. Actual source validation is separate and does not
+claim the new staff endpoint has been released or exercised in production.
+Validation: 73 focused tests, Portal typecheck, scoped lint, architecture and
+documentation checks passed. Independent delivery review checked the normal entry,
+keyboard/focus, loading, retry, missing/stale reports, saved-view return and 390px
+layout. Two wording/layout findings were corrected and independently rechecked.
+The corrected hosted build was inspected at desktop and 390px; anonymous access
+redirects to Vercel authentication. Physical-phone use and human acceptance remain
+unverified. Private evidence and the exact preview revision are in the task record.
+
+
 Connection ownership follow-on (23 September 2026): Jordan approved a
 marketing-first inventory and migration scope under the
 [business connection ownership decision](target-architecture.md#business-connection-ownership-owner-decision-23-september-2026).

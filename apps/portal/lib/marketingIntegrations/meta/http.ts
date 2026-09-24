@@ -8,12 +8,12 @@ import { verifyMeta } from './verify';
 import { readMetaCampaigns } from './reader';
 import { metaReportSchema, validateMetaPeriod, type MetaReport } from './report';
 import type { Boundary } from './boundary';
+import { parseMetaSnapshot } from './snapshot';
 import { metaDelegation } from './delegation';
 
 const deps = { source: loadPraxisConnectorConfig, control: metaControlConfig, credentials: metaConfig, store: metaStore,
   verify: verifyMeta, read: readMetaCampaigns, fetcher: fetch, delegation: metaDelegation };
-const available = z.object({ status: z.literal('available'), operation: z.uuid(), generation: z.number().int().positive(),
-  payload: z.string().max(262144), resultHash: z.string().regex(/^[a-f0-9]{64}$/), expiresAt: z.iso.datetime({ offset: true }) }).strict();
+
 
 async function emptyBody(request: Request) {
   if (!request.body) return true;
@@ -99,13 +99,8 @@ export async function sanctuaryMetaResponse(request: Request, dependencies = dep
     if (transient) return Response.json(envelope({ status: 'available', retained: false, operation: transient.operation, generation: transient.generation,
       resultHash: createHash('sha256').update(JSON.stringify(transient.report)).digest('hex'), expiresAt: new Date(Date.parse(transient.report.fetchedAt)+7*86400000).toISOString(), report: transient.report }), { headers });
     if (z.object({ status: z.literal('missing') }).strict().safeParse(raw).success) return Response.json(envelope({ status: 'missing' }), { headers });
-    const saved = available.parse(raw);
+    const { saved, report } = parseMetaSnapshot(raw);
     if (refreshedOperation && saved.operation !== refreshedOperation) throw new Error('Source report superseded.');
-    if (Buffer.byteLength(saved.payload) > 262144 || createHash('sha256').update(saved.payload).digest('hex') !== saved.resultHash) throw new Error('Source integrity unavailable.');
-    const report = metaReportSchema.parse(JSON.parse(saved.payload));
-    validateMetaPeriod(report.period, new Date(report.fetchedAt), report.timezone);
-    if (Date.parse(report.fetchedAt) > Date.now() + 5000 || Date.parse(saved.expiresAt) <= Date.now()
-      || Date.parse(saved.expiresAt) !== Date.parse(report.fetchedAt) + 7 * 86400000) throw new Error('Source report expired.');
     const response = envelope({ status: 'available', retained: true, operation: saved.operation, generation: saved.generation,
       resultHash: saved.resultHash, expiresAt: new Date(saved.expiresAt).toISOString(), report });
     if (Buffer.byteLength(JSON.stringify(response)) > 262144) throw new Error('Source response exceeds bound.');
