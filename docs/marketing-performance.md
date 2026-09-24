@@ -2,7 +2,8 @@
 
 ## Data-foundation first version (24 September 2026)
 
-Locally implemented; not released. Owning task: `01a0d1c6-0fa3-7352-ae7f-c126f1705d27`.
+Implemented and hosted for protected synthetic review; not released to production.
+Owning task: `01a0d1c6-0fa3-7352-ae7f-c126f1705d27`.
 The private task record and actual coverage evidence live at
 `C:/Dev/sanctuary-marketing-data-20260924/.local-evidence/WORK-RECORD.md`.
 Current main was revalidated at `5dc35ff9`; GA4 PR190 remains separately owned,
@@ -48,6 +49,13 @@ remain owner decisions. Existing seven-day snapshots are not durable spend histo
 
 Preview evidence is synthetic. Actual source validation is separate and does not
 claim the new staff endpoint has been released or exercised in production.
+Validation: 73 focused tests, Portal typecheck, scoped lint, architecture and
+documentation checks passed. Independent delivery review checked the normal entry,
+keyboard/focus, loading, retry, missing/stale reports, saved-view return and 390px
+layout. Two wording/layout findings were corrected and independently rechecked.
+The corrected hosted build was inspected at desktop and 390px; anonymous access
+redirects to Vercel authentication. Physical-phone use and human acceptance remain
+unverified. Private evidence and the exact preview revision are in the task record.
 
 
 Connection ownership follow-on (23 September 2026): Jordan approved a
