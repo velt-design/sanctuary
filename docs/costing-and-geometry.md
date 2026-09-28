@@ -55,8 +55,13 @@ manifest to `v2.10`, review its exact diff and representative impact, and publis
 atomically after both Portal and marketing use compatible code. Preserve every
 editable rate; the intended change from `v2.9` is the manifest only. An older active
 manifest needs separate reconciliation of intervening semantics before publication.
-Published `v2.9` and earlier snapshots retain their historical policy and outputs;
-rollback clones the prior published version, retaining its original effective
+Published `v2.9` and earlier snapshots retain their historical policy and outputs.
+The supported legacy fallback (no publication pointer or missing publication
+schema) is explicitly pinned to effective `v2.9` while preserving its material,
+labour and curve overrides. Its provenance snapshot records that version. A fresh
+admin draft still advances to `v2.10`, so fallback cannot activate the new policy
+merely by deploying code.
+Rollback clones the prior published version, retaining its original effective
 manifest. `simpleRangePricing.ts` owns the versioned eligibility and policy choice;
 `controlConfig.ts` owns compatibility. Their tests cover old publications, unchanged
 Standard totals, actual cost drivers and the new Bespoke amounts.

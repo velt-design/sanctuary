@@ -279,15 +279,19 @@ describe('costing configuration admin publication', () => {
     }));
   });
 
-  it('makes a fresh draft the explicit active-manifest upgrade point', async () => {
+  it.each([
+    { source: 'published', version: 'v1.8', versionId: 'published-v1' },
+    { source: 'legacy-overrides', version: 'v2.9', versionId: null },
+  ])('makes a fresh draft the explicit upgrade point from $source', async ({ source, version, versionId }) => {
     const base = loadCostingConfigV1();
     const publishedControl = snapshotCostingControlConfigV1(base);
-    publishedControl.baseManifestVersion = 'v1.8';
+    publishedControl.baseManifestVersion = version;
+    publishedControl.labour.crewHourRateExGst = 82;
     resolvePublishedCostingConfiguration.mockResolvedValue({
       config: applyCostingControlConfigV1(base, publishedControl),
       provenance: {
-        source: 'published',
-        versionId: 'published-v1',
+        source,
+        versionId,
       },
     });
     const insert = vi.fn();
@@ -307,8 +311,11 @@ describe('costing configuration admin publication', () => {
 
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({
       base_manifest_version: base.manifest.version,
-      based_on_version_id: 'published-v1',
-      config_json: expect.objectContaining({ baseManifestVersion: base.manifest.version }),
+      based_on_version_id: versionId,
+      config_json: expect.objectContaining({
+        baseManifestVersion: 'v2.10',
+        labour: expect.objectContaining({ crewHourRateExGst: 82 }),
+      }),
     }));
   });
 

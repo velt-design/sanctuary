@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   applyCostingControlConfigV1,
+  calculateSiteCostV1,
+  COSTING_CONTROL_PREVIEW_SCENARIOS_V1,
+  evaluateSimpleRangeEligibilityV2,
   loadCostingConfigV1,
   snapshotCostingControlConfigV1,
 } from '@sp/costing';
@@ -83,7 +86,11 @@ describe('published costing configuration resolver', () => {
     expect(getCostingConfigWithOverrides).not.toHaveBeenCalled();
   });
 
-  it('preserves legacy effective behaviour before the first publish and snapshots it', async () => {
+  it.each([
+    { name: 'no publication pointer', publication: { data: { current_version_id: null }, error: null } },
+    { name: 'missing publication row', publication: { data: null, error: null } },
+    { name: 'missing schema', publication: { data: null, error: { code: '42P01', message: 'relation costing_configuration_publication does not exist' } } },
+  ])('preserves pre-release legacy pricing with $name and snapshots it', async ({ publication }) => {
     const base = loadCostingConfigV1();
     const legacy = applyCostingControlConfigV1(base, {
       ...snapshotCostingControlConfigV1(base),
@@ -94,7 +101,7 @@ describe('published costing configuration resolver', () => {
     });
     getCostingConfigWithOverrides.mockResolvedValue({ config: legacy, overrides: {} });
     const client = clientFor({
-      publication: { data: null, error: null },
+      publication,
       version: { data: null, error: null },
     });
     const { resolvePublishedCostingConfiguration, resolveHistoricalCostingConfiguration } = await import('./configurationResolver');
@@ -104,8 +111,19 @@ describe('published costing configuration resolver', () => {
     expect(resolved.provenance.source).toBe('legacy-overrides');
     if (resolved.provenance.source !== 'legacy-overrides') return;
     expect(resolved.provenance.configSnapshot.labour.crewHourRateExGst).toBe(82);
-    expect((await resolveHistoricalCostingConfiguration(resolved.provenance, client))
-      .installActions.basis.crew_hour_rate_ex_gst).toBe(82);
+    expect(resolved.provenance.baseManifestVersion).toBe('v2.9');
+    expect(resolved.provenance.configSnapshot.baseManifestVersion).toBe('v2.9');
+    const inputs = structuredClone(COSTING_CONTROL_PREVIEW_SCENARIOS_V1[0].inputs);
+    inputs.pricing_classification = 'bespoke';
+    inputs.pergolas[0].modules[0].access = 'hard';
+    const output = calculateSiteCostV1(inputs, resolved.config);
+    expect(output.overhead.sales_ex_gst).toBe(1200);
+    expect(output.install.actions.find(action => action.applied_multipliers.bespoke_productive_time)
+      ?.applied_multipliers.bespoke_productive_time).toBe(1.2);
+    expect(evaluateSimpleRangeEligibilityV2(inputs, resolved.config).eligible).toBe(false);
+    const historical = await resolveHistoricalCostingConfiguration(resolved.provenance, client);
+    expect(historical.installActions.basis.crew_hour_rate_ex_gst).toBe(82);
+    expect(calculateSiteCostV1(inputs, historical)).toEqual(output);
   });
 
   it('fails closed when a published row does not match its recorded hash', async () => {
