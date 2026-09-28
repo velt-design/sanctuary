@@ -87,9 +87,9 @@ approval; it does not add a new approval gate for every layout decision.
 
 Communicate visually first, especially on mobile. Use imagery, composition and clear choices to explain the offer. Keep only the text needed to understand, decide or act. Remove repeated explanations, redundant headings and generic marketing copy. Keep essential pricing conditions and decision-critical information beside the relevant action.
 
-This owner-approved intent guides the homepage challenger. Concrete patterns will be refined after independent review of the complete journey; no untested word count or layout is a fixed standard. Judge the reading needed to make a confident decision across the journey, including optional detail and return.
+This owner-approved intent guides the adopted homepage composition. No untested word count or layout is a fixed standard. Judge the reading needed to make a confident decision across the journey, including optional detail and return.
 
-The independently reviewed challenger demonstrates three bounded patterns:
+The independently reviewed and owner-accepted homepage demonstrates three bounded patterns:
 
 - Let a short offer and one clear choice lead into real built photography. Use
   whole-space and material-detail scale contrast to explain the architectural
@@ -105,9 +105,9 @@ The independently reviewed challenger demonstrates three bounded patterns:
   enquiry context instead of repeating a generic residential close. Verify
   server-restored context, hydration, Back and reset, not just the initial view.
 
-These patterns passed independent local journey review in the isolated homepage
-candidate; they are evidence for this bounded application, not owner acceptance,
-conversion evidence, a production release or a mandate to restyle other routes.
+These patterns passed independent journey review and owner acceptance for this
+homepage. That acceptance is not conversion evidence or a mandate to restyle
+other routes; the release record separately establishes deployment status.
 
 ## Product clarity refinement (21 September 2026)
 

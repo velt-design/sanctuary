@@ -22,45 +22,6 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 }
 
-async function waitForCinematicWelcome(page: Page) {
-  await expect(page.locator('[data-homepage-welcome]')).toBeHidden({
-    timeout: 3_000,
-  });
-}
-
-async function measureAutomaticHeroReveal(page: Page) {
-  return page.evaluate(() => new Promise<{
-    delayMs: number;
-    scrollY: number;
-  }>((resolve) => {
-    let imageVisibleAt: number | null = null;
-    const checkReveal = () => {
-      if (!document.querySelector('[data-homepage-welcome]') && imageVisibleAt === null) {
-        imageVisibleAt = performance.now();
-      }
-      if (
-        imageVisibleAt !== null
-        && document.querySelector('[data-homepage-hero-journey]')
-          ?.getAttribute('data-story-visible') === 'true'
-      ) {
-        observer.disconnect();
-        resolve({
-          delayMs: performance.now() - imageVisibleAt,
-          scrollY: window.scrollY,
-        });
-      }
-    };
-    const observer = new MutationObserver(checkReveal);
-    observer.observe(document.body, {
-      attributeFilter: ['data-story-visible'],
-      attributes: true,
-      childList: true,
-      subtree: true,
-    });
-    checkReveal();
-  }));
-}
-
 async function projectFinderOpeningGeometry(page: Page) {
   return page.locator('[data-project-finder-opening]').evaluate((opening) => {
     const openingRect = opening.getBoundingClientRect();
@@ -137,387 +98,26 @@ async function selectProfessionalPath(page: Page, path: string) {
     );
 }
 
-test('project finder is the indexable live homepage and the prototype URL redirects', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('the adopted homepage is indexable and retains the prototype redirect', async ({ page }) => {
   await setAnalyticsConsent(page, false);
   const response = await page.goto('/');
-
   expect(response?.status()).toBe(200);
   expect(response?.headers()['x-robots-tag'] ?? '').not.toMatch(/noindex/i);
-  await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute(
-    'content',
-    /noindex/i,
-  );
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
-    'href',
-    publicOrigin,
-  );
-  const heroJourney = page.locator('[data-homepage-hero-journey]');
-  const header = page.locator('header.site');
-  const heading = page.getByRole('heading', {
-    level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
-  });
-  await expect(heading).toBeVisible();
-  await waitForCinematicWelcome(page);
-  await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
-  // The shared header keeps the desktop CTA mounted; CSS hides it on mobile.
-  await expect(header.locator('.nav-cta')).toHaveCount(1);
-  await expect(header.locator('.nav-cta')).toBeHidden();
-  await expect(heading).toBeVisible();
-  // The story fades with opacity, which Playwright still considers visible.
-  // Assert its settled state; the dedicated timing test owns the transition.
-  await expect(page.locator('[data-homepage-hero-symbol="chevron"]'))
-    .toHaveCount(1);
-  const continueArrow = page.getByRole('button', {
-    name: 'Continue to choose your project starting point',
-  });
-  await expect(heroJourney).toHaveAttribute('data-story-visible', 'true');
-  await expect(page.getByText('Fixed-roof pergola design and build in Auckland'))
-    .toBeVisible();
-  await expect(page.getByRole('link', {
-    name: 'Warkworth Outdoor Room, Warkworth',
-  })).toBeVisible();
-  await expect(continueArrow).toBeVisible();
-  const chevronGeometry = await continueArrow.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const styles = getComputedStyle(element);
-    return {
-      backgroundColor: styles.backgroundColor,
-      borderStyle: styles.borderStyle,
-      height: rect.height,
-      width: rect.width,
-    };
-  });
-  expect(chevronGeometry.width).toBeGreaterThanOrEqual(56);
-  expect(chevronGeometry.height).toBeGreaterThanOrEqual(64);
-  expect(chevronGeometry.borderStyle).toBe('none');
-  expect(chevronGeometry.backgroundColor).toBe('rgba(0, 0, 0, 0)');
-  expect(await continueArrow.locator('path').evaluate((path) => (
-    getComputedStyle(path).animationName
-  ))).toContain('hero-chevron-nudge');
-  await expect(page.getByRole('complementary', { name: 'Why Sanctuary' })
-    .getByRole('link', { name: /61 Google reviews/ })).toBeVisible();
-  await expect(header).toBeVisible();
-  await expect(page.locator('footer')).toBeVisible();
-  await expect(page.locator('footer').getByRole('link', {
-    name: 'Start your project',
-  })).toHaveAttribute(
-    'href',
-    '/contact?enquiry_type=residential&source_path=%2F&source_component=footer&source_experience=project-finder-home-v1#contact-form',
-  );
-  await expect(page.locator('[data-product-type]')).toHaveCount(3);
-  await expect(page.getByRole('link', { name: 'Explore Pitched', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Bespoke design/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Commercial & professionals/ })).toBeVisible();
-  await expect(page.locator('[data-professional-path-chooser]')).toHaveCount(0);
-  await expect(page.locator('[data-product-type] img')).toHaveCount(3);
-  await expect(page.getByRole('heading', { name: 'A few spaces we’ve built.' })).toBeVisible();
-  await expect(page.locator('[data-project-evidence]')).toHaveCount(2);
-  await expect(page.locator('[data-product-type] img').first()).toHaveAttribute('loading', 'lazy');
-  await expect(page.getByRole('img', {
-    name: 'Interior outdoor room with cedar ceiling, pendant lighting and lounge seating',
-  }).first()).toHaveAttribute('fetchpriority', 'high');
-  await expect(page.locator('[data-homepage-hero] img'))
-    .toHaveAttribute('loading', 'eager');
-  await expect(page.locator('main img[loading="eager"]')).toHaveCount(1);
-  await expect(page.locator('main').getByRole('link', { name: 'Start your project' }))
-    .toBeHidden();
-  await expect(page.locator('h1')).toHaveCount(1);
-  const openingGeometry = await page.evaluate(() => {
-    const hero = document.querySelector<HTMLElement>('main section');
-    const proof = document.querySelector<HTMLElement>('[aria-label="Why Sanctuary"]');
-    return {
-      heroHeight: hero?.getBoundingClientRect().height ?? 0,
-      proofTop: proof?.getBoundingClientRect().top ?? 0,
-      viewportHeight: window.innerHeight,
-    };
-  });
-  expect(openingGeometry.proofTop).toBeGreaterThanOrEqual(
-    openingGeometry.viewportHeight - 1,
-  );
-  expect(openingGeometry.heroHeight).toBeGreaterThan(700);
-  await expectNoHorizontalOverflow(page);
-
-  await page.evaluate(() => window.scrollTo(0, 240));
-  await expect(header).toHaveAttribute(
-    'data-hero-navigation',
-    'overlay',
-  );
-  await continueArrow.click();
-  await expect(page.getByRole('heading', {
-    level: 2,
-    name: 'Find your pergola.',
-  })).toBeInViewport();
-  await expect(header).toHaveAttribute('data-hero-navigation', 'solid');
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'auto' }));
-  await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
-
-  await page.goto('/sitemap.xml');
-  await expect(page.locator('body')).not.toContainText(
-    `${publicOrigin}/home-project-finder`,
-  );
-
-  const redirect = await page.request.get('/home-project-finder', {
-    maxRedirects: 0,
-  });
+  await expect(page.getByRole('heading', { level: 1, name: 'Make room for outside.' })).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', publicOrigin);
+  const schemas = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(schemas.join(' ')).toContain('"@type":"WebPage"');
+  expect(schemas.join(' ')).toContain('"@type":"WebSite"');
+  const sitemap = await page.request.get('/sitemap.xml');
+  expect(await sitemap.text()).not.toContain(`${publicOrigin}/home-project-finder`);
+  const redirect = await page.request.get('/home-project-finder', { maxRedirects: 0 });
   expect(redirect.status()).toBe(308);
   expect(new URL(redirect.headers()['location']).pathname).toBe('/');
   expect(redirect.headers()['x-robots-tag']).toMatch(/noindex.*nofollow/i);
-
-  await page.goto('/home-project-finder?project=cover');
-  await expect(page).toHaveURL(/\/\?project=cover$/);
-  await expect(page.locator('[data-project-finder-result="cover"]')).toBeVisible();
-});
-
-test('the hero supporting copy uses its longer responsive delay and fades in place', async ({
-  page,
-}) => {
-  await setAnalyticsConsent(page, false);
-  for (const scenario of [
-    { viewport: { width: 390, height: 844 }, expectedDelay: 800 },
-    { viewport: { width: 768, height: 1024 }, expectedDelay: 800 },
-    { viewport: { width: 1440, height: 900 }, expectedDelay: 700 },
-  ]) {
-    await page.setViewportSize(scenario.viewport);
-    await page.goto('/');
-    const revealTiming = await measureAutomaticHeroReveal(page);
-
-    expect(revealTiming.delayMs)
-      .toBeGreaterThanOrEqual(scenario.expectedDelay - 50);
-    expect(revealTiming.delayMs)
-      .toBeLessThan(scenario.expectedDelay + 350);
-    expect(revealTiming.scrollY).toBe(0);
-    const transition = await page.locator('[data-homepage-story] p').first()
-      .evaluate((element) => {
-        const styles = getComputedStyle(element);
-        return [styles.transitionDuration, styles.transform];
-      });
-    expect(transition[0]).toContain('1s');
-    expect(transition[1]).toBe('none');
-    const chevronTransition = await page.locator('[data-homepage-hero-arrow]')
-      .evaluate((element) => {
-        const styles = getComputedStyle(element);
-        return [styles.transitionDuration, styles.transitionDelay];
-      });
-    expect(chevronTransition[0]).toContain('0.6s');
-    expect(chevronTransition[1]).toContain('0.2s');
-  }
-});
-
-test('the hero image and shared header use the same softer fade', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await setAnalyticsConsent(page, false);
-  await page.route('**/_next/image?*', async (route) => route.abort());
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  // Sample both nodes in one browser frame, before React removes the veil.
-  const fade = await page.evaluate(() => new Promise<{ durations: string[]; opacities: number[] } | null>((resolve) => {
-    const deadline = performance.now() + 3_000;
-    const sample = () => {
-      const welcome = document.querySelector('[data-homepage-welcome]');
-      const header = document.querySelector('header.site');
-      if (welcome?.getAttribute('data-welcome-phase') === 'leaving' && header) {
-        const styles = [getComputedStyle(welcome), getComputedStyle(header)];
-        const opacities = styles.map(style => Number.parseFloat(style.opacity));
-        if (opacities.every(opacity => opacity > 0 && opacity < 1)) {
-          resolve({ durations: styles.map(style => style.transitionDuration), opacities });
-          return;
-        }
-      }
-      if (performance.now() >= deadline) { resolve(null); return; }
-      requestAnimationFrame(sample);
-    };
-    sample();
-  }));
-  expect(fade).not.toBeNull();
-  for (const duration of fade!.durations) expect(duration).toContain('0.65s');
-});
-test('the automatic hero reveal waits until the mobile menu is dismissed', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await setAnalyticsConsent(page, false);
-  await page.goto('/');
-  await page.evaluate(() => new Promise<void>((resolve) => {
-    const openMenuWhenReady = () => {
-      if (document.querySelector('[data-homepage-welcome]')) return;
-      const menuButton = document.querySelector<HTMLButtonElement>(
-        'button[aria-controls="mobile-menu"]',
-      );
-      if (!menuButton) return;
-      observer.disconnect();
-      menuButton.click();
-      resolve();
-    };
-    const observer = new MutationObserver(openMenuWhenReady);
-    observer.observe(document.body, { childList: true, subtree: true });
-    openMenuWhenReady();
-  }));
-
-  const heroJourney = page.locator('[data-homepage-hero-journey]');
-  await expect(page.locator('#mobile-menu'))
-    .toHaveAttribute('data-mobile-menu-state', 'open');
-  await page.waitForTimeout(1_000);
-  await expect(heroJourney).toHaveAttribute('data-story-visible', 'false');
-
-  await page.locator('#mobile-menu').getByRole('button', { name: 'Close menu' }).click();
-  await expect(heroJourney).toHaveAttribute('data-story-visible', 'true');
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-});
-
-test('the welcome screen is immediate, bounded and reduced-motion safe', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await setAnalyticsConsent(page, false);
-  await page.route('**/_next/image?*', async (route) => route.abort());
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-
-  const welcome = page.locator('[data-homepage-welcome]');
-  const heading = page.getByRole('heading', {
-    level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
-  });
-  await expect(welcome).toBeVisible();
-  await expect(heading).toBeVisible();
-  await expect(page.getByText('Welcome to Sanctuary Pergolas')).toHaveCount(0);
-  const loadingHeadingBox = await heading.boundingBox();
-  await expect(welcome.locator('a, button, header, nav')).toHaveCount(0);
-  await expect(welcome).toHaveCSS('background-color', 'rgb(23, 24, 23)');
-  await expect(welcome).toHaveCSS('transition-duration', '0s');
-  await expect(page.locator('header.site')).toBeHidden();
-  await expect(welcome).toBeHidden({ timeout: 2_500 });
-  await expect(page.locator('header.site')).toBeVisible();
-  await expect(page.locator('[data-homepage-hero]')).toBeInViewport();
-  await expect(page.locator('[data-homepage-hero-journey]'))
-    .toHaveAttribute('data-story-visible', 'true');
-  await expect(heading).toBeVisible();
-  const revealedHeadingBox = await heading.boundingBox();
-  expect(loadingHeadingBox).not.toBeNull();
-  expect(revealedHeadingBox).not.toBeNull();
-  expect(Math.abs((loadingHeadingBox?.x ?? 0) - (revealedHeadingBox?.x ?? 0)))
-    .toBeLessThanOrEqual(1);
-  expect(Math.abs((loadingHeadingBox?.y ?? 0) - (revealedHeadingBox?.y ?? 0)))
-    .toBeLessThanOrEqual(1);
-});
-
-test('mobile art direction and native scrolling follow the automatic story reveal', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await setAnalyticsConsent(page, false);
-  await page.goto('/');
-  await waitForCinematicWelcome(page);
-
-  const heroImage = page.locator('[data-homepage-hero] img');
-  await expect.poll(() => heroImage.evaluate((image) => (
-    (image as HTMLImageElement).currentSrc
-  ))).toContain('warkworth-gable-02.jpg');
-  await expect.poll(() => heroImage.evaluate((image) => (
-    (image as HTMLImageElement).naturalWidth
-  ))).toBeGreaterThan(0);
-  await expect(page.locator('[data-homepage-hero-journey]'))
-    .toHaveAttribute('data-story-visible', 'true');
-  await expect(page.getByRole('heading', {
-    level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
-  })).toBeVisible();
-
-  await page.mouse.wheel(0, 900);
-  const finderHeading = page.getByRole('heading', {
-    level: 2,
-    name: 'Find your pergola.',
-  });
-  await expect(finderHeading).toBeInViewport();
-
-  await expect(page.locator('[data-product-type]')).toHaveCount(3);
-  await expect(page.locator('[data-product-type] img')).toHaveCount(3);
-  await expect(page.getByRole('link', { name: 'Compare pergolas' })).toBeVisible();
-  await page.getByRole('button', { name: /^Commercial & professionals/ }).click();
-  await expect(page.locator('[data-professional-path]').first().locator('img'))
-    .toBeVisible();
-  await expectNoHorizontalOverflow(page);
-});
-
-test('the hero uses native wheel, touch and keyboard scrolling without interception', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await setAnalyticsConsent(page, false);
-  await page.goto('/');
-
-  await waitForCinematicWelcome(page);
-  const heroJourney = page.locator('[data-homepage-hero-journey]');
-  const prevented = await page.evaluate(() => {
-    const wheel = new WheelEvent('wheel', {
-      bubbles: true,
-      cancelable: true,
-      deltaY: 120,
-    });
-    const touch = new TouchEvent('touchmove', {
-      bubbles: true,
-      cancelable: true,
-    });
-    const key = new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'PageDown',
-    });
-    window.dispatchEvent(wheel);
-    window.dispatchEvent(touch);
-    window.dispatchEvent(key);
-    return {
-      key: key.defaultPrevented,
-      touch: touch.defaultPrevented,
-      wheel: wheel.defaultPrevented,
-    };
-  });
-  expect(prevented).toEqual({ key: false, touch: false, wheel: false });
-  const heroHeight = await heroJourney.evaluate((element) => (
-    element.getBoundingClientRect().height
-  ));
-  const viewportHeight = await page.evaluate(() => window.innerHeight);
-  expect(Math.abs(heroHeight - viewportHeight)).toBeLessThanOrEqual(1);
-  await page.mouse.wheel(0, 240);
-  await expect.poll(() => page.evaluate(() => window.scrollY))
-    .toBeGreaterThan(0);
-  await page.keyboard.press('PageDown');
-  await expect.poll(() => page.evaluate(() => window.scrollY))
-    .toBeGreaterThan(240);
-});
-
-test('the finder landing contains the complete opening whenever the viewport can hold it', async ({
-  page,
-}) => {
-  test.setTimeout(120_000);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await setAnalyticsConsent(page, false);
-
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 430, height: 932 },
-    { width: 1440, height: 900 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await waitForCinematicWelcome(page);
-    await expect(page.locator('[data-homepage-hero-journey]'))
-      .toHaveAttribute('data-story-visible', 'true');
-    await page.getByRole('button', {
-      name: 'Continue to choose your project starting point',
-    }).click();
-    await expectProjectFinderOpeningAligned(page);
-    // The authentic mobile preview adds height: it should align below the
-    // header and scroll naturally. Desktop still contains the full opening.
-    expect((await projectFinderOpeningGeometry(page)).fits).toBe(viewport.width > 760);
-    await expectNoHorizontalOverflow(page);
-  }
+  await page.goto('/home-project-finder?project=bespoke');
+  await expect(page).toHaveURL(/\/\?project=bespoke$/);
+  await expect(page.getByRole('heading', { name: 'Custom pergola design', exact: true })).toBeVisible();
 });
 
 test('the production finder stays within its repeatable interaction and layout budget', async ({
@@ -558,11 +158,11 @@ test('the production finder stays within its repeatable interaction and layout b
   await setAnalyticsConsent(page, false);
   await page.goto('/');
   const main = page.locator(
-    'main[data-project-finder-home-variant="project_finder_home_v2"]',
+    'main[data-homepage-composition="architecture-first"]',
   );
-  const heroImage = main.locator('[data-homepage-hero] img');
+  const heroImage = main.locator('section').first().locator('img');
   await expect(heroImage).toHaveJSProperty('complete', true);
-  await expect(heroImage).toHaveAttribute('fetchpriority', 'high');
+  await expect(page.locator('link[rel="preload"][as="image"]')).not.toHaveCount(0);
   await page.waitForTimeout(500);
 
   const firstDirection = main.locator('[data-project-direction="bespoke"]');
@@ -656,11 +256,11 @@ test('the two residential directions give one useful pathway and two governed re
 test('homepage roofline opens its product page and returns to the range', async ({ page }) => {
   await setAnalyticsConsent(page, false);
   await page.goto('/');
-  await page.getByRole('link', { name: 'Explore Gable' }).click();
+  await page.locator('[data-product-type="gable"] h3 a').click();
   await expect(page).toHaveURL(/products\/pergolas\/gable/);
   await expect(page.getByRole('heading', { name: 'Gable pergola.', exact: true })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole('link', { name: 'Explore Gable' })).toBeVisible();
+  await expect(page.locator('[data-product-type="gable"] h3 a')).toBeVisible();
 });
 
 test('commercial and professional choices reveal tailored results and evidence', async ({
@@ -981,7 +581,7 @@ test('analytics use consent-aware closed project finder values', async ({ page }
   await page.locator('[data-project-priority]').first().check();
   expect(await projectFinderEvents(page)).toEqual([]);
 
-  const consented = await page.context().browser()?.newPage();
+  const consented = await page.context().browser()?.newPage({ extraHTTPHeaders: test.info().project.use.extraHTTPHeaders });
   if (!consented) throw new Error('Browser page unavailable');
   await setAnalyticsConsent(consented, true);
   await consented.goto('/');
@@ -1046,16 +646,16 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
 }: {
   browser: Browser;
 }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({ javaScriptEnabled: false, extraHTTPHeaders: test.info().project.use.extraHTTPHeaders });
   const page = await context.newPage();
   await page.goto('/');
   await expect(page.getByRole('heading', {
     level: 1,
-    name: 'Outdoor spaces designed around the way you live.',
+    name: 'Make room for outside.',
   })).toBeVisible();
   await expect(page.getByRole('heading', {
     level: 2,
-    name: 'Choose the path that best fits your project.',
+    name: 'Find your pergola.',
   })).toBeVisible();
   await expect(page.locator('header.site')).toBeVisible();
   await expect(page.locator('[data-project-finder-interactive]')).toBeHidden();
@@ -1072,46 +672,9 @@ test('no-JavaScript visitors receive direct project and enquiry pathways', async
   await context.close();
 });
 
-test('homepage products stack on mobile and align in columns on tablet', async ({
-  page,
-}) => {
+test('professional chooser retains compact readable cards on mobile', async ({ page }) => {
   await setAnalyticsConsent(page, false);
-  await page.setViewportSize({ width: 320, height: 900 });
   await page.goto('/');
-
-  for (const width of [320, 390, 430]) {
-    await page.setViewportSize({ width, height: 900 });
-    const cards = await page.locator('[data-product-type]').evaluateAll(elements => elements.map(element => {
-      const rect = element.getBoundingClientRect();
-      const image = element.querySelector('img')!.getBoundingClientRect();
-      return { width: rect.width, height: rect.height, imageWidth: image.width };
-    }));
-    expect(cards).toHaveLength(3);
-    for (const card of cards) {
-      expect(card.height).toBeLessThan(520);
-      expect(card.imageWidth).toBeGreaterThan(80);
-      expect(card.imageWidth).toBeLessThan(card.width / 2);
-    }
-    if (width === 320) {
-      const proofTop = await page.locator('[aria-label="Why Sanctuary"]')
-        .evaluate((element) => element.getBoundingClientRect().top);
-      expect(proofTop).toBeGreaterThanOrEqual(899);
-    }
-    await expectNoHorizontalOverflow(page);
-  }
-
-  for (const width of [768, 900]) {
-    await page.setViewportSize({ width, height: 1024 });
-    const cards = await page.locator('[data-product-type]').evaluateAll(elements => elements.map(element => {
-      const rect = element.getBoundingClientRect();
-      return { width: rect.width, top: rect.top };
-    }));
-    expect(cards).toHaveLength(3);
-    expect(new Set(cards.map(card => Math.round(card.top))).size).toBe(1);
-    for (const card of cards) expect(card.width).toBeGreaterThan(180);
-    await expectNoHorizontalOverflow(page);
-  }
-
   await page.setViewportSize({ width: 390, height: 900 });
   await selectDirection(page, 'commercial-professional');
   const professionalCards = await page.locator('[data-professional-path]')

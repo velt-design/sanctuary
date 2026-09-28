@@ -1,4 +1,7 @@
 import Image from 'next/image';
+import JsonLd from '../../components/JsonLd';
+import { absoluteUrl } from '../../lib/seo';
+import { projectFinderHomepageDescription, projectFinderHomepageTitle } from './routeContract';
 import Link from 'next/link';
 import { Button, Container, MarketingPage } from '../../components/marketing-foundation/Primitives';
 import ArrowUpRight from '../../components/marketing-foundation/ArrowUpRight';
@@ -26,8 +29,12 @@ export default async function ChallengerHomepage({ initialState }: { initialStat
   );
   const enquiryHref = buildEnquiryHref({ enquiryType: 'residential', sourcePath: '/', sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE, ...restoredContext, sourceComponent: 'hero' });
   const defaultEnquiryHref = buildEnquiryHref({ enquiryType: 'residential', sourcePath: '/', sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE, sourceComponent: 'hero' });
-  return <MarketingPage className={styles.page} data-homepage-preview="architecture-first-b">
+  return <MarketingPage className={styles.page} data-homepage-composition="architecture-first">
     <ProjectFinderTracker />
+    <JsonLd data={[
+      { '@context': 'https://schema.org', '@type': 'WebSite', name: 'Sanctuary Pergolas', url: absoluteUrl('/') },
+      { '@context': 'https://schema.org', '@type': 'WebPage', name: projectFinderHomepageTitle, url: absoluteUrl('/'), description: projectFinderHomepageDescription, isPartOf: { '@type': 'WebSite', name: 'Sanctuary Pergolas', url: absoluteUrl('/') } },
+    ]} />
     <section className={styles.hero} aria-labelledby="challenger-heading">
       <Container width="wide" className={styles.heroOpening}>
         <div><p className={styles.kicker}>Fixed-roof pergolas · Auckland</p><h1 id="challenger-heading">Make room<br />for outside.</h1></div>

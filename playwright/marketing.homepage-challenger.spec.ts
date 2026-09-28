@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test';
 
-test.skip(process.env.HOMEPAGE_CHALLENGER_PREVIEW !== '1', 'Requires an explicitly selected challenger preview.');
-
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('sp_consent_v1', JSON.stringify({
     analytics: false, marketing: false, updatedAt: new Date().toISOString(), version: 1,
@@ -16,8 +14,9 @@ for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.route('**/api/configurator-price', route => route.fulfill({ json: { status: 'priced', amountIncGst: 23829, breakdown: [] } }));
     await page.goto('/');
-    await expect(page.locator('[data-homepage-preview]')).toBeVisible();
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+    await expect(page.locator('[data-homepage-composition="architecture-first"]')).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://www.sanctuarypergolas.co.nz');
     await page.getByRole('link', { name: 'Find your pergola', exact: true }).click();
     for (const type of ['pitched', 'gable', 'box-perimeter']) {
       const card = page.locator(`[data-product-type="${type}"]`);
@@ -178,3 +177,32 @@ test('roofline entry preserves a saved product size rather than applying an exam
   await page.goBack();
   await expect(page.locator('[data-product-type="pitched"] [data-price-example]')).toHaveCount(3);
 });
+
+for (const marketing of [false, true]) {
+  test(`homepage campaign enquiry preserves consent and retry with marketing ${marketing}`, async ({ page, baseURL }) => {
+    await page.addInitScript(enabled => localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: enabled, updatedAt: new Date().toISOString(), version: 1 })), marketing);
+    await page.route('**/*', route => new URL(route.request().url()).origin === new URL(baseURL!).origin ? route.fallback() : route.abort());
+    const payloads: Array<Record<string, any>> = [];
+    await page.route('**/api/enquiry', async route => {
+      payloads.push(route.request().postDataJSON());
+      await route.fulfill({ status: payloads.length === 1 ? 503 : 200, json: payloads.length === 1 ? { ok: false, error: 'Enquiry service unavailable' } : { ok: true } });
+    });
+    await page.goto('/?utm_source=meta&utm_medium=paid_social&utm_campaign=synthetic-homepage&secret=discard');
+    await page.getByRole('link', { name: 'Enquire about your space' }).click();
+    await page.getByRole('radio', { name: 'Bespoke design', exact: false }).check();
+    await page.getByLabel('Name Required').fill('Synthetic homepage test');
+    await page.getByLabel('Phone Required').fill('021 000 0000');
+    await page.getByLabel('Email Required').fill('homepage@example.test');
+    await page.getByRole('button', { name: 'Send custom project brief' }).click();
+    await expect(page.locator('.contact-form__submit-error')).toContainText('Enquiry service unavailable');
+    await expect(page.getByLabel('Name Required')).toHaveValue('Synthetic homepage test');
+    await page.getByRole('button', { name: 'Send custom project brief' }).click();
+    await expect(page.getByRole('status')).toContainText('Project brief sent.');
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].submissionId).toBe(payloads[1].submissionId);
+    expect(payloads[1].attribution.utm).toEqual(marketing ? { utm_source: 'meta', utm_medium: 'paid_social', utm_campaign: 'synthetic-homepage' } : {});
+    expect(payloads[1].attribution.consent.marketing).toBe(marketing);
+    expect(payloads[1].enquiryContext).toMatchObject({ source_path: '/', source_component: 'hero', source_experience: 'project-finder-home-v1' });
+    expect(JSON.stringify(payloads[1].attribution)).not.toMatch(/secret|discard/);
+  });
+}
