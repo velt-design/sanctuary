@@ -23,5 +23,6 @@ export default function ChallengerEnquiryLink({ initialHref, defaultHref }: { in
       window.removeEventListener('popstate', sync);
     };
   }, [defaultHref]);
-  return <Link href={href}>Enquire about your space <ArrowUpRight /></Link>;
+  const enquiryType = new URLSearchParams(href.split('?')[1]).get('enquiry_type') ?? undefined;
+  return <Link href={href} data-project-finder-event="project_finder_direct_enquiry_click" data-source-component="hero" data-enquiry-type={enquiryType}>Enquire about your space <ArrowUpRight /></Link>;
 }

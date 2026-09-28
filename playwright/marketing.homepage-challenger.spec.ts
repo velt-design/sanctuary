@@ -60,6 +60,7 @@ for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
     await expect(page.getByText(/Product links preserve your saved choices/)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Explore this project' })).toHaveAttribute('href', '/projects/warkworth-outdoor-room');
     await expect(page.getByRole('link', { name: 'Discuss your project' })).toHaveAttribute('href', /enquiry_type=residential/);
+    await expect(page.getByRole('link', { name: 'Discuss your project' })).toHaveAttribute('href', /source_component=final_cta/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     if (width < 760) expect(await page.getByText('Installed estimates include GST.', { exact: false }).evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14);
     else {
@@ -204,5 +205,35 @@ for (const marketing of [false, true]) {
     expect(payloads[1].attribution.consent.marketing).toBe(marketing);
     expect(payloads[1].enquiryContext).toMatchObject({ source_path: '/', source_component: 'hero', source_experience: 'project-finder-home-v1' });
     expect(JSON.stringify(payloads[1].attribution)).not.toMatch(/secret|discard/);
+  });
+}
+
+for (const analytics of [false, true]) {
+  test(`homepage actions retain existing analytics only with consent ${analytics}`, async ({ page }) => {
+    await page.addInitScript(enabled => {
+      localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: enabled, marketing: false, updatedAt: new Date().toISOString(), version: 1 }));
+      window.dataLayer = [];
+    }, analytics);
+    await page.goto('/');
+    await expect(page.getByRole('link', { name: 'Enquire about your space' })).toHaveAttribute('data-enquiry-type', 'residential');
+    if (analytics) await expect.poll(() => page.evaluate(() => window.dataLayer?.some(entry => !Array.isArray(entry) && entry.event === 'project_finder_home_view'))).toBe(true);
+    await page.evaluate(() => document.addEventListener('click', event => {
+      if (event.target instanceof Element && event.target.closest('a[data-project-finder-event]')) event.preventDefault();
+    }, true));
+    for (const name of ['Find your pergola', 'Enquire about your space', 'Discuss your project']) await page.getByRole('link', { name, exact: true }).click();
+    const readActions = () => page.evaluate(() => (window.dataLayer ?? []).filter(entry => !Array.isArray(entry) && ['project_finder_start_click', 'project_finder_direct_enquiry_click'].includes(String(entry.event))));
+    expect(await readActions()).toEqual(analytics ? [
+      expect.objectContaining({ event: 'project_finder_start_click', source_component: 'hero', step_number: 1 }),
+      expect.objectContaining({ event: 'project_finder_direct_enquiry_click', source_component: 'hero', enquiry_type: 'residential' }),
+      expect.objectContaining({ event: 'project_finder_direct_enquiry_click', source_component: 'final_cta', enquiry_type: 'residential' }),
+    ] : []);
+    await page.locator('button[data-project-direction="commercial-professional"]').click();
+    await page.locator('button[data-professional-path="architects-designers"]').click();
+    const enquiry = page.getByRole('link', { name: 'Enquire about your space' });
+    await expect(enquiry).toHaveAttribute('data-enquiry-type', 'professional');
+    await enquiry.click();
+    const actions = await readActions();
+    if (analytics) expect(actions.at(-1)).toMatchObject({ event: 'project_finder_direct_enquiry_click', enquiry_type: 'professional', source_component: 'hero' });
+    else expect(actions).toEqual([]);
   });
 }

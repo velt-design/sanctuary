@@ -29,6 +29,7 @@ export default async function ChallengerHomepage({ initialState }: { initialStat
   );
   const enquiryHref = buildEnquiryHref({ enquiryType: 'residential', sourcePath: '/', sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE, ...restoredContext, sourceComponent: 'hero' });
   const defaultEnquiryHref = buildEnquiryHref({ enquiryType: 'residential', sourcePath: '/', sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE, sourceComponent: 'hero' });
+  const closingEnquiryHref = buildEnquiryHref({ enquiryType: 'residential', sourcePath: '/', sourceExperience: PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE, sourceComponent: 'final_cta' });
   return <MarketingPage className={styles.page} data-homepage-composition="architecture-first">
     <ProjectFinderTracker />
     <JsonLd data={[
@@ -38,7 +39,7 @@ export default async function ChallengerHomepage({ initialState }: { initialStat
     <section className={styles.hero} aria-labelledby="challenger-heading">
       <Container width="wide" className={styles.heroOpening}>
         <div><p className={styles.kicker}>Fixed-roof pergolas · Auckland</p><h1 id="challenger-heading">Make room<br />for outside.</h1></div>
-        <div className={styles.heroActions}><p>Designed for your home.<br />Built by Sanctuary.</p><Button href="#project-finder">Find your pergola <ArrowUpRight /></Button><ChallengerEnquiryLink initialHref={enquiryHref} defaultHref={defaultEnquiryHref} /></div>
+        <div className={styles.heroActions}><p>Designed for your home.<br />Built by Sanctuary.</p><Button href="#project-finder" data-project-finder-event="project_finder_start_click" data-source-component="hero" data-step-number="1">Find your pergola <ArrowUpRight /></Button><ChallengerEnquiryLink initialHref={enquiryHref} defaultHref={defaultEnquiryHref} /></div>
       </Container>
       <div className={styles.heroImage}>
         <Image src={media.hero.src} alt={media.hero.alt} fill sizes="100vw" preload style={{ objectPosition: media.hero.objectPosition }} />
@@ -58,7 +59,7 @@ export default async function ChallengerHomepage({ initialState }: { initialStat
     </section>
     <section className={styles.close} aria-labelledby="challenger-close-heading">
       <Container width="wide" className={styles.closeLayout}>
-        <div><p className={styles.kicker}>Design → Build → Install</p><h2 id="challenger-close-heading">Your space.<br />Let’s start there.</h2><Button href={defaultEnquiryHref}>Discuss your project <ArrowUpRight /></Button></div>
+        <div><p className={styles.kicker}>Design → Build → Install</p><h2 id="challenger-close-heading">Your space.<br />Let’s start there.</h2><Button href={closingEnquiryHref} data-project-finder-event="project_finder_direct_enquiry_click" data-source-component="final_cta" data-enquiry-type="residential">Discuss your project <ArrowUpRight /></Button></div>
         <div className={styles.closeProof}><p>One team, from design to installation.</p><a href={GOOGLE_PLACE.reviewsUrl}><strong>{review.rating.toFixed(1)}<span>/ 5</span></strong><span>{review.count} Google reviews <ArrowUpRight /></span></a><Link href="/pergolas-auckland">Our design &amp; build service <ArrowUpRight /></Link></div>
       </Container>
     </section>
