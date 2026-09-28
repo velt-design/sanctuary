@@ -4,6 +4,7 @@
 .row dt {white-space:nowrap;font-variant-numeric:tabular-nums}
 .row dd {margin:0;text-align:right;font-variant-numeric:tabular-nums;line-height:1.3}
 .row strong {font-size:inherit;font-weight:500;white-space:nowrap}
+.approximateSymbol {color:var(--color-text-secondary);font-weight:400}
 .approximateWord {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .status,.row small {display:block;font-size:.875rem}
 .row button {font:inherit;font-size:.875rem;background:none;border:0;color:inherit;cursor:pointer;min-height:44px;padding:0;text-align:right}

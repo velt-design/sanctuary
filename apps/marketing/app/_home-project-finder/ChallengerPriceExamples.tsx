@@ -19,7 +19,7 @@ function PriceRow({ type, selection }: { type: ProductDesignType; selection: typ
   return <div className={styles.row} data-price-example={selection.widthMm}>
     <dt>{label}</dt>
     <dd aria-live="polite" aria-atomic="true">
-      {complete ? <strong data-priced="true"><span aria-hidden="true">≈ </span><span className={styles.approximateWord}>Approximately </span>{formatChallengerExampleAmount(estimate.amount!)}</strong>
+      {complete ? <strong data-priced="true"><span className={styles.approximateSymbol} aria-hidden="true">≈ </span><span className={styles.approximateWord}>Approximately </span>{formatChallengerExampleAmount(estimate.amount!)}</strong>
         : 'retry' in estimate && estimate.retry
           ? <button type="button" aria-label={`${roofline} ${label} estimate unavailable. Retry`} onClick={retry}>Unavailable<br /><span>Retry</span></button>
           : <span className={styles.status}>{'amount' in estimate || estimate.message === 'Your design needs a tailored quote.' ? 'Tailored quote' : 'Updating…'}</span>}
