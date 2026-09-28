@@ -39,7 +39,7 @@ for (const width of [320, 390, 1440]) {
   });
 }
 
-test('selected and restored professional enquiries retain their audience through every new entry', async ({ page, browser }) => {
+test('selected and restored professional enquiries retain their audience through every new entry', async ({ page, browser }, testInfo) => {
   await page.goto('/');
   await page.locator('button[data-project-direction="commercial-professional"]').click();
   await page.locator('button[data-professional-path="architects-designers"]').click();
@@ -55,7 +55,10 @@ test('selected and restored professional enquiries retain their audience through
   await expect(page).toHaveURL(/enquiry_type=professional/);
   await page.goBack();
   await expect(hero).toHaveAttribute('href', /project_professional_path=architects-designers/);
-  const noJs = await browser.newContext({ javaScriptEnabled: false });
+  const noJs = await browser.newContext({
+    javaScriptEnabled: false,
+    extraHTTPHeaders: testInfo.project.use.extraHTTPHeaders,
+  });
   const initial = await noJs.newPage();
   await initial.goto(restoredURL);
   await expect(initial.getByRole('link', { name: 'Enquire about your space' })).toHaveAttribute('href', /enquiry_type=professional/);
