@@ -83,6 +83,12 @@ agent evidence and owner acceptance distinct. This design direction preserves
 existing UI discretion within authorised tasks and separate Sanctuary release
 approval; it does not add a new approval gate for every layout decision.
 
+## Visual-first reading effort (28 September 2026)
+
+Communicate visually first, especially on mobile. Use imagery, composition and clear choices to explain the offer. Keep only the text needed to understand, decide or act. Remove repeated explanations, redundant headings and generic marketing copy. Keep essential pricing conditions and decision-critical information beside the relevant action.
+
+This owner-approved intent guides the homepage challenger. Concrete patterns will be refined after independent review of the complete journey; no untested word count or layout is a fixed standard. Judge the reading needed to make a confident decision across the journey, including optional detail and return.
+
 ## Product clarity refinement (21 September 2026)
 
 The hub introduces bespoke design alongside the roofline choice, with a dedicated

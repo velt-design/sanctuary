@@ -14,6 +14,44 @@
 
 ---
 
+## Architecture-first challenger preview (28 September 2026)
+
+The isolated challenger uses the canonical `/` entry in an explicitly opted-in
+development or protected Preview environment. Production continues to render the
+approved Project Finder (control A). This is a review candidate, not an activated
+split or an approved replacement. `HOMEPAGE_CHALLENGER_PREVIEW=1` is accepted only
+for local development or `VERCEL_ENV=preview`; a production target always refuses
+it. Remove the flag/restart the preview to restore A. No client swap, cookie,
+visitor allocation or new persistence is introduced. Preview metadata is noindex;
+the unchanged production homepage retains its existing metadata.
+
+The complete candidate leads with the approved Warkworth interior, compares the
+same three rooflines and shared installed estimates, then pairs the completed
+exterior with its cedar/acrylic detail. Mobile roofline rows reduce travel and
+reading while keeping all three choices visible in document order. Qualifications
+stay beside estimates, with installation assumptions in an adjacent disclosure.
+Bespoke/professional selection replaces the default residential lower page with
+the existing relevant result, optional brief, evidence and exact enquiry context.
+The header, footer, product pages, configurator, projects and intake owners remain.
+
+### Incremental implementation map
+
+| Owner | Purpose, dependencies and verification |
+| --- | --- |
+| `apps/marketing/app/page.tsx`, `app/_home-project-finder/challengerPreview.ts` | Server-only preview selection; current control default and metadata retained. Gate unit tests include inherited production flags and unknown targets. |
+| `app/_home-project-finder/ChallengerHomepage.tsx`, `challengerHomepage.module.css` (under `apps/marketing`) | Candidate composition only; existing approved `data/projects.ts` media, Foundation primitives, Google review owner and enquiry context. No new imagery, rates or business claims. Scoped header/scroll styles do not target A. |
+| `apps/marketing/app/_home-project-finder/ChallengerRooflines.tsx` | Compact visual comparison; consumes `PRODUCT_FORM_CHOICES`, `PRODUCT_DESIGNS` and `ProductExamplePrice`. Product links retain their existing saved-state behavior. |
+| `apps/marketing/app/_home-project-finder/ProjectFinder.tsx` | Existing state/history/result owner with an optional presentation and default-content slot. Control rendering stays the default. B shares legacy cover, bespoke/professional, priorities, reload, Back and reset. |
+| `apps/marketing/app/_home-project-finder/ChallengerEnquiryLink.tsx` | Hero enquiry tracks the same URL-context resolver and state/popstate events used by shared navigation. Server initial context and client reset fallback remain distinct. |
+| `playwright/marketing.homepage-challenger.spec.ts` | Opt-in 320/390/1440 checks, price failure/retry stability, professional restoration including no-JS initial markup, and legacy/bespoke priorities/Back/reset. Run with `HOMEPAGE_CHALLENGER_PREVIEW=1` against the opted-in preview using `MARKETING_BASE_URL`. No real lead submissions. |
+
+Measurement remains a separate launch requirement: this deployment-wide switch
+is not randomized assignment, and legacy `source_experience`/homepage variant
+labels are not experiment IDs. No lift or qualified-lead improvement is claimed.
+A later approved experiment needs consent-permitted assignment/exposure joined
+to deduplicated accepted receipts, verified eligibility and attribution windows,
+predeclared sample/decision rules and a quality definition before activation.
+
 ## Current homepage entry (21 September 2026)
 
 The approved replacement for the primary starting-point cards is **Find your
