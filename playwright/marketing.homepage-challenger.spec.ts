@@ -88,21 +88,57 @@ test('legacy and bespoke saved priorities survive reload, Back and reset', async
   }
 });
 
-test('unavailable estimates remain honest and retry without shifting the next roofline', async ({ page }) => {
+test('nine size-price pairs load and recover independently without moving the comparison', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   let recover = false;
-  await page.route('**/api/configurator-price', route => route.fulfill({ json: recover
-    ? { status: 'priced', amountIncGst: 12000, breakdown: [] }
-    : { status: 'unavailable' } }));
+  const requests: string[] = [];
+  let release!: () => void;
+  const loading = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/configurator-price', async route => {
+    const { input, roof } = route.request().postDataJSON();
+    requests.push(`${roof.family}:${input.widthMm}:${input.projectionMm}`);
+    await loading;
+    await route.fulfill({ json: recover
+      ? { status: 'priced', amountIncGst: input.widthMm + 5000, breakdown: [] }
+      : { status: 'unavailable' } });
+  });
   await page.goto('/');
-  const first = page.locator('[data-product-type="pitched"]');
-  await expect(first.getByText('Estimate unavailable', { exact: true })).toBeVisible();
-  await expect(first.locator('[data-priced="true"]')).toHaveCount(0);
+  const first = page.locator('[data-product-type="pitched"] [data-price-example="4000"]');
+  await expect(page.getByText('Updating…', { exact: true })).toHaveCount(9);
+  await expect.poll(() => requests.length).toBe(9);
+  expect(new Set(requests).size).toBe(9);
   const next = page.locator('[data-product-type="gable"]');
   const before = await next.evaluate(element => element.getBoundingClientRect().top + window.scrollY);
+  release();
+  await expect(page.getByRole('button', { name: /estimate unavailable. Retry/ })).toHaveCount(9);
+  await expect(page.locator('[data-priced="true"]')).toHaveCount(0);
+  expect(Math.abs(await next.evaluate(element => element.getBoundingClientRect().top + window.scrollY) - before)).toBeLessThan(2);
   recover = true;
-  await first.getByRole('button', { name: 'Retry estimate' }).click();
-  await expect(first.locator('[data-priced="true"]')).toHaveText('$12,000');
+  await first.getByRole('button', { name: 'Pitched 4 × 3 m estimate unavailable. Retry' }).click();
+  await expect(first.locator('[data-priced="true"]')).toHaveText('$9,000');
+  await expect(page.getByRole('button', { name: /estimate unavailable. Retry/ })).toHaveCount(8);
+  for (const row of await page.locator('[data-price-example]').all()) {
+    if (await row.getByRole('button').count()) await row.getByRole('button').click();
+  }
+  await expect(page.locator('[data-priced="true"]')).toHaveCount(9);
+  for (const type of ['pitched', 'gable', 'box-perimeter']) {
+    for (const [width, price] of [[4000, '$9,000'], [6000, '$11,000'], [8000, '$13,000']] as const) {
+      const row = page.locator(`[data-product-type="${type}"] [data-price-example="${width}"]`);
+      await expect(row.locator('dt')).toHaveText(`${width / 1000} × 3 m`);
+      await expect(row.locator('[data-priced="true"]')).toHaveText(price);
+    }
+  }
   const after = await next.evaluate(element => element.getBoundingClientRect().top + window.scrollY);
   expect(Math.abs(after - before)).toBeLessThan(2);
+  expect(requests).toHaveLength(18);
+});
+
+test('roofline entry preserves a saved product size rather than applying an example', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('sanctuary:pitched-product:v1', JSON.stringify({ widthMm: 7400, projectionMm: 3000, material: 'acrylic', sides: 'open', orientation: 'parallel' })));
+  await page.goto('/');
+  await page.locator('[data-product-type="pitched"] h3 a').click();
+  await expect(page).toHaveURL(/\/products\/pergolas\/pitched/);
+  await expect(page.getByRole('textbox', { name: /width/i })).toHaveValue('7.4');
+  await page.goBack();
+  await expect(page.locator('[data-product-type="pitched"] [data-price-example]')).toHaveCount(3);
 });

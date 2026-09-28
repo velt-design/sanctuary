@@ -28,8 +28,7 @@
 .rooflineImage img {display:block;width:100%;height:100%;object-fit:cover}
 .roofline h3 {font-size:2.1rem;line-height:1.15;margin:1rem 0 .4rem}
 .roofline h3 a {display:flex;align-items:center;justify-content:space-between;text-decoration:none;min-height:44px}
-.rooflineDescription {font-size:.85rem;margin:0;color:var(--color-text-secondary)}
-.roofline .rooflineBody>div {min-height:150px}
+.compareRooflines {display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:56px;margin-top:.5rem;font-size:.9rem}
 .estimateDetails {font-size:.8rem;line-height:1.6;border-top:1px solid var(--color-rule);padding:.5rem 0}
 .estimateDetails summary {cursor:pointer;min-height:44px;align-content:center}
 .estimateDetails p {max-width:680px;margin:.5rem 0 1rem;color:var(--color-text-secondary)}
@@ -70,10 +69,6 @@
   .roofline {display:grid;grid-template-columns:42% minmax(0,1fr);gap:1rem;border-bottom:1px solid var(--color-rule);padding-bottom:1rem}
   .rooflineImage {aspect-ratio:4/5;align-self:start}
   .roofline h3 {font-size:1.65rem;margin:0 0 .2rem}
-  .rooflineDescription {font-size:.875rem;line-height:1.5}
-  .roofline .rooflineBody>div {min-height:190px}
-  .rooflineBody>div strong {font-size:1.25rem;line-height:1.2}
-  .rooflineBody>div span,.rooflineBody>div small {font-size:.875rem;line-height:1.5;letter-spacing:0;text-transform:none}
   .estimateDetails {font-size:.875rem}
   .estimateDetails {border-top:0}
   .pathways {grid-template-columns:1fr}
