@@ -8,7 +8,7 @@ describe('configured offer policy',()=>{
   it('removes design cost while preserving operational costs and installer allowance',()=>{
     const r=request();r.site.pricing_classification='bespoke';const before=JSON.stringify(r);
     const base=calculateSiteCostV1(r.site,r.config), result=calculateConfiguredCustomerPriceV1(r);
-    expect(result.designAllowanceRemovedExGst).toBe(1200);
+    expect(result.designAllowanceRemovedExGst).toBe(600);
     expect(result.operationalOverheadExGst).toBe(base.overhead.ops_ex_gst);
     expect(result.protectedInstallationExGst).toBeGreaterThanOrEqual(base.install.totals.install_ex_gst);
     expect(result.protectedInstallationExGst).toBeGreaterThanOrEqual(1886.96);

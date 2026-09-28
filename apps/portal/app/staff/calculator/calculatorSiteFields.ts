@@ -46,12 +46,12 @@ export function buildCalculatorSiteFields({
       value: values.pricingClassification ?? 'bespoke',
       onChange: (v) => setJobField('pricingClassification', v as CalculatorInputs['pricingClassification']),
       options: [
-        { label: 'Simple', value: 'simple' },
+        { label: 'Standard', value: 'simple' },
         { label: 'Bespoke', value: 'bespoke' },
       ],
       helperText: values.pricingClassification === 'simple'
-        ? 'Uses the published Simple range policy while the design remains eligible.'
-        : 'Uses the full bespoke overhead policy.',
+        ? 'Uses the published Standard policy. Engineering or consent requires Bespoke.'
+        : 'Includes bespoke design and installation allowances.',
     },
     {
       id: 'approvalRequirement',

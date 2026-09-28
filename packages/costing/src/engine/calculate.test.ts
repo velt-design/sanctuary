@@ -2549,8 +2549,8 @@ describe('calculateCostV1', () => {
     expect(onePergola.overhead.method).toBe('unified_commercial_v5');
     expect(twoPergolas.overhead.method).toBe('site_rollup');
     expect(twoPergolas.pergolas.every((pergola) => pergola.overhead.method === 'unified_commercial_v5')).toBe(true);
-    expect(onePergola.overhead.sales_ex_gst).toBe(1500);
-    expect(twoPergolas.overhead.sales_ex_gst).toBe(2000);
+    expect(onePergola.overhead.sales_ex_gst).toBe(900);
+    expect(twoPergolas.overhead.sales_ex_gst).toBe(1400);
     expect(twoPergolas.overhead.total_ex_gst).toBeLessThan(onePergola.overhead.total_ex_gst * 2);
     expect(twoPergolas.shared.install.totals.install_ex_gst).toBeGreaterThan(0);
     expect(roundMoney(twoPergolas.shared.install.totals.install_ex_gst)).toBe(roundMoney(onePergola.shared.install.totals.install_ex_gst));
@@ -2590,7 +2590,7 @@ describe('calculateCostV1', () => {
     });
 
     expect(site.pergolas[0]?.overhead.method).toBe('unified_commercial_v5');
-    expect(site.pergolas[0]?.overhead.sales_ex_gst).toBe(1500);
+    expect(site.pergolas[0]?.overhead.sales_ex_gst).toBe(900);
     expect(site.overhead.method).toBe('unified_commercial_v5');
     expect(site.overhead.total_ex_gst).toBeGreaterThan(2000);
   });

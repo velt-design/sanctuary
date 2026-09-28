@@ -8,14 +8,14 @@ import { COSTING_CONTROL_PREVIEW_SCENARIOS_V1, evaluateSimpleRangeEligibilityV2,
 
 let latest: CalculatorInputs | null = null;
 
-function Probe({ eligible, approval = 'neither' }: { eligible: boolean; approval?: CalculatorInputs['approvalRequirement'] }) {
+function Probe({ eligible, approval = 'neither', current = true }: { eligible: boolean; approval?: CalculatorInputs['approvalRequirement']; current?: boolean }) {
   const [values, setValues] = useState<CalculatorInputs>({
     ...makeDefaultCalculatorInputs(),
     pricingClassification: 'simple',
     approvalRequirement: approval,
   });
   latest = values;
-  useSimplePricingClassification({ values, setValues, simpleEligible: eligible });
+  useSimplePricingClassification({ values, setValues, simpleEligible: eligible, resultIsCurrent: current });
   return null;
 }
 
@@ -25,6 +25,24 @@ afterEach(() => {
 });
 
 describe('useSimplePricingClassification', () => {
+  it('does not apply an old ineligible response to changed inputs', () => {
+    const rendered = renderIntoDocument(<Probe eligible={false} current={false} />);
+    act(() => undefined);
+    expect(latest?.pricingClassification).toBe('simple');
+    rendered.unmount();
+  });
+
+  it.each(['v2.9', 'v2.10'])('follows the published %s policy for hard access', (version) => {
+    const request = structuredClone(COSTING_CONTROL_PREVIEW_SCENARIOS_V1[0].inputs);
+    request.pergolas[0].modules[0].access = 'hard';
+    const eligible = evaluateSimpleRangeEligibilityV2(request, {
+      ...loadCostingConfigV1(), appliedControlManifestVersion: version,
+    }).eligible;
+    const rendered = renderIntoDocument(<Probe eligible={eligible} />);
+    act(() => undefined);
+    expect(latest?.pricingClassification).toBe(version === 'v2.10' ? 'simple' : 'bespoke');
+    rendered.unmount();
+  });
   it('keeps an acrylic-side job Simple through UI classification while preserving historical server policy', () => {
     const request = structuredClone(COSTING_CONTROL_PREVIEW_SCENARIOS_V1[0].inputs);
     request.pricing_classification = 'simple';
