@@ -11,9 +11,10 @@ test.beforeEach(async ({ page }) => {
   await page.route(/google-analytics|googletagmanager|facebook\.net|clarity\.ms/, route => route.abort());
 });
 
-for (const width of [320, 390, 1440]) {
+for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
   test(`complete challenger remains readable and navigable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
+    await page.route('**/api/configurator-price', route => route.fulfill({ json: { status: 'priced', amountIncGst: 23829, breakdown: [] } }));
     await page.goto('/');
     await expect(page.locator('[data-homepage-preview]')).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
@@ -31,8 +32,22 @@ for (const width of [320, 390, 1440]) {
         await expect(row).toHaveAttribute('data-price-example', String(widthMm));
         const dimensionSize = await row.locator('dt').evaluate(e => parseFloat(getComputedStyle(e).fontSize));
         expect(dimensionSize).toBeGreaterThanOrEqual(16);
-        expect(await row.evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe(index === 2 ? '2px' : '1px');
+        expect(await row.evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe('0px');
+        await expect(row.locator('[data-priced]')).toBeVisible();
+        expect(await row.locator('[data-priced]').evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(16);
+        const bounds = await row.evaluate(e => ({ cell: e.getBoundingClientRect().right, text: e.querySelector('[data-priced]')!.getBoundingClientRect().right }));
+        expect(bounds.text).toBeLessThanOrEqual(bounds.cell + 1);
       }
+      const positions = await rows.evaluateAll(elements => elements.map(e => ({ x: e.getBoundingClientRect().x, y: e.getBoundingClientRect().y })));
+      expect(positions[1].x).toBeGreaterThan(positions[0].x);
+      expect(positions[2].x).toBeGreaterThan(positions[1].x);
+      expect(Math.max(...positions.map(p => p.y)) - Math.min(...positions.map(p => p.y))).toBeLessThan(1);
+      expect(await card.locator('dl').evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe('1px');
+      const image = await card.locator('img').boundingBox();
+      const heading = await card.locator('h3').boundingBox();
+      const strip = await card.locator('dl').boundingBox();
+      expect(heading!.y + heading!.height).toBeLessThanOrEqual(image!.y);
+      expect(image!.y + image!.height).toBeLessThanOrEqual(strip!.y + 1);
     }
     await expect(page.getByText('Installed estimates include GST. Subject to site confirmation.', { exact: false })).toBeVisible();
     await page.getByText('Estimate details & illustrations').click();
@@ -97,8 +112,9 @@ test('legacy and bespoke saved priorities survive reload, Back and reset', async
   }
 });
 
-test('nine size-price pairs load and recover independently without moving the comparison', async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 900 });
+for (const width of [320, 820, 1024, 1100, 1101]) {
+test(`nine size-price pairs load and recover without moving the comparison at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
   let recover = false;
   const requests: string[] = [];
   let release!: () => void;
@@ -141,6 +157,7 @@ test('nine size-price pairs load and recover independently without moving the co
   expect(Math.abs(after - before)).toBeLessThan(2);
   expect(requests).toHaveLength(18);
 });
+}
 
 test('roofline entry preserves a saved product size rather than applying an example', async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('sanctuary:pitched-product:v1', JSON.stringify({ widthMm: 7400, projectionMm: 3000, material: 'acrylic', sides: 'open', orientation: 'parallel' })));

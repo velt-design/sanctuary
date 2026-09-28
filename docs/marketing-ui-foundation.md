@@ -94,11 +94,12 @@ The independently reviewed challenger demonstrates three bounded patterns:
 - Let a short offer and one clear choice lead into real built photography. Use
   whole-space and material-detail scale contrast to explain the architectural
   work; avoid adding another paragraph that restates the image or heading.
-- Compact mobile roofline rows can compare the same products with less reading
-  and travel. Keep all choices in document order, preserve readable price
-  conditions beside them, and reserve enough estimate space for loading,
-  unavailability and successful retry. Do not gain compactness by shrinking
-  decision-critical copy or allowing price recovery to move the next choice.
+- Let roofline imagery show the roof edge and its relationship to the posts.
+  The owner's later composition review superseded the thumbnail/text split with
+  full-width mobile images and one compact three-column size/price strip beneath
+  each. Preserve readable shared conditions, keep examples informational and
+  reserve stable space for loading, unavailability and retry. Compactness must
+  not shrink decision-critical copy or let price recovery move the next choice.
 - Make the default residential composition state-aware. After a visitor selects
   a bespoke or professional direction, retain the existing relevant result and
   enquiry context instead of repeating a generic residential close. Verify
