@@ -29,7 +29,7 @@ function PriceRow({ type, selection }: { type: ProductDesignType; selection: typ
 }
 
 export default function ChallengerPriceExamples({ type }: { type: ProductDesignType }) {
-  return <dl className={styles.examples} aria-label="Example sizes and installed estimates">
+  return <div><p className={styles.installation}>Including installation</p><dl className={styles.examples} aria-label="Example sizes and installed estimates">
     {CHALLENGER_EXAMPLE_SELECTIONS.map(selection => <PriceRow key={selection.widthMm} type={type} selection={selection} />)}
-  </dl>;
+  </dl></div>;
 }

@@ -25,6 +25,7 @@ for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
       await expect(card.locator('img')).toBeVisible();
       await expect.poll(() => card.locator('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await expect(card.locator('h3 a')).toHaveAttribute('href', `/products/pergolas/${type}`);
+      await expect(card.getByText('Including installation', { exact: true })).toBeVisible();
       const rows = card.locator('[data-price-example]');
       await expect(rows).toHaveCount(3);
       for (const [index, widthMm] of [3000, 6000, 9000].entries()) {
@@ -32,17 +33,23 @@ for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
         await expect(row).toHaveAttribute('data-price-example', String(widthMm));
         const dimensionSize = await row.locator('dt').evaluate(e => parseFloat(getComputedStyle(e).fontSize));
         expect(dimensionSize).toBeGreaterThanOrEqual(16);
-        expect(await row.evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe('0px');
+        expect(await row.evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe(width > 1100 ? (index === 2 ? '2px' : '1px') : '0px');
         await expect(row.locator('[data-priced]')).toBeVisible();
         expect(await row.locator('[data-priced]').evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(16);
         const bounds = await row.evaluate(e => ({ cell: e.getBoundingClientRect().right, text: e.querySelector('[data-priced]')!.getBoundingClientRect().right }));
         expect(bounds.text).toBeLessThanOrEqual(bounds.cell + 1);
       }
       const positions = await rows.evaluateAll(elements => elements.map(e => ({ x: e.getBoundingClientRect().x, y: e.getBoundingClientRect().y })));
-      expect(positions[1].x).toBeGreaterThan(positions[0].x);
-      expect(positions[2].x).toBeGreaterThan(positions[1].x);
-      expect(Math.max(...positions.map(p => p.y)) - Math.min(...positions.map(p => p.y))).toBeLessThan(1);
-      expect(await card.locator('dl').evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe('1px');
+      if (width > 1100) {
+        expect(positions[1].y).toBeGreaterThan(positions[0].y);
+        expect(positions[2].y).toBeGreaterThan(positions[1].y);
+        expect(Math.max(...positions.map(p => p.x)) - Math.min(...positions.map(p => p.x))).toBeLessThan(1);
+      } else {
+        expect(positions[1].x).toBeGreaterThan(positions[0].x);
+        expect(positions[2].x).toBeGreaterThan(positions[1].x);
+        expect(Math.max(...positions.map(p => p.y)) - Math.min(...positions.map(p => p.y))).toBeLessThan(1);
+      }
+      expect(await card.locator('dl').evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe(width > 1100 ? '0px' : '1px');
       const image = await card.locator('img').boundingBox();
       const heading = await card.locator('h3').boundingBox();
       const strip = await card.locator('dl').boundingBox();
@@ -134,6 +141,8 @@ test(`nine size-price pairs load and recover without moving the comparison at ${
   expect(new Set(requests).size).toBe(9);
   const next = page.locator('[data-product-type="gable"]');
   const before = await next.evaluate(element => element.getBoundingClientRect().top + window.scrollY);
+  const compare = page.getByRole('link', { name: 'Compare pergolas', exact: true });
+  const compareBefore = await compare.evaluate(element => element.getBoundingClientRect().top + window.scrollY);
   release();
   await expect(page.getByRole('button', { name: /estimate unavailable. Retry/ })).toHaveCount(9);
   await expect(page.locator('[data-priced="true"]')).toHaveCount(0);
@@ -155,6 +164,7 @@ test(`nine size-price pairs load and recover without moving the comparison at ${
   }
   const after = await next.evaluate(element => element.getBoundingClientRect().top + window.scrollY);
   expect(Math.abs(after - before)).toBeLessThan(2);
+  expect(Math.abs(await compare.evaluate(element => element.getBoundingClientRect().top + window.scrollY) - compareBefore)).toBeLessThan(2);
   expect(requests).toHaveLength(18);
 });
 }
