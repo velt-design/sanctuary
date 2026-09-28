@@ -89,6 +89,25 @@ Communicate visually first, especially on mobile. Use imagery, composition and c
 
 This owner-approved intent guides the homepage challenger. Concrete patterns will be refined after independent review of the complete journey; no untested word count or layout is a fixed standard. Judge the reading needed to make a confident decision across the journey, including optional detail and return.
 
+The independently reviewed challenger demonstrates three bounded patterns:
+
+- Let a short offer and one clear choice lead into real built photography. Use
+  whole-space and material-detail scale contrast to explain the architectural
+  work; avoid adding another paragraph that restates the image or heading.
+- Compact mobile roofline rows can compare the same products with less reading
+  and travel. Keep all choices in document order, preserve readable price
+  conditions beside them, and reserve enough estimate space for loading,
+  unavailability and successful retry. Do not gain compactness by shrinking
+  decision-critical copy or allowing price recovery to move the next choice.
+- Make the default residential composition state-aware. After a visitor selects
+  a bespoke or professional direction, retain the existing relevant result and
+  enquiry context instead of repeating a generic residential close. Verify
+  server-restored context, hydration, Back and reset, not just the initial view.
+
+These patterns passed independent local journey review in the isolated homepage
+candidate; they are evidence for this bounded application, not owner acceptance,
+conversion evidence, a production release or a mandate to restyle other routes.
+
 ## Product clarity refinement (21 September 2026)
 
 The hub introduces bespoke design alongside the roofline choice, with a dedicated

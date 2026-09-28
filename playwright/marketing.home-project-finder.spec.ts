@@ -163,7 +163,9 @@ test('project finder is the indexable live homepage and the prototype URL redire
   await expect(heading).toBeVisible();
   await waitForCinematicWelcome(page);
   await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');
-  await expect(header.locator('.nav-cta')).toHaveCount(0);
+  // The shared header keeps the desktop CTA mounted; CSS hides it on mobile.
+  await expect(header.locator('.nav-cta')).toHaveCount(1);
+  await expect(header.locator('.nav-cta')).toBeHidden();
   await expect(heading).toBeVisible();
   // The story fades with opacity, which Playwright still considers visible.
   // Assert its settled state; the dedicated timing test owns the transition.
@@ -207,7 +209,7 @@ test('project finder is the indexable live homepage and the prototype URL redire
     '/contact?enquiry_type=residential&source_path=%2F&source_component=footer&source_experience=project-finder-home-v1#contact-form',
   );
   await expect(page.locator('[data-product-type]')).toHaveCount(3);
-  await expect(page.getByRole('link', { name: 'Explore Pitched' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Explore Pitched', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Bespoke design/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Commercial & professionals/ })).toBeVisible();
   await expect(page.locator('[data-professional-path-chooser]')).toHaveCount(0);
