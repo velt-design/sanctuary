@@ -2,6 +2,61 @@
 
 Status: Current portal UI contract.
 
+## Design Pillar (28 September 2026)
+
+**Reduce the ordinary. Exaggerate the distinctive.**
+
+Jordan adopted this UI, layout and UX principle on 28 September 2026.
+The Portal expresses it as a precise operational instrument: make project
+position, ownership, next action, blockers
+and commercial meaning immediately understandable. Sanctuary Marketing is the
+highest priority for public-facing design distinctiveness; its editorial
+spacing, imagery and spectacle do not set the Portal's density or behaviour.
+
+These are adopted criteria for future authorised work alongside the current
+implementation contract below, not evidence of a shipped restyle:
+
+- Reduce redundant wrappers, repeated headings and competing summaries using
+  alignment, whitespace, tonal planes and fine rules. Retain a container where
+  grouping, independent action or lifecycle needs it. Do not delete all cards
+  or replace a useful table with a card grid to appear distinctive.
+- Make the first read answer: which project, where it stands, what happens
+  next, who owns it and what is blocked. Supporting records remain accessible.
+  Strengthen the relationship between state, next action and commercial position
+  through composition using existing owners, not a second workflow or invented
+  pipeline. The design conversation's sample stages and proportions are not
+  business definitions or a requirement for a new position rail.
+- Keep Inter operational text, Barlow Condensed's existing heading/metric roles,
+  warm surfaces, restrained action orange, square panels and compact controls.
+  Use meaningful scale contrast within those roles. Do not import Marketing's
+  type, palette or whitespace, or enlarge every title and figure.
+- Preserve useful density and column meaning. Keep tabular numbers, aligned
+  totals, visible field labels, units and unambiguous dates. A striking money
+  figure still needs enough context to distinguish estimate, offered/accepted
+  price, tax basis, paid and outstanding amounts. Missing values are unavailable,
+  not zero; presentation cannot redefine commercial truth or source freshness.
+- Build identity through predictable, responsive work: direct controls,
+  meaningful selected/current states, clear completion and stable return. Keep
+  keyboard operation, focus recovery, permissions, local-first/cache ownership,
+  validation and failures beside affected work. Motion must explain a change
+  without delaying repeated operations. Familiar reliable controls are valuable;
+  an unusual gesture must earn its place through a clearer task outcome.
+  Routine forms and tables need no invented novelty; the distinctive quality
+  comes from making Sanctuary's actual work and state unusually clear.
+
+For each bounded change, use the existing whole-task review below to ask whether
+the first read and distinctive operational logic are stronger; the user can find
+the right state and next action without explanation; and realistic dense/long
+content, editing, loading, failure, saved return and narrow layouts remain stable
+and operable. Verify keyboard, visible focus, contrast, reduced motion and
+performance. A polished screenshot is insufficient evidence for repeated use.
+
+Share the design principle with Velt and Marketing, not a universal component
+library or visual skin. These criteria preserve existing implementation
+discretion within authorised work, independent delivery review, specialist
+boundaries and Sanctuary release approval. They do not start a cross-route
+migration or add a new owner gate for every composition decision.
+
 ## Authority And Scope
 
 The checked-in portal implementation and its rendered behavior are the current

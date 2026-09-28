@@ -14,7 +14,54 @@
 
 ---
 
-## Current homepage entry (21 September 2026)
+## Architecture-first homepage adoption (28 September 2026)
+
+The owner approved the accepted architecture-first composition as the permanent
+canonical `/` homepage, replacing the earlier Project Finder presentation. The
+preview selector and its noindex override are retired; the existing canonical,
+index/follow metadata and WebSite/WebPage structured data remain. No allocation,
+experiment cookie or split-test infrastructure is introduced. Release proceeds
+through the protected main-branch PR checks before production; approval is not
+proof of deployment. The release record owns actual deployed revision evidence.
+
+Rollback restores the known-good pre-adoption production revision
+`c62e9279ff1272bf59a727a9afd614ff2c5731bf` and its retained deployment. The original
+`ProjectFinderHomepage` wrapper remains an inactive historical reference during
+this release; it is not a selectable public page or experiment arm. Its removal
+can follow after release acceptance with a separate reference/dead-code check.
+
+The homepage leads with the approved Warkworth interior, compares the
+same three rooflines and shared installed estimates, then pairs the completed
+exterior with its cedar/acrylic detail. Each roofline follows a heading, a large
+image and explicit "Including installation" price group; mobile uses a three-cell strip and
+desktop above 1100 px aligns three roofline columns with stacked size/price rows; narrower widths use a bounded single
+column so the three prices remain legible. The mobile crop preserves the roof edge and post
+connections. Shared qualifications follow the comparisons, with installation
+assumptions in an adjacent disclosure. This owner-approved composition supersedes
+the earlier thumbnail/text split and stacked price rules.
+Bespoke/professional selection replaces the default residential lower page with
+the existing relevant result, optional brief, evidence and exact enquiry context.
+The header, footer, product pages, configurator, projects and intake owners remain.
+
+### Incremental implementation map
+
+| Owner | Purpose, dependencies and verification |
+| --- | --- |
+| `apps/marketing/app/page.tsx` | Unconditional accepted homepage and existing indexable canonical metadata. Route tests cover production environment without a preview flag and retained query state. |
+| `app/_home-project-finder/ChallengerHomepage.tsx`, `challengerHomepage.module.css` (under `apps/marketing`) | Accepted homepage composition; existing approved `data/projects.ts` built media, Foundation primitives, Google review owner and enquiry context. No new rates or business claims. Scoped header/scroll styles apply only to this homepage. |
+| `apps/marketing/app/_home-project-finder/ChallengerRooflines.tsx`, `ChallengerPriceExamples.tsx`, `challengerPriceExamples.module.css` | Three roofline compositions with three equal size/price examples each: 3 × 3, 6 × 3 and 9 × 3 m. Uses shared product defaults/draft, `useProductExampleEstimate`, approval policy and estimate formatter. Dimensions are width × projection; examples are informational, while product links retain saved choices. Mobile/tablet keep dimensions above prices in three visible columns with one quiet bottom rule. Desktop restores three stacked dimension-to-price rows with1/1/2px bottom rules. Every group visibly says "Including installation"; loading/unavailable/retry space remains stable. The aria-hidden approximation marker uses faint rule grey while accessible "Approximately" and estimate qualifications retain its meaning. Nine examples are independent approved calculations, not interpolation or minimum prices. Homepage examples display ≈ amounts rounded to the nearest $100; the approved amount and detailed/shared price display remain unchanged. |
+| `apps/marketing/components/products/useProductExampleEstimate.ts` | Shared wiring extracted from `ProductExamplePrice`; the control's default, markup and draft-label policy remain unchanged. Delegates to `productSelectionDraft`, `useConfiguratorPrice`, `useReviewPrice` and `enquiryEstimate`; no new commercial rules. Supported-draft tests and browser recovery/saved-entry checks cover the added comparison. |
+| `apps/marketing/public/images/homepage-challenger-rooflines/{pitched,gable,box}-daylight.webp` | Homepage-only neutral daylight regrades of the existing `portrait-roofline-trial` illustrations, made with the built-in image tool. Originals remain unchanged. Prompt constraints preserve roof form, framing, attachment, furniture and composition while reducing the amber cast; normalized to 1120 × 1400 without cropping. These remain generated illustrations, not built-project or engineering evidence. |
+| `apps/marketing/app/_home-project-finder/ProjectFinder.tsx` | Existing state/history/result owner with an optional presentation and default-content slot. Legacy rendering remains the component default; the canonical homepage selects the accepted composition and shares legacy cover, bespoke/professional, priorities, reload, Back and reset. |
+| `apps/marketing/app/_home-project-finder/ChallengerEnquiryLink.tsx` | Hero enquiry tracks the same URL-context resolver and state/popstate events used by shared navigation. Server initial context and client reset fallback remain distinct. |
+| `playwright/marketing.homepage-challenger.spec.ts` | Permanent-homepage responsive checks, canonical/indexable metadata, nine size/price pairs and loading/failure/retry stability, saved product-size entry, professional restoration including no-JS initial markup, and legacy/bespoke priorities/Back/reset. Select a test target with `MARKETING_BASE_URL`; no preview flag is required. No real lead submissions. |
+
+The split-test plan is retired by owner decision. Existing consent, campaign,
+enquiry attribution and `source_experience` contracts remain; those historical
+labels are not experiment IDs. No measured lift or qualified-lead improvement
+is claimed by this design adoption.
+
+## Superseded homepage entry (21 September 2026)
 
 The approved replacement for the primary starting-point cards is **Find your
 pergola**: Pitched, Gable and Box link to their product pages. Each uses a dedicated homepage card, approved roofline portrait and canonical 6 x 3 m acrylic/open-side

@@ -1,10 +1,12 @@
 'use client';
 import HomePergolaSelection from './HomePergolaSelection';
+import ChallengerRooflines from './ChallengerRooflines';
 
 import {
   useEffect,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
 import { Container } from '../../components/marketing-foundation/Primitives';
@@ -54,6 +56,8 @@ import styles from './projectFinderHomepage.module.css';
 type ProjectFinderProps = {
   initialState: ProjectFinderState;
   media: ProjectFinderHomepageMedia;
+  presentation?: 'control' | 'challenger';
+  defaultContent?: ReactNode;
 };
 
 type InputMethod = 'keyboard' | 'pointer';
@@ -133,6 +137,8 @@ function getActiveResult(
 export default function ProjectFinder({
   initialState,
   media,
+  presentation = 'control',
+  defaultContent,
 }: ProjectFinderProps) {
   const { consent } = useConsent();
   const [state, setState] = useState(initialState);
@@ -372,7 +378,9 @@ export default function ProjectFinder({
 
   return (
     <div data-project-finder-interactive>
-      <HomePergolaSelection onSelect={chooseDirection} selected={state.project}/>
+      {presentation === 'challenger'
+        ? <ChallengerRooflines onSelect={chooseDirection} selected={state.project}/>
+        : <HomePergolaSelection onSelect={chooseDirection} selected={state.project}/>}
 
       {state.project === 'commercial-professional' ? (
         <CommercialProfessionalChooser
@@ -384,12 +392,14 @@ export default function ProjectFinder({
         />
       ) : null}
 
-      {!state.project ? (
+      {!state.project && presentation === 'control' ? (
         <ProjectFinderEvidence
           priorities={[]}
           projects={[media.evidenceByDirection.cover[0], media.evidenceByDirection.bespoke[0]]}
         />
       ) : null}
+
+      {!state.project ? defaultContent : null}
 
       {activeResult ? (
         <>

@@ -1,5 +1,114 @@
 # Marketing UI Foundation
 
+## Design Pillar And Public-Site Priority (28 September 2026)
+
+**Reduce the ordinary. Exaggerate the distinctive.**
+
+Jordan adopted this as a pillar of future UI, layout and UX on 28 September 2026,
+with Sanctuary Marketing the highest priority for public-facing design
+distinctiveness. This integrates the design
+conversation into the existing Architectural Editorial system. It supersedes
+the conversation's proposed Velt-first implementation sequence, not the current
+homepage or customer journey. The rules below guide authorised work; they are
+not a claim that a new redesign has shipped or a mandate to start one.
+
+The ambition is an unmistakable architectural experience, not merely a quieter
+website. Remove ordinary framing so the work, materials and act of designing
+can become bolder. One memorable visual or behavioural idea should lead a view;
+familiar, obvious navigation and actions should support it.
+Distinctive means recognisably Sanctuary, not just a prominent primary action.
+Routine forms need no invented novelty; they should make the experience easy.
+
+- **Architecture and materials carry identity.** Compose real built evidence
+  from a commanding contextual image, a human-scale relationship and a precise
+  material or construction detail when available. Use variation in image scale,
+  cropping and editorial rhythm rather than a stream of equivalent rectangles.
+  Project stories should explain context, architectural response, materials,
+  resolution and result using verified facts. Do not invent missing evidence.
+- **Expose how the product works.** Drawings, joints, roof layers and material
+  relationships can show technical competence more clearly than another generic
+  benefit claim. Accurate diagrams and CGI should reveal something photography
+  cannot, such as an option change or assembly relationship. They must preserve
+  the distinction between illustration, proposed design and completed work;
+  AI concepts cannot impersonate built projects or technical/product evidence.
+- **Make the configurator a signature product experience.** Its useful response
+  to dimensions, materials and choices is part of Sanctuary's identity. Give it
+  appropriate visual presence within an authorised journey while keeping entry,
+  editing, price meaning, enquiry continuation and return simple. Controlled
+  delight may help a customer understand or explore their design; effects must
+  not compete with accuracy or load an expensive viewer as ambient decoration.
+  This does not prescribe a new homepage chapter or add configurator features.
+- **Use scale contrast deliberately.** Keep Instrument Sans for display and
+  Inter for reading/controls, the existing restrained olive action accent,
+  architectural neutrals, square geometry, fine rules and shadow-free surfaces.
+  Let an important image or short statement dominate, then reduce supporting
+  emphasis. Use the existing scale before inventing tokens; do not make every
+  heading huge, add a luxury serif or replace the palette. On phones preserve
+  hierarchy, comfortable margins and readable controls rather than desktop size.
+- **Reduce ordinary structure.** Start with content, alignment, whitespace and
+  rules. Add boxes where object identity or interaction genuinely needs a
+  boundary. Keep proof and useful navigation discoverable without a procession
+  of equally loud trust strips, badges, explanatory banners and competing CTAs.
+  Preserve meaningful labels, claims qualifications and actionable warnings.
+- **Identity should survive use.** Preserve the current Project Finder,
+  configurator, galleries, enquiry and history/state owners. Motion should
+  explain selection, material change, reveal or return; the composition must
+  still work with motion disabled. Keep content/control regions stable during
+  loading and editing. Novelty should improve understanding and remain pleasant
+  after repeated use, without delaying the task or weakening accessibility.
+
+Reference lessons are typographic confidence (Kind Of), content-led clarity
+(Resident), material/construction honesty (NM3), coherent useful interaction
+(Teenage Engineering), and selective visualisation/spatial continuity
+(FutureDeluxe/Builders Club). Translate those ideas through Sanctuary's own work
+and existing Foundation; do not copy another site's skin or introduce a uniform
+Velt/Marketing/Portal component system. Earlier speculative colours, fonts, pixel
+sizes, component names and north-star layouts in the conversation are not token
+or implementation mandates. Current product, evidence and permission owners win.
+
+For a bounded design change, verify:
+
+1. Is the first read obvious, and is something recognisably Sanctuary stronger
+   after removing ordinary UI? A merely cleaner generic page is insufficient.
+2. Can a visitor discover relevant work/options, understand the important
+   evidence and take the intended next action without an explanatory tour?
+3. Do editing, enquiry continuation, Back and saved return preserve the exact
+   choices, context, price qualifications and reading position?
+4. Do realistic copy/images, loading, unavailable states and recovery work on
+   relevant screen sizes, with keyboard, readable contrast, visible focus,
+   reduced motion and useful performance? Is the page convincing when static?
+
+Use the existing independent delivery review for substantial UI work. Keep
+agent evidence and owner acceptance distinct. This design direction preserves
+existing UI discretion within authorised tasks and separate Sanctuary release
+approval; it does not add a new approval gate for every layout decision.
+
+## Visual-first reading effort (28 September 2026)
+
+Communicate visually first, especially on mobile. Use imagery, composition and clear choices to explain the offer. Keep only the text needed to understand, decide or act. Remove repeated explanations, redundant headings and generic marketing copy. Keep essential pricing conditions and decision-critical information beside the relevant action.
+
+This owner-approved intent guides the adopted homepage composition. No untested word count or layout is a fixed standard. Judge the reading needed to make a confident decision across the journey, including optional detail and return.
+
+The independently reviewed and owner-accepted homepage demonstrates three bounded patterns:
+
+- Let a short offer and one clear choice lead into real built photography. Use
+  whole-space and material-detail scale contrast to explain the architectural
+  work; avoid adding another paragraph that restates the image or heading.
+- Let roofline imagery show the roof edge and its relationship to the posts.
+  The owner's later composition review superseded the thumbnail/text split with
+  full-width mobile images and one compact three-column size/price strip beneath
+  each. Preserve readable shared conditions, keep examples informational and
+  reserve stable space for loading, unavailability and retry. Compactness must
+  not shrink decision-critical copy or let price recovery move the next choice.
+- Make the default residential composition state-aware. After a visitor selects
+  a bespoke or professional direction, retain the existing relevant result and
+  enquiry context instead of repeating a generic residential close. Verify
+  server-restored context, hydration, Back and reset, not just the initial view.
+
+These patterns passed independent journey review and owner acceptance for this
+homepage. That acceptance is not conversion evidence or a mandate to restyle
+other routes; the release record separately establishes deployment status.
+
 ## Product clarity refinement (21 September 2026)
 
 The hub introduces bespoke design alongside the roofline choice, with a dedicated

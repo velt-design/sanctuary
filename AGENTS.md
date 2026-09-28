@@ -12,6 +12,25 @@ otherwise valid work or claim to have inspected inaccessible examples.
 This governs customer-document quality; existing portal and marketing UI owners
 still govern their own application surfaces.
 
+## UI, Layout And UX Pillar
+
+**Reduce the ordinary. Exaggerate the distinctive.** Jordan adopted this on
+28 September 2026. Reduce redundant containers, repeated explanation and
+competing controls so the defining product
+idea has more presence. Do not mistake reduction for blandness or remove useful
+capability. Sanctuary Marketing is the highest priority for public-facing design
+distinctiveness: architecture, materials, built details, editorial scale contrast
+and the configurator should carry its identity. The Portal expresses the same
+principle through clear project position, next action and trustworthy commercial
+state, with dense, predictable tools for repeated use.
+
+Apply the practical rules in the existing marketing and portal foundation owners
+within authorised work. Preserve their separate fonts, palettes, components and
+behavioural contracts; this is no mandate for a universal visual system, new
+homepage or broad restyle. Verify whole journeys, stable responsive layouts,
+keyboard/reduced-motion use and recovery. Existing implementation discretion,
+independent review and Sanctuary release permissions remain in force.
+
 ## First Moves
 
 Keep owner updates outcome-focused and batch expensive release checks using

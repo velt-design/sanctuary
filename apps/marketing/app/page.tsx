@@ -1,6 +1,6 @@
-import ProjectFinderHomepage from './_home-project-finder/ProjectFinderHomepage';
 import { parseProjectFinderRecord } from './_home-project-finder/projectFinderModel';
 import { projectFinderHomepageMetadata } from './_home-project-finder/routeContract';
+import ChallengerHomepage from './_home-project-finder/ChallengerHomepage';
 
 export const metadata = projectFinderHomepageMetadata;
 
@@ -10,5 +10,5 @@ type HomePageProps = {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const initialState = parseProjectFinderRecord(await searchParams);
-  return <ProjectFinderHomepage initialState={initialState} />;
+  return <ChallengerHomepage initialState={initialState} />;
 }
