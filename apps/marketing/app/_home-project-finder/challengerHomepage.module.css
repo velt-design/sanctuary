@@ -66,7 +66,7 @@
   .sectionHeader a {justify-content:space-between;margin-top:.5rem}
   .priceNote {font-size:.875rem;margin-bottom:1rem}
   .rooflineGrid {grid-template-columns:1fr;gap:1rem}
-  .roofline {display:grid;grid-template-columns:42% minmax(0,1fr);gap:1rem;border-bottom:1px solid var(--color-rule);padding-bottom:1rem}
+  .roofline {display:grid;grid-template-columns:42% minmax(0,1fr);gap:1rem;padding-bottom:1rem}
   .rooflineImage {aspect-ratio:4/5;align-self:start}
   .roofline h3 {font-size:1.65rem;margin:0 0 .2rem}
   .estimateDetails {font-size:.875rem}

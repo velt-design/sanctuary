@@ -24,6 +24,15 @@ for (const width of [320, 390, 1440]) {
       await expect(card.locator('img')).toBeVisible();
       await expect.poll(() => card.locator('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await expect(card.locator('h3 a')).toHaveAttribute('href', `/products/pergolas/${type}`);
+      const rows = card.locator('[data-price-example]');
+      await expect(rows).toHaveCount(3);
+      for (const [index, widthMm] of [3000, 6000, 9000].entries()) {
+        const row = rows.nth(index);
+        await expect(row).toHaveAttribute('data-price-example', String(widthMm));
+        const dimensionSize = await row.locator('dt').evaluate(e => parseFloat(getComputedStyle(e).fontSize));
+        expect(dimensionSize).toBeGreaterThanOrEqual(16);
+        expect(await row.evaluate(e => getComputedStyle(e).borderBottomWidth)).toBe(index === 2 ? '2px' : '1px');
+      }
     }
     await expect(page.getByText('Installed estimates include GST. Subject to site confirmation.', { exact: false })).toBeVisible();
     await page.getByText('Estimate details & illustrations').click();
@@ -103,7 +112,7 @@ test('nine size-price pairs load and recover independently without moving the co
       : { status: 'unavailable' } });
   });
   await page.goto('/');
-  const first = page.locator('[data-product-type="pitched"] [data-price-example="4000"]');
+  const first = page.locator('[data-product-type="pitched"] [data-price-example="3000"]');
   await expect(page.getByText('Updating…', { exact: true })).toHaveCount(9);
   await expect.poll(() => requests.length).toBe(9);
   expect(new Set(requests).size).toBe(9);
@@ -114,15 +123,15 @@ test('nine size-price pairs load and recover independently without moving the co
   await expect(page.locator('[data-priced="true"]')).toHaveCount(0);
   expect(Math.abs(await next.evaluate(element => element.getBoundingClientRect().top + window.scrollY) - before)).toBeLessThan(2);
   recover = true;
-  await first.getByRole('button', { name: 'Pitched 4 × 3 m estimate unavailable. Retry' }).click();
-  await expect(first.locator('[data-priced="true"]')).toHaveText('$9,000');
+  await first.getByRole('button', { name: 'Pitched 3 × 3 m estimate unavailable. Retry' }).click();
+  await expect(first.locator('[data-priced="true"]')).toHaveText('≈ Approximately $8,000');
   await expect(page.getByRole('button', { name: /estimate unavailable. Retry/ })).toHaveCount(8);
   for (const row of await page.locator('[data-price-example]').all()) {
     if (await row.getByRole('button').count()) await row.getByRole('button').click();
   }
   await expect(page.locator('[data-priced="true"]')).toHaveCount(9);
   for (const type of ['pitched', 'gable', 'box-perimeter']) {
-    for (const [width, price] of [[4000, '$9,000'], [6000, '$11,000'], [8000, '$13,000']] as const) {
+    for (const [width, price] of [[3000, '≈ Approximately $8,000'], [6000, '≈ Approximately $11,000'], [9000, '≈ Approximately $14,000']] as const) {
       const row = page.locator(`[data-product-type="${type}"] [data-price-example="${width}"]`);
       await expect(row.locator('dt')).toHaveText(`${width / 1000} × 3 m`);
       await expect(row.locator('[data-priced="true"]')).toHaveText(price);
