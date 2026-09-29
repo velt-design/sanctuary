@@ -90,7 +90,7 @@ test('acrylic landing interactions remain accessible and preserve form input on 
       opacity: menuStyles.opacity,
       zIndex: menuStyles.zIndex,
     };
-  })).toEqual({ backgroundColor: 'rgb(248, 248, 245)', opacity: '1', zIndex: '3500' });
+  })).toEqual({ backgroundColor: 'rgb(238, 238, 233)', opacity: '1', zIndex: '4100' });
   if (capturePhase) {
     await mkdir(evidenceDirectory, { recursive: true });
     await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-390x844-menu.png`) });
