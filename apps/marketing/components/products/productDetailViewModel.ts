@@ -76,7 +76,7 @@ export function buildProductDetailViewModel(
       suitableCondition: product.decision.worksWhen[0],
       constraint: product.decision.resolve[0],
     },
-    galleryItems: product.gallery.map((media) => ({
+    galleryItems: (product.builtGallery ?? product.gallery).map((media) => ({
       id: media.src,
       image: media.src,
       alt: media.alt,

@@ -213,6 +213,17 @@ slider scales, 44px targets and stable validation notices.
 `ProductDesignDetails` owns the lower range gallery, compact governed project
 access, fit/technical disclosures and other options. Distinct installations lead
 before repeat angles; Pitched starts with a full acrylic roof viewed underneath.
+`products.ts` keeps the three opening photographs separate from `builtGallery`,
+whose lower-only selection lives in `data/productBuiltGalleries.ts`. Each lower
+"Pitched, built." / "Gable, built." / "Box, built." gallery contains eight different
+photographs, with no opening-image overlap. Box has three documented installations;
+its extra views explain roof/frame details rather than imply eight installations.
+Accessories retain their existing gallery fallback.
+`ResponsiveGallery` opts these lower galleries into small optimized thumbnail
+buttons: direct selection, visible and announced active state, Arrow/Home/End
+keyboard focus, and a contained horizontally scrollable mobile strip. Only the
+current and adjacent large frames load when near the viewport; thumbnails do not
+preload all full-size images. Other gallery consumers retain their existing UI.
 Both photo galleries preserve factual captions and bespoke qualifications. Photos
 are built references, never a rendering of the selected dimensions or estimate.
 

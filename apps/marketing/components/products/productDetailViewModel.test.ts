@@ -40,11 +40,20 @@ describe('product detail editorial view model', () => {
       const model = buildProductDetailViewModel(product);
 
       expect(model.galleryItems.map((item) => item.image)).toEqual(
-        product.gallery.map((item) => item.src),
+        (product.builtGallery ?? product.gallery).map((item) => item.src),
       );
       expect(new Set(model.galleryItems.map((item) => item.image)).size).toBe(
         model.galleryItems.length,
       );
+    }
+  });
+
+  it('keeps opening photographs separate from lower built references', () => {
+    for (const product of products.filter((item) => item.builtGallery)) {
+      expect(product.gallery).toHaveLength(3);
+      expect(product.builtGallery).toHaveLength(8);
+      const opening = new Set(product.gallery.map((item) => item.src));
+      expect(product.builtGallery!.some((item) => opening.has(item.src))).toBe(false);
     }
   });
 

@@ -430,25 +430,25 @@ test('product details render one controlled gallery sequence', async ({ page }) 
 
   const main = page.locator('main[data-product-detail]:visible').last();
   const hero = main.locator('section').first();
-  await expect(hero.locator('h1')).toHaveText('Gable pergola.');
+  await expect(hero.locator('h1')).toHaveText('Gable.');
   await expect(hero.getByRole('group', {name:'Model view'})).toBeVisible();
 
   const gallerySection = main.locator('[data-product-gallery="primary"]');
   const gallery = gallerySection.locator('[data-responsive-gallery]');
   await expect(gallerySection).toHaveCount(1);
   await expect(gallery).toHaveCount(1);
-  expect(await gallery.locator('img').count()).toBeGreaterThanOrEqual(1);
-  expect(await gallery.locator('img').count()).toBeLessThanOrEqual(3);
+  expect(await gallery.locator('[data-gallery-frame] img').count()).toBeGreaterThanOrEqual(1);
+  expect(await gallery.locator('[data-gallery-frame] img').count()).toBeLessThanOrEqual(3);
   await expect(gallery.locator('[data-gallery-frame-active]')).toHaveCount(1);
-  await expect(gallery).toHaveAttribute('data-gallery-position', `1/${product.gallery.length}`);
+  await expect(gallery).toHaveAttribute('data-gallery-position', `1/${(product.builtGallery ?? product.gallery).length}`);
   await expect(gallery).toHaveAccessibleName(`${product.name} project gallery`);
 
   await gallery.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+  await expect(gallery).toHaveAttribute('data-gallery-position', `2/${(product.builtGallery ?? product.gallery).length}`);
   await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute(
     'alt',
-    product.gallery[1].alt,
+    (product.builtGallery ?? product.gallery)[1].alt,
   );
 });
 
@@ -457,11 +457,12 @@ test('product gallery keeps adjacent media cold until proximity activation', asy
   await preparePage(page);
   const product = products.find((item) => item.slug === 'gable');
   if (!product) throw new Error('Missing representative gable product');
-  const galleryFileNames = product.gallery.map((item) => item.src.split('/').at(-1) ?? item.src);
+  const galleryFileNames = (product.builtGallery ?? product.gallery).map((item) => item.src.split('/').at(-1) ?? item.src);
   const requestedGalleryFiles = new Set<string>();
   page.on('request', (request) => {
     if (request.resourceType() !== 'image') return;
     const decodedUrl = decodeURIComponent(request.url());
+    if (Number(new URL(request.url()).searchParams.get('w')) <= 384) return;
     const matchingFile = galleryFileNames.find((fileName) => decodedUrl.includes(fileName));
     if (matchingFile) requestedGalleryFiles.add(matchingFile);
   });
@@ -469,7 +470,7 @@ test('product gallery keeps adjacent media cold until proximity activation', asy
   await page.goto(product.route, { waitUntil: 'networkidle' });
   const gallery = page.locator('main[data-product-detail]:visible')
     .last()
-    .locator('[data-responsive-gallery]');
+    .locator('[data-product-gallery="primary"] [data-responsive-gallery]');
   const viewport = gallery.locator(':scope > div').first();
   await expect(gallery.locator('[data-gallery-frame]')).toHaveCount(1);
   await expect(viewport).not.toHaveAttribute('data-gallery-adjacent-ready', 'true');
@@ -478,7 +479,7 @@ test('product gallery keeps adjacent media cold until proximity activation', asy
   await gallery.scrollIntoViewIfNeeded();
   await expect(viewport).toHaveAttribute('data-gallery-adjacent-ready', 'true');
   await expect(gallery.locator('[data-gallery-frame]')).toHaveCount(3);
-  await expect.poll(() => requestedGalleryFiles.size).toBe(product.gallery.length);
+  await expect.poll(() => requestedGalleryFiles.size).toBe(3);
   expect(requestedGalleryFiles.size).toBeLessThanOrEqual(3);
 });
 
@@ -496,7 +497,7 @@ for (const width of [430, 390, 360] as const) {
 
     const gallery = page.locator('main[data-product-detail]:visible')
       .last()
-      .locator('[data-responsive-gallery]');
+      .locator('[data-product-gallery="primary"] [data-responsive-gallery]');
     const viewport = gallery.locator(':scope > div').first();
     await gallery.scrollIntoViewIfNeeded();
     await expect(viewport).toHaveAttribute('data-gallery-adjacent-ready', 'true');
@@ -526,26 +527,26 @@ for (const width of [430, 390, 360] as const) {
     await expect.poll(() => viewport.evaluate((element) => (
       element.style.getPropertyValue('--gallery-drag-x')
     ))).not.toBe('0px');
-    await expect(gallery).toHaveAttribute('data-gallery-position', `1/${product.gallery.length}`);
+    await expect(gallery).toHaveAttribute('data-gallery-position', `1/${(product.builtGallery ?? product.gallery).length}`);
 
     await dispatchPointer('pointerup', width - 150, 205);
-    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${(product.builtGallery ?? product.gallery).length}`);
     await expect(gallery.locator('[role="status"]'))
-      .toHaveText(`Image 2 of ${product.gallery.length}`);
+      .toHaveText(`Image 2 of ${(product.builtGallery ?? product.gallery).length}`);
     await expect(gallery.locator('[data-gallery-frame-active] img'))
-      .toHaveAttribute('alt', product.gallery[1].alt);
+      .toHaveAttribute('alt', (product.builtGallery ?? product.gallery)[1].alt);
 
     await dispatchPointer('pointerdown', 200, 100);
     await dispatchPointer('pointermove', 196, 132);
     await dispatchPointer('pointerup', 190, 220);
-    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${(product.builtGallery ?? product.gallery).length}`);
     await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
 
     await dispatchPointer('pointerdown', 200, 100);
     await dispatchPointer('pointermove', 180, 102);
     await dispatchPointer('pointerup', 180, 102);
     await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
-    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+    await expect(gallery).toHaveAttribute('data-gallery-position', `2/${(product.builtGallery ?? product.gallery).length}`);
 
     await expectNoOverflowOrNestedScroll(
       page,
@@ -570,7 +571,7 @@ test('product gallery recovers from reversal, cancellation, resize and reduced m
 
   const gallery = page.locator('main[data-product-detail]:visible')
     .last()
-    .locator('[data-responsive-gallery]');
+    .locator('[data-product-gallery="primary"] [data-responsive-gallery]');
   const viewport = gallery.locator(':scope > div').first();
   await gallery.scrollIntoViewIfNeeded();
   const dispatchPointer = async (
@@ -599,7 +600,7 @@ test('product gallery recovers from reversal, cancellation, resize and reduced m
   await dispatchPointer('pointerup', 270, 202);
   await expect(gallery).toHaveAttribute(
     'data-gallery-position',
-    `${product.gallery.length}/${product.gallery.length}`,
+    `${(product.builtGallery ?? product.gallery).length}/${(product.builtGallery ?? product.gallery).length}`,
   );
 
   await dispatchPointer('pointerdown', 200);
@@ -608,7 +609,7 @@ test('product gallery recovers from reversal, cancellation, resize and reduced m
   await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
   await expect(gallery).toHaveAttribute(
     'data-gallery-position',
-    `${product.gallery.length}/${product.gallery.length}`,
+    `${(product.builtGallery ?? product.gallery).length}/${(product.builtGallery ?? product.gallery).length}`,
   );
 
   await dispatchPointer('pointerdown', 200);
@@ -623,23 +624,23 @@ test('product gallery recovers from reversal, cancellation, resize and reduced m
   await next.focus();
   await next.click();
   await expect(next).toBeFocused();
-  await expect(gallery).toHaveAttribute('data-gallery-position', `1/${product.gallery.length}`);
+  await expect(gallery).toHaveAttribute('data-gallery-position', `1/${(product.builtGallery ?? product.gallery).length}`);
   await gallery.focus();
   await page.keyboard.press('End');
   await expect(gallery).toHaveAttribute(
     'data-gallery-position',
-    `${product.gallery.length}/${product.gallery.length}`,
+    `${(product.builtGallery ?? product.gallery).length}/${(product.builtGallery ?? product.gallery).length}`,
   );
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await page.evaluate(() => getComputedStyle(document.documentElement)
-    .getPropertyValue('--motion-duration-short').trim())).toBe('0s');
+    .getPropertyValue('--motion-duration-short').trim())).toMatch(/^0(?:ms|s)$/);
   await dispatchPointer('pointerdown', 200);
   await dispatchPointer('pointermove', 280, 202);
   await dispatchPointer('pointerup', 290, 202);
   await expect(gallery).toHaveAttribute(
     'data-gallery-position',
-    `${product.gallery.length - 1}/${product.gallery.length}`,
+    `${(product.builtGallery ?? product.gallery).length - 1}/${(product.builtGallery ?? product.gallery).length}`,
   );
   await expect(viewport).toHaveAttribute('data-gallery-gesture', 'idle');
 
@@ -760,7 +761,7 @@ test.describe('product estimate recovery', () => {
 
 
 test.describe('product range gallery', () => {
-  for (const type of ['pitched', 'gable', 'box-perimeter']) for (const width of [390, 1440]) test(`${type} shows distinct built references and stable navigation at ${width}`, async ({page}) => {
+  for (const type of ['pitched', 'gable', 'box-perimeter']) for (const width of [320, 390, 1440]) test(`${type} shows distinct built references and stable navigation at ${width}`, async ({page}) => {
     await preparePage(page); await page.setViewportSize({width,height:1000});
     const product = products.find(item => item.slug === type)!;
     await page.goto(product.route);
@@ -768,17 +769,43 @@ test.describe('product range gallery', () => {
     const gallery = page.locator('[data-product-gallery="primary"] [data-responsive-gallery]');
     await expect(gallery).toBeVisible();
     await expect(page.getByText('Built examples, not your selected design or estimate.')).toBeVisible();
-    await gallery.focus();
+    const thumbs = gallery.getByRole('group', {name: `${product.name} project gallery thumbnails`}).getByRole('button');
+    await expect(thumbs).toHaveCount(8);
+    for (const thumb of await thumbs.all()) {
+      const box = await thumb.boundingBox();
+      expect(box!.width).toBeGreaterThanOrEqual(44); expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
     const first = await gallery.boundingBox();
-    for(let index=0;index<product.gallery.length;index++) {
-      await expect(gallery).toHaveAttribute('data-gallery-position', `${index+1}/${product.gallery.length}`);
+    for(let index=0;index<(product.builtGallery ?? product.gallery).length;index++) {
+      await thumbs.nth(index).click();
+      await expect(thumbs.nth(index)).toHaveAttribute('aria-pressed', 'true');
+      await expect(gallery).toHaveAttribute('data-gallery-position', `${index+1}/${(product.builtGallery ?? product.gallery).length}`);
       const image = gallery.locator('[data-gallery-frame-active] img');
-      await expect(image).toHaveAttribute('alt', product.gallery[index].alt);
+      await expect(image).toHaveAttribute('alt', (product.builtGallery ?? product.gallery)[index].alt);
       await image.evaluate((element:HTMLImageElement)=>element.decode());
       expect(Math.abs((await gallery.boundingBox())!.height-first!.height)).toBeLessThanOrEqual(2);
-      if(index<product.gallery.length-1) await page.keyboard.press('ArrowRight');
+
     }
+    await thumbs.last().focus();
+    const pageY = await page.evaluate(() => scrollY);
     await page.keyboard.press('Home');
+    await expect(thumbs.first()).toBeFocused();
+    await expect(gallery).toHaveAttribute('data-gallery-position', '1/8');
+    await page.keyboard.press('ArrowRight');
+    await expect(thumbs.nth(1)).toBeFocused();
+    await expect(gallery).toHaveAttribute('data-gallery-position', '2/8');
+    await page.keyboard.press('End');
+    await expect(thumbs.last()).toBeFocused();
+    await expect(gallery).toHaveAttribute('data-gallery-position', '8/8');
+    expect(Math.abs(await page.evaluate(() => scrollY) - pageY)).toBeLessThanOrEqual(2);
+    const lastBox = await thumbs.last().boundingBox();
+    expect(lastBox!.x).toBeGreaterThanOrEqual(0);
+    expect(lastBox!.x + lastBox!.width).toBeLessThanOrEqual(width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const opening = page.getByRole('region', {name:'Built pergola photos', exact:true});
+    await expect(opening).toHaveAttribute('data-gallery-position', '1/3');
+    await expect(opening.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt', product.gallery[0].alt);
+    await expect(opening.getByRole('group', {name:/thumbnails/})).toHaveCount(0);
     await page.locator('summary').filter({hasText:'Explore a project in detail'}).click();
     if(product.evidence.status==='governed') await expect(page.locator(`[href="/projects/${product.evidence.projectSlug}"]`)).toBeVisible();
     await page.getByRole('group', {name:'Model view'}).getByRole('button',{name:'Photos'}).click();

@@ -44,7 +44,7 @@ function ProductGallery({
     >
       <Container width="wide">
         {isProductDesignType(product.slug) && <div className={selectionStyles.galleryIntroduction}>
-          <Eyebrow>See it built</Eyebrow><Heading>{product.shortName} in different settings.</Heading>
+          <Eyebrow>See it built</Eyebrow><Heading>{product.shortName}, built.</Heading>
           <Text>Built examples, not your selected design or estimate.</Text>
         </div>}
         <ResponsiveGallery
@@ -52,6 +52,7 @@ function ProductGallery({
           items={items}
           label={`${product.name} project gallery`}
           swipe
+          thumbnails={isProductDesignType(product.slug)}
         />
       </Container>
     </Section>

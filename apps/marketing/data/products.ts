@@ -1,3 +1,4 @@
+import { productBuiltGalleries } from './productBuiltGalleries';
 import { WARKWORTH_EXTERIOR_OBJECT_POSITION } from '../lib/projectImageFraming';
 
 type ProductCategorySlug = 'pergolas' | 'screens-walls' | 'lighting-heating';
@@ -14,7 +15,7 @@ type ProductSlug =
   | 'led-strip-lighting'
   | 'patio-heaters';
 
-type ProductMedia = {
+export type ProductMedia = {
   src: string;
   alt: string;
   caption: string;
@@ -717,6 +718,7 @@ export type ProductRecord = {
   }>;
   hero: ProductMedia;
   gallery: ProductMedia[];
+  builtGallery?: ProductMedia[];
   evidence: ProductEvidence;
   guide: {
     href: string;
@@ -816,6 +818,7 @@ export const products: ProductRecord[] = [
       detail: 'Pitched roof · Hibiscus Coast',
       objectPosition: '50% 42%',
     },
+    builtGallery: productBuiltGalleries['pitched'],
     gallery: [
       {
         src: '/images/simple-pergolas/pitched-01.webp',
@@ -914,6 +917,7 @@ export const products: ProductRecord[] = [
       detail: 'Freestanding gable · Clear acrylic and cedar',
       objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION,
     },
+    builtGallery: productBuiltGalleries['gable'],
     gallery: [
       {
         src: '/images/project-st-heliers-01.jpg',
@@ -1101,6 +1105,7 @@ export const products: ProductRecord[] = [
       detail: 'Perimeter roof · Opal acrylic',
       objectPosition: '50% 0%',
     },
+    builtGallery: productBuiltGalleries['box-perimeter'],
     gallery: [
       {
         src: '/images/project-waiheke-01.jpg',
