@@ -1,3 +1,5 @@
+import Image from 'next/image';
+import selectionStyles from './product-selection.module.css';
 import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import composition from '@/components/marketing-foundation/editorial/composition.module.css';
 import EditorialProductContent from '@/components/marketing-foundation/editorial/EditorialProductContent';
@@ -50,6 +52,17 @@ function ProductGallery({
       </Container>
     </Section>
   );
+}
+
+function BuiltReference({ product }: ProductDetailPageProps) {
+  const evidence = product.evidence;
+  const project = evidence.status !== 'not-published'
+    ? projects.find(item => item.slug === evidence.projectSlug) : undefined;
+  if (!project) return null;
+  return <a href="#product-built" className={selectionStyles.builtReference}>
+    <Image src={project.heroImage.src} alt={project.heroImage.alt} width={112} height={78} sizes="112px" style={{ objectFit: 'cover', objectPosition: project.heroImage.objectPosition }} />
+    <span><strong>{project.title}</strong><span>{evidence.status === 'context-only' ? 'Context reference' : 'Built project reference'} · Explore the details</span></span>
+  </a>;
 }
 
 function EvidenceStory({ product }: ProductDetailPageProps) {
@@ -160,7 +173,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
       />
 
       <EditorialProductContent product={product} enquiryHref={enquiryHref}
-        selection={designType ? <ProductSelector key={designType} product={product} type={designType} /> : undefined}
+        selection={designType ? <ProductSelector key={designType} product={product} type={designType} builtProof={<BuiltReference product={product} />} /> : undefined}
         nextSteps={model.showDesignNextSteps ? <DesignNextSteps sourcePath={product.route} sourceProduct={product.slug} selectionHref={designType ? `#${productSelectionAnchor(designType)}` : undefined} /> : undefined}
         gallery={<ProductGallery product={product} items={model.galleryItems} />}
         evidence={<EvidenceStory product={product} />}

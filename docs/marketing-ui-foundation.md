@@ -188,6 +188,30 @@ implementation. Verify click-to-select text, keyboard slider input, invalid and
 out-of-range values, stable panels, small/large furniture, same-design prices,
 and responsive transitions when extending these components.
 
+## Product-page reading refinement (29 September 2026, preview)
+
+The three interactive rooflines retain the working model and shared selection,
+pricing and handoff owners. Desktop groups the precise installed estimate and
+primary enquiry before Size/Roof/Sides; secondary customisation and support follow
+the first controls. Mobile keeps the installed price, persistent enquiry and
+fullscreen model, with Your design / Plan / Built example available inline.
+Changing viewport preserves the selected preview mode rather than resetting it.
+
+Implementation map: `ProductSelector` owns this composition and the existing
+state/price hooks; `ProductModel` owns the modes and unchanged fullscreen lock.
+`ProductDetailPage` supplies a small, governed project reference with its actual
+project photograph. `ProductDesignDetails` owns the concise lower reading layer:
+one built case, fit/technical disclosures, existing gallery and other options.
+Gable retains the real acrylic/solid/mixed `RoofApproaches` comparison inside a
+materials disclosure. `EditorialProductContent` selects this layer only for the
+three supported interactive routes; accessory and other product content retain
+the existing composition. Photos remain project references, not the priced design.
+
+Verification covers current published-price parity, saved choices and explicit
+handoff, responsive mode/fullscreen return, loading/retry stability, preserved
+material evidence and accessory routes. This refinement is a reversible preview,
+not production release authority.
+
 ## Local product-selection trial (21 September 2026)
 
 The pitched, gable and box-perimeter routes open with one integrated model, identity, estimate

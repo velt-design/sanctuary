@@ -1,3 +1,4 @@
+import { parsePreviewDesign } from '../apps/marketing/components/configurator-prototype/previewShare';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { products } from '../apps/marketing/data/products';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
@@ -672,4 +673,85 @@ test('product media motion is removed when reduced motion is requested', async (
   await expect(firstCardImage).toBeVisible();
   expect(await firstCardImage.evaluate((image) => getComputedStyle(image).transitionDuration))
     .toBe('0s');
+});
+
+test.describe('product first-read refinement', () => {
+  test.beforeEach(async ({ page }) => {
+    await preparePage(page);
+    await page.route(/google-analytics|googletagmanager|facebook\.com/, route => route.abort());
+    await page.route(/\/api\/(enquiry|contact)(?:\?|$)/, route => route.abort());
+  });
+  for (const width of [320, 390, 820, 1100, 1440]) test(`installed price and controls fit at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto('/products/pergolas/box-perimeter');
+    await expect(page.getByRole('textbox', { name: 'Width in metres' })).toHaveValue('6.0');
+    await expect(page.getByRole('group', { name: 'Model view' })).toBeVisible();
+    await expect(page.getByText('Including installation', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (width > 760) {
+      const action = await page.getByRole('link', { name: 'Enquire about this design' }).boundingBox();
+      const size = await page.getByRole('textbox', { name: 'Projection in metres' }).boundingBox();
+      expect(action!.y + action!.height).toBeLessThan(1000);
+      expect(size!.y + size!.height).toBeLessThan(1000);
+    }
+  });
+  for (const type of ['pitched', 'gable', 'box-perimeter']) test(`${type} edited selection carries through enquiry and designer and Back`, async ({ page }) => {
+    await page.goto(`/products/pergolas/${type}`);
+    const width = page.getByRole('textbox', { name: 'Width in metres' });
+    await width.fill('7.4'); await width.press('Enter');
+    await expect(width).toHaveValue('7.4');
+    const enquiry = page.getByRole('link', { name: 'Enquire about this design' });
+    const href = await enquiry.getAttribute('href');
+    expect(href).toContain('#design=');
+    const expectedDraft = parsePreviewDesign(href!.split('#design=')[1].split('&estimate=')[0]);
+    await enquiry.click(); await expect(page).toHaveURL(/design-enquiry/);
+    await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary.configurator-preview.v1') ?? 'null'))).toEqual(expectedDraft);
+    await page.locator('summary').filter({hasText:'View design details'}).click();
+    await expect(page.locator('main')).toContainText('7.4');
+    await page.goBack(); await expect(width).toHaveValue('7.4');
+    await page.getByRole('link', { name: 'Customise further' }).click();
+    await expect(page).toHaveURL(/configurator-preview/);
+    await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary.configurator-preview.v1') ?? 'null'))).toEqual(expectedDraft);
+    await page.goBack(); await expect(width).toHaveValue('7.4');
+    await page.reload(); await expect(width).toHaveValue('7.4');
+  });
+  test('mobile modes retain selection across resize and fullscreen returns focus', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/products/pergolas/gable');
+    const modes = page.getByRole('group', { name: 'Model view' });
+    await modes.getByRole('button', { name: 'Built example' }).click();
+    await expect(page.getByText(/Project reference, not your selected design/)).toBeVisible();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await expect(modes.getByRole('button', { name: 'Built example' })).toHaveAttribute('aria-pressed', 'true');
+    await modes.getByRole('button', { name: 'Plan', exact: true }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(modes.getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Open fullscreen 3D' })).toHaveCount(0);
+    await modes.getByRole('button', { name: 'Your design' }).click();
+    const opener = page.getByRole('button', { name: 'Open fullscreen 3D' });
+    await opener.click(); await expect(page.getByRole('dialog', { name: 'Explore your pergola' })).toBeVisible();
+    await expect(page.getByLabel('Your design enquiry')).toBeHidden();
+    await page.getByRole('button', { name: 'Close fullscreen 3D' }).click();
+    await expect(opener).toBeFocused(); await expect(page.getByLabel('Your design enquiry')).toBeVisible();
+    await page.locator('summary').filter({hasText:'Compare acrylic, solid and mixed roofing'}).click();
+    await expect(page.getByRole('radio', { name: '01 Acrylic: Daylight through the roof' })).toBeVisible();
+  });
+});
+
+test.describe('product estimate recovery', () => {
+  for (const width of [320, 390, 1440]) test(`price failure recovers without moving choices at ${width}`, async ({ page }) => {
+    await preparePage(page); await page.setViewportSize({width,height:1000});
+    let recovered = false;
+    await page.route('**/api/configurator-price', route => route.fulfill({status:200,json:recovered ? {status:'priced',amountIncGst:14560,versionNumber:15} : {status:'unavailable'}}));
+    await page.goto('/products/pergolas/box-perimeter');
+    const retry = page.getByRole('button', { name:'Retry estimate' }).filter({visible:true});
+    await expect(retry).toBeVisible();
+    const choices = page.getByRole('tab', {name:/Size/});
+    const before = await choices.boundingBox();
+    recovered = true; await retry.click();
+    await expect(retry).toBeHidden();
+    await expect(page.getByText('$14,560',{exact:true}).filter({visible:true}).first()).toBeVisible();
+    const after = await choices.boundingBox();
+    expect(Math.abs(after!.y-before!.y)).toBeLessThanOrEqual(2);
+  });
 });

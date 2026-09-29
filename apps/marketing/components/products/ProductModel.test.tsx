@@ -10,7 +10,7 @@ vi.mock('../configurator-prototype/PreviewViews', () => ({
 }));
 vi.mock('../configurator-prototype/PergolaFootprint', () => ({ default: () => <div data-plan>Selected plan</div> }));
 
-it('recovers the chosen design on mobile entry, retains desktop views during edits, and cleans up its listener', async () => {
+it('retains built and plan views across responsive changes and keeps current design edits', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const listeners = new Set<(event: MediaQueryListEvent) => void>();
   const media = {
@@ -37,8 +37,8 @@ it('recovers the chosen design on mobile entry, retains desktop views during edi
     await render();
     expect(host.querySelector('dialog')?.hidden).toBe(true);
     await resize(true);
-    expect(host.querySelector('dialog')?.hidden).toBe(false);
-    expect(host.querySelector('figure')).toBeNull();
+    expect(host.querySelector('dialog')?.hidden).toBe(true);
+    expect(host.querySelector('figure')).not.toBeNull();
     expect(host.querySelector('[data-model-width]')).toBe(model);
     expect(model?.getAttribute('data-model-width')).toBe('7400');
     expect(model?.getAttribute('data-model-direction')).toBe('away');
@@ -48,14 +48,14 @@ it('recovers the chosen design on mobile entry, retains desktop views during edi
     await render();
     expect(host.querySelector('[data-plan]')).not.toBeNull();
     await resize(true);
-    expect(host.querySelector('[data-plan]')).toBeNull();
-    expect(host.querySelector('[data-model-width="7400"]')).not.toBeNull();
+    expect(host.querySelector('[data-plan]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Open fullscreen 3D"]')).toBeNull();
     await resize(false);
     await clickView('Built example');
     expect(host.querySelector('dialog')?.hidden).toBe(true);
     await clickView('Your design');
     expect(host.querySelector('dialog')?.hidden).toBe(false);
-    expect(listeners.size).toBe(1);
+    expect(listeners.size).toBe(0);
   } finally {
     await React.act(async () => root.unmount());
     expect(listeners.size).toBe(0);

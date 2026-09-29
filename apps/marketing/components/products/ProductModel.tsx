@@ -23,20 +23,7 @@ function ModelView({ draft, example, onFullscreen, onReady, resizing = false }: 
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const openingScroll = useRef<number | null>(null);
-  const { setView } = lighting;
   useEffect(() => { if (built || lighting.view === 'Plan') onReady?.(); }, [built, lighting.view, onReady]);
-  useEffect(() => {
-    const mobile = window.matchMedia('(max-width: 760px)');
-    // Mobile hides the view tabs, so return to the design when crossing into it.
-    // Do not reset on draft changes or override the viewer's Plan recovery.
-    const restoreDesign = (event: MediaQueryListEvent) => {
-      if (!event.matches) return;
-      setBuilt(false);
-      setView('3D');
-    };
-    mobile.addEventListener('change', restoreDesign);
-    return () => mobile.removeEventListener('change', restoreDesign);
-  }, [setView]);
   useEffect(() => {
     if (!fullscreen) return;
     const element = dialog.current!;
@@ -65,7 +52,7 @@ function ModelView({ draft, example, onFullscreen, onReady, resizing = false }: 
       {fullscreen && !sceneReady && lighting.view === '3D' && <ProductPreviewPoster type={draft.roof.family === 'mono' ? 'pitched' : draft.roof.family === 'gable' ? 'gable' : 'box-perimeter'}/>}
       {lighting.view === 'Plan' ? <div className={styles.footprint}><PergolaFootprint resizing={resizing} input={draft.input} roof={draft.roof} activeDimension={null}/></div> : <PreviewViews onReady={markReady} reviewSetting input={draft.input} roof={draft.roof} activeDimension={null} expanded={fullscreen} onToggleExpanded={() => setFullscreen(value => !value)} simple presentation readOnly />}
       </div>
-      {!fullscreen && <button ref={opener} className={styles.openModel} onPointerDown={() => { openingScroll.current = window.scrollY; }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') openingScroll.current = window.scrollY; }} onClick={() => { lighting.setView('3D'); setFullscreen(true); }} aria-label="Open fullscreen 3D"><span>Tap to explore in 3D <ArrowUpRight/></span></button>}
+      {!fullscreen && lighting.view === '3D' && <button ref={opener} className={styles.openModel} onPointerDown={() => { openingScroll.current = window.scrollY; }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') openingScroll.current = window.scrollY; }} onClick={() => { lighting.setView('3D'); setFullscreen(true); }} aria-label="Open fullscreen 3D"><span>Tap to explore in 3D <ArrowUpRight/></span></button>}
       {fullscreen && <p className={styles.fullscreenHint}>Drag to rotate · Pinch to zoom</p>}
     </dialog>
     {built && <figure className={styles.builtExample}><Image src={example.src} alt={example.alt} fill sizes="(max-width:760px) 100vw, 60vw" style={{objectFit:'cover',objectPosition:example.objectPosition}}/><figcaption>{example.caption ?? 'A built pergola'} · Project reference, not your selected design</figcaption></figure>}
