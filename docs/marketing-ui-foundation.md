@@ -208,8 +208,8 @@ qualification; do not replace this scene with an empty or ghosted setting.
 Geometry and commercial rules are unchanged. Desktop keeps the installed offer
 and controls together: the site qualifier and estimate recovery share a compact
 row instead of reserving an empty gap beneath successful prices. Width and
-projection share a row from 1200px; smaller screens retain stacked controls,
-44px targets and stable validation notices.
+projection use full-width stacked rows with clear editable values, readable
+slider scales, 44px targets and stable validation notices.
 `ProductDesignDetails` owns the lower range gallery, compact governed project
 access, fit/technical disclosures and other options. Distinct installations lead
 before repeat angles; Pitched starts with a full acrylic roof viewed underneath.

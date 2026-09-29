@@ -44,10 +44,9 @@ export default function ProductChoices({ imageFamily = 'pitched', projectionMax 
             <span>{direction === 'parallel' ? 'Parallel to house' : 'Extending from house'}</span>
           </label>)}
         </div></fieldset>}
-        <fieldset disabled={!ready} className={styles.group}><legend>Dimensions</legend>
+        <fieldset disabled={!ready} className={styles.group} aria-label="Dimensions">
           <div className={styles.dimensions}>{(['widthMm', 'projectionMm'] as const).map(key => <DimensionControl key={key} axis={key === 'widthMm' ? 'width' : 'projection'} label={key === 'widthMm' ? 'Width' : 'Projection'} value={selection[key]} min={1500} max={key === 'widthMm' ? 10000 : projectionMax} onChange={value => update({ [key]: value })}/>)}</div>
         </fieldset>
-        <p className={styles.detail}>Start with rough dimensions. We’ll confirm the fit at your home.</p>
       </div>
       <div role="tabpanel" id="product-panel-1" aria-labelledby="product-tab-1" data-hidden={active !== 1} aria-hidden={active !== 1} inert={active !== 1} tabIndex={0}>
         <fieldset disabled={!ready} className={styles.group}><legend>Find your balance of light and shade.</legend>
