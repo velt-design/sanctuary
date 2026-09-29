@@ -1,5 +1,5 @@
 import 'server-only';
-import { calculateConfiguredCustomerPriceV1, loadCostingConfigV1, type CostingConfigV1, type SiteInputsV1 } from '@sp/costing';
+import { calculateConfiguredCustomerPriceV1, isCostingManifestAtLeast, loadCostingConfigV1, type CostingConfigV1, type SiteInputsV1 } from '@sp/costing';
 import { buildSimpleCoverSiteInputs, getSimpleCoverCustomResult } from './simpleCoverCalculator';
 import type { PreviewDraft } from '../components/configurator-prototype/previewDraft.types';
 import { getRoofFinish } from '../components/configurator-prototype/roofFinish';
@@ -82,6 +82,9 @@ export function calculateConfiguratorPricing(draft: PreviewDraft, config: Costin
     return { estimate: { status: 'custom', reason: getSimpleCoverCustomResult(draft.input)?.reason ?? 'Your design needs a tailored quote.' } };
   }
   const site=buildReviewSiteInputs(draft);
+  // Website offers within the inclusive area limits use Standard from v2.10.
+  // Older publications retain their original classification for frozen replay.
+  if (isCostingManifestAtLeast(config, 2, 10)) site.pricing_classification = 'simple';
   const base = calculateConfiguredCustomerPriceV1({
     site, config,
     footprintM2: draft.input.widthMm * draft.input.projectionMm / 1_000_000,

@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`versioned website Standard policy > reproduces the complete pre-correction frozen v2.8 result 1`] = `
+[
+  "a6ed49f5c639ac97b099871d6fb424b03ec7b7e3bb45ac730ad14a1f49b0e44f",
+  "cdaf62be8e72ff884912f549ef42cfa8a25793ff92511a47f7ee38aaf791cbf1",
+  "4869dd7566a3573ce54ff93d3d575f1a9a906faa0a8953b9fbf8273818415d03",
+]
+`;
+
+exports[`versioned website Standard policy > reproduces the complete pre-correction frozen v2.9 result 1`] = `
+[
+  "6146e6083212f7d6cba4f25b532bc1ab60cf56287afe49b8d39b303382ba07e8",
+  "3fc0f8b8942a41ff777afc8ce4a43c6a3099af7c2eb77c1787a6d2f6b321606e",
+  "5d5becb8900db994fa81c79fc3fe9cbb90500059e7245cb2a06db770a1b8bc9c",
+]
+`;
