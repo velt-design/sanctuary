@@ -850,3 +850,19 @@ test('product GPU fallback keeps selected mode truthful and Design remains recov
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.getByRole('button',{name:'Design',exact:true})).toHaveAttribute('aria-pressed','true');
 });
+
+
+for(const width of [1100,1199,1200,1440,1920]) test(`desktop dimension grouping and notices fit at ${width}`,async({page})=>{
+  await preparePage(page);await page.setViewportSize({width,height:1000});
+  await page.goto('/products/pergolas/pitched');
+  const w=page.getByRole('textbox',{name:'Width in metres'}),p=page.getByRole('textbox',{name:'Projection in metres'});
+  await expect(w).toHaveValue('6.0');
+  const a=await w.boundingBox(),b=await p.boundingBox();
+  if(width>=1200){expect(Math.abs(a!.y-b!.y)).toBeLessThanOrEqual(2);expect(b!.x).toBeGreaterThan(a!.x+a!.width)}
+  else expect(b!.y).toBeGreaterThan(a!.y+a!.height);
+  for(const slider of await page.getByRole('slider').all()) expect((await slider.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  const before=await p.boundingBox();await w.fill('not a size');await w.press('Enter');
+  await expect(page.getByText('Enter a size in metres.',{exact:true})).toBeVisible();
+  expect(Math.abs((await p.boundingBox())!.y-before!.y)).toBeLessThanOrEqual(2);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

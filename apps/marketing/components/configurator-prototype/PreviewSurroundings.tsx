@@ -24,7 +24,7 @@ function Section({ section, color, fadeAbove }: { section: ContextSection; color
   </mesh>;
 }
 
-export default function PreviewSurroundings({ subdued = false, studio = false, richSetting = false, reducedDetail = false, context, bounds, productPoints }: { subdued?: boolean; studio?: boolean; richSetting?: boolean; reducedDetail?: boolean; context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: { x: number; y: number; z: number }[] }) {
+export default function PreviewSurroundings({ studio = false, richSetting = false, reducedDetail = false, context, bounds, productPoints }: { studio?: boolean; richSetting?: boolean; reducedDetail?: boolean; context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: { x: number; y: number; z: number }[] }) {
   const house = useRef<Group>(null);
   const direction = useMemo(() => new Vector3(), []);
   const { architecture, ground, roof, roofEnclosure, gutter, brackets } = context;
@@ -36,8 +36,8 @@ export default function PreviewSurroundings({ subdued = false, studio = false, r
     const fade = MathUtils.smoothstep(direction.y, -.2, .2);
     house.current?.traverse((object) => {
       if (!(object instanceof Mesh) || !(object.material instanceof MeshStandardMaterial)) return;
-      object.material.opacity = (1 - fade * .95) * (subdued ? .35 : 1);
-      object.material.depthWrite = !subdued && fade < .05;
+      object.material.opacity = 1 - fade * .95;
+      object.material.depthWrite = fade < .05;
     });
     gl.domElement.dataset.houseOpacity = (1 - fade * .95).toFixed(2);
   });

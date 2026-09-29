@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { AmbientLight, DirectionalLight } from 'three';
 import { useNightAmount } from './DayNightTransition';
 
-export default function PreviewLighting({ productPresentation = false, studio = false, review = false, reducedDetail = false }: { productPresentation?: boolean; studio?: boolean; review?: boolean; reducedDetail?: boolean }) {
+export default function PreviewLighting({ studio = false, review = false, reducedDetail = false }: { studio?: boolean; review?: boolean; reducedDetail?: boolean }) {
   const amount = useNightAmount();
   const ambient = useRef<AmbientLight>(null);
   const sun = useRef<DirectionalLight>(null);
@@ -12,9 +12,9 @@ export default function PreviewLighting({ productPresentation = false, studio = 
   const moon = useRef<DirectionalLight>(null);
   useFrame(({ scene }) => {
     const night = amount.current;
-    if (ambient.current) ambient.current.intensity = (productPresentation ? .7 : studio ? .48 : .65) * (1-night) + (studio ? .18 : .1)*night;
-    if (sun.current) sun.current.intensity = (productPresentation ? 1.15 : review ? 1.25 : studio ? 1.55 : 2.2) * (1 - night);
-    if (fill.current) fill.current.intensity = (productPresentation ? 1.2 : review ? 1.05 : studio ? .85 : 1.15) * (1 - night);
+    if (ambient.current) ambient.current.intensity = (studio ? .48 : .65) * (1-night) + (studio ? .18 : .1)*night;
+    if (sun.current) sun.current.intensity = (review ? 1.25 : studio ? 1.55 : 2.2) * (1 - night);
+    if (fill.current) fill.current.intensity = (review ? 1.05 : studio ? .85 : 1.15) * (1 - night);
     if (moon.current) moon.current.intensity = (studio ? .26 : .12) * night;
     scene.environmentIntensity = (review ? .8 : studio ? .65 : 1) * (1 - night) + (studio ? .06 : 0) * night;
   }, -1);

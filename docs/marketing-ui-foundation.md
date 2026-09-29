@@ -200,12 +200,16 @@ Design; restoring saved choices and resizing do not reset the selected view.
 
 Implementation map: `ProductSelector` owns composition, controlled mode and the
 existing state/price hooks. `ProductModel` reuses `ResponsiveGallery` for the
-opening photos and retains fullscreen focus/scroll recovery. Its explicit
-`productPresentation` opt-in passes through `PreviewViews` and `PreviewScene`
-to camera, acrylic, lighting and backdrop owners; all other callers retain their
-existing defaults. Geometry and commercial rules are unchanged. The camera fits
-the whole product from a moderate three-quarter view so roof depth remains clear;
-context recedes and furniture is omitted on these product pages.
+opening photos and retains fullscreen focus/scroll recovery. Design uses the
+existing furnished `reviewSetting` through `PreviewViews` and `PreviewScene`,
+including `StudioSetting`, the established camera and review lighting. The house,
+planting and furniture remain visible context, with the existing illustrative
+qualification; do not replace this scene with an empty or ghosted setting.
+Geometry and commercial rules are unchanged. Desktop keeps the installed offer
+and controls together: the site qualifier and estimate recovery share a compact
+row instead of reserving an empty gap beneath successful prices. Width and
+projection share a row from 1200px; smaller screens retain stacked controls,
+44px targets and stable validation notices.
 `ProductDesignDetails` owns the lower range gallery, compact governed project
 access, fit/technical disclosures and other options. Distinct installations lead
 before repeat angles; Pitched starts with a full acrylic roof viewed underneath.

@@ -45,10 +45,10 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function PreviewScene({ framingKey, choiceView, reviewSetting = false, productPresentation = false, nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback, presentation = false, onCapture, onReady }: {
+export default function PreviewScene({ framingKey, choiceView, reviewSetting = false, nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback, presentation = false, onCapture, onReady }: {
   onReady?: () => void;
   framingKey?: string; choiceView?: 'sides' | 'lighting';
-  productPresentation?: boolean; reviewSetting?: boolean; nightPresentation: NightPresentation; presentation?: boolean; onCapture?: (image: string) => void;
+  reviewSetting?: boolean; nightPresentation: NightPresentation; presentation?: boolean; onCapture?: (image: string) => void;
   showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
   scene: ViewerSceneModel; plan: GeometryPlanViewModel; activeDimension: PreviewDimensionAxis | null;
   interactive: boolean; reset: number; fit: number; onFallback: () => void;
@@ -83,17 +83,17 @@ export default function PreviewScene({ framingKey, choiceView, reviewSetting = f
       <SceneReady onReady={onReady}/><ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
       <DayNightTransition presentation={nightPresentation}>
       <StudioTreatment.Provider value={studio}>
-      <PreviewLighting productPresentation={productPresentation} reducedDetail={mobile} studio={studio} review={studio && reviewSetting}/>
+      <PreviewLighting reducedDetail={mobile} studio={studio} review={studio && reviewSetting}/>
       {studio&&<StudioQuality onReducedDetail={setReducedDetail} revision={JSON.stringify({reviewSetting,reducedDetail,objects,covering,blinds:blindWorkspace?.blinds,panels:blindWorkspace?.panels})}/> }
       {lighting&&<PergolaLightFixtures/>}
       {blindWorkspace && <PreviewBlinds workspace={lighting?.editing || choiceView === 'lighting'?{...blindWorkspace,editing:false,select:noop}:choiceView === 'sides'?{...blindWorkspace,select:noop}:blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} review={studio && reviewSetting} />}
       {showReferenceBase && plan.connectionType === 'freestanding' && <FreestandingBase plan={plan} />}
-      {context && <PreviewSurroundings subdued={productPresentation} reducedDetail={productPresentation || studio&&reducedDetail} richSetting={studio && reviewSetting} studio={studio} context={context} bounds={bounds} productPoints={fitPoints} />}
+      {context && <PreviewSurroundings reducedDetail={studio&&reducedDetail} richSetting={studio && reviewSetting} studio={studio} context={context} bounds={bounds} productPoints={fitPoints} />}
       {studio&&reviewSetting&&showReferenceBase&&<StudioSetting plan={plan} context={context}/>}
-      <PreviewCamera productPresentation={productPresentation} framingKey={framingKey} choiceView={choiceView} explore={reviewSetting && !onCapture} portrait={Boolean(onCapture)} studio={studio} bounds={choiceView === 'lighting' ? bounds : cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} presentation={presentation} side={choiceView !== 'lighting' && presentation && blindWorkspace?.editing ? blindWorkspace.openings.find(o => o.id === blindWorkspace.selected)?.side : undefined} />
+      <PreviewCamera framingKey={framingKey} choiceView={choiceView} explore={reviewSetting && !onCapture} portrait={Boolean(onCapture)} studio={studio} bounds={choiceView === 'lighting' ? bounds : cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} presentation={presentation} side={choiceView !== 'lighting' && presentation && blindWorkspace?.editing ? blindWorkspace.openings.find(o => o.id === blindWorkspace.selected)?.side : undefined} />
       <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
-        ? <PreviewRoof productPresentation={productPresentation} key={object.id} object={object} />
+        ? <PreviewRoof key={object.id} object={object} />
         : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: studio ? .28 : .38, metalness: studio ? .35 : .2, envMapIntensity: studio ? 1.1 : .8 }}
           selected={false} hovered={false} onSelect={noop} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</group>
       {interactive && activeDimension && roof.length > 0 && <PreviewDimensionGuide axis={activeDimension} plan={plan} roof={roof} />}

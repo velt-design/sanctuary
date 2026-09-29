@@ -11,10 +11,10 @@ import { useCameraTransition } from './useCameraTransition';
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 const PRESENTATION_DIRECTION = new Vector3(.85, 1.9, .65).normalize();
 
-export default function PreviewCamera({ framingKey, choiceView, productPresentation = false, explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+export default function PreviewCamera({ framingKey, choiceView, explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
   framingKey?: string;
   choiceView?: 'sides' | 'lighting';
-  productPresentation?: boolean; explore?: boolean; portrait?: boolean; studio?: boolean; bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
+  explore?: boolean; portrait?: boolean; studio?: boolean; bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
 }) {
   const { camera, size, gl, invalidate } = useThree();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
@@ -71,7 +71,7 @@ export default function PreviewCamera({ framingKey, choiceView, productPresentat
     if (initialise) {
       touched.current = false;
       const reviewAngle = explore && !portrait ? Math.min(2.0, Math.max(.85, (bounds.max.x-bounds.min.x)/(bounds.max.y-bounds.min.y)*.9)) : 1.45;
-      const direction = productPresentation ? new Vector3(1.1, 1.9, .45).normalize() : presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : choiceView === 'lighting' ? new Vector3(.85,1.9,0).normalize() : choiceView === 'sides' ? new Vector3(1.2,1.9,.6).normalize() : studio ? new Vector3(portrait ? .85 : reviewAngle,1.9,portrait ? .65 : explore ? .6 : .7).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
+      const direction = presentation && side === 'left' ? new Vector3(-1.9, .85, .65).normalize() : presentation && side === 'right' ? new Vector3(1.9, .85, .65).normalize() : presentation && (side === 'back' || side === 'rear') ? new Vector3(.85, -1.9, .65).normalize() : choiceView === 'lighting' ? new Vector3(.85,1.9,0).normalize() : choiceView === 'sides' ? new Vector3(1.2,1.9,.6).normalize() : studio ? new Vector3(portrait ? .85 : reviewAngle,1.9,portrait ? .65 : explore ? .6 : .7).normalize() : presentation ? PRESENTATION_DIRECTION : FRONT_DIRECTION;
       camera.position.copy(centre).addScaledVector(direction, bounds.size * 3);
     } else camera.position.add(centre.clone().sub(orbit.target));
     orbit.target.copy(centre);
@@ -108,7 +108,7 @@ export default function PreviewCamera({ framingKey, choiceView, productPresentat
     previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView };
     recordCamera();
     invalidate();
-  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, productPresentation, side, choiceView, invalidate, recordCamera, move, framingKey, gl]);
+  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, choiceView, invalidate, recordCamera, move, framingKey, gl]);
 
   return <OrbitControls ref={controls} makeDefault enabled={enabled} enablePan={false}
     enableDamping={false} minDistance={1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * (choiceView === 'lighting' ? .5 : .48)}
