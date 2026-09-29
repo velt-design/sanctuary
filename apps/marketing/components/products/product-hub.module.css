@@ -1,12 +1,11 @@
 .selection {padding:clamp(2rem,4vw,4rem) 0 2rem}
 .intro {display:flex;justify-content:space-between;align-items:flex-end;gap:2rem;margin-bottom:2rem}
 .intro h1 {font-size:clamp(3rem,6vw,5rem);line-height:1;letter-spacing:-.055em;margin:.5rem 0 0}
-.intro > p {max-width:23rem;font-size:1rem;line-height:1.55;margin:0}
-.comparisonBar {display:flex;align-items:end;justify-content:space-between;gap:1.5rem;margin-bottom:2rem}
+.comparisonBar {display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:1.5rem;margin-bottom:2rem}
 .comparisonBar > p {margin:0;color:var(--color-text-secondary);font-size:.875rem;line-height:1.6}
 .sizes {border:0;padding:0;margin:0;min-width:0}
 .sizes legend {padding:0;margin-bottom:.6rem;font-size:.875rem}
-.sizes > div {display:flex;gap:.5rem}
+.sizes > div {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.5rem}
 .sizes label {position:relative;cursor:pointer}
 .sizes input {position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
 .sizes span {display:flex;align-items:center;justify-content:center;min-width:100px;min-height:44px;padding:.5rem .8rem;border:1px solid var(--color-rule-strong);font-size:1rem}
@@ -17,7 +16,6 @@
 .card h2 {font-size:clamp(1.8rem,2.5vw,2.5rem);letter-spacing:-.04em;line-height:1.1;margin:0 0 1rem}
 .image {position:relative;aspect-ratio:4/5;overflow:hidden;background:var(--color-surface-warm)}
 .image img {display:block;width:100%;height:100%;object-fit:cover;object-position:center top}
-.image > span {position:absolute;right:.5rem;bottom:.5rem;background:var(--color-canvas);padding:.2rem .4rem;font-size:.7rem;color:var(--color-text-secondary)}
 .description {font-size:.95rem;line-height:1.5;min-height:3em;margin:1rem 0 .8rem;color:var(--color-text-secondary)}
 .comparisonPrice {min-width:0}
 .priceLabel {display:flex;justify-content:space-between;gap:.5rem;font-size:.875rem;line-height:1.5}
@@ -34,15 +32,13 @@
 .explore:hover {text-decoration:underline;text-underline-offset:4px}
 .explore:focus-visible {outline:2px solid var(--color-text-primary);outline-offset:3px}
 .note {font-size:.875rem;line-height:1.6;color:var(--color-text-secondary);max-width:48rem;margin:1.5rem 0 .5rem}
-.assumptions {margin-bottom:1rem;font-size:.875rem;line-height:1.6}
-.assumptions summary {cursor:pointer;min-height:44px;display:flex;align-items:center;text-decoration:underline;text-underline-offset:3px}
-.assumptions p {max-width:48rem;color:var(--color-text-secondary)}
+.assumptions {max-width:48rem;margin:0 0 1.5rem;font-size:.875rem;line-height:1.6;color:var(--color-text-secondary)}
+.illustrationNote {margin:.5rem 0 1.25rem;font-size:.875rem;line-height:1.6;color:var(--color-text-secondary)}
 .comparison {border-top:1px solid var(--color-rule);border-bottom:1px solid var(--color-rule)}
 .comparison summary {display:flex;justify-content:space-between;align-items:center;min-height:60px;cursor:pointer;font-size:.95rem;list-style:none}
 .comparison summary::-webkit-details-marker {display:none}
 .comparison summary span {font-size:1.5rem;font-weight:300}
 .comparison[open] summary span {transform:rotate(45deg)}
-.bespokeLink {display:inline-flex;align-items:center;min-height:44px;margin-top:.75rem}
 .shapeOverview {display:none}
 @media(max-width:1100px) and (min-width:761px){
   .priceLabel {flex-direction:column;gap:0}
@@ -59,7 +55,7 @@
   .shapeOverview a > span {display:flex;justify-content:space-between;align-items:center;min-height:44px;font-size:1rem}
   .comparisonBar{display:block;margin-bottom:1.5rem}
   .comparisonBar > p {margin-top:.8rem}
-  .sizes > div {gap:.4rem}
+  .sizes > div {grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem}
   .sizes span {min-width:0;padding:.5rem .75rem}
   .grid{grid-template-columns:1fr;gap:2rem}
   .card h2 {margin-bottom:.75rem}

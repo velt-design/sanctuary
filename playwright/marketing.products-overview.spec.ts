@@ -19,7 +19,14 @@ for (const width of [320, 390, 820, 1100, 1440]) test(`overview compares all roo
     await expect(card.getByText('Including installation', { exact: true })).toBeVisible();
     await expect(card.getByRole('link', { name: /^Explore / })).toHaveAttribute('href', /\/products\/pergolas\//);
   }
-  for (const radio of await page.getByRole('radio').all()) {
+  const radios = page.getByRole('radio');
+  await expect(radios).toHaveCount(6);
+  expect(await radios.evaluateAll(es => es.map(e => e.parentElement!.textContent))).toEqual(['2 \u00d7 3 m','4 \u00d7 3 m','6 \u00d7 3 m','8 \u00d7 3 m','6 \u00d7 4 m','6 \u00d7 5 m']);
+  await expect(page.getByRole('radio', { name: '6 \u00d7 3 m', exact: true })).toBeChecked();
+  await expect(page.getByRole('group', { name: 'Width \u00d7 projection' })).toBeVisible();
+  const positions = await radios.evaluateAll(es => es.map(e => Math.round(e.getBoundingClientRect().top)));
+  expect(new Set(positions).size).toBe(width <= 760 ? 2 : 1);
+  for (const radio of await radios.all()) {
     const box = await radio.boundingBox(); expect(box!.height).toBeGreaterThanOrEqual(44);
     expect(box!.width).toBeGreaterThanOrEqual(44);
   }
@@ -40,27 +47,29 @@ for (const width of [320, 390, 820, 1100, 1440]) test(`overview compares all roo
 
 test('shared size changes show only matching approved responses and keyboard selection', async ({ page }) => {
   await prepare(page);
-  const requests: Array<{ width: number; family: string; connection: string }> = [];
+  const requests: Array<{ width: number; projection: number; family: string; connection: string }> = [];
   await page.route('**/api/configurator-price', async route => {
     const draft = route.request().postDataJSON();
-    requests.push({ width: draft.input.widthMm, family: draft.roof.family, connection: draft.input.connection });
-    await new Promise(resolve => setTimeout(resolve, draft.input.widthMm === 3000 ? 500 : 80));
-    await route.fulfill({ json: { status: 'priced', amountIncGst: draft.input.widthMm + ({ mono: 11000, gable: 12000, box: 13000 }[draft.roof.family as 'mono' | 'gable' | 'box']), breakdown: [] } });
+    requests.push({ width: draft.input.widthMm, projection: draft.input.projectionMm, family: draft.roof.family, connection: draft.input.connection });
+    await new Promise(resolve => setTimeout(resolve, draft.input.projectionMm === 4000 ? 500 : 80));
+    await route.fulfill({ json: { status: 'priced', amountIncGst: draft.input.widthMm + draft.input.projectionMm + ({ mono: 11000, gable: 12000, box: 13000 }[draft.roof.family as 'mono' | 'gable' | 'box']), breakdown: [] } });
   });
   await page.goto('/products');
   const cards = page.locator('[data-product-form-grid]');
   await expect(cards.locator('[data-priced]')).toHaveCount(3);
-  await page.getByRole('radio', { name: '3 × 3 m', exact: true }).check();
+  await page.getByRole('radio', { name: '6 × 4 m', exact: true }).check();
   await expect(cards.locator('[data-priced]')).toHaveCount(0);
   await page.waitForTimeout(260);
-  await page.getByRole('radio', { name: '9 × 3 m', exact: true }).check();
-  await expect(cards.locator('[data-example-width="9000"]')).toHaveCount(3);
+  await page.getByRole('radio', { name: '6 × 5 m', exact: true }).check();
+  await expect(cards.locator('[data-example-width="6000"][data-example-projection="5000"]')).toHaveCount(3);
   await expect(cards.locator('[data-priced]')).toHaveCount(3);
   await page.waitForTimeout(550);
-  await expect(cards.locator('[data-priced]').first()).toContainText(formatComparisonEstimate(20000));
-  const nine = page.getByRole('radio', { name: '9 × 3 m', exact: true });
+  await expect(cards.locator('[data-priced]').first()).toContainText(formatComparisonEstimate(22000));
+  const nine = page.getByRole('radio', { name: '6 × 5 m', exact: true });
   await nine.focus(); await page.keyboard.press('ArrowLeft');
-  await expect(page.getByRole('radio', { name: '6 × 3 m', exact: true })).toBeChecked();
+  await expect(page.getByRole('radio', { name: '6 × 4 m', exact: true })).toBeChecked();
+  expect(requests.some(request => request.width === 6000 && request.projection === 4000)).toBe(true);
+  expect(requests.some(request => request.width === 6000 && request.projection === 5000)).toBe(true);
   expect(requests.some(request => request.family === 'box' && request.connection === 'facade')).toBe(true);
   expect(requests.filter(request => request.family !== 'box').every(request => request.connection === 'fascia')).toBe(true);
 });
@@ -84,7 +93,7 @@ test('overview preserves saved product choice and support routes', async ({ page
   await prepare(page);
   await page.addInitScript(() => sessionStorage.setItem('sanctuary:pitched-product:v1', JSON.stringify({ widthMm: 4900, projectionMm: 3000, material: 'acrylic', sides: 'open', orientation: 'parallel' })));
   await page.goto('/products');
-  await page.getByRole('radio', { name: '9 × 3 m', exact: true }).check();
+  await page.getByRole('radio', { name: '6 × 5 m', exact: true }).check();
   expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary:pitched-product:v1')!).widthMm)).toBe(4900);
   await page.getByRole('link', { name: 'Explore Pitched', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Width in metres' })).toHaveValue('4.9');
@@ -95,6 +104,6 @@ test('overview preserves saved product choice and support routes', async ({ page
   await expect(page.getByRole('link', { name: /^Discuss a bespoke design/ })).toHaveAttribute('href', /enquiry_intent=bespoke/);
   await expect(page.locator('a[href="/pergola-cost-auckland"]')).toHaveCount(1);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://www.sanctuarypergolas.co.nz/products');
-  await page.getByText('Compare rooflines in more detail', { exact: false }).first().click();
+  await page.getByText('Comparison details', { exact: false }).first().click();
   await expect(page.getByRole('table', { name: 'Pergola form comparison' })).toBeVisible();
 });

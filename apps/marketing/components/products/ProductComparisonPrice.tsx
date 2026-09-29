@@ -9,8 +9,8 @@ export default function ProductComparisonPrice({ type, selection = INITIAL_PRODU
   const { estimate, complete, retry } = useProductExampleEstimate(type, selection);
   const label = `${selection.widthMm / 1000} × ${selection.projectionMm / 1000} m`;
   const title = PRODUCT_FORM_CHOICES.find(choice => choice.type === type)!.title;
-  return <div className={styles.comparisonPrice} aria-live="polite" aria-atomic="true" data-example-width={selection.widthMm}>
-    <div className={styles.priceLabel}><span>{label} example</span><span>Including installation</span></div>
+  return <div className={styles.comparisonPrice} aria-live="polite" aria-atomic="true" data-example-width={selection.widthMm} data-example-projection={selection.projectionMm}>
+    <div className={styles.priceLabel}><span>{label}</span><span>Including installation</span></div>
     <div className={styles.priceResult}>
       {complete ? <strong data-priced="true"><span className={styles.approximateSymbol} aria-hidden="true">≈ </span><span className={styles.srOnly}>Approximately </span>{formatComparisonEstimate(estimate.amount!)}</strong>
         : <span className={styles.priceMessage}>{'amount' in estimate ? 'Tailored quote' : estimate.message}</span>}

@@ -197,7 +197,11 @@ first shows all three roofline anchors, then all three image-led options; no
 product is hidden behind tabs. Existing neutral-daylight illustrations describe
 the forms, not a live rendering of the selected dimensions.
 
-`PergolaSelection` owns only a shared 3 x 3 / 6 x 3 / 9 x 3 m example-size choice.
+`PergolaSelection` owns only a shared 2 x 3 / 4 x 3 / 6 x 3 / 8 x 3 / 6 x 4 / 6 x 5 m
+comparison choice, defaulting to 6 x 3 m. Both width and projection identify
+the selected price; six controls form one desktop row and two mobile rows.
+Shared conditions and the single Comparison details disclosure retain pricing
+assumptions, illustration context and the detailed roofline comparison.
 `ProductCard` and `ProductComparisonPrice` present each matched installed estimate,
 using `useProductExampleEstimate` and the existing approved calculator. The shared
 `estimateDisplay.formatComparisonEstimate` formats comparison amounts to the
