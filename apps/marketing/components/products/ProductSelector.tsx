@@ -53,7 +53,7 @@ export default function ProductSelector({ product, type, builtProof }: { product
 
         </div>
         <div className={styles.visual}>
-          <div className={styles.model} aria-label={`Preview your ${product.name.toLowerCase()}`}><ProductModel resizing={resizing} draft={draft} example={product.hero} onFullscreen={setFullscreen} onReady={markModelReady}/>{!modelReady && <ProductPreviewPoster type={type}/>}</div>
+          <div className={styles.model} aria-label={`Preview your ${product.name.toLowerCase()}`}><ProductModel resizing={resizing} draft={draft} example={product.gallery[0]} onFullscreen={setFullscreen} onReady={markModelReady}/>{!modelReady && <ProductPreviewPoster type={type}/>}</div>
           <div className={styles.caption}><span>{(selection.widthMm / 1000).toFixed(1)} × {(selection.projectionMm / 1000).toFixed(1)} m</span><span>{Number((selection.widthMm * selection.projectionMm / 1e6).toFixed(2))} m² covered</span></div>
           {builtProof}
           <p className={styles.modelNote}>Final proportions and fixings follow your site measure.</p>

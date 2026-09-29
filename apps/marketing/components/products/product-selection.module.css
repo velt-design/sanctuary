@@ -216,3 +216,5 @@
  .choiceRetry{grid-column:2;grid-row:2;display:flex;justify-content:flex-end;align-items:center;min-height:44px}
  .choiceRetry button{min-height:44px;font-size:.8rem}
 }
+
+.galleryIntroduction{max-width:42rem;margin-bottom:1.5rem}

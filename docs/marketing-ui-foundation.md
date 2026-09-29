@@ -199,9 +199,14 @@ Changing viewport preserves the selected preview mode rather than resetting it.
 
 Implementation map: `ProductSelector` owns this composition and the existing
 state/price hooks; `ProductModel` owns the modes and unchanged fullscreen lock.
-`ProductDetailPage` supplies a small, governed project reference with its actual
-project photograph. `ProductDesignDetails` owns the concise lower reading layer:
-one built case, fit/technical disclosures, existing gallery and other options.
+`ProductDetailPage` supplies a small link to built examples using the gallery lead.
+`ProductDesignDetails` owns the concise lower reading layer: one product-range
+gallery, compact governed project access, fit/technical disclosures and other options.
+The gallery leads with distinct installations before repeat angles; Pitched starts
+with a full acrylic roof viewed from underneath. Existing public photographs and
+factual captions distinguish materials and bespoke work from the selected estimate.
+The Built example mode uses the same product gallery lead; a single named project
+must not dominate the thumbnail, large proof and gallery together.
 Gable retains the real acrylic/solid/mixed `RoofApproaches` comparison inside a
 materials disclosure. `EditorialProductContent` selects this layer only for the
 three supported interactive routes; accessory and other product content retain

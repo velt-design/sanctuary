@@ -430,8 +430,8 @@ test('product details render one controlled gallery sequence', async ({ page }) 
 
   const main = page.locator('main[data-product-detail]:visible').last();
   const hero = main.locator('section').first();
-  await expect(hero.locator('h1')).toHaveText('Gable pergola');
-  await expect(hero.locator('img').first()).toHaveCSS('object-position', '50% 18%');
+  await expect(hero.locator('h1')).toHaveText('Gable pergola.');
+  await expect(hero.getByRole('group', {name:'Model view'})).toBeVisible();
 
   const gallerySection = main.locator('[data-product-gallery="primary"]');
   const gallery = gallerySection.locator('[data-responsive-gallery]');
@@ -753,5 +753,33 @@ test.describe('product estimate recovery', () => {
     await expect(page.getByText('$14,560',{exact:true}).filter({visible:true}).first()).toBeVisible();
     const after = await choices.boundingBox();
     expect(Math.abs(after!.y-before!.y)).toBeLessThanOrEqual(2);
+  });
+});
+
+
+test.describe('product range gallery', () => {
+  for (const type of ['pitched', 'gable', 'box-perimeter']) for (const width of [390, 1440]) test(`${type} shows distinct built references and stable navigation at ${width}`, async ({page}) => {
+    await preparePage(page); await page.setViewportSize({width,height:1000});
+    const product = products.find(item => item.slug === type)!;
+    await page.goto(product.route);
+    await page.getByRole('link', {name:/Explore built examples/}).click();
+    const gallery = page.locator('[data-product-gallery="primary"] [data-responsive-gallery]');
+    await expect(gallery).toBeVisible();
+    await expect(page.getByText('Built examples, not your selected design or estimate.')).toBeVisible();
+    await gallery.focus();
+    const first = await gallery.boundingBox();
+    for(let index=0;index<product.gallery.length;index++) {
+      await expect(gallery).toHaveAttribute('data-gallery-position', `${index+1}/${product.gallery.length}`);
+      const image = gallery.locator('[data-gallery-frame-active] img');
+      await expect(image).toHaveAttribute('alt', product.gallery[index].alt);
+      await image.evaluate((element:HTMLImageElement)=>element.decode());
+      expect(Math.abs((await gallery.boundingBox())!.height-first!.height)).toBeLessThanOrEqual(2);
+      if(index<product.gallery.length-1) await page.keyboard.press('ArrowRight');
+    }
+    await page.keyboard.press('Home');
+    await page.locator('summary').filter({hasText:'Explore a project in detail'}).click();
+    if(product.evidence.status==='governed') await expect(page.locator(`[href="/projects/${product.evidence.projectSlug}"]`)).toBeVisible();
+    await page.getByRole('group', {name:'Model view'}).getByRole('button',{name:'Built example'}).click();
+    await expect(page.getByText(/Project reference, not your selected design/)).toBeVisible();
   });
 });

@@ -11,11 +11,12 @@ export default function ProductDesignDetails({ product, type, evidence, gallery,
   product: ProductRecord; type: ProductDesignType; evidence: ReactNode; gallery: ReactNode; supportingLinks: ReactNode;
 }) {
   return <>
-    <section id="product-built" className={styles.section} data-product-evidence><Container width="wide">{evidence}</Container></section>
+    {gallery}
     <Container width="wide">
       <div className={productStyles.specifications} id="product-fit">
         <div><Eyebrow>{product.shortName} / Design details</Eyebrow><Heading as="h2" variant="card">Made for your setting.</Heading><Text>{product.details.overview}</Text></div>
         <div>
+          <Disclosure summary="Explore a project in detail" bodyClassName={styles.disclosureBody}>{evidence}</Disclosure>
           <Disclosure summary="Is this roofline right for your home?" bodyClassName={styles.disclosureBody}>
             <h3>Works well when</h3><ul className={styles.detailList}>{product.decision.worksWhen.map(item => <li key={item}>{item}</li>)}</ul>
             <h3>We’ll resolve together</h3><ul className={styles.detailList}>{product.decision.resolve.map(item => <li key={item}>{item}</li>)}</ul>
@@ -35,7 +36,6 @@ export default function ProductDesignDetails({ product, type, evidence, gallery,
         </div>
       </div>
     </Container>
-    {gallery}
     <Container width="wide">
       <div className={productStyles.alternatives}><div><Eyebrow>Other options</Eyebrow><Heading as="h2" variant="card">Explore the range.</Heading></div>{product.alternatives.map(slug => { const alternative = getProductBySlug(slug); return alternative ? <TextLink key={slug} href={alternative.route}>{alternative.name}</TextLink> : null; })}</div>
       {supportingLinks}

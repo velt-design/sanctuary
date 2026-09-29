@@ -41,8 +41,13 @@ function ProductGallery({
       className={styles.productGallerySection}
       aria-label={`${product.name} gallery`}
       data-product-gallery="primary"
+      id={isProductDesignType(product.slug) ? 'product-built' : undefined}
     >
       <Container width="wide">
+        {isProductDesignType(product.slug) && <div className={selectionStyles.galleryIntroduction}>
+          <Eyebrow>See it built</Eyebrow><Heading>{product.shortName} in different settings.</Heading>
+          <Text>Built examples, not your selected design or estimate.</Text>
+        </div>}
         <ResponsiveGallery
           className={styles.productGallery}
           items={items}
@@ -55,13 +60,10 @@ function ProductGallery({
 }
 
 function BuiltReference({ product }: ProductDetailPageProps) {
-  const evidence = product.evidence;
-  const project = evidence.status !== 'not-published'
-    ? projects.find(item => item.slug === evidence.projectSlug) : undefined;
-  if (!project) return null;
+  const image = product.gallery[0];
   return <a href="#product-built" className={selectionStyles.builtReference}>
-    <Image src={project.heroImage.src} alt={project.heroImage.alt} width={112} height={78} sizes="112px" style={{ objectFit: 'cover', objectPosition: project.heroImage.objectPosition }} />
-    <span><strong>{project.title}</strong><span>{evidence.status === 'context-only' ? 'Context reference' : 'Built project reference'} · Explore the details</span></span>
+    <Image src={image.src} alt={image.alt} width={112} height={78} sizes="112px" style={{ objectFit: 'cover', objectPosition: image.objectPosition }} />
+    <span><strong>Explore built examples</strong><span>Different settings, materials and details</span></span>
   </a>;
 }
 
@@ -89,9 +91,13 @@ function EvidenceStory({ product }: ProductDetailPageProps) {
       `Missing governed product evidence project: ${evidence.projectSlug}`,
     );
   }
+  if (isProductDesignType(product.slug)) return <div data-product-evidence>
+    <Text>{evidence.relevance}</Text>
+    {evidence.status === 'context-only' && <Text>{evidence.caveat}</Text>}
+    <TextLink href={'/projects/' + project.slug}>Explore {project.title}</TextLink>
+  </div>;
   const evidenceMedia =
-    (product.slug === 'gable' ? product.gallery[0] : undefined)
-    ?? project.caseStudyHeroImage
+    project.caseStudyHeroImage
     ?? project.gallery[1]
     ?? project.gallery[0]
     ?? project.heroImage;
@@ -99,7 +105,7 @@ function EvidenceStory({ product }: ProductDetailPageProps) {
   return <div className={`${composition.bridgeGrid} ${cardLinks.surface}`}>
     <Figure image={evidenceMedia.src} alt={evidenceMedia.alt} objectPosition={evidenceMedia.objectPosition} ratio="standard" />
     <div><Eyebrow>See it built / {project.location.split(',')[0]}</Eyebrow>
-      <Heading>{product.slug === 'gable' ? <>A room beside<br />the house.</> : project.title}</Heading>
+      <Heading>{project.title}</Heading>
       <Text>{evidence.relevance}</Text>
       {evidence.status === 'context-only' && <aside aria-label="Evidence limitation"><Eyebrow>Context only</Eyebrow><Text>{evidence.caveat}</Text></aside>}
       <TextLink className={cardLinks.hitLink} href={'/projects/'+project.slug}>Explore {project.title}</TextLink>
