@@ -203,7 +203,17 @@ the selected price; six controls form one desktop row and two mobile rows.
 Shared conditions and the single Comparison details disclosure retain pricing
 assumptions, illustration context and the detailed roofline comparison.
 `ProductCard` and `ProductComparisonPrice` present each matched installed estimate,
-using `useProductExampleEstimate` and the existing approved calculator. The shared
+using the server-generated `productComparisonTable.server` snapshot and the
+existing approved frozen calculator. `ProductComparisonSelection` streams the
+complete table into the selector; all six size changes are local and atomic.
+The dynamic `/products` route checks current publication and the explicit
+approved-version pin on every request before reusing its single-entry immutable
+provenance cache. Only public selling totals and the public version number
+reach the browser. Missing approval, publication mismatch or any partial result
+withholds the whole table; a shared retry refreshes it. A loaded page remains
+a versioned snapshot, including offline, until reload or refresh. No publication
+push or offline freshness is implied. The existing API, detailed-product hooks
+and full designer pricing are unchanged. The shared
 `estimateDisplay.formatComparisonEstimate` formats comparison amounts to the
 nearest $100; the homepage reuses the same formatter with unchanged presentation.
 Exact calculator and detailed-estimate precision are unchanged. Installation,

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { products } from '../apps/marketing/data/products';
-import { formatComparisonEstimate } from '../apps/marketing/lib/estimateDisplay';
+import { writeFileSync } from 'node:fs';
+import { COMPARISON_SIZES } from '../apps/marketing/components/products/productComparisonTable';
 
 async function prepare(page: Page) {
   await page.addInitScript(() => localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, updatedAt: new Date().toISOString(), version: 1 })));
@@ -45,48 +46,59 @@ for (const width of [320, 390, 820, 1100, 1440]) test(`overview compares all roo
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('shared size changes show only matching approved responses and keyboard selection', async ({ page }) => {
-  await prepare(page);
-  const requests: Array<{ width: number; projection: number; family: string; connection: string }> = [];
-  await page.route('**/api/configurator-price', async route => {
-    const draft = route.request().postDataJSON();
-    requests.push({ width: draft.input.widthMm, projection: draft.input.projectionMm, family: draft.roof.family, connection: draft.input.connection });
-    await new Promise(resolve => setTimeout(resolve, draft.input.projectionMm === 4000 ? 500 : 80));
-    await route.fulfill({ json: { status: 'priced', amountIncGst: draft.input.widthMm + draft.input.projectionMm + ({ mono: 11000, gable: 12000, box: 13000 }[draft.roof.family as 'mono' | 'gable' | 'box']), breakdown: [] } });
-  });
-  await page.goto('/products');
-  const cards = page.locator('[data-product-form-grid]');
+test('loaded comparison switches all six sizes atomically offline without requests', async ({ page, context }) => {
+  await prepare(page); let priceRequests=0;
+  page.on('request', request => { if(request.url().includes('/api/configurator-price')) priceRequests++; });
+  await page.goto('/products'); const cards=page.locator('[data-product-form-grid]');
   await expect(cards.locator('[data-priced]')).toHaveCount(3);
-  await page.getByRole('radio', { name: '6 × 4 m', exact: true }).check();
-  await expect(cards.locator('[data-priced]')).toHaveCount(0);
-  await page.waitForTimeout(260);
-  await page.getByRole('radio', { name: '6 × 5 m', exact: true }).check();
-  await expect(cards.locator('[data-example-width="6000"][data-example-projection="5000"]')).toHaveCount(3);
-  await expect(cards.locator('[data-priced]')).toHaveCount(3);
-  await page.waitForTimeout(550);
-  await expect(cards.locator('[data-priced]').first()).toContainText(formatComparisonEstimate(22000));
-  const nine = page.getByRole('radio', { name: '6 × 5 m', exact: true });
-  await nine.focus(); await page.keyboard.press('ArrowLeft');
-  await expect(page.getByRole('radio', { name: '6 × 4 m', exact: true })).toBeChecked();
-  expect(requests.some(request => request.width === 6000 && request.projection === 4000)).toBe(true);
-  expect(requests.some(request => request.width === 6000 && request.projection === 5000)).toBe(true);
-  expect(requests.some(request => request.family === 'box' && request.connection === 'facade')).toBe(true);
-  expect(requests.filter(request => request.family !== 'box').every(request => request.connection === 'fascia')).toBe(true);
+  expect(priceRequests).toBe(0);
+  const expected = new Map<string,string[]>();
+  for(const [width,projection] of COMPARISON_SIZES) {
+    await page.getByRole('radio',{name:`${width/1000} \u00d7 ${projection/1000} m`,exact:true}).check();
+    expected.set(`${width}-${projection}`,await cards.locator('[data-priced]').allTextContents());
+  }
+  let requests=0; page.on('request',()=>requests++); await context.setOffline(true);
+  for(const [width,projection] of [...COMPARISON_SIZES].reverse()) {
+    await page.getByRole('radio',{name:`${width/1000} \u00d7 ${projection/1000} m`,exact:true}).check();
+    // Immediate DOM read, with no response wait or polling allowance.
+    expect(await cards.locator('[data-priced]').allTextContents()).toEqual(expected.get(`${width}-${projection}`));
+    expect(await cards.locator(`[data-example-width="${width}"][data-example-projection="${projection}"]`).count()).toBe(3);
+    expect(await cards.getByText('Updating estimate',{exact:true}).count()).toBe(0);
+  }
+  expect(requests).toBe(0); expect(priceRequests).toBe(0);
+  await page.getByRole('radio',{name:'6 \u00d7 5 m',exact:true}).focus(); await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('radio',{name:'6 \u00d7 4 m',exact:true})).toBeChecked();
 });
 
-for (const width of [320, 820, 1440]) test(`overview price failure and recovery keep actions stable at ${width}`, async ({ page }) => {
-  await prepare(page); await page.setViewportSize({ width, height: 1000 });
-  let fail = true;
-  await page.route('**/api/configurator-price', route => route.fulfill({ json: fail ? { status: 'unavailable' } : { status: 'priced', amountIncGst: 14551, breakdown: [] } }));
-  await page.goto('/products');
-  const cards = page.locator('[data-product-form-grid] > article');
-  await expect(cards.getByRole('button', { name: /^Retry / })).toHaveCount(3);
-  const before = await cards.getByRole('link').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top + scrollY));
-  fail = false;
-  for (const title of ['Pitched', 'Gable', 'Box']) await cards.getByRole('button', { name: `Retry ${title} 6 × 3 m estimate`, exact: true }).click();
-  await expect(cards.locator('[data-priced]')).toHaveCount(3);
-  const after = await cards.getByRole('link').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top + scrollY));
-  after.forEach((top, index) => expect(Math.abs(top - before[index])).toBeLessThanOrEqual(2));
+const publicationFixture=process.env.MARKETING_COMPARISON_PUBLICATION_FIXTURE;
+for (const width of [320,820,1440]) test(`initial comparison failure and whole-table recovery stay stable at ${width}`, async ({ page }) => {
+  test.skip(!publicationFixture,'Requires the private local publication-fetch fixture; never enabled on hosted deployments.');
+  await prepare(page); await page.setViewportSize({width,height:1000});
+  writeFileSync(publicationFixture!,'fail');
+  try {
+    await page.goto('/products'); const cards=page.locator('[data-product-form-grid]');
+    await expect(cards.getByText('Estimate unavailable',{exact:true})).toHaveCount(3);
+    await expect(page.getByRole('radio').first()).toBeDisabled();
+    const before=await cards.getByRole('link').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().top+scrollY));
+    writeFileSync(publicationFixture!,'delay'); await page.getByRole('button',{name:'Retry estimates',exact:true}).click();
+    await expect(cards.getByText('Updating estimate',{exact:true})).toHaveCount(3);
+    await expect(cards.locator('[data-priced]')).toHaveCount(3);
+    await expect(page.getByRole('radio').first()).toBeEnabled();
+    const after=await cards.getByRole('link').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().top+scrollY));
+    after.forEach((top,index)=>expect(Math.abs(top-before[index])).toBeLessThanOrEqual(2));
+  } finally { writeFileSync(publicationFixture!,'normal'); }
+});
+
+test('delayed initial publication shows coherent disabled loading before all prices arrive',async({page})=>{
+  test.skip(!publicationFixture,'Requires the private local publication-fetch fixture.');
+  await prepare(page); writeFileSync(publicationFixture!,'delay');
+  try {
+    await page.goto('/products',{waitUntil:'commit'});
+    await expect(page.locator('[data-product-form-grid]').getByText('Updating estimate',{exact:true})).toHaveCount(3);
+    await expect(page.getByRole('radio').first()).toBeDisabled();
+    await expect(page.locator('[data-product-form-grid] [data-priced]')).toHaveCount(3);
+    await expect(page.getByRole('radio').first()).toBeEnabled();
+  } finally {writeFileSync(publicationFixture!,'normal');}
 });
 
 test('overview preserves saved product choice and support routes', async ({ page }) => {

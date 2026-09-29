@@ -11,6 +11,10 @@
 .sizes span {display:flex;align-items:center;justify-content:center;min-width:100px;min-height:44px;padding:.5rem .8rem;border:1px solid var(--color-rule-strong);font-size:1rem}
 .sizes input:checked + span {background:var(--color-text-primary);color:var(--color-canvas);border-color:var(--color-text-primary)}
 .sizes input:focus-visible + span {outline:2px solid var(--color-text-primary);outline-offset:3px}
+.sizes:disabled label {cursor:default}
+.sizes:disabled span {opacity:.65}
+.tableStatus {min-height:44px;display:flex;align-items:center;flex-wrap:wrap;gap:.25rem 1rem;font-size:.875rem;color:var(--color-text-secondary)}
+.tableStatus button {min-height:44px;padding:0;border:0;background:none;font:inherit;text-decoration:underline;color:var(--color-text-primary);cursor:pointer}
 .grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1rem,2.5vw,2.5rem)}
 .card {min-width:0;scroll-margin-top:130px}
 .card h2 {font-size:clamp(1.8rem,2.5vw,2.5rem);letter-spacing:-.04em;line-height:1.1;margin:0 0 1rem}

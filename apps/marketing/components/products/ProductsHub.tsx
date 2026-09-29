@@ -17,6 +17,8 @@ import {
 } from '@/data/products';
 import { absoluteUrl } from '@/lib/seo';
 import PergolaSelection from './PergolaSelection';
+import ProductComparisonSelection from './ProductComparisonSelection';
+import { Suspense } from 'react';
 import ProductFormComparison from './ProductFormComparison';
 import { buildAssistedEnquiryHref } from '@/lib/configuratorEntry';
 import { buildProductHubViewModel } from './productHubViewModel';
@@ -61,7 +63,9 @@ export default function ProductsHub() {
         ]}
       />
 
-      <PergolaSelection comparison={<ProductFormComparison />} />
+      <Suspense fallback={<PergolaSelection comparison={<ProductFormComparison />} table={{ status: 'loading' }} />}>
+        <ProductComparisonSelection comparison={<ProductFormComparison />} />
+      </Suspense>
       <Section id="bespoke-design" tone="warm">
         <Container width="wide"><div className={styles.sectionHeadingRow}>
           <div><Eyebrow>Bespoke design</Eyebrow><Heading>A different shape.<br/>A particular space.</Heading></div>

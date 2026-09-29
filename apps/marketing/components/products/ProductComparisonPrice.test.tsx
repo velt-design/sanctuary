@@ -1,49 +1,17 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-const reply = vi.hoisted(() => ({ price: null as unknown, review: null as unknown }));
-vi.mock('../configurator-prototype/useConfiguratorPrice', () => ({ useConfiguratorPrice: () => ({ price: reply.price, retry: vi.fn() }) }));
-vi.mock('../configurator-prototype/useReviewPrice', () => ({ useReviewPrice: () => reply.review }));
+import { describe, expect, it } from 'vitest';
 import ProductComparisonPrice from './ProductComparisonPrice';
 import { INITIAL_PRODUCT_SELECTION, productSelectionDraft } from './productSelection';
 import { solvePergolaPreview } from '../configurator-prototype/solvePreview';
 
-afterEach(() => { vi.unstubAllEnvs(); reply.price = null; reply.review = null; });
-describe('overview comparison price boundaries', () => {
-  it('labels complete development estimates as draft', () => {
-    vi.stubEnv('NODE_ENV', 'development');
-    reply.price = { status: 'disabled' };
-    reply.review = { status: 'priced', amount: 12345, excluded: [] };
-    const html = renderToStaticMarkup(<ProductComparisonPrice type="gable"/>);
-    expect(html).toContain('$12,300');
-    expect(html).toContain('Draft estimate');
-    expect(html).toContain('not a published offer');
+describe('overview public table presentation', () => {
+  it('renders the exact selected pair without a pricing hook', () => {
+    const html=renderToStaticMarkup(<ProductComparisonPrice type="pitched" selection={{...INITIAL_PRODUCT_SELECTION,projectionMm:5000}} table={{status:'priced',versionNumber:15,amounts:{'6000-5000':{pitched:14551,gable:20000,'box-perimeter':21000}}}}/>);
+    expect(html).toContain('6 \u00d7 5 m'); expect(html).toContain('$14,600'); expect(html).toContain('Approximately '); expect(html).toContain('Including installation');
   });
-  it('withholds partial estimates and never exposes review pricing in production', () => {
-    vi.stubEnv('NODE_ENV', 'development');
-    reply.price = { status: 'disabled' };
-    reply.review = { status: 'priced', amount: 12345, excluded: ['blinds'] };
-    expect(renderToStaticMarkup(<ProductComparisonPrice type="gable"/>)).not.toContain('$12,300');
-    vi.stubEnv('NODE_ENV', 'production');
-    reply.review = { status: 'priced', amount: 12345, excluded: [] };
-    const html = renderToStaticMarkup(<ProductComparisonPrice type="gable"/>);
-    expect(html).not.toContain('$12,300');
-    expect(html).toContain('Estimate unavailable');
-    expect(html).toContain('Retry estimate');
-  });
-  it('uses approved prices when supplied and leaves loading explicit', () => {
-    expect(renderToStaticMarkup(<ProductComparisonPrice type="pitched"/>)).toContain('Updating estimate');
-    reply.price = { status: 'priced', amountIncGst: 14500, breakdown: [] };
-    const html = renderToStaticMarkup(<ProductComparisonPrice type="pitched"/>);
-    expect(html).toContain('$14,500');
-    expect(html).not.toContain('Draft estimate');
-  });
-  it('ties selected dimensions to the approximate installed presentation', () => {
-    reply.price = { status: 'priced', amountIncGst: 14551, breakdown: [] };
-    const html = renderToStaticMarkup(<ProductComparisonPrice type="pitched" selection={{widthMm:6000,projectionMm:5000,material:'acrylic',sides:'open',orientation:'parallel'}}/>);
-    expect(html).toContain('6 × 5 m');
-    expect(html).toContain('Including installation');
-    expect(html).toContain('Approximately ');
-    expect(html).toContain('$14,600');
+  it.each(['loading','unavailable','disabled'] as const)('keeps %s truthful without a draft or old amount', status => {
+    const html=renderToStaticMarkup(<ProductComparisonPrice type="pitched" table={{status}}/>);
+    expect(html).toContain(status==='loading'?'Updating estimate':'Estimate unavailable'); expect(html).not.toContain('data-priced'); expect(html).not.toContain('Draft');
   });
 });
 
