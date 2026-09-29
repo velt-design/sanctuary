@@ -188,6 +188,36 @@ implementation. Verify click-to-select text, keyboard slider input, invalid and
 out-of-range values, stable panels, small/large furniture, same-design prices,
 and responsive transitions when extending these components.
 
+## Residential pergola overview (29 September 2026, preview)
+
+`ProductsHub` retains the `/products` metadata, catalogue schema and secondary
+bespoke, accessory, project and planning-guide paths. Its `PergolaSelection`
+opening compares Pitched, Gable and Box in three aligned desktop columns. Mobile
+first shows all three roofline anchors, then all three image-led options; no
+product is hidden behind tabs. Existing neutral-daylight illustrations describe
+the forms, not a live rendering of the selected dimensions.
+
+`PergolaSelection` owns only a shared 3 x 3 / 6 x 3 / 9 x 3 m example-size choice.
+`ProductCard` and `ProductComparisonPrice` present each matched installed estimate,
+using `useProductExampleEstimate` and the existing approved calculator. The shared
+`estimateDisplay.formatComparisonEstimate` formats comparison amounts to the
+nearest $100; the homepage reuses the same formatter with unchanged presentation.
+Exact calculator and detailed-estimate precision are unchanged. Installation,
+GST, acrylic/open sides and site confirmation remain visible; attachment, ridge,
+ground-level and illustration assumptions are available beside the comparison.
+
+Example selection never writes the product draft. Normal product links preserve
+saved choices; the overview explains that these are examples and the product page
+is where size, roofing and sides are selected. The original `ProductExamplePrice` and compact styling remain unchanged for the
+`ProjectFinder` / `HomePergolaSelection` fallback. Detailed roofline comparison is
+passed from the server hub into the client selector as a child, keeping the
+project catalogue out of the comparison-state client dependency.
+Loading, unavailable/retry, tailored and development-only draft responses stay
+under the existing approval policy. Verification covers all nine approved prices,
+rapid response changes, keyboard choice, stable recovery, mobile shape discovery,
+saved 4.9 m entry after a 9 m comparison, supporting routes and canonical SEO.
+This is a protected preview stage, not production release authority.
+
 ## Product-page reading refinement (29 September 2026, preview)
 
 The three interactive rooflines open with approved installation photography and

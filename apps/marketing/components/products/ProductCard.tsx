@@ -3,19 +3,18 @@ import Link from 'next/link';
 import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 import { Heading } from '../marketing-foundation/Primitives';
 import { PRODUCT_DESIGNS, type ProductDesignType } from './productDesigns';
-import ProductExamplePrice from './ProductExamplePrice';
+import type { ProductSelection } from './productSelection';
+import ProductComparisonPrice from './ProductComparisonPrice';
 import styles from './product-hub.module.css';
 
-type ProductCardProps = { type: ProductDesignType; title: string; description: string; connection: string; priority?: boolean; compact?: boolean };
+type ProductCardProps = { type: ProductDesignType; title: string; description: string; selection: ProductSelection; priority?: boolean };
 
-export default function ProductCard({ type, title, description, connection, priority = false, compact = false }: ProductCardProps) {
-  return <article className={`${styles.card} ${compact ? styles.compactCard : ''}`} data-product-type={type}>
-    <div className={styles.image}><Image src={`/images/portrait-roofline-trial/${PRODUCT_DESIGNS[type].imageFamily}-${type === 'gable' ? 'v1' : 'v2'}.webp`} alt={`${title} pergola illustration, attached to a house with acrylic roofing and open sides`} width={1120} height={1400} sizes="(max-width:760px) 100vw, 33vw" priority={priority}/><span>Design illustration</span></div>
-    <div className={styles.body}>
-      <Heading as={compact ? 'h3' : 'h2'} variant="card">{title}</Heading><p className={styles.description}>{description}</p>
-      <div className={styles.spec}><span>6 × 3 m example</span><span>Acrylic roof · Open sides</span><small>{connection} · Ground level</small></div>
-      <ProductExamplePrice type={type}/>
-      <Link className={styles.explore} href={`/products/pergolas/${type}`}>Explore {title} <ArrowUpRight/></Link>
-    </div>
+export default function ProductCard({ type, title, description, selection, priority = false }: ProductCardProps) {
+  return <article className={styles.card} id={`compare-${type}`} data-product-type={type}>
+    <Heading as="h2" variant="card">{title}</Heading>
+    <div className={styles.image}><Image src={`/images/homepage-challenger-rooflines/${PRODUCT_DESIGNS[type].imageFamily}-daylight.webp`} alt={`${title} pergola design illustration, house-attached with acrylic roofing and open sides`} width={1120} height={1400} sizes="(max-width:760px) calc(100vw - 40px), 33vw" priority={priority} /><span>Design illustration</span></div>
+    <p className={styles.description}>{description}</p>
+    <ProductComparisonPrice type={type} selection={selection} />
+    <Link className={styles.explore} href={`/products/pergolas/${type}`}>Explore {title} <ArrowUpRight /></Link>
   </article>;
 }

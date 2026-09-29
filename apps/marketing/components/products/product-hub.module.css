@@ -1,18 +1,83 @@
-.selection { padding:clamp(2.5rem,5vw,4.5rem) 0 2rem; }
-.intro { display:flex; justify-content:space-between; align-items:flex-end; gap:3rem; margin-bottom:2.5rem; }
-.intro h1 {font-size:clamp(2.8rem,5.5vw,5rem);line-height:1.06;letter-spacing:-.055em;margin:.6rem 0 0}
-.intro > div:last-child > p {max-width:360px;margin:0;font-size:1rem;line-height:1.6}
-.grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1rem,2vw,2rem)}
-.card {min-width:0;position:relative}
+.selection {padding:clamp(2rem,4vw,4rem) 0 2rem}
+.intro {display:flex;justify-content:space-between;align-items:flex-end;gap:2rem;margin-bottom:2rem}
+.intro h1 {font-size:clamp(3rem,6vw,5rem);line-height:1;letter-spacing:-.055em;margin:.5rem 0 0}
+.intro > p {max-width:23rem;font-size:1rem;line-height:1.55;margin:0}
+.comparisonBar {display:flex;align-items:end;justify-content:space-between;gap:1.5rem;margin-bottom:2rem}
+.comparisonBar > p {margin:0;color:var(--color-text-secondary);font-size:.875rem;line-height:1.6}
+.sizes {border:0;padding:0;margin:0;min-width:0}
+.sizes legend {padding:0;margin-bottom:.6rem;font-size:.875rem}
+.sizes > div {display:flex;gap:.5rem}
+.sizes label {position:relative;cursor:pointer}
+.sizes input {position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.sizes span {display:flex;align-items:center;justify-content:center;min-width:100px;min-height:44px;padding:.5rem .8rem;border:1px solid var(--color-rule-strong);font-size:1rem}
+.sizes input:checked + span {background:var(--color-text-primary);color:var(--color-canvas);border-color:var(--color-text-primary)}
+.sizes input:focus-visible + span {outline:2px solid var(--color-text-primary);outline-offset:3px}
+.grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1rem,2.5vw,2.5rem)}
+.card {min-width:0;scroll-margin-top:130px}
+.card h2 {font-size:clamp(1.8rem,2.5vw,2.5rem);letter-spacing:-.04em;line-height:1.1;margin:0 0 1rem}
 .image {position:relative;aspect-ratio:4/5;overflow:hidden;background:var(--color-surface-warm)}
-.image img {display:block;width:100%;height:100%;object-fit:cover}
-.image > span {position:absolute;right:.65rem;bottom:.65rem;font-size:.6rem;background:var(--color-surface-warm);color:var(--color-text-secondary);padding:.25rem .4rem}
-.body {padding:1.25rem 0 0}
-.body h2,.body h3 {font-size:2rem;line-height:1.1;letter-spacing:-.035em;margin:0}
-.description {font-size:.88rem;line-height:1.55;min-height:3.1em;margin:.75rem 0 1rem;color:var(--color-text-secondary)}
-.spec {display:grid;gap:.25rem;font-size:.75rem;line-height:1.5;border-top:1px solid var(--color-rule);padding-top:1rem}
-.spec > span:first-child {font-weight:600}
-.spec small {font-size:.67rem;color:var(--color-text-secondary);min-height:2.8em}
+.image img {display:block;width:100%;height:100%;object-fit:cover;object-position:center top}
+.image > span {position:absolute;right:.5rem;bottom:.5rem;background:var(--color-canvas);padding:.2rem .4rem;font-size:.7rem;color:var(--color-text-secondary)}
+.description {font-size:.95rem;line-height:1.5;min-height:3em;margin:1rem 0 .8rem;color:var(--color-text-secondary)}
+.comparisonPrice {min-width:0}
+.priceLabel {display:flex;justify-content:space-between;gap:.5rem;font-size:.875rem;line-height:1.5}
+.priceLabel > span:last-child {color:var(--color-text-secondary)}
+.priceResult {display:flex;align-items:center;column-gap:.75rem;row-gap:.25rem;flex-wrap:wrap;align-content:center;min-height:76px}
+.priceResult strong {font-size:clamp(1.8rem,2.8vw,2.5rem);font-weight:400;line-height:1.15;letter-spacing:-.035em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.approximateSymbol {color:var(--color-rule);font-weight:400}
+.srOnly {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.priceResult small {flex-basis:100%;font-size:.8rem;line-height:1.4;color:var(--color-text-secondary)}
+.priceMessage {font-size:1rem;line-height:1.4}
+.priceResult button {min-height:44px;border:0;background:none;padding:.4rem 0;font:inherit;font-size:.875rem;text-decoration:underline;cursor:pointer;color:var(--color-text-primary)}
+.explore {display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--color-rule-strong);min-height:56px;color:var(--color-text-primary);text-decoration:none;font-size:1rem}
+.explore svg {width:24px;height:24px}
+.explore:hover {text-decoration:underline;text-underline-offset:4px}
+.explore:focus-visible {outline:2px solid var(--color-text-primary);outline-offset:3px}
+.note {font-size:.875rem;line-height:1.6;color:var(--color-text-secondary);max-width:48rem;margin:1.5rem 0 .5rem}
+.assumptions {margin-bottom:1rem;font-size:.875rem;line-height:1.6}
+.assumptions summary {cursor:pointer;min-height:44px;display:flex;align-items:center;text-decoration:underline;text-underline-offset:3px}
+.assumptions p {max-width:48rem;color:var(--color-text-secondary)}
+.comparison {border-top:1px solid var(--color-rule);border-bottom:1px solid var(--color-rule)}
+.comparison summary {display:flex;justify-content:space-between;align-items:center;min-height:60px;cursor:pointer;font-size:.95rem;list-style:none}
+.comparison summary::-webkit-details-marker {display:none}
+.comparison summary span {font-size:1.5rem;font-weight:300}
+.comparison[open] summary span {transform:rotate(45deg)}
+.bespokeLink {display:inline-flex;align-items:center;min-height:44px;margin-top:.75rem}
+.shapeOverview {display:none}
+@media(max-width:1100px) and (min-width:761px){
+  .priceLabel {flex-direction:column;gap:0}
+  .description {min-height:4.5em}
+  .priceResult {min-height:92px}
+}
+@media(max-width:760px){
+  .selection{padding-top:1.5rem}
+  .intro{display:block;margin-bottom:1.25rem}
+  .intro > p {margin-top:.8rem;max-width:23rem;font-size:.95rem}
+  .shapeOverview {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin-bottom:1.5rem}
+  .shapeOverview a {min-width:0;color:inherit;text-decoration:none}
+  .shapeOverview img {display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;object-position:center top}
+  .shapeOverview a > span {display:flex;justify-content:space-between;align-items:center;min-height:44px;font-size:1rem}
+  .comparisonBar{display:block;margin-bottom:1.5rem}
+  .comparisonBar > p {margin-top:.8rem}
+  .sizes > div {gap:.4rem}
+  .sizes span {min-width:0;padding:.5rem .75rem}
+  .grid{grid-template-columns:1fr;gap:2rem}
+  .card h2 {margin-bottom:.75rem}
+  .image{aspect-ratio:4/3}
+  .description{min-height:0;margin:.8rem 0}
+  .priceResult{min-height:76px}
+  .priceLabel{font-size:.875rem}
+}
+
+@media(min-width:761px){
+  .selection {padding-top:2rem}
+  .intro {margin-bottom:1.5rem}
+  .intro h1 {font-size:clamp(3rem,5vw,4rem)}
+  .comparisonBar {margin-bottom:1.5rem}
+  .image {aspect-ratio:4/3}
+}
+
+/* Existing homepage fallback price presentation is unchanged. */
 .price {position:relative;display:flex;flex-direction:column;min-height:137px;margin-top:.65rem;gap:.25rem}
 .price > span {font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-secondary)}
 .price strong {font-weight:400;font-size:1.1rem;letter-spacing:-.035em;min-height:39px;display:flex;align-items:center}
@@ -20,35 +85,6 @@
 .price small {font-size:.64rem;line-height:1.5;color:var(--color-text-secondary)}
 .priceStatus {min-height:2.8em}
 .price button {border:0;background:none;text-decoration:underline;font:inherit;font-size:.7rem;text-align:left;padding:0;cursor:pointer;position:relative;z-index:2}
-.explore {display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--color-rule-strong);border-bottom:1px solid var(--color-rule-strong);min-height:56px;color:var(--color-text-primary);text-decoration:none;font-size:.95rem}
-.explore::after {content:'';position:absolute;inset:0}
-.explore svg {width:24px;height:24px}
-.explore:hover {text-decoration:underline;text-underline-offset:4px}
-.explore:focus-visible {outline:2px solid var(--color-text-primary);outline-offset:5px}
-.note {font-size:.72rem;line-height:1.6;color:var(--color-text-secondary);max-width:800px;margin:1.5rem 0 2rem}
-.comparison {border-top:1px solid var(--color-rule);border-bottom:1px solid var(--color-rule)}
-.comparison summary {display:flex;justify-content:space-between;align-items:center;min-height:60px;cursor:pointer;font-size:.88rem;list-style:none}
-.comparison summary::-webkit-details-marker {display:none}
-.comparison summary span {font-size:1.5rem;font-weight:300}
-.comparison[open] summary span {transform:rotate(45deg)}
-@media(max-width:760px){.intro{display:block;margin-bottom:2rem}.intro>div:last-child>p{margin-top:1rem;max-width:30rem;font-size:.9rem}.grid{grid-template-columns:1fr;gap:2.75rem}.selection{padding-top:2rem}.body{padding-top:1rem}.description{min-height:0}.spec small{min-height:0}.price{min-height:127px}.note{margin-top:2rem}}
 
-.intro > div:last-child {max-width:360px}
-.compactCard .price {min-height:125px}
 .price.compactPrice {min-height:108px;margin-top:1rem}
-@media(max-width:760px){.price.compactPrice{min-height:88px;margin-top:.65rem}}
-@media(max-width:760px){
-  .compactCard {display:grid;grid-template-columns:38% minmax(0,1fr);gap:1rem;align-items:start;border-top:1px solid var(--color-rule);padding-top:1.25rem}
-  .compactCard .image {aspect-ratio:1/1;margin-top:.15rem}
-  .compactCard .image img {object-fit:contain}
-  .compactCard .image > span {display:none}
-  .compactCard .body {padding:0}
-  .compactCard .body h3 {font-size:1.7rem}
-  .compactCard .description {font-size:.83rem;margin:.5rem 0 .75rem}
-  .compactCard .spec {padding-top:.65rem;font-size:.72rem}
-  .compactCard .spec small {font-size:.65rem}
-  .compactCard .price {min-height:125px}
-  .compactCard .price strong[data-priced=true] {font-size:1.8rem}
-  .compactCard .explore {font-size:.88rem;min-height:48px}
-}
-.intro > div:last-child > a {display:inline-flex;align-items:center;min-height:44px;margin-top:.6rem;font-size:.82rem;text-transform:none;letter-spacing:0}
+@media(max-width:760px){.price{min-height:127px}.price.compactPrice{min-height:88px;margin-top:.65rem}}
