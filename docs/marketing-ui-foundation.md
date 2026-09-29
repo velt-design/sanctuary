@@ -231,12 +231,14 @@ never falls back to development draft pricing. Verification covers all eighteen 
 across six width/projection pairs, immediate offline switching, streamed radio
 group isolation, keyboard choice, stable recovery, mobile shape discovery,
 saved 4.9 m entry after comparison choices, supporting routes and canonical SEO.
-This is a protected preview stage, not production release authority.
+Production release follows the repository review and release gates.
 
 ## Product-page reading refinement (29 September 2026, preview)
 
 The three interactive rooflines open with approved installation photography and
-Photos / Design / Plan in one stable stage. Desktop gives the visual more width,
+Photos / Design / Plan in one stable stage. The opening photograph is prioritised;
+the furnished scene mounts on the first Design choice and remains available
+across mode changes. The lower gallery retains lazy media loading. Desktop gives the visual more width,
 with a compact identity, selected size, installed estimate and enquiry beside it.
 Mobile places that estimate before the visual; the persistent enquiry stays
 available and repeats the price only when the inline estimate is out of view.

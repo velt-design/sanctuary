@@ -32,7 +32,7 @@ it('retains photo and plan views across responsive changes and keeps current des
   });
   try {
     await render();
-    const model = host.querySelector('[data-model-width]');
+    expect(host.querySelector('[data-model-width]')).toBeNull();
     await clickView('Photos');
     expect(host.querySelector('dialog')?.hidden).toBe(true);
     draft = productSelectionDraft({ ...INITIAL_PRODUCT_SELECTION, widthMm: 7400, orientation: 'away' }, 'gable').draft;
@@ -41,14 +41,13 @@ it('retains photo and plan views across responsive changes and keeps current des
     await resize(true);
     expect(host.querySelector('dialog')?.hidden).toBe(true);
     expect(host.querySelector('figure')).not.toBeNull();
-    expect(host.querySelector('[data-model-width]')).toBe(model);
-    expect(model?.getAttribute('data-model-width')).toBe('7400');
-    expect(model?.getAttribute('data-model-direction')).toBe('away');
+    expect(host.querySelector('[data-model-width]')).toBeNull();
     expect(host.querySelector('[aria-label="Open fullscreen 3D"]')).not.toBeNull();
     await resize(false);
     await clickView('Plan');
     await render();
     expect(host.querySelector('[data-plan]')).not.toBeNull();
+    expect(host.querySelector('[data-model-width]')).toBeNull();
     await resize(true);
     expect(host.querySelector('[data-plan]')).not.toBeNull();
     expect(host.querySelector('[aria-label="Open fullscreen 3D"]')).toBeNull();
@@ -57,6 +56,15 @@ it('retains photo and plan views across responsive changes and keeps current des
     expect(host.querySelector('dialog')?.hidden).toBe(true);
     await clickView('Design');
     expect(host.querySelector('dialog')?.hidden).toBe(false);
+    const model = host.querySelector('[data-model-width]');
+    expect(model?.getAttribute('data-model-width')).toBe('7400');
+    expect(model?.getAttribute('data-model-direction')).toBe('away');
+    await clickView('Photos');
+    expect(host.querySelector('[data-model-width]')).toBe(model);
+    await clickView('Plan');
+    expect(host.querySelector('[data-model-width]')).toBe(model);
+    await clickView('Design');
+    expect(host.querySelector('[data-model-width]')).toBe(model);
     expect(listeners.size).toBe(0);
   } finally {
     await React.act(async () => root.unmount());

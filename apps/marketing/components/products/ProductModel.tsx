@@ -17,6 +17,8 @@ const noChange = () => {};
 function ModelView({ draft, gallery, mode, onModeChange, onFullscreen, onReady, resizing = false }: { resizing?: boolean; draft: PreviewDraft; gallery: ProductRecord['gallery']; mode: 'Photos' | 'Design' | 'Plan'; onModeChange: (mode: 'Photos' | 'Design' | 'Plan') => void; onFullscreen: (open: boolean) => void; onReady?: () => void }) {
   const lighting = useLighting()!;
   const built = mode === 'Photos';
+  const [designActivated, setDesignActivated] = useState(mode === 'Design');
+  useEffect(() => { if (mode === 'Design') setDesignActivated(true); }, [mode]);
   useEffect(() => { if (mode !== 'Photos') lighting.setView(mode === 'Plan' ? 'Plan' : '3D'); }, [mode, lighting.setView]);
   const [sceneReady, setSceneReady] = useState(false);
   const markReady = useCallback(() => { setSceneReady(true); onReady?.(); }, [onReady]);
@@ -51,7 +53,8 @@ function ModelView({ draft, gallery, mode, onModeChange, onFullscreen, onReady, 
       {fullscreen && <div className={styles.fullscreenHeader}><span>Your pergola</span><button autoFocus aria-label="Close fullscreen 3D" onClick={() => setFullscreen(false)}>×</button></div>}
       <div className={styles.modelBody}>
       {fullscreen && !sceneReady && lighting.view === '3D' && <ProductPreviewPoster type={draft.roof.family === 'mono' ? 'pitched' : draft.roof.family === 'gable' ? 'gable' : 'box-perimeter'}/>}
-      {lighting.view === 'Plan' ? <div className={styles.footprint}><PergolaFootprint resizing={resizing} input={draft.input} roof={draft.roof} activeDimension={null}/></div> : <PreviewViews onViewChange={view => onModeChange(view === 'Plan' ? 'Plan' : 'Design')} onReady={markReady} reviewSetting input={draft.input} roof={draft.roof} activeDimension={null} expanded={fullscreen} onToggleExpanded={() => setFullscreen(value => !value)} simple presentation readOnly />}
+      {lighting.view === 'Plan' && <div className={styles.footprint}><PergolaFootprint resizing={resizing} input={draft.input} roof={draft.roof} activeDimension={null}/></div>}
+      <div className={styles.modelBody} hidden={lighting.view === 'Plan'}>{(designActivated || mode === 'Design') && <PreviewViews onViewChange={view => onModeChange(view === 'Plan' ? 'Plan' : 'Design')} onReady={markReady} reviewSetting input={draft.input} roof={draft.roof} activeDimension={null} expanded={fullscreen} onToggleExpanded={() => setFullscreen(value => !value)} simple presentation readOnly />}</div>
       </div>
       {!fullscreen && lighting.view === '3D' && <button ref={opener} className={styles.openModel} onPointerDown={() => { openingScroll.current = window.scrollY; }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') openingScroll.current = window.scrollY; }} onClick={() => { lighting.setView('3D'); setFullscreen(true); }} aria-label="Open fullscreen 3D"><span>Tap to explore in 3D <ArrowUpRight/></span></button>}
       {fullscreen && <p className={styles.fullscreenHint}>Drag to rotate · Pinch to zoom</p>}

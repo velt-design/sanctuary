@@ -843,6 +843,23 @@ test.describe('photo-led product opening', () => {
     const options=page.locator('input[name="product-sides"]'); await options.nth(1).check();
     await expect(design).toHaveAttribute('aria-pressed','true');
   });
+  test('Photos and initial Plan defer the scene, then Design retains its canvas across modes', async ({ page }) => {
+    await preparePage(page);
+    await page.goto('/products/pergolas/pitched');
+    const modes = page.getByRole('group', { name: 'Model view', exact: true });
+    await expect(modes.getByRole('button', { name: 'Photos', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('main canvas')).toHaveCount(0);
+    await modes.getByRole('button', { name: 'Plan', exact: true }).click();
+    await expect(page.getByRole('img', { name: /Pergola footprint/ })).toBeVisible();
+    await expect(page.locator('main canvas')).toHaveCount(0);
+    await modes.getByRole('button', { name: 'Design', exact: true }).click();
+    await expect(page.locator('main canvas')).toHaveCount(1);
+    await page.locator('main canvas').evaluate(element => element.setAttribute('data-release-canvas', 'retained'));
+    await modes.getByRole('button', { name: 'Photos', exact: true }).click();
+    await modes.getByRole('button', { name: 'Plan', exact: true }).click();
+    await modes.getByRole('button', { name: 'Design', exact: true }).click();
+    await expect(page.locator('main canvas')).toHaveAttribute('data-release-canvas', 'retained');
+  });
   test('opening photos preserve reference details and stable stage through navigation', async ({page})=>{
     await preparePage(page);await page.setViewportSize({width:390,height:1000});
     await page.goto('/products/pergolas/box-perimeter');
