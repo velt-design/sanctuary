@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import selectionStyles from './product-selection.module.css';
 import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import composition from '@/components/marketing-foundation/editorial/composition.module.css';
@@ -57,14 +56,6 @@ function ProductGallery({
       </Container>
     </Section>
   );
-}
-
-function BuiltReference({ product }: ProductDetailPageProps) {
-  const image = product.gallery[0];
-  return <a href="#product-built" className={selectionStyles.builtReference}>
-    <Image src={image.src} alt={image.alt} width={112} height={78} sizes="112px" style={{ objectFit: 'cover', objectPosition: image.objectPosition }} />
-    <span><strong>Explore built examples</strong><span>Different settings, materials and details</span></span>
-  </a>;
 }
 
 function EvidenceStory({ product }: ProductDetailPageProps) {
@@ -179,7 +170,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
       />
 
       <EditorialProductContent product={product} enquiryHref={enquiryHref}
-        selection={designType ? <ProductSelector key={designType} product={product} type={designType} builtProof={<BuiltReference product={product} />} /> : undefined}
+        selection={designType ? <ProductSelector key={designType} product={product} type={designType} /> : undefined}
         nextSteps={model.showDesignNextSteps ? <DesignNextSteps sourcePath={product.route} sourceProduct={product.slug} selectionHref={designType ? `#${productSelectionAnchor(designType)}` : undefined} /> : undefined}
         gallery={<ProductGallery product={product} items={model.galleryItems} />}
         evidence={<EvidenceStory product={product} />}

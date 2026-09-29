@@ -6,7 +6,7 @@ import PreviewViews from '../configurator-prototype/PreviewViews';
 import type { PreviewDraft } from '../configurator-prototype/previewDraft';
 import type { ProductRecord } from '@/data/products';
 import PergolaFootprint from '../configurator-prototype/PergolaFootprint';
-import Image from 'next/image';
+import { ResponsiveGallery } from '../marketing-foundation/ResponsiveGallery';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ProductPreviewPoster from './ProductPreviewPoster';
 import styles from './product-selection.module.css';
@@ -14,9 +14,10 @@ import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 import { lockPageScroll } from '../marketing-foundation/pageScrollLock';
 
 const noChange = () => {};
-function ModelView({ draft, example, onFullscreen, onReady, resizing = false }: { resizing?: boolean; draft: PreviewDraft; example: ProductRecord['hero']; onFullscreen: (open: boolean) => void; onReady?: () => void }) {
+function ModelView({ draft, gallery, mode, onModeChange, onFullscreen, onReady, resizing = false }: { resizing?: boolean; draft: PreviewDraft; gallery: ProductRecord['gallery']; mode: 'Photos' | 'Design' | 'Plan'; onModeChange: (mode: 'Photos' | 'Design' | 'Plan') => void; onFullscreen: (open: boolean) => void; onReady?: () => void }) {
   const lighting = useLighting()!;
-  const [built, setBuilt] = useState(false);
+  const built = mode === 'Photos';
+  useEffect(() => { if (mode !== 'Photos') lighting.setView(mode === 'Plan' ? 'Plan' : '3D'); }, [mode, lighting.setView]);
   const [sceneReady, setSceneReady] = useState(false);
   const markReady = useCallback(() => { setSceneReady(true); onReady?.(); }, [onReady]);
   const [fullscreen, setFullscreen] = useState(false);
@@ -45,23 +46,23 @@ function ModelView({ draft, example, onFullscreen, onReady, resizing = false }: 
       });
     };
   }, [fullscreen, onFullscreen]);
-  return <><div className={styles.viewTabs} role="group" aria-label="Model view">{(['3D', 'Plan'] as const).map(view => <button key={view} aria-pressed={!built && lighting.view === view} onClick={() => { setBuilt(false); lighting.setView(view); }}>{view === '3D' ? 'Your design' : view}</button>)}<button aria-pressed={built} onClick={() => setBuilt(true)}>Built example</button></div>
+  return <><div className={styles.viewTabs} role="group" aria-label="Model view">{(['Photos', 'Design', 'Plan'] as const).map(view => <button key={view} aria-pressed={mode === view} onClick={() => onModeChange(view)}>{view}</button>)}</div>
     <dialog ref={dialog} className={styles.modelDialog} role={fullscreen ? 'dialog' : 'group'} aria-modal={fullscreen || undefined} aria-label="Explore your pergola" onCancel={event => { event.preventDefault(); setFullscreen(false); }} onClose={() => setFullscreen(false)} hidden={built}>
       {fullscreen && <div className={styles.fullscreenHeader}><span>Your pergola</span><button autoFocus aria-label="Close fullscreen 3D" onClick={() => setFullscreen(false)}>×</button></div>}
       <div className={styles.modelBody}>
       {fullscreen && !sceneReady && lighting.view === '3D' && <ProductPreviewPoster type={draft.roof.family === 'mono' ? 'pitched' : draft.roof.family === 'gable' ? 'gable' : 'box-perimeter'}/>}
-      {lighting.view === 'Plan' ? <div className={styles.footprint}><PergolaFootprint resizing={resizing} input={draft.input} roof={draft.roof} activeDimension={null}/></div> : <PreviewViews onReady={markReady} reviewSetting input={draft.input} roof={draft.roof} activeDimension={null} expanded={fullscreen} onToggleExpanded={() => setFullscreen(value => !value)} simple presentation readOnly />}
+      {lighting.view === 'Plan' ? <div className={styles.footprint}><PergolaFootprint resizing={resizing} input={draft.input} roof={draft.roof} activeDimension={null}/></div> : <PreviewViews onViewChange={view => onModeChange(view === 'Plan' ? 'Plan' : 'Design')} onReady={markReady} productPresentation input={draft.input} roof={draft.roof} activeDimension={null} expanded={fullscreen} onToggleExpanded={() => setFullscreen(value => !value)} simple presentation readOnly />}
       </div>
       {!fullscreen && lighting.view === '3D' && <button ref={opener} className={styles.openModel} onPointerDown={() => { openingScroll.current = window.scrollY; }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') openingScroll.current = window.scrollY; }} onClick={() => { lighting.setView('3D'); setFullscreen(true); }} aria-label="Open fullscreen 3D"><span>Tap to explore in 3D <ArrowUpRight/></span></button>}
       {fullscreen && <p className={styles.fullscreenHint}>Drag to rotate · Pinch to zoom</p>}
     </dialog>
-    {built && <figure className={styles.builtExample}><Image src={example.src} alt={example.alt} fill sizes="(max-width:760px) 100vw, 60vw" style={{objectFit:'cover',objectPosition:example.objectPosition}}/><figcaption>{example.caption ?? 'A built pergola'} · Project reference, not your selected design</figcaption></figure>}
+    <div className={styles.openingPhotos} hidden={!built}><ResponsiveGallery label="Built pergola photos" swipe items={gallery.map(image => ({ image: image.src, alt: image.alt, caption: image.caption, detail: image.detail, objectPosition: image.objectPosition, ratio: 'landscape', sizes: '(max-width:760px) 100vw, 60vw' }))}/></div>
   </>;
 }
-export default function ProductModel({ draft, example, onFullscreen = noChange, onReady, resizing = false }: { resizing?: boolean; draft: PreviewDraft; example: ProductRecord['hero']; onFullscreen?: (open: boolean) => void; onReady?: () => void }) {
+export default function ProductModel({ draft, gallery, mode, onModeChange, onFullscreen = noChange, onReady, resizing = false }: { resizing?: boolean; draft: PreviewDraft; gallery: ProductRecord['gallery']; mode: 'Photos' | 'Design' | 'Plan'; onModeChange: (mode: 'Photos' | 'Design' | 'Plan') => void; onFullscreen?: (open: boolean) => void; onReady?: () => void }) {
   return <LightingProvider input={draft.input} roof={draft.roof} onChange={noChange}>
     <RailProvider><PreviewBlindProvider readOnly input={draft.input} roof={draft.roof} onChange={noChange}>
-      <ModelView resizing={resizing} draft={draft} example={example} onFullscreen={onFullscreen} onReady={onReady}/>
+      <ModelView resizing={resizing} draft={draft} gallery={gallery} mode={mode} onModeChange={onModeChange} onFullscreen={onFullscreen} onReady={onReady}/>
     </PreviewBlindProvider></RailProvider>
   </LightingProvider>;
 }

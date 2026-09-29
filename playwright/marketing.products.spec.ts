@@ -700,6 +700,7 @@ test.describe('product first-read refinement', () => {
     const width = page.getByRole('textbox', { name: 'Width in metres' });
     await width.fill('7.4'); await width.press('Enter');
     await expect(width).toHaveValue('7.4');
+    await expect(page.getByRole('button', {name:'Design',exact:true})).toHaveAttribute('aria-pressed','true');
     const enquiry = page.getByRole('link', { name: 'Enquire about this design' });
     const href = await enquiry.getAttribute('href');
     expect(href).toContain('#design=');
@@ -714,20 +715,21 @@ test.describe('product first-read refinement', () => {
     await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary.configurator-preview.v1') ?? 'null'))).toEqual(expectedDraft);
     await page.goBack(); await expect(width).toHaveValue('7.4');
     await page.reload(); await expect(width).toHaveValue('7.4');
+    await expect(page.getByRole('button', {name:'Photos',exact:true})).toHaveAttribute('aria-pressed','true');
   });
   test('mobile modes retain selection across resize and fullscreen returns focus', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/products/pergolas/gable');
     const modes = page.getByRole('group', { name: 'Model view' });
-    await modes.getByRole('button', { name: 'Built example' }).click();
-    await expect(page.getByText(/Project reference, not your selected design/)).toBeVisible();
+    await modes.getByRole('button', { name: 'Photos' }).click();
+    await expect(page.getByText(/Built references, not your selected design or estimate./)).toBeVisible();
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await expect(modes.getByRole('button', { name: 'Built example' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(modes.getByRole('button', { name: 'Photos' })).toHaveAttribute('aria-pressed', 'true');
     await modes.getByRole('button', { name: 'Plan', exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(modes.getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'Open fullscreen 3D' })).toHaveCount(0);
-    await modes.getByRole('button', { name: 'Your design' }).click();
+    await modes.getByRole('button', { name: 'Design' }).click();
     const opener = page.getByRole('button', { name: 'Open fullscreen 3D' });
     await opener.click(); await expect(page.getByRole('dialog', { name: 'Explore your pergola' })).toBeVisible();
     await expect(page.getByLabel('Your design enquiry')).toBeHidden();
@@ -762,7 +764,7 @@ test.describe('product range gallery', () => {
     await preparePage(page); await page.setViewportSize({width,height:1000});
     const product = products.find(item => item.slug === type)!;
     await page.goto(product.route);
-    await page.getByRole('link', {name:/Explore built examples/}).click();
+    await page.locator('#product-built').scrollIntoViewIfNeeded();
     const gallery = page.locator('[data-product-gallery="primary"] [data-responsive-gallery]');
     await expect(gallery).toBeVisible();
     await expect(page.getByText('Built examples, not your selected design or estimate.')).toBeVisible();
@@ -779,7 +781,72 @@ test.describe('product range gallery', () => {
     await page.keyboard.press('Home');
     await page.locator('summary').filter({hasText:'Explore a project in detail'}).click();
     if(product.evidence.status==='governed') await expect(page.locator(`[href="/projects/${product.evidence.projectSlug}"]`)).toBeVisible();
-    await page.getByRole('group', {name:'Model view'}).getByRole('button',{name:'Built example'}).click();
-    await expect(page.getByText(/Project reference, not your selected design/)).toBeVisible();
+    await page.getByRole('group', {name:'Model view'}).getByRole('button',{name:'Photos'}).click();
+    await expect(page.getByText(/Built references, not your selected design or estimate./)).toBeVisible();
   });
+});
+
+
+test.describe('photo-led product opening', () => {
+  test('saved choices stay intact in Photos and explicit keyboard or roof edits reveal Design', async ({page}) => {
+    await preparePage(page); await page.setViewportSize({width:390,height:1000});
+    await page.addInitScript(() => sessionStorage.setItem('sanctuary:pitched-product:v1', JSON.stringify({widthMm:7400,projectionMm:3000,material:'acrylic',sides:'open',orientation:'parallel'})));
+    await page.goto('/products/pergolas/pitched');
+    const photos=page.getByRole('button',{name:'Photos',exact:true});
+    const design=page.getByRole('button',{name:'Design',exact:true});
+    await expect(photos).toHaveAttribute('aria-pressed','true');
+    await expect(page.getByRole('textbox',{name:'Width in metres'})).toHaveValue('7.4');
+    const price=page.locator('[class*="purchase"] [class*="price"]').first();
+    expect((await price.boundingBox())!.y).toBeLessThan(350);
+    const width=page.getByRole('slider',{name:'Width'}); await width.focus();
+    const y=await page.evaluate(()=>scrollY); await width.press('ArrowRight');
+    await expect(design).toHaveAttribute('aria-pressed','true');
+    expect(Math.abs(await page.evaluate(()=>scrollY)-y)).toBeLessThanOrEqual(2);
+    await page.getByRole('button',{name:'Plan',exact:true}).click();
+    await page.getByRole('tab',{name:/Roof/}).click();
+    await expect(page.getByRole('button',{name:'Plan',exact:true})).toHaveAttribute('aria-pressed','true');
+    await page.getByRole('radio',{name:'Solid + timber',exact:true}).check();
+    await expect(design).toHaveAttribute('aria-pressed','true');
+    await photos.click();
+    await page.getByRole('tab',{name:/Sides/}).click();
+    const options=page.locator('input[name="product-sides"]'); await options.nth(1).check();
+    await expect(design).toHaveAttribute('aria-pressed','true');
+  });
+  test('opening photos preserve reference details and stable stage through navigation', async ({page})=>{
+    await preparePage(page);await page.setViewportSize({width:390,height:1000});
+    await page.goto('/products/pergolas/box-perimeter');
+    const gallery=page.getByRole('region',{name:'Built pergola photos',exact:true});
+    await expect(gallery).toBeVisible();const before=await gallery.boundingBox();
+    await gallery.focus();await page.keyboard.press('End');
+    await expect(gallery).toContainText('Steel carport with an internal gable');
+    expect(Math.abs((await gallery.boundingBox())!.height-before!.height)).toBeLessThanOrEqual(2);
+    await expect(page.getByText('Built references, not your selected design or estimate.',{exact:true})).toBeVisible();
+  });
+});
+
+
+for (const width of [320,390]) test(`photo and design modes keep controls stable at ${width}`, async ({page})=>{
+  await preparePage(page); await page.setViewportSize({width,height:1000});
+  await page.goto('/products/pergolas/pitched');
+  const size=page.getByRole('tab',{name:/Size/});
+  const position=()=>size.evaluate(e=>e.getBoundingClientRect().top+scrollY);
+  const initial=await position();
+  for(const mode of ['Design','Plan','Photos']) {
+    await page.getByRole('button',{name:mode,exact:true}).click();
+    expect(Math.abs(await position()-initial)).toBeLessThanOrEqual(2);
+  }
+});
+
+
+test('product GPU fallback keeps selected mode truthful and Design remains recoverable', async ({page})=>{
+  await preparePage(page); await page.goto('/products/pergolas/pitched');
+  await page.getByRole('button',{name:'Design',exact:true}).click();
+  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator('canvas')).toHaveAttribute('data-studio-state','settled');
+  await page.locator('canvas').dispatchEvent('webglcontextlost');
+  await expect(page.getByRole('button',{name:'Plan',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByRole('img',{name:/Pergola footprint:/})).toBeVisible();
+  await page.getByRole('button',{name:'Design',exact:true}).click();
+  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Design',exact:true})).toHaveAttribute('aria-pressed','true');
 });

@@ -218,3 +218,44 @@
 }
 
 .galleryIntroduction{max-width:42rem;margin-bottom:1.5rem}
+
+/* Photo-led product opening; full configurator styling is unchanged. */
+.layout{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);row-gap:.65rem}
+.identity .title{font-size:clamp(2rem,3vw,3rem);letter-spacing:-.045em;margin:0 0 .5rem}
+.identity > p{font-size:.95rem;line-height:1.5}
+.selectedSize{font-size:.9rem;margin:.25rem 0 .75rem;font-variant-numeric:tabular-nums}
+.priceStatus{min-height:44px;display:flex;align-items:center;gap:.5rem}
+.priceStatus .retry{min-height:44px}
+.model{height:clamp(450px,47vw,670px)}
+.openingPhotos{min-height:0;flex:1}
+.openingPhotos[hidden]{display:none}
+.openingPhotos > section{height:100%;display:flex;flex-direction:column;gap:0}
+.openingPhotos > section > div:first-child{flex:1;min-height:0}
+.openingPhotos [data-gallery-frame]{height:100%}
+.openingPhotos figure{height:100%;display:flex;flex-direction:column}
+.openingPhotos figure > div{flex:1;min-height:0;aspect-ratio:auto}
+.openingPhotos figcaption{min-height:3.5rem;padding:.65rem 0;font-size:.8rem;line-height:1.4}
+.openingPhotos > section > div:last-child{padding-block:.2rem;border-bottom:1px solid var(--color-rule)}
+.modelNote{min-height:3em}
+@media(max-width:1050px) and (min-width:761px){.layout{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);column-gap:1.5rem}}
+@media(max-width:760px){
+ .layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"identity" "purchase" "visual" "controls" "support";row-gap:.35rem}
+ .identity .title{font-size:2.1rem;margin:0 0 .4rem}
+ .identity > p:first-child{display:block}
+ .identity > p{font-size:.9rem}
+ .purchase,.purchase .price{display:block}
+ .purchase .price{display:grid;grid-template-rows:64px 60px;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 .75rem;margin:0}
+ .price > p:first-child{font-size:.8rem;line-height:1.4}
+ .amount,.amount[data-priced=true]{font-size:1.6rem;min-height:48px;margin:0;text-align:right;justify-content:flex-end;max-width:180px}
+ .priceNote{grid-column:1;font-size:.75rem;line-height:1.45;margin:0}
+ .priceStatus{grid-column:2;grid-row:2;min-height:48px;margin:0;font-size:.75rem;justify-content:flex-end}
+ .selectedSize{font-size:.8rem;margin:.2rem 0}
+ .purchase .selectionSummary,.purchase .actions{display:none}
+ .visual{margin-top:0;position:static}
+ .layout[data-choice-section=Sides] .visual{position:static}
+ .model{height:390px}
+ .viewTabs{padding-bottom:.25rem}
+ .modelNote{display:block;font-size:.75rem;margin:.4rem 0;min-height:3em}
+ .openingPhotos figcaption{min-height:3.75rem;font-size:.75rem;padding:.5rem 0}
+ .controls{margin-top:.4rem}
+}

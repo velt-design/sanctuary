@@ -6,11 +6,9 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { PRODUCT_MATERIALS, PRODUCT_SIDES, type ProductSelection } from './productSelection';
 import styles from './product-selection.module.css';
-import type { PreviewDraft } from '../configurator-prototype/previewDraft';
-import PergolaFootprint from '../configurator-prototype/PergolaFootprint';
 
 const tabs = ['Size', 'Roof', 'Sides'] as const;
-export default function ProductChoices({ draft, imageFamily = 'pitched', projectionMax = 6000, adjustment = '', selection, update, ready, issue, onSectionChange, onResizingChange }: { onResizingChange?: (resizing: boolean) => void; onSectionChange?: (section: 'Size' | 'Roof' | 'Sides') => void; draft?: PreviewDraft; imageFamily?: 'pitched' | 'gable' | 'box'; projectionMax?: number; adjustment?: string; selection: ProductSelection; update: (patch: Partial<ProductSelection>) => void; ready: boolean; issue: string | null }) {
+export default function ProductChoices({ imageFamily = 'pitched', projectionMax = 6000, adjustment = '', selection, update, ready, issue, onSectionChange, onResizingChange }: { onResizingChange?: (resizing: boolean) => void; onSectionChange?: (section: 'Size' | 'Roof' | 'Sides') => void; imageFamily?: 'pitched' | 'gable' | 'box'; projectionMax?: number; adjustment?: string; selection: ProductSelection; update: (patch: Partial<ProductSelection>) => void; ready: boolean; issue: string | null }) {
   const [active, setActive] = useState(0);
   const [resizing, setResizing] = useState(false);
   useEffect(() => { onResizingChange?.(resizing); }, [resizing, onResizingChange]);
@@ -46,8 +44,7 @@ export default function ProductChoices({ draft, imageFamily = 'pitched', project
             <span>{direction === 'parallel' ? 'Parallel to house' : 'Extending from house'}</span>
           </label>)}
         </div></fieldset>}
-        {draft && <div className={styles.mobilePlan} aria-label="Size plan"><PergolaFootprint input={draft.input} roof={draft.roof} activeDimension={null} resizing={resizing}/></div>}
-        <fieldset disabled={!ready} className={styles.group}><legend>Make room for your everyday.</legend>
+        <fieldset disabled={!ready} className={styles.group}><legend>Dimensions</legend>
           <div className={styles.dimensions}>{(['widthMm', 'projectionMm'] as const).map(key => <DimensionControl key={key} axis={key === 'widthMm' ? 'width' : 'projection'} label={key === 'widthMm' ? 'Width' : 'Projection'} value={selection[key]} min={1500} max={key === 'widthMm' ? 10000 : projectionMax} onChange={value => update({ [key]: value })}/>)}</div>
         </fieldset>
         <p className={styles.detail}>Start with rough dimensions. We’ll confirm the fit at your home.</p>

@@ -21,7 +21,7 @@ const PreviewScene = dynamic(() => import('./PreviewScene'), {
   ssr: false, loading: () => <div className={styles.loading} role="status">Loading 3D view…</div>,
 });
 
-export default function PreviewViews({ readOnly = false, input, roof, activeDimension, expanded, onToggleExpanded, guided = false, presentation = false, simple = false, onAddLighting, onCapture, onReady, reviewSetting = false }: { onReady?: () => void; readOnly?: boolean; reviewSetting?: boolean; onCapture?: (image: string) => void; simple?: boolean; presentation?: boolean; guided?: boolean; onAddLighting?: () => void; input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
+export default function PreviewViews({ readOnly = false, input, roof, activeDimension, expanded, onToggleExpanded, guided = false, presentation = false, simple = false, onAddLighting, onCapture, onReady, reviewSetting = false, productPresentation = false, onViewChange }: { onViewChange?: (view: '3D' | 'Plan') => void; onReady?: () => void; readOnly?: boolean; reviewSetting?: boolean; productPresentation?: boolean; onCapture?: (image: string) => void; simple?: boolean; presentation?: boolean; guided?: boolean; onAddLighting?: () => void; input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
   const blinds=usePreviewBlinds();
   const mobile = useMobileConfigurator();
   const rail=useRail();
@@ -31,7 +31,7 @@ export default function PreviewViews({ readOnly = false, input, roof, activeDime
   const nightPresentation = useDayNightPresentation(lighting?.night ?? false, viewport, Boolean(onCapture));
   const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
   const view=lighting?.view??selectedView;
-  const changeView=(v:'3D'|'Plan')=>lighting?lighting.setView(v):setView(v);
+  const changeView=(v:'3D'|'Plan')=>{if(lighting) lighting.setView(v);else setView(v);onViewChange?.(v);};
   const [surroundings, setSurroundings] = useState(true);
   const artifact = useMemo(() => solvePergolaPreview(input, roof), [input, roof]);
   const geometry = artifact.geometry;
@@ -58,7 +58,7 @@ export default function PreviewViews({ readOnly = false, input, roof, activeDime
       data-post-count={renderable ? geometry.plan.members.posts.length : undefined}>
       {renderable ? <>
         <div className={styles.sceneLayer} aria-hidden={view !== '3D'} style={{ visibility: view === '3D' ? 'visible' : 'hidden' }}>
-          <PreviewScene onReady={onReady} framingKey={JSON.stringify([input.widthMm,input.projectionMm,input.connection,input.level,roof.family,roof.orientation,roof.attachmentIntent])} choiceView={mobile && guided && simple && !reviewSetting && (rail.section === 'sides' || rail.section === 'lighting') ? rail.section : undefined} reviewSetting={furnished} nightPresentation={nightPresentation} showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D' && !onCapture} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} presentation={presentation || furnished} onCapture={onCapture} onFallback={() => changeView('Plan')} />
+          <PreviewScene productPresentation={productPresentation} onReady={onReady} framingKey={JSON.stringify([input.widthMm,input.projectionMm,input.connection,input.level,roof.family,roof.orientation,roof.attachmentIntent])} choiceView={mobile && guided && simple && !reviewSetting && (rail.section === 'sides' || rail.section === 'lighting') ? rail.section : undefined} reviewSetting={furnished} nightPresentation={nightPresentation} showReferenceBase={surroundings} covering={covering} scene={geometry.viewerScene} context={surroundings ? context : null} interactive={view === '3D' && !onCapture} activeDimension={activeDimension} plan={geometry.plan} reset={0} fit={0} presentation={presentation || furnished} onCapture={onCapture} onFallback={() => changeView('Plan')} />
         </div>
         {view === 'Plan' && <PreviewPlan readOnly={readOnly} guidedOpenings={guided && simple && rail.section === 'sides'} profile={roof.finish?.profile} trayWidth={roof.finish?.trayWidth} roofPlanes={geometry.assembly.roofPlanes} covering={covering} plan={geometry.plan} flashings={geometry.assembly.roofFlashings} context={surroundings ? context : null} activeDimension={activeDimension} />}
       </>

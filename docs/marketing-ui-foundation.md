@@ -190,23 +190,28 @@ and responsive transitions when extending these components.
 
 ## Product-page reading refinement (29 September 2026, preview)
 
-The three interactive rooflines retain the working model and shared selection,
-pricing and handoff owners. Desktop groups the precise installed estimate and
-primary enquiry before Size/Roof/Sides; secondary customisation and support follow
-the first controls. Mobile keeps the installed price, persistent enquiry and
-fullscreen model, with Your design / Plan / Built example available inline.
-Changing viewport preserves the selected preview mode rather than resetting it.
+The three interactive rooflines open with approved installation photography and
+Photos / Design / Plan in one stable stage. Desktop gives the visual more width,
+with a compact identity, selected size, installed estimate and enquiry beside it.
+Mobile places that estimate before the visual; the persistent enquiry stays
+available and repeats the price only when the inline estimate is out of view.
+Size/Roof/Sides remain the immediate controls. Explicit selection edits reveal
+Design; restoring saved choices and resizing do not reset the selected view.
 
-Implementation map: `ProductSelector` owns this composition and the existing
-state/price hooks; `ProductModel` owns the modes and unchanged fullscreen lock.
-`ProductDetailPage` supplies a small link to built examples using the gallery lead.
-`ProductDesignDetails` owns the concise lower reading layer: one product-range
-gallery, compact governed project access, fit/technical disclosures and other options.
-The gallery leads with distinct installations before repeat angles; Pitched starts
-with a full acrylic roof viewed from underneath. Existing public photographs and
-factual captions distinguish materials and bespoke work from the selected estimate.
-The Built example mode uses the same product gallery lead; a single named project
-must not dominate the thumbnail, large proof and gallery together.
+Implementation map: `ProductSelector` owns composition, controlled mode and the
+existing state/price hooks. `ProductModel` reuses `ResponsiveGallery` for the
+opening photos and retains fullscreen focus/scroll recovery. Its explicit
+`productPresentation` opt-in passes through `PreviewViews` and `PreviewScene`
+to camera, acrylic, lighting and backdrop owners; all other callers retain their
+existing defaults. Geometry and commercial rules are unchanged. The camera fits
+the whole product from a moderate three-quarter view so roof depth remains clear;
+context recedes and furniture is omitted on these product pages.
+`ProductDesignDetails` owns the lower range gallery, compact governed project
+access, fit/technical disclosures and other options. Distinct installations lead
+before repeat angles; Pitched starts with a full acrylic roof viewed underneath.
+Both photo galleries preserve factual captions and bespoke qualifications. Photos
+are built references, never a rendering of the selected dimensions or estimate.
+
 Gable retains the real acrylic/solid/mixed `RoofApproaches` comparison inside a
 materials disclosure. `EditorialProductContent` selects this layer only for the
 three supported interactive routes; accessory and other product content retain
