@@ -5,8 +5,8 @@ import ProductModel from './ProductModel';
 import { INITIAL_PRODUCT_SELECTION, productSelectionDraft } from './productSelection';
 
 vi.mock('../configurator-prototype/PreviewViews', () => ({
-  default: ({ input, roof }: { input: { widthMm: number }; roof: { orientation: string } }) =>
-    <div data-model-width={input.widthMm} data-model-direction={roof.orientation}>Selected model</div>,
+  default: ({ input, roof, onViewChange }: { input: { widthMm: number }; roof: { orientation: string }; onViewChange: (view: 'Plan') => void }) =>
+    <div data-model-width={input.widthMm} data-model-direction={roof.orientation}>Selected model<button data-gpu-failure onClick={() => onViewChange('Plan')}>Simulate GPU failure</button></div>,
 }));
 vi.mock('../configurator-prototype/PergolaFootprint', () => ({ default: () => <div data-plan>Selected plan</div> }));
 
@@ -65,6 +65,13 @@ it('retains photo and plan views across responsive changes and keeps current des
     expect(host.querySelector('[data-model-width]')).toBe(model);
     await clickView('Design');
     expect(host.querySelector('[data-model-width]')).toBe(model);
+    await React.act(async () => host.querySelector<HTMLButtonElement>('[data-gpu-failure]')!.click());
+    expect(mode).toBe('Plan');
+    expect(host.querySelector('[data-model-width]')).toBeNull();
+    expect(host.querySelector('[data-plan]')).not.toBeNull();
+    await clickView('Design');
+    expect(host.querySelector('[data-model-width]')).not.toBeNull();
+    expect(host.querySelector('[data-model-width]')).not.toBe(model);
     expect(listeners.size).toBe(0);
   } finally {
     await React.act(async () => root.unmount());
