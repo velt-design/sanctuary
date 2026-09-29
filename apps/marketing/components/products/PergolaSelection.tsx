@@ -1,5 +1,5 @@
 'use client';
-import { type ReactNode, useMemo, useState, useTransition } from 'react';
+import { type ReactNode, useId, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Container, Heading } from '../marketing-foundation/Primitives';
@@ -12,6 +12,7 @@ import { COMPARISON_SIZES, type ProductComparisonTable } from './productComparis
 
 export default function PergolaSelection({ comparison, table }: { comparison: ReactNode; table: ProductComparisonTable }) {
   const router = useRouter();
+  const sizeGroupId = useId();
   const [refreshing, startRefresh] = useTransition();
   const [sizeIndex, setSizeIndex] = useState(2);
   const currentTable: ProductComparisonTable = refreshing ? { status: 'loading' } : table;
@@ -29,7 +30,7 @@ export default function PergolaSelection({ comparison, table }: { comparison: Re
       </nav>
       <div className={styles.comparisonBar}>
         <fieldset className={styles.sizes} disabled={currentTable.status !== 'priced'}><legend>Width × projection</legend><div>
-          {COMPARISON_SIZES.map(([width, projection], index) => <label key={`${width}-${projection}`}><input type="radio" name="example-size" value={`${width}-${projection}`} checked={sizeIndex === index} onChange={() => setSizeIndex(index)} /><span>{width / 1000} × {projection / 1000} m</span></label>)}
+          {COMPARISON_SIZES.map(([width, projection], index) => <label key={`${width}-${projection}`}><input type="radio" name={`comparison-size-${table.status}-${sizeGroupId}`} value={`${width}-${projection}`} checked={sizeIndex === index} onChange={() => setSizeIndex(index)} /><span>{width / 1000} × {projection / 1000} m</span></label>)}
         </div></fieldset>
         <p>Acrylic roof · Open sides<br />Installed estimates include GST.</p>
       </div>

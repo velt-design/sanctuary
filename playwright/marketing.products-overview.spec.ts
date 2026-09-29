@@ -71,6 +71,20 @@ test('loaded comparison switches all six sizes atomically offline without reques
 });
 
 const publicationFixture=process.env.MARKETING_COMPARISON_PUBLICATION_FIXTURE;
+test('streamed fallback and resolved controls cannot uncheck each other', async ({ browser }) => {
+  test.skip(!publicationFixture,'Requires the private local publication-fetch fixture.');
+  writeFileSync(publicationFixture!,'delay');
+  const context=await browser.newContext({javaScriptEnabled:false,baseURL:process.env.MARKETING_BASE_URL});
+  try {
+    const page=await context.newPage(); await page.goto('/products');
+    const radios=await page.locator('input[type="radio"]').evaluateAll(es=>es.map(element=>{
+      const input=element as HTMLInputElement; return {name:input.name,value:input.value,checked:input.checked};
+    }));
+    expect(radios).toHaveLength(12); // Visible fallback plus the not-yet-revealed streamed content.
+    const groups=[...new Set(radios.map(input=>input.name))]; expect(groups).toHaveLength(2);
+    for(const name of groups) expect(radios.filter(input=>input.name===name&&input.checked).map(input=>input.value)).toEqual(['6000-3000']);
+  } finally {await context.close();writeFileSync(publicationFixture!,'normal');}
+});
 for (const width of [320,820,1440]) test(`initial comparison failure and whole-table recovery stay stable at ${width}`, async ({ page }) => {
   test.skip(!publicationFixture,'Requires the private local publication-fetch fixture; never enabled on hosted deployments.');
   await prepare(page); await page.setViewportSize({width,height:1000});
@@ -84,6 +98,7 @@ for (const width of [320,820,1440]) test(`initial comparison failure and whole-t
     await expect(cards.getByText('Updating estimate',{exact:true})).toHaveCount(3);
     await expect(cards.locator('[data-priced]')).toHaveCount(3);
     await expect(page.getByRole('radio').first()).toBeEnabled();
+    await expect(page.getByRole('radio',{name:'6 \u00d7 3 m',exact:true})).toBeChecked();
     const after=await cards.getByRole('link').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().top+scrollY));
     after.forEach((top,index)=>expect(Math.abs(top-before[index])).toBeLessThanOrEqual(2));
   } finally { writeFileSync(publicationFixture!,'normal'); }
@@ -98,6 +113,7 @@ test('delayed initial publication shows coherent disabled loading before all pri
     await expect(page.getByRole('radio').first()).toBeDisabled();
     await expect(page.locator('[data-product-form-grid] [data-priced]')).toHaveCount(3);
     await expect(page.getByRole('radio').first()).toBeEnabled();
+    await expect(page.getByRole('radio',{name:'6 \u00d7 3 m',exact:true})).toBeChecked();
   } finally {writeFileSync(publicationFixture!,'normal');}
 });
 
