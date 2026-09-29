@@ -33,7 +33,42 @@ Apply `20260911000001_installer_payout_workflow.sql` through the normal migratio
 
 ## Costing Source Of Truth
 
-`calculateConfiguredCustomerPriceV1` is the opt-in `configured-offer.v1` adjustment for the customer configurator's single-module aluminium offer, up to 30 m² ground / 20 m² elevated. It removes only the calculated bespoke design allocation, retains the original labour classification and operational overhead, and adds any shortfall against the GST-normalised historical erection benchmark. The existing multiplier is retained. It requires an explicit configuration; it does not mutate general costing, published rates, frozen quotes or installer agreements. The development review-price adapter consumes it with the local pricebook. Production publication still requires the published-rate pipeline and complete accessory costing; the development-only route remains gated. Price parity tests cover the approved base and upgrade examples.
+### Standard and Bespoke pricing (manifest v2.10)
+
+The Portal displays **Standard** for the retained `simple` wire value. From
+published manifest `v2.10`, any otherwise-valid calculator job without engineering
+or consent is eligible; manual Bespoke remains available. Classification does not
+remove actual access, height, ground, connection, material, travel or extras costs,
+and it does not certify a design or waive structural validation.
+
+The package-owned `commercial_policy_v7_2026-09-24.json` reduces Bespoke's base
+design allowance from $1,200 to **$600 ex GST before the existing selling markup**,
+and productive installation time from `1.2x` to `1.1x`. Mobilisation, the $800
+additional-pergola and $300 additional-module design allocations, engineering and
+consent allowances, operational overhead and the selling multiplier are unchanged.
+Previously eligible Standard prices remain unchanged. No new unusual-work
+allowance or Studio costing path is introduced.
+
+Deploying this compatible code does not publish new prices. The admin workflow
+must create a fresh draft from the active published rates, advancing its effective
+manifest to `v2.10`, review its exact diff and representative impact, and publish
+atomically after both Portal and marketing use compatible code. Preserve every
+editable rate; the intended change from `v2.9` is the manifest only. An older active
+manifest needs separate reconciliation of intervening semantics before publication.
+Published `v2.9` and earlier snapshots retain their historical policy and outputs.
+The supported legacy fallback (no publication pointer or missing publication
+schema) is explicitly pinned to effective `v2.9` while preserving its material,
+labour and curve overrides. Its provenance snapshot records that version. A fresh
+admin draft still advances to `v2.10`, so fallback cannot activate the new policy
+merely by deploying code.
+Rollback clones the prior published version, retaining its original effective
+manifest. `simpleRangePricing.ts` owns the versioned eligibility and policy choice;
+`controlConfig.ts` owns compatibility. Their tests cover old publications, unchanged
+Standard totals, actual cost drivers and the new Bespoke amounts.
+
+`calculateConfiguredCustomerPriceV1` is the opt-in `configured-offer.v1` adjustment for the customer configurator's single-module aluminium offer, up to and including 30 m² ground / 20 m² elevated. It removes the calculated bespoke design allocation, retains the supplied labour classification and operational overhead, and adds any shortfall against the GST-normalised historical erection benchmark. The existing multiplier is retained. It requires an explicit configuration; it does not mutate general costing, published rates, frozen quotes or installer agreements.
+
+From effective manifest `v2.10`, `calculateConfiguratorPricing` in `apps/marketing/lib/configuratorReviewPrice.ts` supplies Standard (`simple`) for every supported roof family and finish within those inclusive website limits, before both base and accessory calculation. It uses the package-exported `isCostingManifestAtLeast`, which respects the applied publication version. Actual geometry, materials, labour quantities, structural validation, approval requirements, accessories and the installation floor still apply. Effective `v2.9` and older retain the former adapter classification (acrylic mono Simple; other combinations Bespoke) so historical calculation references reproduce exactly. This website boundary does not reclassify Portal jobs. The public frozen-price pipeline and gated development review share this adapter; production still requires an approved publication and complete schedules. `configuratorStandardPolicy.test.ts` covers pre-change frozen hashes, roof/finish costs and accessories, and exact/above area limits; `configuratorPricing.server.test.ts` covers public responses and historical reference replay.
 ### September timber pricing release
 
 The pricing-only release advances the package to v2.7 and adds factory-coated Cedar and ThermoPine ceiling selections in 100 mm and 150 mm covers. The package owns selected-length bands, supported stock joins, waste, coating, fixings and fitting labour. Historical inputs without a ceiling selection retain the existing cedar identity; new selections require a published v2.7 configuration. Compatible earlier publications retain their original rates and semantics. Candidate `157b63465bc0` preserves production Version 11 values and adds the reviewed catalogue/accessory allowances; production publication is separate from deploying compatible code.
@@ -163,7 +198,7 @@ Changing any code-owned item is a normal package semantic change with package re
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
 - Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
 
-The active package manifest is `v2.7`. It retains the `v2.5` powdercoat assumptions, `$1,000 ex GST` operational startup and the `v2.6` infill labour policy below, then adds the reviewed ceiling catalogue. Compatible earlier published controls retain their original commercial semantics after their original content hash is verified; the two material identities first introduced in `v2.5` are still hydrated where required. A fresh draft copies the active editable rates and advances to the current package manifest. Cloning an older version preserves that version's commercial semantics for rollback.
+The active package manifest is `v2.10`, with the Standard/Bespoke policy described above. It retains the `v2.5` powdercoat assumptions, `$1,000 ex GST` operational startup and the `v2.6` infill labour policy below, then adds the reviewed ceiling catalogue. Compatible earlier published controls retain their original commercial semantics after their original content hash is verified; the two material identities first introduced in `v2.5` are still hydrated where required. A fresh draft copies the active editable rates and advances to the current package manifest. Cloning an older version preserves that version's commercial semantics for rollback.
 
 Manifest `v2.6` adds one `60`-minute productive labour allowance per job containing any infills and another `30` minutes per genuinely sloping or triangular opening. The once-per-job action is assigned to the first infill-bearing module so module and infill explanations reconcile, but it is deduplicated across pergolas, modules and standalone existing-pergola infills. Both allowances use the existing `$75/h ex GST` crew rate, feed the established overhead/customer-price sequence, and receive the existing Bespoke productive-time multiplier when applicable. Existing per-opening set-out, cutting, supports, fitting and finishing actions remain unchanged; there is no infill minimum price. Published `v2.5` and earlier controls do not receive either allowance.
 

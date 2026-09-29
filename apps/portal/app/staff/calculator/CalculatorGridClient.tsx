@@ -1,6 +1,6 @@
 'use client';
 
-import { evaluateSimpleRangeEligibilityV2, type CostInputsV1, type RoofType, type SiteInputsV1 } from '@sp/costing';
+import { type CostInputsV1, type RoofType, type SiteInputsV1 } from '@sp/costing';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -312,12 +312,6 @@ export default function CalculatorGridClient({
 
   const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
 
-  const simpleEligibility = useMemo(
-    () => evaluateSimpleRangeEligibilityV2(requestPayload),
-    [requestPayload],
-  );
-  useSimplePricingClassification({ values, setValues, simpleEligible: simpleEligibility.eligible });
-
   const requestPayloadJson = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
   const activeModulePayload = useMemo<CostInputsV1 | null>(() => {
     const route = moduleRoutes[activeModuleIndex] ?? moduleRoutes[0];
@@ -337,6 +331,12 @@ export default function CalculatorGridClient({
   } = useCalculatorCostingRequest({
     readyToCalculate,
     requestPayloadJson,
+  });
+  useSimplePricingClassification({
+    values,
+    setValues,
+    simpleEligible: result?.pricing_policy?.simple_eligible ?? true,
+    resultIsCurrent: lastSuccessfulRequestPayloadJson === requestPayloadJson,
   });
   const blindFieldPrefix = useId();
 

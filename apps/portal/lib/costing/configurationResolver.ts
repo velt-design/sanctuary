@@ -25,7 +25,9 @@ type ResolvedCostingConfiguration = {
 };
 
 async function resolveLegacyConfiguration(client: SupabaseClient): Promise<ResolvedCostingConfiguration> {
-  const { config } = await getCostingConfigWithOverrides(client);
+  const { config: legacyConfig } = await getCostingConfigWithOverrides(client);
+  // Deploying v2.10 must not activate its commercial policy before publication.
+  const config = { ...legacyConfig, appliedControlManifestVersion: 'v2.9' };
   const configSnapshot = snapshotCostingControlConfigV1(config);
   return {
     config,

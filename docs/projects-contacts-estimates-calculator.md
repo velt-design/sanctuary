@@ -1,5 +1,14 @@
 # Projects, Contacts, Estimates, And Calculator
 
+Calculator pricing classification displays **Standard** while retaining the saved
+`simple` value. The automatic switch to Bespoke follows the authoritative pricing
+policy from the response for the current inputs; stale responses cannot reclassify
+a changed draft. Engineering or consent still forces Bespoke immediately, and
+manual Bespoke remains available. This keeps the UI aligned with the published
+configuration during a package deployment, later publication or rollback. The
+versioned eligibility, allowances and release boundary are owned by
+[`costing-and-geometry.md`](costing-and-geometry.md#standard-and-bespoke-pricing-manifest-v210).
+
 This doc is the current-state reference for the core staff portal workflow before quotes, design requests, schedule, running jobs, and job packs. Use it when touching contacts, projects, project snapshots/Project Work, calculator estimates, estimate versions, estimate locks, or local-first estimate mutations.
 
 ## Read First

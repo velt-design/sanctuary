@@ -84,7 +84,7 @@ describe('manifest v2.6 infill labour policy', () => {
     const setupActions = result.install.actions.filter((action) => action.id.endsWith(INFILL_JOB_SETUP_ACTION_ID));
 
     expect(setupActions).toHaveLength(1);
-    expect(setupActions[0]).toMatchObject({ minutes: 72, cost_ex_gst: 90 });
+    expect(setupActions[0]).toMatchObject({ minutes: 66, cost_ex_gst: 82.5 });
     expect(result.pergolas[0]?.infill_cost_breakdown?.status).toBe('ready');
   });
 
@@ -105,7 +105,7 @@ describe('manifest v2.6 infill labour policy', () => {
     expect(result.install.actions.filter((action) => action.id.endsWith(INFILL_JOB_SETUP_ACTION_ID))).toHaveLength(1);
     expect(result.standalone_infills?.install.actions.some((action) => action.id === INFILL_JOB_SETUP_ACTION_ID)).toBe(false);
     expect(result.standalone_infills?.install.actions.find((action) => action.id === INFILL_SHAPED_OPENING_ACTION_ID))
-      .toMatchObject({ qty: 1, minutes: 36, cost_ex_gst: 45 });
+      .toMatchObject({ qty: 1, minutes: 33, cost_ex_gst: 41.25 });
   });
 
   it('keeps published v2.5 infill labour unchanged', () => {

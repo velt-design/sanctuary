@@ -13,6 +13,7 @@ export * from './engine/config';
 export * from './engine/types';
 export * from './commercial';
 export * from './controlConfig';
+export { isCostingManifestAtLeast } from './manifestVersion';
 export { validateAccessoryRates, type AccessoryRates } from './accessoryRates';
 export * from './installedSellingRates';
 export * from './installerPayout';

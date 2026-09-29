@@ -3,6 +3,7 @@ import commercialPolicyV2Json from '../config/commercial_policy_v2_2026-08-05.js
 import commercialPolicyV3Json from '../config/commercial_policy_v3_2026-08-05.json';
 import commercialPolicyV4Json from '../config/commercial_policy_v4_2026-08-05.json';
 import commercialPolicyV5Json from '../config/commercial_policy_v5_2026-08-11.json';
+import commercialPolicyV6Json from '../config/commercial_policy_v6_2026-08-11.json';
 import type { CostingConfigV1 } from '../engine/config';
 import type { OverheadV1, SiteInputsV1 } from '../engine/types';
 import { isCostingManifestAtLeast } from '../manifestVersion';
@@ -73,6 +74,7 @@ export function isCommercialPolicyV6Enabled(config: CostingConfigV1): boolean {
 }
 
 function commercialPolicyForConfig(config: CostingConfigV1) {
+  if (isCommercialPolicyV6Enabled(config) && !isCostingManifestAtLeast(config, 2, 10)) return commercialPolicyV6Json;
   if (isCommercialPolicyV6Enabled(config)) return config.commercialPolicy;
   if (isCommercialPolicyV5Enabled(config)) return commercialPolicyV5Json;
   if (isCommercialPolicyV4Enabled(config)) return commercialPolicyV4Json;
@@ -81,6 +83,7 @@ function commercialPolicyForConfig(config: CostingConfigV1) {
 }
 
 function commercialPolicyV5OrLaterForConfig(config: CostingConfigV1) {
+  if (isCommercialPolicyV6Enabled(config) && !isCostingManifestAtLeast(config, 2, 10)) return commercialPolicyV6Json;
   return isCommercialPolicyV6Enabled(config) ? config.commercialPolicy : commercialPolicyV5Json;
 }
 
@@ -110,6 +113,11 @@ export function evaluateSimpleRangeEligibilityV2(inputs: SiteInputsV1, config?: 
   eligible: boolean;
   reason_codes: SimpleRangeReasonCodeV2[];
 } {
+  // Current Standard eligibility follows approvals; old publications retain their restrictions.
+  if (!config || isCostingManifestAtLeast(config, 2, 10)) {
+    const eligible = (inputs.approval_requirement ?? 'neither') === 'neither';
+    return { eligible, reason_codes: eligible ? [] : ['APPROVAL_REQUIRED'] };
+  }
   const reasons: SimpleRangeReasonCodeV2[] = [];
   const pergolas = Array.isArray(inputs.pergolas) ? inputs.pergolas : [];
   const modules = pergolas.flatMap((pergola) => Array.isArray(pergola.modules) ? pergola.modules : []);
