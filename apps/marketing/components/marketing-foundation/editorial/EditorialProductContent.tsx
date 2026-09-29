@@ -1,3 +1,4 @@
+import ProductDesignDetails from '../../products/ProductDesignDetails';
 import ArrowUpRight from '../ArrowUpRight';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -17,6 +18,7 @@ function ReadingSection({ enabled, children, summary, kind }: { enabled: boolean
 type Props = { product: ProductRecord; enquiryHref: string; gallery: ReactNode; evidence: ReactNode; supportingLinks: ReactNode; nextSteps?: ReactNode; selection?: ReactNode };
 
 export default function EditorialProductContent({ product, enquiryHref, gallery, evidence, supportingLinks, nextSteps, selection }: Props) {
+  if (selection && isProductDesignType(product.slug)) return <>{selection}<ProductDesignDetails product={product} type={product.slug} evidence={evidence} gallery={gallery} supportingLinks={supportingLinks} /></>;
   const gable = product.slug === 'gable';
   const exploreTarget = selection && isProductDesignType(product.slug) ? `#${productSelectionAnchor(product.slug)}` : gable ? '#roof-approaches' : '#product-fit';
   return <>
@@ -77,7 +79,7 @@ export default function EditorialProductContent({ product, enquiryHref, gallery,
       </div>
     </div></Container>
 
-    <section className={styles.section} data-product-evidence><Container width="wide">{evidence}</Container></section>
+    <section id="product-built" className={styles.section} data-product-evidence><Container width="wide">{evidence}</Container></section>
     {gallery}
     <Container width="wide"><div className={productStyles.alternatives}><div><Eyebrow>Other options</Eyebrow><Heading as="h2" variant="card">A different approach?</Heading></div>{product.alternatives.map(slug => { const alternative = getProductBySlug(slug); return alternative ? <TextLink key={slug} href={alternative.route}>{alternative.name}</TextLink> : null; })}</div>{supportingLinks}</Container>
     {nextSteps ?? <section className={styles.conversion}><Container width="wide" className={styles.conversionGrid}>

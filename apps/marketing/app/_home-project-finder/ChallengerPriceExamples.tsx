@@ -2,15 +2,11 @@
 import { INITIAL_PRODUCT_SELECTION } from '../../components/products/productSelection';
 import { PRODUCT_FORM_CHOICES, type ProductDesignType } from '../../components/products/productDesigns';
 import { useProductExampleEstimate } from '../../components/products/useProductExampleEstimate';
-import { formatEstimate } from '../../lib/estimateDisplay';
+import { formatComparisonEstimate as formatChallengerExampleAmount } from '../../lib/estimateDisplay';
+export { formatComparisonEstimate as formatChallengerExampleAmount } from '../../lib/estimateDisplay';
 import styles from './challengerPriceExamples.module.css';
 
 export const CHALLENGER_EXAMPLE_SELECTIONS = [3000, 6000, 9000].map(widthMm => ({ ...INITIAL_PRODUCT_SELECTION, widthMm }));
-
-/** Homepage comparison precision only; the approved amount and detailed pricing stay unchanged. */
-export function formatChallengerExampleAmount(amount: number) {
-  return formatEstimate(Math.round(amount / 100) * 100);
-}
 
 function PriceRow({ type, selection }: { type: ProductDesignType; selection: typeof INITIAL_PRODUCT_SELECTION }) {
   const { estimate, complete, retry } = useProductExampleEstimate(type, selection);

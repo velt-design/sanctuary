@@ -188,6 +188,102 @@ implementation. Verify click-to-select text, keyboard slider input, invalid and
 out-of-range values, stable panels, small/large furniture, same-design prices,
 and responsive transitions when extending these components.
 
+## Residential pergola overview (29 September 2026, preview)
+
+`ProductsHub` retains the `/products` metadata, catalogue schema and secondary
+bespoke, accessory, project and planning-guide paths. Its `PergolaSelection`
+opening compares Pitched, Gable and Box in three aligned desktop columns. Mobile
+first shows all three roofline anchors, then all three image-led options; no
+product is hidden behind tabs. Existing neutral-daylight illustrations describe
+the forms, not a live rendering of the selected dimensions.
+
+`PergolaSelection` owns only a shared 2 x 3 / 4 x 3 / 6 x 3 / 8 x 3 / 6 x 4 / 6 x 5 m
+comparison choice, defaulting to 6 x 3 m. Both width and projection identify
+the selected price; six controls form one desktop row and two mobile rows.
+Shared conditions and the single Comparison details disclosure retain pricing
+assumptions, illustration context and the detailed roofline comparison.
+`ProductCard` and `ProductComparisonPrice` present each matched installed estimate,
+using the server-generated `productComparisonTable.server` snapshot and the
+existing approved frozen calculator. `ProductComparisonSelection` streams the
+complete table into the selector; all six size changes are local and atomic.
+The dynamic `/products` route checks current publication and the explicit
+approved-version pin on every request before reusing its single-entry immutable
+provenance cache. Only public selling totals and the public version number
+reach the browser. Missing approval, publication mismatch or any partial result
+withholds the whole table; a shared retry refreshes it. A loaded page remains
+a versioned snapshot, including offline, until reload or refresh. No publication
+push or offline freshness is implied. The existing API, detailed-product hooks
+and full designer pricing are unchanged. The shared
+`estimateDisplay.formatComparisonEstimate` formats comparison amounts to the
+nearest $100; the homepage reuses the same formatter with unchanged presentation.
+Exact calculator and detailed-estimate precision are unchanged. Installation,
+GST, acrylic/open sides and site confirmation remain visible; attachment, ridge,
+ground-level and illustration assumptions are available beside the comparison.
+
+Example selection never writes the product draft. Normal product links preserve
+saved choices; the overview explains that these are examples and the product page
+is where size, roofing and sides are selected. The original `ProductExamplePrice` and compact styling remain unchanged for the
+`ProjectFinder` / `HomePergolaSelection` fallback. Detailed roofline comparison is
+passed from the server hub into the client selector as a child, keeping the
+project catalogue out of the comparison-state client dependency.
+The overview has coherent loading and whole-table unavailable/retry states; it
+never falls back to development draft pricing. Verification covers all eighteen approved prices
+across six width/projection pairs, immediate offline switching, streamed radio
+group isolation, keyboard choice, stable recovery, mobile shape discovery,
+saved 4.9 m entry after comparison choices, supporting routes and canonical SEO.
+Production release follows the repository review and release gates.
+
+## Product-page reading refinement (29 September 2026, preview)
+
+The three interactive rooflines open with approved installation photography and
+Photos / Design / Plan in one stable stage. The opening photograph is prioritised;
+the furnished scene mounts on the first Design choice and remains available
+across mode changes. The lower gallery retains lazy media loading. Desktop gives the visual more width,
+with a compact identity, selected size, installed estimate and enquiry beside it.
+Mobile places that estimate before the visual; the persistent enquiry stays
+available and repeats the price only when the inline estimate is out of view.
+Size/Roof/Sides remain the immediate controls. Explicit selection edits reveal
+Design; restoring saved choices and resizing do not reset the selected view.
+
+Implementation map: `ProductSelector` owns composition, controlled mode and the
+existing state/price hooks. `ProductModel` reuses `ResponsiveGallery` for the
+opening photos and retains fullscreen focus/scroll recovery. Design uses the
+existing furnished `reviewSetting` through `PreviewViews` and `PreviewScene`,
+including `StudioSetting`, the established camera and review lighting. The house,
+planting and furniture remain visible context, with the existing illustrative
+qualification; do not replace this scene with an empty or ghosted setting.
+Geometry and commercial rules are unchanged. Desktop keeps the installed offer
+and controls together: the site qualifier and estimate recovery share a compact
+row instead of reserving an empty gap beneath successful prices. Width and
+projection use full-width stacked rows with clear editable values, readable
+slider scales, 44px targets and stable validation notices.
+`ProductDesignDetails` owns the lower range gallery, compact governed project
+access, fit/technical disclosures and other options. Distinct installations lead
+before repeat angles; Pitched starts with a full acrylic roof viewed underneath.
+`products.ts` keeps the three opening photographs separate from `builtGallery`,
+whose lower-only selection lives in `data/productBuiltGalleries.ts`. Each lower
+"Pitched, built." / "Gable, built." / "Box, built." gallery contains eight different
+photographs, with no opening-image overlap. Box has three documented installations;
+its extra views explain roof/frame details rather than imply eight installations.
+Accessories retain their existing gallery fallback.
+`ResponsiveGallery` opts these lower galleries into small optimized thumbnail
+buttons: direct selection, visible and announced active state, Arrow/Home/End
+keyboard focus, and a contained horizontally scrollable mobile strip. Only the
+current and adjacent large frames load when near the viewport; thumbnails do not
+preload all full-size images. Other gallery consumers retain their existing UI.
+Both photo galleries preserve factual captions and bespoke qualifications. Photos
+are built references, never a rendering of the selected dimensions or estimate.
+
+Gable retains the real acrylic/solid/mixed `RoofApproaches` comparison inside a
+materials disclosure. `EditorialProductContent` selects this layer only for the
+three supported interactive routes; accessory and other product content retain
+the existing composition. Photos remain project references, not the priced design.
+
+Verification covers current published-price parity, saved choices and explicit
+handoff, responsive mode/fullscreen return, loading/retry stability, preserved
+material evidence and accessory routes. This refinement is a reversible preview,
+not production release authority.
+
 ## Local product-selection trial (21 September 2026)
 
 The pitched, gable and box-perimeter routes open with one integrated model, identity, estimate

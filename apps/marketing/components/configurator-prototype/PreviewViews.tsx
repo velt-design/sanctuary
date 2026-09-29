@@ -21,7 +21,7 @@ const PreviewScene = dynamic(() => import('./PreviewScene'), {
   ssr: false, loading: () => <div className={styles.loading} role="status">Loading 3D view…</div>,
 });
 
-export default function PreviewViews({ readOnly = false, input, roof, activeDimension, expanded, onToggleExpanded, guided = false, presentation = false, simple = false, onAddLighting, onCapture, onReady, reviewSetting = false }: { onReady?: () => void; readOnly?: boolean; reviewSetting?: boolean; onCapture?: (image: string) => void; simple?: boolean; presentation?: boolean; guided?: boolean; onAddLighting?: () => void; input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
+export default function PreviewViews({ readOnly = false, input, roof, activeDimension, expanded, onToggleExpanded, guided = false, presentation = false, simple = false, onAddLighting, onCapture, onReady, reviewSetting = false, onViewChange }: { onViewChange?: (view: '3D' | 'Plan') => void; onReady?: () => void; readOnly?: boolean; reviewSetting?: boolean; onCapture?: (image: string) => void; simple?: boolean; presentation?: boolean; guided?: boolean; onAddLighting?: () => void; input: SimpleCoverInput; roof: PreviewRoofChoices; activeDimension: PreviewDimensionAxis | null; expanded: boolean; onToggleExpanded: () => void }) {
   const blinds=usePreviewBlinds();
   const mobile = useMobileConfigurator();
   const rail=useRail();
@@ -31,7 +31,7 @@ export default function PreviewViews({ readOnly = false, input, roof, activeDime
   const nightPresentation = useDayNightPresentation(lighting?.night ?? false, viewport, Boolean(onCapture));
   const [selectedView, setView] = useState<'3D' | 'Plan'>('3D');
   const view=lighting?.view??selectedView;
-  const changeView=(v:'3D'|'Plan')=>lighting?lighting.setView(v):setView(v);
+  const changeView=(v:'3D'|'Plan')=>{if(lighting) lighting.setView(v);else setView(v);onViewChange?.(v);};
   const [surroundings, setSurroundings] = useState(true);
   const artifact = useMemo(() => solvePergolaPreview(input, roof), [input, roof]);
   const geometry = artifact.geometry;

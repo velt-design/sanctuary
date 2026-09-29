@@ -3,13 +3,13 @@ import { expect, test } from '@playwright/test';
 test.use({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
 
 const families = [
-  ['/', '[data-project-evidence]'],
+  ['/', 'a[class*="projectCaption"]'],
   ['/pergola-guides', '[data-guide-card]'],
   ['/products', '[data-product-option-gateway] li'],
   ['/products', 'a[aria-label^="View project:"]'],
   ['/products/pergolas/gable', 'li:has(a[aria-label^="Read guide:"])'],
-  ['/products/pergolas/gable', 'div[class*="bridgeGrid"]'],
-  ['/products', 'a[aria-label^="Explore "]'],
+  ['/products/screens-walls/drop-down-blinds', 'div[class*="bridgeGrid"]'],
+  ['/products', '[data-product-form-grid] a'],
   ['/projects', '[data-project-card]'],
   ['/acrylic-roof-pergolas-auckland', '.acrylic-project-card'],
 ] as const;
@@ -81,11 +81,27 @@ for (const analytics of [false, true]) {
   });
 }
 
-test('native navigation, new tab, no-JS and separate continuation control', async ({ browser, page }) => {
+test('the compact product project reference retains keyboard access and its governed destination', async ({ page }) => {
+  await page.goto('/products/pergolas/gable');
+  const disclosure = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Explore a project in detail' }) });
+  const summary = disclosure.locator('summary');
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  await expect(disclosure).toHaveAttribute('open', '');
+  const link = disclosure.locator('a[href^="/projects/"]');
+  await expect(link).toHaveCount(1);
+  await expect(link).toBeVisible();
+  const href = await link.getAttribute('href');
+  await link.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(href!));
+});
+
+test('native navigation, new tab, no-JS and separate product enquiry control', async ({ browser, page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
-  const card = page.locator('[data-project-evidence]').first();
-  const href = await card.locator('a').getAttribute('href');
+  const card = page.locator('a[class*="projectCaption"]').first();
+  const href = await card.getAttribute('href');
   const popupPromise = page.context().waitForEvent('page');
   await card.click({ position: { x: 25, y: 25 }, modifiers: ['Control'] });
   const popup = await popupPromise;
@@ -95,14 +111,13 @@ test('native navigation, new tab, no-JS and separate continuation control', asyn
   await card.click({ position: { x: 25, y: 25 } });
   await expect(page).toHaveURL(new RegExp(new URL(href!, page.url()).pathname));
   await page.goBack();
-  await expect(page.locator('[data-project-evidence]').first()).toBeVisible();
+  await expect(page.locator('a[class*="projectCaption"]').first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/products');
-  const bar = page.getByRole('complementary', { name: 'Your pergola design' });
+  await page.goto('/products/pergolas/gable');
+  const bar = page.locator('[aria-label="Your design enquiry"]');
   await expect(bar.locator('a svg[aria-hidden="true"]')).toBeVisible();
-  await bar.getByRole('button', { name: 'Dismiss design bar' }).click();
-  await expect(bar).toHaveCount(0);
-  await expect(page).toHaveURL(/\/products$/);
+  await expect(bar.getByRole('link', { name: 'Enquire', exact: true })).toHaveAttribute('href', /\/design-enquiry\?.*#design=/);
+  await expect(page.getByRole('region', { name: 'Built pergola photos', exact: true })).toBeVisible();
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const plain = await context.newPage();
   await plain.goto('/pergola-guides');

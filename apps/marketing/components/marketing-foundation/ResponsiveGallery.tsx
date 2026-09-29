@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/cn';
+import Image from 'next/image';
 import {
   Figure,
   type MediaRatio,
@@ -36,6 +37,8 @@ type ResponsiveGalleryProps = {
   items: ResponsiveGalleryItem[];
   label: string;
   swipe?: boolean;
+  thumbnails?: boolean;
+  priorityFirstImage?: boolean;
 };
 
 const ADJACENT_PRELOAD_ROOT_MARGIN = '160px 0px';
@@ -50,9 +53,12 @@ export function ResponsiveGallery({
   items,
   label,
   swipe = false,
+  thumbnails = false,
+  priorityFirstImage = false,
 }: ResponsiveGalleryProps) {
   const statusId = `${useId()}-gallery-status`;
   const galleryRef = useRef<HTMLElement>(null);
+  const thumbnailStripRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(() => (
     clampInitialIndex(initialIndex, items.length)
   ));
@@ -102,6 +108,17 @@ export function ResponsiveGallery({
     setActiveIndex((current) => clampInitialIndex(current, items.length));
   }, [itemSignature, items.length]);
 
+  useEffect(() => {
+    const strip = thumbnailStripRef.current;
+    const selected = strip?.children[safeIndex] as HTMLElement | undefined;
+    if (!strip || !selected) return;
+    const left = selected.offsetLeft - strip.offsetLeft;
+    if (left < strip.scrollLeft) strip.scrollLeft = left;
+    else if (left + selected.offsetWidth > strip.scrollLeft + strip.clientWidth) {
+      strip.scrollLeft = left + selected.offsetWidth - strip.clientWidth;
+    }
+  }, [safeIndex]);
+
   if (items.length === 0) return null;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -139,6 +156,7 @@ export function ResponsiveGallery({
       data-responsive-gallery
       data-gallery-position={`${safeIndex + 1}/${items.length}`}
       data-gallery-swipe={swipe || undefined}
+      data-gallery-thumbnails={thumbnails || undefined}
       role="region"
       aria-roledescription="carousel"
       aria-label={label}
@@ -171,6 +189,7 @@ export function ResponsiveGallery({
             >
               <Figure
                 image={item.image}
+                priority={priorityFirstImage && index === clampInitialIndex(initialIndex, items.length)}
                 alt={isActive ? item.alt : ''}
                 caption={isActive ? item.caption : undefined}
                 detail={isActive ? item.detail : undefined}
@@ -184,6 +203,35 @@ export function ResponsiveGallery({
           );
         })}
       </div>
+      {thumbnails && hasMultipleItems && (
+        <div ref={thumbnailStripRef} className={styles.galleryThumbnails} role="group" aria-label={`${label} thumbnails`}>
+          {items.map((item, index) => (
+            <button
+              key={item.id ?? item.image}
+              type="button"
+              className={styles.galleryThumbnail}
+              aria-label={`Show image ${index + 1}: ${item.caption ?? item.alt}`}
+              aria-pressed={index === safeIndex}
+              onClick={() => { activateAdjacentFrames(); setActiveIndex(index); }}
+              onKeyDown={(event) => {
+                if (event.altKey || event.ctrlKey || event.metaKey) return;
+                const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+                  : event.key === 'ArrowRight' ? (index + 1) % items.length
+                    : event.key === 'ArrowLeft' ? (index - 1 + items.length) % items.length : null;
+                if (next === null) return;
+                event.preventDefault();
+                event.stopPropagation();
+                activateAdjacentFrames();
+                setActiveIndex(next);
+                (thumbnailStripRef.current?.children[next] as HTMLButtonElement | undefined)?.focus({ preventScroll: true });
+              }}
+            >
+              <Image src={item.image} alt="" width={112} height={84} sizes="112px" loading="lazy" style={{ objectPosition: item.objectPosition }} />
+              <span className={styles.galleryThumbnailNumber} aria-hidden="true">{index + 1}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className={styles.galleryControls} role="group" aria-label={`${label} controls`}>
         <button
           className={styles.galleryButton}

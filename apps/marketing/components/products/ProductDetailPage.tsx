@@ -1,3 +1,4 @@
+import selectionStyles from './product-selection.module.css';
 import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import composition from '@/components/marketing-foundation/editorial/composition.module.css';
 import EditorialProductContent from '@/components/marketing-foundation/editorial/EditorialProductContent';
@@ -39,13 +40,19 @@ function ProductGallery({
       className={styles.productGallerySection}
       aria-label={`${product.name} gallery`}
       data-product-gallery="primary"
+      id={isProductDesignType(product.slug) ? 'product-built' : undefined}
     >
       <Container width="wide">
+        {isProductDesignType(product.slug) && <div className={selectionStyles.galleryIntroduction}>
+          <Eyebrow>See it built</Eyebrow><Heading>{product.shortName}, built.</Heading>
+          <Text>Built examples, not your selected design or estimate.</Text>
+        </div>}
         <ResponsiveGallery
           className={styles.productGallery}
           items={items}
           label={`${product.name} project gallery`}
           swipe
+          thumbnails={isProductDesignType(product.slug)}
         />
       </Container>
     </Section>
@@ -76,9 +83,13 @@ function EvidenceStory({ product }: ProductDetailPageProps) {
       `Missing governed product evidence project: ${evidence.projectSlug}`,
     );
   }
+  if (isProductDesignType(product.slug)) return <div data-product-evidence>
+    <Text>{evidence.relevance}</Text>
+    {evidence.status === 'context-only' && <Text>{evidence.caveat}</Text>}
+    <TextLink href={'/projects/' + project.slug}>Explore {project.title}</TextLink>
+  </div>;
   const evidenceMedia =
-    (product.slug === 'gable' ? product.gallery[0] : undefined)
-    ?? project.caseStudyHeroImage
+    project.caseStudyHeroImage
     ?? project.gallery[1]
     ?? project.gallery[0]
     ?? project.heroImage;
@@ -86,7 +97,7 @@ function EvidenceStory({ product }: ProductDetailPageProps) {
   return <div className={`${composition.bridgeGrid} ${cardLinks.surface}`}>
     <Figure image={evidenceMedia.src} alt={evidenceMedia.alt} objectPosition={evidenceMedia.objectPosition} ratio="standard" />
     <div><Eyebrow>See it built / {project.location.split(',')[0]}</Eyebrow>
-      <Heading>{product.slug === 'gable' ? <>A room beside<br />the house.</> : project.title}</Heading>
+      <Heading>{project.title}</Heading>
       <Text>{evidence.relevance}</Text>
       {evidence.status === 'context-only' && <aside aria-label="Evidence limitation"><Eyebrow>Context only</Eyebrow><Text>{evidence.caveat}</Text></aside>}
       <TextLink className={cardLinks.hitLink} href={'/projects/'+project.slug}>Explore {project.title}</TextLink>

@@ -5,12 +5,12 @@ import ProductModel from './ProductModel';
 import { INITIAL_PRODUCT_SELECTION, productSelectionDraft } from './productSelection';
 
 vi.mock('../configurator-prototype/PreviewViews', () => ({
-  default: ({ input, roof }: { input: { widthMm: number }; roof: { orientation: string } }) =>
-    <div data-model-width={input.widthMm} data-model-direction={roof.orientation}>Selected model</div>,
+  default: ({ input, roof, onViewChange }: { input: { widthMm: number }; roof: { orientation: string }; onViewChange: (view: 'Plan') => void }) =>
+    <div data-model-width={input.widthMm} data-model-direction={roof.orientation}>Selected model<button data-gpu-failure onClick={() => onViewChange('Plan')}>Simulate GPU failure</button></div>,
 }));
 vi.mock('../configurator-prototype/PergolaFootprint', () => ({ default: () => <div data-plan>Selected plan</div> }));
 
-it('recovers the chosen design on mobile entry, retains desktop views during edits, and cleans up its listener', async () => {
+it('retains photo and plan views across responsive changes and keeps current design edits', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const listeners = new Set<(event: MediaQueryListEvent) => void>();
   const media = {
@@ -22,7 +22,9 @@ it('recovers the chosen design on mobile entry, retains desktop views during edi
   const host = document.createElement('div'); document.body.append(host);
   const root = createRoot(host);
   let draft = productSelectionDraft({ ...INITIAL_PRODUCT_SELECTION, orientation: 'away' }, 'gable').draft;
-  const render = () => React.act(async () => root.render(<ProductModel draft={draft} example={{ src: '/example.webp', alt: 'Built reference', caption: 'Built reference' }} />));
+  let mode: 'Photos' | 'Design' | 'Plan' = 'Photos';
+  const changeMode = (next: typeof mode) => { mode = next; void render(); };
+  const render = () => React.act(async () => root.render(<ProductModel draft={draft} gallery={[{ src: '/example.webp', alt: 'Built reference', caption: 'Built reference' }]} mode={mode} onModeChange={changeMode} />));
   const clickView = (name: string) => React.act(async () => [...host.querySelectorAll<HTMLButtonElement>('[aria-label="Model view"] button')].find(button => button.textContent === name)!.click());
   const resize = (matches: boolean) => React.act(async () => {
     media.matches = matches;
@@ -30,32 +32,47 @@ it('recovers the chosen design on mobile entry, retains desktop views during edi
   });
   try {
     await render();
-    const model = host.querySelector('[data-model-width]');
-    await clickView('Built example');
+    expect(host.querySelector('[data-model-width]')).toBeNull();
+    await clickView('Photos');
     expect(host.querySelector('dialog')?.hidden).toBe(true);
     draft = productSelectionDraft({ ...INITIAL_PRODUCT_SELECTION, widthMm: 7400, orientation: 'away' }, 'gable').draft;
     await render();
     expect(host.querySelector('dialog')?.hidden).toBe(true);
     await resize(true);
-    expect(host.querySelector('dialog')?.hidden).toBe(false);
-    expect(host.querySelector('figure')).toBeNull();
-    expect(host.querySelector('[data-model-width]')).toBe(model);
-    expect(model?.getAttribute('data-model-width')).toBe('7400');
-    expect(model?.getAttribute('data-model-direction')).toBe('away');
+    expect(host.querySelector('dialog')?.hidden).toBe(true);
+    expect(host.querySelector('figure')).not.toBeNull();
+    expect(host.querySelector('[data-model-width]')).toBeNull();
     expect(host.querySelector('[aria-label="Open fullscreen 3D"]')).not.toBeNull();
     await resize(false);
     await clickView('Plan');
     await render();
     expect(host.querySelector('[data-plan]')).not.toBeNull();
+    expect(host.querySelector('[data-model-width]')).toBeNull();
     await resize(true);
-    expect(host.querySelector('[data-plan]')).toBeNull();
-    expect(host.querySelector('[data-model-width="7400"]')).not.toBeNull();
+    expect(host.querySelector('[data-plan]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Open fullscreen 3D"]')).toBeNull();
     await resize(false);
-    await clickView('Built example');
+    await clickView('Photos');
     expect(host.querySelector('dialog')?.hidden).toBe(true);
-    await clickView('Your design');
+    await clickView('Design');
     expect(host.querySelector('dialog')?.hidden).toBe(false);
-    expect(listeners.size).toBe(1);
+    const model = host.querySelector('[data-model-width]');
+    expect(model?.getAttribute('data-model-width')).toBe('7400');
+    expect(model?.getAttribute('data-model-direction')).toBe('away');
+    await clickView('Photos');
+    expect(host.querySelector('[data-model-width]')).toBe(model);
+    await clickView('Plan');
+    expect(host.querySelector('[data-model-width]')).toBe(model);
+    await clickView('Design');
+    expect(host.querySelector('[data-model-width]')).toBe(model);
+    await React.act(async () => host.querySelector<HTMLButtonElement>('[data-gpu-failure]')!.click());
+    expect(mode).toBe('Plan');
+    expect(host.querySelector('[data-model-width]')).toBeNull();
+    expect(host.querySelector('[data-plan]')).not.toBeNull();
+    await clickView('Design');
+    expect(host.querySelector('[data-model-width]')).not.toBeNull();
+    expect(host.querySelector('[data-model-width]')).not.toBe(model);
+    expect(listeners.size).toBe(0);
   } finally {
     await React.act(async () => root.unmount());
     expect(listeners.size).toBe(0);

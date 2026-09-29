@@ -1,3 +1,4 @@
+import { productBuiltGalleries } from './productBuiltGalleries';
 import { WARKWORTH_EXTERIOR_OBJECT_POSITION } from '../lib/projectImageFraming';
 
 type ProductCategorySlug = 'pergolas' | 'screens-walls' | 'lighting-heating';
@@ -14,7 +15,7 @@ type ProductSlug =
   | 'led-strip-lighting'
   | 'patio-heaters';
 
-type ProductMedia = {
+export type ProductMedia = {
   src: string;
   alt: string;
   caption: string;
@@ -717,6 +718,7 @@ export type ProductRecord = {
   }>;
   hero: ProductMedia;
   gallery: ProductMedia[];
+  builtGallery?: ProductMedia[];
   evidence: ProductEvidence;
   guide: {
     href: string;
@@ -816,19 +818,28 @@ export const products: ProductRecord[] = [
       detail: 'Pitched roof · Hibiscus Coast',
       objectPosition: '50% 42%',
     },
+    builtGallery: productBuiltGalleries['pitched'],
     gallery: [
       {
-        src: '/images/product-pitched-01.jpg',
-        alt: 'Single-slope pergola roof meeting a house',
-        caption: 'One deliberate fall',
-        detail: 'Connection, head height and drainage considered together',
+        src: '/images/simple-pergolas/pitched-01.webp',
+        alt: 'View from underneath a white pitched acrylic pergola over a patio beside a weatherboard home',
+        caption: 'Acrylic over a garden patio',
+        detail: 'Built reference · White framing and a full acrylic roof',
+        objectPosition: '50% 35%',
       },
       {
-        src: '/images/project-tindalls-bay.jpg',
-        alt: 'Pitched patio cover at Tindalls Bay with mixed roof materials',
-        caption: 'Tindalls Bay',
-        detail: 'Solid and acrylic zones respond to different daylight needs',
-        objectPosition: '50% 42%',
+        src: '/images/simple-pergolas/pitched-03.webp',
+        alt: 'View beneath a dark pitched acrylic pergola beside a swimming pool',
+        caption: 'Poolside cover',
+        detail: 'Built reference · Dark framing and acrylic roofing',
+        objectPosition: '50% 30%',
+      },
+      {
+        src: '/images/simple-pergolas/pitched-06.webp',
+        alt: 'Black pitched acrylic pergola along a dark-clad home',
+        caption: 'Along the house',
+        detail: 'Built reference · A long house-attached roofline',
+        objectPosition: '50% 35%',
       },
     ],
     evidence: {
@@ -906,20 +917,28 @@ export const products: ProductRecord[] = [
       detail: 'Freestanding gable · Clear acrylic and cedar',
       objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION,
     },
+    builtGallery: productBuiltGalleries['gable'],
     gallery: [
       {
-        src: '/images/project-warkworth-outdoor-room-02.jpg',
-        alt: 'Interior of the Warkworth gable outdoor room with cedar ceiling and lighting',
-        caption: 'A room, not only a roof',
-        detail: 'Structure, ceiling and services resolved together',
-        objectPosition: '50% 42%',
+        src: '/images/project-st-heliers-01.jpg',
+        alt: 'White opal-acrylic gable pergola with a bespoke end frame at St Heliers',
+        caption: 'St Heliers Townhouse',
+        detail: 'Built reference · Opal acrylic and a bespoke gable-end frame',
+        objectPosition: '50% 30%',
       },
       {
         src: '/images/project-riverhead-gable-01.jpg',
         alt: 'Riverhead poolside gable pavilion with timber sarking and black framing',
         caption: 'Riverhead Gable Pavilion',
-        detail: 'A strong centre line beside the pool',
-        objectPosition: '50% 45%',
+        detail: 'Built reference · A timber-lined poolside pavilion',
+        objectPosition: '50% 40%',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-02.jpg',
+        alt: 'Warkworth gable outdoor room with cedar ceiling, acrylic roof zones and lighting',
+        caption: 'Warkworth Outdoor Room',
+        detail: 'Built reference · Cedar lining and acrylic roof zones',
+        objectPosition: '50% 35%',
       },
     ],
     evidence: {
@@ -1086,6 +1105,7 @@ export const products: ProductRecord[] = [
       detail: 'Perimeter roof · Opal acrylic',
       objectPosition: '50% 0%',
     },
+    builtGallery: productBuiltGalleries['box-perimeter'],
     gallery: [
       {
         src: '/images/project-waiheke-01.jpg',
@@ -1097,9 +1117,16 @@ export const products: ProductRecord[] = [
       {
         src: '/images/project-mt-maunganui-03.jpg',
         alt: 'View below the acrylic roof inside the Mt Maunganui box-perimeter frame',
-        caption: 'What the outer line contains',
-        detail: 'Roof, fall and frame coordinated together',
+        caption: 'Mt Maunganui Box',
+        detail: 'Built reference · Acrylic roofing over an elevated deck',
         objectPosition: '50% 0%',
+      },
+      {
+        src: '/images/project-ardmore-carport-01.jpg',
+        alt: 'Ardmore carport with a black box perimeter, red steel frame and internal acrylic gable roof',
+        caption: 'Ardmore Box Carport',
+        detail: 'Bespoke reference · Steel carport with an internal gable',
+        objectPosition: '50% 40%',
       },
     ],
     evidence: {

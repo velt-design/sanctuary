@@ -3,19 +3,19 @@ import type { PreviewDraft } from '../configurator-prototype/previewDraft';
 export const PRODUCT_DESIGNS = {
   pitched: {
     family: 'mono', imageFamily: 'pitched', connection: 'fascia', orientation: 'parallel',
-    introduction: 'A simple roofline. More room to enjoy outside.',
+    introduction: 'A single sloping roof, attached to your home.',
     attachment: 'House fascia attachment',
     assumptions: 'This starting design attaches to the house fascia at ground level.',
   },
   gable: {
     family: 'gable', imageFamily: 'gable', connection: 'fascia', orientation: 'parallel',
-    introduction: 'A raised roofline. More height above your outdoor space.',
+    introduction: 'Two roof slopes meeting at a raised ridge.',
     attachment: 'House fascia attachment',
     assumptions: 'This starting design attaches to the house fascia at ground level with open gable ends. The house connection is confirmed for your selected ridge direction. Explore gable infills in the full designer.',
   },
   'box-perimeter': {
     family: 'box', imageFamily: 'box', connection: 'facade', orientation: 'parallel',
-    introduction: 'A level outer frame. A clean line alongside your home.',
+    introduction: 'A level perimeter frame around the roof.',
     attachment: 'House wall attachment',
     assumptions: 'This starting design attaches to the house wall at ground level. The level perimeter conceals an internal sloping roof; its layout follows your dimensions.',
   },
