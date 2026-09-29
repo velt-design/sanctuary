@@ -226,10 +226,11 @@ is where size, roofing and sides are selected. The original `ProductExamplePrice
 `ProjectFinder` / `HomePergolaSelection` fallback. Detailed roofline comparison is
 passed from the server hub into the client selector as a child, keeping the
 project catalogue out of the comparison-state client dependency.
-Loading, unavailable/retry, tailored and development-only draft responses stay
-under the existing approval policy. Verification covers all nine approved prices,
-rapid response changes, keyboard choice, stable recovery, mobile shape discovery,
-saved 4.9 m entry after a 9 m comparison, supporting routes and canonical SEO.
+The overview has coherent loading and whole-table unavailable/retry states; it
+never falls back to development draft pricing. Verification covers all eighteen approved prices
+across six width/projection pairs, immediate offline switching, streamed radio
+group isolation, keyboard choice, stable recovery, mobile shape discovery,
+saved 4.9 m entry after comparison choices, supporting routes and canonical SEO.
 This is a protected preview stage, not production release authority.
 
 ## Product-page reading refinement (29 September 2026, preview)

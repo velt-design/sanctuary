@@ -1,6 +1,7 @@
 import { parsePreviewDesign } from '../apps/marketing/components/configurator-prototype/previewShare';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { products } from '../apps/marketing/data/products';
+import { buildAssistedEnquiryHref } from '../apps/marketing/lib/configuratorEntry';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
@@ -134,17 +135,17 @@ async function expectMinimumTouchTargets(main: Locator) {
   expect(undersized).toEqual([]);
 }
 
-test('the product catalogue owns all ten canonical routes and the sitemap exposes them', async ({ page }) => {
+test('the overview exposes standard rooflines and accessories while the sitemap retains all ten routes', async ({ page }) => {
   await preparePage(page);
   await page.goto('/products');
 
   const main = page.locator('main[data-products-index]');
   await expect(main.locator('h1')).toHaveCount(1);
   await expect(main.getByRole('heading', { level: 1 })).toHaveText(
-    'Choose your pergola form.',
+    'Pergolas.',
   );
-  await expect(main.getByRole('link', { name: 'Compare roof forms' }))
-    .toHaveAttribute('href', '#pergola-forms');
+  await expect(main.locator('[data-product-form-grid] > article')).toHaveCount(3);
+  await expect(main.getByRole('radio')).toHaveCount(6);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     'href',
     `${publicOrigin}/products`,
@@ -157,7 +158,7 @@ test('the product catalogue owns all ten canonical routes and the sitemap expose
         .filter((href): href is string => Boolean(href)),
     )],
   );
-  expect(productHrefs.sort()).toEqual(products.map((product) => product.route).sort());
+  expect(productHrefs.sort()).toEqual(products.filter((product) => product.slug !== 'hip').map((product) => product.route).sort());
 
   await page.goto('/sitemap.xml');
   const sitemap = await page.locator('body').innerText();
@@ -166,40 +167,23 @@ test('the product catalogue owns all ten canonical routes and the sitemap expose
   }
 });
 
-test('the product hub keeps one clear choice above the desktop fold', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1920, height: 1000 });
+test('the overview connects all three installed offers and actions above the desktop fold', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await preparePage(page);
-  await page.goto('/products', { waitUntil: 'networkidle' });
-
-  const hero = page.locator('[data-editorial-landing-hero]');
-  await expect(hero.getByRole('heading', {
-    level: 1,
-    name: 'Choose your pergola form.',
-  })).toBeVisible();
-  await expect(hero.getByRole('link')).toHaveCount(1);
-  await expect(hero.getByRole('link', {
-    name: /Compare roof forms/,
-  })).toHaveAttribute('href', '#pergola-forms');
-
-  const layout = await hero.evaluate((element) => {
-    const heading = element.querySelector('h1');
-    const nextHeading = document.querySelector('#pergola-forms h2');
-    return {
-      headingFontSize: heading
-        ? Number.parseFloat(getComputedStyle(heading).fontSize)
-        : Number.POSITIVE_INFINITY,
-      heroHeight: element.getBoundingClientRect().height,
-      nextHeadingTop:
-        nextHeading?.getBoundingClientRect().top
-        ?? Number.POSITIVE_INFINITY,
-    };
-  });
-
-  expect(layout.heroHeight).toBeLessThanOrEqual(900);
-  expect(layout.headingFontSize).toBeLessThanOrEqual(92);
-  expect(layout.nextHeadingTop).toBeLessThan(1200);
+  await page.goto('/products', { waitUntil: 'domcontentloaded' });
+  const section = page.locator('#pergola-forms');
+  await expect(section.getByRole('heading', { level: 1, name: 'Pergolas.' })).toBeVisible();
+  await expect(section.getByRole('radio')).toHaveCount(6);
+  await expect(section.locator('[data-priced="true"]')).toHaveCount(3);
+  for (const card of await section.locator('[data-product-form-grid] > article').all()) {
+    await expect(card.getByRole('img')).toBeVisible();
+    await expect(card.getByText('Including installation', { exact: true })).toBeVisible();
+    const action = card.getByRole('link', { name: /^Explore/ });
+    await expect(action).toBeVisible();
+    const box = await action.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y + box!.height).toBeLessThanOrEqual(900);
+  }
 });
 
 for (const viewport of viewports) {
@@ -220,8 +204,21 @@ for (const viewport of viewports) {
       });
       await expect(h1).toHaveCount(1);
       await expect(h1).toBeVisible();
-      await expect(main.getByRole('link', { name: 'Send project brief' }).first())
-        .toHaveAttribute('href', expectedEnquiryHref);
+      if (route === '/products') {
+        await expect(main.getByRole('link', { name: /Discuss a bespoke design/ }))
+          .toHaveAttribute('href', buildAssistedEnquiryHref({ sourcePath: route, sourceComponent: 'product_cta' }, 'bespoke'));
+      } else if (product?.slug === 'gable') {
+        const action = main.getByRole('link', { name: viewport.width <= 760 ? /^Enquire$/ : /Enquire about this design/ });
+        await expect(action).toBeVisible();
+        const href = await action.getAttribute('href');
+        expect(href).toContain('/design-enquiry');
+        const url = new URL(href!, publicOrigin);
+        expect(url.searchParams.get('source_product')).toBe('gable');
+        expect(parsePreviewDesign(url.hash.split('#design=')[1].split('&estimate=')[0])).not.toBeNull();
+      } else {
+        await expect(main.getByRole('link', { name: 'Send project brief' }).first())
+          .toHaveAttribute('href', expectedEnquiryHref);
+      }
       await expect(main).not.toContainText('[[VERIFY]]');
       await expect(main).not.toContainText('—');
       const emDashDecorationCount = await main.locator('*').evaluateAll((elements) =>
@@ -265,28 +262,33 @@ test('the editorial mobile journey is scannable and touch safe at target widths'
       });
 
       if (routeCase.route === '/products') {
-        const compareAction = main.getByRole('link', {
-          name: /Compare roof forms/,
-        });
-        await expect(compareAction).toBeVisible();
-        await expect(compareAction).toHaveAttribute('href', '#pergola-forms');
-        expect((await compareAction.boundingBox())?.y ?? 844)
-          .toBeLessThan(844);
-        await expect(callsToAction).toHaveCount(1);
+        const overview = main.getByRole('navigation', { name: 'Explore the three rooflines' });
+        await expect(overview.getByRole('link')).toHaveCount(3);
+        for (const link of await overview.getByRole('link').all()) {
+          await expect(link).toBeVisible();
+          expect((await link.boundingBox())?.y ?? 844).toBeLessThan(844);
+        }
+        await expect(main.getByRole('radio')).toHaveCount(6);
+        await expect(main.getByRole('link', { name: /Discuss a bespoke design/ })).toHaveCount(1);
 
         const formGrid = main.locator('[data-product-form-grid]');
-        await expect(formGrid.locator(':scope > article')).toHaveCount(4);
+        await expect(formGrid.locator(':scope > article')).toHaveCount(3);
         expect((await formGrid.boundingBox())?.y ?? Number.POSITIVE_INFINITY)
           .toBeLessThan(844 * 2.5);
         await expect(main.locator('[data-product-option-gateway]'))
           .toHaveCount(2);
         await expect(main.locator('[data-product-option-gateway] img'))
           .toHaveCount(0);
-        await expect(main.locator('[data-product-project-grid] > article'))
+        await expect(main.locator('[data-product-project-grid] > a'))
           .toHaveCount(1);
       } else {
-        await expect(callsToAction).toHaveCount(1);
-        await expect(main.getByRole('link', { name: /Explore (roof approaches|the details)/ })).toBeVisible();
+        if (routeCase.route === '/products/pergolas/gable') {
+          await expect(main.getByRole('link', { name: /^Enquire$/ })).toHaveCount(1);
+          await expect(main.locator('summary').filter({ hasText: 'Compare acrylic, solid and mixed roofing' })).toBeVisible();
+        } else {
+          await expect(callsToAction).toHaveCount(1);
+          await expect(main.getByRole('link', { name: /Explore the details/ })).toBeVisible();
+        }
 
         const galleries = main.locator('[data-product-gallery]');
         await expect(galleries).toHaveCount(1);
@@ -314,8 +316,10 @@ test('all ten product routes retain the complete mobile content contract', async
     const main = page.locator('main[data-product-detail]:visible').last();
     await expect(main.locator('h1:visible')).toHaveCount(1);
     await expect(main.locator('[data-product-gallery="primary"]')).toHaveCount(1);
-    await expect(main.locator('[data-responsive-gallery]')).toHaveCount(1);
+    const interactive = ['pitched', 'gable', 'box-perimeter'].includes(product.slug);
+    await expect(main.locator('[data-responsive-gallery]')).toHaveCount(interactive ? 2 : 1);
     expect(await main.locator('details').count()).toBeGreaterThanOrEqual(2);
+    if (interactive) await main.locator('summary').filter({ hasText: 'Is this roofline right for your home?' }).click();
     for (const tradeoff of product.tradeoffs) await expect(main.getByText(tradeoff.tension, { exact: true })).toBeVisible();
     await expect(main.getByText(product.decision.worksWhen[0], { exact: true }))
       .toBeVisible();
@@ -323,7 +327,7 @@ test('all ten product routes retain the complete mobile content contract', async
       .toBeVisible();
     await expect(main).not.toContainText('—');
     const enquiryLabel = ['pitched', 'gable', 'box-perimeter'].includes(product.slug)
-      ? 'Discuss my project'
+      ? /^Enquire$/
       : 'Send project brief';
     await expect(main.getByRole('link', { name: enquiryLabel }))
       .toHaveCount(1);
@@ -844,6 +848,8 @@ test.describe('photo-led product opening', () => {
     await page.goto('/products/pergolas/box-perimeter');
     const gallery=page.getByRole('region',{name:'Built pergola photos',exact:true});
     await expect(gallery).toBeVisible();const before=await gallery.boundingBox();
+    await expect(gallery.locator('[data-gallery-frame-active] img')).not.toHaveAttribute('loading', 'lazy');
+    await expect(page.locator('[data-product-gallery="primary"] [data-gallery-frame-active] img')).toHaveAttribute('loading', 'lazy');
     await gallery.focus();await page.keyboard.press('End');
     await expect(gallery).toContainText('Steel carport with an internal gable');
     expect(Math.abs((await gallery.boundingBox())!.height-before!.height)).toBeLessThanOrEqual(2);

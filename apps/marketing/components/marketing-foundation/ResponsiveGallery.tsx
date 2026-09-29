@@ -38,6 +38,7 @@ type ResponsiveGalleryProps = {
   label: string;
   swipe?: boolean;
   thumbnails?: boolean;
+  priorityFirstImage?: boolean;
 };
 
 const ADJACENT_PRELOAD_ROOT_MARGIN = '160px 0px';
@@ -53,6 +54,7 @@ export function ResponsiveGallery({
   label,
   swipe = false,
   thumbnails = false,
+  priorityFirstImage = false,
 }: ResponsiveGalleryProps) {
   const statusId = `${useId()}-gallery-status`;
   const galleryRef = useRef<HTMLElement>(null);
@@ -187,6 +189,7 @@ export function ResponsiveGallery({
             >
               <Figure
                 image={item.image}
+                priority={priorityFirstImage && index === clampInitialIndex(initialIndex, items.length)}
                 alt={isActive ? item.alt : ''}
                 caption={isActive ? item.caption : undefined}
                 detail={isActive ? item.detail : undefined}

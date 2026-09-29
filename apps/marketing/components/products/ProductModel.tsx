@@ -56,7 +56,7 @@ function ModelView({ draft, gallery, mode, onModeChange, onFullscreen, onReady, 
       {!fullscreen && lighting.view === '3D' && <button ref={opener} className={styles.openModel} onPointerDown={() => { openingScroll.current = window.scrollY; }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') openingScroll.current = window.scrollY; }} onClick={() => { lighting.setView('3D'); setFullscreen(true); }} aria-label="Open fullscreen 3D"><span>Tap to explore in 3D <ArrowUpRight/></span></button>}
       {fullscreen && <p className={styles.fullscreenHint}>Drag to rotate · Pinch to zoom</p>}
     </dialog>
-    <div className={styles.openingPhotos} hidden={!built}><ResponsiveGallery label="Built pergola photos" swipe items={gallery.map(image => ({ image: image.src, alt: image.alt, caption: image.caption, detail: image.detail, objectPosition: image.objectPosition, ratio: 'landscape', sizes: '(max-width:760px) 100vw, 60vw' }))}/></div>
+    <div className={styles.openingPhotos} hidden={!built}><ResponsiveGallery label="Built pergola photos" swipe priorityFirstImage items={gallery.map(image => ({ image: image.src, alt: image.alt, caption: image.caption, detail: image.detail, objectPosition: image.objectPosition, ratio: 'landscape', sizes: '(max-width:760px) 100vw, 60vw' }))}/></div>
   </>;
 }
 export default function ProductModel({ draft, gallery, mode, onModeChange, onFullscreen = noChange, onReady, resizing = false }: { resizing?: boolean; draft: PreviewDraft; gallery: ProductRecord['gallery']; mode: 'Photos' | 'Design' | 'Plan'; onModeChange: (mode: 'Photos' | 'Design' | 'Plan') => void; onFullscreen?: (open: boolean) => void; onReady?: () => void }) {
