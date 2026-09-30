@@ -1,0 +1,42 @@
+description: Sanctuary offline AI evaluation harness contract
+
+prompts:
+  - |
+      contract={{contract}}
+      task_id={{task_id}}
+      outcome={{outcome}}
+
+providers:
+  - id: echo
+    label: Offline deterministic echo
+
+tests:
+  - description: Accepted synthetic task remains bound to its contract and task ID
+    vars:
+      contract: ai_synthetic_v1
+      task_id: synthetic-task-001
+      outcome: accepted
+    assert:
+      - type: contains
+        value: contract=ai_synthetic_v1
+      - type: contains
+        value: task_id=synthetic-task-001
+      - type: contains
+        value: outcome=accepted
+      - type: not-contains
+        value: customer
+
+  - description: Rejected synthetic task remains explicit and deterministic
+    vars:
+      contract: ai_synthetic_v1
+      task_id: synthetic-task-002
+      outcome: rejected
+    assert:
+      - type: contains
+        value: contract=ai_synthetic_v1
+      - type: contains
+        value: task_id=synthetic-task-002
+      - type: contains
+        value: outcome=rejected
+      - type: not-contains
+        value: project
