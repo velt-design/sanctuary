@@ -15,7 +15,9 @@ for (const entry of pages) for (const width of [320, 390, 1440]) test(`${entry.a
   await page.setViewportSize({ width, height: 1000 });
   const response = await page.goto(entry.route);
   expect(response?.status()).toBe(200);
-  expect(response?.headers()['x-robots-tag'] ?? '').not.toContain('noindex');
+  const robotsHeader = response?.headers()['x-robots-tag'] ?? '';
+  if (new URL(page.url()).hostname.endsWith('.vercel.app')) expect(robotsHeader).toContain('noindex');
+  else expect(robotsHeader).not.toContain('noindex');
   await expect(page.locator('h1')).toHaveText(entry.title);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(entry.route + '$'));
   const proof = page.locator(entry.projects);
