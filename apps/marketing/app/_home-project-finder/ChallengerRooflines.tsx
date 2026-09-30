@@ -16,8 +16,7 @@ export default function ChallengerRooflines({ selected, onSelect }: Props) {
   return <section id="project-finder" className={styles.rooflines} aria-labelledby="project-finder-heading">
     <Container width="wide" id="project-finder-opening" data-project-finder-opening>
       <header className={styles.sectionHeader}>
-        <h2 id="project-finder-heading">Three rooflines.</h2>
-        <p className={styles.installationHeading}>Installation included.</p>
+        <h2 id="project-finder-heading">Three rooflines. <span className={styles.installationHeading}>Installation included.</span></h2>
       </header>
       <div className={styles.rooflineGrid}>{PRODUCT_FORM_CHOICES.map(choice => <article key={choice.type} className={styles.roofline} data-product-type={choice.type}>
         <h3><Link href={`/products/pergolas/${choice.type}`}>{choice.title}<ArrowUpRight /></Link></h3>
