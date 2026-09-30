@@ -1,32 +1,5 @@
 import type { SeoLandingPageConfig } from '@/components/seo-landing/types';
 
-const faqItems = [
-  {
-    question: 'What kinds of commercial pergola projects does Sanctuary undertake?',
-    answer: [
-      'Sanctuary works across hospitality, workplace, recreation and other customer-facing sites where the pergola scope fits the property, intended use and operating requirements.',
-    ],
-  },
-  {
-    question: 'Can Sanctuary work within an architect- or consultant-led project?',
-    answer: [
-      'Yes. Sanctuary can lead the pergola scope or deliver within a developed consultant package. Responsibilities are confirmed before fabrication.',
-    ],
-  },
-  {
-    question: 'Can Sanctuary coordinate engineering and building consent?',
-    answer: [
-      'Sanctuary can coordinate these where included. Requirements and decisions remain project-specific.',
-    ],
-  },
-  {
-    question: 'Can the project be planned around an operating venue?',
-    answer: [
-      'Yes. Opening hours, routes, deliveries, access and shutdowns are agreed for the site.',
-    ],
-  },
-] as const;
-
 export const commercialPergolasConfig = {
   marker: 'commercial-pergolas-auckland',
   route: '/commercial-pergolas-auckland',
@@ -42,152 +15,19 @@ export const commercialPergolasConfig = {
     imageAlt: 'Interior of The Good Home Takanini hospitality courtyard beneath twin acrylic gables',
     objectPosition: '50% 48%',
     eyebrow: 'Commercial pergolas in Auckland',
-    title: 'Commercial pergolas, designed and installed.',
+    title: 'Make more of your outdoor space.',
     intro:
-      'Sanctuary designs, coordinates and installs commercial pergolas, or works within your consultant-led project.',
-    primaryCta: 'Send commercial brief',
-    secondaryCta: 'Review completed work',
+      'Covered courtyards for hospitality. Pergola design, roofing, suitable screens and installation, with the coordination your venue needs.',
+    primaryCta: 'Discuss your venue',
+    secondaryCta: 'See completed work',
     secondaryHref: '#commercial-projects',
-    proof: [
-      'Design and delivery',
-      'Consultant-led work welcome',
-      'Installed by Sanctuary',
-    ],
+    proof: [],
   },
-  blocks: [
-    {
-      kind: 'projects',
-      id: 'commercial-projects',
-      eyebrow: 'Completed commercial work',
-      title: 'Three projects. Three delivery roles.',
-      items: [
-        {
-          slug: 'goodhome-commercial-terrace',
-          label: 'Hospitality',
-          role: 'Sanctuary-led hospitality design and build',
-          summary: 'Two gables extend the villa-style facade over the restaurant courtyard.',
-          facts: ['67.7 m² covered area', '25 degree gable relationship'],
-          image: {
-            src: '/images/project-goodhome-05.jpg',
-            alt: 'The Good Home Takanini courtyard enclosed by clear blinds beneath twin acrylic gables',
-            objectPosition: '50% 48%',
-          },
-        },
-        {
-          slug: 'lilliput-mini-golf',
-          label: 'Recreation',
-          role: 'Supply and installation within a consultant-led renovation',
-          summary: 'A pitched pergola installed within a consultant-led venue renovation.',
-          facts: ['72 m² covered area', 'Existing levels and sightlines retained'],
-        },
-        {
-          slug: 'kiwi-rail-platform',
-          label: 'Workplace',
-          role: 'Architect-led workplace canopy delivery',
-          summary: 'An aluminium and acrylic canopy follows a workplace route.',
-          facts: ['115 m² circulation canopy', 'Integrated strip lighting'],
-          image: {
-            src: '/images/project-kiwi-rail-01.jpg',
-            alt: 'Long KiwiRail workplace canopy connecting circulation routes between office buildings',
-            objectPosition: '50% 48%',
-          },
-        },
-      ],
-    },
-    {
-      kind: 'process',
-      id: 'commercial-process',
-      eyebrow: 'Delivery',
-      title: 'From brief to installation.',
-      items: [
-        {
-          title: 'Define the scope',
-          copy: 'Agree the site, operational brief, design and responsibilities.',
-        },
-        {
-          title: 'Coordinate the project',
-          copy: 'Confirm engineering, approvals, trades, access and sequencing.',
-        },
-        {
-          title: 'Install and hand over',
-          copy: 'Build and install the agreed structure, then complete handover.',
-        },
-      ],
-    },
-    {
-      kind: 'editorial-image',
-      id: 'commercial-capability',
-      tone: 'neutral',
-      eyebrow: 'Capability',
-      title: 'Define the role before work starts.',
-      image: {
-        src: '/images/project-kiwi-rail-03.jpg',
-        alt: 'Architectural detail of the KiwiRail canopy structure and covered pedestrian route',
-        objectPosition: '50% 42%',
-      },
-      lead: 'Sanctuary can lead the pergola scope or work within a consultant-led package.',
-      items: [
-        {
-          title: 'Design',
-          text: 'Develop the pergola design and agreed technical pathway.',
-        },
-        {
-          title: 'Site coordination',
-          text: 'Plan access, operating constraints, interfaces and sequencing.',
-        },
-        {
-          title: 'Delivery',
-          text: 'Build, install and hand over the agreed scope.',
-        },
-      ],
-    },
-    {
-      kind: 'link-cards',
-      id: 'commercial-pathways',
-      eyebrow: 'Choose the useful next step',
-      title: 'Related project paths.',
-      items: [
-        {
-          title: 'Working with an architect, designer or builder?',
-          text: 'Share an early brief or developed consultant package.',
-          href: '/architects-designers-builders',
-          linkLabel: 'Review professional collaboration',
-        },
-        {
-          title: 'Reviewing likely scope and cost drivers?',
-          text: 'Compare structure, approvals, access, trades and responsibilities.',
-          href: '/pergola-cost-auckland',
-          linkLabel: 'Review scope and cost drivers',
-        },
-      ],
-    },
-    {
-      kind: 'faq',
-      id: 'commercial-pergolas-faq',
-      tone: 'elevated',
-      eyebrow: 'Common commercial questions',
-      title: 'Commercial project questions.',
-      items: faqItems,
-    },
-  ],
-  blockOrder: [
-    'commercial-projects',
-    'commercial-process',
-    'commercial-capability',
-    'commercial-pathways',
-    'commercial-pergolas-faq',
-  ],
-  mobileDisclosureGroups: [
-    {
-      id: 'commercial-planning-support',
-      summary: 'Common commercial planning questions',
-      blockIds: ['commercial-pergolas-faq'],
-    },
-  ],
+  blocks: [],
   form: {
     ariaLabel: 'Commercial pergola project enquiry form',
     eyebrow: 'Commercial brief',
-    heading: 'Tell us about the project.',
+    heading: 'Tell us about your venue.',
     intro: 'Share the site, intended use and known constraints.',
     submitLabel: 'Send project brief',
     messageLabel: 'What should the space achieve?',

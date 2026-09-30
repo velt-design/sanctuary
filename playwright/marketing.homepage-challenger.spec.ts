@@ -24,7 +24,7 @@ for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
       await expect(card.locator('img')).toBeVisible();
       await expect.poll(() => card.locator('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await expect(card.locator('h3 a')).toHaveAttribute('href', `/products/pergolas/${type}`);
-      await expect(card.getByText('Including installation', { exact: true })).toBeVisible();
+      await expect(card.getByText('Installed estimates', { exact: true })).toBeVisible();
       const rows = card.locator('[data-price-example]');
       await expect(rows).toHaveCount(3);
       for (const [index, widthMm] of [3000, 6000, 9000].entries()) {
@@ -55,14 +55,14 @@ for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
       expect(heading!.y + heading!.height).toBeLessThanOrEqual(image!.y);
       expect(image!.y + image!.height).toBeLessThanOrEqual(strip!.y + 1);
     }
-    await expect(page.getByText('Installed estimates include GST. Subject to site confirmation.', { exact: false })).toBeVisible();
+    await expect(page.getByText('Includes GST · Acrylic roof · Open sides. Subject to site confirmation.', { exact: false })).toBeVisible();
     await page.getByText('Estimate details & illustrations').click();
     await expect(page.getByText(/Product links preserve your saved choices/)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Explore this project' })).toHaveAttribute('href', '/projects/warkworth-outdoor-room');
     await expect(page.getByRole('link', { name: 'Discuss your project' })).toHaveAttribute('href', /enquiry_type=residential/);
     await expect(page.getByRole('link', { name: 'Discuss your project' })).toHaveAttribute('href', /source_component=final_cta/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-    if (width < 760) expect(await page.getByText('Installed estimates include GST.', { exact: false }).evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14);
+    if (width < 760) expect(await page.getByText('Includes GST · Acrylic roof · Open sides.', { exact: false }).evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(14);
     else {
       const color = await page.locator('header .nav-cta').evaluate(e => getComputedStyle(e).color);
       expect(color).not.toBe('rgb(255, 255, 255)');
@@ -149,14 +149,14 @@ test(`nine size-price pairs load and recover without moving the comparison at ${
   expect(Math.abs(await next.evaluate(element => element.getBoundingClientRect().top + window.scrollY) - before)).toBeLessThan(2);
   recover = true;
   await first.getByRole('button', { name: 'Pitched 3 × 3 m estimate unavailable. Retry' }).click();
-  await expect(first.locator('[data-priced="true"]')).toHaveText('≈ Approximately $8,000');
+  await expect(first.locator('[data-priced="true"]')).toHaveText('Approximately $8,000');
   await expect(page.getByRole('button', { name: /estimate unavailable. Retry/ })).toHaveCount(8);
   for (const row of await page.locator('[data-price-example]').all()) {
     if (await row.getByRole('button').count()) await row.getByRole('button').click();
   }
   await expect(page.locator('[data-priced="true"]')).toHaveCount(9);
   for (const type of ['pitched', 'gable', 'box-perimeter']) {
-    for (const [width, price] of [[3000, '≈ Approximately $8,000'], [6000, '≈ Approximately $11,000'], [9000, '≈ Approximately $14,000']] as const) {
+    for (const [width, price] of [[3000, 'Approximately $8,000'], [6000, 'Approximately $11,000'], [9000, 'Approximately $14,000']] as const) {
       const row = page.locator(`[data-product-type="${type}"] [data-price-example="${width}"]`);
       await expect(row.locator('dt')).toHaveText(`${width / 1000} × 3 m`);
       await expect(row.locator('[data-priced="true"]')).toHaveText(price);

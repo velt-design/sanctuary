@@ -15,7 +15,7 @@ function PriceRow({ type, selection }: { type: ProductDesignType; selection: typ
   return <div className={styles.row} data-price-example={selection.widthMm}>
     <dt>{label}</dt>
     <dd aria-live="polite" aria-atomic="true">
-      {complete ? <strong data-priced="true"><span className={styles.approximateSymbol} aria-hidden="true">≈ </span><span className={styles.approximateWord}>Approximately </span>{formatChallengerExampleAmount(estimate.amount!)}</strong>
+      {complete ? <strong data-priced="true"><span className={styles.approximateWord}>Approximately </span>{formatChallengerExampleAmount(estimate.amount!)}</strong>
         : 'retry' in estimate && estimate.retry
           ? <button type="button" aria-label={`${roofline} ${label} estimate unavailable. Retry`} onClick={retry}>Unavailable<br /><span>Retry</span></button>
           : <span className={styles.status}>{'amount' in estimate || estimate.message === 'Your design needs a tailored quote.' ? 'Tailored quote' : 'Updating…'}</span>}
@@ -25,7 +25,7 @@ function PriceRow({ type, selection }: { type: ProductDesignType; selection: typ
 }
 
 export default function ChallengerPriceExamples({ type }: { type: ProductDesignType }) {
-  return <div><p className={styles.installation}>Including installation</p><dl className={styles.examples} aria-label="Example sizes and installed estimates">
+  return <div><p className={styles.installation}>Installed estimates</p><dl className={styles.examples} aria-label="Example sizes and installed estimates">
     {CHALLENGER_EXAMPLE_SELECTIONS.map(selection => <PriceRow key={selection.widthMm} type={type} selection={selection} />)}
   </dl></div>;
 }

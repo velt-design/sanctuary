@@ -19,8 +19,9 @@
 .projectCaption {position:absolute;bottom:1.5rem;left:var(--page-gutter);display:flex;align-items:center;gap:2rem;padding:.8rem 1rem;background:var(--color-canvas);text-decoration:none;font-size:.85rem;line-height:1.5}
 .projectCaption span span {display:block;font-size:.7rem;color:var(--color-text-secondary)}
 .rooflines {padding:clamp(3rem,6vw,6rem) 0;scroll-margin-top:100px}
-.sectionHeader {display:flex;align-items:center;justify-content:space-between;gap:2rem;margin-bottom:1.5rem}
+.sectionHeader {margin-bottom:1.5rem}
 .sectionHeader h2 {font-size:clamp(2.2rem,4.5vw,4.2rem);line-height:1.05;margin:0}
+.installationHeading {display:block;color:var(--color-text-secondary)}
 .sectionHeader a,.builtCopy>a,.allProjects,.closeProof>a {display:flex;align-items:center;gap:1rem;min-height:44px;font-size:.9rem}
 .priceNote {font-size:.875rem;line-height:1.65;margin:1rem 0 .25rem;color:var(--color-text-secondary)}
 .rooflineGrid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2rem}
@@ -68,7 +69,7 @@
   .heroImage {height:340px}
   .projectCaption {bottom:1rem;left:1.25rem;right:1.25rem;justify-content:space-between;font-size:.8rem;padding:.6rem .8rem}
   .sectionHeader {display:block;margin-bottom:.65rem}
-  .sectionHeader h2 {font-size:2.35rem}
+  .sectionHeader h2 {font-size:clamp(2rem,9.6vw,2.35rem)}
   .sectionHeader a {justify-content:space-between;margin-top:.5rem}
   .roofline h3 {font-size:1.65rem}
   .estimateDetails {font-size:.875rem}

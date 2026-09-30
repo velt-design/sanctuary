@@ -215,7 +215,11 @@ a versioned snapshot, including offline, until reload or refresh. No publication
 push or offline freshness is implied. The existing API, detailed-product hooks
 and full designer pricing are unchanged. The shared
 `estimateDisplay.formatComparisonEstimate` formats comparison amounts to the
-nearest $100; the homepage reuses the same formatter with unchanged presentation.
+nearest $100; the homepage reuses the same formatter. Its roofline section pairs
+"Three rooflines." with "Installation included." and labels each table "Installed
+estimates". Homepage amounts omit the visible approximation symbol while retaining
+the accessible approximation wording and rounding disclosure. Overview symbols
+and precise detailed-product estimates remain unchanged.
 Exact calculator and detailed-estimate precision are unchanged. Installation,
 GST, acrylic/open sides and site confirmation remain visible; attachment, ridge,
 ground-level and illustration assumptions are available beside the comparison.
@@ -666,30 +670,29 @@ The residential `/pergolas-auckland` route uses six major regions before its fin
 
 The custom `/custom-pergolas-auckland` route adopts the same six-region budget without becoming a copy of residential. Three constrained-project examples and explicit site conditions explain why custom design is needed; a three-stage process leads to one `custom-planning-support` disclosure. The dominant guide-series navigation is disabled on both service routes while the useful canonical guide links remain. Custom enquiry links retain a residential audience with the custom source path.
 
-The commercial `/commercial-pergolas-auckland` route uses the same configured
-renderer without forking it. An explicit complete block order puts three
-governed commercial cases immediately after the hero and a three-stage process
-next. One visible capability section consolidates Sanctuary-led and
-consultant-led scope, project interfaces and operating-site controls. The
-professional-collaboration and cost-driver pathways remain visible before one
-responsive FAQ group, so the mobile journey does not hide its useful next
-steps behind supporting detail. Project proof uses three columns at wide
-desktop, two columns plus one intentional wide card at intermediate widths, and
-one column on mobile. Route-owned verified image overrides give the hero,
-project proof and operating-site story distinct roles without changing the
-governed project records.
-Header, early and embedded-form actions retain the commercial audience and
-canonical route source.
+The commercial and professional routes use a scoped editorial composition in
+`components/seo-landing/AudienceLandingPage.tsx` and
+`audience-landing.module.css`. The Commercial page leads with a hospitality
+courtyard and Good Home / Atelier Shu proof, then the covered-space package,
+operating-site considerations and smaller workplace/recreation examples.
+Professionals leads with collaborative design development, verified roof and
+building-interface photography, and accurate historical project roles. These
+roles are not separate supply-only offers. The 30 September 2026 claim families
+and package exclusions are governed by the Marketing Claims Register.
 
-`/architects-designers-builders` is the canonical professional capability
-route. It is discoverable from the mobile header, homepage, footer and sitemap.
-The route explains role boundaries, collaboration, documentation inputs and
-engineering interfaces using only governed project and service records. Three
-projects precede the professional form. Optional organisation, role, stage,
-team and scope fields extend the brief without changing shared required fields
-or attachment policy. Payload and consented analytics retain `professional`,
-the route source and `embedded_form` component in lower-case canonical
-properties without personal values.
+`SeoLandingPage` keeps schema, guide/context handling and the existing embedded
+`AcrylicPergolaEnquiryForm`. Its optional presentation slots replace only hero
+and content for these two routes; default consumers retain the existing renderer.
+Guided context still precedes Project Finder context and the route's
+`embedded_form` fallback. Audience, source, optional brief fields, required
+contact fields, uploads, consent and recovery retain their existing owners.
+Route content files own metadata and form wording. Contact, Projects, product
+pages and pricing are unchanged. No new imagery or shared theme is introduced.
+
+Verify both normal entries at 320/390/desktop, meaningful image crops and
+scope boundaries, native project/form anchors, intercepted audience/source and
+optional-upload contracts, and an unchanged default-renderer route. Preview
+review is distinct from owner acceptance and production release.
 
 `SiteFooter.tsx` owns the approved compact site utility. It has no viewport
 minimum, displays the public phone and email as direct actions, keeps one
