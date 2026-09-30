@@ -29,6 +29,7 @@ type UseCalculatorDraftSessionOptions = {
   allowEmptyDesign?: boolean;
   startEmptyDesign?: boolean;
   persistence?: CalculatorDraftPersistence;
+  continueFrom?: { draftEntityKey: LocalFirstEntityKey; draftSessionKey: string };
 };
 
 type UseCalculatorDraftSessionResult = {
@@ -58,7 +59,10 @@ export function useCalculatorDraftSession({
   allowEmptyDesign = false,
   startEmptyDesign = false,
   persistence = calculatorDraftPersistence,
+  continueFrom,
 }: UseCalculatorDraftSessionOptions): UseCalculatorDraftSessionResult {
+  const continueFromKey = continueFrom ? `${continueFrom.draftEntityKey}\u0000${continueFrom.draftSessionKey}` : null;
+  const readyKeyRef = useRef<string | null>(null);
   const draftKey = `${draftEntityKey}\u0000${draftSessionKey}`;
   const currentDraftKeyRef = useRef(draftKey);
   currentDraftKeyRef.current = draftKey;
@@ -81,6 +85,16 @@ export function useCalculatorDraftSession({
   useEffect(() => {
     let cancelled = false;
     writeGenerationRef.current += 1;
+    if (continueFromKey && readyKeyRef.current === continueFromKey) {
+      // Alias publication changes persistence ownership, not the user's current values/selection.
+      readyKeyRef.current = draftKey;
+      setHydratedKey(draftKey);
+      setPersistenceReadyKey(draftKey);
+      setRestoredKey(draftKey);
+      lastScheduledFingerprintRef.current = { key: draftKey, fingerprint: null };
+      return;
+    }
+    readyKeyRef.current = null;
     setHydratedKey(null);
     setPersistenceReadyKey(null);
     setRestoredKey(null);
@@ -102,6 +116,7 @@ export function useCalculatorDraftSession({
       if (restored) {
         const normalized = normalizeCalculatorInputsForUi(restored.snapshot.values, { allowEmpty: allowEmptyDesign });
         const nextActiveModuleIndex = safeModuleIndex(normalized, restored.snapshot.activeModuleIndex);
+        readyKeyRef.current = draftKey;
         setValues(normalized);
         setActiveModuleIndex(nextActiveModuleIndex);
         setRestoredKey(draftKey);
@@ -115,6 +130,7 @@ export function useCalculatorDraftSession({
         const initialValues = startEmptyDesign
           ? makeEmptyAddOnCalculatorInputs()
           : makeDefaultCalculatorInputs();
+        readyKeyRef.current = draftKey;
         setValues(initialValues);
         setActiveModuleIndex(0);
         setPersistenceReadyKey(draftKey);
@@ -126,13 +142,14 @@ export function useCalculatorDraftSession({
     return () => {
       cancelled = true;
     };
-  }, [allowEmptyDesign, awaitsExternalDraft, draftEntityKey, draftKey, draftSessionKey, persistence, startEmptyDesign]);
+  }, [allowEmptyDesign, awaitsExternalDraft, continueFromKey, draftEntityKey, draftKey, draftSessionKey, persistence, startEmptyDesign]);
 
   const acceptExternalDraft = useCallback(
     (externalValues: CalculatorInputs, externalActiveModuleIndex = 0) => {
       if (currentDraftKeyRef.current !== draftKey) return;
       const normalized = normalizeCalculatorInputsForUi(externalValues, { allowEmpty: allowEmptyDesign });
       const nextActiveModuleIndex = safeModuleIndex(normalized, externalActiveModuleIndex);
+      readyKeyRef.current = draftKey;
       setValues(normalized);
       setActiveModuleIndex(nextActiveModuleIndex);
       setRestoredKey(null);

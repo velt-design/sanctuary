@@ -65,7 +65,7 @@ Use `useLocalWorkingCopy` for entity draft state. Use aliased sync helpers when 
 
 Creates can start with local IDs. When the server returns a durable ID, register an alias so subsequent working copies and sync state resolve correctly.
 
-Use alias helpers from `apps/portal/lib/localFirst/store.ts`.
+Use alias helpers from `apps/portal/lib/localFirst/store.ts`. Project estimate selection subscribes to alias hydration and replaces a provisional URL only after the durable estimate is present in the current project metadata. During cache replacement before alias publication (or the reverse), only a matching queued create and same-project working copy may keep the local editor selected. Unknown or foreign local IDs remain invalid; queued, offline, failed and conflicted work retains its existing recovery state. Late alias publication must not override a newer navigation choice. The calculator session migrates its persistence key on an alias-equivalent ID change while retaining live values and active module; it does not reapply an older saved snapshot. Reloading the canonical URL restores the migrated local draft.
 
 ## Server Authority
 
