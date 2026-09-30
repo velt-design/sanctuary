@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
-import SeoLandingPage from '@/components/seo-landing/SeoLandingPage';
+import AudienceLandingPage from '@/components/seo-landing/AudienceLandingPage';
 import {
   resolveGuidedJourneyContext,
   type GuidedJourneySearchParams,
@@ -42,5 +42,5 @@ export default async function CommercialPergolasAucklandPage({
     'commercial',
     searchParams ? await searchParams : {},
   );
-  return <SeoLandingPage config={commercialPergolasConfig} guidedContext={guidedContext} />;
+  return <AudienceLandingPage audience="commercial" config={commercialPergolasConfig} guidedContext={guidedContext} />;
 }

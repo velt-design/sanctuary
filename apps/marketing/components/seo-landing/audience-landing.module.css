@@ -1,0 +1,39 @@
+.page { --audience-ink: #1f211c; color: var(--audience-ink); }
+.hero,.content { width: min(100% - 96px,1440px); margin-inline: auto; }
+.hero { padding-top: 48px; display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.5fr); gap:40px; align-items:center; }
+.heroCopy { position:relative; z-index:1; }
+.hero h1 { font: 450 clamp(48px,5.3vw,82px)/.98 'Instrument Sans Variable',sans-serif; letter-spacing:-.055em; margin:20px 0 28px; }
+.hero .intro { font-size:19px; line-height:1.5; max-width:35ch; }
+.label { font-size:12px; text-transform:uppercase; letter-spacing:.1em; line-height:1.5; margin:0 0 20px; }
+.actions { display:flex; align-items:flex-start; flex-direction:column; gap:6px; margin-top:28px; }
+.actions a { min-height:44px; display:inline-flex; align-items:center; font-size:16px; }
+.actions a:first-child { color:#535d3d; }
+.content h2 { font:450 clamp(32px,3.2vw,50px)/1.07 'Instrument Sans Variable',sans-serif; letter-spacing:-.04em; margin:0; }
+.content h3 { font:500 24px/1.2 'Instrument Sans Variable',sans-serif; letter-spacing:-.025em; margin:20px 0 10px; }
+.content p,.content dd { font-size:17px; line-height:1.6; }
+.content .note { font-size:14px; line-height:1.65; color:#5e6157; }
+.package { display:grid; grid-template-columns:1fr 1fr; gap:10%; padding:80px 0; border-bottom:1px solid #d4d5cd; }
+.package p:first-child { margin-top:0; }
+.sectionHeading { margin:70px 0 32px; }
+.hospitality { display:grid; grid-template-columns:1.35fr 1fr; gap:8%; align-items:start; }
+.hospitality article:last-child { margin-top:110px; }
+.project p { max-width:49ch; }
+.project a,.compactProject a { min-height:44px; align-items:center; display:inline-flex; }
+.considerations { display:grid; grid-template-columns:1.15fr 1fr; gap:8%; align-items:center; margin:100px 0; }
+.considerations dl { margin:30px 0 0; }
+.considerations dl>div { padding:16px 0; border-top:1px solid #d4d5cd; }
+.content dt { font-size:17px; font-weight:500; }
+.content dd { margin:6px 0 0; color:#5e6157; }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:32px; }
+.professionalWork { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; }
+.compactProject p { font-size:15px; line-height:1.6; }
+.compactProject h3 { font-size:22px; }
+.related { display:flex; gap:36px; margin:40px 0 70px; flex-wrap:wrap; }
+.related a { min-height:44px; display:inline-flex; align-items:center; }
+.detailNotes { display:grid; grid-template-columns:repeat(3,1fr); gap:36px; margin:32px 0 0; }
+.brief { display:grid; grid-template-columns:1fr 1fr; gap:20px 8%; margin:80px 0; padding-top:32px; border-top:1px solid #d4d5cd; }
+.brief p { margin:0; }
+.brief a { grid-column:2; min-height:44px; }
+@media(min-width:1100px){.commercialHero { grid-template-columns:.78fr 1.5fr; }.commercialHero h1 { width:8.2ch; }.professionalHero { grid-template-columns:1fr 1.25fr; }.professionalHero h1 { max-width:9ch; }.professionalHero figure>div { max-height:680px; }}
+@media(max-width:1000px){.hero,.content { width:calc(100% - 56px); }.hero { gap:28px; }.hero h1 { font-size:52px; }.package { gap:6%; }.professionalWork { grid-template-columns:1fr 1fr; }.professionalWork article:last-child { grid-column:1/-1; max-width:65%; }.considerations { align-items:start; }}
+@media(max-width:760px){.hero,.content { width:calc(100% - 40px); }.hero { display:flex; flex-direction:column; align-items:stretch; gap:28px; padding-top:26px; }.hero h1 { font-size:clamp(44px,11vw,62px); max-width:11ch; margin:12px 0 20px; }.hero .intro { font-size:17px; max-width:36ch; }.label { font-size:11px; margin-bottom:14px; }.actions { margin-top:18px; flex-direction:row; flex-wrap:wrap; gap:4px 20px; }.actions a { font-size:15px; }.package { display:block; padding:40px 0; }.package>div+div { margin-top:22px; }.content h2 { font-size:34px; }.content p,.content dd { font-size:16px; }.hospitality,.pair,.professionalWork,.considerations,.detailNotes,.brief { display:block; }.hospitality article:last-child { margin-top:40px; }.sectionHeading { margin-top:44px; margin-bottom:24px; }.considerations { margin:48px 0; }.considerations>div { margin-top:28px; }.pair>*+*,.professionalWork>*+* { margin-top:32px; }.professionalWork article:last-child { max-width:none; }.detailNotes>div { border-top:1px solid #d4d5cd; padding:16px 0; }.brief { margin:44px 0; }.brief p { margin:18px 0; }.related { margin:24px 0 40px; gap:4px; flex-direction:column; }.content h3 { font-size:23px; }}

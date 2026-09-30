@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -24,6 +25,7 @@ import { findPergolaGuide, pergolaGuideEditorialReview } from '@/data/pergolaGui
 
 type SeoLandingPageProps = {
   config: SeoLandingPageConfig;
+  presentation?: { hero: ReactNode; content: ReactNode; className: string };
   guidedContext?: GuidedJourneyContextModel | null;
   projectFinderContext?: ProjectFinderJourneyContextModel | null;
 };
@@ -32,6 +34,7 @@ export default function SeoLandingPage({
   config,
   guidedContext = null,
   projectFinderContext = null,
+  presentation,
 }: SeoLandingPageProps) {
   const guide = findPergolaGuide(config.route);
   const enquiryType = config.enquiryType ?? 'residential';
@@ -89,19 +92,19 @@ export default function SeoLandingPage({
   ];
 
   return (
-    <main className="acrylic-landing seo-landing" data-marketing-foundation-page data-seo-landing={config.marker}>
+    <main className={`acrylic-landing seo-landing ${presentation?.className ?? ''}`} data-marketing-foundation-page data-seo-landing={config.marker}>
       <JsonLd data={pageSchemas} />
-      <EditorialLandingHero id={config.marker+'-title'} eyebrow={config.hero.eyebrow} title={config.hero.title} intro={config.hero.intro} image={config.hero.image} alt={config.hero.imageAlt} objectPosition={config.hero.objectPosition}>
+      {presentation?.hero ?? <EditorialLandingHero id={config.marker+'-title'} eyebrow={config.hero.eyebrow} title={config.hero.title} intro={config.hero.intro} image={config.hero.image} alt={config.hero.imageAlt} objectPosition={config.hero.objectPosition}>
         <div className="editorial-actions"><TextLink href={config.hero.primaryHref ?? '#project-details'}>{config.hero.primaryCta}</TextLink><TextLink href={config.hero.secondaryHref}>{config.hero.secondaryCta}</TextLink></div>
         <ul className="editorial-proof" aria-label={config.schemaName+' approach'}>{config.hero.proof.map(item => <li key={item}>{item}</li>)}</ul>
-      </EditorialLandingHero>
+      </EditorialLandingHero>}
       <GuidedJourneyContext context={guidedContext} />
       <ProjectFinderJourneyContext context={projectFinderContext} />
       {config.showDesignNextSteps && <DesignNextSteps sourcePath={config.route} helpHref="#project-details" />}
       {config.showGuideNavigation === false
         ? null
         : <PergolaGuideNavigation route={config.route} />}
-      {guideFirstLayer && config.guideFirstLayer ? (
+      {presentation?.content ?? (guideFirstLayer && config.guideFirstLayer ? (
         <>
           <SeoLandingBlocks blocks={[guideFirstLayer.answerBlock]} />
           <div data-guide-first-layer-project>
@@ -132,7 +135,7 @@ export default function SeoLandingPage({
         </>
       ) : (
         <SeoLandingBlocks blocks={blocks} disclosureGroups={config.mobileDisclosureGroups} />
-      )}
+      ))}
       <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label={config.form.ariaLabel}><Container width="wide"><AcrylicPergolaEnquiryForm eyebrow={config.form.eyebrow} heading={config.form.heading} intro={config.form.intro} submitLabel={config.form.submitLabel} messageLabel={config.form.messageLabel} messagePlaceholder={config.form.messagePlaceholder} briefFields={config.form.briefFields} directContact={config.form.directContact} roofPreference={config.form.roofPreference} initialEnquiryType={enquiryType} sourceContext={guidedContext?.enquiryContext ?? projectFinderContext?.enquiryContext ?? { enquiryType, sourcePath: config.route, sourceComponent: 'embedded_form' }} /></Container></Section>
     </main>
   );
