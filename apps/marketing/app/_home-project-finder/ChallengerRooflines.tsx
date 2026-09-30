@@ -17,6 +17,7 @@ export default function ChallengerRooflines({ selected, onSelect }: Props) {
     <Container width="wide" id="project-finder-opening" data-project-finder-opening>
       <header className={styles.sectionHeader}>
         <h2 id="project-finder-heading">Three rooflines.</h2>
+        <p className={styles.installationHeading}>Installation included.</p>
       </header>
       <div className={styles.rooflineGrid}>{PRODUCT_FORM_CHOICES.map(choice => <article key={choice.type} className={styles.roofline} data-product-type={choice.type}>
         <h3><Link href={`/products/pergolas/${choice.type}`}>{choice.title}<ArrowUpRight /></Link></h3>
@@ -25,7 +26,7 @@ export default function ChallengerRooflines({ selected, onSelect }: Props) {
         </Link>
         <ChallengerPriceExamples type={choice.type} />
       </article>)}</div>
-      <p className={styles.priceNote}>Acrylic roof · Open sides<br />Installed estimates include GST. Subject to site confirmation.</p>
+      <p className={styles.priceNote}>Includes GST · Acrylic roof · Open sides. Subject to site confirmation.</p>
       <Link className={styles.compareRooflines} href="/products">Compare pergolas</Link>
       <details className={styles.estimateDetails}><summary>Estimate details &amp; illustrations</summary><p>Example sizes are width × projection, in metres. Prices in NZD, rounded to the nearest $100 for comparison. Each example is attached to the house at ground level. Pitched and Gable use fascia attachment; Gable has a parallel ridge. Box attaches to the wall. Standard installation allowances included; size, options and site work affect the final price. Generated design illustrations; furniture and landscaping excluded. Product links preserve your saved choices.</p></details>
       <div className={styles.pathways} aria-label="Other project pathways">

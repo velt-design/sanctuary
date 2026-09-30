@@ -215,7 +215,11 @@ a versioned snapshot, including offline, until reload or refresh. No publication
 push or offline freshness is implied. The existing API, detailed-product hooks
 and full designer pricing are unchanged. The shared
 `estimateDisplay.formatComparisonEstimate` formats comparison amounts to the
-nearest $100; the homepage reuses the same formatter with unchanged presentation.
+nearest $100; the homepage reuses the same formatter. Its roofline section pairs
+"Three rooflines." with "Installation included." and labels each table "Installed
+estimates". Homepage amounts omit the visible approximation symbol while retaining
+the accessible approximation wording and rounding disclosure. Overview symbols
+and precise detailed-product estimates remain unchanged.
 Exact calculator and detailed-estimate precision are unchanged. Installation,
 GST, acrylic/open sides and site confirmation remain visible; attachment, ridge,
 ground-level and illustration assumptions are available beside the comparison.
