@@ -1,5 +1,47 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Financials tab candidate (2 October 2026)
+
+The fifth tab is a read-only company Financials view: P&L, bank balances,
+current money owed and current bills to pay. The existing developer-only hub
+boundary remains; its new staff API additionally requires the current matching
+finance grant. Local implementation and protected review do not establish a
+production release. The source report service was verified in production on
+1 October; this UI reuses it without another connector or consent flow.
+
+Owners: `components/financials/Financials.tsx` composes the journey;
+`FinancialToolbar`, `ProfitView`, `ReportTable`, `OutstandingView` and
+`FinancialDetail` own the corresponding views. `FinancialStatus` keeps loading,
+failure and retry in one compact row; its Details drawer contains full recovery
+context. Displayed evidence always names its own dates and basis. `useFinancials` owns cancellation,
+dated in-memory recovery and access-denial clearing. URL parameters retain period,
+basis, section, comparison and source-row selection; private reports are not put
+in browser storage. The hub's ordinary enquiry filters remain independent.
+
+`lib/xero/financials/contract.ts` owns exact accounting dates and bounded wire;
+`model.ts` owns source-row matching, exact cents and current ageing;
+`read.ts` reuses the existing Xero provider/parser and authority runtime.
+The API is `GET /api/staff/v1/marketing-performance/financials` with only
+from/to/basis. See `xero-connection.md` for source semantics and limits.
+
+P&L defaults to the last completed NZ month. Previous full calendar month,
+equal-day custom prior periods, same dates last year, and six completed-month
+trends retain their actual dates. Incomplete calendar coverage at either boundary
+is labelled, including a mid-month start with a month-end finish. Financial-year-to-date is offered only from
+valid Xero Organisation year-end metadata. Cash/accrual applies to P&L; bank
+movements and current outstanding documents retain their own meanings. Raw bank
+receipts/spending are not operating cash flow. Currency populations never mix.
+Account detail preserves available source rows; it does not invent transactions.
+
+Unavailable/partial reports remain explicit with retry. Same-period dated family
+evidence can remain visible after failure; a P&L fallback keeps its own comparative
+read, not newer comparison values. Source dates and the sequential read window
+remain visible. Authority loss removes newly fetched evidence; browser denial
+also clears the current private report. See focused tests in those owner folders.
+The existing guarded `/qa/marketing-performance-fixture?view=financials` supplies
+only invented reports; its demo controls exercise complete, partial, empty and
+failed reads. No production fixture fallback exists.
+
 ## Data-foundation first version (24 September 2026)
 
 Implemented and hosted for protected synthetic review; not released to production.

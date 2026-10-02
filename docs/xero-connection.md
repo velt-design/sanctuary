@@ -1,9 +1,36 @@
 # Xero connection
 
-## Organisation financial context candidate (23 September 2026)
+## Organisation financial reports and Portal candidate (2 October 2026)
 
-Local implementation, default off; no production report read or consent proof is
-claimed. `GET /api/integrations/praxis/v1/finance-position?from=YYYY-MM-DD&to=YYYY-MM-DD&basis=accrual|cash`
+The existing organisation report service was verified deployed and returning a
+complete live report on 1 October 2026. Its report consent and source activation
+were already in place. This dated evidence supersedes the older local/default-off
+delivery status; it does not imply ongoing health or authorise more scopes.
+
+The new Portal Financials tab is a local candidate for protected review, not a
+production release. It reuses `financePositionRuntime.ts` (source identity,
+current authority and 40/45-second provider/publication budgets),
+`financePosition.ts` (source parsing) and `financePositionProvider.ts` (fixed
+read-only GETs). The original strict Praxis wire is unchanged.
+`financials/read.ts` adds exact previous/year comparisons and six completed-month
+P&L reports, deduplicating identical periods with at most two concurrent extra
+reads/eight extra reports. Provider-budget expiry makes unfinished families
+unavailable; outer expiry, cancellation or failed final authority rejects the
+new result. Provider pages retain the existing 2 MiB limit; dashboard wire is
+capped at 4 MiB. No new database storage or accounting write is introduced.
+
+Optional valid Organisation year-end day/month is retained only in the new
+Portal wire for FYTD choices. Source decimal strings become exact safe cents;
+unrecognised/duplicate summary labels or nonnumeric cells stay unavailable.
+P&L summary values use actual standard Total Income/Gross Profit/Net Profit rows,
+including Row types, without synthesising missing totals. Comparisons match
+source account IDs, otherwise exact report hierarchy/labels. Current AR/AP
+sum outstanding amounts separately by document currency and age from due date
+at the checked NZ date; undated items remain a separate group. The private
+source fixture reconciliation retained outside the repository checks actual
+report structure and totals; committed fixtures contain invented figures only.
+
+`GET /api/integrations/praxis/v1/finance-position?from=YYYY-MM-DD&to=YYYY-MM-DD&basis=accrual|cash`
 returns version `sanctuary.praxis.finance-position.v1`. It reuses the encrypted
 Xero broker and existing delegated finance actor, pinned tenant and current grant.
 The new organisation authority RPC removes the project/contact mapping requirement

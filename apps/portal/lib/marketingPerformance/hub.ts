@@ -29,7 +29,7 @@ export const hubSchema = z.object({
 export type HubReport = z.infer<typeof hubSchema>;
 export type HubProject = z.infer<typeof projectSchema>;
 export type HubEvent = z.infer<typeof eventSchema>;
-export const views = [{ key: 'overview', label: 'Business overview' }, { key: 'enquiries', label: 'Enquiries' }, { key: 'sales', label: 'Sales activity' }, { key: 'portfolio', label: 'Project portfolio' }] as const;
+export const views = [{ key: 'overview', label: 'Business overview' }, { key: 'enquiries', label: 'Enquiries' }, { key: 'sales', label: 'Sales activity' }, { key: 'portfolio', label: 'Project portfolio' }, { key: 'financials', label: 'Financials' }] as const;
 export type HubView = typeof views[number]['key'];
 export const evidenceOptions = [
   ['all','All evidence'], ['qualified','Qualified enquiries'], ['unreviewed','Awaiting assessment'],

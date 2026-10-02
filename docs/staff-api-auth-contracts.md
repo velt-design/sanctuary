@@ -1,5 +1,20 @@
 # Staff API And Auth Contracts
 
+## Portal Financials candidate
+
+`GET /api/staff/v1/marketing-performance/financials` requires current staff
+context, confirmed developer identity and the same identity's current finance
+grant before source access. It accepts exactly one from/to/basis query; future,
+invalid, unknown and repeated fields are denied. The server-selected source
+actor/tenant and existing source binding are rechecked before provider reads and
+publication, together with the interactive finance identity. This does not grant
+the hub audience finance access merely by exposing a tab. Revocation withholds
+new evidence; private/no-store, nosniff and no-referrer responses contain fixed
+safe errors, never provider bodies or credentials. Reports use only existing
+read GETs; token renewal remains broker-owned. No mutation route, table grant or
+new service-role adapter is added. See `xero-connection.md` and
+`marketing-performance.md` for scope, recovery and delivery status.
+
 ## Praxis GA4 source candidate
 
 `/api/integrations/praxis/v1/marketing/ga4` accepts GET `action=refresh|read` or
