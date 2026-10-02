@@ -1,5 +1,27 @@
 # Testing And QA
 
+## Portal Financials candidate
+
+Focused checks: `npx vitest run apps/portal/lib/xero/financials
+apps/portal/lib/xero/financePositionRuntime.test.ts apps/portal/components/financials
+apps/portal/app/api/staff/v1/marketing-performance/financials
+apps/portal/lib/xero/financePosition.test.ts apps/portal/lib/xero/financePositionProvider.test.ts
+apps/portal/lib/praxis/finance-position.test.ts`, plus existing hub regressions,
+Portal typecheck, lint, docs impact and architecture changed guards.
+These cover exact decimal/date/currency handling, leap/year boundaries, matched
+source rows, complete/partial provider reads, current authority, provider vs outer
+deadline behavior, API denial/query validation, stale response races, dated
+fallback, access-loss clearing and URL restoration. Reconcile actual report
+metrics/rows/ageing against private source evidence separately from synthetic QA.
+
+The existing guarded marketing fixture supports `?view=financials` and optional
+`financeScenario=partial|empty|bank-failure|failure`; its bottom demo control can
+change the next read without discarding existing evidence. Verify normal hub
+entry, basis/date/FYTD/comparison, report-row detail and saved return, current
+AR/AP population/currency/ageing, and full/partial retry at desktop and 390px.
+Keep source screenshots and reports private. This fixture does not prove live
+comparative retrieval or protected staff-route access; verify both separately.
+
 ## Sanctuary-owned GA4 candidate
 
 Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4

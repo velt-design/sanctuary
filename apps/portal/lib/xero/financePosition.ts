@@ -34,7 +34,7 @@ function invoice(raw: unknown, type: 'ACCREC' | 'ACCPAY') {
         lineAmount: line.LineAmount == null ? null : decimal(line.LineAmount), taxAmount: line.TaxAmount == null ? null : decimal(line.TaxAmount) };
     }) });
 }
-function report(raw: unknown, family: 'bankSummary' | 'profitAndLoss', query: FinancePositionQuery, currency: string) {
+export function parseFinanceReport(raw: unknown, family: 'bankSummary' | 'profitAndLoss', query: FinancePositionQuery, currency: string) {
   const r = object.parse(raw); let count = 0;
   function rows(value: unknown, depth: number): FinanceReportRow[] {
     if (!Array.isArray(value) || depth > 8 || (count += value.length) > 2000) throw new PositionReadError('limit_exceeded');
@@ -81,7 +81,7 @@ export async function readFinancePosition(query: FinancePositionQuery, deps: Pos
   });
   const reportDomain = async (family: 'bankSummary' | 'profitAndLoss') => organisation.status !== 'available'
     ? { status: 'unavailable' as const, reason: 'metadata_unavailable' as const, requiredScopes: [POSITION_SCOPES[family][0], POSITION_SCOPES.organisation[0]] }
-    : domain(family, async () => { const values = await read(family); if (values.length !== 1) throw new PositionReadError('invalid_response'); return report(values[0], family, query, organisation.data.baseCurrency); });
+    : domain(family, async () => { const values = await read(family); if (values.length !== 1) throw new PositionReadError('invalid_response'); return parseFinanceReport(values[0], family, query, organisation.data.baseCurrency); });
   const bankSummary = await reportDomain('bankSummary'), profitAndLoss = await reportDomain('profitAndLoss');
   async function invoices(family: 'receivables' | 'payables') {
     return domain(family, async () => {

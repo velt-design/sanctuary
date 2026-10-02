@@ -26,15 +26,20 @@ import useHub, { loadHub, type HubLoader } from './useHub';
 import { loadReport, type ReportLoader } from './useMarketingReports';
 import useReportReturnPosition from './useReportReturnPosition';
 import styles from './MarketingPerformance.module.css';
+import Financials from '@/components/financials/Financials';
+import type { FinancialsLoader } from '@/components/financials/useFinancials';
+import useVisibleSelection from '@/components/financials/useVisibleSelection';
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader}: {
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,financialsLoader}: {
+  financialsLoader?:FinancialsLoader;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
   const [draft,setDraft]=useState<FiltersState>(()=>({...hubDefaults(initialFilters??defaultFilters()),view:'overview' as const}));
   const [applied,setApplied]=useState<FiltersState|null>(null), [validation,setValidation]=useState(''), [revision,setRevision]=useState(0);
   const [eventKind,setEventKind]=useState(''),[info,setInfo]=useState(false),[sources,setSources]=useState(false);
-  const {hub,previous,busy,error,comparisonError}=useHub(applied,revision,loader,priorLoader);
+  const {hub,previous,busy,error,comparisonError}=useHub(applied?.view==='financials'?null:applied,revision,loader,priorLoader);
   const position=useReportReturnPosition(busy);
+  const tabs=useVisibleSelection(draft.view);
   useEffect(()=>{
     const restore=()=>{const query=new URLSearchParams(window.location.search);const f=parseHubFilters(query,initialFilters??defaultFilters());if(!query.has('view'))f.view='overview';setDraft(f);setApplied(f);setEventKind(f.kind);};
     restore();window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);
@@ -44,7 +49,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
     if(f.view==='sales') f={...f,inspect:'all'};
     if(!validPeriod(f.start,f.end)){setValidation('Choose valid dates, up to 366 days ending today or earlier.');return;}
     setValidation('');const url=new URL(window.location.href);
-    const query=hubQuery(f);for(const key of ['failure','comparisonFailure','representative']){const value=url.searchParams.get(key);if(value)query.set(key,value);}
+    const query=hubQuery(f);for(const [key,value] of url.searchParams){if(key.startsWith('finance')||['failure','comparisonFailure','representative'].includes(key))query.set(key,value);}
     // Let Next update its canonical URL; passing its internal history state skips that update.
     url.search=query.toString();window.history.replaceState(null,'',url);setDraft(f);setApplied(f);setEventKind(f.kind);
   };
@@ -56,7 +61,8 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   return <PageLayout className={styles.page}>
     <Header variant="index" title="Marketing & Sales"/>
     {(synthetic||staging||previewDescription)&&<p className={styles.environmentLabel}>{productionSnapshot?'Private preview · Real snapshot · 22 Sep 2026':synthetic?'Demo · Fictional records':staging?'Staging · Test records':'Preview'}</p>}
-    <TabNavigation items={views.map(v=>({...v,controls:'hub-results'}))} selectedKey={draft.view} onSelect={view=>apply({...draft,view,inspect:'all'})} ariaLabel="Marketing and sales views"/>
+    <div ref={tabs} style={{minWidth:0}}><TabNavigation items={views.map(v=>({...v,controls:'hub-results'}))} selectedKey={draft.view} onSelect={view=>apply({...draft,view,inspect:'all'})} ariaLabel="Marketing and sales views"/></div>
+    {draft.view==='financials'?<div id="hub-results"><Financials loader={financialsLoader} synthetic={synthetic}/></div>:<>
     <HubToolbar filters={applied??draft} apply={apply} hub={hub}/>{validation&&<p role="alert">{validation}</p>}
     <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>
@@ -85,6 +91,6 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
           <p>Advertising evidence is available through Data sources when a retained source report exists. Acquisition costs remain unavailable until spend and business outcomes have a verified matching basis. Google and Meta conversion claims are not added to business outcomes.</p>
         </Drawer>
       </>:null}
-    </div>
+    </div></>}
   </PageLayout>;
 }
