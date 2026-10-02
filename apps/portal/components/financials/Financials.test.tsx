@@ -4,7 +4,7 @@ import { renderIntoDocument } from '../../../../test/reactHarness';
 import Financials from './Financials';
 import OutstandingView from './OutstandingView';
 import { sampleFinancials } from '@/app/qa/marketing-performance-fixture/financialFixtures';
-import type { FinancialsQuery } from '@/lib/xero/financials/contract';
+import type { Financials as FinancialsData, FinancialsQuery } from '@/lib/xero/financials/contract';
 const query={from:'2026-09-01',to:'2026-09-30',basis:'accrual' as const};
 afterEach(()=>window.history.replaceState(null,'','/'));
 it('opens the selected account after reload and preserves basis/comparison when switching sections',async()=>{
@@ -26,7 +26,25 @@ it('ageing drilldown matches the exact currency population and does not include 
 it('missing comparison and partial families stay explicit with retry while current profit remains visible',async()=>{
   window.history.replaceState(null,'','/?financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=accrual');
   const view=renderIntoDocument(<Financials loader={async query=>sampleFinancials(query,'partial')} synthetic/>);await act(async()=>{});
-  expect(view.container.textContent).toContain('$198,550');expect(view.container.textContent).toContain('Comparison unavailable');
+  expect(view.container.textContent).toContain('$201,468');expect(view.container.textContent).toContain('Comparison unavailable');
   const bills=[...view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(button=>button.textContent==='Bills to pay')!;act(()=>bills.click());
-  expect(view.container.textContent).toContain('Bills to pay unavailable');expect(view.container.textContent).toContain('does not currently grant');expect(view.container.querySelectorAll('tbody tr')).toHaveLength(0);view.unmount();
+  expect(view.container.textContent).toContain('Bills to pay unavailable');
+  const details=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!;act(()=>details.click());
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('does not currently grant');expect(view.container.querySelectorAll('tbody tr')).toHaveLength(0);view.unmount();
+});
+it('keeps one status row and dated evidence through a changed selection, failed read and retry',async()=>{
+  window.history.replaceState(null,'','/?financeFrom=2026-09-02&financeTo=2026-09-30&financeBasis=accrual');
+  const selected={...query,from:'2026-09-02'},pending:Array<{resolve:(value:FinancialsData)=>void;reject:(error:Error)=>void}>=[];
+  const loader=vi.fn(()=>new Promise<FinancialsData>((resolve,reject)=>pending.push({resolve,reject})));
+  const view=renderIntoDocument(<Financials loader={loader} synthetic/>);await act(async()=>pending[0].resolve(sampleFinancials(selected)));
+  const region=view.container.querySelector('#financial-results')!,children=region.children.length,status=region.firstElementChild;
+  const basis=view.container.querySelector<HTMLSelectElement>('select[aria-label="P&L basis"]')??view.container.querySelectorAll<HTMLSelectElement>('select')[1];
+  act(()=>{basis.value='cash';basis.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(region.children.length).toBe(children);expect(region.firstElementChild).toBe(status);expect(region.textContent).toContain('Updating · earlier report shown');
+  expect(region.textContent).toContain('2026-09-02 to 2026-09-30 · NZD · accrual');expect(region.textContent).toContain('partial calendar month');
+  await act(async()=>pending[1].reject(new Error('Source offline')));
+  expect(region.children.length).toBe(children);expect(region.textContent).toContain('Financial reports unavailable');
+  const retry=[...region.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Retry')!;act(()=>retry.click());
+  await act(async()=>pending[2].resolve(sampleFinancials({...selected,basis:'cash'})));
+  expect(region.children.length).toBe(children);expect(region.textContent).toContain('2026-09-02 to 2026-09-30 · NZD · cash');view.unmount();
 });

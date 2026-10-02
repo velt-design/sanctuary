@@ -29,6 +29,10 @@ export function nzDay(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 }
 function dateAt(year: number, month: number, day: number) { return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10); }
+export function hasPartialCalendarMonth(query: Pick<FinancialsQuery, 'from' | 'to'>) {
+  const [year, month] = query.to.split('-').map(Number);
+  return !query.from.endsWith('-01') || query.to !== dateAt(year, month, 0);
+}
 export function completedMonth(now = new Date()): FinancialsQuery {
   const [year, month] = nzDay(now).split('-').map(Number);
   return { from: dateAt(year, month - 2, 1), to: dateAt(year, month - 1, 0), basis: 'accrual' };

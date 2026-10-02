@@ -11,7 +11,9 @@ production release. The source report service was verified in production on
 
 Owners: `components/financials/Financials.tsx` composes the journey;
 `FinancialToolbar`, `ProfitView`, `ReportTable`, `OutstandingView` and
-`FinancialDetail` own the corresponding views. `useFinancials` owns cancellation,
+`FinancialDetail` own the corresponding views. `FinancialStatus` keeps loading,
+failure and retry in one compact row; its Details drawer contains full recovery
+context. Displayed evidence always names its own dates and basis. `useFinancials` owns cancellation,
 dated in-memory recovery and access-denial clearing. URL parameters retain period,
 basis, section, comparison and source-row selection; private reports are not put
 in browser storage. The hub's ordinary enquiry filters remain independent.
@@ -24,7 +26,8 @@ from/to/basis. See `xero-connection.md` for source semantics and limits.
 
 P&L defaults to the last completed NZ month. Previous full calendar month,
 equal-day custom prior periods, same dates last year, and six completed-month
-trends retain their actual dates. Financial-year-to-date is offered only from
+trends retain their actual dates. Incomplete calendar coverage at either boundary
+is labelled, including a mid-month start with a month-end finish. Financial-year-to-date is offered only from
 valid Xero Organisation year-end metadata. Cash/accrual applies to P&L; bank
 movements and current outstanding documents retain their own meanings. Raw bank
 receipts/spending are not operating cash flow. Currency populations never mix.

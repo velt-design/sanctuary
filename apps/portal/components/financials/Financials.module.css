@@ -3,9 +3,12 @@
 .toolbar > label { min-width:150px; }
 .toolbarActions { margin-left:auto; display:flex; align-items:center; gap:8px; }
 .context { color:var(--ui-text-muted); font-size:13px; line-height:1.6; margin:0; }
+.reportContext { min-height:2lh; }
 .result { display:grid; gap:20px; min-height:700px; align-content:start; min-width:0; }
-.status { min-height:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-.status p { margin:0; }
+.status { height:48px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
+.status p { margin:0; font-size:13px; line-height:20px; color:var(--ui-text-muted); }
+.statusActions { display:flex; align-items:center; gap:4px; }
+.statusActions button { padding-inline:8px; }
 .metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; padding:12px 0 24px; border-bottom:1px solid var(--ui-border); }
 .metrics h3 { font-size:13px; font-weight:500; margin:0 0 8px; color:var(--ui-text-muted); }
 .bankMetrics { grid-template-columns:repeat(4,minmax(0,1fr)); }
@@ -31,7 +34,7 @@
 .legend span { display:inline-flex; align-items:center; gap:6px; }
 .legend i { width:12px; height:12px; display:inline-block; }
 .empty { padding:28px 0; border-block:1px solid var(--ui-border); }
-.detail { display:grid; gap:16px; }
+.detail { display:grid; gap:16px; padding:16px; overflow-wrap:anywhere; }
 .detail dl { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0; }
 .detail dt { color:var(--ui-text-muted); font-size:13px; }
 .detail dd { margin:0; text-align:right; overflow-wrap:anywhere; }
@@ -45,8 +48,8 @@
 .ageing strong { font-size:20px; font-family:var(--ui-font-display); }
 .controls { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
 .pagination { display:flex; justify-content:flex-end; align-items:center; gap:16px; }
-.periodDrawer { display:grid; gap:16px; }
+.periodDrawer { display:grid; gap:16px; padding:16px; }
 .periodActions { display:flex; gap:8px; }
 @media(max-width:650px) { .metrics { gap:16px; grid-template-columns:1fr; padding:4px 0 20px; } .metrics > div { display:grid; grid-template-columns:1fr 1fr; column-gap:12px; } .metrics h3 { align-self:center; } .metricValue { text-align:right; margin:0; font-size:32px; } .metricNote { grid-column:1/-1; text-align:right; } .toolbar { gap:10px; } .toolbar > label { flex:1; min-width:130px; } .toolbarActions { width:100%; margin:0; justify-content:space-between; } .ageing { grid-template-columns:repeat(2,minmax(0,1fr)); } .table th:first-child,.table td:first-child { min-width:160px; } .chart { height:230px; } .heading { align-items:start; } }
 @media(prefers-reduced-motion:reduce) { .page * { scroll-behavior:auto; } }
-@media(max-width:650px) { .table button { min-height:44px; } .toolbar select { min-height:44px; } }
+@media(max-width:650px) { .reportContext { min-height:3lh; } .table button { min-height:44px; } .toolbar select { min-height:44px; } }

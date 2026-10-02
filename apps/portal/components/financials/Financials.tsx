@@ -1,9 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Button, ButtonLink } from '@/components/ui/foundation/FoundationControls';
+import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { TabNavigation } from '@/components/ui/foundation/FoundationOperational';
-import { AlertBanner } from '@/components/ui/foundation/FoundationAlert';
-import { selectionFromUrl, selectionToUrl, type FinancialSelection } from '@/lib/xero/financials/contract';
+import { hasPartialCalendarMonth, selectionFromUrl, selectionToUrl, type FinancialSelection } from '@/lib/xero/financials/contract';
 import { bankMetrics, money, reportLines } from '@/lib/xero/financials/model';
 import useFinancials, { type FinancialsLoader } from './useFinancials';
 import FinancialToolbar from './FinancialToolbar';
@@ -11,6 +10,7 @@ import ProfitView from './ProfitView';
 import ReportTable from './ReportTable';
 import OutstandingView from './OutstandingView';
 import FinancialDetail from './FinancialDetail';
+import FinancialStatus from './FinancialStatus';
 import styles from './Financials.module.css';
 import useVisibleSelection from './useVisibleSelection';
 
@@ -45,17 +45,19 @@ function FinancialsContent({selection,setSelection,revision,retry,loader,synthet
   const checked=family?.status==='available'?family.checkedAt:null;
   const currentTimestamp=checked?new Date(checked).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium',timeStyle:'short'}):null;
   const stale=checked?Date.now()-Date.parse(checked)>30*3600000:false;
+  const unavailable=fresh?.status==='unavailable';
+  const statusSummary=busy?(family?.status==='available'?'Updating · earlier report shown':'Reading Xero reports…'):error?'Financial reports unavailable':unavailable?`${sections.find(s=>s.key===selection.section)?.label} unavailable`:stale?'Report older than 30 hours':currentTimestamp?`Checked ${currentTimestamp} NZ`:'';
+  const statusMessage=[error,unavailable?reasons[fresh.reason]:null,
+    mismatch&&sourceReport?`Showing ${sourceReport.from} to ${sourceReport.to} · ${sourceReport.basis}. Selected ${selection.from} to ${selection.to} · ${selection.basis}. New evidence is not yet available.`:null,
+    (error||unavailable)&&family?.status==='available'?`Last successful evidence checked ${currentTimestamp} NZ remains below with its original dates.`:null,
+    stale?'This report is more than 30 hours old. Refresh Xero before relying on current balances.':null].filter(Boolean).join(' ');
   return <div className={styles.page}>
     <FinancialToolbar selection={selection} apply={apply} report={report} busy={busy} retry={retry}/>
     <div ref={tabs} style={{minWidth:0}}><TabNavigation items={sections.map(section=>({...section,controls:'financial-results'}))} selectedKey={selection.section} onSelect={section=>apply({...selection,section,detail:''})} ariaLabel="Financial reports"/></div>
     <div className={styles.result} id="financial-results" aria-busy={busy}>
-      <div className={styles.status} aria-live="polite">{busy ? <p>{report?'Reading the selected reports. The dated evidence below remains visible.':'Reading Xero reports and comparisons…'}</p> : <p className={styles.context}>{currentTimestamp?`Checked ${currentTimestamp} NZ`:''}</p>}</div>
-      {error && <AlertBanner tone="error" title="Financial reports unavailable" action={<Button variant="secondary" onClick={retry}>Retry</Button>}>{error}{report?' Last received evidence remains below with its original dates.':''}</AlertBanner>}
-      {mismatch && <AlertBanner tone="warning" title="Displayed evidence uses different dates or basis">Showing {position?.query.from} to {position?.query.to} · {position?.query.basis}. Selected: {selection.from} to {selection.to} · {selection.basis}. New evidence is not yet available.</AlertBanner>}
-      {fresh?.status==='unavailable' && <AlertBanner tone="warning" title={`${sections.find(s=>s.key===selection.section)?.label} unavailable`} action={<Button variant="secondary" onClick={retry}>Retry this report</Button>}>{reasons[fresh.reason]}{family?.status==='available'?` Last successful evidence checked ${currentTimestamp} NZ remains below.`:''}</AlertBanner>}
-      {stale && <p role="status">This report is more than 30 hours old. Refresh Xero before relying on current balances.</p>}
+      <FinancialStatus summary={statusSummary} message={statusMessage||undefined} retry={error||unavailable||stale?retry:undefined} busy={busy}/>
       {sourceReport && report && <>
-        <p className={styles.context}>{position?.organisation.status==='available'?`${position.organisation.data.name} · `:''}{sourceReport.from} to {sourceReport.to} · {sourceReport.currency} · {sourceReport.basis==='bank_movements'?'recorded bank movements':`${sourceReport.basis} · excluding GST`}{!sourceReport.to.endsWith(new Date(Date.UTC(Number(sourceReport.to.slice(0,4)),Number(sourceReport.to.slice(5,7)),0)).getUTCDate().toString().padStart(2,'0'))?' · partial calendar month':''}</p>
+        <p className={`${styles.context} ${styles.reportContext}`}>Showing {sourceReport.from} to {sourceReport.to} · {sourceReport.currency} · {sourceReport.basis==='bank_movements'?'recorded bank movements':`${sourceReport.basis} · excluding GST`}{hasPartialCalendarMonth(sourceReport)?' · partial calendar month':''}{position?.organisation.status==='available'?` · ${position.organisation.data.name}`:''}</p>
         {selection.section==='profit'?<ProfitView report={sourceReport} evidence={profitEvidence??report} selection={selection} apply={apply} onDetail={row=>apply({...selection,detail:row.key})} retry={retry}/>:<>
           <div className={`${styles.metrics} ${styles.bankMetrics}`}>{bankMetrics(sourceReport).map(metric=><div key={metric.label}><h3>{metric.label}</h3><p className={styles.metricValue}>{money(metric.value,sourceReport.currency,true)}</p></div>)}</div>
           <p className={styles.context}>Recorded accounting balances and movements. Cash received/spent may include transfers, loans, tax and capital purchases; these are not sales and operating costs. Bank-statement reconciliation and unentered activity are outside this report.</p>
