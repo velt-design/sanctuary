@@ -1,7 +1,7 @@
 'use client';
 
 import type { QueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EstimateDetail } from '@/lib/estimates/types';
 import {
@@ -100,6 +100,14 @@ export function useCalculatorWorkspaceSession({
   const setEditSessionEstimateId = useCallback((estimateId: string) => {
     setEditSession({ routeEstimateId: routeEditEstimateId, estimateId });
   }, [routeEditEstimateId]);
+  // A server alias changes the route ID, not the user's in-progress editing session.
+  const draftIdentity = useRef({ projectId, estimateId: activeEditEstimateId });
+  if (draftIdentity.current.projectId !== projectId
+    || resolveLocalFirstId(draftIdentity.current.estimateId) !== resolveLocalFirstId(activeEditEstimateId)) {
+    draftIdentity.current = { projectId, estimateId: activeEditEstimateId };
+  }
+  const draftEstimateId = draftIdentity.current.estimateId;
+  const initializedEstimate = useRef<{ draftEntityKey: string; estimateId: string } | null>(null);
   const isEditingDesign = activeEditEstimateId.length > 0;
   const draftSessionKey = useMemo(
     () => calculatorDraftSessionKey(
@@ -115,6 +123,10 @@ export function useCalculatorWorkspaceSession({
     () => buildCalculatorDraftEntityKey(draftSessionKey),
     [draftSessionKey],
   );
+  const previousAliasSessionKey = draftEstimateId !== activeEditEstimateId
+    ? calculatorDraftSessionKey(projectId, fromEstimateId, draftEstimateId,
+      route.newEstimateCommercialScopeId ?? '', route.newEstimateCommercialScopeKind ?? 'base')
+    : null;
   const [loadedEstimateDetail, setLoadedEstimateDetail] = useState<EstimateDetail | null>(null);
   const {
     values,
@@ -131,6 +143,10 @@ export function useCalculatorWorkspaceSession({
     awaitsExternalDraft: Boolean(activeEditEstimateId || fromEstimateId),
     allowEmptyDesign: true,
     startEmptyDesign: route.newEstimateCommercialScopeKind === 'add_on',
+    ...(previousAliasSessionKey ? { continueFrom: {
+      draftSessionKey: previousAliasSessionKey,
+      draftEntityKey: buildCalculatorDraftEntityKey(previousAliasSessionKey),
+    } } : null),
     ...(draftPersistence ? { persistence: draftPersistence } : null),
   });
   const [project, setProject] = useState<Project | null>(null);
@@ -139,6 +155,7 @@ export function useCalculatorWorkspaceSession({
 
   useEffect(() => {
     setLoadedEstimateDetail(null);
+    initializedEstimate.current = null;
   }, [draftEntityKey]);
 
   useEffect(() => {
@@ -241,6 +258,10 @@ export function useCalculatorWorkspaceSession({
             return;
           }
 
+          const alreadyInitialized = initializedEstimate.current?.draftEntityKey === draftEntityKey
+            && resolveLocalFirstId(initializedEstimate.current.estimateId) === resolvedEditEstimateId;
+          if (alreadyInitialized) return;
+          initializedEstimate.current = { draftEntityKey, estimateId: activeEditEstimateId };
           if (restoredFromLocalDraft) {
             setDraftNotice(`Restored unsaved edits for ${estimate.versionLabel}`);
             return;
@@ -285,6 +306,7 @@ export function useCalculatorWorkspaceSession({
   }, [
     acceptExternalDraft,
     activeEditEstimateId,
+    draftEntityKey,
     draftHydrated,
     estimateDuplicator,
     estimateLoader,

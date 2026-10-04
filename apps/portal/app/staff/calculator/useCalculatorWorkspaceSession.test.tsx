@@ -7,7 +7,8 @@ import type { CalculatorInputs } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import type { CalculatorDraftPersistence } from './calculatorDraftPersistence';
-import { makeDefaultCalculatorInputs } from './calculatorInputs';
+import { makeDefaultCalculatorInputs, makeDefaultModule, type CalculatorDraftSessionSnapshot } from './calculatorInputs';
+import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, createEmptyLocalFirstState, ensureLocalFirstStoreReady, registerLocalFirstIdAlias } from '@/lib/localFirst/store';
 import { useCalculatorWorkspaceSession } from './useCalculatorWorkspaceSession';
 
 type WorkspaceSessionOptions = Parameters<typeof useCalculatorWorkspaceSession>[0];
@@ -319,4 +320,83 @@ describe('useCalculatorWorkspaceSession', () => {
     expect(session().draftNotice).toBe('Editing design V2');
     rendered.unmount();
   });
+});
+
+it('preserves real input and module selection through alias migration and canonical reload', async () => {
+  __setLocalFirstStorageAdapterForTests({ get: async () => createEmptyLocalFirstState(), set: async () => undefined });
+  __resetLocalFirstStoreForTests();
+  await ensureLocalFirstStoreReady();
+  const local = makeEstimate({ id: 'local-estimate:continuity' });
+  const durable = { ...local, id: 'est_continuity' };
+  const snapshots = new Map<string, CalculatorDraftSessionSnapshot>();
+  const persistence: CalculatorDraftPersistence = {
+    restore: async ({ sessionKey }) => {
+      const snapshot = snapshots.get(sessionKey);
+      return snapshot ? { snapshot, source: 'working-copy' } : null;
+    },
+    persist: async ({ sessionKey, snapshot }) => {
+      snapshots.set(sessionKey, structuredClone(snapshot));
+      return { sessionStored: true, workingCopyStored: true };
+    },
+  };
+  const base = makeOptions({
+    draftPersistence: persistence,
+    workspace: {
+      kind: 'project',
+      host: 'test-host',
+      projectId: 'project-1',
+      editEstimateId: local.id,
+      designNavigation: { value: local.id, stateLabel: 'Editing', options: [], onChange: vi.fn() },
+      onEstimateSaved: vi.fn(),
+      onOpenProject: vi.fn(),
+    },
+    route: { projectId: 'project-1', editEstimateId: local.id, fromEstimateId: '', shouldOpenActiveDraft: false },
+    projectLoader: vi.fn().mockResolvedValue(makeProject()),
+    estimateLoader: vi.fn().mockImplementation((id) => Promise.resolve(id === local.id ? local : durable)),
+  });
+  const view = renderIntoDocument(<Probe options={base} />);
+  await waitUntil(() => expect(session().loadedEstimateDetail?.id).toBe(local.id));
+  const originalKey = session().draftEntityKey;
+  await act(async () => {
+    session().setValues((previous) => ({
+      ...previous,
+      modules: [{ ...previous.modules[0], lengthM: '8.25' }, makeDefaultModule('pergola-2')],
+      pergolas: [
+        { id: 'pergola-1', label: 'One' },
+        { id: 'pergola-2', label: 'Two' },
+      ],
+    }));
+  });
+  await act(async () => session().setActiveModuleIndex(1));
+  await act(async () => {
+    await registerLocalFirstIdAlias(local.id, durable.id);
+  });
+  view.rerender(
+    <Probe
+      options={{
+        ...base,
+        workspace: { ...base.workspace!, editEstimateId: durable.id },
+        route: { ...base.route, editEstimateId: durable.id },
+      }}
+    />,
+  );
+  await waitUntil(() => expect(session().loadedEstimateDetail?.id).toBe(durable.id));
+  expect(session().draftEntityKey).not.toBe(originalKey);
+  expect(session().values.modules[0].lengthM).toBe('8.25');
+  expect(session().activeModuleIndex).toBe(1);
+  await waitUntil(() => expect(snapshots.get(session().draftSessionKey)?.values.modules[0].lengthM).toBe('8.25'));
+  view.unmount();
+  const reloaded = renderIntoDocument(
+    <Probe
+      options={{
+        ...base,
+        workspace: { ...base.workspace!, editEstimateId: durable.id },
+        route: { ...base.route, editEstimateId: durable.id },
+      }}
+    />,
+  );
+  await waitUntil(() => expect(session().loadedEstimateDetail?.id).toBe(durable.id));
+  expect(session().values.modules[0].lengthM).toBe('8.25');
+  expect(session().activeModuleIndex).toBe(1);
+  reloaded.unmount();
 });
