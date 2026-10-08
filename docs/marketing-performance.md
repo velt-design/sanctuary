@@ -2,7 +2,8 @@
 
 ## Owner commercial overview candidate (8 October 2026)
 
-Local candidate only; release requires separate owner approval. Business Overview
+Jordan approved production release on 8 October 2026 ("push live"). The consumer
+remains pending release checks and merge. Business Overview
 leads with selected-period quoted value, accepted value, average accepted scope,
 and two median elapsed-time measures. Existing five tabs remain. Current portfolio
 and recorded sales activity are supporting disclosure content. No attention list,
@@ -29,8 +30,19 @@ record drawers. Empty intervals before known history (or with unknown history) a
 unavailable, never verified zero. Straddling intervals retain known amounts and
 cohort counts labelled partial recorded history; full-period comparisons require
 both periods to be covered. Drawers preserve the exact period and qualification.
-Supported post-history empty intervals remain zero. A supported zero baseline has
+Supported post-history empty intervals remain zero only when no known unallocated
+send evidence affects that metric. A supported zero baseline has
 no growth percentage; empty average/timing is unavailable.
+
+Known sent evidence with missing send timestamps is returned per family as
+`undatedSendCount`: null `sent_at` with a saved acceptance timestamp or SENT/ACCEPTED
+status, matching the existing marketing reader. Never-sent drafts are excluded.
+Current project/source filters precede this all-dates coverage count. Quoted
+headlines, prior figures, buckets and inspection retain dated values as partial,
+withhold unsupported zero and percentage comparisons, and expose the unallocated
+scope inventory. Dated current accepted amounts and averages remain independent.
+Any undated known send makes first-send timing uncertain; those pairs are excluded
+from medians. Wholly undated sends cannot be assigned to an enquiry timing period.
 
 Weekly/monthly trend buckets reuse `overview.salesActivity` date partitioning,
 including clipped partial ranges. Bars, keyboard table and drawer partition exactly
@@ -52,7 +64,13 @@ with commercial values. SQL/PGlite, model, API and hook tests cover revisions,
 withdrawals, add-ons, date coverage, access denial, request races and reconciliation.
 Hosted exact-function rollback rehearsal independently reconciled current/prior
 values and counts, undated coverage and timing source dates; the function's absence
-was verified after rollback. No migration has been persistently applied.
+was verified after that initial rollback. Migration 000002 was applied with its ledger during the authorised release; the
+consumer is not deployed. Forward migration
+`20261008000003_marketing_commercial_send_coverage.sql` preserves that applied
+history and upgrades the reader to schema version 2. Its baseline body hash guards
+against replacing an unexpected reader. Staging and production rollback rehearsals
+reconcile every existing row and all-dates undated-send counts without changing
+source records. The forward migration remains pending release.
 
 ## Financials tab candidate (2 October 2026)
 

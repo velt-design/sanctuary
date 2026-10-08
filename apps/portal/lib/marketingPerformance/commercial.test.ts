@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { commercialSchema, commercialTrend, historyCoverage, historyLabel, recordedMetricValue, comparison, contributions, metricValue, type CommercialRow } from './commercial';
+import { commercialSchema, commercialTrend, commercialCoverage, historyCoverage, historyLabel, recordedMetricValue, comparison, contributions, metricValue, type CommercialRow } from './commercial';
 import { commercialFixture, commercialCoverageScenario } from '@/app/qa/marketing-performance-fixture/commercialFixtures';
 import { representativeFixture, representativeFilters } from '@/app/qa/marketing-performance-fixture/representativeFixture';
 const report = commercialFixture(representativeFixture, representativeFilters);
@@ -68,4 +68,21 @@ it('shares honest interval coverage across pre-history, straddling, unknown and 
  expect(recordedMetricValue('enquiryDays',[],'partial')).toBeNull();
  const old={...report,start:'2024-01-01',end:'2024-01-31'};
  expect(commercialTrend(old,contributions(old,[])).every(b=>b.quoted===null&&b.accepted===null)).toBe(true);
+});
+
+it('keeps undated send uncertainty metric-specific and applies filtered scope coverage', () => {
+ const original=report.rows.find(r=>r.currentSent)!;
+ const row={...original,undatedSendCount:1,firstSentAt:original.currentSent!.sentAt,originAt:'2026-01-01T00:00:00Z',accepted:{...original.currentSent!,acceptedAt:original.currentSent!.sentAt}};
+ const source={...report,earliestSentAt:'2000-01-01T00:00:00Z',rows:[row]}, values=contributions(source,[row]);
+ expect(commercialCoverage(source,[row],'quoted',source.start,source.end)).toBe('partial');
+ expect(commercialCoverage(source,[],'quoted',source.start,source.end)).toBe('covered');
+ expect(commercialCoverage(source,[row],'accepted',source.start,source.end)).toBe('covered');
+ expect(commercialCoverage(source,[row],'average',source.start,source.end)).toBe('covered');
+ expect(metricValue('accepted',values.accepted)).toBe(row.accepted.amountCents);
+ expect(metricValue('average',values.average)).toBe(row.accepted.amountCents);
+ expect(values.enquiryDays[0].days).toBeNull();expect(values.acceptanceDays[0].days).toBeNull();
+ expect(recordedMetricValue('quoted',[],commercialCoverage(source,[row],'quoted',source.start,source.end))).toBeNull();
+ expect(recordedMetricValue('quoted',[],commercialCoverage(source,[],'quoted',source.start,source.end))).toBe(0);
+ expect(commercialTrend(source,values,'week',[row]).every(b=>b.quotedCoverage==='partial')).toBe(true);
+ expect(commercialTrend(source,contributions(source,[]),'week',[]).every(b=>b.quoted===0)).toBe(true);
 });

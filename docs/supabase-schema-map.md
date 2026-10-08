@@ -833,9 +833,11 @@ Forward migration `20261008000001_marketing_google_ads_source.sql` adds private 
 
 ### Owner commercial performance read (candidate)
 
-`20261008000002_marketing_commercial_performance.sql` adds the confirmed-developer-only
+`20261008000002_marketing_commercial_performance.sql` and forward
+`20261008000003_marketing_commercial_send_coverage.sql` own the confirmed-developer-only
 `marketing_commercial_performance_read(date,date)` bounded read. It returns one quote
 family per commercial scope, current/prior latest sent versions, canonical current
-acceptance, first send and earliest enquiry dates. Stored GST-inclusive quote amounts
+acceptance, first send and earliest enquiry dates, plus all-dates known send evidence
+without timestamps. The forward reader requires the exact 000002 baseline. Stored GST-inclusive quote amounts
 are the sole value source. No backfill or writes. See the metric/coverage contract in
 [Marketing Performance](marketing-performance.md#owner-commercial-overview-candidate-8-october-2026).

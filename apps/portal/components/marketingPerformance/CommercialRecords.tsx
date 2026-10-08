@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/foundation/FoundationControls';
 import { money, type HubProject } from '@/lib/marketingPerformance/hub';
-import type { CommercialMetric, Contribution } from '@/lib/marketingPerformance/commercial';
+import type { CommercialMetric, CommercialRow, Contribution } from '@/lib/marketingPerformance/commercial';
 import styles from './CommercialOverview.module.css';
 
-export default function CommercialRecords({ metric, rows, projects, synthetic, summary, context }: {
-  metric: CommercialMetric; rows: Contribution[]; projects: Map<string, HubProject>; synthetic?: boolean; summary: string; context?: string;
+export default function CommercialRecords({ metric, rows, projects, synthetic, summary, context, unallocated = [] }: {
+  metric: CommercialMetric; rows: Contribution[]; projects: Map<string, HubProject>; synthetic?: boolean; summary: string; context?: string; unallocated?: CommercialRow[];
 }) {
   const [page, setPage] = useState(0), timing = metric.endsWith('Days');
   const sorted = [...rows].sort((a, b) => b.at.localeCompare(a.at) || a.row.quoteId.localeCompare(b.row.quoteId));
@@ -16,6 +16,7 @@ export default function CommercialRecords({ metric, rows, projects, synthetic, s
     {context && <p className={styles.note}>{context}</p>}
     <p>{summary} · {rows.length} recorded contributing scopes{timing ? ` · ${rows.filter(r => r.days !== null).length} usable date pairs` : ''}</p>
     <p className={styles.note}>{timing ? 'Exact saved dates in New Zealand time. Missing or out-of-order pairs do not enter the median.' : 'Stored quote amounts in NZD including GST. Each commercial scope appears once; add-ons are labelled.'}</p>
+    {unallocated.length > 0 && <details><summary>{unallocated.length} scopes with missing send dates · all dates</summary><p className={styles.note}>These scopes are not assigned invented dates. Dated quoted records may be partial; uncertain first-send pairs do not enter timing medians.</p><ul>{unallocated.map(row => <li key={row.quoteId}>{row.quoteRef} · {row.undatedSendCount} undated sent or accepted {row.undatedSendCount === 1 ? 'version' : 'versions'}</li>)}</ul></details>}
     {!synthetic && <p className={styles.note}>Projects open in a new tab so this report stays in place.</p>}
     <div className={`${styles.table} ${timing ? styles.timingTable : styles.valueTable}`} tabIndex={0} role="region" aria-label="Contributing commercial records"><table><thead><tr><th>Project / quote</th>{timing && <><th>From (NZ)</th><th>To (NZ)</th></>}<th>{timing ? 'Elapsed days' : 'Amount incl. GST'}</th></tr></thead><tbody>
       {sorted.slice(page * 25, (page + 1) * 25).map(item => <tr key={item.row.quoteId}><th><a href={link(item.row.projectId)} target={synthetic ? undefined : '_blank'} rel={synthetic ? undefined : 'noopener noreferrer'} aria-label={synthetic ? undefined : `${projects.get(item.row.projectId)?.name ?? 'Open project'} (opens in a new tab; report stays open)`}>{projects.get(item.row.projectId)?.name ?? 'Open project'}</a><small>{item.row.quoteRef}{item.versionNumber ? ` · v${item.versionNumber}` : ''} · {item.row.scopeKind === 'add_on' ? 'Add-on scope' : 'Initial scope'}</small>{!timing && <small>{date(item.at)} NZ</small>}</th>{timing && <><td>{date(item.from)}</td><td>{date(item.at)}</td></>}<td>{timing ? item.days === null ? 'Unavailable — missing / out-of-order dates' : item.days.toFixed(1) : item.amountCents === null ? 'Unavailable' : money(item.amountCents)}</td></tr>)}

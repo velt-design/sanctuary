@@ -8,13 +8,13 @@ const amount = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).nulla
 const version = { versionId: z.string().uuid(), versionNumber: z.number().int().positive(), amountCents: amount };
 export const commercialRowSchema = z.object({
   quoteId: z.string().uuid(), projectId: z.string().uuid(), quoteRef: z.string(), scopeKind: z.enum(['base', 'add_on']),
-  originAt: timestamp.nullable(), firstSentAt: timestamp.nullable(),
+  originAt: timestamp.nullable(), firstSentAt: timestamp.nullable(), undatedSendCount: z.number().int().nonnegative(),
   currentSent: z.object({ ...version, sentAt: timestamp }).nullable(),
   priorSent: z.object({ ...version, sentAt: timestamp }).nullable(),
   accepted: z.object({ ...version, acceptedAt: timestamp.nullable() }).nullable(),
 });
 export const commercialSchema = z.object({
-  schemaVersion: z.literal(1), asOf: timestamp, start: z.string().date(), end: z.string().date(), priorStart: z.string().date(), priorEnd: z.string().date(),
+  schemaVersion: z.literal(2), asOf: timestamp, start: z.string().date(), end: z.string().date(), priorStart: z.string().date(), priorEnd: z.string().date(),
   currency: z.literal('NZD'), taxBasis: z.literal('including_gst'), earliestSentAt: timestamp.nullable(),
   rows: z.array(commercialRowSchema).max(5000),
 }).superRefine((report, ctx) => {
@@ -47,12 +47,12 @@ export function contributions(report: CommercialReport, rows: CommercialRow[], p
     if (sent) quoted.push({ row, at: sent.sentAt, amountCents: sent.amountCents, from: null, days: null, versionNumber: sent.versionNumber });
     if (row.accepted && inPeriod(row.accepted.acceptedAt, start, end)) {
       const item = { row, at: row.accepted.acceptedAt!, amountCents: row.accepted.amountCents, from: row.firstSentAt,
-        days: elapsed(row.firstSentAt, row.accepted.acceptedAt), versionNumber: row.accepted.versionNumber };
+        days: row.undatedSendCount ? null : elapsed(row.firstSentAt, row.accepted.acceptedAt), versionNumber: row.accepted.versionNumber };
       accepted.push(item);
       if (row.scopeKind === 'base') acceptanceDays.push(item);
     }
     if (row.scopeKind === 'base' && inPeriod(row.firstSentAt, start, end)) enquiryDays.push({ row, at: row.firstSentAt!,
-      amountCents: null, from: row.originAt, days: elapsed(row.originAt, row.firstSentAt), versionNumber: null });
+      amountCents: null, from: row.originAt, days: row.undatedSendCount ? null : elapsed(row.originAt, row.firstSentAt), versionNumber: null });
   }
   return { quoted, accepted, average: accepted, enquiryDays, acceptanceDays };
 }
@@ -82,18 +82,23 @@ export function historyCoverage(report: Pick<CommercialReport, 'earliestSentAt'>
   const first = aucklandDay(new Date(report.earliestSentAt));
   return end < first ? 'unavailable' : start < first ? 'partial' : 'covered';
 }
+export function commercialCoverage(report: CommercialReport, rows: CommercialRow[], metric: CommercialMetric, start: string, end: string): HistoryCoverage {
+  const history = historyCoverage(report, start, end);
+  const unallocated = (metric === 'quoted' || metric === 'enquiryDays') && rows.some(r => r.undatedSendCount > 0 && (metric === 'quoted' || r.scopeKind === 'base'));
+  return history === 'covered' && unallocated ? 'partial' : history;
+}
 export function historyLabel(coverage: HistoryCoverage, recordedCount: number) {
   return coverage === 'covered' ? '' : recordedCount ? 'Partial recorded history' : 'Incomplete history';
 }
 export function recordedMetricValue(metric: CommercialMetric, items: Contribution[], coverage: HistoryCoverage) {
   return coverage !== 'covered' && !items.length ? null : metricValue(metric, items);
 }
-export function commercialTrend(report: CommercialReport, values: ReturnType<typeof contributions>, bucket: ActivityBucket = 'month') {
+export function commercialTrend(report: CommercialReport, values: ReturnType<typeof contributions>, bucket: ActivityBucket = 'month', rows: CommercialRow[] = report.rows) {
   return salesActivity([], report.start, report.end, bucket).map(b => {
     const quoted = values.quoted.filter(item => inPeriod(item.at, b.start, b.end));
     const accepted = values.accepted.filter(item => inPeriod(item.at, b.start, b.end));
-    const coverage = historyCoverage(report, b.start, b.end);
-    return { coverage, key: b.key, label: b.label, start: b.start, end: b.end, partial: b.partial,
-      quoted: recordedMetricValue('quoted', quoted, coverage), accepted: recordedMetricValue('accepted', accepted, coverage), quotedCount: quoted.length, acceptedCount: accepted.length };
+    const coverage = historyCoverage(report, b.start, b.end), quotedCoverage = commercialCoverage(report, rows, 'quoted', b.start, b.end);
+    return { coverage, quotedCoverage, key: b.key, label: b.label, start: b.start, end: b.end, partial: b.partial,
+      quoted: recordedMetricValue('quoted', quoted, quotedCoverage), accepted: recordedMetricValue('accepted', accepted, coverage), quotedCount: quoted.length, acceptedCount: accepted.length };
   });
 }

@@ -30,6 +30,7 @@ beforeAll(async () => {
   `);
   await db.exec(readFileSync('supabase/migrations/20260813000003_commercial_truth_invariants.sql', 'utf8').split('create or replace function public.commercial_project_financial_truth')[0]);
   await db.exec(readFileSync('supabase/migrations/20261008000002_marketing_commercial_performance.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261008000003_marketing_commercial_send_coverage.sql', 'utf8'));
 }, 30000);
 afterAll(async () => db.close());
 it('requires staff and confirmed exact developer identity, with private table/helper access', async () => {
@@ -75,4 +76,24 @@ it('never changes source records and refuses a truncated quote inventory', async
   await db.exec('begin');
   await db.exec(`insert into quotes select gen_random_uuid(),'${id(1)}','DEMO-BOUND',null from generate_series(1,5000)`);
   await expect(read()).rejects.toThrow('bound exceeded'); await db.exec('rollback');
+});
+
+it('retains known undated send evidence, excludes drafts and never infers first-send timing from a later revision', async () => {
+ await db.exec('reset role; begin');
+ await db.exec(`insert into quotes values ('${id(15)}','${id(2)}','DEMO-SENT-NO-DATE',null),('${id(16)}','${id(2)}','DEMO-DRAFT',null);
+ insert into quote_versions values ('${id(28)}','${id(15)}',1,'SENT','2026-09-01',null,null,300000),('${id(29)}','${id(16)}',1,'DRAFT','2026-09-01',null,null,300000);
+ update quote_versions set sent_at=null where id='${id(21)}';
+ update quote_versions set sent_at=null where id='${id(24)}';`);
+ const report=await read(),values=contributions(report,report.rows);
+ expect(report.rows.find(r=>r.quoteId===id(15))?.undatedSendCount).toBe(1);
+ expect(report.rows.find(r=>r.quoteId===id(16))?.undatedSendCount).toBe(0);
+ expect(report.rows.find(r=>r.quoteId===id(11))?.undatedSendCount).toBe(0); // superseded without acceptance is not known sent evidence
+ await db.exec(`update quote_versions set accepted_at='2026-08-11' where id='${id(21)}'`);
+ const updated=await read(),updatedValues=contributions(updated,updated.rows);
+ expect(updated.rows.find(r=>r.quoteId===id(11))?.undatedSendCount).toBe(1);
+ expect(updatedValues.acceptanceDays[0].days).toBeNull();expect(updatedValues.enquiryDays.find(r=>r.row.quoteId===id(11))?.days).toBeNull();
+ expect(report.rows.find(r=>r.quoteId===id(12))?.undatedSendCount).toBe(1);
+ expect(metricValue('accepted',values.accepted)).toBe(1400000);expect(metricValue('average',values.average)).toBe(700000);
+ expect(metricValue('accepted',updatedValues.accepted)).toBe(1400000);
+ await db.exec('rollback');
 });

@@ -41,3 +41,19 @@ it('keeps useful partial recorded values qualified, including prior-period inspe
  const drawer=document.querySelector('[role="dialog"]')!;
  expect(drawer.textContent).toContain(`${report.priorStart} – ${report.priorEnd} NZ`);expect(drawer.textContent).toContain('Incomplete history');expect(drawer.textContent).not.toContain('$0.00');view.unmount();
 });
+
+it('carries filtered missing-send coverage through quoted headlines, trends and inspection without invalidating accepted value',async()=>{
+ const filters=hubDefaults(fixtureFilters),report=commercialFixture(hubFixture,filters);
+ report.earliestSentAt='2000-01-01T00:00:00Z';report.rows[0].undatedSendCount=1;
+ const view=renderIntoDocument(<CommercialOverview hub={hubFixture} filters={filters} apply={vi.fn()} loader={async()=>report}/>);await act(async()=>{});
+ const quoted=view.container.querySelector<HTMLButtonElement>('[aria-label="Inspect Quoted value"]')!;
+ const accepted=view.container.querySelector<HTMLButtonElement>('[aria-label="Inspect Accepted value"]')!;
+ expect(quoted.textContent).toMatch(/Partial recorded history|Incomplete history/);
+ expect(accepted.textContent).not.toMatch(/Partial recorded history|Incomplete history/);
+ expect(view.container.textContent).toContain('1 scopes across all dates');
+ const quotedCells=[...view.container.querySelectorAll('tbody tr')].map(r=>r.querySelector('td')?.textContent);
+ expect(quotedCells.every(t=>/Partial recorded history|Incomplete history/.test(t??''))).toBe(true);
+ await act(async()=>quoted.click());
+ expect(document.querySelector('[role="dialog"]')?.textContent).toContain('1 scopes with missing send dates · all dates');
+ view.unmount();
+});
