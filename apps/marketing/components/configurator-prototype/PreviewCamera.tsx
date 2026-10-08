@@ -11,29 +11,30 @@ import { useCameraTransition } from './useCameraTransition';
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 const PRESENTATION_DIRECTION = new Vector3(.85, 1.9, .65).normalize();
 
-export default function PreviewCamera({ framingKey, choiceView, explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
-  framingKey?: string;
+export default function PreviewCamera({ enhanced = false, eyeLevel = false, groundZ = 0, orbitTarget, framingKey, choiceView, explore = false, portrait = false, studio = false, bounds, fitPoints, enabled, reset, fit, surroundings, presentation = false, side }: {
+  enhanced?: boolean; eyeLevel?: boolean; groundZ?: number; orbitTarget?: Point3; framingKey?: string;
   choiceView?: 'sides' | 'lighting';
   explore?: boolean; portrait?: boolean; studio?: boolean; bounds: SceneBounds; fitPoints: Point3[]; enabled: boolean; reset: number; fit: number; surroundings: boolean; presentation?: boolean; side?: string;
 }) {
   const { camera, size, gl, invalidate } = useThree();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
-  const previous = useRef<{ reset: number; fit: number; width: number; height: number; presentation: boolean; side?: string; choiceView?: string } | null>(null);
+  const previous = useRef<{ reset: number; fit: number; width: number; height: number; presentation: boolean; side?: string; choiceView?: string; eyeLevel?: boolean } | null>(null);
   const touched = useRef(false);
   const framedBounds = useRef<SceneBounds | null>(null);
   const framedKey = useRef<string | undefined>(undefined);
   const recordCamera = useCallback(() => {
     if (!(camera instanceof PerspectiveCamera) || !controls.current) return;
+    if (enhanced && camera.position.z < groundZ + 120) { camera.position.z = groundZ + 120; camera.lookAt(controls.current.target); }
     gl.domElement.dataset.camera = JSON.stringify({ projection: 'perspective', fov: camera.fov,
       position: camera.position.toArray(), target: controls.current.target.toArray(), zoom: camera.zoom,
       distance: camera.position.distanceTo(controls.current.target) });
-  }, [camera, gl]);
+  }, [camera, gl, enhanced, groundZ]);
   const { move, cancel } = useCameraTransition(recordCamera);
 
   useLayoutEffect(() => {
     const orbit = controls.current;
     if (!(camera instanceof PerspectiveCamera) || !orbit || !size.width || !size.height) return;
-    const initialise = !previous.current || previous.current.reset !== reset || previous.current.presentation !== presentation || previous.current.side !== side || previous.current.choiceView !== choiceView;
+    const initialise = !previous.current || previous.current.reset !== reset || previous.current.presentation !== presentation || previous.current.side !== side || previous.current.choiceView !== choiceView || previous.current.eyeLevel !== eyeLevel;
     const resized = previous.current?.width !== size.width || previous.current?.height !== size.height;
     const oldBounds = framedBounds.current;
     // Roof finishes and new object identities are not a request to reframe.
@@ -45,7 +46,24 @@ export default function PreviewCamera({ framingKey, choiceView, explore = false,
     const firstFrame = !previous.current;
     framedBounds.current = bounds;
     framedKey.current = framingKey;
-    const centre = new Vector3(bounds.center.x, bounds.center.y, bounds.center.z);
+    // Below-deck supports remain fit points, not the focus of occupied-space orbit.
+    const focus = orbitTarget ?? bounds.center;
+    const centre = new Vector3(focus.x, focus.y, focus.z);
+    if (enhanced && eyeLevel) {
+      camera.fov = 65;
+      camera.up.set(0, 0, 1);
+      camera.aspect = size.width / size.height;
+      camera.clearViewOffset();
+      if (initialise || changed) {
+        const width = bounds.max.x - bounds.min.x, depth = bounds.max.y - bounds.min.y;
+        camera.position.set(bounds.min.x + width * .72, bounds.min.y + depth * .82, groundZ + 1550);
+        orbit.target.set(bounds.min.x + width * .38, bounds.min.y + depth * .28, Math.max(groundZ + 1950, bounds.center.z + (bounds.max.z - bounds.min.z) * .26));
+      }
+      camera.lookAt(orbit.target); camera.updateProjectionMatrix(); orbit.update();
+      move(orbit, before, firstFrame);
+      previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView, eyeLevel };
+      recordCamera(); invalidate(); return;
+    }
     if (choiceView === 'lighting' && !side) {
       // Stand inside the front corner: selected screens remain intact behind the
       // viewer while the ceiling and occupied space can be compared at eye level.
@@ -63,7 +81,7 @@ export default function PreviewCamera({ framingKey, choiceView, explore = false,
       camera.updateProjectionMatrix();
       orbit.update();
       move(orbit, before, firstFrame);
-      previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView };
+      previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView, eyeLevel };
       recordCamera(); invalidate();
       return;
     }
@@ -105,12 +123,12 @@ export default function PreviewCamera({ framingKey, choiceView, explore = false,
     camera.updateProjectionMatrix();
     orbit.update();
     move(orbit, before, firstFrame);
-    previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView };
+    previous.current = { reset, fit, width: size.width, height: size.height, presentation, side, choiceView, eyeLevel };
     recordCamera();
     invalidate();
-  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, choiceView, invalidate, recordCamera, move, framingKey, gl]);
+  }, [bounds, fitPoints, camera, size.width, size.height, reset, fit, surroundings, presentation, studio, portrait, explore, side, choiceView, invalidate, recordCamera, move, framingKey, gl, enhanced, eyeLevel, groundZ, orbitTarget]);
 
   return <OrbitControls ref={controls} makeDefault enabled={enabled} enablePan={false}
-    enableDamping={false} minDistance={1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * (choiceView === 'lighting' ? .5 : .48)}
+    enableDamping={false} minDistance={enhanced ? 250 : 1000} maxDistance={100000} minPolarAngle={.15} maxPolarAngle={Math.PI * (enhanced ? .88 : choiceView === 'lighting' ? .5 : .48)}
     onStart={() => { touched.current = true; cancel(); }} onChange={recordCamera} />;
 }

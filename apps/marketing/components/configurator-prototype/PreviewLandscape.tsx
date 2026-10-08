@@ -4,13 +4,15 @@ import { Group, MathUtils, Mesh, MeshStandardMaterial, OrthographicCamera, Persp
 import type { RepresentativeSurroundings } from '@sp/geometry';
 import type { SceneBounds } from '@sp/geometry-viewer';
 import ReferenceTreeMeshes from './ReferenceTreeMeshes';
+import { useSceneRenderingUpgrade } from './SceneRenderingUpgrade';
 import { foliageOverlapsProduct } from './foliageOverlap';
 
 type Point3 = { x: number; y: number; z: number };
 
-function Tree({ geometry, bounds, productPoints, perspectiveFade }: {
-  geometry: RepresentativeSurroundings['trees'][number]; bounds: SceneBounds; productPoints: Point3[]; perspectiveFade: boolean;
+function Tree({ geometry, bounds, productPoints, perspectiveFade, reducedDetail = false }: {
+  geometry: RepresentativeSurroundings['trees'][number]; bounds: SceneBounds; productPoints: Point3[]; perspectiveFade: boolean; reducedDetail?: boolean;
 }) {
+  const enhanced = useSceneRenderingUpgrade();
   const { position: { x, y, z }, radiusMm: radius, specimen } = geometry;
   const tree = useRef<Group>(null);
   const scratch = useMemo(() => ({ centre: new Vector3(), point: new Vector3() }), []);
@@ -43,7 +45,7 @@ function Tree({ geometry, bounds, productPoints, perspectiveFade }: {
     const overlaps = foliageOverlapsProduct(corners, scratch.centre, rx, ry);
     scratch.point.set(bounds.center.x, bounds.center.y, bounds.center.z).project(camera);
     const inFront = scratch.centre.z < scratch.point.z;
-    const target = overlaps && inFront ? .08 : 1;
+    const target = overlaps && inFront ? enhanced ? .35 : .08 : 1;
     opacity.current = MathUtils.damp(opacity.current, target, 14, Math.min(delta, .1));
     if (Math.abs(opacity.current - target) > .005) invalidate();
     tree.current?.traverse(object => {
@@ -54,7 +56,7 @@ function Tree({ geometry, bounds, productPoints, perspectiveFade }: {
     });
   });
   return <group ref={tree} position={[x, y, z]} name="context-tree">
-    <ReferenceTreeMeshes specimen={specimen} />
+    <ReferenceTreeMeshes specimen={specimen} reducedDetail={reducedDetail} />
     <mesh position={[300, 250, 2]} renderOrder={1} scale={[radius / 1250, radius / 1250, 1]}>
       <planeGeometry args={[3200, 2800]} />
       <shaderMaterial transparent depthWrite={false}
@@ -64,8 +66,8 @@ function Tree({ geometry, bounds, productPoints, perspectiveFade }: {
   </group>;
 }
 
-export default function PreviewLandscape({ context, bounds, productPoints, perspectiveFade = false }: { perspectiveFade?: boolean; context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: Point3[] }) {
+export default function PreviewLandscape({ context, bounds, productPoints, perspectiveFade = false, reducedDetail = false }: { reducedDetail?: boolean; perspectiveFade?: boolean; context: RepresentativeSurroundings; bounds: SceneBounds; productPoints: Point3[] }) {
   return <group name="landscape-context">
-    {context.trees.map((geometry, index) => <Tree key={index} geometry={geometry} bounds={bounds} productPoints={productPoints} perspectiveFade={perspectiveFade} />)}
+    {context.trees.map((geometry, index) => <Tree key={index} reducedDetail={reducedDetail} geometry={geometry} bounds={bounds} productPoints={productPoints} perspectiveFade={perspectiveFade} />)}
   </group>;
 }

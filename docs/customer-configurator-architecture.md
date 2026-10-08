@@ -1,5 +1,58 @@
 # Sanctuary "Your Pergola" Customer Configurator
 
+## Outdoor configurator presentation and dining chair (8 October 2026)
+
+The approved natural-daylight presentation is integrated with the
+updated dining chair for release. PreviewViews now enables the furnished outdoor
+scene on the ordinary marketing route, including lighting edits and when the
+surroundings are hidden. Existing furniture clearance/layout rules remain: very
+small footprints omit settings that cannot fit. StudioSetting.showBase separates
+backdrop visibility from furniture. Design, geometry and pricing contracts stay
+unchanged.
+
+PreviewCamera permits ordinary vertical drag below the target to look upward,
+with a terrace-height guard. The reversible Look underneath / Whole pergola
+shortcut complements direct drag. PreviewScene uses the occupied pergola centre
+as orbit target separately from support-inclusive fit points for elevated decks;
+below-deck supports remain in the overview without lowering the occupied-space
+aim. PreviewCamera.test covers fitting, upward target and interrupted transitions.
+
+OutdoorEnvironment supplies a procedural daylight sky/ground environment captured
+once. PreviewLighting balances daylight and PreviewRoof replaces fixed studio
+reflection stripes with view-angle-dependent acrylic. HouseContextMaterial adds
+filtered plaster tone/roughness. StructuralFinish scopes cloned materials to
+member_prism subtrees: narrow lit edge shading and filtered powder-coat roughness,
+without changing vertices/profiles or adding draw calls. Cleanup restores and
+disposes clones; StructuralFinish.test covers furniture exclusion and geometry
+preservation. Existing demand rendering/static shadows remain; no new assets or
+external services. PreviewLandscape/ReferenceTreeMeshes retain sampled branches
+and foliage at reduced detail and preserve partially visible foreground trees.
+JourneyNavigation's scoped primary action retains readable day/night contrast.
+
+StudioDiningChair retains the no-props, Z-up millimetre, placement-origin contract.
+StudioDiningChairGeometry owns tapered rear uprights, near-vertical front legs,
+open curved back, thin seat shell and warm-grey cushion. Bistro, compact-dining
+and six-seat consumers reuse it. Shared furniture finishes/layout and other
+furniture shapes are unchanged by chair integration. Geometry tests cover envelope,
+seat height, rear supports/open gap, curvature, finite normals, closed winding
+and triangle budget. Two chair-solid draws plus one contact-plane draw replace
+nine solid draws plus contact. No standalone chair-study route ships here.
+
+Development diagnostics only: render=baseline selects the earlier furnished
+renderer via realismPreview.isBaselineScene. Production ignores this and scene
+query flags, so normal and previously shared links use the approved presentation.
+SceneBenchmark is mounted only in development, enabled by bench=1; it performs a
+finite six-second orbit at fixed benchDpr (default1, clamped1–2), excludes the
+first300ms, and restores camera/DPR. PreviewPerformanceEvidence is likewise
+development-only. No opt-in production environment flag is required or supported.
+The retained optimized study build is historical QA, not the release artifact.
+
+Verification includes marketing unit/type/lint/build and architecture checks,
+combined chair/renderer browser review, representative roof styles/finishes/sizes,
+elevated direct upward drag, day/night, reduced-detail mobile and edit/return.
+Physical-phone/GPU headroom cannot be inferred from desktop-emulated benchmarks.
+Release-candidate local pricing remains unconfigured and no enquiry is submitted
+during scene review; these previews do not establish commercial delivery.
 ## Proportional roofs and close behaviour (21 September 2026)
 
 The owner-approved combination roof uses equal solid/acrylic/solid thirds of

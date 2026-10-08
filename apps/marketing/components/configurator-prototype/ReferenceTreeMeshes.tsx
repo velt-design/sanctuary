@@ -3,7 +3,8 @@ import { BufferGeometry, Color, CylinderGeometry, DoubleSide, Float32BufferAttri
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { RepresentativeSurroundings } from '@sp/geometry';
 
-export default function ReferenceTreeMeshes({ specimen }: { specimen: RepresentativeSurroundings['trees'][number]['specimen'] }) {
+export default function ReferenceTreeMeshes({ specimen: original, reducedDetail = false }: { reducedDetail?: boolean; specimen: RepresentativeSurroundings['trees'][number]['specimen'] }) {
+  const specimen = useMemo(() => reducedDetail ? { ...original, branches: original.branches.filter((branch, index) => branch.radius > 22 || index % 5 === 0), leaves: original.leaves.filter((_, index) => index % 5 === 0).map(leaf => ({ ...leaf, size: leaf.size * 1.6 })) } : original, [original, reducedDetail]);
   const foliage = useRef<InstancedMesh>(null);
   const branchGeometry = useMemo(() => {
     const transform = new Object3D();
