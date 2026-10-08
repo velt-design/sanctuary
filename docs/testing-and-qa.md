@@ -1583,3 +1583,19 @@ API requests and returns an explicit unavailable result; staff document links st
 in the fixture. This is presentation evidence, not proof of saving, sending or
 financial writes. QA routes require ENABLE_PORTAL_QA_FIXTURES=1; normal staff routes
 retain authentication. Use the separate connected staging journey for live reads.
+
+### Owner commercial overview
+
+Run `npx vitest run apps/portal/lib/marketingPerformance apps/portal/components/marketingPerformance apps/portal/app/api/staff/v1/marketing-performance test/marketing-commercial-read.test.ts`.
+The exact SQL test executes both the canonical accepted-version function and the
+new read in disposable PGlite, checking permissions, revisions, add-ons, withdrawal
+tombstones, dates and bounds. Rehearse the exact forward function in a rolled-back
+hosted transaction and independently reconcile aggregates before activation; fixtures
+alone do not establish live source coverage. The existing QA marketing fixture now
+includes coherent invented quote amounts. `commercialCoverage=1` demonstrates
+an add-on, missing enquiry timing and undated acceptance using a shared hub/event
+inventory. `commercialFailure=1` fails persistently; `commercialFailure=once`
+recovers through the Retry button. Verify period/source filters, weekly/monthly partial buckets,
+keyboard record inspection, previous-period missingness, responsive layout and
+return context. Production project inspection opens a labelled new tab; fixture
+navigation uses its existing synthetic return journey.
