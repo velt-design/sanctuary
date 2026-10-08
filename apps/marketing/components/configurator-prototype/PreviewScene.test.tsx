@@ -17,7 +17,7 @@ vi.mock('./DayNightTransition',()=>({default:({children}:{children:React.ReactNo
 vi.mock('./PreviewLighting',()=>({default:()=>null}));
 // WebGL quality effects require a real renderer; this suite isolates recovery.
 vi.mock('./StudioTreatment',()=>({StudioTreatment:React.createContext(false),StudioQuality:()=>null}));
-vi.mock('@sp/geometry-viewer',()=>({computeSceneBoundsFromPoints:()=>({})}));
+vi.mock('@sp/geometry-viewer',()=>({computeSceneBoundsFromPoints:()=>({min:{x:0,y:0,z:0},max:{x:1,y:1,z:1},center:{x:.5,y:.5,z:.5},size:1})}));
 vi.mock('@sp/geometry-viewer/react',()=>({SceneObjectNode:()=>null}));
 
 it.each(['context loss','render error'])('can retry after %s without resetting the parent design',async(reason)=>{

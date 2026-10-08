@@ -5,7 +5,7 @@ import type { GeometryPlanViewModel, RepresentativeSurroundings } from '@sp/geom
 
 
 /** Unpriced setting only. Furniture is omitted where there is no generous clearance. */
-export default function StudioSetting({ plan, context }: { plan: GeometryPlanViewModel; context: RepresentativeSurroundings | null }) {
+export default function StudioSetting({ plan, context, showBase = true }: { plan: GeometryPlanViewModel; context: RepresentativeSurroundings | null; showBase?: boolean }) {
   const { minX, minY, maxX, maxY } = plan.extents;
   const width = maxX - minX, depth = maxY - minY;
   const terrace = context?.architecture.terrace;
@@ -33,13 +33,13 @@ export default function StudioSetting({ plan, context }: { plan: GeometryPlanVie
   }, []);
   useEffect(() => () => paving.dispose(), [paving]);
   return <group name="illustrative-setting">
-    {!context?.elevated && <mesh position={[(minX+maxX)/2,(minY+maxY)/2,-4]} rotation={[0,0,0]}>
+    {showBase && !context?.elevated && <mesh position={[(minX+maxX)/2,(minY+maxY)/2,-4]} rotation={[0,0,0]}>
       <planeGeometry args={[80000,80000]}/><meshStandardMaterial color="#d9d3c7" roughness={1}/>
     </mesh>}
-    <mesh position={[(terraceMinX+terraceMaxX)/2,(terraceMinY+terraceMaxY)/2,floor+2]} material={paving}>
+    {showBase && <mesh position={[(terraceMinX+terraceMaxX)/2,(terraceMinY+terraceMaxY)/2,floor+2]} material={paving}>
       <planeGeometry args={[terraceMaxX-terraceMinX,terraceMaxY-terraceMinY]}/>
-    </mesh>
-    {!terrace&&<mesh position={[(minX+maxX)/2,(minY+maxY)/2,floor-55]}><boxGeometry args={[width+900,depth+900,110]}/><meshStandardMaterial color="#bcb6a9" roughness={.9}/></mesh>}
+    </mesh>}
+    {showBase&&!terrace&&<mesh position={[(minX+maxX)/2,(minY+maxY)/2,floor-55]}><boxGeometry args={[width+900,depth+900,110]}/><meshStandardMaterial color="#bcb6a9" roughness={.9}/></mesh>}
     <StudioFurniture plan={plan} floor={floor}/>
   </group>;
 }

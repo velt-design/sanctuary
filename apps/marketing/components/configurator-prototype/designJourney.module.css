@@ -72,4 +72,4 @@
  color:var(--color-text-primary);
 }
 
-.next {display:flex;align-items:center;justify-content:space-between;background:var(--color-text-primary);border-color:var(--color-text-primary);color:var(--color-canvas);font-size:16px}.next svg {width:24px;height:24px}
+.navigation .next {display:flex;align-items:center;justify-content:space-between;background:var(--theme-elevated-primary,var(--color-text-primary));border-color:var(--theme-elevated-primary,var(--color-text-primary));color:var(--color-surface-elevated,var(--color-surface-warm));font-size:16px}.next svg {width:24px;height:24px}

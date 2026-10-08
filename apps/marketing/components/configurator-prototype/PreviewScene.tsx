@@ -25,6 +25,12 @@ import type { GeometryPlanViewModel, ViewerSceneModel, RepresentativeSurrounding
 import styles from './prototype.module.css';
 import { StudioTreatment, StudioQuality } from './StudioTreatment';
 import StudioSetting from './StudioSetting';
+import { RealismStudy } from './RealismStudy';
+import PreviewPerformanceEvidence from './PreviewPerformanceEvidence';
+import { SceneRenderingUpgrade } from './SceneRenderingUpgrade';
+import SceneBenchmark from './SceneBenchmark';
+import StructuralFinish from './StructuralFinish';
+
 
 
 const noop = () => {};
@@ -45,8 +51,8 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-export default function PreviewScene({ framingKey, choiceView, reviewSetting = false, nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback, presentation = false, onCapture, onReady }: {
-  onReady?: () => void;
+export default function PreviewScene({ enhanced = false, eyeLevel = false, realism = false, framingKey, choiceView, reviewSetting = false, nightPresentation, showReferenceBase = true, covering, scene, plan, context, activeDimension, interactive, reset, fit, onFallback, presentation = false, onCapture, onReady }: {
+  enhanced?: boolean; eyeLevel?: boolean; realism?: boolean; onReady?: () => void;
   framingKey?: string; choiceView?: 'sides' | 'lighting';
   reviewSetting?: boolean; nightPresentation: NightPresentation; presentation?: boolean; onCapture?: (image: string) => void;
   showReferenceBase?: boolean; covering?: RoofFinishGeometry; context: RepresentativeSurroundings | null;
@@ -83,21 +89,27 @@ export default function PreviewScene({ framingKey, choiceView, reviewSetting = f
       <SceneReady onReady={onReady}/><ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
       <DayNightTransition presentation={nightPresentation}>
       <StudioTreatment.Provider value={studio}>
-      <PreviewLighting reducedDetail={mobile} studio={studio} review={studio && reviewSetting}/>
+      <RealismStudy.Provider value={realism}>
+      <SceneRenderingUpgrade.Provider value={enhanced}>
+      {process.env.NODE_ENV === 'development' && <SceneBenchmark bounds={bounds}/> }
+      {process.env.NODE_ENV === 'development' && <PreviewPerformanceEvidence/>}
+      <PreviewLighting realism={realism} reducedDetail={mobile} studio={studio} review={studio && reviewSetting}/>
       {studio&&<StudioQuality onReducedDetail={setReducedDetail} revision={JSON.stringify({reviewSetting,reducedDetail,objects,covering,blinds:blindWorkspace?.blinds,panels:blindWorkspace?.panels})}/> }
       {lighting&&<PergolaLightFixtures/>}
       {blindWorkspace && <PreviewBlinds workspace={lighting?.editing || choiceView === 'lighting'?{...blindWorkspace,editing:false,select:noop}:choiceView === 'sides'?{...blindWorkspace,select:noop}:blindWorkspace} />}
       {covering && <PreviewRoofFinish covering={covering} review={studio && reviewSetting} />}
       {showReferenceBase && plan.connectionType === 'freestanding' && <FreestandingBase plan={plan} />}
-      {context && <PreviewSurroundings reducedDetail={studio&&reducedDetail} richSetting={studio && reviewSetting} studio={studio} context={context} bounds={bounds} productPoints={fitPoints} />}
-      {studio&&reviewSetting&&showReferenceBase&&<StudioSetting plan={plan} context={context}/>}
-      <PreviewCamera framingKey={framingKey} choiceView={choiceView} explore={reviewSetting && !onCapture} portrait={Boolean(onCapture)} studio={studio} bounds={choiceView === 'lighting' ? bounds : cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={Boolean(context)} presentation={presentation} side={choiceView !== 'lighting' && presentation && blindWorkspace?.editing ? blindWorkspace.openings.find(o => o.id === blindWorkspace.selected)?.side : undefined} />
-      <group>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
+      {showReferenceBase && context && <PreviewSurroundings reducedDetail={studio&&reducedDetail} richSetting={studio && reviewSetting} studio={studio} context={context} bounds={bounds} productPoints={fitPoints} />}
+      {studio&&reviewSetting&&(showReferenceBase||realism)&&<StudioSetting plan={plan} context={context} showBase={showReferenceBase}/>}
+      <PreviewCamera enhanced={enhanced} orbitTarget={enhanced ? bounds.center : undefined} eyeLevel={eyeLevel} groundZ={context?.architecture.terrace.max.z ?? bounds.min.z} framingKey={framingKey} choiceView={choiceView} explore={reviewSetting && !onCapture} portrait={Boolean(onCapture)} studio={studio} bounds={choiceView === 'lighting' ? bounds : cameraBounds} fitPoints={cameraPoints} enabled={interactive} reset={reset} fit={fit} surroundings={showReferenceBase && Boolean(context)} presentation={presentation} side={choiceView !== 'lighting' && presentation && blindWorkspace?.editing ? blindWorkspace.openings.find(o => o.id === blindWorkspace.selected)?.side : undefined} />
+      <StructuralFinish enabled={enhanced} objects={objects}>{objects.map((object) => object.type === 'roof_plane' || object.type === 'roof_cladding_panel'
         ? <PreviewRoof key={object.id} object={object} />
-        : <SceneObjectNode key={object.id} object={object} color="#242824" memberAppearance={{ roughness: studio ? .28 : .38, metalness: studio ? .35 : .2, envMapIntensity: studio ? 1.1 : .8 }}
-          selected={false} hovered={false} onSelect={noop} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</group>
+        : <SceneObjectNode key={object.id} object={object} color={enhanced ? "#303330" : realism ? "#303631" : "#242824"} memberAppearance={{ roughness: realism ? .46 : studio ? .28 : .38, metalness: realism ? .16 : studio ? .35 : .2, envMapIntensity: realism ? .95 : studio ? 1.1 : .8 }}
+          selected={false} hovered={false} onSelect={noop} onHoverEnter={noop} onHoverLeave={noop} onFocus={noop} clippingPlanes={[]} />)}</StructuralFinish>
       {interactive && activeDimension && roof.length > 0 && <PreviewDimensionGuide axis={activeDimension} plan={plan} roof={roof} />}
       {onCapture && <SceneSnapshot night={lighting?.night ?? false} onCapture={onCapture} />}
+      </SceneRenderingUpgrade.Provider>
+      </RealismStudy.Provider>
       </StudioTreatment.Provider>
     </DayNightTransition>
     </Canvas>
