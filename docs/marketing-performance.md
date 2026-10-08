@@ -259,7 +259,7 @@ Live route: https://portal.sanctuarypergolas.co.nz/staff/marketing-performance .
 | Visits | Persisted confirmed_at or current CONFIRMED legacy status. Confirmation is not attendance. Missing timestamp column explicitly uses current status and says so beside metric. | Staging schema rehearsal, SQL tests and UI |
 | Quotes/acceptance | Projects with sent/accepted quote versions; no drafts. Acceptance uses commercial_current_accepted_quote_versions, honoring withdrawn scope. | Existing owner reused, tombstone tests |
 | Wins | Unreversed positive Xero payment match, or PAID first-instalment invoice on current accepted scope. Stage/analytics delivery not proof. | Reversal/current-scope tests; read-only older production cohort includes actual outcomes |
-| Source/coverage | Consent-permitted saved UTM, never reconstructed. Source-known receipts / included receipts. Campaign-only stays unknown source. Customer-reported source and platform claims remain distinct/unavailable. | Consent/missing-source tests; visible unknown group |
+| Source/coverage | Consent-permitted saved UTM first; missing labels fall back to Google Ads for a saved string gclid/gbraid/wbraid containing 1-600 URL-safe identifier characters. Never reconstructed. Source-known receipts / included receipts. Campaign-only stays unknown source. Customer-reported source and platform claims remain distinct/unavailable. | Consent/missing-source tests; visible unknown group |
 | Exclusions | Exact existing Praxis labelled-test IDs reused. No universal spam/test classifier; others remain included. Lost/not-qualified are not automatically spam. | SQL tests and disclosure |
 | Drop-off | Missing stage evidence and recorded lost projects; open or skipped-stage journeys are not inferred losses. | Source and supporting-record views |
 | Money/spend | Receipt-cohort outcomes are counts; sales money is net recorded receipts. Quoted value, accepted value and receipts are not labelled revenue. Spend/costs unavailable. | UI and owner decision |
@@ -305,3 +305,16 @@ Historical receipts, qualification assessments, visit timestamps and payment evi
 Backfill requires original evidence: review exact existing receipt/project matches; assess eligible enquiries through Original enquiry without backdating; prepare imports with external ID, original received date, project link, provenance and explicit consent-permitted source. Do not replay intake messages, analytics or jobs. Any further write batch needs its own concrete review and authorization.
 
 Proposed spend CSV (not implemented): period start/end, observed source, campaign, currency (NZD), amount and evidence reference. Validate overlapping/duplicate periods, currency and source matching, preview rejected/unmatched rows, and retain provenance before persistence. Costs remain unavailable until reliable spend and a defensible matching denominator exist. No Google/Meta claimed conversions are summed into unique business outcomes.
+
+## Google Ads source correction (8 October 2026; local, not released)
+
+Forward migration `20261008000001_marketing_google_ads_source.sql` owns one private
+`marketing_observed_source(jsonb,jsonb)` policy used by both receipt and earliest
+project-origin reads. Nonblank recorded sources win, including legacy UTM labels.
+The Google Ads fallback requires boolean marketing consent and a structurally
+valid saved Google identifier; it is observed arrival evidence, not provider
+verification of a click or campaign. Missing, malformed and unpermitted evidence
+remains unknown. Campaigns, raw receipts, totals, origin selection, authorization
+and outcome definitions are unchanged. No backfill, new tracking or connector
+setup is involved. The SQL regression executes the migration and both readers
+in disposable PGlite; hosted schema rehearsal/release remain separate.

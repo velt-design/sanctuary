@@ -5806,3 +5806,7 @@ Do not invent historical receipts or attribution to force totals to agree. Verif
 must include representative manual/archived projects and the owner's actual comparison.
 Owner: `docs/marketing-performance.md`; contracts/tests: `lib/marketingPerformance/hub.ts`
 and `test/marketing-performance-read.test.ts`.
+
+## 2026-10-08 - Saved source evidence
+
+Marketing source reporting must inspect permitted saved click evidence before declaring a source unknown. Keep one classifier for receipt and project-origin reads; preserve explicit source labels, consent and unknowns. A saved identifier does not establish provider-verified attribution or campaign detail. See `marketing-performance.md`.
