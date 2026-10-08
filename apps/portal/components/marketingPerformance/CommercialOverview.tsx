@@ -12,7 +12,7 @@ import { selectHub, money, type HubFilters, type HubReport } from '@/lib/marketi
 
 import { aucklandDay } from '@/lib/marketingPerformance/contract';
 
-import { commercialTrend, comparison, contributions, metricValue, type CommercialMetric } from '@/lib/marketingPerformance/commercial';
+import { commercialTrend, comparison, contributions, historyCoverage, historyLabel, recordedMetricValue, type CommercialMetric } from '@/lib/marketingPerformance/commercial';
 
 import useCommercial, { type CommercialLoader } from './useCommercial';
 
@@ -74,7 +74,8 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
   const undated = rows.filter(r => r.accepted && !r.accepted.acceptedAt).length;
 
-  const priorCovered = Boolean(report.earliestSentAt && report.priorStart >= aucklandDay(new Date(report.earliestSentAt)));
+  const currentCoverage = historyCoverage(report, report.start, report.end), priorCoverage = historyCoverage(report, report.priorStart, report.priorEnd);
+  const comparable = currentCoverage === 'covered' && priorCoverage === 'covered';
 
   const trend = commercialTrend(report, current, filters.salesBucket);
 
@@ -82,6 +83,9 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
   const details = metric ? (prior ? previous : current)[metric].filter(r => !month || Boolean(selectedBucket && aucklandDay(new Date(r.at)) >= selectedBucket.start && aucklandDay(new Date(r.at)) <= selectedBucket.end)) : [];
 
+  const detailStart = prior ? report.priorStart : selectedBucket?.start ?? report.start;
+  const detailEnd = prior ? report.priorEnd : selectedBucket?.end ?? report.end;
+  const detailCoverage = historyCoverage(report, detailStart, detailEnd);
   const valueLabel = (key: CommercialMetric, value: number | null) => value === null ? 'Unavailable' : key.endsWith('Days') ? `${value.toFixed(1)} days` : money(value);
 
   return <section ref={section} className={styles.section} aria-label="Commercial performance">
@@ -93,11 +97,11 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
     <div className={styles.metrics}>{(['quoted', 'accepted', 'average'] as const).map(key => <div className={styles.metric} key={key}>
 
-      <button onClick={() => inspect(key)} aria-label={`Inspect ${labels[key]}`}><span>{labels[key]}</span><strong>{valueLabel(key, metricValue(key, current[key]))}</strong><small>{current[key].length} commercial {current[key].length === 1 ? 'scope' : 'scopes'}{key === 'average' ? ' · per accepted scope' : ''}</small></button>
+      <button onClick={() => inspect(key)} aria-label={`Inspect ${labels[key]}`}><span>{labels[key]}</span><strong>{valueLabel(key, recordedMetricValue(key, current[key], currentCoverage))}</strong><small>{historyLabel(currentCoverage, current[key].length)}{currentCoverage !== 'covered' ? ' · ' : ''}{current[key].length} recorded commercial {current[key].length === 1 ? 'scope' : 'scopes'}{key === 'average' ? ' · per accepted scope' : ''}</small></button>
 
-      <button className={styles.compare} onClick={() => inspect(key, '', true)}>Previous: {priorCovered ? valueLabel(key, metricValue(key, previous[key])) : 'Incomplete history'}</button>
+      <button className={styles.compare} onClick={() => inspect(key, '', true)}>Previous: {valueLabel(key, recordedMetricValue(key, previous[key], priorCoverage))}{priorCoverage !== 'covered' ? ` · ${historyLabel(priorCoverage, previous[key].length)}` : ''}</button>
 
-      <small>{priorCovered ? comparison(metricValue(key, current[key]), metricValue(key, previous[key])) : 'Comparison unavailable · earlier history incomplete'}</small>
+      <small>{comparable ? comparison(recordedMetricValue(key, current[key], currentCoverage), recordedMetricValue(key, previous[key], priorCoverage)) : 'Comparison unavailable · period history incomplete'}</small>
 
     </div>)}</div>
 
@@ -105,25 +109,25 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
     <div className={styles.lower}>
 
-      <div><h3>Quote and acceptance values</h3><Select label="Group values by" value={filters.salesBucket} onChange={e => { inspect(null); apply({ ...filters, salesBucket: e.target.value as 'week' | 'month' }); }}><option value="week">Week</option><option value="month">Month</option></Select><p className={styles.note}>Within selected dates · first and last buckets may be partial</p>
+      <div><h3>Quote and acceptance values</h3><Select label="Group values by" value={filters.salesBucket} onChange={e => { inspect(null); apply({ ...filters, salesBucket: e.target.value as 'week' | 'month' }); }}><option value="week">Week</option><option value="month">Month</option></Select><p className={styles.note}>Within selected dates · first and last buckets may be partial{currentCoverage !== 'covered' ? ' · Earlier history is incomplete; bars show recorded values only.' : ''}</p>
 
-        <div className={styles.chart}><ResponsiveContainer width="100%" height={260} minWidth={0}><BarChart data={trend} accessibilityLayer margin={{ left: 0, right: 8 }}>
+        <div className={styles.chart}>{trend.every(b => b.quoted === null && b.accepted === null) ? <p className={styles.note}>Incomplete history for these dates. No verified values to plot.</p> : <ResponsiveContainer width="100%" height={260} minWidth={0}><BarChart data={trend} accessibilityLayer margin={{ left: 0, right: 8 }}>
 
-          <CartesianGrid vertical={false} stroke="var(--ui-border)"/><XAxis dataKey="label" tick={{ fontSize: 12 }}/><YAxis width={60} tick={{ fontSize: 12 }} tickFormatter={v => `$${Number(v) / 100000}k`}/><Tooltip formatter={value => typeof value === 'number' ? money(value) : 'Unavailable'}/><Legend/>
+          <CartesianGrid vertical={false} stroke="var(--ui-border)"/><XAxis dataKey="label" tick={{ fontSize: 12 }}/><YAxis width={60} tick={{ fontSize: 12 }} tickFormatter={v => `$${Number(v) / 100000}k`}/><Tooltip labelFormatter={(_, payload) => { const b = payload?.[0]?.payload; return b ? `${b.start} – ${b.end}${b.coverage !== 'covered' ? ' · Partial recorded history' : ''}` : ''; }} formatter={value => typeof value === 'number' ? money(value) : 'Unavailable'}/><Legend/>
 
           <Bar name="Quoted" dataKey="quoted" fill="#276987" isAnimationActive={false} onClick={(_, i) => { if (trend[i]) inspect('quoted', trend[i].key); }} cursor="pointer"/>
 
           <Bar name="Accepted" dataKey="accepted" fill="#936022" isAnimationActive={false} onClick={(_, i) => { if (trend[i]) inspect('accepted', trend[i].key); }} cursor="pointer"/>
 
-        </BarChart></ResponsiveContainer></div>
+        </BarChart></ResponsiveContainer>}</div>
 
-        <details><summary>View trend figures</summary><div className={styles.table} tabIndex={0} role="region" aria-label="Commercial trend figures"><table><thead><tr><th>Period (NZ)</th><th>Quoted</th><th>Accepted</th></tr></thead><tbody>{trend.map(b => <tr key={b.key}><th>{b.start} – {b.end}{b.partial ? ' · partial' : ''}</th><td><button className={styles.compare} onClick={() => inspect('quoted', b.key)}>{b.quoted === null ? 'Unavailable' : money(b.quoted)} · {b.quotedCount} scopes</button></td><td><button className={styles.compare} onClick={() => inspect('accepted', b.key)}>{b.accepted === null ? 'Unavailable' : money(b.accepted)} · {b.acceptedCount} scopes</button></td></tr>)}</tbody></table></div></details>
+        <details><summary>View trend figures</summary><div className={styles.table} tabIndex={0} role="region" aria-label="Commercial trend figures"><table><thead><tr><th>Period (NZ)</th><th>Quoted</th><th>Accepted</th></tr></thead><tbody>{trend.map(b => <tr key={b.key}><th>{b.start} – {b.end}{b.partial ? ' · partial dates' : ''}{b.coverage !== 'covered' && <small>{historyLabel(b.coverage, b.quotedCount + b.acceptedCount)}</small>}</th><td><button className={styles.compare} onClick={() => inspect('quoted', b.key)}>{b.quoted === null ? 'Unavailable' : money(b.quoted)} · {b.quotedCount} recorded scopes</button></td><td><button className={styles.compare} onClick={() => inspect('accepted', b.key)}>{b.accepted === null ? 'Unavailable' : money(b.accepted)} · {b.acceptedCount} recorded scopes</button></td></tr>)}</tbody></table></div></details>
 
       </div>
 
       <div><h3>Time to move forward</h3><p className={styles.note}>Median elapsed days · initial scopes only, excluding add-ons</p><div className={styles.timing}>{(['enquiryDays', 'acceptanceDays'] as const).map(key => <button key={key} onClick={() => inspect(key)}>
 
-        <span>{labels[key]}</span><strong>{valueLabel(key, metricValue(key, current[key]))}</strong><small>{current[key].filter(r => r.days !== null).length} of {current[key].length} eligible scopes have usable dates</small><small>{priorCovered ? `Previous: ${valueLabel(key, metricValue(key, previous[key]))}` : 'Earlier history incomplete'}</small>
+        <span>{labels[key]}</span><strong>{valueLabel(key, recordedMetricValue(key, current[key], currentCoverage))}</strong><small>{current[key].filter(r => r.days !== null).length} of {current[key].length} recorded eligible scopes have usable dates</small>{currentCoverage !== 'covered' && <small>{historyLabel(currentCoverage, current[key].length)}</small>}<small>{priorCoverage === 'covered' ? `Previous: ${valueLabel(key, recordedMetricValue(key, previous[key], priorCoverage))}` : `Previous: ${valueLabel(key, recordedMetricValue(key, previous[key], priorCoverage))} · ${historyLabel(priorCoverage, previous[key].length)}`}</small>
 
       </button>)}</div></div>
 
@@ -145,7 +149,7 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
     <Drawer title={metric ? `${labels[metric]}${month ? ` · ${month}` : ''}${prior ? ' · Previous period' : ''}` : 'Commercial records'} open={metric !== null} onClose={() => inspect(null)}>
 
-      {metric && <CommercialRecords key={`${metric}:${month}:${prior}:${filters.start}:${filters.end}`} metric={metric} rows={details} projects={selected.projectMap} synthetic={synthetic} summary={valueLabel(metric, metricValue(metric, details))}/>}
+      {metric && <CommercialRecords key={`${metric}:${month}:${prior}:${filters.start}:${filters.end}`} metric={metric} rows={details} projects={selected.projectMap} synthetic={synthetic} summary={valueLabel(metric, recordedMetricValue(metric, details, detailCoverage))} context={`${detailStart} – ${detailEnd} NZ${detailCoverage !== 'covered' ? ` · ${historyLabel(detailCoverage, details.length)}. These records do not establish the full period total or cohort.` : ''}`}/>}
 
     </Drawer>
 

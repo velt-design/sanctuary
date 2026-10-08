@@ -5,15 +5,16 @@ import { money, type HubProject } from '@/lib/marketingPerformance/hub';
 import type { CommercialMetric, Contribution } from '@/lib/marketingPerformance/commercial';
 import styles from './CommercialOverview.module.css';
 
-export default function CommercialRecords({ metric, rows, projects, synthetic, summary }: {
-  metric: CommercialMetric; rows: Contribution[]; projects: Map<string, HubProject>; synthetic?: boolean; summary: string;
+export default function CommercialRecords({ metric, rows, projects, synthetic, summary, context }: {
+  metric: CommercialMetric; rows: Contribution[]; projects: Map<string, HubProject>; synthetic?: boolean; summary: string; context?: string;
 }) {
   const [page, setPage] = useState(0), timing = metric.endsWith('Days');
   const sorted = [...rows].sort((a, b) => b.at.localeCompare(a.at) || a.row.quoteId.localeCompare(b.row.quoteId));
   const date = (value: string | null) => value ? new Date(value).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland', dateStyle: 'medium', timeStyle: 'short' }) : 'Not recorded';
   const link = (id: string) => synthetic ? `/qa/marketing-performance-fixture/project?project=${id}&return=${encodeURIComponent(typeof window === 'undefined' ? '' : window.location.search)}` : `/staff/projects/proj_${id}?tab=quotes`;
   return <div className={styles.records}>
-    <p>{summary} · {rows.length} contributing scopes{timing ? ` · ${rows.filter(r => r.days !== null).length} usable date pairs` : ''}</p>
+    {context && <p className={styles.note}>{context}</p>}
+    <p>{summary} · {rows.length} recorded contributing scopes{timing ? ` · ${rows.filter(r => r.days !== null).length} usable date pairs` : ''}</p>
     <p className={styles.note}>{timing ? 'Exact saved dates in New Zealand time. Missing or out-of-order pairs do not enter the median.' : 'Stored quote amounts in NZD including GST. Each commercial scope appears once; add-ons are labelled.'}</p>
     {!synthetic && <p className={styles.note}>Projects open in a new tab so this report stays in place.</p>}
     <div className={`${styles.table} ${timing ? styles.timingTable : styles.valueTable}`} tabIndex={0} role="region" aria-label="Contributing commercial records"><table><thead><tr><th>Project / quote</th>{timing && <><th>From (NZ)</th><th>To (NZ)</th></>}<th>{timing ? 'Elapsed days' : 'Amount incl. GST'}</th></tr></thead><tbody>

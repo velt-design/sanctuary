@@ -24,9 +24,13 @@ currently accepted in the period, first-ever send to acceptance. Both show usabl
 versus eligible counts; missing/out-of-order dates remain inspectable but do not
 enter the median. Add-ons have no inferred enquiry timing. All dates use Auckland;
 elapsed days use exact timestamps. Prior comparisons use adjacent equal day counts
-and the same current source/project filters. Prior periods preceding recorded
-quote history show incomplete history instead of an authoritative zero. A supported
-zero baseline has no growth percentage; empty average/timing is unavailable.
+and the same current source/project filters. One history-coverage policy applies to selected/prior periods, trend buckets and
+record drawers. Empty intervals before known history (or with unknown history) are
+unavailable, never verified zero. Straddling intervals retain known amounts and
+cohort counts labelled partial recorded history; full-period comparisons require
+both periods to be covered. Drawers preserve the exact period and qualification.
+Supported post-history empty intervals remain zero. A supported zero baseline has
+no growth percentage; empty average/timing is unavailable.
 
 Weekly/monthly trend buckets reuse `overview.salesActivity` date partitioning,
 including clipped partial ranges. Bars, keyboard table and drawer partition exactly

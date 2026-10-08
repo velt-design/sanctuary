@@ -76,11 +76,24 @@ export function comparison(current: number | null, prior: number | null) {
   const change = (current - prior) / Math.abs(prior) * 100;
   return `${change > 0 ? '+' : ''}${change.toFixed(1)}% vs previous`;
 }
+export type HistoryCoverage = 'covered' | 'partial' | 'unavailable';
+export function historyCoverage(report: Pick<CommercialReport, 'earliestSentAt'>, start: string, end: string): HistoryCoverage {
+  if (!report.earliestSentAt) return 'unavailable';
+  const first = aucklandDay(new Date(report.earliestSentAt));
+  return end < first ? 'unavailable' : start < first ? 'partial' : 'covered';
+}
+export function historyLabel(coverage: HistoryCoverage, recordedCount: number) {
+  return coverage === 'covered' ? '' : recordedCount ? 'Partial recorded history' : 'Incomplete history';
+}
+export function recordedMetricValue(metric: CommercialMetric, items: Contribution[], coverage: HistoryCoverage) {
+  return coverage !== 'covered' && !items.length ? null : metricValue(metric, items);
+}
 export function commercialTrend(report: CommercialReport, values: ReturnType<typeof contributions>, bucket: ActivityBucket = 'month') {
   return salesActivity([], report.start, report.end, bucket).map(b => {
     const quoted = values.quoted.filter(item => inPeriod(item.at, b.start, b.end));
     const accepted = values.accepted.filter(item => inPeriod(item.at, b.start, b.end));
-    return { key: b.key, label: b.label, start: b.start, end: b.end, partial: b.partial,
-      quoted: total(quoted), accepted: total(accepted), quotedCount: quoted.length, acceptedCount: accepted.length };
+    const coverage = historyCoverage(report, b.start, b.end);
+    return { coverage, key: b.key, label: b.label, start: b.start, end: b.end, partial: b.partial,
+      quoted: recordedMetricValue('quoted', quoted, coverage), accepted: recordedMetricValue('accepted', accepted, coverage), quotedCount: quoted.length, acceptedCount: accepted.length };
   });
 }

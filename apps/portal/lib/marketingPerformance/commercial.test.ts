@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { commercialSchema, commercialTrend, comparison, contributions, metricValue, type CommercialRow } from './commercial';
+import { commercialSchema, commercialTrend, historyCoverage, historyLabel, recordedMetricValue, comparison, contributions, metricValue, type CommercialRow } from './commercial';
 import { commercialFixture, commercialCoverageScenario } from '@/app/qa/marketing-performance-fixture/commercialFixtures';
 import { representativeFixture, representativeFilters } from '@/app/qa/marketing-performance-fixture/representativeFixture';
 const report = commercialFixture(representativeFixture, representativeFilters);
@@ -49,4 +49,23 @@ it('coverage demo shares undated acceptance and add-on evidence across hub and v
  expect(hub.events.filter(e=>e.id.startsWith('demo-commercial-addon'))).toHaveLength(2);
  const undated=commercial.rows.find(r=>r.accepted&&!r.accepted.acceptedAt)!;
  expect(hub.events.some(e=>e.projectId===undated.projectId&&e.kind==='quote_accepted')).toBe(false);
+});
+
+it('shares honest interval coverage across pre-history, straddling, unknown and supported empty periods', () => {
+ const source={earliestSentAt:'2026-02-02T00:00:00Z'};
+ expect(historyCoverage(source,'2024-01-01','2024-01-31')).toBe('unavailable');
+ expect(recordedMetricValue('quoted',[],historyCoverage(source,'2024-01-01','2024-01-31'))).toBeNull();
+ expect(historyCoverage(source,'2026-01-01','2026-02-28')).toBe('partial');
+ const items=contributions(report,report.rows).quoted;
+ expect(recordedMetricValue('quoted',items,'partial')).toBe(metricValue('quoted',items));
+ expect(historyLabel('partial',items.length)).toBe('Partial recorded history');
+ expect(historyCoverage({earliestSentAt:null},'2026-03-01','2026-03-31')).toBe('unavailable');
+ expect(recordedMetricValue('accepted',[],'unavailable')).toBeNull();
+ expect(recordedMetricValue('quoted',items,'unavailable')).toBe(metricValue('quoted',items));
+ expect(historyLabel('unavailable',items.length)).toBe('Partial recorded history');
+ expect(historyCoverage(source,'2026-03-01','2026-03-31')).toBe('covered');
+ expect(recordedMetricValue('quoted',[],'covered')).toBe(0);
+ expect(recordedMetricValue('enquiryDays',[],'partial')).toBeNull();
+ const old={...report,start:'2024-01-01',end:'2024-01-31'};
+ expect(commercialTrend(old,contributions(old,[])).every(b=>b.quoted===null&&b.accepted===null)).toBe(true);
 });
