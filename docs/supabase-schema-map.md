@@ -826,3 +826,7 @@ The invoker-rights `staff_projects_index_v4` retains Portal access/row security,
 filter-before-pagination and v3 limits, adds stage timing and optional bounded
 ordered UUIDs for authoritative next-action sorting. Existing v3 is unchanged.
 No new role or production installation is authorised by this implementation.
+
+## Marketing observed source
+
+Forward migration `20261008000001_marketing_google_ads_source.sql` adds private immutable `marketing_observed_source(jsonb,jsonb)` and updates both existing guarded marketing readers. It prefers consent-permitted recorded UTM source, then structurally valid saved Google click evidence; it changes no rows, table permissions, campaigns or origin selection. Direct browser-role execution of the helper is revoked. See `marketing-performance.md` for semantics, tests and unreleased status.

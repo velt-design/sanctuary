@@ -34,6 +34,7 @@ beforeAll(async () => {
   await db.exec(sql('20260813000003_commercial_truth_invariants').split('create or replace function public.commercial_project_financial_truth')[0]);
   await db.exec(sql('20260922000002_marketing_performance_read'));
   await db.exec(sql('20260922000003_marketing_performance_developer_access'));
+  await db.exec(sql('20261008000001_marketing_google_ads_source'));
   await db.query('insert into auth.users values ($1,$2,now()),($3,$4,now()),($5,$2,null)',
     [id(90),'jordan@sanctuarypergolas.co.nz',id(93),'other@example.test',id(94)]);
   const payload = { requestType: 'project-discussion', customerBrief: { version: 1, audience: 'residential', design: { input: {}, roof: {} } },
@@ -121,6 +122,7 @@ it('reads the whole portfolio separately from enquiry cohorts and dated sales ac
     insert into project_payment_entries values ('${id(70)}','${id(3)}','PAYMENT',25000,'2026-08-31T12:00:00Z',null),('${id(71)}','${id(3)}','REVERSAL',-25000,'2026-09-02T00:00:00Z','${id(70)}');
   `);
   await db.exec(sql('20260922070001_marketing_sales_hub'));
+  await db.exec(sql('20261008000001_marketing_google_ads_source'));
   const get=async(start='2026-09-01',end='2026-09-22')=>hubSchema.parse((await db.query<{value:unknown}>('select marketing_sales_hub_read($1,$2) value',[start,end])).rows[0].value);
   await db.exec(`set role authenticated; set test.uid='${id(93)}'`);
   await expect(get()).rejects.toThrow('Developer access');
@@ -139,6 +141,44 @@ it('reads the whole portfolio separately from enquiry cohorts and dated sales ac
   await db.exec('reset role; begin');
   await db.exec("insert into projects(id,name) select gen_random_uuid(),'Synthetic capacity' from generate_series(1,5000)");
   await expect(get()).rejects.toThrow('portfolio exceeds');
+  await db.exec('rollback');
+});
+it('classifies saved Google identifiers consistently without rewriting evidence or origin credit', async () => {
+  await db.exec('reset role; begin');
+  const cases: Array<{ click: unknown; key?: string; consent?: unknown; source?: string; legacy?: string; expected: string | null }> = [
+    { click: 'Synthetic-Google_123', expected: 'Google Ads' },
+    { click: 'Synthetic-Braid_123', key: 'gbraid', expected: 'Google Ads' },
+    { click: 'Synthetic-Web_123', key: 'wbraid', expected: 'Google Ads' },
+    { click: 'Synthetic_123', source: ' fb ', expected: 'fb' },
+    { click: 'Synthetic_123', legacy: 'newsletter', expected: 'newsletter' },
+    { click: 'Synthetic_123', source: '  ', legacy: 'organic', expected: 'organic' },
+    { click: 'Synthetic_123', source: '  ', expected: 'Google Ads' },
+    ...[false, null, 'true'].map(consent => ({ click: 'Synthetic_123', consent, expected: null })),
+    ...['', '   ', 'bad identifier', 'bad?query', 'a'.repeat(601), 123, true, {}, [], null].map(click => ({ click, expected: null })),
+  ];
+  for (const [index, c] of cases.entries()) {
+    const projectId = id(200 + index), enquiryId = id(300 + index);
+    const payload = { attribution: { consent: { marketing: 'consent' in c ? c.consent : true },
+      utm: { utm_source: c.source }, clickIds: { [c.key ?? 'gclid']: c.click } } };
+    await db.query('insert into projects(id,name) values ($1,$2)', [projectId, `Synthetic attribution ${index}`]);
+    await db.query('insert into enquiry_requests values ($1,$2,$3,$4,$5)',
+      [enquiryId, projectId, '2026-09-04T00:00:00Z', JSON.stringify(payload), JSON.stringify({ utm_source: c.legacy })]);
+  }
+  const before = (await db.query('select id,raw_payload,utm from enquiry_requests order by id')).rows;
+  await db.exec(`set role authenticated; set test.uid='${id(90)}'; set test.staff='yes'`);
+  const hub = hubSchema.parse((await db.query<{ value: unknown }>("select marketing_sales_hub_read('2026-09-01','2026-09-22') value")).rows[0].value);
+  for (const [index, c] of cases.entries()) {
+    expect(hub.enquiries.rows.find(r => r.enquiryId === id(300 + index))?.source).toBe(c.expected);
+    expect(hub.projects.find(p => p.id === id(200 + index))?.source).toBe(c.expected);
+  }
+  const googleRows = filteredRows(hub.enquiries, { start: hub.enquiries.start, end: hub.enquiries.end, source: 'Google Ads', campaign: '' });
+  expect(googleRows).toHaveLength(4);
+  expect(googleRows.every(r => r.campaign === null)).toBe(true);
+  expect(JSON.stringify(hub)).not.toContain('Synthetic-Google_123');
+  await db.exec("savepoint permission_probe");
+  await expect(db.query("select private.marketing_observed_source('{}','{}')")).rejects.toThrow('permission denied');
+  await db.exec('rollback to permission_probe; reset role');
+  expect((await db.query('select id,raw_payload,utm from enquiry_requests order by id')).rows).toEqual(before);
   await db.exec('rollback');
 });
 it('fails closed above the read bound instead of displaying truncated totals', async () => {

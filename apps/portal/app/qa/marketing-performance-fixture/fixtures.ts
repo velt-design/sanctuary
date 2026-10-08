@@ -18,7 +18,8 @@ export const fixtureReport: MarketingReport = {
     row(4, { source: 'meta', campaign: 'Outdoor living', projectName: 'Sample poolside', qualification: 'qualified', visit: true, quote: true, accepted: true }),
     row(5, { source: 'meta', campaign: 'Outdoor living', projectName: 'Sample deck' }),
     row(6, { source: 'meta', campaign: 'Outdoor living', projectName: 'Sample retreat', closedOutcome: 'LOST_NO_RESPONSE' }),
-    row(7, { source: null, campaign: null, projectName: 'Sample commercial canopy', qualification: 'ineligible', quote: true, accepted: true, won: true }),
+    // Mirrors the executed SQL regression: consent-permitted Google click ID, no UTM/campaign.
+    row(7, { source: 'Google Ads', campaign: null, projectName: 'Sample commercial canopy', qualification: 'ineligible', quote: true, accepted: true, won: true }),
     row(8, { source: null, campaign: null, projectName: 'Sample entry cover', qualification: 'ineligible' }),
     row(9, { source: 'meta', campaign: 'Outdoor living', projectId: id(101), projectName: 'Sample courtyard', origin: false, qualification: 'ineligible', visit: true, quote: true, accepted: true, won: true }),
     row(10, { source: null, campaign: 'Campaign without source', projectId: null, projectName: null, origin: false, qualification: 'unavailable' }),
