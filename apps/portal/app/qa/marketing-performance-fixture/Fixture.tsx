@@ -9,6 +9,7 @@ import { representativeFixture, representativeFilters } from './representativeFi
 import { aucklandDay } from '@/lib/marketingPerformance/contract';
 import { fixtureFilters, fixtureReport, historicalFixtureRows } from './fixtures';
 import { financialsLoader } from './financialFixtures';
+import { commercialLoader, commercialCoverageScenario } from './commercialFixtures';
 import FinancialScenarioControl from './FinancialScenarioControl';
 
 const loader: ReportLoader = async (filters, signal) => {
@@ -26,7 +27,8 @@ const loader: ReportLoader = async (filters, signal) => {
     rows: rows.filter(row => { const day = aucklandDay(new Date(row.receivedAt)); return day >= filters.start && day <= filters.end; }) };
 };
 const hubLoader:HubLoader=async(filters,signal)=>{
-  const data=new URLSearchParams(window.location.search).get('representative')==='1'?representativeFixture:hubFixture;
+  let data=new URLSearchParams(window.location.search).get('representative')==='1'?representativeFixture:hubFixture;
+  if(new URLSearchParams(window.location.search).get('commercialCoverage')==='1') data=commercialCoverageScenario(data,filters).hub;
   return {...data,start:filters.start,end:filters.end,enquiries:await loader(filters,signal),events:data.events.filter(e=>e.day>=filters.start&&e.day<=filters.end)};
 };
 const metaLoader: MetaEvidenceLoader = async signal => {
@@ -37,5 +39,5 @@ const metaLoader: MetaEvidenceLoader = async signal => {
   const fetchedAt=new Date(Date.now()-(mode==='stale'?48:1)*3600000).toISOString();
   return {status:'available',checkedAt:new Date().toISOString(),accountId:'123',expiresAt:new Date(Date.parse(fetchedAt)+7*86400000).toISOString(),report:{...sampleMetaReport({start:'2026-09-16',end:'2026-09-22'}),fetchedAt}};
 };
-export default function Fixture({representative=false}:{representative?:boolean}) { return <><MarketingPerformance financialsLoader={financialsLoader} metaLoader={metaLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
+export default function Fixture({representative=false}:{representative?:boolean}) { return <><MarketingPerformance commercialLoader={commercialLoader} financialsLoader={financialsLoader} metaLoader={metaLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
   previewDescription={representative?'Representative demo · 1,200 fictional projects across active, archived and legacy work. Dates, sources and payment amounts are invented; missing-history patterns resemble the business. Demo ends 22 September 2026.':undefined} /><FinancialScenarioControl/></>; }

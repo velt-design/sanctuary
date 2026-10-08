@@ -1,0 +1,23 @@
+import { act } from 'react';
+import { expect,it,vi } from 'vitest';
+import { renderIntoDocument } from '../../../../test/reactHarness';
+import { hubFixture } from '@/app/qa/marketing-performance-fixture/hubFixtures';
+import { fixtureFilters } from '@/app/qa/marketing-performance-fixture/fixtures';
+import { commercialFixture } from '@/app/qa/marketing-performance-fixture/commercialFixtures';
+import { hubDefaults } from '@/lib/marketingPerformance/hub';
+import type { CommercialReport } from '@/lib/marketingPerformance/commercial';
+import CommercialOverview from './CommercialOverview';
+vi.mock('recharts',()=>({Bar:()=>null,BarChart:()=>null,CartesianGrid:()=>null,Legend:()=>null,ResponsiveContainer:()=>null,Tooltip:()=>null,XAxis:()=>null,YAxis:()=>null}));
+it('retains geometry through parent remount without retaining stale quote values',async()=>{
+ sessionStorage.clear();
+ const bounds=vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockReturnValue({height:860,width:1200,x:0,y:0,top:0,left:0,bottom:860,right:1200,toJSON:()=>({})});
+ const filters=hubDefaults(fixtureFilters),report=commercialFixture(hubFixture,fixtureFilters),loader=async()=>report;
+ const props={hub:hubFixture,filters,apply:vi.fn()};
+ const view=renderIntoDocument(<CommercialOverview {...props} loader={loader}/>);await act(async()=>{});
+ expect(sessionStorage.getItem(`commercial-report-height:${window.innerWidth}`)).toBe('860');view.unmount();
+ let resolve!:(r:CommercialReport)=>void;
+ const pending=()=>new Promise<CommercialReport>(r=>{resolve=r;});
+ const refreshed=renderIntoDocument(<CommercialOverview {...props} loader={pending}/>);
+ expect(refreshed.container.querySelector('section')?.style.minHeight).toBe('860px');expect(refreshed.container.textContent).not.toContain('Quoted value');
+ await act(async()=>resolve(report));expect(refreshed.container.textContent).toContain('Quoted value');refreshed.unmount();bounds.mockRestore();sessionStorage.clear();
+});

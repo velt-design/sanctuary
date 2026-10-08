@@ -1,5 +1,55 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Owner commercial overview candidate (8 October 2026)
+
+Local candidate only; release requires separate owner approval. Business Overview
+leads with selected-period quoted value, accepted value, average accepted scope,
+and two median elapsed-time measures. Existing five tabs remain. Current portfolio
+and recorded sales activity are supporting disclosure content. No attention list,
+operational alerts, new access, connector changes or financial writes are included.
+
+The reporting unit is a quote family (commercial scope), not each revision and not
+the whole project. Quoted value takes the latest sent version **within the selected
+period** per family; a scope revised in a later period can count in both periods.
+Accepted value uses `commercial_current_accepted_quote_versions` and the selected
+version's saved acceptance date. Later withdrawals/replacement acceptances can
+restate historical results. Add-ons remain separate scopes in values and average;
+undated current acceptances are an explicitly all-dates coverage count, never
+assigned to the selected period. Amounts use stored `total_inc_gst_cents` and the
+existing NZD quote-document contract. These are not invoices, cash or a win rate.
+
+Enquiry-to-quote uses initial scopes first sent in the period, earliest saved
+non-test enquiry to first-ever saved send. Quote-to-acceptance uses initial scopes
+currently accepted in the period, first-ever send to acceptance. Both show usable
+versus eligible counts; missing/out-of-order dates remain inspectable but do not
+enter the median. Add-ons have no inferred enquiry timing. All dates use Auckland;
+elapsed days use exact timestamps. Prior comparisons use adjacent equal day counts
+and the same current source/project filters. Prior periods preceding recorded
+quote history show incomplete history instead of an authoritative zero. A supported
+zero baseline has no growth percentage; empty average/timing is unavailable.
+
+Weekly/monthly trend buckets reuse `overview.salesActivity` date partitioning,
+including clipped partial ranges. Bars, keyboard table and drawer partition exactly
+the selected headline scopes, so revisions cannot inflate the chart total.
+Production project links open in a labelled new tab, preserving the report's state;
+the synthetic fixture instead provides an explicit return link. Drilldown selection
+is retained in the URL. Only viewport geometry is retained for stable refresh
+footprints; report data is not placed in browser storage.
+
+Implementation map: `lib/marketingPerformance/commercial.ts` owns validation,
+contributions, comparisons and trend aggregation; `useCommercial` owns cancellation
+and render-time request identity. `CommercialOverview` composes values, chart,
+timing and definitions; `CommercialRecords` owns exact contributing rows.
+The protected `/api/staff/v1/marketing-performance/commercial` route uses the
+existing confirmed developer identity gate and auth-bound RPC. Forward migration
+`20261008000002_marketing_commercial_performance.sql` owns the bounded read and
+reuses canonical current acceptance. The existing fixture shares its event inventory
+with commercial values. SQL/PGlite, model, API and hook tests cover revisions,
+withdrawals, add-ons, date coverage, access denial, request races and reconciliation.
+Hosted exact-function rollback rehearsal independently reconciled current/prior
+values and counts, undated coverage and timing source dates; the function's absence
+was verified after rollback. No migration has been persistently applied.
+
 ## Financials tab candidate (2 October 2026)
 
 The fifth tab is a read-only company Financials view: P&L, bank balances,
@@ -306,7 +356,7 @@ Backfill requires original evidence: review exact existing receipt/project match
 
 Proposed spend CSV (not implemented): period start/end, observed source, campaign, currency (NZD), amount and evidence reference. Validate overlapping/duplicate periods, currency and source matching, preview rejected/unmatched rows, and retain provenance before persistence. Costs remain unavailable until reliable spend and a defensible matching denominator exist. No Google/Meta claimed conversions are summed into unique business outcomes.
 
-## Google Ads source correction (8 October 2026; local, not released)
+## Google Ads source correction (released 8 October 2026)
 
 Forward migration `20261008000001_marketing_google_ads_source.sql` owns one private
 `marketing_observed_source(jsonb,jsonb)` policy used by both receipt and earliest
@@ -317,4 +367,7 @@ verification of a click or campaign. Missing, malformed and unpermitted evidence
 remains unknown. Campaigns, raw receipts, totals, origin selection, authorization
 and outcome definitions are unchanged. No backfill, new tracking or connector
 setup is involved. The SQL regression executes the migration and both readers
-in disposable PGlite; hosted schema rehearsal/release remain separate.
+in disposable PGlite. Hosted rollback rehearsals, required CI, production migration
+and deployed browser/source verification passed for PR #200, merged as
+`7b075978ad33698bc109aab25f17a4f596c32189`. This attribution correction is live;
+the owner commercial overview candidate above remains unreleased.

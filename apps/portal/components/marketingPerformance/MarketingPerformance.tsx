@@ -28,10 +28,11 @@ import useReportReturnPosition from './useReportReturnPosition';
 import styles from './MarketingPerformance.module.css';
 import Financials from '@/components/financials/Financials';
 import type { FinancialsLoader } from '@/components/financials/useFinancials';
+import type { CommercialLoader } from './useCommercial';
 import useVisibleSelection from '@/components/financials/useVisibleSelection';
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,financialsLoader}: {
-  financialsLoader?:FinancialsLoader;
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,financialsLoader,commercialLoader}: {
+  financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
   const [draft,setDraft]=useState<FiltersState>(()=>({...hubDefaults(initialFilters??defaultFilters()),view:'overview' as const}));
@@ -49,7 +50,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
     if(f.view==='sales') f={...f,inspect:'all'};
     if(!validPeriod(f.start,f.end)){setValidation('Choose valid dates, up to 366 days ending today or earlier.');return;}
     setValidation('');const url=new URL(window.location.href);
-    const query=hubQuery(f);for(const [key,value] of url.searchParams){if(key.startsWith('finance')||['failure','comparisonFailure','representative'].includes(key))query.set(key,value);}
+    const query=hubQuery(f);for(const [key,value] of url.searchParams){if(key.startsWith('finance')||['failure','comparisonFailure','representative','commercialMetric','commercialMonth','commercialPeriod','commercialFailure','commercialCoverage'].includes(key))query.set(key,value);}
     // Let Next update its canonical URL; passing its internal history state skips that update.
     url.search=query.toString();window.history.replaceState(null,'',url);setDraft(f);setApplied(f);setEventKind(f.kind);
   };
@@ -66,8 +67,8 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
     <HubToolbar filters={applied??draft} apply={apply} hub={hub}/>{validation&&<p role="alert">{validation}</p>}
     <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>
-        <div className={styles.contextLine}><span>{applied.view==='overview'?'Portfolio now · Sales in selected dates':applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>
-        {applied.view==='overview'?<BusinessOverview hub={hub} filters={applied} apply={apply}/>:<>
+        <div className={styles.contextLine}><span>{applied.view==='overview'?'Commercial performance in selected dates':applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>
+        {applied.view==='overview'?<BusinessOverview hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} synthetic={synthetic} revision={revision}/>:<>
         <HubMetrics hub={hub} filters={applied} apply={apply} inspectEvents={inspectEvents}/>
         {applied.view==='enquiries'&&<div className={styles.contextLine}><div className={styles.coverageTrack}><span style={{width:rate(totals.attributed,totals.enquiries)}}/></div><span>{rate(totals.attributed,totals.enquiries)} source known · {totals.enquiries-totals.attributed} unknown</span><Button variant="quiet" onClick={()=>setInfo(true)}>How it’s counted</Button></div>}
         {applied.view==='enquiries'&&<EnquiryCharts rows={selected.enquiries} filters={applied} apply={apply}/>}
