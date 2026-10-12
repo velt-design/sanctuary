@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   accepted: vi.fn(),
   finalise: vi.fn(),
   send: vi.fn(),
+  failed: vi.fn(),
+  failure: vi.fn(),
 }));
 vi.mock('../supabaseClient', () => ({ supabaseServiceRole: { from: mocks.from } }));
 vi.mock('../emails/sendTransactionalEmail', () => ({ sendTransactionalEmail: mocks.send }));
@@ -23,10 +25,10 @@ vi.mock('../commercial/emailIntent', () => ({
   markCommercialEmailDispatching: mocks.dispatch,
   markCommercialEmailProviderAccepted: mocks.accepted,
   markCommercialEmailFinalised: mocks.finalise,
-  markCommercialEmailFailed: vi.fn(),
-  commercialEmailFailure: vi.fn(),
+  markCommercialEmailFailed: mocks.failed,
+  commercialEmailFailure: mocks.failure,
 }));
-import { sendDepositInvoiceNow, deliverAcceptedDepositInvoiceById } from './server';
+import { sendDepositInvoiceNow, deliverAcceptedDepositInvoiceById, listDepositInvoicesForProject } from './server';
 const id = '40000000-0000-4000-8000-000000000001';
 let invoice: any;
 let logs: any[];
@@ -44,6 +46,7 @@ beforeEach(() => {
     restored_at: '2026-10-12T00:00:00Z',
     restore_command_id: '50000000-0000-4000-8000-000000000001',
     sent_at: '2026-08-01T00:00:00Z',
+    sent_by: 'original-sender',
     due_date: '2026-08-01',
     issue_date: '2026-07-01',
     total_inc_gst_cents: 11500,
@@ -64,6 +67,8 @@ beforeEach(() => {
     {
       id: 'old-log',
       deposit_invoice_id: id,
+      project_id: invoice.project_id,
+      delivery_intent_id: 'intent-old',
       status: 'SENT',
       created_at: '2026-08-01T00:00:00Z',
       sent_at: '2026-08-01T00:00:00Z',
@@ -103,15 +108,15 @@ beforeEach(() => {
       },
       single: () => execute(),
       maybeSingle: () => execute(),
-      then: (yes: any, no: any) => execute().then(yes, no),
+      then: (yes: any, no: any) => execute(false).then(yes, no),
     };
-    async function execute() {
+    async function execute(single = true) {
       if (table === 'deposit_invoices') {
         if (operation === 'update') {
           if (!filters.every((filter) => filter(invoice))) return { data: null, error: null };
           Object.assign(invoice, patch);
         }
-        return { data: invoice, error: null };
+        return { data: single ? invoice : [invoice], error: null };
       }
       if (table === 'file_artifacts')
         return { data: { filename: 'INV-TEST.pdf', content_base64: 'dGVzdA==' }, error: null };
@@ -120,7 +125,8 @@ beforeEach(() => {
           logs.push({ ...patch, created_at: new Date().toISOString() });
           return { data: null, error: null };
         }
-        return { data: [...logs].reverse().find((row) => filters.every((f) => f(row))) ?? null, error: null };
+        const matching = [...logs].reverse().filter((row) => filters.every((f) => f(row)));
+        return { data: single ? matching[0] ?? null : matching, error: null };
       }
       return { data: null, error: null };
     }
@@ -146,6 +152,8 @@ beforeEach(() => {
     return current;
   });
   mocks.send.mockResolvedValue({ providerMessageId: 'message-new' });
+  mocks.failure.mockReturnValue({ code: 'RESEND_RATE_LIMITED', needsAttention: false });
+  mocks.failed.mockImplementation(async () => (current = { ...current, status: 'failed', updatedAt: '2026-10-12T02:00:00Z' }));
 });
 afterEach(() => vi.unstubAllEnvs());
 it('explicit send after restore uses fresh intent and token despite prior success, then replays without email', async () => {
@@ -199,4 +207,54 @@ it('provider-accepted retry finalises exact prepared token without sending twice
   expect(invoice.portal_token_hash).toBe('prepared-hash');
   expect(mocks.send).not.toHaveBeenCalled();
   expect(mocks.prepare).not.toHaveBeenCalled();
+});
+
+it.each(['FAILED', 'SENT'])('ignores a late old-generation %s log before and after the current send', async (status) => {
+  const lateOld = { ...logs[0], id: 'late-old', status, created_at: '2099-01-01T00:00:00Z', final_failure: true };
+  logs.push(lateOld);
+  const projectId = `proj_${invoice.project_id}`;
+  expect((await listDepositInvoicesForProject(projectId))[0].lastDeliveryStatus).toBe('NOT_SENT');
+  await sendDepositInvoiceNow(`inv_${id}`, 'restored-sender');
+  expect(mocks.send).toHaveBeenCalledOnce();
+  logs.push({ ...lateOld, id: 'even-later-old' });
+  const summary = (await listDepositInvoicesForProject(projectId))[0];
+  expect(summary.lastDeliveryStatus).toBe('SENT');
+  expect(summary.finalFailure).toBe(false);
+  await sendDepositInvoiceNow(`inv_${id}`, 'retrying-other-sender');
+  expect(mocks.send).toHaveBeenCalledOnce();
+});
+it('records the restored generation timestamp and frozen sender together on retries', async () => {
+  const historical = { ...logs[0] };
+  await sendDepositInvoiceNow(`inv_${id}`, 'restored-sender');
+  expect(invoice.sent_at).toBe(current.protectedPayload.sentAt);
+  expect(invoice.sent_at).not.toBe('2026-08-01T00:00:00Z');
+  expect(invoice.sent_by).toBe('restored-sender');
+  const pair = { at: invoice.sent_at, by: invoice.sent_by };
+  await sendDepositInvoiceNow(`inv_${id}`, 'retrying-other-sender');
+  expect({ at: invoice.sent_at, by: invoice.sent_by }).toEqual(pair);
+  expect(logs[0]).toEqual(historical);
+});
+
+it('shows retryable current intent failure without assigning its unbound log to another generation', async () => {
+  mocks.send.mockRejectedValueOnce(new Error('Rate limited'));
+  await expect(sendDepositInvoiceNow(`inv_${id}`, 'restored-sender')).rejects.toThrow('Rate limited');
+  expect(logs.at(-1).delivery_intent_id).toBeNull();
+  logs.push({ ...logs[0], status: 'FAILED', final_failure: true, created_at: '2099-01-01T00:00:00Z' });
+  const projectId = `proj_${invoice.project_id}`;
+  const failed = (await listDepositInvoicesForProject(projectId))[0];
+  expect(failed.lastDeliveryStatus).toBe('FAILED');
+  expect(failed.finalFailure).toBe(false);
+  expect(failed.lastDeliveryAttemptAt).toBe(current.updatedAt);
+  await sendDepositInvoiceNow(`inv_${id}`, 'retrying-other-sender');
+  expect((await listDepositInvoicesForProject(projectId))[0].lastDeliveryStatus).toBe('SENT');
+  expect(invoice.sent_by).toBe('restored-sender');
+});
+it('does not carry the previous restored generation into a later restore', async () => {
+  await sendDepositInvoiceNow(`inv_${id}`, 'first-restored-sender');
+  invoice.restore_command_id = '50000000-0000-4000-8000-000000000002';
+  current = null;
+  logs.push({ ...logs.at(-1), status: 'FAILED', final_failure: true, created_at: '2099-01-01T00:00:00Z' });
+  const summary = (await listDepositInvoicesForProject(`proj_${invoice.project_id}`))[0];
+  expect(summary.lastDeliveryStatus).toBe('NOT_SENT');
+  expect(summary.finalFailure).toBe(false);
 });

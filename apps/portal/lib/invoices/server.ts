@@ -99,6 +99,7 @@ type SendAttemptInfo = { attemptNumber: number; firstAttemptAt: string };
 
 type DepositInvoiceSendLogRow = {
   deposit_invoice_id: string;
+  delivery_intent_id: string | null;
   to_emails: string[];
   cc_emails: string[];
   bcc_emails: string[];
@@ -263,6 +264,7 @@ function mapInvoiceRow(row: any): DepositInvoiceRow {
 function mapSendLogRow(row: any): DepositInvoiceSendLogRow {
   return {
     deposit_invoice_id: String(row?.deposit_invoice_id ?? ''),
+    delivery_intent_id: typeof row?.delivery_intent_id === 'string' ? row.delivery_intent_id : null,
     to_emails: normalizeRecipients(Array.isArray(row?.to_emails) ? row.to_emails : []),
     cc_emails: normalizeRecipients(Array.isArray(row?.cc_emails) ? row.cc_emails : []),
     bcc_emails: normalizeRecipients(Array.isArray(row?.bcc_emails) ? row.bcc_emails : []),
@@ -276,7 +278,6 @@ function mapSendLogRow(row: any): DepositInvoiceSendLogRow {
 }
 
 function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInvoiceSendLogRow | null): DepositInvoiceSummary {
-  if (latestAttempt && !isCurrentInvoiceDelivery(invoice.restored_at, latestAttempt.created_at)) latestAttempt = null;
   return {
     id: appIdFromUuid('inv', invoice.id),
     projectId: appIdFromUuid('proj', invoice.project_id),
@@ -555,14 +556,35 @@ async function latestSendAttempt(invoiceId: string): Promise<SendAttemptInfo> {
   return { attemptNumber: attempt + 1, firstAttemptAt };
 }
 
-async function loadLatestSendLogForInvoice(invoiceId: string): Promise<DepositInvoiceSendLogRow | null> {
-  const latest = await supabaseServiceRole
+// Retryable failures intentionally have no delivery_intent_id in the append-only
+// log (that column has one terminal entry per intent). Read current retry state
+// from its exact durable intent instead of attributing an unbound history row.
+function currentIntentFailure(invoice: DepositInvoiceRow, intent: CommercialEmailIntent | null): DepositInvoiceSendLogRow | null {
+  if (!intent || !['failed', 'needs_attention'].includes(intent.status)) return null;
+  const frozen = parseFrozenInvoiceEmail(intent);
+  return {
+    deposit_invoice_id: invoice.id, delivery_intent_id: intent.id,
+    to_emails: frozen.recipients.to, cc_emails: frozen.recipients.cc, bcc_emails: frozen.recipients.bcc,
+    status: 'FAILED', error_message: intent.status === 'needs_attention'
+      ? 'Delivery needs staff attention before another attempt' : 'Delivery failed. Retry the prepared email.',
+    created_at: intent.updatedAt, sent_at: null, next_retry_at: null,
+    final_failure: intent.status === 'needs_attention',
+  };
+}
+
+async function loadLatestSendLogForInvoice(invoice: DepositInvoiceRow): Promise<DepositInvoiceSendLogRow | null> {
+  const currentIntent = invoice.restore_command_id
+    ? await findCommercialEmailIntentByKey(invoiceDeliveryIntentKey(invoice)) : null;
+  const currentIntentId = currentIntent?.id;
+  if (invoice.restore_command_id && !currentIntentId) return null;
+  const failure = currentIntentFailure(invoice, currentIntent);
+  if (failure) return failure;
+  let query = supabaseServiceRole
     .from('deposit_invoice_send_logs')
-    .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
-    .eq('deposit_invoice_id', invoiceId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select('deposit_invoice_id,delivery_intent_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
+    .eq('deposit_invoice_id', invoice.id);
+  if (currentIntentId) query = query.eq('delivery_intent_id', currentIntentId);
+  const latest = await query.order('created_at', { ascending: false }).limit(1).maybeSingle();
 
   if (latest.error || !latest.data) {
     if (latest.error && !missingTableError(latest.error)) {
@@ -635,7 +657,11 @@ async function hasSuccessfulSend(invoice: DepositInvoiceRow): Promise<boolean> {
     .select('id')
     .eq('deposit_invoice_id', invoice.id)
     .eq('status', 'SENT');
-  if (invoice.restored_at) query = query.gte('created_at', invoice.restored_at);
+  if (invoice.restore_command_id) {
+    const intent = await findCommercialEmailIntentByKey(invoiceDeliveryIntentKey(invoice));
+    if (!intent) return false;
+    query = query.eq('delivery_intent_id', intent.id);
+  }
   const res = await query.limit(1).maybeSingle();
 
   return Boolean(res.data && !res.error);
@@ -645,8 +671,8 @@ async function markInvoiceSent(invoice: DepositInvoiceRow, patch: { actor: strin
   let update = supabaseServiceRole
     .from('deposit_invoices')
     .update({
-      sent_at: invoice.sent_at ?? patch.sentAt,
-      sent_by: patch.actor,
+      sent_at: invoice.restore_command_id ? patch.sentAt : invoice.sent_at ?? patch.sentAt,
+      sent_by: invoice.restore_command_id || !invoice.sent_at ? patch.actor : invoice.sent_by,
       portal_token_hash: patch.tokenHash,
       portal_token_expires_at: patch.tokenExpiresAt,
     } as any)
@@ -1052,7 +1078,7 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
       .order('created_at', { ascending: false }),
     supabaseServiceRole
       .from('deposit_invoice_send_logs')
-      .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
+      .select('deposit_invoice_id,delivery_intent_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false }),
   ]);
@@ -1062,16 +1088,23 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
     throw new Error(errorMessage(logRes.error, 'Failed to load invoice send logs'));
   }
 
+  const invoices = (Array.isArray(invoiceRes.data) ? invoiceRes.data : [])
+    .filter((row) => row.status !== 'DRAFT').map(mapInvoiceRow);
+  const invoicesById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
+  const currentIntents = new Map(await Promise.all(invoices.filter((invoice) => invoice.restore_command_id).map(async (invoice) => [
+    invoice.id, await findCommercialEmailIntentByKey(invoiceDeliveryIntentKey(invoice)),
+  ] as const)));
   const latestByInvoiceId = new Map<string, DepositInvoiceSendLogRow>();
   for (const row of Array.isArray(logRes.data) ? logRes.data : []) {
     const mapped = mapSendLogRow(row);
-    if (!mapped.deposit_invoice_id || latestByInvoiceId.has(mapped.deposit_invoice_id)) continue;
+    const invoice = invoicesById.get(mapped.deposit_invoice_id);
+    if (!invoice || latestByInvoiceId.has(invoice.id)) continue;
+    if (!isCurrentInvoiceDelivery(invoice.restore_command_id, currentIntents.get(invoice.id)?.id ?? null, mapped.delivery_intent_id)) continue;
     latestByInvoiceId.set(mapped.deposit_invoice_id, mapped);
   }
 
-  return (Array.isArray(invoiceRes.data) ? invoiceRes.data : []).filter((row) => row.status !== 'DRAFT').map((row) => {
-    const invoice = mapInvoiceRow(row);
-    return mapInvoiceSummary(invoice, latestByInvoiceId.get(invoice.id) ?? null);
+  return invoices.map((invoice) => {
+    return mapInvoiceSummary(invoice, currentIntentFailure(invoice, currentIntents.get(invoice.id) ?? null) ?? latestByInvoiceId.get(invoice.id) ?? null);
   });
 }
 
@@ -1147,5 +1180,5 @@ export async function sendDepositInvoiceNow(invoiceId: string, actor: string | n
   const refreshed = await loadInvoiceById(invoiceUuid);
   if (!refreshed) throw new Error('Invoice not found after send');
 
-  return mapInvoiceSummary(refreshed, await loadLatestSendLogForInvoice(invoiceUuid));
+  return mapInvoiceSummary(refreshed, await loadLatestSendLogForInvoice(refreshed));
 }

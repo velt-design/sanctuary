@@ -6,8 +6,10 @@ it('retains legacy send identity and creates one stable identity per restoration
     'deposit-invoice-send:invoice:restore:command',
   );
 });
-it('does not mistake an old successful delivery for delivery of a restored invoice', () => {
-  expect(isCurrentInvoiceDelivery('2026-10-12T00:00:00Z', '2026-10-11T00:00:00Z')).toBe(false);
-  expect(isCurrentInvoiceDelivery('2026-10-12T00:00:00Z', '2026-10-12T00:00:01Z')).toBe(true);
-  expect(isCurrentInvoiceDelivery(null, '2026-10-11T00:00:00Z')).toBe(true);
+it('accepts only the matching restored intent, while retaining legacy logs', () => {
+  expect(isCurrentInvoiceDelivery('restore', 'current', 'old')).toBe(false);
+  expect(isCurrentInvoiceDelivery('restore', null, 'old')).toBe(false);
+  expect(isCurrentInvoiceDelivery('restore', 'current', null)).toBe(false);
+  expect(isCurrentInvoiceDelivery('restore', 'current', 'current')).toBe(true);
+  expect(isCurrentInvoiceDelivery(null, null, null)).toBe(true);
 });

@@ -173,6 +173,11 @@ an explicit **Send now** after restoration uses a new stable delivery generation
 and token, with the existing provider retry/checkpoint owner. Automatic quote
 acceptance retries cannot send restored invoices.
 
+Current delivery status is tied to the restoration's exact email intent, never
+the insertion time of a history row. Delayed logs from earlier generations stay
+historical. Retryable failure display comes from the current durable intent;
+the generation's sent timestamp and sender are recorded together.
+
 Preparation and dispatch validate the current OPEN invoice and exact delivery
 generation under the project lock. Voiding waits for an in-flight provider
 attempt to finish; token finalisation also checks status and generation. A

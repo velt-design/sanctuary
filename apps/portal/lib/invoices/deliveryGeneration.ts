@@ -3,6 +3,6 @@ export function invoiceDeliveryIntentKey(invoice: { id: string; restore_command_
   return `deposit-invoice-send:${invoice.id}${invoice.restore_command_id ? `:restore:${invoice.restore_command_id}` : ''}`;
 }
 
-export function isCurrentInvoiceDelivery(restoredAt: string | null, createdAt: string) {
-  return !restoredAt || Date.parse(createdAt) >= Date.parse(restoredAt);
+export function isCurrentInvoiceDelivery(restoreCommandId: string | null, currentIntentId: string | null, logIntentId: string | null) {
+  return !restoreCommandId || Boolean(currentIntentId && currentIntentId === logIntentId);
 }
