@@ -86,7 +86,7 @@ type PortalAuthState = {
   refresh: () => Promise<void>;
 };
 
-const PortalAuthContext = createContext<PortalAuthState | null>(null);
+export const PortalAuthContext = createContext<PortalAuthState | null>(null);
 
 export default function PortalAuthProvider({
   children,

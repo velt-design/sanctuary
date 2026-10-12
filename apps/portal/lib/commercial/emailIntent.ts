@@ -20,6 +20,7 @@ type CommercialEmailIntentStatus =
   | 'dispatching'
   | 'provider_accepted'
   | 'finalised'
+  | 'cancelled'
   | 'failed'
   | 'needs_attention';
 

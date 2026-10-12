@@ -143,6 +143,53 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 
 ## Invoice Lifecycle
 
+### Restoring an accidental void
+
+Admins can choose **Restore invoice** on a void invoice, supply a reason, and
+restore its original number, content, amount and due date. Migration
+`20261012000001_invoice_restore.sql` is required before application rollout.
+The migration was installed in staging on 12 October 2026 after rollback
+rehearsal and unchanged-record checks. Release status belongs to the delivery
+record; the migration must precede the application in each environment.
+
+`commercial_restore_invoice` owns the atomic transition, audit and idempotent
+command receipt under the existing commercial project lock. It requires the
+displayed void timestamp, refuses obsolete quote scope, active replacements,
+cancelled instalments and overcommitted balances, and preserves partial matched
+receipts. Fully covered anomalous voids require payment reconciliation. Archived
+or cancelled projects must first be reopened; valid unsettled COMPLETE closures
+reopen through the existing financial-follow-up owner. Standalone work has no
+replacement relationship, so its confirmation asks the admin to check for an
+already-issued replacement instead of guessing from amounts or descriptions.
+
+Restoration sends no email, revives no public token and queues no new Xero
+transfer. A linked Xero invoice requires a fresh matching observation and equal
+recorded receipts; external void/deletion requires a replacement. Unavailable or
+conflicting evidence explains the Finance/retry recovery. A never-dispatched
+email, or a first definitive provider rejection, is cancelled atomically with
+restoration; its frozen content and history remain. An uncertain earlier attempt
+must be reconciled first. Earlier sent logs remain historical;
+an explicit **Send now** after restoration uses a new stable delivery generation
+and token, with the existing provider retry/checkpoint owner. Automatic quote
+acceptance retries cannot send restored invoices.
+
+Current delivery status is tied to the restoration's exact email intent, never
+the insertion time of a history row. Delayed logs from earlier generations stay
+historical. Retryable failure display comes from the current durable intent;
+the generation's sent timestamp and sender are recorded together.
+
+Preparation and dispatch validate the current OPEN invoice and exact delivery
+generation under the project lock. Voiding waits for an in-flight provider
+attempt to finish; token finalisation also checks status and generation. A
+cancelled delivery cannot resume or reserve the next generation's send slot.
+
+Implementation map: `RestoreInvoiceDialog.tsx` owns confirmation and exact-intent
+retry; `InvoicesTab.tsx` owns list/query reconciliation; `restoreInvoice.ts` and
+the admin restore route own authenticated dispatch and read-only Xero refresh;
+`deliveryGeneration.ts` owns delivery identity/current-log selection. The SQL
+integration, route, delivery and local preview checks are listed in
+`docs/testing-and-qa.md`.
+
 The in-progress Xero transfer repository uses server-only service-role RPCs for lease-scoped context, exact request preparation, dispatch and verified finalisation. It exposes no browser table writes and does not alter invoice/payment ownership. The worker gateway returns only fixed results; provider credentials and invoice contents remain in the portal. Shared activation and end-to-end queue evidence remain pending; see `docs/xero-connection.md`.
 
 The in-progress Xero draft transfer captures future issuance through a deferred, default-disabled database trigger, independently of email delivery. It uses the existing jobs owner and preserves issued content and void-and-recreate corrections. No shared activation has occurred; see `docs/xero-connection.md#next-stage-everyday-finance` for state and release gates.

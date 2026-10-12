@@ -844,7 +844,7 @@ export async function getPreparedQuoteDelivery(
     kind,
     quoteVersionUuid,
   );
-  if (!intent || intent.status === 'finalised') return null;
+  if (!intent || intent.status === 'finalised' || intent.status === 'cancelled') return null;
   const frozen = parseFrozenQuoteEmail(intent);
   const expiresAtMs = Date.parse(intent.providerIdempotencyExpiresAt);
   return {

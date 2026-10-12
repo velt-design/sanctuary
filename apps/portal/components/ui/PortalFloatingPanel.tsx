@@ -116,6 +116,7 @@ function PortalFloatingPanel({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const initialMenuFocusRef = useRef<'first' | 'last'>('first');
+  const focusedOnOpenRef = useRef(false);
   const panelId = useId();
   const isOpen = open ?? uncontrolledOpen;
 
@@ -123,7 +124,7 @@ function PortalFloatingPanel({
     if (open === undefined) setUncontrolledOpen(nextOpen);
     onOpenChange?.(nextOpen);
     if (!nextOpen) setPosition(null);
-    if (returnFocus) queueMicrotask(() => triggerRef.current?.focus());
+    if (returnFocus) triggerRef.current?.focus();
   }, [onOpenChange, open]);
 
   const close = useCallback(() => setOpen(false, true), [setOpen]);
@@ -137,6 +138,18 @@ function PortalFloatingPanel({
   useLayoutEffect(() => {
     if (!isOpen) return;
     updatePosition();
+  }, [isOpen, updatePosition]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      focusedOnOpenRef.current = false;
+      return;
+    }
+    // The first portal render is hidden until measured. Browsers cannot focus
+    // its items until the positioned render is visible. Repositioning must not
+    // reset a user's selection while scrolling or resizing.
+    if (!position || focusedOnOpenRef.current) return;
+    focusedOnOpenRef.current = true;
     const focusTargets = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(
       role === 'menu'
         ? '[role="menuitem"]:not(:disabled)'
@@ -146,7 +159,7 @@ function PortalFloatingPanel({
       ? focusTargets[focusTargets.length - 1]
       : focusTargets[0];
     focusTarget?.focus();
-  }, [isOpen, role, updatePosition]);
+  }, [isOpen, position, role]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -226,6 +239,7 @@ function PortalFloatingPanel({
 export function PortalMenu({
   align,
   contentClassName,
+  heading,
   items,
   label,
   side,
@@ -236,6 +250,7 @@ export function PortalMenu({
 }: {
   align?: PanelAlign;
   contentClassName?: string;
+  heading?: ReactNode;
   items: PortalMenuItem[];
   label: string;
   side?: PanelSide;
@@ -298,7 +313,7 @@ export function PortalMenu({
       contentClassName={contentClassName}
       onPanelKeyDown={moveFocus}
     >
-      {({ close }) => items.map((item) => (
+      {({ close }) => <>{heading}{items.map((item) => (
         <div key={item.id}>
           {item.separatorBefore ? <div role="separator" className={styles.separator} /> : null}
           <button
@@ -307,14 +322,14 @@ export function PortalMenu({
             className={cx(styles.item, item.className)}
             disabled={item.disabled}
             onClick={() => {
-              item.onSelect();
               close();
+              item.onSelect();
             }}
           >
             {item.label}
           </button>
         </div>
-      ))}
+      ))}</>}
     </PortalFloatingPanel>
   );
 }

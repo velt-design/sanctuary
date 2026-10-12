@@ -197,7 +197,9 @@ describe('ProjectCalculatorTab', () => {
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
     const actions = rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Actions for Estimate V2"]');
     act(() => actions?.click());
-    const duplicate = Array.from(rendered.container.querySelectorAll('button'))
+    const menu = document.body.querySelector('[role="menu"]');
+    expect(menu?.parentElement).toBe(document.body);
+    const duplicate = Array.from(menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])
       .find((button) => button.textContent === 'Duplicate');
     act(() => duplicate?.click());
     expect(push).toHaveBeenCalledWith(

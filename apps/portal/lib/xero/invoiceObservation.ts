@@ -23,13 +23,16 @@ export function observeXeroInvoice(expected: XeroDraftInvoice, providerInvoiceId
   if (paid === null || total === null || paid > total || credited !== 0) return conflict('ACCOUNTING_ADJUSTMENT_REVIEW');
   const comparison = reconcileXeroDraft({ ...expected, Status: 'DRAFT' }, { ...row, Status: 'DRAFT', AmountPaid: 0 });
   if (comparison.outcome !== 'MATCHED_DRAFT') return conflict(comparison.reason);
+  if ((status === 'DRAFT' || status === 'SUBMITTED') && paid !== 0) return conflict('UNPOSTED_PAYMENT_REVIEW');
+  if (status === 'PAID' && paid !== total) return conflict('PAYMENT_TOTAL_REVIEW');
   if (portalVoided) {
-    if (['VOIDED', 'DELETED'].includes(String(status)) && paid === 0) return { state: 'correction_complete', reason: 'BOTH_SYSTEMS_VOIDED', amountPaidCents: 0 };
+    if (['VOIDED', 'DELETED'].includes(String(status))) {
+      if (paid !== 0) return conflict('ACCOUNTING_ADJUSTMENT_REVIEW');
+      return { state: 'correction_complete', reason: 'BOTH_SYSTEMS_VOIDED', amountPaidCents: 0 };
+    }
     return { state: 'correction_pending', reason: 'PORTAL_VOID_REQUIRES_XERO_REVIEW', amountPaidCents: paid };
   }
   if (['VOIDED', 'DELETED'].includes(String(status))) return conflict('XERO_VOIDED_INDEPENDENTLY');
-  if ((status === 'DRAFT' || status === 'SUBMITTED') && paid !== 0) return conflict('UNPOSTED_PAYMENT_REVIEW');
-  if (status === 'PAID' && paid !== total) return conflict('PAYMENT_TOTAL_REVIEW');
   return { state: paid > 0 ? 'payment_recorded' : status === 'DRAFT' ? 'draft' : status === 'SUBMITTED' ? 'awaiting_approval' : 'posted',
     reason: paid > 0 ? 'REVIEW_PAYMENT_MATCH_IN_PORTAL' : 'INVOICE_CONTENT_UNCHANGED', amountPaidCents: paid };
 }

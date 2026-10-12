@@ -50,6 +50,7 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/installer-payout' ||
     pathname === '/qa/design-booklet-workbench-fixture' ||
     pathname === '/qa/invoice-draft-editor-fixture' ||
+    pathname === '/qa/invoice-restore-fixture' ||
     pathname === '/qa/project-work-queue-fixture' ||
     pathname === '/qa/schedule-ops-fixture' ||
     pathname === '/qa/finance-payment-fixture' ||

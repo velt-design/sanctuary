@@ -149,14 +149,16 @@ describe("ProjectPageFrame", () => {
     expect(moreButton?.getAttribute("aria-haspopup")).toBe("menu");
 
     act(() => moreButton?.click());
-    const menu = rendered.container.querySelector('[role="menu"]');
+    const menu = document.body.querySelector('[role="menu"]');
+    expect(menu?.parentElement).toBe(document.body);
+    expect(rendered.container.contains(menu)).toBe(false);
     expect(menu?.getAttribute("aria-label")).toBe("Project actions");
     expect(menu?.textContent).toContain("Delete project");
 
     act(() =>
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
     );
-    expect(rendered.container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.body.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(moreButton);
 
     rendered.unmount();

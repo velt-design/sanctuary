@@ -362,6 +362,18 @@ ID. The registered callback is
 
 ## Ownership and limits
 
+Invoice restoration: Portal restoration uses the
+existing read-only observation owner to verify a linked invoice before the
+transaction. It never unvoids a Xero record, creates a replacement or starts a
+new transfer. The current Portal invoice/payment evidence must agree with the
+fresh provider observation; external void/deletion or unresolved changes require
+Finance review. Terminal Xero records with nonzero payments are conflicts, not
+restorable pending corrections. See `quotes-invoices-job-packs.md` for the full
+restore and explicit customer-delivery contract. Migration
+`20261012000001_invoice_restore.sql` must precede application rollout; it was
+installed in staging on 12 October 2026. Current release status belongs to the
+delivery record.
+
 ### Deposit approval pilot (released; first real approval verified)
 
 The developer page adds an exact portal invoice lookup and a live Xero receipt comparison through `POST /api/integrations/xero/payment-suggestions`. The invoice customer name supplies the default exact Xero contact search; an alternate name can be entered, but a differing name blocks the proposed outcome pending identity review. Searches accept 1–240 characters, including short and punctuated customer names; query values are escaped as Xero string literals using doubled quotation marks, never supplied as expressions. The dedicated Xero identity remains read-only and receives no portal business-table grants.
