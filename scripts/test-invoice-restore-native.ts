@@ -13,7 +13,7 @@ function docker(args: string[], input?: string) {
   if (result.status !== 0) throw new Error(result.stderr || result.error?.message || 'Docker failed');
   return result.stdout.trim();
 }
-const args = (db: string) => ['exec', '-i', container, 'psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', db];
+const args = (db: string) => ['exec', '-i', container, 'psql', '-h', '127.0.0.1', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', db];
 const sql = (body: string, db = 'postgres') => docker(args(db), body);
 async function until(check: () => boolean, label: string) {
   const deadline = Date.now() + 15000;
@@ -58,7 +58,9 @@ async function main() {
   try {
     docker(['run', '-d', '--rm', '--name', container, '-e', 'POSTGRES_HOST_AUTH_METHOD=trust', 'postgres:17-alpine']);
     created = true;
-    await until(() => { try { return docker(['exec', container, 'pg_isready', '-U', 'postgres']).includes('accepting'); } catch { return false; } }, 'PostgreSQL startup');
+    // Docker's temporary init server accepts Unix sockets before restarting.
+    // Only the final server listens on TCP; use that same endpoint for all SQL.
+    await until(() => { try { return docker(['exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres']).includes('accepting'); } catch { return false; } }, 'PostgreSQL TCP startup');
     await initialiseInvoiceRestoreDatabase({ exec: async (body: string) => sql(body) });
     const content = { version: 1, items: [{ id: '60000000-0000-4000-8000-000000000001', description: 'Synthetic work', qty: 1, unitPriceIncGstCents: 11500, lineTotalIncGstCents: 11500 }], billingName: 'Synthetic', billingEmail: 'test@example.invalid', billingAddress: '', notes: '' };
     const schedule = { mode: 'custom', label: 'Invoice', dueDate: '2026-10-30', amountIncGstCents: 11500 };
