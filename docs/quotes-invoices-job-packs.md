@@ -143,13 +143,14 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 
 ## Invoice Lifecycle
 
-### Restoring an accidental void (release candidate, 12 October 2026)
+### Restoring an accidental void
 
 Admins can choose **Restore invoice** on a void invoice, supply a reason, and
 restore its original number, content, amount and due date. Migration
 `20261012000001_invoice_restore.sql` is required before application rollout.
-The migration is installed in staging on 12 October. Jordan approved production
-release; final verification and production deployment remain pending.
+The migration was installed in staging on 12 October 2026 after rollback
+rehearsal and unchanged-record checks. Release status belongs to the delivery
+record; the migration must precede the application in each environment.
 
 `commercial_restore_invoice` owns the atomic transition, audit and idempotent
 command receipt under the existing commercial project lock. It requires the

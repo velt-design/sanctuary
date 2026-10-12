@@ -362,16 +362,17 @@ ID. The registered callback is
 
 ## Ownership and limits
 
-Invoice restore release candidate (12 October 2026): Portal restoration uses the
+Invoice restoration: Portal restoration uses the
 existing read-only observation owner to verify a linked invoice before the
 transaction. It never unvoids a Xero record, creates a replacement or starts a
 new transfer. The current Portal invoice/payment evidence must agree with the
 fresh provider observation; external void/deletion or unresolved changes require
 Finance review. Terminal Xero records with nonzero payments are conflicts, not
 restorable pending corrections. See `quotes-invoices-job-packs.md` for the full
-restore and explicit customer-delivery contract. The migration is installed in
-staging on 12 October. Jordan approved production release; verification and
-production deployment remain pending.
+restore and explicit customer-delivery contract. Migration
+`20261012000001_invoice_restore.sql` must precede application rollout; it was
+installed in staging on 12 October 2026. Current release status belongs to the
+delivery record.
 
 ### Deposit approval pilot (released; first real approval verified)
 

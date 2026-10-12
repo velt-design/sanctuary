@@ -328,8 +328,8 @@ Migration source:
 
 ## Quotes, Invoices, Artifacts, And Job Packs
 
-Restoration candidate `20261012000001_invoice_restore.sql` (installed in staging
-on 12 October 2026; production verification/deployment pending) adds
+Restoration migration `20261012000001_invoice_restore.sql` (installed in staging
+on 12 October 2026; required before application rollout) adds
 `deposit_invoices.restored_at` and `restore_command_id`, plus service-role-only
 `commercial_restore_invoice_context` and `commercial_restore_invoice`. The admin
 route supplies the authenticated actor, command UUID and expected void timestamp.

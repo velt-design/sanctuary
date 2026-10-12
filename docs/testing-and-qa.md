@@ -254,7 +254,7 @@ still fail the guard. Do not put source files in these output directories.
 
 ## Read First
 
-Invoice restore candidate: run `npx vitest run test/invoice-restore.integration.test.ts
+Invoice restoration: run `npx vitest run test/invoice-restore.integration.test.ts
 test/invoice-drafts.integration.test.ts apps/portal/app/api/admin/invoices
 apps/portal/lib/invoices/deliveryGeneration.test.ts
 apps/portal/lib/invoices/restoreDelivery.test.ts
