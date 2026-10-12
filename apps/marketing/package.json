@@ -25,7 +25,7 @@
     "@sp/quote-format": "0.0.0",
     "@sp/theme": "0.0.0",
     "@supabase/supabase-js": "^2.90.1",
-    "handlebars": "^4.7.9",
+    "handlebars": "^4.7.10",
     "next": "^16.3.8",
     "pdf-lib": "^1.17.1",
     "react": "19.1.0",
