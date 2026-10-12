@@ -113,3 +113,12 @@ export async function voidProjectInvoice(invoiceId: string, reason: string): Pro
   });
   return res.invoice;
 }
+
+export async function restoreProjectInvoice(invoiceId: string, input: {
+  reason: string; expectedVoidedAt: string; commandId: string;
+}): Promise<DepositInvoiceSummary> {
+  const res = await apiJson<{ invoice: DepositInvoiceSummary }>(`/api/admin/invoices/${encodeURIComponent(invoiceId)}/restore`, {
+    method: 'POST', body: JSON.stringify(input),
+  });
+  return res.invoice;
+}

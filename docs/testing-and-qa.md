@@ -254,6 +254,41 @@ still fail the guard. Do not put source files in these output directories.
 
 ## Read First
 
+Invoice restore candidate: run `npx vitest run test/invoice-restore.integration.test.ts
+test/invoice-drafts.integration.test.ts apps/portal/app/api/admin/invoices
+apps/portal/lib/invoices/deliveryGeneration.test.ts
+apps/portal/lib/invoices/restoreDelivery.test.ts
+apps/portal/lib/xero/invoiceObservation.test.ts` (one command). The shared
+`test/support/invoiceDatabase.ts` supplies disposable schema prerequisites while
+executing the production billing functions. Coverage includes replay/stale void
+episodes, audit rollback, grants, partial/full receipts, replacements, terminal
+quotes, Xero conflicts, closure reopening and explicit delivery generation.
+The restore harness also executes the original email table, uniqueness indexes,
+prepare, unfinished-read and dispatch commands. Deterministic interleavings
+cover late preparation, void-before-dispatch, restoration cancelling an unused
+intent, first definitive rejection recovery, unresolved provider uncertainty,
+and new-generation dispatch. Sender tests reject stale token finalisation.
+
+`npm run test:commercial:db` includes the restore integration suite and
+`tsx scripts/test-invoice-restore-native.ts`. The latter creates its own disposable
+Docker PostgreSQL 17 container, reuses synthetic prerequisites and applies the
+production SQL owners. Separate connections must visibly wait on real locks for
+restore/late preparation, duplicate restoration, void/dispatch and dispatch/void;
+it also verifies cancellation and subsequent new-generation dispatch. CI already
+provides Docker in the commercial database job. It never accepts a remote database
+URL. Local execution requires a running Docker daemon; missing Docker is a failure,
+not a skipped concurrency pass.
+
+For local UI review, start `npx tsx scripts/invoice-restore-preview.ts` from the
+repository root, and the Portal on `127.0.0.1:3146` with
+`ENABLE_PORTAL_QA_FIXTURES=1` and synthetic Supabase configuration. Open
+`/qa/invoice-restore-fixture`. This development-only route renders the actual
+Invoices tab with a synthetic admin presentation; its API requests are fenced to
+the disposable SQL process on port 3147. Restore, reload and return read the same
+database until that process stops. Reset revoids the synthetic invoice. Sending
+and unrelated commands are disabled. It does not prove hosted auth, live Xero
+coverage, provider delivery, or multi-session PostgreSQL contention.
+
 - Use `## Common Commands` for routine repo, portal, focused, and operational scripts.
 - Use `## Docs-Only Checks` when changing docs, agent guidance, or docs tooling.
 - Use `## Background-Job And Worker Tests` for JOB-01/JOB-02/JOB-03 provider-package, worker, migration, security, webhook, fault-injection, and isolated PGMQ database checks.

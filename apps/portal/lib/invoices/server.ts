@@ -1,4 +1,5 @@
 import 'server-only';
+import { invoiceDeliveryIntentKey, isCurrentInvoiceDelivery } from './deliveryGeneration';
 import { parseInvoiceContent, type InvoiceContentSnapshot } from '@sp/quote-format';
 
 import { appIdFromUuid, uuidFromAppId } from '../supabase/mappers';
@@ -29,6 +30,8 @@ import { normalizeStoredQuotePaymentSchedule, type QuotePaymentTerm } from '../q
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
 
 type DepositInvoiceRow = {
+  restored_at: string | null;
+  restore_command_id: string | null;
   id: string;
   project_id: string;
   quote_id: string;
@@ -207,6 +210,8 @@ async function insertAuditEvent(params: {
 
 function mapInvoiceRow(row: any): DepositInvoiceRow {
   return {
+    restored_at: typeof row?.restored_at === 'string' ? row.restored_at : null,
+    restore_command_id: typeof row?.restore_command_id === 'string' ? row.restore_command_id : null,
     id: String(row?.id ?? ''),
     project_id: String(row?.project_id ?? ''),
     quote_id: String(row?.quote_id ?? ''),
@@ -271,6 +276,7 @@ function mapSendLogRow(row: any): DepositInvoiceSendLogRow {
 }
 
 function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInvoiceSendLogRow | null): DepositInvoiceSummary {
+  if (latestAttempt && !isCurrentInvoiceDelivery(invoice.restored_at, latestAttempt.created_at)) latestAttempt = null;
   return {
     id: appIdFromUuid('inv', invoice.id),
     projectId: appIdFromUuid('proj', invoice.project_id),
@@ -298,7 +304,7 @@ function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInv
     totalExGstCents: invoice.total_ex_gst_cents,
     gstCents: invoice.gst_cents,
     createdAt: invoice.created_at,
-    sentAt: invoice.sent_at,
+    sentAt: invoice.restored_at && latestAttempt?.status === 'SENT' ? latestAttempt.sent_at : invoice.sent_at,
     paidAt: invoice.paid_at,
     paidBy: invoice.paid_by,
     paymentReference: invoice.payment_reference,
@@ -307,6 +313,7 @@ function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInv
     voidedAt: invoice.voided_at,
     voidedBy: invoice.voided_by,
     voidReason: invoice.void_reason,
+    restoredAt: invoice.restored_at,
     lastDeliveryStatus: latestAttempt?.status ?? 'NOT_SENT',
     lastDeliveryError: latestAttempt?.error_message ?? null,
     lastDeliveryAttemptAt: latestAttempt ? latestAttempt.sent_at ?? latestAttempt.created_at : null,
@@ -622,20 +629,20 @@ async function insertSendLog(params: {
   }
 }
 
-async function hasSuccessfulSend(invoiceId: string): Promise<boolean> {
-  const res = await supabaseServiceRole
+async function hasSuccessfulSend(invoice: DepositInvoiceRow): Promise<boolean> {
+  let query = supabaseServiceRole
     .from('deposit_invoice_send_logs')
     .select('id')
-    .eq('deposit_invoice_id', invoiceId)
-    .eq('status', 'SENT')
-    .limit(1)
-    .maybeSingle();
+    .eq('deposit_invoice_id', invoice.id)
+    .eq('status', 'SENT');
+  if (invoice.restored_at) query = query.gte('created_at', invoice.restored_at);
+  const res = await query.limit(1).maybeSingle();
 
   return Boolean(res.data && !res.error);
 }
 
 async function markInvoiceSent(invoice: DepositInvoiceRow, patch: { actor: string | null; sentAt: string; tokenHash: string; tokenExpiresAt: string }) {
-  const res = await supabaseServiceRole
+  let update = supabaseServiceRole
     .from('deposit_invoices')
     .update({
       sent_at: invoice.sent_at ?? patch.sentAt,
@@ -643,9 +650,15 @@ async function markInvoiceSent(invoice: DepositInvoiceRow, patch: { actor: strin
       portal_token_hash: patch.tokenHash,
       portal_token_expires_at: patch.tokenExpiresAt,
     } as any)
-    .eq('id', invoice.id);
+    .eq('id', invoice.id)
+    .eq('status', 'OPEN');
+  update = invoice.restore_command_id
+    ? update.eq('restore_command_id', invoice.restore_command_id)
+    : update.is('restore_command_id', null);
+  const res = await update.select('id').maybeSingle();
 
   if (res.error) throw new Error(errorMessage(res.error, 'Failed to update invoice send state'));
+  if (!res.data) throw new Error('Invoice changed during delivery; refresh and reconcile the prepared email before sending again');
 }
 
 async function recordInvoiceDeliveryFailure(params: {
@@ -703,7 +716,7 @@ async function prepareInvoiceEmailIntent(
     const parsed = parseDateOnly(invoice.due_date);
     if (parsed) {
       parsed.setUTCDate(parsed.getUTCDate() + 30);
-      return parsed.toISOString();
+      if (!invoice.restored_at || parsed.getTime() > Date.parse(sentAt)) return parsed.toISOString();
     }
     const fallback = new Date(sentAt);
     fallback.setUTCDate(fallback.getUTCDate() + 30);
@@ -783,7 +796,7 @@ async function deliverInvoiceEmailDurably(
       finalFailure: true,
     };
   }
-  if (await hasSuccessfulSend(invoice.id)) {
+  if (await hasSuccessfulSend(invoice)) {
     return {
       delivered: true,
       alreadySent: true,
@@ -794,7 +807,7 @@ async function deliverInvoiceEmailDurably(
     };
   }
 
-  const intentKey = `deposit-invoice-send:${invoice.id}`;
+  const intentKey = invoiceDeliveryIntentKey(invoice);
   let intent =
     (await findCommercialEmailIntentByKey(intentKey)) ??
     (await prepareInvoiceEmailIntent(invoice, recipients, actor, intentKey));
@@ -989,6 +1002,9 @@ export async function deliverAcceptedDepositInvoiceById(params: {
 }> {
   const invoice = await loadInvoiceById(params.invoiceUuid);
   if (!invoice) throw new Error('Deposit invoice not found');
+  if (invoice.restored_at) {
+    return { invoice, sent: false, sendError: 'Restored invoices require an explicit Send now action', deliveryState: 'needs_attention' };
+  }
   if (invoice.status !== 'OPEN') {
     return {
       invoice,
@@ -1064,7 +1080,7 @@ export async function getDepositInvoiceArtifactPreview(invoiceId: string): Promi
   const invoice = await loadInvoiceById(invoiceUuid);
   if (!invoice || invoice.status === 'DRAFT') return null;
 
-  const intent = await findCommercialEmailIntentByKey(`deposit-invoice-send:${invoice.id}`);
+  const intent = await findCommercialEmailIntentByKey(invoiceDeliveryIntentKey(invoice));
   if (intent) {
     const frozen = parseFrozenInvoiceEmail(intent);
     return preparedDepositInvoicePreview({

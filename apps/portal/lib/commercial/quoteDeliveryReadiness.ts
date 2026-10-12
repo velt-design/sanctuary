@@ -25,7 +25,7 @@ function toQuoteDeliveryRecovery(
   intent: CommercialEmailIntent | null,
   nowMs: number,
 ): QuoteDeliveryRecovery | null {
-  if (!intent || intent.status === 'finalised') return null;
+  if (!intent || intent.status === 'finalised' || intent.status === 'cancelled') return null;
   return {
     mode: intent.kind === 'quote_resend' ? 'resend' : 'send',
     status: intent.status,

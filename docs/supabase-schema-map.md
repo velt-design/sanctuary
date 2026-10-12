@@ -328,6 +328,21 @@ Migration source:
 
 ## Quotes, Invoices, Artifacts, And Job Packs
 
+Restoration candidate `20261012000001_invoice_restore.sql` (installed in staging
+on 12 October 2026; production verification/deployment pending) adds
+`deposit_invoices.restored_at` and `restore_command_id`, plus service-role-only
+`commercial_restore_invoice_context` and `commercial_restore_invoice`. The admin
+route supplies the authenticated actor, command UUID and expected void timestamp.
+The transaction preserves immutable issued fields and receipt history, checks
+commercial/Xero state, clears current void fields, and records the prior void
+evidence in `invoice.restored`. Each later void has its own audit identity.
+Browser direct writes remain revoked. No transfer or email is enqueued.
+The private email owner adds an invoice-only `cancelled` state for provably
+unsent generations. Cancelled rows retain frozen bytes and provider identity,
+are excluded from unfinished reads/uniqueness, and cannot be resumed. Invoice
+prepare/dispatch validates generation and OPEN state under the project lock;
+shared quote delivery states and behavior remain unchanged.
+
 Owner doc: `docs/quotes-invoices-job-packs.md`.
 
 Tables/RPCs:

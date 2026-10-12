@@ -45,10 +45,12 @@ import {
   sendProjectDepositInvoice,
   updatePaymentAllocations,
   voidProjectInvoice,
+  restoreProjectInvoice,
 } from '@/lib/repo/invoicesRepo';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import CommercialFinalFailureGuidance from '@/components/commercial/CommercialFinalFailureGuidance';
 import InvoiceActionDialogs, { type InvoicePaymentEvidence } from './InvoiceActionDialogs';
+import RestoreInvoiceDialog from './RestoreInvoiceDialog';
 import CreateInvoiceDialog from './CreateInvoiceDialog';
 import InvoiceDraftEditor from './InvoiceDraftEditor';
 import type { InvoiceDraft, InvoiceDraftList } from '@/lib/invoices/draftTypes';
@@ -114,6 +116,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   const [voidingInvoiceId, setVoidingInvoiceId] = useState<string | null>(null);
   const [paidTarget, setPaidTarget] = useState<DepositInvoiceSummary | null>(null);
   const [voidTarget, setVoidTarget] = useState<DepositInvoiceSummary | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<DepositInvoiceSummary | null>(null);
+  const [restoringInvoice, setRestoringInvoice] = useState(false);
   const [paymentEntryMode, setPaymentEntryMode] = useState<'PAYMENT' | 'ADJUSTMENT' | null>(null);
   const [allocationTarget, setAllocationTarget] = useState<ProjectPaymentEntrySummary | null>(null);
   const [reversalTarget, setReversalTarget] = useState<ProjectPaymentEntrySummary | null>(null);
@@ -357,6 +361,21 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     }
   };
 
+  const handleRestore = async (input: { reason: string; expectedVoidedAt: string; commandId: string }) => {
+    if (!restoreTarget || !beginFinancialAction()) return;
+    setRestoringInvoice(true);
+    try {
+      const updated = await restoreProjectInvoice(restoreTarget.id, input);
+      updateInvoiceCache(updated);
+      setRestoreTarget(null);
+      toast.success(`Invoice ${restoreTarget.invoiceRef} restored. No email sent.`);
+      await reconcileConfirmedAction(`Invoice ${restoreTarget.invoiceRef} restoration`);
+    } finally {
+      finishFinancialAction();
+      setRestoringInvoice(false);
+    }
+  };
+
   if (invoicesQuery.isPending) {
     return <LoadingSkeleton rows={3} columns={6} label="Loading invoices" />;
   }
@@ -365,6 +384,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     || creatingInvoice
     || markingPaidId !== null
     || voidingInvoiceId !== null
+    || restoringInvoice
     || paymentPending;
   const financialActionsLocked = financialActionPending || recoveryNotice !== null;
 
@@ -568,7 +588,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 </TableCell>
                 <TableCell data-label="Delivery and payment">
                   <div className={styles.meta}>
-                    <span>{invoice.sentAt ? `Sent ${formatDateTime(invoice.sentAt)}` : 'Not delivered yet'}</span>
+                    <span>{invoice.status === 'OPEN' && invoice.restoredAt && invoice.lastDeliveryStatus !== 'SENT' ? 'Restored — ready to send' : invoice.sentAt ? `Sent ${formatDateTime(invoice.sentAt)}` : 'Not delivered yet'}</span>
                     {invoice.lastDeliveryAttemptAt ? (
                       invoice.lastDeliveryError || invoice.finalFailure || invoice.lastDeliveryStatus === 'FAILED'
                         ? <span className={styles.muted}>Last attempt {formatDateTime(invoice.lastDeliveryAttemptAt)}</span>
@@ -613,6 +633,9 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                         ...((isAdmin && invoice.status === 'OPEN')
                           ? [{ label: 'Void invoice', disabled: financialActionsLocked, destructive: true, separatorBefore: true, onSelect: () => setVoidTarget(invoice) }]
                           : []),
+                        ...((isAdmin && invoice.status === 'VOID')
+                          ? [{ label: 'Restore invoice', disabled: financialActionsLocked, onSelect: () => setRestoreTarget(invoice) }]
+                          : []),
                       ]}
                     />
                   </div>
@@ -640,6 +663,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         onConfirmPaid={(evidence) => { if (paidTarget) void handleMarkPaid(paidTarget, evidence); }}
         onConfirmVoid={(reason) => { if (voidTarget) void handleVoid(voidTarget, reason); }}
       />
+      {restoreTarget ? <RestoreInvoiceDialog key={restoreTarget.id} invoice={restoreTarget} pending={restoringInvoice}
+        onClose={() => setRestoreTarget(null)} onRestore={handleRestore} /> : null}
       {isAdmin && draftsEnabled ? <Card title="Invoice drafts"><p>Editable drafts have no balance impact until issued.</p>
         <Button onClick={newStandaloneDraft} disabled={financialActionsLocked}>New standalone invoice</Button>
         {(draftsQuery.data?.drafts ?? []).map((draft) => <Button key={draft.id} variant="secondary" onClick={() => setEditingDraft(draft)}>

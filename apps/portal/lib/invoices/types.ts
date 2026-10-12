@@ -38,6 +38,7 @@ export type DepositInvoiceSummary = {
   voidedAt: string | null;
   voidedBy: string | null;
   voidReason: string | null;
+  restoredAt?: string | null;
   lastDeliveryStatus: DepositInvoiceDeliveryStatus;
   lastDeliveryError: string | null;
   lastDeliveryAttemptAt: string | null;

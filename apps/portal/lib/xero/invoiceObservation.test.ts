@@ -20,6 +20,7 @@ it('tracks portal void correction separately from an independent Xero void', () 
   expect(observeXeroInvoice(expected, id, true, evidence).state).toBe('correction_pending');
   expect(observeXeroInvoice(expected, id, true, { ...evidence, Status: 'VOIDED' }).state).toBe('correction_complete');
   expect(observeXeroInvoice(expected, id, false, { ...evidence, Status: 'VOIDED' }).state).toBe('conflict');
+  expect(observeXeroInvoice(expected, id, true, { ...evidence, Status: 'VOIDED', AmountPaid: 40 }).state).toBe('conflict');
 });
 it('flags credits and impossible payment totals for finance instead of hiding them', () => {
   for (const change of [{ AmountCredited: 10 }, { AmountPaid: 116 }, { Status: 'PAID', AmountPaid: 100 }, { AmountPaid: 1 }]) {
