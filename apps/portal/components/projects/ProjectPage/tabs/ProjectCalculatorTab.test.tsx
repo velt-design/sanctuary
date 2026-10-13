@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
+import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, createEmptyLocalFirstState, ensureLocalFirstStoreReady } from '@/lib/localFirst/store';
 import ProjectCalculatorTab from './ProjectCalculatorTab';
 
 const replace = vi.fn();
@@ -73,7 +74,10 @@ const activeDraft = {
 const historical = { ...activeDraft, id: 'est_history', versionLabel: 'V1', isActiveDraft: false };
 
 describe('ProjectCalculatorTab', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    __setLocalFirstStorageAdapterForTests({ get: async () => createEmptyLocalFirstState(), set: async () => undefined });
+    __resetLocalFirstStoreForTests();
+    await ensureLocalFirstStoreReady();
     replace.mockReset();
     push.mockReset();
     search = 'tab=estimates';

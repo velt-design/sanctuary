@@ -19,6 +19,7 @@ import { copiedCommercialInternalName } from '@/lib/commercial/internalName';
 import { apiJson } from '@/lib/repo/apiClient';
 import { qk } from '@/lib/queries/keys';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
+import { useProjectEstimateSelection } from './useProjectEstimateSelection';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 
 function versionNumber(label: string): number {
@@ -80,8 +81,7 @@ export default function ProjectCalculatorTab({
   const activeDraft = activeDrafts.find((estimate) => estimate.commercialScopeKind !== 'add_on')
     ?? activeDrafts[0]
     ?? null;
-  const editEstimateId = searchParams.get('estimateId')?.trim() ?? '';
-  const fromEstimateId = searchParams.get('fromEstimateId')?.trim() ?? '';
+  const { editEstimateId, fromEstimateId, selectedEstimate, revisionSource, hydratingSelection } = useProjectEstimateSelection(projectId, estimates);
   const newDesign = searchParams.get('newDesign') === '1';
   const estimateQuotesQuery = useQuery({
     ...quoteVersionsByProjectQueryOptions(host, projectId),
@@ -90,8 +90,6 @@ export default function ProjectCalculatorTab({
   const newEstimateInternalName = searchParams.get('estimateName')?.trim() || null;
   const requestedCommercialScopeId = searchParams.get('commercialScopeId')?.trim() || null;
   const requestedEstimateKind = searchParams.get('estimateKind') === 'add_on' ? 'add_on' : 'base';
-  const selectedEstimate = estimates.find((estimate) => estimate.id === editEstimateId) ?? null;
-  const revisionSource = estimates.find((estimate) => estimate.id === fromEstimateId) ?? null;
 
   const replaceParams = useCallback((update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
@@ -256,7 +254,7 @@ export default function ProjectCalculatorTab({
           ? `${selectedEstimate.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}${selectedEstimate.isActiveDraft ? 'Current draft' : 'Revision source'} · ${selectedEstimate.versionLabel}`
           : 'Project design',
     options: [
-      ...activeDrafts.map((estimate) => ({
+      ...(selectedEstimate?.isActiveDraft && !activeDrafts.some((draft) => draft.id === selectedEstimate.id) ? [selectedEstimate, ...activeDrafts] : activeDrafts).map((estimate) => ({
         value: `draft:${estimate.id}`,
         label: `${estimate.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}Current draft · ${estimate.versionLabel}`,
       })),
@@ -389,7 +387,7 @@ export default function ProjectCalculatorTab({
     </div>
   );
 
-  if (estimatesQuery.isPending) {
+  if (estimatesQuery.isPending || hydratingSelection) {
     return (
       <div className={styles.container} data-project-calculator="true" data-project-calculator-state="pending">
         {listReturn}
