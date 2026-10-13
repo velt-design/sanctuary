@@ -11,7 +11,7 @@ const MAX_REQUESTS = 128;
 const MAX_SPLIT_DEPTH = 9;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Row = Record<string, unknown>;
-export type ProjectWorkDomainFacts = { projects: Row[]; confirmations: Row[] };
+type ProjectWorkDomainFacts = { projects: Row[]; confirmations: Row[] };
 
 function incomplete(): Error & { code: string } {
   return Object.assign(new Error('Project Work source facts are unavailable or incomplete'), {
