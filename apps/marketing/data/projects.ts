@@ -48,6 +48,80 @@ export type Project = {
 
 const baseProjects: Project[] = [
   {
+    slug: 'milford-garden-retreat',
+    title: 'Milford Garden Retreat',
+    location: 'Milford, Auckland',
+    region: 'North Shore',
+    type: 'Residential',
+    roof: 'Perimeter',
+    year: '2026',
+    heroImage: {
+      src: '/images/project-milford-garden-retreat-01-spa-sauna.jpg',
+      alt: 'Satin-black pergola with cedar battens above a spa and sauna in a Milford garden',
+      objectPosition: '50% 60%',
+    },
+    gallery: [
+      {
+        src: '/images/project-milford-garden-retreat-01-spa-sauna.jpg',
+        alt: 'Satin-black pergola with cedar battens above a spa and sauna in a Milford garden',
+        objectPosition: '50% 60%',
+      },
+      {
+        src: '/images/project-milford-garden-retreat-02-dining-patio.jpg',
+        alt: 'Outdoor dining table beneath cedar roof battens, looking towards the screened spa area',
+        objectPosition: '50% 70%',
+      },
+      {
+        src: '/images/project-milford-garden-retreat-03-cedar-batten-ceiling.jpg',
+        alt: 'Cedar battens beneath opal acrylic roofing, with a sauna and spa beyond the dining patio',
+        objectPosition: '50% 65%',
+      },
+      {
+        src: '/images/project-milford-garden-retreat-04-spa-garden.jpg',
+        alt: 'Spa beneath a timber-lined pergola beside concrete stepping stones, planting and lawn',
+        objectPosition: '50% 65%',
+      },
+      {
+        src: '/images/project-milford-garden-retreat-05-privacy-screens.jpg',
+        alt: 'Vertical timber privacy screens and a satin-black pergola frame around the Milford spa area',
+        objectPosition: '50% 55%',
+      },
+    ],
+    blurb:
+      'Two cedar-lined pergolas connect outdoor dining with a private spa and sauna area, within an onsen-inspired Milford garden.',
+    constraint:
+      'Bring privacy and shade into the backyard design while preserving daylight to the rooms opening onto the patio.',
+    roofApproach: 'Opal acrylic above Western Red Cedar battens',
+    materials: ['Satin-black powder-coated aluminium', 'Western Red Cedar battens', 'Opal acrylic'],
+    description: [
+      'This Milford backyard was planned around two ways of spending time outdoors: dining beside the house and unwinding in the garden. Sanctuary\'s two pergolas bring those spaces together, pairing satin-black aluminium frames with Western Red Cedar battens beneath opal acrylic roofing.',
+      'The pergolas form part of a wider, onsen-inspired landscape by Design with Rudi Landscapes, in collaboration with GGL Landscaping & Gardening. Repeated timber lines connect the patio ceiling with the screened spa and sauna area, while concrete paths and planting carry the design through the garden.',
+    ],
+    stats: {},
+    tags: ['Residential', 'Box-perimeter', 'Cedar battens', 'Opal acrylic', 'Spa and sauna'],
+    sections: [
+      {
+        title: 'Privacy, shade and daylight',
+        paragraphs: [
+          'The homeowners wanted more privacy from neighbouring properties, shade over the patio and daylight in the rooms opening onto it. Their previous clear corrugated cover had made the patio too hot to enjoy in summer. They were drawn to the timber-under-acrylic approach used in Sanctuary\'s Tindalls Bay project and wanted that same material warmth to sit comfortably within the new landscape.',
+        ],
+      },
+      {
+        title: 'One palette, two spaces',
+        paragraphs: [
+          'The patio pergola sits beside the house, above the outdoor dining area. A separate freestanding structure frames the spa and sauna. Cedar battens run beneath both roofs, giving the two spaces a consistent ceiling treatment. The dark aluminium perimeter beams outline each structure, while the timber and surrounding greenery bring warmth to the composition.',
+        ],
+      },
+      {
+        title: 'Cedar and opal acrylic',
+        paragraphs: [
+          'The clients selected opal acrylic after reviewing roofing samples. The cedar batten design was developed around a balance of timber and open spacing, giving the ceiling a strong repeated pattern without making it a solid timber lining. Vertical timber screens around the spa area continue that pattern into the wider landscape.',
+        ],
+      },
+    ],
+    related: ['tindalls-bay-pavilion', 'warkworth-outdoor-room', 'mt-maunganui-box'],
+  },
+  {
     slug: 'warkworth-outdoor-room',
     title: 'Warkworth Outdoor Room',
     location: 'Warkworth, Auckland',
@@ -1034,6 +1108,7 @@ const projectOrder: string[] = [
   'mt-maunganui-box',            // Mt Maunganui Box
   'atelier-shu-cafe',            // Atelier Shu Cafe
   'lilliput-mini-golf',          // Lilliput Mini Golf
+  'milford-garden-retreat',      // Milford Garden Retreat
   'riverhead-gable-pavilion',    // Riverhead Gable Pavilion
   'velskov-forest',              // Velskov Forest
   'tindalls-bay-pavilion',       // Tindalls Bay - Patio & Carport
