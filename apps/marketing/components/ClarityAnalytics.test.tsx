@@ -41,8 +41,14 @@ it('excludes initial private pages and stops when navigation enters one', async 
   expect(clarityPageAllowed('/invoice/example', '')).toBe(false);
   expect(clarityPageAllowed('/', 'draft=private')).toBe(false);
   expect(clarityPageAllowed('/simple-pergolas-auckland', '')).toBe(true);
+  expect(clarityPageAllowed('/pergolas-auckland/redesign', 'utm_source=google')).toBe(true);
+  expect(clarityPageAllowed('/pergolas-auckland/redesign', 'draft=private')).toBe(false);
   expect(clarityPageAllowed('/design-enquiry', 'source_path=%2F&project_direction=cover')).toBe(true);
   expect(clarityPageAllowed('/design-enquiry', 'project_direction=private-value')).toBe(false);
+  expect(clarityPageAllowed('/configurator-preview', 'design_scope=pergolas-auckland&source_product=gable&entry=edit')).toBe(true);
+  expect(clarityPageAllowed('/design-enquiry', 'design_scope=private-customer')).toBe(false);
+  expect(clarityPageAllowed('/design-enquiry', 'design_scope=pergolas-auckland&source_product=private-customer')).toBe(false);
+  expect(clarityPageAllowed('/configurator-preview', 'entry=private-note')).toBe(false);
   expect(clarityProjectId('https://other.example')).toBeNull();
 });
 it('sends only approved stage names, and replay failures do not throw', () => {

@@ -9,23 +9,36 @@ import type { SharedEstimate } from './sharedEstimate';
 import { SIMPLE_COVER_HANDOFF_STORAGE_KEY } from '../../lib/simpleCoverHandoff';
 import { legacySimpleDraft } from './legacySimpleDraft';
 import { updateDesignContinuation } from './designContinuation';
+import { isLandingDesign, LANDING_DRAFT_KEY } from './draftScope';
 
 type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; sharedEstimate?: SharedEstimate | null; selectionNotice?:string };
 let snapshot: Snapshot | null = null;
+let activeKey = PREVIEW_DRAFT_KEY;
+const snapshots = new Map<string, Snapshot | null>();
+function storageKey() {
+  const key = isLandingDesign(window.location.pathname, window.location.search) ? LANDING_DRAFT_KEY : PREVIEW_DRAFT_KEY;
+  if (key !== activeKey) {
+    snapshots.set(activeKey, snapshot);
+    activeKey = key;
+    snapshot = snapshots.get(key) ?? null;
+  }
+  return key;
+}
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach(listener => listener());
 
 function restore() {
+  const key = storageKey();
   // A failed write leaves the in-memory draft newer than any saved value.
   if (snapshot?.storageAvailable === false) return;
   try {
-    let raw = window.sessionStorage.getItem(PREVIEW_DRAFT_KEY);
-    if (!raw) { try { raw = window.localStorage.getItem(PREVIEW_DRAFT_KEY); } catch { /* Session-only browser. */ } }
+    let raw = window.sessionStorage.getItem(key);
+    if (!raw) { try { raw = window.localStorage.getItem(key); } catch { /* Session-only browser. */ } }
     let draft: PreviewDraft | null = null;
     let migratedSimple = false;
     try { draft = raw ? parsePreviewDraft(JSON.parse(raw)) : null; }
     catch { /* A malformed saved draft falls back to the current defaults. */ }
-    if (!draft) {
+    if (!draft && key === PREVIEW_DRAFT_KEY) {
       try {
         const legacy = window.sessionStorage.getItem(SIMPLE_COVER_HANDOFF_STORAGE_KEY);
         draft = legacy ? legacySimpleDraft(JSON.parse(legacy)) : null;
@@ -41,15 +54,17 @@ function restore() {
 }
 
 function getSnapshot() {
+  storageKey();
   return snapshot;
 }
 const getServerSnapshot = () => null;
 
 function save(draft: PreviewDraft) {
+  const key = storageKey();
   let storageAvailable = true;
-  try { window.sessionStorage.setItem(PREVIEW_DRAFT_KEY, JSON.stringify(draft)); }
+  try { window.sessionStorage.setItem(key, JSON.stringify(draft)); }
   catch { storageAvailable = false; }
-  try { window.localStorage.setItem(PREVIEW_DRAFT_KEY, JSON.stringify(draft)); } catch { /* Session storage remains usable. */ }
+  try { window.localStorage.setItem(key, JSON.stringify(draft)); } catch { /* Session storage remains usable. */ }
   snapshot = { draft, storageAvailable };
 }
 
@@ -68,6 +83,7 @@ function onPageShow(event: PageTransitionEvent) {
   if (event.persisted) { restore(); importLink(); emit(); }
 }
 function subscribe(listener: () => void) {
+  storageKey();
   if (!snapshot) restore();
   importLink();
   if (!listeners.size) {
@@ -109,8 +125,9 @@ export function resetPreviewDraft() {
 }
 
 export function retainPreviewDraft() {
+  const key = storageKey();
   const draft = snapshot?.draft;
-  if (draft) { try { window.localStorage.setItem(PREVIEW_DRAFT_KEY, JSON.stringify(draft)); } catch { /* Optional cross-visit recovery. */ } }
+  if (draft) { try { window.localStorage.setItem(key, JSON.stringify(draft)); } catch { /* Optional cross-visit recovery. */ } }
 }
 
 export function usePreviewDraft() {

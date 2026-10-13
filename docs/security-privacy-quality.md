@@ -2,6 +2,14 @@
 
 This doc combines operational controls for tracking, consent, security, and quality gates.
 
+The isolated Auckland landing preview sets `MARKETING_TRACKING_DISABLED=true` to
+return inert JavaScript from the ArchiPro runtime. Default production behaviour
+is unchanged. GTM and GA client IDs use nonempty invalid identifiers in that
+preview so their existing validation disables production fallbacks. Email
+provider credentials are absent and durable delivery is disabled. Consent-gated
+first-party attribution and enquiry intake remain testable; these settings do
+not prove production email delivery or vendor conversion delivery.
+
 ## Portal One-Time Authentication
 
 Marketing report snapshot previews require explicit owner authority for the
