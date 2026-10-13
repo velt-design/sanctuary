@@ -1,5 +1,15 @@
 # Environment, Auth, And Supabase
 
+Meta offline sales candidate (14 October): the existing Meta reporting credential
+retains its ads_read-only boundary. Event delivery requires a separately bound
+dataset token and `SANCTUARY_META_SALES_ENABLED` (default off),
+`SANCTUARY_META_SALES_ACTOR_ID`, `SANCTUARY_META_SALES_DATASET_ID`,
+`SANCTUARY_META_SALES_ACCESS_TOKEN`, `SANCTUARY_META_SALES_EXPIRES_AT` and
+`SANCTUARY_META_SALES_BINDING_SHA256`, all server-only. The browser-only Google
+handoff flag `NEXT_PUBLIC_GOOGLE_ENHANCED_LEADS_ENABLED` defaults off and contains
+no credential. Source gates, scoped assessment, historical authority, exact
+schema rehearsal and recovery are in [meta-offline-sales.md](meta-offline-sales.md).
+
 ## Google advertising candidate
 
 Google Ads reporting and Data Manager sale delivery are default-off. They use a

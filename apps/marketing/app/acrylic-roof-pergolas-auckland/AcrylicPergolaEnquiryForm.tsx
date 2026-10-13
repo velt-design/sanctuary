@@ -9,6 +9,7 @@ import { useEnquiryInteraction } from '../../components/enquiry/useEnquiryIntera
 import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
+import { emitSubmittedLead } from '../../lib/googleEnhancedLead';
 import { createEnquirySubmissionId, ENQUIRY_ATTACHMENT_ACCEPT, uploadEnquiryAttachments, validateEnquiryAttachments } from '@/lib/enquiryAttachments';
 import {
   ENQUIRY_ATTACHMENT_HELP_TEXT,
@@ -92,7 +93,7 @@ const priorities = [
 ];
 const accessories = ['Outdoor blinds', 'Lighting', 'Heaters', 'Slat screens', 'Acrylic infill panels', 'Other'];
 
-function trackLeadSubmitted(
+async function trackLeadSubmitted(
   context: EnquiryContext,
   eventId: string,
   landingPage: string,
@@ -101,7 +102,8 @@ function trackLeadSubmitted(
     marketing: boolean;
     hasTrackingDecision: boolean;
   },
-): void {
+  contact: { email: string; phone: string },
+): Promise<void> {
   type TrackingWindow = typeof window & {
     dataLayer?: Array<Record<string, unknown>>;
     gtag?: (...args: unknown[]) => void;
@@ -125,12 +127,10 @@ function trackLeadSubmitted(
       trackingWindow.fbq?.('track', 'Lead', eventData, { eventID: eventId });
     }
     if (trackingConsent.analytics || trackingConsent.marketing) {
-      trackingWindow.dataLayer = trackingWindow.dataLayer || [];
-      trackingWindow.dataLayer.push({
-        event: 'lead_submitted',
+      await emitSubmittedLead({
         ...eventData,
         lead_event_id: eventId,
-      });
+      }, contact, trackingConsent.marketing);
     }
   } catch {
     // Analytics must never prevent a completed enquiry.
@@ -373,11 +373,11 @@ export default function AcrylicPergolaEnquiryForm({
 
       submissionIdRef.current = null;
       setSubmitState('success');
-      trackLeadSubmitted(currentEnquiryContext, submissionId, window.location.pathname, {
+      await trackLeadSubmitted(currentEnquiryContext, submissionId, window.location.pathname, {
         analytics: consent.analytics,
         marketing: consent.marketing,
         hasTrackingDecision,
-      });
+      }, { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') });
     } catch (error) {
       setSubmitError(
         error instanceof Error && error.message
@@ -742,7 +742,7 @@ export default function AcrylicPergolaEnquiryForm({
 
       <div className="acrylic-form__submit">
         <p>
-          We use your details and files to assess and respond. They are not published. With marketing tracking enabled, we also measure enquiries and sales with Google Ads. See our <Link href="/privacy#advertising-measurement">Privacy Policy</Link> for details and choices.
+          We use your details and files to assess and respond. They are not published. With marketing tracking enabled, we also measure enquiries and sales with Google Ads and Meta. See our <Link href="/privacy#advertising-measurement">Privacy Policy</Link> for details and choices.
         </p>
         <button type="submit" disabled={submitState === 'sending' || submitState === 'success'}>
           {submitState === 'sending' ? 'Sending brief' : submitState === 'success' ? 'Project brief sent' : submitLabel}

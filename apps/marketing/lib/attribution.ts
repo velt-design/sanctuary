@@ -5,6 +5,7 @@ import type {
 
 import { CAMPAIGN_CLICK_KEYS as CLICK_ID_KEYS, CAMPAIGN_UTM_KEYS, clearCampaignSession, readCampaignSession } from './campaignSession';
 import { CONSENT_STORAGE_KEY, parseStoredConsent } from './consent';
+import { capturePersistentIdentifiers, clearPersistentIdentifiers, clearMetaCookies } from './campaignPersistence';
 const MAX_ATTRIBUTION_VALUE_LENGTH = 600;
 const GA_CLIENT_ID_PATTERN = /^\d{1,20}\.\d{1,20}$/;
 
@@ -22,6 +23,8 @@ type MarketingAttributionPayload = {
   landingPage?: string;
   referrer?: string;
   analyticsClientId?: string;
+  clickCapturedAt?: string;
+  meta?: { fbc?: string; fbp?: string };
   consent?: MarketingAttributionConsent;
 };
 
@@ -122,14 +125,21 @@ export function getBrowserMarketingAttribution(input: {
   try { if (parseStoredConsent(window.localStorage?.getItem(CONSENT_STORAGE_KEY) ?? null)?.marketing === false) consent.marketing = false; } catch { /* Preserve the current in-memory decision. */ }
   if (consent.marketing) base = readCampaignSession(storage) ?? base;
   else if (hasTrackingDecision) clearCampaignSession(storage);
+  let persistent: Storage | undefined;
+  try { persistent = window.localStorage; } catch { /* Optional storage. */ }
+  const identifiers = consent.marketing ? capturePersistentIdentifiers({ store: persistent, cookie: document.cookie,
+    observedAt: Date.now(), newArrival: false }) : {};
   const analyticsClientId =
     consent.analytics && typeof document !== 'undefined'
       ? getGaClientIdFromCookie(document.cookie)
       : null;
+  if (hasTrackingDecision && !consent.marketing) { clearPersistentIdentifiers(persistent); clearMetaCookies(document,window.location.hostname); }
 
   return {
     utm: consent.marketing ? base.utm : {},
-    clickIds: consent.marketing ? base.clickIds : {},
+    clickIds: consent.marketing ? identifiers.google?.ids ?? base.clickIds : {},
+    ...(identifiers.google ? { clickCapturedAt: new Date(identifiers.google.capturedAt).toISOString() } : {}),
+    ...(identifiers.meta ? { meta: identifiers.meta } : {}),
     ...(consent.marketing && base.landingPage ? { landingPage: base.landingPage } : null),
     ...(consent.marketing && base.referrer ? { referrer: base.referrer } : null),
     ...(analyticsClientId ? { analyticsClientId } : null),

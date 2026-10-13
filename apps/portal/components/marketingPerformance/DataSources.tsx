@@ -7,9 +7,11 @@ import type { HubReport } from '@/lib/marketingPerformance/hub';
 import styles from './MarketingPerformance.module.css';
 import GoogleAdvertising from './GoogleAdvertising';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
+import MetaSaleDelivery from './MetaSaleDelivery';
+import type { loadMetaSaleStatus } from '@/lib/marketingIntegrations/metaSales/contract';
 
 const date = (value: string) => new Date(value).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland', dateStyle: 'medium', timeStyle: 'short' });
-export default function DataSources({ hub, loader = loadMetaEvidence, synthetic = false, googleLoader }: { hub: HubReport; loader?: MetaEvidenceLoader; synthetic?: boolean; googleLoader?: typeof loadAdsStatus }) {
+export default function DataSources({ hub, loader = loadMetaEvidence, synthetic = false, googleLoader, metaSaleLoader }: { hub: HubReport; loader?: MetaEvidenceLoader; synthetic?: boolean; googleLoader?: typeof loadAdsStatus; metaSaleLoader?: typeof loadMetaSaleStatus }) {
   const [evidence, setEvidence] = useState<MetaEvidence | null>(null), [error, setError] = useState('');
   const [revision, setRevision] = useState(0), [busy, setBusy] = useState(true), [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -56,6 +58,7 @@ export default function DataSources({ hub, loader = loadMetaEvidence, synthetic 
       {!busy && <a href="https://velt.systems/connections" target="_blank" rel="noreferrer">Source connection status</a>}
     </Card>
     {(!synthetic || googleLoader) && <GoogleAdvertising loader={googleLoader} />}
+    {(!synthetic || metaSaleLoader) && <MetaSaleDelivery loader={metaSaleLoader} />}
     <Card title="Sources not yet connected to this hub" padding="compact">
       <dl className={styles.sourceDefinitions}>
         <dt>GA4</dt><dd>Acquisition, landing pages and website events are available in the <a href="https://velt.systems/analytics" target="_blank" rel="noreferrer">existing analytics report</a>. Not yet connected here or matched to individual enquiries.</dd>

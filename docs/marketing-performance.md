@@ -1,10 +1,11 @@
 # Marketing Performance and Marketing & Sales hub
 
-## Google advertising candidate (13 October 2026)
+## Advertising connections (14 October 2026)
 
-The existing Data sources drawer now has a candidate Google campaign/keyword
-comparison and a separate sale-delivery coverage view. It is default-disabled and
-has no verified production API access or live matched sale. Sanctuary owns both
+The existing Data sources drawer has a released Google campaign/keyword
+comparison and a separate sale-delivery coverage view. Hosted reporting and its
+campaign aggregates are verified; real sale delivery remains disabled pending an
+eligible genuine canary. Sanctuary owns both
 collectors. See [google-ads-connection.md](google-ads-connection.md) for exact
 sale/consent policy, source dates, metric grains, bootstrap, activation and recovery.
 The retained 90-day Google window is independent of CRM filters; missing conversion
@@ -17,8 +18,17 @@ transport, source-fenced refresh/delivery and reporting; `GoogleAdvertising` is
 the existing drawer's inspection component. `google_ads_staff_read` enforces the
 same confirmed developer boundary. The synthetic marketing fixture supports
 Google complete/missing/disabled/stale/unmapped/failure states without provider
-access. The proposed deposit/full-scope-value policy and rollout require the
-owning task's production approval; the candidate is not released evidence.
+access. The deposit/full-scope-value policy and staged Google rollout were approved
+and released on 13 October. Actual sale ingestion and matching remain unverified.
+
+The 14 October local Meta candidate adds `MetaSaleDelivery` to the same drawer,
+with source assessment, overlapping eligibility exclusions, received-event counts
+and visible review states. It does not treat receipt as attribution or repair
+expired Meta reporting authority. Current business records own corrected sale
+values; Meta event updates/retractions are unsupported. See
+[meta-offline-sales.md](meta-offline-sales.md) for the incremental implementation
+map, returning-visitor capture, Google enhanced lead handoff, dataset credentials,
+individual historical evidence and the new production approval boundary.
 
 ## Owner commercial overview candidate (8 October 2026)
 

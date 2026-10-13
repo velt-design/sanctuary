@@ -34,6 +34,15 @@ persist, or use this controlled QA path as a routine production login flow.
 
 ## Campaign context during an enquiry journey
 
+The 14 October local candidate retains the following 30-minute UTM behavior and
+adds separate consent-gated paid-click persistence, fixed at 90 days per arrival.
+It preserves real Meta fbc/fbp creation times, removes values on withdrawal,
+retains the exact form disclosure version and offers an explicitly disabled,
+short-lived Ads-only hashed-contact handoff. No contact data is added to generic
+GA4 event properties. The candidate's Meta delivery, historical assessment and
+new public notice require their own production release review. Exact contracts
+and operator recovery: [meta-offline-sales.md](meta-offline-sales.md).
+
 Released through [PR150](https://github.com/velt-design/sanctuary/pull/150) on
 17 September 2026 at `e5578a394c535c4472566a2e5e981c47a547e78e`.
 Independent canonical-production checks covered allowed and denied journeys with

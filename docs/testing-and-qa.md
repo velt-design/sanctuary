@@ -1,5 +1,14 @@
 # Testing And QA
 
+Advertising extension (14 October local candidate): focused Meta source lifecycle
+tests are `npx vitest run test/meta-sales-source.test.ts`; native PostgreSQL 17 uses
+the existing disposable harness `node scripts/test-google-ads-db.mjs --meta` with
+`PRAXIS_DISPOSABLE_POSTGRES_BIN` set to installed binaries. Synthetic prerequisites
+do not establish production schema, PostgREST or safeupdate compatibility.
+Capture, Google prehashed handoff, provider wire, UI and release checks are mapped
+in [meta-offline-sales.md](meta-offline-sales.md). No test sends synthetic Purchase
+events to the production Meta dataset, including through `test_event_code`.
+
 ## Bounded Project Work source facts
 
 Run `npx vitest run test/project-work-domain-facts-migration.test.ts

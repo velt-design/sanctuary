@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-10-14 - Keep provider sale rules separate from accounting truth
+
+Google and Meta share one verified deposit/full-scope-value source, but their
+identity normalization, event windows, disclosure and correction capabilities
+differ. Meta's generic seven-day event window cannot inherit a physical-store
+exception, and `test_event_code` does not prevent measurement use. Freeze one
+event identity/time/value through bounded retries; do not invent a changed-value
+restatement where the provider retains the first copy. Keep historical permission
+evidence per source fingerprint and preserve old form notice versions. Website
+Google enhanced contact matching uses an explicitly gated, short-lived Ads-only
+hashed object, never generic analytics event properties. Owner:
+`meta-offline-sales.md`.
+
 ## 2026-10-14 - Keep tab rendering aligned with active read ownership
 
 A direct Job Packs entry preserved unknown availability in route/header state,

@@ -1,5 +1,13 @@
 # Google advertising connections
 
+14 October extension: Google reporting was released and verified on 13 October;
+real-sale delivery and enhanced matching remain disabled pending the genuine
+canary and website tag verification. The local cross-provider capture candidate
+and explicit Ads-only prehashed website handoff are owned by
+[meta-offline-sales.md](meta-offline-sales.md). Its new Meta release and historical
+batch permissions do not follow from the existing Google approval. Older candidate
+status below is retained as implementation history, not current hosted status.
+
 ## Candidate status and ownership
 
 This is an install-only, default-disabled release candidate. It has not enabled

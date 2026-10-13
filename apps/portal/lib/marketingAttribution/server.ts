@@ -31,6 +31,8 @@ type MarketingAttributionSummary = {
   landingPage?: string | null;
   referrer?: string | null;
   analyticsClientId?: string | null;
+  clickCapturedAt?: string;
+  meta?: { fbc?: string; fbp?: string };
   consent?: MarketingAttributionConsent | null;
 };
 
@@ -137,12 +139,23 @@ export function normalizeMarketingAttributionInput(
       }
     : {};
   const analyticsClientId = consent?.analytics ? cleanString(input.analyticsClientId) : null;
+  const meta: { fbc?: string; fbp?: string } = {};
+  if (consent?.marketing && isRecord(input.meta)) for (const key of ['fbc', 'fbp'] as const) {
+    const value = input.meta[key];
+    const match = typeof value === 'string' && value.length <= 640 ? /^fb\.\d\.(\d{13})\.([A-Za-z0-9_-]+)$/.exec(value) : null;
+    if (match && Number(match[1]) <= Date.now() && Date.now() - Number(match[1]) < 90 * 86400000
+      && (key === 'fbc' || /^\d+$/.test(match[2]))) meta[key] = value as string;
+  }
+  const clickTime = typeof input.clickCapturedAt === 'string' ? Date.parse(input.clickCapturedAt) : NaN;
 
   return {
     source: cleanString(input.source) ?? cleanString(fallback?.source),
     page: cleanString(input.page) ?? cleanString(fallback?.page),
     utm,
     clickIds,
+    ...(consent?.marketing && Number.isFinite(clickTime) && clickTime <= Date.now() && Date.now() - clickTime < 90 * 86400000
+      ? { clickCapturedAt: new Date(clickTime).toISOString() } : {}),
+    ...(Object.keys(meta).length ? { meta } : {}),
     landingPage: consent?.marketing ? cleanAttributionUrl(input.landingPage) : null,
     referrer: consent?.marketing ? cleanAttributionUrl(input.referrer) : null,
     analyticsClientId:

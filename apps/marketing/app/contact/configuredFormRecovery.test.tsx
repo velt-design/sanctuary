@@ -53,7 +53,7 @@ it('retries a failed enquiry with the same submission identity and current desig
   expect(bodies[0].submissionId).toBe(bodies[1].submissionId);
   expect(bodies[1].customerDesign.input.widthMm).toBe(5200);
   expect(bodies[1].enquiryContext.source_path).toBe('/products');
-  expect(bodies[1].advertisingDisclosureVersion).toBe('2026-10-sale-measurement-v1');
+  expect(bodies[1].advertisingDisclosureVersion).toBe('2026-10-sale-measurement-v2');
   expect(bodies[1].phone).toBe(''); expect(bodies[1].message).toBe('');
   expect(host.textContent).toContain('Your enquiry has been sent.');
   expect(sessionStorage.getItem('sanctuary-enquiry-contact-v1')).toBeNull();

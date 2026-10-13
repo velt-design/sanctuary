@@ -4,6 +4,7 @@
     { "path": "/api/integrations/xero/maintain", "schedule": "17 3 * * *" },
     { "path": "/api/integrations/xero/observe", "schedule": "* * * * *" },
     { "path": "/api/integrations/google-ads?lane=report", "schedule": "43 2 * * *" },
-    { "path": "/api/integrations/google-ads?lane=sales", "schedule": "13 * * * *" }
+    { "path": "/api/integrations/google-ads?lane=sales", "schedule": "13 * * * *" },
+    { "path": "/api/integrations/meta-sales", "schedule": "23 * * * *" }
   ]
 }
