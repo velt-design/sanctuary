@@ -484,6 +484,15 @@ The project projection returns:
 
 ### Team queue projection
 
+`confirmationFacts.ts` indexes current confirmation project IDs once per loaded
+portfolio before `teamQueue.ts` maps specialist candidates. Retractions, type
+matching and duplicate facts use the same shared active-fact policy as individual
+project reads. Queue growth therefore adds linear confirmation inspection rather
+than rescanning the whole event set for every project. This does not reduce or
+truncate the database inventory, change rank/visibility policy, or move the final
+limit ahead of full composition. Growth tests cover 100, 556, 2,000 and 4,000
+projects, including retracted facts.
+
 The company queue returns at most one current action per project, grouped as:
 
 1. Overdue

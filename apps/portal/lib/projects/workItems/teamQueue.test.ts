@@ -370,6 +370,55 @@ describe('getAuthoritativeProjectWorkQueue', () => {
     expect(modelBoundaryMocks.listProjectWorkModelV2Ids).not.toHaveBeenCalled();
   });
 
+  it.each([100, 556, 2000, 4000])('shares one confirmation index across %i project candidates', async (size) => {
+    const projectIds = Array.from({ length: size }, (_, index) => String(durableRow(index).project_id));
+    modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(new Set(projectIds));
+    let eventReads = 0;
+    const confirmations = projectIds.flatMap((projectId, index) => [
+      {
+        id: `confirmation-${index}`, project_id: projectId,
+        get event_kind() { eventReads++; return 'CONFIRMED'; },
+        confirmation_type: 'SITE_VISIT_COMPLETED', retracts_event_id: null,
+      },
+      ...(index % 2 ? [{
+        id: `retraction-${index}`, project_id: projectId,
+        get event_kind() { eventReads++; return 'RETRACTED'; },
+        confirmation_type: 'SITE_VISIT_COMPLETED', retracts_event_id: `confirmation-${index}`,
+      }] : []),
+    ]);
+    const tables: Record<string, Record<string, unknown>[]> = {
+      project_operational_states: projectIds.map((project_id) => ({ project_id, state: 'ACTIVE' })),
+      projects: projectIds.map((id) => ({
+        id, name: `Project ${id}`, pipeline_stage: 'CONTACTED', archived_at: null,
+        ownerAssignment: [], estimates: [], quotes: [],
+      })),
+      project_confirmation_events: confirmations,
+    };
+    const { rpc } = pagedRpc({ data: [] });
+    const supabase = {
+      rpc,
+      from: (table: string) => {
+        let data = tables[table];
+        const builder: any = {
+          select: () => builder, order: () => builder,
+          in: (key: string, values: string[]) => { const ids = new Set(values); data = data.filter((row) => ids.has(String(row[key]))); return builder; },
+          eq: (key: string, value: unknown) => { data = data.filter((row) => row[key] === value); return builder; },
+          is: (key: string, value: unknown) => { data = data.filter((row) => row[key] === value); return builder; },
+          then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve),
+        };
+        return builder;
+      },
+    } as any;
+
+    const result = await getAuthoritativeProjectWorkQueue(supabase);
+    expect(result.entries).toHaveLength(size / 2);
+    expect(new Set(result.entries.map((entry) => entry.projectId))).toEqual(
+      new Set(projectIds.filter((_, index) => index % 2).map((id) => `proj_${id}`)),
+    );
+    expect(result.entries.every((entry) => entry.actionKind === 'specialist')).toBe(true);
+    expect(eventReads).toBeLessThanOrEqual(confirmations.length * 3);
+  });
+
   it('maps the richer V3 RPC contract and effective assignee metadata', async () => {
     const { rpc, range } = pagedRpc({
       data: [

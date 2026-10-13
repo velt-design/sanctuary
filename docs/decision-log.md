@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-10-13 - Reuse authenticated read facts without weakening completeness
+
+The Command Centre re-read project, model and owner facts while composing Project
+Work, and the team queue rescanned every confirmation for every project.
+Request-local, client/project-bound facts remove the three repeated reads; a
+shared active-confirmation index makes portfolio inspection linear. Keep selected
+commercial detail failures, standalone authenticated reads, complete global queue
+composition and truncation failures intact. Count real reader requests and event
+visits in growth fixtures; distinguish those results from database/browser latency.
+Owners: `project-command-centre-architecture.md` and
+`project-work-items-technical-plan.md`. Boundary tests cover client/project mismatch,
+missing and denied sources, archive/owner/state parity and confirmation retractions.
+
 ## 2026-09-23 — Check migration identity before a release rehearsal
 
 The GA4 candidate initially reused `20260923060001`, already assigned to project

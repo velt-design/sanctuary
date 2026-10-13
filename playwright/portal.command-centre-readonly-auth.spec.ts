@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { ProjectsIndexResponse } from "../apps/portal/lib/projects/projectsIndexContract";
 
 import {
   expectVisiblePortalProject,
@@ -56,20 +57,22 @@ test("authenticated Projects and Dashboard expose portfolio journey and state wi
         await expectVisiblePortalProject(page);
 
         const projectsTable = page.getByRole("table", { name: "Projects" });
-        await expect(projectsTable.getByRole("columnheader", {
-          name: "Journey",
-        })).toBeVisible();
-        await expect(projectsTable.getByRole("columnheader", {
-          name: "Stage",
-        })).toBeVisible();
-        await expect(projectsTable.getByRole("columnheader", {
-          name: "State",
-        })).toBeVisible();
+        await expect(projectsTable.getByRole("columnheader")).toHaveText([
+          "Project", "Stage", "Time in stage", "Next action", "Owner", "Actions",
+        ]);
         const firstProjectRow = projectsTable.getByRole("row").nth(1);
-        await expect(firstProjectRow.locator('[data-column="Journey"]'))
+        await expect(firstProjectRow.locator('[data-column="Stage"]'))
           .not.toHaveText("");
-        await expect(firstProjectRow.locator('[data-column="State"]'))
-          .toHaveText(/^(Active|Waiting|Closed|Archived)$/);
+        const projects = await projectsResponse.json() as ProjectsIndexResponse;
+        expect(projects.projects.rows.length).toBeGreaterThan(0);
+        for (const project of projects.projects.rows) {
+          expect(["ACTIVE", "WAITING", "CLOSED", "ARCHIVED"]).toContain(project.effectiveState);
+        }
+        await page.getByRole("button", { name: /^Filters/ }).click();
+        for (const label of ["Journey", "Stage", "State"]) {
+          await expect(page.getByRole("combobox", { name: label, exact: true })).toBeVisible();
+        }
+        await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
         const dashboardResponsePromise = page.waitForResponse((response) => {
           const url = new URL(response.url());
@@ -132,21 +135,25 @@ test("authenticated Project Overview is one read-only command-centre surface", a
       testInfo,
       { phase: "command-centre-readonly-auth" },
       async () => {
+        const projectsResponsePromise = page.waitForResponse((response) =>
+          response.request().method() === "GET"
+          && new URL(response.url()).pathname === "/api/staff/v1/projects/index",
+        );
         await openPortalPage(page, "/staff/projects", { heading: "Projects", headingLevel: 1 });
+        const projectsResponse = await projectsResponsePromise;
+        expectPrivateNoStore(projectsResponse);
+        await expect(page.locator('[data-projects-index-state="fresh"]')).toBeVisible({ timeout: 60_000 });
         await expectVisiblePortalProject(page);
 
         const projectsTable = page.getByRole("table", { name: "Projects" });
+        const projects = await projectsResponse.json() as ProjectsIndexResponse;
+        const activeProject = projects.projects.rows.find((project) => project.effectiveState === "ACTIVE");
+        expect(activeProject, "Expected an RLS-visible Active project on the current page.").toBeTruthy();
         const activeProjectRow = projectsTable
-          .locator("tbody tr")
-          .filter({
-            has: page.locator('[data-column="State"]', {
-              hasText: /^Active$/,
-            }),
-          })
-          .first();
+          .locator(`[data-project-index-anchor="${activeProject!.id}"]`);
         await expect(activeProjectRow).toBeVisible();
         const projectHref = await activeProjectRow
-          .locator('a[href^="/staff/projects/proj_"]')
+          .locator('a[data-project-open]')
           .first()
           .getAttribute("href");
         expect(
@@ -173,9 +180,15 @@ test("authenticated Project Overview is one read-only command-centre surface", a
         await expect(
           page.locator('[data-project-work-section="true"]'),
         ).toHaveCount(1);
+        const commercialSource = overview.locator("[data-command-centre-source]");
+        await expect(commercialSource).toBeAttached();
+        if (!await commercialSource.isVisible()) {
+          await overview.locator("summary").filter({ hasText: "Quote & design details" }).click();
+        }
         await expect(
-          page.locator("[data-command-centre-source]"),
+          commercialSource,
         ).toBeVisible();
+        await overview.locator("summary").filter({ hasText: "Team notes & portal history" }).click();
         await expect(
           page.locator('[data-recent-notes-events="true"]'),
         ).toBeVisible();
@@ -216,7 +229,8 @@ test("authenticated Project Overview is one read-only command-centre surface", a
           page.getByRole("button", { name: /\bsite visits?\b/i }),
         ).toHaveCount(0);
 
-        await overview.getByRole("button", { name: "Close project" }).click();
+        await overview.getByRole("button", { name: "Manage project work", exact: true }).click();
+        await overview.getByRole("button", { name: "Close project", exact: true }).click();
         const closeDialog = page.getByRole("dialog", {
           name: "Close project",
         });

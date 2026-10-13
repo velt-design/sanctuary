@@ -11,7 +11,7 @@ import { fetchAllPages, fetchRowsByIdChunks, MAX_LIST_FETCH_ROWS } from '@/lib/l
 import { resolveCommandCentreSelection } from '@/lib/projects/commandCentre/resolve';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { projectWorkDomainActions, type ProjectWorkDomainActions } from './domainActionAdapters';
-import { hasActiveProjectConfirmation } from './confirmationFacts';
+import { activeConfirmationProjectIds } from './confirmationFacts';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
 import { getProjectWorkModelV2Ids, listProjectWorkModelV2Ids } from './modelBoundary';
 import { isApprovedSiteVisitSpecialistIdentity, isRetiredProjectWorkIdentity } from './prohibitedWork';
@@ -319,12 +319,13 @@ async function loadActiveProjectDomainCandidates(
         .eq('confirmation_type', 'SITE_VISIT_COMPLETED'),
     ),
   ]);
+  const siteVisitCompletedProjectIds = activeConfirmationProjectIds(confirmationRows, 'SITE_VISIT_COMPLETED');
   return projectRows
     .map((row) => {
       const projectUuid = text(row.id);
       return domainCandidateFromProjectRow(
         row,
-        projectUuid ? hasActiveProjectConfirmation(confirmationRows, projectUuid, 'SITE_VISIT_COMPLETED') : false,
+        projectUuid ? siteVisitCompletedProjectIds.has(projectUuid) : false,
       );
     })
     .filter((candidate): candidate is ActiveProjectDomainCandidate => candidate !== null);
