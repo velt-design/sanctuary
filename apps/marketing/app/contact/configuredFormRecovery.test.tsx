@@ -42,7 +42,9 @@ it('blocks invalid fields before any network call',async()=>{
 it('retries a failed enquiry with the same submission identity and current design, then clears contact storage',async()=>{
   network.mockResolvedValueOnce({ok:false,status:503,json:async()=>({error:'Please try again.'})})
     .mockResolvedValueOnce({ok:true,status:200,json:async()=>({ok:true})});
-  await render(); await fill(); await render(5200); await submit();
+  await render(); await fill(); await render(5200);
+  expect(host.querySelector('a[href="/privacy#advertising-measurement"]')).not.toBeNull();
+  await submit();
   expect(host.textContent).toContain('Please try again.');
   expect(host.querySelector<HTMLInputElement>('[name=name]')!.value).toBe('Fixture Customer');
   await submit();
@@ -51,6 +53,7 @@ it('retries a failed enquiry with the same submission identity and current desig
   expect(bodies[0].submissionId).toBe(bodies[1].submissionId);
   expect(bodies[1].customerDesign.input.widthMm).toBe(5200);
   expect(bodies[1].enquiryContext.source_path).toBe('/products');
+  expect(bodies[1].advertisingDisclosureVersion).toBe('2026-10-sale-measurement-v1');
   expect(bodies[1].phone).toBe(''); expect(bodies[1].message).toBe('');
   expect(host.textContent).toContain('Your enquiry has been sent.');
   expect(sessionStorage.getItem('sanctuary-enquiry-contact-v1')).toBeNull();

@@ -18,7 +18,8 @@ begin
       clock_timestamp()+case when p_input->>'lane'='verify' then interval '10 minutes' else interval '4 minutes' end) returning * into r;
     return jsonb_build_object('runId',r.id,'customerId',c.customer_id,'managerId',c.manager_id,'conversionCustomerId',c.conversion_customer_id,'actionId',c.action_id,
       'enhancedMatchingApproved',c.enhanced_matching_approved,'consentPolicyApproved',c.consent_policy_approved,
-      'allowedConsentBases',to_jsonb(c.allowed_consent_bases),'consentEffectiveFrom',c.consent_effective_from,'retractionsEnabled',c.retractions_enabled);
+      'allowedConsentBases',to_jsonb(c.allowed_consent_bases),'consentEffectiveFrom',c.consent_effective_from,'retractionsEnabled',c.retractions_enabled,
+      'disclosureVersion',c.disclosure_version);
   end if;
   if p_run is null then raise exception 'Run required' using errcode='42501'; end if;
   select * into strict r from private.google_ads_runs where id=p_run;
@@ -26,6 +27,7 @@ begin
     if p_input ? 'quoteId' then
       select * into strict s from private.google_ads_sales where quote_id=(p_input->>'quoteId')::uuid and lease_id=p_run;
       if s.generation<>c.generation then raise exception 'Sale binding changed'; end if;
+      if c.upload_mode='canary' and s.quote_id is distinct from c.canary_quote_id then raise exception 'Sale outside canary' using errcode='42501'; end if;
       if s.state='SENDING' then
         select g.source into source from private.google_ads_sources() g where g.quote_id=s.quote_id;
         if source->>'fingerprint' is distinct from s.source_fingerprint then raise exception 'Sale changed before dispatch' using errcode='40001'; end if;
@@ -38,11 +40,13 @@ begin
   elsif p_action='sources' and r.lane='sales' then
     if (select count(*) from public.quotes)>5000 then raise exception 'Source bound exceeded' using errcode='54000'; end if;
     select coalesce(jsonb_agg(g.source),'[]') into result from private.google_ads_sources() g
-      where g.source->>'active'='true' or exists(select 1 from private.google_ads_sales existing_sale where existing_sale.quote_id=g.quote_id);
+      where (g.source->>'active'='true' or exists(select 1 from private.google_ads_sales existing_sale where existing_sale.quote_id=g.quote_id))
+      and (c.upload_mode='routine' or g.quote_id=c.canary_quote_id);
     if octet_length(result::text)>4*1024*1024 then raise exception 'Source byte bound exceeded' using errcode='54000'; end if;
     return result;
   elsif p_action='freeze' and r.lane='sales' then
     key:=(p_input->>'quoteId')::uuid;
+    if c.upload_mode='canary' and key is distinct from c.canary_quote_id then raise exception 'Sale outside canary' using errcode='42501'; end if;
     select g.source into strict source from private.google_ads_sources() g where g.quote_id=key;
     if source->>'fingerprint' is distinct from p_input->>'fingerprint' then raise exception 'Source changed' using errcode='40001'; end if;
     if source->>'active'<>'true' and not exists(select 1 from private.google_ads_sales where quote_id=key) then return '{}'; end if;
@@ -50,6 +54,7 @@ begin
     if body is not null and body<>'null'::jsonb then
       if not c.consent_policy_approved or source->>'active'<>'true' or source->>'marketingConsent'<>'true'
         or not coalesce(source->>'consentBasis'=any(c.allowed_consent_bases),false)
+        or source->>'disclosureVersion' is distinct from c.disclosure_version
         or (source->>'receivedAt')::timestamptz<c.consent_effective_from
         or body->>'transactionId'<>'sanctuary-scope-'||key::text
         or (body->>'conversionValue')::numeric*100<>(source->>'valueCents')::numeric
@@ -104,6 +109,7 @@ begin
     update private.google_ads_sales set state='REVIEW_REQUIRED',reason='RETRACTION_OUTCOME_UNCERTAIN'
       where state='RETRACTION_READY' and retraction_attempts>=1;
     select * into s from private.google_ads_sales where generation=c.generation and next_attempt_at<=now()
+      and (c.upload_mode='routine' or quote_id=c.canary_quote_id)
       and (state='SUBMITTED' or (state in('READY','RETRY') and attempts<8) or (state='RETRACTION_READY' and retraction_attempts<1))
       order by case when state='SUBMITTED' then 0 else 1 end,next_attempt_at,quote_id for update skip locked limit 1;
     if not found then return 'null'; end if;

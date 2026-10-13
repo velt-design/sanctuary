@@ -11,8 +11,8 @@ const id=(n:number)=>`44444444-4444-4444-8444-${String(n).padStart(12,'0')}`, bi
 let db:{exec:(sql:string)=>Promise<unknown>;query:<T>(sql:string,args?:unknown[])=>Promise<{rows:T[]}>;close:()=>Promise<void>};
 const command=async(action:string,input:unknown={},run:string|null=null)=>(await db.query<{value:any}>('select public.google_ads_command($1,$2,$3,$4,$5) value',[id(90),binding,action,run,JSON.stringify(input)])).rows[0].value;
 const sources=async()=> (await db.query<{source:unknown}>('select source from private.google_ads_sources()')).rows.map(r=>saleSourceSchema.parse(r.source));
-const policy={enhancedMatchingApproved:true,allowedConsentBases:['user_choice','regional_default'],consentEffectiveFrom:'2026-01-01T00:00:00Z'};
-const enable=async()=>db.exec(`update private.google_ads_control set actor_id='${id(90)}',binding_sha256='${binding}',conversion_customer_id='6328516633',action_id='123',reports_enabled=true,uploads_enabled=true,consent_policy_approved=true,enhanced_matching_approved=true,allowed_consent_bases=array['user_choice','regional_default'],consent_effective_from='2026-01-01';`);
+const policy={enhancedMatchingApproved:true,allowedConsentBases:['user_choice','regional_default'],consentEffectiveFrom:'2026-01-01T00:00:00Z',disclosureVersion:'2026-10-sale-measurement-v1'};
+const enable=async()=>db.exec(`update private.google_ads_control set actor_id='${id(90)}',binding_sha256='${binding}',conversion_customer_id='6328516633',action_id='123',reports_enabled=true,upload_mode='routine',uploads_enabled=true,consent_policy_approved=true,enhanced_matching_approved=true,allowed_consent_bases=array['user_choice','regional_default'],consent_effective_from='2026-01-01';`);
 const begin=()=>command('begin',{lane:'sales'});
 const sale=async()=>(await db.query<Record<string,any>>('select * from private.google_ads_sales')).rows[0];
 const staffRead=async()=>(await db.query<{value:any}>('select public.google_ads_staff_read() value')).rows[0].value;
@@ -28,7 +28,7 @@ beforeAll(async()=>{
     create function auth.role() returns text language sql as $$select current_setting('test.role',true)$$;
     create function has_portal_access() returns boolean language sql as $$select current_setting('test.staff',true)='yes'$$;
     create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,deleted_at timestamptz,banned_until timestamptz);
-    create table portal_users(user_id uuid,is_active boolean);
+    create table portal_users(user_id uuid,role text);
     create table projects(id uuid primary key);
     create table quotes(id uuid primary key,project_id uuid);
     create table quote_versions(id uuid primary key,quote_id uuid,version_number int,status text,created_at timestamptz,accepted_at timestamptz,total_inc_gst_cents int);
@@ -38,7 +38,7 @@ beforeAll(async()=>{
     create table xero_deposit_matches(invoice_id uuid,payment_entry_id uuid,amount_inc_gst_cents int,reversed_at timestamptz);
     create table project_operational_states(project_id uuid,state text,closed_outcome text);
     insert into auth.users values('${id(90)}','jordan@sanctuarypergolas.co.nz',now(),null,null);
-    insert into portal_users values('${id(90)}',true);
+    insert into portal_users values('${id(90)}','admin');
     set test.uid='${id(90)}';set test.role='service_role';set test.staff='yes';`);
   await db.exec(readFileSync('supabase/migrations/20260813000003_commercial_truth_invariants.sql','utf8').split('create or replace function public.commercial_project_financial_truth')[0]);
   await db.exec(readFileSync('supabase/migrations/20261013000001_google_ads_source.sql','utf8'));
@@ -47,13 +47,46 @@ beforeAll(async()=>{
 beforeEach(async()=>{
   await db.exec(`begin;insert into projects values('${id(1)}');insert into quotes values('${id(2)}','${id(1)}');
     insert into quote_versions values('${id(3)}','${id(2)}',1,'ACCEPTED',now()-interval '20 days',now()-interval '19 days',1500000);
-    insert into enquiry_requests values('${id(4)}','${id(1)}',now()-interval '30 days','{"email":"demo@example.test","phone":"+64211234567","attribution":{"consent":{"marketing":true,"basis":"regional_default"}}}');
+    insert into enquiry_requests values('${id(4)}','${id(1)}',now()-interval '30 days','{"advertisingDisclosureVersion":"2026-10-sale-measurement-v1","email":"demo@example.test","phone":"+64211234567","attribution":{"consent":{"marketing":true,"basis":"regional_default"}}}');
     insert into deposit_invoices values('${id(5)}','${id(2)}','${id(3)}',1,'PAID','NZD',500000,now()-interval '10 days');`);
 });
 afterEach(async()=>db.exec('rollback'));afterAll(async()=>db.close());
 it('installs dark and denies unbound or inactive operators',async()=>{
   await rejects(begin,'authority');await enable();
-  await db.exec(`update portal_users set is_active=false`);await rejects(begin,'authority');
+  await db.exec(`delete from portal_users where user_id='${id(90)}'`);await rejects(begin,'authority');
+});
+it.each(['role','unconfirmed','banned','deleted'])('rejects revoked actor authority: %s',async(reason)=>{
+  await enable();
+  if(reason==='role')await db.exec("update portal_users set role='installer'");
+  if(reason==='unconfirmed')await db.exec('update auth.users set email_confirmed_at=null');
+  if(reason==='banned')await db.exec("update auth.users set banned_until=now()+interval '1 day'");
+  if(reason==='deleted')await db.exec('update auth.users set deleted_at=now()');
+  await rejects(begin,'authority');
+});
+it.each([null,'old-version'])('holds old tabs submitted after the cutoff with disclosure %s in worker and database',async(version)=>{
+  await enable();const {runId}=await begin();const approved=(await sources())[0],prepared=prepareSale(approved,policy);
+  await db.query("update enquiry_requests set raw_payload=jsonb_set(raw_payload,'{advertisingDisclosureVersion}',$1::jsonb)",[JSON.stringify(version)]);
+  const old=(await sources())[0];expect(prepareSale(old,policy)).toEqual({reason:'ADVERTISING_DISCLOSURE_NOT_CURRENT'});
+  await rejects(()=>command('freeze',{quoteId:old.quoteId,fingerprint:old.fingerprint,...prepared},runId),'Invalid sale freeze');
+  await freeze(runId);expect((await sale()).state).toBe('SKIPPED');
+});
+it('requires a pinned canary and fences all source, freeze, claim and effect paths to that one family',async()=>{
+  await enable();await db.exec(`insert into quotes values('${id(12)}','${id(1)}');insert into quote_versions values('${id(13)}','${id(12)}',1,'ACCEPTED',now(),now(),900000);
+    insert into deposit_invoices values('${id(15)}','${id(12)}','${id(13)}',1,'PAID','NZD',300000,now()-interval '1 day')`);
+  await rejects(()=>db.exec("update private.google_ads_control set upload_mode='canary',canary_quote_id=null"),'check constraint');
+  let run=await begin();const all=await sources(),other=all.find(row=>row.quoteId===id(12))!;
+  await command('freeze',{quoteId:other.quoteId,fingerprint:other.fingerprint,...prepareSale(other,policy)},run.runId);
+  await db.exec(`update private.google_ads_control set upload_mode='canary',canary_quote_id='${id(2)}'`);
+  await rejects(()=>command('claim',{},run.runId),'lease');run=await begin();
+  expect((await command('sources',{},run.runId)).map((row:any)=>row.quoteId)).toEqual([id(2)]);
+  await rejects(()=>command('freeze',{quoteId:other.quoteId,fingerprint:other.fingerprint,...prepareSale(other,policy)},run.runId),'outside canary');
+  expect(await command('claim',{},run.runId)).toBeNull();
+  await freeze(run.runId);const claimed=await command('claim',{},run.runId);expect(claimed.quoteId).toBe(id(2));
+  // Even an inconsistent stale lease cannot authorize a different family effect.
+  await db.query('update private.google_ads_sales set lease_id=$1 where quote_id=$2',[run.runId,id(12)]);
+  await rejects(()=>command('check',{quoteId:id(12)},run.runId),'outside canary');
+  await command('complete',{quoteId:id(2),state:'SUBMITTED',requestId:'canary-only'},run.runId);
+  expect(await command('claim',{},run.runId)).toBeNull();
 });
 it('deduplicates first instalment invoices by scope and keeps deposited revisions',async()=>{
   await db.exec(`insert into deposit_invoices values('${id(6)}','${id(2)}','${id(3)}',1,'PAID','NZD',500000,now()-interval '5 days');
@@ -73,6 +106,16 @@ it('requires boolean marketing consent and respects separately recorded opt-outs
   expect((await sources())[0].marketingConsent).toBe(false);
   await db.exec(`update enquiry_requests set raw_payload=jsonb_set(raw_payload,'{attribution,consent,marketing}','true');
     insert into private.google_ads_suppressions values('${id(1)}',now(),'CUSTOMER_OPT_OUT','test operator')`);
+  expect((await sources())[0].marketingConsent).toBe(false);
+});
+it('executes the privileged withdrawal runbook for every verified project and leaves uploads off',async()=>{
+  await enable();await db.exec(`insert into projects values('${id(11)}')`);
+  const guide=readFileSync('docs/google-ads-connection.md','utf8'),block=guide.split('```sql')[1].split('```')[0];
+  const operation=block.slice(block.indexOf('do $$'),block.indexOf('commit;'))
+    .replace('array[]::uuid[]',`array['${id(1)}','${id(11)}']::uuid[]`).replace("operator_reference text := ''","operator_reference text := 'synthetic operator / request'");
+  await db.exec(operation);
+  expect((await db.query<{uploads_enabled:boolean}>('select uploads_enabled from private.google_ads_control')).rows[0].uploads_enabled).toBe(false);
+  expect((await db.query<{n:number}>('select count(*)::int n from private.google_ads_suppressions')).rows[0].n).toBe(2);
   expect((await sources())[0].marketingConsent).toBe(false);
 });
 it('freezes once, retries same identity, confirms ingestion then queues real cancellation',async()=>{

@@ -5,10 +5,10 @@ import { searchAds, reportPeriod, readAdsReport } from './report';
 import { destination, ingestSale, retractSale, saleRequestStatus } from './delivery';
 import { advertisingRows } from './view';
 const now=new Date('2026-10-13T10:00:00Z'),q='44444444-4444-4444-8444-000000000001';
-const source:SaleSource={quoteId:q,projectId:q,receiptId:q,fingerprint:'a'.repeat(64),occurredAt:'2026-10-10T09:00:00Z',receivedAt:'2026-10-01T09:00:00Z',valueCents:1500000,currency:'NZD',active:true,marketingConsent:true,consentBasis:'regional_default',email:'Demo@example.test',phone:'0211234567',gclid:null,gbraid:null,wbraid:null};
+const source:SaleSource={quoteId:q,projectId:q,receiptId:q,fingerprint:'a'.repeat(64),occurredAt:'2026-10-10T09:00:00Z',receivedAt:'2026-10-01T09:00:00Z',valueCents:1500000,currency:'NZD',active:true,marketingConsent:true,consentBasis:'regional_default',disclosureVersion:'2026-10-sale-measurement-v1',email:'Demo@example.test',phone:'0211234567',gclid:null,gbraid:null,wbraid:null};
 const provider={config:{customerId:'6328516633',managerId:'6596874249',actionId:'123'},token:'fake-only',before:vi.fn(async()=>{}),signal:new AbortController().signal};
 const json=(v:unknown)=>new Response(JSON.stringify(v));
-const policy={enhancedMatchingApproved:true,allowedConsentBases:['user_choice','regional_default'],consentEffectiveFrom:'2026-01-01T00:00:00Z'};
+const policy={enhancedMatchingApproved:true,allowedConsentBases:['user_choice','regional_default'],consentEffectiveFrom:'2026-01-01T00:00:00Z',disclosureVersion:'2026-10-sale-measurement-v1'};
 const event=()=>{const v=prepareSale(source,policy,now);if(!('event'in v))throw new Error();return v.event;};
 describe('privacy and sale preparation',()=>{
   it('normalizes Gmail dots plus suffix but preserves other domain local parts',()=>{

@@ -5,6 +5,7 @@ export const saleSourceSchema = z.object({ quoteId: z.uuid(), projectId: z.uuid(
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/), occurredAt: z.iso.datetime({ offset: true }).nullable(),
   valueCents: z.number().int().positive().refine(Number.isSafeInteger).nullable(), currency: z.literal('NZD'),
   active: z.boolean(), marketingConsent: z.boolean(), consentBasis: z.string().nullable(), receivedAt: z.iso.datetime({ offset: true }).nullable(),
+  disclosureVersion: z.string().nullable(),
   email: z.string().nullable(), phone: z.string().nullable(),
   gclid: z.string().nullable(), gbraid: z.string().nullable(), wbraid: z.string().nullable(),
 }).strict();
@@ -36,11 +37,12 @@ export const saleEventSchema = z.object({ transactionId: z.string().regex(/^sanc
   adIdentifiers: z.object({ gclid: click.optional(), gbraid: click.optional(), wbraid: click.optional() }).strict().refine(v=>Object.keys(v).length>0).optional(),
   userData: z.object({ userIdentifiers: z.array(z.union([z.object({emailAddress:hashed}).strict(),z.object({phoneNumber:hashed}).strict()])).min(1).max(2) }).strict().optional(),
 }).strict().refine(v=>Boolean(v.adIdentifiers||v.userData));
-export type SalePolicy = { enhancedMatchingApproved: boolean; allowedConsentBases: string[]; consentEffectiveFrom: string };
+export type SalePolicy = { enhancedMatchingApproved: boolean; allowedConsentBases: string[]; consentEffectiveFrom: string; disclosureVersion: string };
 export function prepareSale(source: SaleSource, policy: SalePolicy, now = new Date()): { event: SaleEvent } | { reason: string } {
   if (!source.active || source.valueCents === null) return { reason: 'SALE_NO_LONGER_CURRENT' };
   if (!source.receiptId) return { reason: 'ORIGIN_ENQUIRY_MISSING' };
   if (!source.marketingConsent) return { reason: 'MARKETING_CONSENT_NOT_GRANTED' };
+  if (!policy.disclosureVersion || source.disclosureVersion !== policy.disclosureVersion) return { reason: 'ADVERTISING_DISCLOSURE_NOT_CURRENT' };
   if (!source.consentBasis || !policy.allowedConsentBases.includes(source.consentBasis)
     || !Number.isFinite(Date.parse(policy.consentEffectiveFrom)) || Date.parse(source.receivedAt ?? '') < Date.parse(policy.consentEffectiveFrom))
     return { reason: 'CONSENT_POLICY_NOT_APPROVED_FOR_RECEIPT' };

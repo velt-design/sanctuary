@@ -2,6 +2,11 @@
 
 ## Google advertising candidate
 
+The approved new-enquiry rollout records the form bundle's recognized
+`advertisingDisclosureVersion` in the original enquiry receipt. Missing/old values
+remain null, including pre-release tabs submitted later; receipt replay must not
+upgrade that provenance. This adds no email or audit delivery side effect.
+
 The default-off Google source scheduler directly reconciles authoritative paid
 quote scopes and does not depend on the legacy GA4 deposit audit route. GA4
 delivery remains unchanged. The private Google outbox owns source freeze,

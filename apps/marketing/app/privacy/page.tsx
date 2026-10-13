@@ -26,7 +26,7 @@ export default function PrivacyPage(){
           <div className={styles.content}>
             <section>
               <Heading as="h2" variant="card">Summary</Heading>
-              <Text>We collect only the information needed to respond to your enquiry and improve our website. We do not sell your data.</Text>
+              <Text>We use your information to respond to enquiries, deliver our services, improve our website and measure our advertising under the settings below. We do not sell your data.</Text>
             </section>
 
             <section>
@@ -56,7 +56,16 @@ export default function PrivacyPage(){
               <ul>
                 <li>To respond to your enquiry and provide information or quotes you request.</li>
                 <li>To improve our website and services.</li>
+                <li>To understand which advertising leads to enquiries and confirmed projects, where marketing tracking is enabled.</li>
               </ul>
+            </section>
+
+            <section id="advertising-measurement">
+              <Heading as="h2" variant="card">Advertising measurement</Heading>
+              <Text>When marketing tracking is enabled under the regional settings above, we use Google Ads to measure enquiries and subsequent sales. This helps us understand which ads lead to confirmed projects.</Text>
+              <Text>For this measurement, we may share advertising click identifiers, an internal transaction reference, the date a project is confirmed by a deposit and its agreed value with Google. We may also share hashed versions of the email address and phone number you provided so Google can match an enquiry or sale to an advertising interaction. Hashing converts the contact details into coded values; it does not make the information anonymous.</Text>
+              <Text>We do not send your name, address, project notes, photos or plans as part of this sale reporting. Google processes this information for advertising measurement. See <a href="https://policies.google.com/technologies/partner-sites">how Google uses information from sites and apps that use its services</a>.</Text>
+              <Text>You can turn marketing tracking off using Manage cookie preferences above before submitting an enquiry. To stop future sale reporting for an enquiry you have already submitted, contact <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a>. Changing browser preferences alone does not identify an earlier enquiry in our internal records.</Text>
             </section>
 
             <section>

@@ -19,6 +19,6 @@ export default function ConfiguredEnquiryFields({onSubmit,onInteraction,errors,s
  {mobileFinish?<details><summary>Add a note (optional)</summary><label htmlFor="contact-message">Message<textarea id="contact-message" name="message" rows={3}/></label></details>:<label htmlFor="contact-message">Message <small>Optional</small><textarea id="contact-message" name="message" rows={3}/></label>}
  <div hidden aria-hidden="true"><input name="website" tabIndex={-1} autoComplete="off"/></div>
  <button type="submit" className={css.send} disabled={state==='sending'}>{state==='sending'?'Sending…':mobileFinish?'Enquire about this design':'Send my enquiry'}</button>
- <p className={css.privacy}>Your design is included. <Link href="/privacy">Privacy policy</Link></p>
+ <p className={css.privacy}>Your design is included. With marketing tracking enabled, we also measure enquiries and sales with Google Ads. <Link href="/privacy#advertising-measurement">Privacy policy and choices</Link></p>
  </form>;
 }

@@ -2,6 +2,12 @@
 
 ## Google advertising candidate (disabled)
 
+Initial sale activation is constrained by the private control's default canary
+mode and explicit quote-family ID. Routine dispatch needs a deliberate control
+promotion. Source preparation and SQL freezing both require the receipt's current
+disclosure version plus the approved date/basis policy. Actor authority follows
+the actual `portal_users.role` membership contract and confirmed/unbanned identity.
+
 Forward migrations `20261013000001_google_ads_source.sql` and
 `20261013000002_google_ads_commands.sql` install private Google control, runs,
 aggregate snapshot, scope deliveries and known project opt-outs. They enable no

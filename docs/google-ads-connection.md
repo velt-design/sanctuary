@@ -5,7 +5,10 @@
 This is an install-only, default-disabled release candidate. It has not enabled
 Google APIs, granted OAuth scopes, changed an advertising action, deployed a
 schedule, uploaded a customer record or demonstrated attributed production sales.
-Production activation requires Jordan's approval. Browser access is setup and
+Jordan approved the deposit/full accepted-scope value definition and staged
+production rollout on 13 October 2026. This records approval, not completed
+activation. Release spending, exact deployment and live verification remain
+coordinated by the owning task. Browser access is setup and
 diagnostic access; the ongoing collectors are server-owned.
 
 `lib/marketingIntegrations/googleAds` owns the source credential adapter, provider
@@ -18,12 +21,13 @@ confirmed developer access owns the staff read, using the existing Portal guard.
 
 The existing Marketing & Sales Data sources drawer provides campaign and keyword
 inspection and a separate delivery-coverage section. No ad-management, campaign,
-bidding or public-site tracking changes are included. Velt remains a potential
+bidding or public-site tracking-policy changes are included. The privacy page and
+enquiry notices disclose the new sale-measurement sharing. Velt remains a potential
 consumer of Sanctuary-owned evidence; it is not a second collector or sale owner.
 
 ## Business and privacy contract
 
-The proposed Closed Sale is one currently accepted **quote family/commercial
+The approved Closed Sale is one currently accepted **quote family/commercial
 scope** with a verified first-instalment deposit. An unreversed positive Xero
 deposit match counts even when the invoice remains OPEN; a PAID positive
 first-instalment invoice also counts. Multiple payment rows and duplicate first
@@ -38,8 +42,8 @@ coverage. Never-paid drafts and unaccepted scopes are not counted as missed sale
 Occurrence is the earliest applicable payment-ledger timestamp, falling back to
 the invoice's saved `paid_at` only where there is no unreversed ledger payment.
 Only NZD invoices are eligible. The amount is the current accepted scope's stored
-GST-inclusive NZD value, **not** the deposit amount or banked revenue. Date/value
-and first-deposit semantics are proposed for approval before activation. Existing
+GST-inclusive NZD value, **not** the deposit amount or banked revenue. Jordan
+approved these date/value and first-deposit semantics on 13 October 2026. Existing
 explicit test project/receipt exclusions match the marketing owner.
 
 The first non-test linked enquiry supplies the original submitted email, phone,
@@ -47,7 +51,13 @@ click identifiers and saved consent provenance. Current contact records are not
 substituted. Consent must be JSON boolean true. A separately approved control
 lists accepted consent bases and the earliest enquiry date covered by the reviewed
 advertising-data policy. Empty policy, unknown basis, older receipts and known
-opt-outs cannot dispatch. This does not redefine the website's existing NZ
+opt-outs cannot dispatch. The original receipt must also contain the exact current
+`advertisingDisclosureVersion` emitted by the form bundle that displays the notice
+(`2026-10-sale-measurement-v1`). The intake normalizes missing, unknown and malformed
+versions to null; it never adds the current version based on server time. A tab
+opened before release remains ineligible after release. This is disclosure provenance,
+not an extra opt-in or proof that someone read a policy. Both preparation and the
+database freeze enforce it. This does not redefine the website's existing NZ
 regional tracking policy or claim that a regional default was an explicit click.
 The approved policy may include that existing basis; the original basis remains
 unchanged. A further default-off control is required before hashed contact data
@@ -193,18 +203,125 @@ These are concrete operator steps, not instructions to execute before approval.
    credential, reads account/action metadata and sends only a fictional identifier
    with `validateOnly:true`. No real customer data is sent and no sale is ingested.
    This validates syntax/access, not matching, diagnostics or real cancellation.
-7. Review the proposed sale/date/value contract, consent bases/cutoff, disclosure,
+7. Reconcile the approved sale/date/value contract, consent bases/cutoff, disclosure,
    enhanced-data authority, opt-out handling and current eligible inventory. Pin
    the approved policy in the control; no default date or retrospective consent
    is supplied. Enable reports first and verify exact campaign/keyword/action
    totals and both date bases against Google UI. Inspect the Portal report.
-8. Separately approve one genuine eligible sale, enable the required upload
-   authority, dispatch once and inspect request diagnostics plus later Ads credit.
+8. Within the approved staged rollout, verify one genuine eligible sale. Keep the
+   default `upload_mode='canary'`, pin `canary_quote_id` to that family, then enable
+   the required upload authority. Enabling without a pinned family is rejected.
+   The database constrains sources, freezing, claiming and dispatch checks to this
+   family, including concurrent scheduled runs. Dispatch once and inspect request
+   diagnostics plus later Ads credit.
    Reconcile source date/value/order ID and replay the same sale to confirm no
    duplicate. A genuine eligible source record is required; never upload synthetic
-   conversions to a live action. Only then enable the routine schedule and the
-   separately tested retraction capability. No eligible recent record means this
+   conversions to a live action. Only after this evidence, promote the private
+   control to `upload_mode='routine'` and the separately tested retraction capability.
+   The hourly schedule may run during canary mode but cannot dispatch another family.
+   No eligible recent record means this
    last proof remains pending, not a reason to manufacture data.
+
+The initial rollout covers new eligible enquiries only. Publish and verify the
+privacy page and every enquiry notice (contact, embedded and compact configured)
+before pinning `consent_effective_from` to
+that verified release time (or a later time). Preserve `regional_default` versus
+`user_choice` provenance and the existing tracking preference rules. Keep earlier
+enquiries excluded, including older sales that later receive a payment or revision.
+An email request to withdraw permission must be matched to its project and recorded
+in `private.google_ads_suppressions` before another dispatch; cookie changes alone
+are not a CRM opt-out signal. Do not infer historical permission from the new copy.
+
+### Exact database release and verification
+
+The production target is Supabase project `iytanftukulcnavossmd`. Its migration
+ledger is sparse; do not run an unbounded `db push`, `migration up`, or repair
+unrelated migration versions. Verify no collisions for these two versions or
+`google_ads_*` objects and inspect all required source columns/functions first.
+The production membership contract is `portal_users.role in ('admin','staff')`,
+not an `is_active` column. Confirm the pinned actor is confirmed, not deleted or
+banned, and still has that membership. No role or identity is created by setup.
+
+Run only the two reviewed SQL files, in order, in one bounded transaction after
+release dispatch. Rehearse with ROLLBACK first against the actual schema, inspect
+dark defaults and grants, then apply with COMMIT and record those two exact
+versions in the migration ledger using the reviewed source bytes. Notify
+PostgREST to reload its schema after successful installation. There must still be
+no actor/binding, enabled capability, conversion action, contact-match approval,
+consent basis/cutoff, canary family, report or delivery row in the install seed.
+
+For actual PostgREST transport proof while application flags remain off, temporarily
+pin the existing approved actor and a synthetic non-secret binding only. Leave
+conversion metadata null. Service-role RPC must reject `begin` for report/sales.
+The verify lane must support `begin`, `check`, `credential_pending`, reject `check`
+while uncertain, then `google_ads_credential_settled`, `check`, and `finish`.
+These calls do not access Google or 1Password. Anonymous access must fail; a
+service-role call with no authenticated user must not read the staff DTO. Restore
+the disabled actor/binding after the proof; keep the finished verify run as bounded
+operational evidence. A separate administrative rollback transaction exercises
+report replacement and binding-change invalidation using synthetic aggregate
+content that never commits. This distinguishes SQL transaction proof from actual
+HTTP/authenticator proof. After deployment, the existing owner session verifies
+the guarded staff DTO. Never grant a test user production access for this check.
+
+### Customer withdrawal operation
+
+Jordan owns the existing `info@sanctuarypergolas.co.nz` contact channel. This release
+does not add an inbox monitor. The person handling a withdrawal must immediately
+pause uploads in the private control, identify every linked project covered by the
+request in the existing CRM, and pass the verified project IDs and request reference
+to the authorised database operator. Do not infer a person from an advertising hash.
+Only the existing privileged administrative SQL route can change the suppression
+table; the service-role HTTP client and ordinary Portal users cannot write it.
+
+The operator uses the established privileged Supabase CLI `db query --linked
+--project-ref iytanftukulcnavossmd --output json` route with the following reviewed
+SQL after filling the two variables from the verified request. An empty list or
+operator reference fails before writing; it neither finds customers automatically
+nor grants application roles access. Use a rollback rehearsal first when needed.
+
+```sql
+begin;
+set local statement_timeout='15s';
+do $$
+declare
+  requested uuid[] := array[]::uuid[]; -- Verified distinct project IDs, all linked projects.
+  operator_reference text := ''; -- Operator plus private request reference, no customer text.
+begin
+  if cardinality(requested)=0 or array_position(requested,null) is not null
+    or length(trim(operator_reference))=0 or length(operator_reference)>200
+    or (select count(distinct id) from unnest(requested) ids(id))<>cardinality(requested)
+    or (select count(*) from public.projects where id=any(requested))<>cardinality(requested)
+    then raise exception 'Verify project set and operator reference before suppression'; end if;
+  update private.google_ads_control set uploads_enabled=false where singleton=true;
+  insert into private.google_ads_suppressions(project_id,suppressed_at,reason,recorded_by)
+    select id,clock_timestamp(),'CUSTOMER_OPT_OUT',operator_reference from unnest(requested) ids(id)
+    on conflict(project_id) do update set suppressed_at=excluded.suppressed_at,
+      reason=excluded.reason,recorded_by=excluded.recorded_by;
+  if (select count(*) from private.google_ads_suppressions where project_id=any(requested)
+    and reason='CUSTOMER_OPT_OUT' and recorded_by=operator_reference)<>cardinality(requested)
+    then raise exception 'Suppression read-back incomplete'; end if;
+  raise notice 'Suppressed % verified projects; uploads remain disabled',cardinality(requested);
+end $$;
+commit;
+```
+
+This inserts one
+row per project into `private.google_ads_suppressions` with reason
+`CUSTOMER_OPT_OUT`, `suppressed_at=clock_timestamp()` and `recorded_by` containing
+the operator and private request reference, not the customer's message. On conflict
+update those fields for that project. Before commit, read back the requested count
+against suppressed count and assert every linked project is covered. Keep the
+request-to-project evidence privately; no email or raw message enters this table.
+Do not change original enquiry snapshots or delete frozen delivery evidence.
+
+Before resuming uploads, inspect any active/uncertain run and retained delivery
+states for those projects. Unattempted sales must be skipped, submitted requests
+must settle against their original ID, and accepted or possibly sent sales require
+the documented retraction reconciliation. A request already in flight cannot be
+unsent. Preserve a review hold when the provider outcome is uncertain. Verify no
+suppressed project can produce a new event, then restore the previously approved
+canary/routine authority only after the withdrawal and in-flight checks are recorded.
 
 Variables: `SANCTUARY_GOOGLE_ADS_REPORTS_ENABLED` and
 `SANCTUARY_GOOGLE_ADS_UPLOADS_ENABLED` default off. Credential authority uses

@@ -13,7 +13,7 @@ import { diagnosticsSchema } from './diagnostics';
 
 const runSchema = z.object({ runId: z.uuid(), customerId: id, conversionCustomerId: id.nullable(), managerId: id.nullable(), actionId: id.nullable(),
   enhancedMatchingApproved: z.boolean(), consentPolicyApproved: z.boolean(), allowedConsentBases: z.array(z.string()),
-  consentEffectiveFrom: z.string().nullable(), retractionsEnabled: z.boolean() });
+  consentEffectiveFrom: z.string().nullable(), retractionsEnabled: z.boolean(), disclosureVersion: z.string().min(1) });
 const claimSchema = z.object({ quoteId: z.uuid(), state: z.enum(['SENDING','SUBMITTED','RETRACTING']),
   event: z.unknown(), requestId: z.string().nullable(), attempts: z.number().int(), submittedAt: z.string().nullable(), adjustmentAt: z.string().nullable() });
 export async function runGoogleConnection(input: { lane: 'report' | 'sales'; config: AdsConfig; store: GoogleCommand; vault: Ga4Vault;
@@ -37,7 +37,7 @@ export async function runGoogleConnection(input: { lane: 'report' | 'sales'; con
       for (const source of sources) {
         signal.throwIfAborted();
         const prepared = prepareSale(source, { enhancedMatchingApproved: run.enhancedMatchingApproved,
-          allowedConsentBases: run.allowedConsentBases, consentEffectiveFrom: run.consentEffectiveFrom ?? '' }, input.now);
+          allowedConsentBases: run.allowedConsentBases, consentEffectiveFrom: run.consentEffectiveFrom ?? '', disclosureVersion: run.disclosureVersion }, input.now);
         await command('freeze', { quoteId: source.quoteId, fingerprint: source.fingerprint, ...prepared });
       }
       // Small bounded batches. The scheduler resumes durable rows, not an in-memory queue.

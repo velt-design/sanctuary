@@ -16,6 +16,7 @@ import { useEnquiryInteraction } from '../../components/enquiry/useEnquiryIntera
 import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import SimpleCoverCalculator from '@/components/simple-cover-calculator/SimpleCoverCalculator';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
+import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
 import {
   createEnquirySubmissionId,
   ENQUIRY_ATTACHMENT_ACCEPT,
@@ -453,6 +454,7 @@ export default function ContactEnquiryForm({
           },
           utm: attribution.utm,
           attribution,
+          advertisingDisclosureVersion: ADVERTISING_DISCLOSURE_VERSION,
           enquiryContext: contextProperties,
           page: window.location.pathname,
           source: 'website',
@@ -737,8 +739,8 @@ export default function ContactEnquiryForm({
           <div className="contact-form__submit">
             <div>
               <p>
-                We use your details and files to assess and respond. They are not published. See our{' '}
-                <Link href="/privacy">Privacy Policy</Link>.
+                We use your details and files to assess and respond. They are not published. With marketing tracking enabled, we also measure enquiries and sales with Google Ads. See our{' '}
+                <Link href="/privacy#advertising-measurement">Privacy Policy</Link> for details and choices.
               </p>
               <div className="contact-form__live" aria-live="polite" aria-atomic="true">
                 {submitState === 'sending'

@@ -7,7 +7,11 @@ create table private.google_ads_control (
   reports_enabled boolean not null default false, uploads_enabled boolean not null default false,
   enhanced_matching_approved boolean not null default false, retractions_enabled boolean not null default false,
   consent_policy_approved boolean not null default false,
+  disclosure_version text not null default '2026-10-sale-measurement-v1',
+  upload_mode text not null default 'canary' check(upload_mode in('canary','routine')),
+  canary_quote_id uuid references public.quotes(id),
   allowed_consent_bases text[] not null default '{}', consent_effective_from timestamptz,
+  check(not uploads_enabled or upload_mode='routine' or canary_quote_id is not null),
   check(allowed_consent_bases <@ array['user_choice','regional_default']::text[]),
   check(not (reports_enabled or uploads_enabled) or (actor_id is not null and binding_sha256 is not null and binding_sha256 ~ '^[a-f0-9]{64}$')),
   check(not uploads_enabled or (conversion_customer_id is not null and conversion_customer_id ~ '^[1-9][0-9]{0,19}$'
@@ -102,6 +106,7 @@ language sql stable security definer set search_path=pg_catalog,pg_temp as $$
       'marketingConsent',coalesce(f.raw_payload#>'{attribution,consent,marketing}'='true'::jsonb,false)
         and not exists(select 1 from private.google_ads_suppressions s where s.project_id=f.project_id),
       'consentBasis',f.raw_payload#>>'{attribution,consent,basis}',
+      'disclosureVersion',case when jsonb_typeof(f.raw_payload->'advertisingDisclosureVersion')='string' then f.raw_payload->>'advertisingDisclosureVersion' end,
       'email',f.raw_payload->>'email','phone',f.raw_payload->>'phone',
       'gclid',f.raw_payload#>>'{attribution,clickIds,gclid}','gbraid',f.raw_payload#>>'{attribution,clickIds,gbraid}',
       'wbraid',f.raw_payload#>>'{attribution,clickIds,wbraid}') body from facts f
@@ -116,8 +121,8 @@ begin
   if auth.role()<>'service_role' then raise exception 'Service authority required' using errcode='42501'; end if;
   select * into strict c from private.google_ads_control where singleton;
   if p_actor is distinct from c.actor_id or p_binding is distinct from c.binding_sha256 or not exists(
-    select 1 from auth.users u join public.portal_users role on role.user_id=u.id
-      where u.id=p_actor and role.is_active and u.email_confirmed_at is not null and u.deleted_at is null
+    select 1 from auth.users u join public.portal_users portal_actor on portal_actor.user_id=u.id
+      where u.id=p_actor and portal_actor.role in('admin','staff') and u.email_confirmed_at is not null and u.deleted_at is null
         and (u.banned_until is null or u.banned_until<now())) then
     raise exception 'Google authority unavailable' using errcode='42501';
   end if;
