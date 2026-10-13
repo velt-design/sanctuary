@@ -87,6 +87,17 @@ Provider lookback limits and account eligibility can reject additional records.
 
 ## Delivery and recovery
 
+The runtime and operator preflight share `ingestWire.mjs` for the Data Manager
+request envelope. Each destination has the stable request-local reference
+`sanctuary_closed_sale`; each event names that reference explicitly. Live validation
+reported `NOT_FOUND` on the destination-reference field. Explicit routing removes
+reliance on the documented all-destinations fallback; a successful live validation
+is still required to distinguish routing from new-action availability. Routing
+metadata is added only at the wire boundary, leaving frozen source events and
+destination identity unchanged. Status reads still
+verify the account, manager and action; an echoed reference must match, while its
+absence alone does not contradict the pinned account/action identity.
+
 `sanctuary-scope-<quote UUID>` is the stable transaction/order ID. Small hourly runs
 freeze authoritative eligible facts, dispatch at most five rows and later inspect
 one-event Data Manager request diagnostics. Retry uses that same identity, date
@@ -410,6 +421,7 @@ explicit rollout checks. `.local-evidence/**` is excluded from Vitest discovery 
 archived build copies cannot duplicate test counts.
 
 Primary contracts: [Data Manager offline conversions](https://developers.google.com/data-manager/api/devguides/events/google-ads/offline),
+[event routing](https://developers.google.com/data-manager/api/reference/rest/v1/events/ingest#Event),
 [conversion adjustments](https://developers.google.com/data-manager/api/devguides/events/google-ads/offline/conversion-adjustments),
 [Google Ads conversion setup](https://developers.google.com/google-ads/api/docs/conversions/getting-started),
 [reporting](https://developers.google.com/google-ads/api/docs/reporting/overview),

@@ -3,6 +3,7 @@ import { id } from './contract';
 import { googleJson, GoogleFailure } from './transport';
 import type { SaleEvent } from './sales';
 import { requestStatus, sanitizeCounts, recoveryFor } from './diagnostics';
+import { ingestRequest, saleDestinationReference } from './ingestWire.mjs';
 
 export type Destination = { customerId: string; managerId?: string; actionId: string };
 export function destination(config: Destination) {
@@ -13,7 +14,7 @@ export function destination(config: Destination) {
 type ProviderInput = { config: Destination; token: string; signal: AbortSignal; before: () => Promise<void>; fetcher?: typeof fetch };
 export async function ingestSale(input: ProviderInput, event: SaleEvent, validateOnly: boolean) {
   await input.before(); input.signal.throwIfAborted();
-  const body = { destinations: [destination(input.config)], encoding: 'HEX', events: [event], validateOnly };
+  const body = ingestRequest(destination(input.config), event, validateOnly);
   const response = await googleJson(input.fetcher ?? fetch, 'https://datamanager.googleapis.com/v1/events:ingest', {
     method: 'POST', headers: { Authorization: `Bearer ${input.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: input.signal,
   }, 65536);
@@ -37,7 +38,8 @@ export async function saleRequestStatus(input: ProviderInput, requestId: string)
   if (JSON.stringify(status.destination) !== JSON.stringify(destination(input.config))) {
     // JSON field order is irrelevant; validate exact pinned identity field-by-field.
     const d = z.object({ operatingAccount: z.object({ accountType: z.literal('GOOGLE_ADS'), accountId: z.literal(input.config.customerId) }),
-      loginAccount: z.object({ accountType: z.literal('GOOGLE_ADS'), accountId: z.literal(input.config.managerId ?? '') }).optional(), productDestinationId: z.literal(input.config.actionId) }).parse(status.destination);
+      loginAccount: z.object({ accountType: z.literal('GOOGLE_ADS'), accountId: z.literal(input.config.managerId ?? '') }).optional(), productDestinationId: z.literal(input.config.actionId),
+      reference: z.literal(saleDestinationReference).optional() }).parse(status.destination);
     if ((d.loginAccount?.accountId ?? undefined) !== input.config.managerId) throw new GoogleFailure('DESTINATION_MISMATCH');
   }
   if (status.requestStatus === 'SUCCESS' && (status.eventsIngestionStatus?.recordCount !== '1' || status.errorInfo?.errorCounts.some(e => e.recordCount !== '0')))

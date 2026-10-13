@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { emailHash, phoneHash, prepareSale, type SaleSource } from './sales';
 import { searchAds, reportPeriod, readAdsReport } from './report';
 import { destination, ingestSale, retractSale, saleRequestStatus } from './delivery';
+import { saleDestinationReference } from './ingestWire.mjs';
 import { advertisingRows } from './view';
 const now=new Date('2026-10-13T10:00:00Z'),q='44444444-4444-4444-8444-000000000001';
 const source:SaleSource={quoteId:q,projectId:q,receiptId:q,fingerprint:'a'.repeat(64),occurredAt:'2026-10-10T09:00:00Z',receivedAt:'2026-10-01T09:00:00Z',valueCents:1500000,currency:'NZD',active:true,marketingConsent:true,consentBasis:'regional_default',disclosureVersion:'2026-10-sale-measurement-v1',email:'Demo@example.test',phone:'0211234567',gclid:null,gbraid:null,wbraid:null};
@@ -65,6 +66,26 @@ it('retains transaction identity and distinguishes validation, ingestion and eve
   const diagnostics=vi.fn(async()=>json({requestStatusPerDestination:[{destination:destination(provider.config),requestStatus:'SUCCESS',eventsIngestionStatus:{recordCount:'1'}}]}));
   expect(await saleRequestStatus({...provider,fetcher:diagnostics},'request-1')).toEqual({status:'SUCCESS',recordCount:1,errors:[],warnings:[],recovery:'ACCEPTED'});
   await expect(saleRequestStatus({...provider,fetcher:async()=>json({requestStatusPerDestination:[{destination:destination(provider.config),requestStatus:'SUCCESS',eventsIngestionStatus:{recordCount:'2'}}]})},'request-1')).rejects.toThrow();
+});
+it.each([true,false])('routes the exact frozen sale to its explicit destination in validateOnly=%s',async(validateOnly)=>{
+  const frozen=Object.freeze(event()),before=JSON.stringify(frozen),target=destination(provider.config);
+  const fetcher=vi.fn(async(_url:RequestInfo|URL,_init?:RequestInit)=>json({requestId:'request-routed'}));
+  await ingestSale({...provider,fetcher},frozen,validateOnly);
+  const body=JSON.parse(fetcher.mock.calls[0][1]!.body as string);
+  expect(body).toEqual({destinations:[{...target,reference:'sanctuary_closed_sale'}],encoding:'HEX',
+    events:[{...frozen,destinationReferences:['sanctuary_closed_sale']}],validateOnly});
+  expect(body.events[0].destinationReferences).toEqual(body.destinations.map((d:{reference:string})=>d.reference));
+  expect(JSON.stringify(frozen)).toBe(before);expect(frozen).not.toHaveProperty('destinationReferences');
+  expect(target).not.toHaveProperty('reference');
+});
+it('accepts matching or omitted diagnostic reference while rejecting a different destination or reference',async()=>{
+  const check=(d:unknown)=>saleRequestStatus({...provider,fetcher:async()=>json({requestStatusPerDestination:[{destination:d,requestStatus:'SUCCESS',eventsIngestionStatus:{recordCount:'1'}}]})},'request-routed');
+  const target=destination(provider.config);
+  await expect(check({...target,reference:saleDestinationReference})).resolves.toMatchObject({recovery:'ACCEPTED'});
+  await expect(check(target)).resolves.toMatchObject({recovery:'ACCEPTED'});
+  await expect(check({...target,reference:'different_destination'})).rejects.toThrow();
+  await expect(check({...target,reference:saleDestinationReference,productDestinationId:'999'})).rejects.toThrow();
+  await expect(check({...target,reference:saleDestinationReference,loginAccount:undefined})).rejects.toThrow('DESTINATION_MISMATCH');
 });
 const diagnostic=(body:Record<string,unknown>)=>saleRequestStatus({...provider,fetcher:async()=>json({requestStatusPerDestination:[{destination:destination(provider.config),eventsIngestionStatus:{recordCount:'1'},...body}]})},'request-private');
 it('retains only known diagnostic reason codes/counts and safely classifies recovery',async()=>{

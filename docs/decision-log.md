@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-13 - Route Data Manager events explicitly
+
+The first live synthetic validation reported `NOT_FOUND` on destination references.
+The generic API contract describes an omitted-reference fallback; the observed
+error alone does not distinguish routing from new-action availability. Runtime
+delivery and setup now share one request-envelope builder with an explicit matching destination/event
+reference. Preserve canonical sale facts and stored identity when adding provider
+routing metadata; test the actual serialized request in both entry paths and keep
+diagnostic account/action checks strict. Owner: `google-ads-connection.md`.
+
 ## 2026-10-13 - Preserve void RPC success through operator setup
 
 Google setup saved its credential and cleared the source uncertainty checkpoint,
