@@ -1,5 +1,40 @@
 # Testing And QA
 
+## Bounded Project Work source facts
+
+Run `npx vitest run test/project-work-domain-facts-migration.test.ts
+apps/portal/lib/projects/workItems/domainFactsRepository.test.ts
+apps/portal/lib/projects/workItems/teamQueue.test.ts
+apps/portal/lib/projects/serverProjectsIndex.test.ts` for the queue transport
+contract. The SQL suite reuses the actual V2 migration prerequisites, source
+security grants/policies and the exact new migration, with selected commercial
+columns in `test/fixtures/project-work-domain-facts-commercial.sql`. This is a
+minimal source fixture, not a complete application schema. Synthetic setup alone
+disables business triggers; role read checks run with normal triggers and no
+read-only transaction assumption.
+
+The maintained `npm run test:portal:project-work` gate includes this SQL suite,
+the precise shared delivery-order tests and the real Command Centre/queue
+agreement integration. Tied failure, timezone equivalence, sub-millisecond
+chronology and accepted/draft overrides must stay independent of log arrival order.
+
+Coverage includes migration rollback/replay, invoker grants and parent/child RLS,
+complete active/inactive identity accounting, missing/hidden denial, more than
+1,000 history rows, byte overflow, bounded sequential splitting, malformed payload
+failure, no missing-RPC fallback, global composition and blank-metadata parity.
+Growth source-reader comparisons must check complete queue/index values against
+the released reader, not merely equal response sizes. Histories over the old
+transport limit require an independent complete expected-facts oracle.
+
+Release verification also needs native PostgreSQL representative growth/history
+and `EXPLAIN (ANALYZE, BUFFERS)` evidence, exact hosted schema/RLS inspection,
+migration-first staging rehearsal, and authenticated read-only queue/Projects
+HTTP checks. A scalar SQL result proves neither hosted schema-cache readiness
+nor production latency. Keep synthetic population seeds out of staging and
+production. Old app/new DB and app rollback are supported; new app/missing RPC
+must show unavailable. Database and application release remain separately
+controlled.
+
 ## Portal Financials candidate
 
 Focused checks: `npx vitest run apps/portal/lib/xero/financials

@@ -1,16 +1,27 @@
 # Portal Production Readiness
 
-Portal technical foundations candidate (13 October 2026): local F1/F2 removes
+Portal technical foundations release (13 October 2026): PR206 merged as
+`ddf13e59` and the exact production deployment was verified ready. Authenticated
+Projects, Work Queue, project detail/return and anonymous-denial checks passed.
+F1/F2 removes
 the Work Queue's repeated portfolio confirmation scan and three duplicated reads
 inside each Command Centre aggregate. Synthetic source-reader measurement verifies
 snapshot requests 13 to 10 without estimate history and 14 to 11 with history;
 Command Centre requests fall from 9 to 6 and 10 to 7 respectively. Queue data
 requests, full composition and safety ceilings stay unchanged. Focused boundary,
-error, state and growth tests pass. Authenticated before/after runtime checks,
-independent review and release verification remain separate; these measurements
-do not establish production latency or capacity. No production release is claimed.
+error, state and growth tests passed along with independent review and release
+verification; fixture measurements do not establish production latency or capacity.
 Current owners: `project-command-centre-architecture.md` and
 `project-work-items-technical-plan.md`.
+
+Queue source-facts candidate (13 October 2026): the next bounded batch replaces
+three source-read loops with a named authenticated raw-facts owner. Synthetic
+4,000-project reads fall from 131 to 19 with identical queue/index outputs and
+9.2% more source JSON for explicit completeness accounting. Existing policy,
+full composition and 5,000-row fail-closed inventory remain intact. Focused
+application and database regression checks pass; native growth validation,
+independent review, hosted migration rehearsal and candidate runtime checks are
+separate pending release evidence. No second-batch production release is claimed.
 
 Portal action connection release candidate (22 September 2026): the scoped
 admin grant UI, delegated canonical close/reopen adapter and protected Windows

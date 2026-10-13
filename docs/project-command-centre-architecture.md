@@ -811,6 +811,15 @@ The existing authenticated Project Detail journey already measures the active ta
 | Project state/work | V2 operational state, work-item, confirmation, repair, receipt, and event tables | Server-ranked projection and semantic commands |
 | Legacy task rows | Retired legacy tables | Privileged audit/rollback evidence only; no product consumer |
 
+`commercialSelection.ts` is the shared delivery-state owner for Command Centre
+and queue composition. It preserves PostgreSQL send-log fractional timestamp
+precision and compares UTC instants. A truly equal latest timestamp, including
+equivalent timezone representations, resolves mixed SENT/FAILED logs to failed
+so simultaneous unresolved failure remains visible independent of transport
+order. Accepted and draft quote overrides stay unchanged. This fixes the previous
+implicit arrival-order tie, including near ties lost by millisecond conversion;
+raw-facts SQL does not choose a delivery result.
+
 Later-stage workstreams, communications, normalized timeline, blockers, and approvals remain intentionally absent.
 
 ## 14. Required read models

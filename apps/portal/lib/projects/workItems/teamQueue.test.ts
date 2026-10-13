@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectWorkQueueEntry } from './types';
+import { factsEnvelope, factsId } from '../../../../../test/fixtures/projectWorkDomainFacts';
 
 const modelBoundaryMocks = vi.hoisted(() => ({
   listProjectWorkModelV2Ids: vi.fn(),
@@ -370,53 +371,40 @@ describe('getAuthoritativeProjectWorkQueue', () => {
     expect(modelBoundaryMocks.listProjectWorkModelV2Ids).not.toHaveBeenCalled();
   });
 
-  it.each([100, 556, 2000, 4000])('shares one confirmation index across %i project candidates', async (size) => {
+  it.each([100, 556, 2000, 4000])('composes all %i project candidates from bounded facts, including retractions', async (size) => {
     const projectIds = Array.from({ length: size }, (_, index) => String(durableRow(index).project_id));
     modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(new Set(projectIds));
-    let eventReads = 0;
     const confirmations = projectIds.flatMap((projectId, index) => [
       {
-        id: `confirmation-${index}`, project_id: projectId,
-        get event_kind() { eventReads++; return 'CONFIRMED'; },
+        id: factsId(index, 5), project_id: projectId, event_kind: 'CONFIRMED',
         confirmation_type: 'SITE_VISIT_COMPLETED', retracts_event_id: null,
       },
       ...(index % 2 ? [{
-        id: `retraction-${index}`, project_id: projectId,
-        get event_kind() { eventReads++; return 'RETRACTED'; },
-        confirmation_type: 'SITE_VISIT_COMPLETED', retracts_event_id: `confirmation-${index}`,
+        id: factsId(index, 6), project_id: projectId, event_kind: 'RETRACTED',
+        confirmation_type: 'SITE_VISIT_COMPLETED', retracts_event_id: factsId(index, 5),
       }] : []),
     ]);
-    const tables: Record<string, Record<string, unknown>[]> = {
-      project_operational_states: projectIds.map((project_id) => ({ project_id, state: 'ACTIVE' })),
-      projects: projectIds.map((id) => ({
-        id, name: `Project ${id}`, pipeline_stage: 'CONTACTED', archived_at: null,
-        ownerAssignment: [], estimates: [], quotes: [],
-      })),
-      project_confirmation_events: confirmations,
-    };
-    const { rpc } = pagedRpc({ data: [] });
+    const projects = projectIds.map((id) => ({
+      id, name: `Project ${id}`, pipeline_stage: 'CONTACTED',
+      ownerAssignment: [], estimates: [], quotes: [],
+    }));
+    const { rpc: durableRpc } = pagedRpc({ data: [] });
+    const factsRpc = vi.fn(async (ids: string[]) => ({
+      data: factsEnvelope(ids, projects, confirmations), error: null,
+    }));
     const supabase = {
-      rpc,
-      from: (table: string) => {
-        let data = tables[table];
-        const builder: any = {
-          select: () => builder, order: () => builder,
-          in: (key: string, values: string[]) => { const ids = new Set(values); data = data.filter((row) => ids.has(String(row[key]))); return builder; },
-          eq: (key: string, value: unknown) => { data = data.filter((row) => row[key] === value); return builder; },
-          is: (key: string, value: unknown) => { data = data.filter((row) => row[key] === value); return builder; },
-          then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve),
-        };
-        return builder;
-      },
+      rpc: (name: string, args: any) => name === 'staff_project_work_domain_facts_v1'
+        ? factsRpc(args.p_project_ids) : durableRpc(name),
+      from: vi.fn(),
     } as any;
-
     const result = await getAuthoritativeProjectWorkQueue(supabase);
     expect(result.entries).toHaveLength(size / 2);
     expect(new Set(result.entries.map((entry) => entry.projectId))).toEqual(
       new Set(projectIds.filter((_, index) => index % 2).map((id) => `proj_${id}`)),
     );
     expect(result.entries.every((entry) => entry.actionKind === 'specialist')).toBe(true);
-    expect(eventReads).toBeLessThanOrEqual(confirmations.length * 3);
+    expect(factsRpc).toHaveBeenCalledTimes(Math.ceil(size / 500));
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 
   it('maps the richer V3 RPC contract and effective assignee metadata', async () => {
@@ -548,64 +536,31 @@ describe('getAuthoritativeProjectWorkQueue', () => {
     });
   });
 
-  it('loads active V2 commercial candidates through direct model and state owners', async () => {
+  it('uses the named facts owner after the existing marker inventory', async () => {
     modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(new Set([PROJECT_UUID]));
-    const stateEq = vi.fn().mockResolvedValue({
-      data: [{ project_id: PROJECT_UUID, state: 'ACTIVE' }],
-      error: null,
-    });
-    const stateIn = vi.fn(() => ({ eq: stateEq }));
-    const stateSelect = vi.fn((_selection: string) => ({ in: stateIn }));
-    const projectOrder = vi.fn().mockResolvedValue({
-      data: [
-        {
-          id: PROJECT_UUID,
-          name: 'Direct boundary fixture',
-          pipeline_stage: 'QUOTING',
-          ownerAssignment: [],
-          estimates: [],
-          quotes: [],
-        },
-      ],
-      error: null,
-    });
-    const projectIs = vi.fn(() => ({ order: projectOrder }));
-    const projectIn = vi.fn(() => ({ is: projectIs }));
-    const projectSelect = vi.fn((_selection: string) => ({ in: projectIn }));
-    const confirmationEq = vi.fn().mockResolvedValue({ data: [], error: null });
-    const confirmationIn = vi.fn(() => ({ eq: confirmationEq }));
-    const confirmationSelect = vi.fn((_selection: string) => ({
-      in: confirmationIn,
-    }));
-    const from = vi.fn((table: string) => {
-      if (table === 'project_operational_states') return { select: stateSelect };
-      if (table === 'projects') return { select: projectSelect };
-      if (table === 'project_confirmation_events') {
-        return { select: confirmationSelect };
-      }
-      throw new Error(`Unexpected table ${table}`);
-    });
-    const { rpc } = pagedRpc({ data: [] });
-    const supabase = {
-      rpc,
-      from,
-    } as any;
-
-    await expect(getAuthoritativeProjectWorkQueue(supabase)).resolves.toMatchObject({
-      entries: [],
-    });
-
-    expect(stateSelect).toHaveBeenCalledWith('project_id,state');
-    expect(stateIn).toHaveBeenCalledWith('project_id', [PROJECT_UUID]);
-    expect(stateEq).toHaveBeenCalledWith('state', 'ACTIVE');
-    expect(projectIn).toHaveBeenCalledWith('id', [PROJECT_UUID]);
-    expect(confirmationIn).toHaveBeenCalledWith('project_id', [PROJECT_UUID]);
-    expect(confirmationEq).toHaveBeenCalledWith('confirmation_type', 'SITE_VISIT_COMPLETED');
-    const select = String(projectSelect.mock.calls[0]?.[0] ?? '');
-    expect(select).not.toContain('project_work_model_versions');
-    expect(select).not.toContain('project_operational_states');
+    const { rpc: durableRpc } = pagedRpc({ data: [] });
+    const rpc = vi.fn((name: string) => name === 'staff_project_work_domain_facts_v1'
+      ? Promise.resolve({ data: factsEnvelope([PROJECT_UUID], [{
+        id: PROJECT_UUID, name: 'Direct boundary fixture', pipeline_stage: 'QUOTING',
+        ownerAssignment: [], estimates: [], quotes: [],
+      }]), error: null }) : durableRpc(name));
+    const from = vi.fn();
+    await expect(getAuthoritativeProjectWorkQueue({ rpc, from } as any)).resolves.toMatchObject({ entries: [] });
+    expect(rpc).toHaveBeenCalledWith('staff_project_work_domain_facts_v1', { p_project_ids: [PROJECT_UUID] });
+    expect(from).not.toHaveBeenCalled();
   });
 
+  it.each(['name', 'pipeline_stage'])('preserves other queue work when a domain candidate has blank %s', async (field) => {
+    modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(new Set([PROJECT_UUID]));
+    const { rpc: durableRpc } = pagedRpc({ data: [durableRow(2)] });
+    const project = { id: PROJECT_UUID, name: 'Fixture', pipeline_stage: 'CONTACTED',
+      ownerAssignment: [], estimates: [], quotes: [], [field]: '  ' };
+    const rpc = vi.fn((name: string) => name === 'staff_project_work_domain_facts_v1'
+      ? Promise.resolve({ data: factsEnvelope([PROJECT_UUID], [project]), error: null }) : durableRpc(name));
+    const result = await getAuthoritativeProjectWorkQueue({ rpc } as any);
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].projectId).toBe(`proj_${durableRow(2).project_id}`);
+  });
   it('rejects an actionable row without command concurrency metadata', async () => {
     const { rpc } = pagedRpc({
       data: [
