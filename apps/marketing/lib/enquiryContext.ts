@@ -138,6 +138,7 @@ const serviceAudienceByPath = new Map<string, EnquiryAudience>([
   ['/simple-pergolas-auckland', 'residential'],
   ['/simple-cover-calculator', 'residential'],
   ['/pergolas-auckland', 'residential'],
+  ['/pergolas-auckland/redesign', 'residential'],
   ['/custom-pergolas-auckland', 'residential'],
   ['/aluminium-pergolas-auckland', 'residential'],
   ['/pergola-cost-auckland', 'residential'],

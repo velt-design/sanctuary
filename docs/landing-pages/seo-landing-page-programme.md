@@ -4,6 +4,23 @@ The current guide-cluster page roles and rewrite decisions are recorded in [Perg
 
 Status: Active implementation checklist.
 
+## 13 October 2026 acquisition page release
+
+Jordan accepted the complete photographic redesign and authorised a refinement
+pass followed by production release. `/pergolas-auckland` is the default
+canonical destination for the shared broad keyword direction. It retains existing
+metadata and WebPage/Service/Breadcrumb schema without Offer or rating claims.
+The optional selector reuses approved published pricing; direct enquiry works
+without configuration. Source, saved design, guided context and return paths remain
+with the existing owners mapped in `../marketing-ui-foundation.md`.
+
+The explicit server-only comparison flag preserves the first page and the
+`/pergolas-auckland/redesign` alternative on the protected preview. Without that
+flag the latter redirects to the canonical route. Comparison stays out of the
+sitemap and search indexing; no preview labels appear on the public page.
+This does not change live ads or permanently exclude future keyword pages.
+Deployment and production verification are recorded separately from implementation.
+
 ## 20 September 2026 cost-guide update
 
 The cost guide now offers a direct, source-attributed entry to the existing

@@ -5,7 +5,7 @@ import { faqItems } from '../apps/marketing/app/pergolas-auckland/content';
 
 const route = '/pergolas-auckland';
 const title = 'Pergolas Auckland | Design, Build & Installation';
-const description = 'Plan an Auckland pergola around the home, outdoor area and intended use. Compare roof forms, materials and project scope, then share the site for an initial assessment.';
+const description = 'Outdoor pergolas designed and installed in Auckland. Explore Pitched, Gable and Box rooflines, see an installed estimate and plan your project with Sanctuary.';
 const capturePhase = process.env.MARKETING_SEO_CAPTURE_PHASE?.trim();
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-seo-landing', 'pergolas-auckland');
 const viewports = [
@@ -18,6 +18,7 @@ const viewports = [
 ];
 
 async function preparePage(page: Page) {
+  await page.route('**/api/enquiry/fallback', route => route.abort());
   await page.addInitScript(() => {
     window.localStorage.setItem('sp_consent_v1', JSON.stringify({
       analytics: false,
@@ -59,7 +60,7 @@ for (const viewport of viewports) {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${route}`);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', description);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Custom pergolas for Auckland homes.' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Room to live. Outside.' })).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(page.locator('header.site')).toBeVisible();
     await expect(page.locator('footer')).toBeAttached();
@@ -67,9 +68,9 @@ for (const viewport of viewports) {
     await expect(page.getByLabel('Email', { exact: false })).toHaveAttribute('required', '');
     await expect(main.locator('#acrylic-enquiry-style')).toHaveValue('');
     await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
-    await expect(page.getByRole('button', { name: 'Send project brief' })).toBeVisible();
-    await expect(main.locator('.acrylic-project-card img')).toHaveCount(3);
-    await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(
+    await expect(page.getByRole('button', { name: 'Send enquiry' })).toBeVisible();
+    await expect(main.locator('#project-evidence img')).toHaveCount(1);
+    await expect(main.locator('section[aria-labelledby="faq-title"] details')).toHaveCount(
       faqItems.length,
     );
     await expect(
@@ -78,7 +79,7 @@ for (const viewport of viewports) {
     await expect(
       main.locator('a[href="/pergola-cost-auckland"]'),
     ).not.toHaveCount(0);
-    await expect(main.locator('.seo-landing__project-facts')).toHaveCount(3);
+    await expect(main.locator('#project-evidence')).toContainText('St Heliers, Auckland');
 
     const publicCopy = await main.innerText();
     expect(publicCopy).not.toContain('—');
@@ -101,13 +102,13 @@ for (const viewport of viewports) {
     if (capturePhase) {
       await mkdir(evidenceDirectory, { recursive: true });
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-top.png`) });
-      await page.locator('#design-brief').scrollIntoViewIfNeeded();
+      await page.locator('#explore-options').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-fit.png`) });
       await page.locator('#project-evidence').scrollIntoViewIfNeeded();
-      await page.locator('.acrylic-project-card img').first().scrollIntoViewIfNeeded();
-      await expect.poll(() => page.locator('.acrylic-project-card img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      await page.locator('#project-evidence img').first().scrollIntoViewIfNeeded();
+      await expect.poll(() => page.locator('#project-evidence img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-proof.png`) });
-      await page.locator('#investment-drivers').scrollIntoViewIfNeeded();
+      await page.locator('#what-is-included').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-investment.png`) });
       await page.locator('#estimate-form-title').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-form.png`) });
@@ -143,10 +144,11 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
 
   const broadMain = page.locator('main[data-seo-landing="pergolas-auckland"]:visible');
   const broadMessage = broadMain.locator('#acrylic-enquiry-message');
+  await expect(broadMain.locator('form')).toHaveAttribute('novalidate', '');
   await broadMain.getByText('Add optional project details', { exact: true }).click();
   await expect(broadMessage).toHaveCount(1);
   await broadMessage.fill('We need a sheltered dining area but want to keep the kitchen bright.');
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send enquiry' }).click();
   await expect(broadMain.locator('#acrylic-enquiry-type')).toHaveValue('residential');
   await expect(broadMain.locator('#acrylic-enquiry-name-error')).toHaveText('Enter your name.');
 
@@ -155,7 +157,7 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
   await broadMain.locator('#acrylic-enquiry-email').fill('test@example.com');
   await broadMain.locator('#acrylic-enquiry-suburb').fill('Auckland');
   await broadMain.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
-  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await page.getByRole('button', { name: 'Send enquiry' }).click();
 
   await expect(broadMain.getByRole('heading', { name: 'Project brief sent.' })).toBeVisible();
   expect(submittedBody).toMatchObject({
@@ -209,7 +211,7 @@ test('embedded enquiry keeps a rejected attachment blocking until it is correcte
     'Attachments must be PDF, JPG, PNG, or WebP files with matching file extensions.',
   );
 
-  await main.getByRole('button', { name: 'Send project brief' }).click();
+  await main.getByRole('button', { name: 'Send enquiry' }).click();
   expect(requestCount).toBe(0);
   await expect(main.locator('#acrylic-enquiry-error-summary')).toBeFocused();
   await expect(main.locator('#acrylic-enquiry-files-error')).toBeVisible();
@@ -307,8 +309,8 @@ for (const viewport of viewports) {
       await page.locator('#custom-meaning').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-fit.png`) });
       await page.locator('#custom-project-evidence').scrollIntoViewIfNeeded();
-      await page.locator('.acrylic-project-card img').first().scrollIntoViewIfNeeded();
-      await expect.poll(() => page.locator('.acrylic-project-card img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      await page.locator('#custom-project-evidence img').first().scrollIntoViewIfNeeded();
+      await expect.poll(() => page.locator('#custom-project-evidence img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-proof.png`) });
       await page.locator('#custom-conditions-title').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-decisions.png`) });

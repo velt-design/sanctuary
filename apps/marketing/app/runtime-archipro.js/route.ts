@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 export function GET() {
+  if (process.env.MARKETING_TRACKING_DISABLED === 'true') {
+    return new NextResponse('/* Tracking is disabled for this environment. */', {
+      headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
+  }
   const js = `
 ;(function () {
   try {

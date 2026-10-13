@@ -1,0 +1,2 @@
+.compare { display: flex; justify-content: space-between; gap: 1rem; padding: 0 clamp(1.25rem, 4vw, 4.5rem); min-height: 38px; align-items: center; background: #e9eae6; color: #555852; font: 400 .7rem/1.4 'Inter Variable', sans-serif; }
+.compare a { display: inline-flex; align-items: center; gap: .6rem; min-height: 38px; color: #111210; text-decoration: underline; text-underline-offset: 3px; }
