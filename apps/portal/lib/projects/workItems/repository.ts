@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
 import { activeConfirmationEventRows } from './confirmationFacts';
+import { getProjectWorkReadContext, type ProjectWorkReadContext } from './projectWorkReadContext';
 import { getAuthoritativeProjectWorkQueue } from './teamQueue';
 import {
   resolveProjectWorkPrimaryAction,
@@ -123,17 +124,11 @@ export async function getProjectWorkProjection(params: {
   now?: Date;
   recoveryAction?: RecoveryActionCandidate | null;
   specialistAction?: SpecialistActionCandidate | null;
+  readContext?: ProjectWorkReadContext;
 }): Promise<ProjectWorkProjection | null> {
   const { supabase, projectUuid } = params;
-  const [projectRows, modelRows, stateRows, itemRows, confirmationRows, ownerRows] = await Promise.all([
-    queryRows(
-      supabase.from('projects').select('id,archived_at').eq('id', projectUuid).limit(1),
-      'Failed to load project',
-    ),
-    queryRows(
-      supabase.from('project_work_model_versions').select('model_version').eq('project_id', projectUuid).limit(1),
-      'Failed to load project work model',
-    ),
+  const [readContext, stateRows, itemRows, confirmationRows] = await Promise.all([
+    getProjectWorkReadContext(params),
     queryRows(
       supabase
         .from('project_operational_states')
@@ -162,18 +157,13 @@ export async function getProjectWorkProjection(params: {
         .limit(100),
       'Failed to load project confirmation facts',
     ),
-    queryRows(
-      supabase.from('project_owner_assignments').select('owner_key').eq('project_id', projectUuid).limit(1),
-      'Failed to load project owner',
-    ),
   ]);
 
-  if (!projectRows[0]) return null;
-  if (modelRows[0]?.model_version !== 2) return null;
+  if (!readContext || readContext.modelVersion !== 2) return null;
   const stateRow = stateRows[0];
   const state = text(stateRow?.state) as ProjectOperationalState | null;
   if (!state) throw new Error('V2 project is missing its operational state');
-  const projectOwnerKey = text(ownerRows[0]?.owner_key);
+  const projectOwnerKey = readContext.projectOwnerKey;
   const allItems = itemRows
     .map((row) => mapWorkItem(row, projectOwnerKey))
     .filter((item): item is ProjectWorkItem => item !== null && !isDeferredProjectFollowUp(item));
@@ -182,7 +172,7 @@ export async function getProjectWorkProjection(params: {
   const confirmedFacts = activeConfirmationEventRows(confirmationRows)
     .map(mapConfirmationFact)
     .filter((fact): fact is ProjectWorkConfirmationFact => fact !== null);
-  const archived = Boolean(iso(projectRows[0].archived_at));
+  const archived = Boolean(readContext.archivedAt);
   const now = params.now ?? new Date();
   const generatedAt = now.toISOString();
   const waitingUntil = iso(stateRow.waiting_until);

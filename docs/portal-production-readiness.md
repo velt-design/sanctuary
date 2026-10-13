@@ -1,5 +1,17 @@
 # Portal Production Readiness
 
+Portal technical foundations candidate (13 October 2026): local F1/F2 removes
+the Work Queue's repeated portfolio confirmation scan and three duplicated reads
+inside each Command Centre aggregate. Synthetic source-reader measurement verifies
+snapshot requests 13 to 10 without estimate history and 14 to 11 with history;
+Command Centre requests fall from 9 to 6 and 10 to 7 respectively. Queue data
+requests, full composition and safety ceilings stay unchanged. Focused boundary,
+error, state and growth tests pass. Authenticated before/after runtime checks,
+independent review and release verification remain separate; these measurements
+do not establish production latency or capacity. No production release is claimed.
+Current owners: `project-command-centre-architecture.md` and
+`project-work-items-technical-plan.md`.
+
 Portal action connection release candidate (22 September 2026): the scoped
 admin grant UI, delegated canonical close/reopen adapter and protected Windows
 client passed authenticated synthetic staging close/replay/revoke/reopen,

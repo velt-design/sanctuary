@@ -693,6 +693,16 @@ Estimate persistence and locks remain owned by `apps/portal/lib/estimates`. Quot
 
 The command centre is a read model only. It reuses `computeEstimateEditability()` to identify the unlocked active draft boundary. It does not change statuses, editability, line items, totals, tokens, source metadata, artifacts, or downstream records.
 
+The authenticated Command Centre read passes its already-loaded project archive,
+V2 marker and owner facts to `workItems/projectWorkReadContext.ts`. That named
+request-local boundary requires the same project UUID and Supabase client before
+the Project Work repository can reuse them. Standalone repository callers still
+read all three sources themselves. There is no cross-request cache or transaction
+guarantee. Commercial selection, selected estimate detail, repair signals, state,
+items and confirmation reads retain their existing failure behavior. This removes
+three repeated reads from both Command Centre and the snapshot's composed work
+projection without changing either response contract.
+
 Estimate design labels reuse quote module formatters. Costing freshness is derived only from stored `outputs.pricing_sync_state`:
 
 - `current` -> Current costing.
