@@ -201,6 +201,12 @@ These are concrete operator steps, not instructions to execute before approval.
    version advancement and reads the pinned Ads customer. It never prints tokens.
    The disabled-control `verify` lease prevents concurrent collection. A failure
    leaves any uncertain credential operation quarantined for reconciliation.
+   The void `google_ads_credential_settled` RPC returns successful HTTP204 with
+   no JSON body; the setup transport accepts that response only for settlement.
+   Token/account reads and all JSON-returning RPCs still require valid JSON.
+   If a prior setup stopped after the credential was saved and settlement cleared
+   uncertainty, reconcile the existing item/run and continue verification with the
+   saved credential. Do not repeat OAuth solely because later verification failed.
 5. Resolve `customer.conversion_tracking_setting.google_ads_conversion_customer`.
    Pin it separately from reporting customer `6328516633` and optional login
    manager `6596874249`. Provision/review a reporting-only Closed Sale action in
