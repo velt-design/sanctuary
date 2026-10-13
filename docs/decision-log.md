@@ -13,6 +13,16 @@ read succeeds later. Measure full snapshot, Command Centre and payment readiness
 separately from historical header/tabs and network-idle metrics. Owners:
 `project-command-centre-architecture.md` and `testing-and-qa.md`.
 
+## 2026-10-13 - Preserve void RPC success through operator setup
+
+Google setup saved its credential and cleared the source uncertainty checkpoint,
+then failed before the account read because its JSON helper parsed PostgREST's
+successful empty HTTP204 response. The settled RPC returns void; only that named
+RPC accepts an empty success response. Token, account and command reads still
+fail on missing or malformed JSON. Exercise the real wire response in operator
+tests, and reconcile a saved credential before requesting another OAuth grant.
+Owner: `google-ads-connection.md`.
+
 ## 2026-10-13 - Bound source histories, not only project IDs
 
 Queue growth required three 100-ID source-read loops after the inventory. A

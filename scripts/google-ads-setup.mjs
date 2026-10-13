@@ -23,10 +23,16 @@ export function setupConfig(env=process.env) {
   const binding=createHash('sha256').update(JSON.stringify(c)).digest('hex');
   if(env.SANCTUARY_GOOGLE_ADS_BINDING_SHA256!==binding)throw Error('Credential binding is not pinned.');return {...c,binding};
 }
-async function json(url,init={}) {
+export async function json(url,init={},allowEmpty=false) {
   const r=await fetch(url,{...init,redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000)});
   if(!r.ok){await r.body?.cancel();throw Error(`Provider returned HTTP ${r.status}. Inspect account diagnostics; payload withheld.`);}
-  const text=await r.text();if(text.length>2*1024*1024)throw Error('Response exceeded bound.');return JSON.parse(text);
+  const text=await r.text();if(text.length>2*1024*1024)throw Error('Response exceeded bound.');
+  if(allowEmpty&&text.length===0)return null;
+  return JSON.parse(text);
+}
+export function sourceRpc(origin,service,name,body) {
+  // PostgREST returns 204 for this void function. Every other RPC requires JSON.
+  return json(`${origin}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:service,Authorization:`Bearer ${service}`,'Content-Type':'application/json'},body:JSON.stringify(body)},name==='google_ads_credential_settled');
 }
 async function boundedVault(operation) {
   let timer;try{return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Vault outcome uncertain; reconcile before retry.')),15000);})]);}
@@ -58,7 +64,7 @@ export async function main(args=process.argv.slice(2)) {
   const config=setupConfig(),url=new URL(process.env.NEXT_PUBLIC_SUPABASE_URL??process.env.SUPABASE_URL??'');
   if(url.protocol!=='https:'||!url.hostname.endsWith('.supabase.co')||url.pathname!=='/')throw Error('Expected approved Supabase origin.');
   const service=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!service)throw Error('Source service credential missing.');
-  const rpc=(name,body)=>json(`${url.origin}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:service,Authorization:`Bearer ${service}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const rpc=(name,body)=>sourceRpc(url.origin,service,name,body);
   const command=(action,input={},run=null)=>rpc('google_ads_command',{p_actor:config.actorId,p_binding:config.binding,p_action:action,p_run:run,p_input:input});
   const run=await command('begin',{lane:'verify'});
   const require=createRequire(new URL('../apps/portal/package.json',import.meta.url));
