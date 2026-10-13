@@ -18,8 +18,9 @@ try{
   success(run('pg_ctl',['-D',data,'-l',path.join(directory,'postgres.log'),'-o',`-h 127.0.0.1 -p ${port}`,'-w','start']));started=true;
   assert.equal(Math.floor(Number(sql('show server_version_num'))/10000),17);
   sql('create database google_ads_fixture');
-  if(process.argv.slice(2).some(arg=>arg!=='--meta'))throw Error('Only --meta is supported');
-  const result=spawnSync(process.execPath,['node_modules/vitest/vitest.mjs','run',process.argv.includes('--meta')?'test/meta-sales-source.test.ts':'test/google-ads-source.test.ts'],{cwd:root,env:{...process.env,GOOGLE_ADS_NATIVE_TEST_URL:`postgres://postgres@127.0.0.1:${port}/google_ads_fixture`},encoding:'utf8',windowsHide:true,timeout:60000});
+  if(process.argv.slice(2).length>1||process.argv.slice(2).some(arg=>!['--meta','--meta-credentials'].includes(arg)))throw Error('Only --meta or --meta-credentials is supported');
+  const file=process.argv.includes('--meta-credentials')?'test/meta-credentials-db.test.ts':process.argv.includes('--meta')?'test/meta-sales-source.test.ts':'test/google-ads-source.test.ts';
+  const result=spawnSync(process.execPath,['node_modules/vitest/vitest.mjs','run',file],{cwd:root,env:{...process.env,GOOGLE_ADS_NATIVE_TEST_URL:`postgres://postgres@127.0.0.1:${port}/google_ads_fixture`},encoding:'utf8',windowsHide:true,timeout:60000});
   process.stdout.write(result.stdout??'');success(result);
   console.log('PASS: actual advertising migrations and lifecycle on PostgreSQL 17. Synthetic prerequisites only; safeupdate extension, PostgREST and production schema not exercised.');
 }finally{

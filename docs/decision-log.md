@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-14 - Separate renewable credentials from business authority
+
+Meta's static token/expiry binding made routine renewal invalidate reports and
+quarantine sales. Keep stable app/principal/asset/vault identity distinct from
+credential revision. Owner approval remains finite until ongoing revocable access
+is explicitly approved. Persist exchange/write uncertainty, reconcile exact vault
+versions, and preserve sale IDs/bodies/attempts. A known rejected replacement is
+quarantined, not retried as an unknown exchange. Native OAuth GET avoids Next fetch
+URL tracing; no request secrets or raw errors enter telemetry. Owner:
+`meta-offline-sales.md`.
+
 ## 2026-10-14 - Keep cross-app identity tests outside scoped app builds
 
 Marketing's hosted build typechecks its tests with only its declared dependency

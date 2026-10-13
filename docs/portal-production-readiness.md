@@ -1,5 +1,14 @@
 # Portal Production Readiness
 
+Meta renewal extension (14 October local candidate): dedicated report/sale vault
+identities, finite versus ongoing source approval, default-off maintenance and
+durable exchange/write reconciliation are implemented alongside the unreleased
+Meta sale candidate. Existing Google access and the Velt legacy item are untouched.
+Actual restricted credentials, exact-target rehearsal/PostgREST proof, independent
+review, hosted renewal evidence and the new production decision remain release
+requirements. Current owner: `meta-offline-sales.md`; local fixtures are not live
+provider or sale attribution proof.
+
 Portal technical foundations release (13 October 2026): PR206 merged as
 `ddf13e59` and the exact production deployment was verified ready. Authenticated
 Projects, Work Queue, project detail/return and anonymous-denial checks passed.

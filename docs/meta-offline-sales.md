@@ -117,7 +117,9 @@ production previously had no potential automatic matching.
 access-token, expiry and binding fields. The binding is SHA256 of the documented
 ordered object `{actorId,datasetId,token,expiresAt}`. Provision private server-only
 values through existing hosting/vault operations, never CLI arguments or logs.
-The existing Meta reporting token and `ads_read` verifier remain unchanged.
+This finite, manually provisioned path remains available until the separately
+approved vault mode below is activated. Reporting retains its exact `ads_read`
+and optional `public_profile` boundary; it never borrows the sale credential.
 Dataset assignment and event-send authority must be established independently;
 a successful `/me` read or a receiving browser pixel is insufficient.
 
@@ -204,11 +206,114 @@ event before sending, but cannot recall an already transmitted request. Google
 retraction remains governed by its existing separate authority; Meta cancellation
 after transmission remains a review state because its endpoint has no deletion.
 
+## Durable Meta credential renewal (default off)
+
+`metaCredentials` owns separate report and sale vault sessions, provider checks,
+renewal and reconciliation. It does not modify Google access or the Velt legacy
+Meta item. Use dedicated Sanctuary items with one concealed `meta_credential`
+field containing `{version:1,binding,accessToken,expiresAt,dataAccessExpiresAt}`.
+Actual provider expiration comes from `debug_token`; verified zero token or
+data-access expiry is stored as null, never an invented date. A verified
+nonexpiring token can be used under current source approval without exchange;
+local approval and any data-access expiry still apply. Only a still-valid
+expiring SYSTEM_USER token is renewable here.
+The legacy website CAPI token's issuer/renewability is not established.
+
+For reports use prefix `SANCTUARY_META`; for sales use `SANCTUARY_META_SALES`.
+Each needs `_VAULT_ENABLED`, `_RENEWAL_ENABLED` (both false initially), `_ACTOR_ID`,
+`_APP_ID`, `_PRINCIPAL_ID`, `_BUSINESS_ID`, `_ACCOUNT_ID` (reports) or `_DATASET_ID`
+(sales), `_EXPECTED_SCOPES` (exact space-separated set, explicitly empty allowed
+only for a verified sale capability), `_VAULT_ID`, `_CREDENTIAL_ITEM_ID`,
+`_SERVICE_ACCOUNT_TOKEN`, `_APP_SECRET`, and `_BINDING_SHA256`. Secrets are server
+only and must not enter command arguments, logs or public configuration.
+`credentialConfig` computes the stable binding from the ordered identity object
+`{capability,actorId,appId,principalId,businessId,targetId,scopes,vaultId,itemId}`
+with sorted scopes. Changing token, expiry or vault access secret does not change
+this identity. App/principal/target/scope changes do, and are not routine renewal.
+
+Migration `20261014000005` creates no credential rows or approval. Provisioning is
+an operator-reviewed transaction after the production decision: verify the exact
+actor and source control, pin the identity and matching stable binding, and record
+provider token hash/version/expiry from a strict private vault/provider read. Pin
+asset assignment evidence and verification date, approval reference, and either a
+finite `approval_expires_at` or explicit `ongoing_approved_at`. Keep `enabled` and
+`renewal_enabled` false until readback and grant verification. Never overwrite the
+existing Velt item, transplant its local expiry as provider expiry, or broaden a
+report token's scopes. A dedicated sale SYSTEM_USER must have independently
+verified dataset Use-events assignment; no ad-account write asset is required by
+this design. An identity read or dataset GET alone does not prove event access.
+Select `private.meta_sale_control.credential_mode='vault'` in that reviewed
+transaction when binding the sales capability. It allows a verified nonexpiring
+provider token without weakening the original finite legacy mode.
+
+The release packet must ask Jordan to approve ongoing, revocable renewal/use for
+these exact two connections and the necessary restricted vault service access.
+The implementation does not extend the existing finite policy automatically.
+Revocation uses `private.meta_credentials.enabled=false` or records
+`asset_revoked_at`; this advances the credential generation and fences work.
+Stopping sale uploads remains separate from revoking credential maintenance.
+Asset evidence is preserved with its original verification date and remains valid
+only while the pinned assignment is unrevoked. Renewal is not a new asset grant.
+Exact app, principal and scopes are checked on use and renewal; report account and
+business are read, and any supplied granular targets must contain the pinned asset.
+Empty granular targets are not misrepresented as proof of assignment. The genuine
+canary remains required to establish actual sale-send capability.
+
+The protected `/api/integrations/meta-credentials` daily cron runs at 01:31 UTC.
+Both environment and source renewal switches are required. It skips a valid token
+until 14 days before expiry. Existing Velt Sanctuary-source calls continue using
+their revocable per-operation delegation and unchanged Portal bearer. That source
+path has no monthly token deadline; Velt's separate 30-day direct-Meta broker is
+not used or changed. Report retention stays seven days, including during renewal.
+
+A source-owned, five-minute exclusive lease separates credential use from renewal
+for each capability. Durable checkpoints precede exchange and vault write. The
+only refresh transport is Meta's documented GET, implemented with native HTTPS
+to avoid Next fetch URL tracing: fixed host/path, no redirects/retries, bounded
+response/time, no raw error, request URL, body or request telemetry. The repository
+has no custom server tracing wrapper. The current hosting metadata has no tracing
+environment keys or drains; this is not observation of provider-internal Node
+instrumentation. Before enabling exchange, retain that boundary and confirm any
+new HTTP tracing excludes or redacts OAuth query parameters. Account/debug reads
+retain the existing fixed-URL batch transport.
+Source rows hold hashes, versions and safe states, never tokens or app secrets.
+
+Recovery is automatic only where evidence resolves the outcome:
+
+- `EXCHANGE_PENDING`: read the unchanged vault version and verify the old token
+  still has the exact identity/expiry. Meta keeps it valid to original expiry.
+  Record reconciliation and wait one day before another exchange. No claim that
+  exchange itself is idempotent is made.
+- `VAULT_PENDING`: read the vault in a fresh session. Activate only the exact
+  candidate hash/expiry at a greater version. An old read does not prove a timed
+  out write cannot still complete. Keep that ambiguity quarantined; do not retry
+  the put, reset the row or clear evidence. Inspect the vault version/history and
+  private operation receipt before an explicitly reviewed recovery.
+- Identity drift, revoked authority, expired original token or unknown version:
+  stop use and show review status. Restore the correctly bound grant through the
+  existing operator path. Never generate another sale ID or reset attempts.
+- `REVIEW_REQUIRED` after a returned replacement fails verification: retain its
+  operation evidence and resolve identity/expiry privately. Do not automatically
+  exchange again or treat this as a lost response.
+
+Same-identity rotation changes only credential revision. Source generations,
+frozen sale bodies, accepted receipts, event times, first-attempt times and retry
+budgets remain unchanged. The normal sale source/matching checks still run before
+any event. Credential health, finite approval deadline and assignment verification
+date appear in the existing Meta status; a successful report is not sale proof.
+
+Local mocks and native PostgreSQL tests cover rotation, revocation, exclusivity,
+lost responses, exact candidate reconciliation, source compatibility and retention.
+Release still requires exact-target transactional rehearsal, actual PostgREST
+proof, independent review, a privately verified vault bootstrap, hosted scheduled
+readback and eventual real renewal. A not-due result is not evidence that a token
+was refreshed. No synthetic Purchase, including test_event_code, is used here.
+
 ## Release sequence and acceptance
 
 1. Freeze reviewed source; verify existing Google migration hashes and current
    schema/role/contact columns. A transactional ROLLBACK rehearsal of migrations
-   `20261014000001` through `000004` may precede the production decision; no
+   `20261014000001` through `000005` may precede the production decision; no
    production schema change is committed at this stage. Compare old/new Google
    source aggregates and fingerprints. A staging install can verify grants and
    PostgREST behavior without authorizing a production install.
@@ -251,7 +356,7 @@ after transmission remains a review state because its endpoint has no deletion.
   dedicated command RPC, assessment CLI, private cron and developer-only status API.
 - Portal: `MetaSaleDelivery` in the existing Data sources drawer. Aggregate reasons
   remain distinguishable from Meta advertising credit. Fictional fixture parameter
-  `metaSales=attention|active|failure|expired`; no customer fixtures. Staff status
+  `metaSales=attention|active|failure|expired|renewal`; no customer fixtures. Staff status
   computes current actor and credential authority even when a failed begin cannot
   create a run. Expired credentials/revoked actors are inactive with visible
   recovery guidance, independent of the configured upload switch.

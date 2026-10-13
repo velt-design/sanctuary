@@ -31,3 +31,9 @@ it.each(['CREDENTIAL_EXPIRED','ACTOR_UNAVAILABLE'] as const)('shows %s without f
   expect(attention.closest('details')).toBeNull();expect(attention.textContent).toMatch(/credential|operator/);
   expect(host.textContent).not.toContain('Automatic delivery is enabled');
 });
+it('shows a reporting renewal problem even while sale delivery is disabled',async()=>{
+  await act(async()=>root.render(<MetaSaleDelivery loader={async()=>({...status,credentials:{reports:{state:'RECONCILIATION_REQUIRED',tokenExpiresAt:'2026-11-01T00:00:00Z',
+    dataAccessExpiresAt:null,approvalEndsAt:'2026-10-30T00:00:00Z',assetVerifiedAt:'2026-10-14T00:00:00Z',checkedAt:null}}})}/>));
+  const attention=host.querySelector('[aria-label="Meta sale attention"]')!;expect(attention.closest('details')).toBeNull();
+  expect(attention.textContent).toContain('Meta report access has an uncertain credential update');expect(host.textContent).toContain('Connection approval ends');
+});

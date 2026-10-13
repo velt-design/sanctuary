@@ -107,6 +107,7 @@ function isApprovedServerFlow(file) {
   if (file === 'apps/portal/lib/marketingIntegrations/googleAds/store.ts') return true;
   // Dedicated sale command RPC rechecks dataset, actor, generation, consent and source; no table access.
   if (file === 'apps/portal/lib/marketingIntegrations/metaSales/store.ts') return true;
+  if (file === 'apps/portal/lib/marketingIntegrations/metaCredentials/store.ts') return true;
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
   if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) return true;

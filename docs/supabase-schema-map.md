@@ -1,5 +1,15 @@
 # Supabase Schema Map
 
+Meta renewal candidate `20261014000005_meta_credential_renewal.sql` adds private
+per-capability credentials, leases and append-only metadata events. No token or
+app secret is stored in SQL. `meta_credential_command` is the sole service-role
+adapter for bounded use/renew/reconcile checkpoints. Direct reads/writes are
+revoked. Existing report/sale commands delegate expiry only when an explicitly
+approved matching vault binding exists; finite legacy controls otherwise remain.
+Rotation leaves source generations, report retention and frozen sale records
+unchanged. Developer status exposes only safe expiry/recovery/assignment dates.
+See [meta-offline-sales.md](meta-offline-sales.md) for provisioning and recovery.
+
 Advertising extension candidate (14 October 2026): forward migrations
 `20261014000001` through `000004` introduce private `advertising_scope_facts`,
 provider-specific suppression, Meta sale control/runs/assessments/history approvals

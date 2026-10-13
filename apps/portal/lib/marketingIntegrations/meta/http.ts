@@ -10,9 +10,10 @@ import { metaReportSchema, validateMetaPeriod, type MetaReport } from './report'
 import type { Boundary } from './boundary';
 import { parseMetaSnapshot } from './snapshot';
 import { metaDelegation } from './delegation';
+import { openMetaReportCredential } from '../metaCredentials/runtime';
 
 const deps = { source: loadPraxisConnectorConfig, control: metaControlConfig, credentials: metaConfig, store: metaStore,
-  verify: verifyMeta, read: readMetaCampaigns, fetcher: fetch, delegation: metaDelegation };
+  verify: verifyMeta, read: readMetaCampaigns, fetcher: fetch, delegation: metaDelegation, lease: openMetaReportCredential };
 
 
 async function emptyBody(request: Request) {
@@ -23,9 +24,10 @@ async function emptyBody(request: Request) {
   finally { clearTimeout(timer); void reader.cancel().catch(() => undefined); }
 }
 
-export async function sanctuaryMetaResponse(request: Request, dependencies = deps): Promise<Response> {
+export async function sanctuaryMetaResponse(request: Request, dependencies: Omit<typeof deps, 'lease'> & { lease?: typeof openMetaReportCredential } = deps): Promise<Response> {
   const requestId = praxisRequestId(), headers = praxisResponseHeaders(requestId);
   let failOperation: (() => Promise<unknown>) | undefined;
+  let credentialLease: Awaited<ReturnType<typeof openMetaReportCredential>>;
   // All labels below are fixed code literals. Never include exception text,
   // provider data, request values, identities or credentials in diagnostics.
   let stage = 'authorize';
@@ -67,7 +69,8 @@ export async function sanctuaryMetaResponse(request: Request, dependencies = dep
       checkDelegation = dependencies.delegation(request,period,retain,signal,dependencies.fetcher);
       await at('delegation_initial', checkDelegation);
       stage = 'credentials';
-      const config = dependencies.credentials();
+      credentialLease = await dependencies.lease?.(signal, checkDelegation);
+      const config = credentialLease?.reportConfig ?? dependencies.credentials();
       if (config.binding !== control.binding || config.account !== control.account || config.actor !== control.actor) throw new Error('Credential association changed.');
       const rawClaim = await at('rpc_claim', () => command('claim', null, signal, { query: JSON.stringify({...period,retain}) }));
       stage = 'parse_claim';
@@ -75,9 +78,9 @@ export async function sanctuaryMetaResponse(request: Request, dependencies = dep
       refreshedOperation = claim.operation;
       failOperation = () => command('failed', claim.operation, AbortSignal.timeout(5000));
       const boundary: Boundary = async (step, execute) => {
-        stage = 'boundary_authority'; current(); await at('delegation_before', checkDelegation!);
+        stage = 'boundary_authority'; current(); await credentialLease?.check(); await at('delegation_before', checkDelegation!);
         await at('rpc_before', () => command('before', claim.operation, signal, { step }));
-        const result = await at('provider_read', execute); stage = 'boundary_authority'; current();
+        const result = await at('provider_read', execute); stage = 'boundary_authority'; current(); await credentialLease?.check();
         await at('delegation_after', checkDelegation!); await at('rpc_after', () => command('after', claim.operation, signal, { step })); stage = 'read_report'; return result;
       };
       const fetcher: typeof fetch = (url, init) => dependencies.fetcher(url, { ...init, signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal });
@@ -110,5 +113,5 @@ export async function sanctuaryMetaResponse(request: Request, dependencies = dep
       sqlState: error instanceof MetaStoreFailure ? error.sqlState : null });
     if (failOperation) await failOperation().catch(() => undefined);
     return Response.json({ error: 'sanctuary_meta_unavailable' }, { status: 503, headers });
-  }
+  } finally { await credentialLease?.finish().catch(() => undefined); }
 }

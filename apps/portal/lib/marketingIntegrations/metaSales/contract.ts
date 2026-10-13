@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { credentialAttention, credentialHealthMap } from '../metaCredentials/contract';
 const counts = z.record(z.string().regex(/^[A-Z_]{1,80}$/), z.number().int().nonnegative());
 export const metaSaleStatusSchema = z.object({ enabled: z.boolean(), mode: z.enum(['canary','routine','historical']),
+  credentials: credentialHealthMap.optional(),
   deliveryAuthority: z.enum(['DISABLED','READY','ACTOR_UNAVAILABLE','CREDENTIAL_EXPIRED','SETUP_REQUIRED']),
   datasetId: z.string().regex(/^[1-9]\d{0,19}$/).nullable(), checkedAt: z.iso.datetime({ offset: true }),
   lastCompletedAt: z.iso.datetime({ offset: true }).nullable(), error: z.string().regex(/^[A-Z_]{1,80}$/).nullable(),
@@ -27,7 +29,7 @@ export function metaSaleAttention(status: MetaSaleStatus): string[] {
   const authority = { ACTOR_UNAVAILABLE: 'The authorized operator no longer has access. Review the sending connection before resuming.',
     CREDENTIAL_EXPIRED: 'The sending credential has expired or needs renewal. Delivery cannot run until it is renewed.',
     SETUP_REQUIRED: 'The sending connection setup needs review before delivery can run.', DISABLED: '', READY: '' };
-  return [authority[status.deliveryAuthority], status.error ? 'The latest Meta sale run needs review.' : '', status.pending === 'EXPIRED' ? 'A Meta sale run ended without confirmation.' : '',
+  return [...credentialAttention(status.credentials), authority[status.deliveryAuthority], status.error ? 'The latest Meta sale run needs review.' : '', status.pending === 'EXPIRED' ? 'A Meta sale run ended without confirmation.' : '',
     status.counts.REVIEW_REQUIRED ? `${status.counts.REVIEW_REQUIRED} sale delivery records need review.` : '',
     status.warningCount ? `${status.warningCount} provider warnings need review.` : ''].filter(Boolean);
 }

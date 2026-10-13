@@ -5,7 +5,7 @@ import { metaRead } from './transport';
 import type { MetaConfig } from './config';
 import type { Boundary } from './boundary';
 
-export async function verifyMeta(config: MetaConfig, boundary: Boundary, fetcher: typeof fetch) {
+export async function verifyMeta(config: Omit<MetaConfig, 'expiresAt'>, boundary: Boundary, fetcher: typeof fetch) {
   await boundary('identity_check', async () => {
     const response = await metaRead(fetcher, 'debug_token', new URLSearchParams({ input_token: config.token }), `${config.app}|${config.appSecret}`);
     const data = z.object({ data: z.object({ app_id: z.literal(config.app), user_id: z.literal(config.principal),

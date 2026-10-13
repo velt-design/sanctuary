@@ -7,7 +7,7 @@ const runSchema = z.object({ runId: z.uuid(), datasetId: z.string().regex(/^[1-9
   allowedConsentBases: z.array(z.string()), consentEffectiveFrom: z.string().nullable(), historicalEnabled: z.boolean() });
 const claimSchema = z.object({ quoteId: z.uuid(), event: metaSaleEventSchema, attempts: z.number().int().min(1).max(5), firstAttemptAt: z.iso.datetime({ offset: true }) });
 export async function runMetaSales(input: { lane: 'sales' | 'assess'; store: MetaSaleCommand; signal: AbortSignal;
-  credential?: { token: string; datasetId: string }; fetcher?: typeof fetch; now?: Date }) {
+  credential?: { token: string; datasetId: string }; credentialCheck?: () => Promise<void>; fetcher?: typeof fetch; now?: Date }) {
   const run = runSchema.parse(await input.store('begin', { lane: input.lane }));
   const command = (action: string, values?: Record<string, unknown>) => input.store(action, values, run.runId);
   try {
@@ -25,7 +25,7 @@ export async function runMetaSales(input: { lane: 'sales' | 'assess'; store: Met
       let outcome: Record<string, unknown>;
       try {
         const result = await sendMetaSale({ ...input.credential!, signal: input.signal, fetcher: input.fetcher,
-          before: async () => { await command('check', { quoteId: claim.quoteId }); } }, claim.event);
+          before: async () => { await command('check', { quoteId: claim.quoteId }); await input.credentialCheck?.(); } }, claim.event);
         outcome = { state: 'ACCEPTED', receiptId: result.receiptId, diagnostics: { warningCount: result.warningCount } };
       } catch (error) {
         const retryable = error instanceof MetaSaleFailure && error.retryable;

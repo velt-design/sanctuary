@@ -1,5 +1,16 @@
 # Testing And QA
 
+Meta credential renewal candidate: `npx vitest run
+apps/portal/lib/marketingIntegrations/metaCredentials test/meta-credentials-db.test.ts
+test/meta-sales-source.test.ts apps/portal/lib/marketingIntegrations/meta/http.test.ts
+apps/portal/components/marketingPerformance/MetaSaleDelivery.test.tsx`.
+Use `node scripts/test-google-ads-db.mjs --meta-credentials` for the same exact
+migration/lifecycle checks on disposable PostgreSQL 17. The synthetic source
+fixture is shared with the sale suite; native bigint/text transport differences
+are normalized only at test boundaries. No provider or customer event is sent.
+The current Velt source-mode delegation remains an independent read-only
+compatibility check; its direct-provider 30-day broker is not this credential path.
+
 Advertising extension (14 October local candidate): focused Meta source lifecycle
 tests are `npx vitest run test/meta-sales-source.test.ts`; native PostgreSQL 17 uses
 the existing disposable harness `node scripts/test-google-ads-db.mjs --meta` with
