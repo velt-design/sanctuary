@@ -401,7 +401,7 @@ describe('POST /api/enquiry attribution', () => {
     expect(response.status).toBe(422); expect(h.createClient).not.toHaveBeenCalled();
   });
 
-  it('persists Google click attribution and records one lead-submitted audit event', async () => {
+  it.each([undefined, 'old-version', { version: '2026-10-sale-measurement-v1' }, '2026-10-sale-measurement-v1'])('persists original attribution and only the submitted current disclosure: %s', async (disclosure) => {
     const { client, db } = makeDb();
     h.createClient.mockReturnValue(client);
     const { POST } = await import('./route');
@@ -414,6 +414,7 @@ describe('POST /api/enquiry attribution', () => {
           submissionId: SUBMISSION_ID,
           enquiryType: 'residential',
           name: 'Taylor',
+          advertisingDisclosureVersion: disclosure,
           email: 'taylor@example.test',
           phone: '021000000',
           suburb: 'Mangere',
@@ -462,6 +463,7 @@ describe('POST /api/enquiry attribution', () => {
       clickIds: { gclid: 'g-123', gbraid: 'gb-456', wbraid: 'wb-789' },
       landingPage: 'https://www.sanctuarypergolas.co.nz/contact',
     });
+    expect(db.enquiry_requests[0]?.raw_payload.advertisingDisclosureVersion).toBe(disclosure === '2026-10-sale-measurement-v1' ? disclosure : null);
     expect(db.enquiry_requests[0]?.raw_payload.enquiryContext).toEqual({
       enquiry_type: 'residential',
       source_path: '/projects/warkworth-outdoor-room',

@@ -1,5 +1,26 @@
 # Supabase Schema Map
 
+## Google advertising candidate (disabled)
+
+Initial sale activation is constrained by the private control's default canary
+mode and explicit quote-family ID. Routine dispatch needs a deliberate control
+promotion. Source preparation and SQL freezing both require the receipt's current
+disclosure version plus the approved date/basis policy. Actor authority follows
+the actual `portal_users.role` membership contract and confirmed/unbanned identity.
+
+Forward migrations `20261013000001_google_ads_source.sql` and
+`20261013000002_google_ads_commands.sql` install private Google control, runs,
+aggregate snapshot, scope deliveries and known project opt-outs. They enable no
+authority. Service-role command RPCs own mutation; private tables/helpers are
+revoked from application roles. The auth-bound developer read returns aggregate
+report/coverage only. Forward `20261013000003_google_ads_retraction_source_fence.sql`
+adds the same immediate current-source fingerprint fence to claimed retractions
+as ingestion, preserving frozen receipts, attempt budgets and existing grants.
+Source facts reuse current accepted quote families, first
+invoices, canonical payment entries/matches and original enquiry snapshots. No
+commercial record is mutated. See [google-ads-connection.md](google-ads-connection.md)
+for exact semantics, correction evidence, limits and activation/rollback.
+
 ## GA4 source ownership candidate — not activated
 
 `20260923070001_sanctuary_ga4_reporting.sql` adds private control, operation,

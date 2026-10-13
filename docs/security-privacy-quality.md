@@ -101,6 +101,24 @@ current homepage continue button.
 
 ## Tracking Register
 
+The 13 October default-disabled Google advertising candidate adds direct offline
+scope-sale delivery only after a separately approved consent-basis/cutoff policy
+and enhanced-data activation gate. It preserves the public site's regional policy;
+it does not reinterpret regional defaults as clicked choices. Original submitted
+identity is normalized/hashed server-side, known later opt-outs suppress dispatch,
+and private delivery receipts never reach the browser. The approved new transfer,
+credential scopes, retention and verification limits are in
+[google-ads-connection.md](google-ads-connection.md). No live transfer is established.
+The approved initial rollout covers new enquiries only: the public privacy page
+and contact, embedded and compact configured form notices disclose Google sale
+measurement and hashed-contact matching.
+Each new form bundle submits its fixed disclosure version; intake preserves only
+the recognized submitted version in the original receipt. Missing/old versions,
+including tabs opened before release but submitted later, remain ineligible even
+after the release cutoff. Cookie preferences still use the existing regional rules;
+later CRM opt-outs use the existing contact channel and privileged project suppression
+operation in the connection runbook. No automatic inbox monitoring is implied.
+
 | Integration | Category | Load Path | Purpose | Owner |
 | --- | --- | --- | --- | --- |
 | Google Tag Manager | analytics / marketing | `apps/marketing/components/GoogleTagManager.tsx` | Container for Google Ads conversion tags, conversion linker, and future vendor tags; it loads after an explicit enabling choice or the NZ regional default and receives the exact category state first | Marketing and Engineering |

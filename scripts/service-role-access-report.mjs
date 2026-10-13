@@ -102,6 +102,9 @@ function isApprovedServerFlow(file) {
   // Machine-authenticated GA4 source lifecycle; SQL pins actor/source/property,
   // serializes credential intents and retained delivery. No direct table access.
   if (file === 'apps/portal/lib/marketingIntegrations/ga4/store.ts') return true;
+  // Server-only Google advertising commands; two RPCs recheck actor, binding,
+  // generation, consent and canary scope. No direct table or credential access.
+  if (file === 'apps/portal/lib/marketingIntegrations/googleAds/store.ts') return true;
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
   if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) return true;

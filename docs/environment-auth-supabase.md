@@ -1,5 +1,17 @@
 # Environment, Auth, And Supabase
 
+## Google advertising candidate
+
+Google Ads reporting and Data Manager sale delivery are default-off. They use a
+dedicated advertising OAuth grant/vault item and disabled actor-bound database
+control, never GA4's refresh token. The server-only environment, loopback PKCE
+setup, conversion owner, policy/cutoff gates and recovery are defined in
+[google-ads-connection.md](google-ads-connection.md). The operator tool's verify
+lane works with both collection flags off; synthetic `validateOnly` does not
+ingest a conversion. New APIs/scopes, conversion action, live source data and
+schedules require production/access approval. Credential uncertainty quarantines
+automatic retries.
+
 ## Sanctuary-owned GA4 candidate — disabled until provisioned
 
 Source configuration requires `SANCTUARY_GA4_REPORTS_ENABLED=true`,

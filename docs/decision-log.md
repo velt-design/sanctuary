@@ -21,6 +21,16 @@ compares actual instants, and keeps failure visible on truly equal latest times.
 Accepted/draft overrides remain intact. Reversed-order and timezone fixtures prove
 queue and Command Centre agreement; do not move this policy into the SQL reader.
 
+## 2026-10-13 - Fence irreversible corrections at the provider boundary
+
+A Google sale cancellation could be restored after its retraction was claimed.
+The pre-dispatch fingerprint check covered ingestion but not the irreversible
+retraction. Forward migration `20261013000003` applies that check to both effect
+states. Native worker regressions change cancellation, opt-out and source facts
+after claim, proving no adjustment request and preserved review evidence, while
+unchanged cancellation succeeds. Check current authority and source at every
+external effect boundary, including corrections. Owner: google-ads-connection.md.
+
 ## 2026-10-13 - Reuse authenticated read facts without weakening completeness
 
 The Command Centre re-read project, model and owner facts while composing Project

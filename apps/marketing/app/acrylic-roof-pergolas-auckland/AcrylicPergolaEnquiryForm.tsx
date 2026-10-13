@@ -8,6 +8,7 @@ import { sendGoogleAnalyticsEvent } from '../../lib/googleAnalyticsEvent';
 import { useEnquiryInteraction } from '../../components/enquiry/useEnquiryInteraction';
 import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
+import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
 import { createEnquirySubmissionId, ENQUIRY_ATTACHMENT_ACCEPT, uploadEnquiryAttachments, validateEnquiryAttachments } from '@/lib/enquiryAttachments';
 import {
   ENQUIRY_ATTACHMENT_HELP_TEXT,
@@ -355,6 +356,7 @@ export default function AcrylicPergolaEnquiryForm({
           },
           utm: attribution.utm,
           attribution,
+          advertisingDisclosureVersion: ADVERTISING_DISCLOSURE_VERSION,
           enquiryContext: contextProperties,
           page: window.location.pathname,
           source: 'website',
@@ -740,7 +742,7 @@ export default function AcrylicPergolaEnquiryForm({
 
       <div className="acrylic-form__submit">
         <p>
-          We use your details and files to assess and respond. They are not published. See our <Link href="/privacy">Privacy Policy</Link>.
+          We use your details and files to assess and respond. They are not published. With marketing tracking enabled, we also measure enquiries and sales with Google Ads. See our <Link href="/privacy#advertising-measurement">Privacy Policy</Link> for details and choices.
         </p>
         <button type="submit" disabled={submitState === 'sending' || submitState === 'success'}>
           {submitState === 'sending' ? 'Sending brief' : submitState === 'success' ? 'Project brief sent' : submitLabel}

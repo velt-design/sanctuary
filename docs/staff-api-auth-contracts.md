@@ -1,5 +1,16 @@
 # Staff API And Auth Contracts
 
+## Google advertising candidate
+
+`GET /api/staff/v1/marketing-performance/google-ads` requires the existing staff
+context and confirmed developer identity and uses the auth-bound
+`google_ads_staff_read` RPC. It accepts no inputs/actions and returns only saved
+aggregate evidence and safe delivery reason counts, private/no-store. The separate
+`GET /api/integrations/google-ads?lane=report|sales` scheduler requires the existing
+constant-time `CRON_SECRET` check plus default-off lane flags and database-bound
+actor/control authority. It accepts no event/account/customer payload. Every effect
+is lease/generation fenced. See [google-ads-connection.md](google-ads-connection.md).
+
 ## Portal Financials candidate
 
 `GET /api/staff/v1/marketing-performance/financials` requires current staff

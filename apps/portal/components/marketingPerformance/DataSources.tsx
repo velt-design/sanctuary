@@ -5,9 +5,11 @@ import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 import { loadMetaEvidence, metaCoverage, type MetaEvidence, type MetaEvidenceLoader } from '@/lib/marketingPerformance/dataSources';
 import type { HubReport } from '@/lib/marketingPerformance/hub';
 import styles from './MarketingPerformance.module.css';
+import GoogleAdvertising from './GoogleAdvertising';
+import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
 
 const date = (value: string) => new Date(value).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland', dateStyle: 'medium', timeStyle: 'short' });
-export default function DataSources({ hub, loader = loadMetaEvidence, synthetic = false }: { hub: HubReport; loader?: MetaEvidenceLoader; synthetic?: boolean }) {
+export default function DataSources({ hub, loader = loadMetaEvidence, synthetic = false, googleLoader }: { hub: HubReport; loader?: MetaEvidenceLoader; synthetic?: boolean; googleLoader?: typeof loadAdsStatus }) {
   const [evidence, setEvidence] = useState<MetaEvidence | null>(null), [error, setError] = useState('');
   const [revision, setRevision] = useState(0), [busy, setBusy] = useState(true), [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -53,10 +55,10 @@ export default function DataSources({ hub, loader = loadMetaEvidence, synthetic 
       </details>}
       {!busy && <a href="https://velt.systems/connections" target="_blank" rel="noreferrer">Source connection status</a>}
     </Card>
+    {(!synthetic || googleLoader) && <GoogleAdvertising loader={googleLoader} />}
     <Card title="Sources not yet connected to this hub" padding="compact">
       <dl className={styles.sourceDefinitions}>
         <dt>GA4</dt><dd>Acquisition, landing pages and website events are available in the <a href="https://velt.systems/analytics" target="_blank" rel="noreferrer">existing analytics report</a>. Not yet connected here or matched to individual enquiries.</dd>
-        <dt>Google Ads</dt><dd>No verified spend feed in this hub.</dd>
         <dt>Customer-reported discovery</dt><dd>No verified referral or discovery dataset. Unknown source stays unknown.</dd>
       </dl>
     </Card>
