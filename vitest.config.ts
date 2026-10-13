@@ -74,7 +74,7 @@ export default defineConfig({
   },
   test: {
     maxWorkers: resolveVitestMaxWorkers(),
-    exclude: [...configDefaults.exclude, 'playwright/**'],
+    exclude: [...configDefaults.exclude, 'playwright/**', '.local-evidence/**'],
     environment: 'jsdom',
     environmentOptions: {
       jsdom: {

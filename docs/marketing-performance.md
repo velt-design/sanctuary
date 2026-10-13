@@ -1,5 +1,25 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Google advertising candidate (13 October 2026)
+
+The existing Data sources drawer now has a candidate Google campaign/keyword
+comparison and a separate sale-delivery coverage view. It is default-disabled and
+has no verified production API access or live matched sale. Sanctuary owns both
+collectors. See [google-ads-connection.md](google-ads-connection.md) for exact
+sale/consent policy, source dates, metric grains, bootstrap, activation and recovery.
+The retained 90-day Google window is independent of CRM filters; missing conversion
+mappings and incomplete/expired reports remain unavailable. Only current paid
+scopes and earlier delivery records enter sale coverage. Attribution fractions and
+Google ingestion receipts are not CRM wins or cash.
+
+Implementation map: `marketingIntegrations/googleAds` owns preparation, provider
+transport, source-fenced refresh/delivery and reporting; `GoogleAdvertising` is
+the existing drawer's inspection component. `google_ads_staff_read` enforces the
+same confirmed developer boundary. The synthetic marketing fixture supports
+Google complete/missing/disabled/stale/unmapped/failure states without provider
+access. The proposed deposit/full-scope-value policy and rollout require the
+owning task's production approval; the candidate is not released evidence.
+
 ## Owner commercial overview candidate (8 October 2026)
 
 Jordan approved production release on 8 October 2026 ("push live"). The consumer

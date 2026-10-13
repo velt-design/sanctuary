@@ -162,6 +162,7 @@ describe('AcrylicPergolaEnquiryForm Simple cover variant', () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as SubmittedPayload;
     expect(body).toMatchObject({
       enquiryType: 'residential',
+      advertisingDisclosureVersion: '2026-10-sale-measurement-v1',
       calculationRef: pricedHandoff.calculationRef,
       simpleCoverStatus: 'priced',
       dimensions: { widthM: null, depthM: null, heightM: null },

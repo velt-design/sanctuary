@@ -1,6 +1,7 @@
 import { parsePreviewDraft } from '../../../components/configurator-prototype/previewDraft';
 import { prepareEnquiryEmail } from '../../../lib/enquiryEmailPreparation';
 import { normalizeEnquiryProjectPreferences } from '../../../lib/enquiryProjectPreferences';
+import { normalizeAdvertisingDisclosure } from '../../../lib/advertisingDisclosure';
 import { buildCustomerBrief, type CustomerBrief } from '../../../lib/enquiryDesign';
 import { getRoofFinish, hasSimpleRoofPrice } from '../../../components/configurator-prototype/roofFinish';
 import { INITIAL_ROOF } from '../../../components/configurator-prototype/GableChoices';
@@ -280,6 +281,7 @@ export async function POST(req: Request) {
     ...payloadWithoutUploadToken,
     utm,
     attribution,
+    advertisingDisclosureVersion: normalizeAdvertisingDisclosure(payload.advertisingDisclosureVersion),
     enquiryContext,
     customerBrief,
   });
