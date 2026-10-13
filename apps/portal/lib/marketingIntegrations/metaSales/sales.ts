@@ -48,7 +48,7 @@ export function assessMetaSale(source: MetaSaleSource, policy: MetaSalePolicy, n
   if (!source.receiptId && !historical) reasons.push('ORIGIN_ENQUIRY_MISSING');
   if (source.suppressed) reasons.push('CUSTOMER_SUPPRESSED');
   if ((!source.marketingConsent && !historical) || source.marketingDenied) reasons.push('MARKETING_CONSENT_NOT_GRANTED');
-  if (source.disclosureVersion !== policy.disclosureVersion && !historical) reasons.push('META_DISCLOSURE_NOT_PRESENT');
+  if ((policy.disclosureVersion !== '2026-10-sale-measurement-v2' || source.disclosureVersion !== policy.disclosureVersion) && !historical) reasons.push('META_DISCLOSURE_NOT_PRESENT');
   if (!policy.consentPolicyApproved || (!historical && (!source.consentBasis || !policy.allowedConsentBases.includes(source.consentBasis)
     || !Number.isFinite(received) || !Number.isFinite(Date.parse(policy.consentEffectiveFrom)) || received < Date.parse(policy.consentEffectiveFrom)))) reasons.push('CONTACT_POLICY_NOT_APPROVED');
   if (!Number.isFinite(occurred) || occurred > now.getTime() || (Number.isFinite(received) && occurred < received)) reasons.push('SALE_DATE_UNVERIFIED');

@@ -1,15 +1,41 @@
-create function private.meta_sale_eligible(s jsonb,c private.meta_sale_control) returns boolean
+create function private.meta_sale_eligible(s jsonb,c private.meta_sale_control,enforce_window boolean default true) returns boolean
 language sql stable security definer set search_path=pg_catalog,pg_temp as $$
   select coalesce(s->>'active'='true' and s->>'suppressed'='false' and s->>'marketingDenied'='false'
     and c.consent_policy_approved and (s->>'occurredAt')::timestamptz<=now()
-    and (s->>'occurredAt')::timestamptz>now()-interval '7 days'
+    and (not enforce_window or (s->>'occurredAt')::timestamptz>now()-interval '7 days')
     and ((s->>'receivedAt') is null or (s->>'occurredAt')::timestamptz>=(s->>'receivedAt')::timestamptz)
     and ((c.historical_enabled and s->'historicalApproval'<>'null'::jsonb)
       or (s->>'receiptId' is not null and s->>'marketingConsent'='true'
-        and s->>'disclosureVersion'=c.disclosure_version and s->>'consentBasis'=any(c.allowed_consent_bases)
+        and c.disclosure_version='2026-10-sale-measurement-v2' and s->>'disclosureVersion'=c.disclosure_version and s->>'consentBasis'=any(c.allowed_consent_bases)
         and (s->>'receivedAt')::timestamptz>=c.consent_effective_from)),false)
 $$;
-revoke all on function private.meta_sale_eligible(jsonb,private.meta_sale_control) from public,anon,authenticated,service_role;
+revoke all on function private.meta_sale_eligible(jsonb,private.meta_sale_control,boolean) from public,anon,authenticated,service_role;
+
+-- Reused at freeze, recovered claim and the final pre-effect check. Never rewrite
+-- a previously attempted body when contact authority changes.
+create function private.meta_sale_matching_data(s jsonb,c private.meta_sale_control,enforce_window boolean default true) returns jsonb
+language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
+declare email text;phone text;expected jsonb:='{}';cookie text;cookie_time timestamptz;reason text;
+begin
+      if c.contact_matching_approved then
+        if c.historical_enabled and s->'historicalApproval'->>'identitySource'='crm' then email:=s->>'crmEmail';phone:=s->>'crmPhone';
+        else email:=s->>'email';phone:=s->>'phone';end if;
+        email:=lower(btrim(email));phone:=regexp_replace(phone,'[[:space:]().-]','','g');
+        if length(email)<=254 and email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then expected:=expected||jsonb_build_object('em',jsonb_build_array(encode(sha256(convert_to(email,'UTF8')),'hex')));end if;
+        if phone ~ '^\+[1-9][0-9]{7,14}$' then expected:=expected||jsonb_build_object('ph',jsonb_build_array(encode(sha256(convert_to(substr(phone,2),'UTF8')),'hex')));end if;
+      end if;
+      foreach reason in array array['fbc','fbp'] loop
+        cookie:=s->>reason;
+        if length(cookie)<=640 and cookie ~ '^fb\.[0-9]\.[0-9]{13}\.[A-Za-z0-9_-]+$'
+          and (reason='fbc' or split_part(cookie,'.',4) ~ '^[0-9]+$') then
+          cookie_time:=to_timestamp(split_part(cookie,'.',3)::numeric/1000);
+          if cookie_time<=(s->>'receivedAt')::timestamptz and cookie_time<=now() and (not enforce_window or cookie_time>now()-interval '90 days') then
+            expected:=expected||jsonb_build_object(reason,cookie); end if;
+        end if;
+      end loop;
+  return expected;
+end $$;
+revoke all on function private.meta_sale_matching_data(jsonb,private.meta_sale_control,boolean) from public,anon,authenticated,service_role;
 
 create function public.meta_sale_command(p_actor uuid,p_binding text,p_action text,p_run uuid default null,p_input jsonb default '{}')
 returns jsonb language plpgsql security definer set search_path=pg_catalog,pg_temp as $$
@@ -64,22 +90,7 @@ begin
         or (body->>'event_time')::numeric is distinct from floor(extract(epoch from (s->>'occurredAt')::timestamptz))
         or body->'custom_data' is distinct from jsonb_build_object('currency','NZD','value',(s->>'valueCents')::numeric/100,'order_id','sanctuary-scope-'||key::text)
         or body-array['event_name','event_id','event_time','action_source','user_data','custom_data']<>'{}'::jsonb then raise exception 'Invalid Meta sale freeze'; end if;
-      if c.contact_matching_approved then
-        if c.historical_enabled and s->'historicalApproval'->>'identitySource'='crm' then email:=s->>'crmEmail';phone:=s->>'crmPhone';
-        else email:=s->>'email';phone:=s->>'phone';end if;
-        email:=lower(btrim(email));phone:=regexp_replace(phone,'[[:space:]().-]','','g');
-        if length(email)<=254 and email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then expected:=expected||jsonb_build_object('em',jsonb_build_array(encode(sha256(convert_to(email,'UTF8')),'hex')));end if;
-        if phone ~ '^\+[1-9][0-9]{7,14}$' then expected:=expected||jsonb_build_object('ph',jsonb_build_array(encode(sha256(convert_to(substr(phone,2),'UTF8')),'hex')));end if;
-      end if;
-      foreach reason in array array['fbc','fbp'] loop
-        cookie:=s->>reason;
-        if length(cookie)<=640 and cookie ~ '^fb\.[0-9]\.[0-9]{13}\.[A-Za-z0-9_-]+$'
-          and (reason='fbc' or split_part(cookie,'.',4) ~ '^[0-9]+$') then
-          cookie_time:=to_timestamp(split_part(cookie,'.',3)::numeric/1000);
-          if cookie_time<=(s->>'receivedAt')::timestamptz and cookie_time<=now() and cookie_time>now()-interval '90 days' then
-            expected:=expected||jsonb_build_object(reason,cookie); end if;
-        end if;
-      end loop;
+      expected:=private.meta_sale_matching_data(s,c);
       if expected='{}'::jsonb or body->'user_data' is distinct from expected then raise exception 'Unpermitted Meta matching data'; end if;
     end if;
     select * into sale from private.meta_sales where quote_id=key for update;
@@ -87,6 +98,13 @@ begin
       if body is not null then insert into private.meta_sales(quote_id,project_id,generation,source_fingerprint,payload,dataset_id,state)
         values(key,(s->>'projectId')::uuid,c.generation,s->>'fingerprint',body,c.dataset_id,'READY'); end if;
     elsif sale.state in('REVIEW_REQUIRED','SUPPRESSED') then null;
+    elsif sale.state='ACCEPTED' then
+      -- Import deadlines constrain dispatch, not the truth of an already received sale.
+      if sale.source_fingerprint is distinct from s->>'fingerprint'
+        or not private.meta_sale_eligible(s,c,false)
+        or sale.payload->'user_data' is distinct from private.meta_sale_matching_data(s,c,false) then
+        update private.meta_sales set state='REVIEW_REQUIRED',reason='SENT_SALE_SOURCE_CHANGED',updated_at=now() where quote_id=key;
+      end if;
     elsif sale.state='SENDING' then null;
     elsif body is null or sale.payload is distinct from body or sale.source_fingerprint<>s->>'fingerprint' then
       if sale.attempts>0 then
@@ -106,7 +124,8 @@ begin
       order by next_attempt_at,quote_id for update skip locked limit 1;
     if not found then return 'null'; end if;
     select g.source into s from private.meta_sale_sources() g where g.quote_id=sale.quote_id;
-    if s->>'fingerprint' is distinct from sale.source_fingerprint or not private.meta_sale_eligible(s,c) then
+    if s->>'fingerprint' is distinct from sale.source_fingerprint or not private.meta_sale_eligible(s,c)
+      or sale.payload->'user_data' is distinct from private.meta_sale_matching_data(s,c) then
       update private.meta_sales set state=case when attempts=0 then 'SUPPRESSED' else 'REVIEW_REQUIRED' end,reason='SOURCE_CHANGED_BEFORE_DISPATCH',updated_at=now() where quote_id=sale.quote_id;
       return 'null';end if;
     update private.meta_sales set state='SENDING',attempts=attempts+1,first_attempt_at=coalesce(first_attempt_at,now()),lease_id=p_run,updated_at=now()
@@ -117,6 +136,7 @@ begin
     select g.source into s from private.meta_sale_sources() g where g.quote_id=sale.quote_id;
     if sale.generation<>c.generation or sale.dataset_id is distinct from c.dataset_id
       or s->>'fingerprint' is distinct from sale.source_fingerprint or not private.meta_sale_eligible(s,c)
+      or sale.payload->'user_data' is distinct from private.meta_sale_matching_data(s,c)
       or (c.upload_mode='canary' and sale.quote_id is distinct from c.canary_quote_id)
       or (c.upload_mode='historical' and s->'historicalApproval'='null'::jsonb) then raise exception 'Sale changed before dispatch' using errcode='40001'; end if;
     return '{}';
@@ -143,13 +163,19 @@ revoke all on function public.meta_sale_command(uuid,text,text,uuid,jsonb) from 
 grant execute on function public.meta_sale_command(uuid,text,text,uuid,jsonb) to service_role;
 
 create function public.meta_sale_staff_read() returns jsonb language plpgsql stable security definer set search_path=pg_catalog,pg_temp as $$
-declare c private.meta_sale_control; completed private.meta_sale_runs;
+declare c private.meta_sale_control; completed private.meta_sale_runs; authority text;
 begin
   if auth.uid() is null or public.has_portal_access() is not true or not exists(select 1 from auth.users u where u.id=auth.uid()
     and lower(u.email)='jordan@sanctuarypergolas.co.nz' and u.email_confirmed_at is not null) then raise exception 'Developer access required' using errcode='42501';end if;
   select * into strict c from private.meta_sale_control where singleton=true;
   select * into completed from private.meta_sale_runs where generation=c.generation and lane='sales' and finished_at is not null order by finished_at desc,id desc limit 1;
-  return jsonb_build_object('enabled',c.uploads_enabled,'mode',c.upload_mode,'datasetId',c.dataset_id,'checkedAt',now(),
+  authority:=case when not c.uploads_enabled then 'DISABLED'
+    when not exists(select 1 from auth.users u join public.portal_users p on p.user_id=u.id where u.id=c.actor_id and p.role in('admin','staff')
+      and u.email_confirmed_at is not null and u.deleted_at is null and (u.banned_until is null or u.banned_until<now())) then 'ACTOR_UNAVAILABLE'
+    when c.credential_expires_at is null or c.credential_expires_at<=now()+interval '1 minute' then 'CREDENTIAL_EXPIRED'
+    when c.assignment_verified_at is null or c.binding_sha256 is null or c.dataset_id is null or not c.consent_policy_approved then 'SETUP_REQUIRED'
+    else 'READY' end;
+  return jsonb_build_object('enabled',c.uploads_enabled,'deliveryAuthority',authority,'mode',c.upload_mode,'datasetId',c.dataset_id,'checkedAt',now(),
     'lastCompletedAt',completed.finished_at,'error',completed.error_code,
     'pending',case when exists(select 1 from private.meta_sale_runs where finished_at is null and expires_at<=now()) then 'EXPIRED'
       when exists(select 1 from private.meta_sale_runs where finished_at is null) then 'RUNNING' else 'NONE' end,

@@ -13,7 +13,7 @@ export default function MetaSaleDelivery({ loader = loadMetaSaleStatus }: { load
       .finally(()=>{if(!controller.signal.aborted)setBusy(false);});return()=>controller.abort();},[loader,revision]);
   const attention=status?metaSaleAttention(status):[];
   return <Card title="Meta sale reporting" padding="compact">
-    <div aria-live="polite" aria-busy={busy}>{busy?<p role="status">Checking saved sale evidence…</p>:error?<p role="alert">{error}</p>:status&&<p>{status.enabled?status.mode==='canary'?'Delivery is restricted to one selected sale.':status.mode==='historical'?'Delivery is restricted to individually approved historical sales.':'Automatic delivery is active.':'Sale delivery is not active.'}</p>}</div>
+    <div aria-live="polite" aria-busy={busy}>{busy?<p role="status">Checking saved sale evidence…</p>:error?<p role="alert">{error}</p>:status&&<p>{status.deliveryAuthority==='READY'?status.mode==='canary'?'Delivery is restricted to one selected sale.':status.mode==='historical'?'Delivery is restricted to individually approved historical sales.':'Automatic delivery is enabled at the source.':'Sale delivery is not active.'}</p>}</div>
     {attention.length>0&&<div role="status" aria-label="Meta sale attention"><strong>Meta sale reporting needs attention</strong><ul>{attention.map(item=><li key={item}>{item}</li>)}</ul></div>}
     <Button variant="secondary" disabled={busy} onClick={()=>setRevision(value=>value+1)}>Check saved sale status</Button>
     {status&&<>

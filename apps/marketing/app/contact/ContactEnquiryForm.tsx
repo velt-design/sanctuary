@@ -2,7 +2,6 @@
 import ContactProjectPreferences from './ContactProjectPreferences';
 import ConfiguredEnquiryFields from './ConfiguredEnquiryFields';
 
-import Link from 'next/link';
 import {
   useEffect,
   useRef,
@@ -18,6 +17,7 @@ import SimpleCoverCalculator from '@/components/simple-cover-calculator/SimpleCo
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
 import { emitSubmittedLead } from '../../lib/googleEnhancedLead';
+import AdvertisingMeasurementNotice from '../../components/enquiry/AdvertisingMeasurementNotice';
 import {
   createEnquirySubmissionId,
   ENQUIRY_ATTACHMENT_ACCEPT,
@@ -481,7 +481,7 @@ export default function ContactEnquiryForm({
       setReceivedEarlier(responsePayload.idempotentReplay === true);
       setSubmitState('success');
       await trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId,
-        { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') });
+        responsePayload.idempotentReplay === true ? undefined : { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') });
     } catch (error) {
       const message = error instanceof Error && error.message
         ? error.message
@@ -739,10 +739,7 @@ export default function ContactEnquiryForm({
 
           <div className="contact-form__submit">
             <div>
-              <p>
-                We use your details and files to assess and respond. They are not published. With marketing tracking enabled, we also measure enquiries and sales with Google Ads and Meta. See our{' '}
-                <Link href="/privacy#advertising-measurement">Privacy Policy</Link> for details and choices.
-              </p>
+              <AdvertisingMeasurementNotice/>
               <div className="contact-form__live" aria-live="polite" aria-atomic="true">
                 {submitState === 'sending'
                   ? pathway === 'simple' || pathway === 'configured' ? 'Sending your request.' : 'Sending project brief.'

@@ -8,6 +8,13 @@ and explicit Ads-only prehashed website handoff are owned by
 batch permissions do not follow from the existing Google approval. Older candidate
 status below is retained as implementation history, not current hosted status.
 
+The extension's forward disclosure migration requires an explicit release policy
+selection: v1 accepts only v1; v2 accepts original v1 and v2. Unknown/missing
+receipt versions remain excluded. Installation does not change current policy,
+receipt versions, source fingerprints or the existing consent cutoff. An edited
+idempotent form replay omits enhanced identity because its edited fields are not
+the accepted original receipt. Actual GTM/browser payload evidence remains separate.
+
 ## Candidate status and ownership
 
 This is an install-only, default-disabled release candidate. It has not enabled

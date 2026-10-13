@@ -8,6 +8,11 @@ do not establish production schema, PostgREST or safeupdate compatibility.
 Capture, Google prehashed handoff, provider wire, UI and release checks are mapped
 in [meta-offline-sales.md](meta-offline-sales.md). No test sends synthetic Purchase
 events to the production Meta dataset, including through `test_event_code`.
+Review regressions cover recovered dispatch after matching revocation, identical
+unchanged retry, accepted-event aging versus real correction, explicit refusal
+versus no decision, expired/revoked authority, all form notices, and edited
+idempotent replay without enhanced identity. Google source tests execute the
+forward disclosure compatibility policy and unchanged cutoff in both TS and SQL.
 
 ## Bounded Project Work source facts
 

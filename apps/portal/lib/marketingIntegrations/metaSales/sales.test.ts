@@ -31,4 +31,5 @@ it('rejects old notice, exact7day boundary and unapproved contact matching indep
   expect(prepareMetaSale({...metaFixtureSource,disclosureVersion:'2026-10-sale-measurement-v1'},metaFixturePolicy,now).event).toBeUndefined();
   expect(prepareMetaSale({...metaFixtureSource,occurredAt:'2026-10-07T00:00:00Z',receivedAt:'2026-10-06T00:00:00Z'},metaFixturePolicy,now).assessment.reasons).toContain('META_EVENT_WINDOW_EXCEEDED');
   expect(prepareMetaSale(metaFixtureSource,{...metaFixturePolicy,contactMatchingApproved:false},now).assessment.reasons).toContain('PERMITTED_MATCHING_ID_MISSING');
+  expect(prepareMetaSale({...metaFixtureSource,disclosureVersion:'2026-10-sale-measurement-v1'},{...metaFixturePolicy,disclosureVersion:'2026-10-sale-measurement-v1'},now).event).toBeUndefined();
 });

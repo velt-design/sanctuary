@@ -26,7 +26,10 @@ New enquiries must retain notice `2026-10-sale-measurement-v2`, a permitted save
 marketing basis, a release cutoff and the separate source policy approval. The
 new notice names Google and Meta; older open tabs preserve v1 or missing evidence.
 No historical receipt is rewritten. Contact matching has its own default-off
-approval. Email uses Meta lowercase/trim rules; phone requires an explicit E.164
+approval. A saved false setting with `basis=user_choice` is explicit refusal;
+false with missing/default/none basis is insufficient authority but is not
+invented evidence of a refusal. It can qualify only through the separate exact
+historical rights evidence and approved batch. Email uses Meta lowercase/trim rules; phone requires an explicit E.164
 country code. A usable email works independently of a missing/local-format phone.
 Original submitted contact takes precedence. CRM contact presence is assessed
 but does not grant sharing permission.
@@ -69,7 +72,19 @@ On a successful enquiry only, `googleEnhancedLead.ts` can expose already-hashed
 The property checks current marketing withdrawal each time it is read and expires
 within 2.5 seconds. The existing `lead_submitted` event carries no contact or
 hashed-contact properties into the generic data layer or GA4. A callback clears
-the object after the tags finish; a deadline covers missing/failed tags.
+the object after the tags finish; a deadline covers missing/failed tags. An
+idempotent replay omits this contact object because edited retry fields are not
+the original accepted receipt. Existing success/replay messages remain intact.
+This controls the deterministic handoff; it does not prove that inherited GTM
+automatic collection is absent.
+
+All regular, acrylic, compact and mobile forms use the same visible provider
+notice. Original v1 receipts remain v1. Google's explicitly selected v1 policy
+accepts only v1; a release-selected v2 policy accepts v1 and v2. Missing and unknown
+versions fail closed. The forward compatibility migration changes no live policy
+value, original receipt, fingerprint or cutoff. The approved Google transition
+sets its policy to v2 without moving the existing cutoff. Meta's new-enquiry path
+remains exact v2; historical evidence is separately reviewed.
 
 Required GTM work before enabling this flag:
 
@@ -119,7 +134,12 @@ Retries retain the identical frozen payload, including time, value and matching
 data. Five attempts and 24 hours from the first attempt are local conservative
 limits, still subject to the seven-day event window. No claim of a perpetual
 provider dedup guarantee is made. Expired dispatch leases retain the same event;
-changed source, binding or exhausted budgets become review states. HTTP success
+changed source, binding or exhausted budgets become review states. Matching data
+is revalidated against current authority at freeze, recovered claim and the final
+pre-request check. Revoking contact authority quarantines an uncertain frozen
+contact-bearing event without rewriting its identity or resetting attempts.
+Accepted unchanged sales remain accepted after the import deadline; actual source,
+value, suppression and matching-permission changes still require review. HTTP success
 alone is insufficient: one received event and a bounded provider trace are needed.
 Only numeric error codes/subcodes, HTTP status and warning counts are retained;
 provider messages and customer identifiers never enter diagnostics or logs.
@@ -188,7 +208,7 @@ after transmission remains a review state because its endpoint has no deletion.
 
 1. Freeze reviewed source; verify existing Google migration hashes and current
    schema/role/contact columns. A transactional ROLLBACK rehearsal of migrations
-   `20261014000001` through `000003` may precede the production decision; no
+   `20261014000001` through `000004` may precede the production decision; no
    production schema change is committed at this stage. Compare old/new Google
    source aggregates and fingerprints. A staging install can verify grants and
    PostgREST behavior without authorizing a production install.
@@ -207,6 +227,10 @@ after transmission remains a review state because its endpoint has no deletion.
 4. Release Portal and marketing coherently with all new send flags off, record the
    actual notice publication cutoff, and verify new versus old-tab receipt evidence
    using intercepted test intake before any real customer send.
+   The task branch `codex/meta-offline-sales-20261014` alone suppresses automatic
+   Vercel Git builds in both apps. Root provisions branch-specific staging and
+   provider/email-off environment before one explicit protected preview per app.
+   Main and production deployment behavior are unchanged.
 5. Bind one genuine eligible scope in canary mode. Enabling the scheduler cannot
    authorize other scopes because source, freeze, claim and pre-request checks all
    enforce that same ID. Observe one real received event and its diagnostics, then
@@ -227,7 +251,10 @@ after transmission remains a review state because its endpoint has no deletion.
   dedicated command RPC, assessment CLI, private cron and developer-only status API.
 - Portal: `MetaSaleDelivery` in the existing Data sources drawer. Aggregate reasons
   remain distinguishable from Meta advertising credit. Fictional fixture parameter
-  `metaSales=attention|active|failure`; no customer fixtures.
+  `metaSales=attention|active|failure|expired`; no customer fixtures. Staff status
+  computes current actor and credential authority even when a failed begin cannot
+  create a run. Expired credentials/revoked actors are inactive with visible
+  recovery guidance, independent of the configured upload switch.
 
 Focused commands: `npx vitest run test/meta-sales-source.test.ts
 apps/portal/lib/marketingIntegrations/metaSales apps/marketing/lib/campaignPersistence.test.ts

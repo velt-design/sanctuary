@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Eyebrow, Heading } from '@/components/marketing-foundation';
 import { useConsent } from '@/components/ConsentProvider';
@@ -10,6 +9,7 @@ import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
 import { emitSubmittedLead } from '../../lib/googleEnhancedLead';
+import AdvertisingMeasurementNotice from '../../components/enquiry/AdvertisingMeasurementNotice';
 import { createEnquirySubmissionId, ENQUIRY_ATTACHMENT_ACCEPT, uploadEnquiryAttachments, validateEnquiryAttachments } from '@/lib/enquiryAttachments';
 import {
   ENQUIRY_ATTACHMENT_HELP_TEXT,
@@ -102,7 +102,7 @@ async function trackLeadSubmitted(
     marketing: boolean;
     hasTrackingDecision: boolean;
   },
-  contact: { email: string; phone: string },
+  contact: { email: string; phone: string } | undefined,
 ): Promise<void> {
   type TrackingWindow = typeof window & {
     dataLayer?: Array<Record<string, unknown>>;
@@ -377,7 +377,7 @@ export default function AcrylicPergolaEnquiryForm({
         analytics: consent.analytics,
         marketing: consent.marketing,
         hasTrackingDecision,
-      }, { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') });
+      }, responsePayload.idempotentReplay === true ? undefined : { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') });
     } catch (error) {
       setSubmitError(
         error instanceof Error && error.message
@@ -741,9 +741,7 @@ export default function AcrylicPergolaEnquiryForm({
       </div>
 
       <div className="acrylic-form__submit">
-        <p>
-          We use your details and files to assess and respond. They are not published. With marketing tracking enabled, we also measure enquiries and sales with Google Ads and Meta. See our <Link href="/privacy#advertising-measurement">Privacy Policy</Link> for details and choices.
-        </p>
+        <AdvertisingMeasurementNotice/>
         <button type="submit" disabled={submitState === 'sending' || submitState === 'success'}>
           {submitState === 'sending' ? 'Sending brief' : submitState === 'success' ? 'Project brief sent' : submitLabel}
         </button>

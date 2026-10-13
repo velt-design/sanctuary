@@ -80,7 +80,8 @@ language sql stable security definer set search_path=pg_catalog,pg_temp as $$
       'receiptId',f.receipt_id,'receivedAt',f.received_at,'occurredAt',f.occurred_at,'valueCents',f.total_inc_gst_cents,
       'active',coalesce(f.total_inc_gst_cents>0 and f.occurred_at is not null and not f.cancelled,false),
       'marketingConsent',coalesce(f.raw_payload#>'{attribution,consent,marketing}'='true'::jsonb,false),
-      'marketingDenied',coalesce(f.raw_payload#>'{attribution,consent,marketing}'='false'::jsonb,false),
+      'marketingDenied',coalesce(f.raw_payload#>'{attribution,consent,marketing}'='false'::jsonb
+        and f.raw_payload#>>'{attribution,consent,basis}'='user_choice',false),
       'suppressed',exists(select 1 from private.advertising_sale_suppressions s where s.project_id=common.project_id and s.provider='meta'),
       'consentBasis',f.raw_payload#>>'{attribution,consent,basis}',
       'disclosureVersion',case when jsonb_typeof(f.raw_payload->'advertisingDisclosureVersion')='string' then f.raw_payload->>'advertisingDisclosureVersion' end,

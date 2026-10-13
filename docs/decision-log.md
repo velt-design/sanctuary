@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-10-14 - Preserve authority through recovered advertising delivery
+
+Independent candidate review found that a recovered uncertain event could retain
+contact hashes after matching permission changed. Validate the frozen matching
+body under current authority at both recovered claim and the pre-request boundary;
+never rewrite attempted identity or reset its budget. Import deadlines constrain
+new sends, not the truth of an unchanged accepted receipt. Display current actor
+and credential authority even when begin fails before a run exists. Share the
+actual form notice across compact and regular layouts, select explicit Google
+v1/v2 compatibility, and omit edited replay identity. Historical default false
+is missing authority, distinct from explicit user refusal. Owner:
+`meta-offline-sales.md`.
+
 ## 2026-10-14 - Keep provider sale rules separate from accounting truth
 
 Google and Meta share one verified deposit/full-scope-value source, but their

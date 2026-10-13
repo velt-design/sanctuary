@@ -1,11 +1,14 @@
 # Supabase Schema Map
 
 Advertising extension candidate (14 October 2026): forward migrations
-`20261014000001` through `000003` introduce private `advertising_scope_facts`,
+`20261014000001` through `000004` introduce private `advertising_scope_facts`,
 provider-specific suppression, Meta sale control/runs/assessments/history approvals
 and immutable delivery records. The only new service write path is
 `meta_sale_command`; `meta_sale_staff_read` returns developer-only aggregates.
 Existing Google source output is preserved except explicit shared suppression.
+The fourth migration adds selected Google v2-policy compatibility with original
+v1/v2 receipts without changing the live policy or original cutoff. Meta remains
+v2-specific; default false consent is not relabelled as explicit user refusal.
 All new sending controls install off; no production installation is asserted.
 Ownership and release procedure: [meta-offline-sales.md](meta-offline-sales.md).
 

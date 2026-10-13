@@ -4,20 +4,23 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import ContactEnquiryForm from './ContactEnquiryForm';
 import { buildContactDesignBrief } from './contactDesignBrief';
 import { DEFAULT_PREVIEW_DRAFT } from '../../components/configurator-prototype/previewDraft';
+import { webcrypto } from 'node:crypto';
+let marketingEnabled=false;
 
 vi.mock('@/components/ConsentProvider', () => ({ useConsent: () => ({
-  consent: { analytics: false, marketing: false }, hasTrackingDecision: true,
+  consent: { analytics: false, marketing: marketingEnabled }, hasTrackingDecision: true,
   trackingBasis: 'consent', trackingRegionPolicy: 'strict',
 }) }));
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const network = vi.fn();
 beforeEach(() => {
+  marketingEnabled=false;localStorage.clear();
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('fetch', network); network.mockReset(); sessionStorage.clear();
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); sessionStorage.clear(); vi.unstubAllGlobals(); });
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); sessionStorage.clear(); vi.unstubAllGlobals();vi.unstubAllEnvs(); });
 const brief = (widthMm = 6000) => buildContactDesignBrief({
   ...DEFAULT_PREVIEW_DRAFT, input: { ...DEFAULT_PREVIEW_DRAFT.input, widthMm }, result: null,
   configuratorPrice: {status:'disabled'},
@@ -60,10 +63,14 @@ it('retries a failed enquiry with the same submission identity and current desig
 });
 
 it('identifies an earlier receipt after a lost response and edited retry without claiming the new design was sent',async()=>{
+  marketingEnabled=true;vi.stubGlobal('crypto',webcrypto);vi.stubEnv('NEXT_PUBLIC_GOOGLE_ENHANCED_LEADS_ENABLED','true');
+  const identityReads:unknown[]=[];const layer:Record<string,unknown>[]=[];
+  layer.push=(...events)=>{identityReads.push((window as Window & {sanctuaryGoogleEnhancedLead?:unknown}).sanctuaryGoogleEnhancedLead);return Array.prototype.push.apply(layer,events);};
+  vi.stubGlobal('dataLayer',layer);
   network.mockRejectedValueOnce(new Error('Connection lost'))
     .mockResolvedValueOnce({ok:true,status:200,json:async()=>({ok:true,idempotentReplay:true})});
   await render(); await fill(); await submit();
-  await render(5200); await submit();
+  await render(5200);host.querySelector<HTMLInputElement>('[name=email]')!.value='changed@example.test';await submit();
   const bodies = network.mock.calls.map(call=>JSON.parse(call[1].body));
   expect(bodies[0].submissionId).toBe(bodies[1].submissionId);
   expect(bodies[0].customerDesign.input.widthMm).toBe(6000);
@@ -73,4 +80,10 @@ it('identifies an earlier receipt after a lost response and edited retry without
   expect(host.textContent).not.toContain('Your design is shown here for reference.');
   expect(host.querySelector('[role=status]')).toBe(document.activeElement);
   expect(sessionStorage.getItem('sanctuary-enquiry-contact-v1')).toContain('Fixture Customer');
+  expect(identityReads).toEqual([undefined]);expect(JSON.stringify(layer)).not.toContain('changed@example');
+  (layer[0].eventCallback as ()=>void)();
+});
+it.each([[false,false],[true,false],[true,true]])('shows the v2 Google and Meta notice for compact=%s mobile=%s',async(compactConfigured,mobileFinish)=>{
+  await act(async()=>root.render(<ContactEnquiryForm compactConfigured={compactConfigured} mobileFinish={mobileFinish} configuredDesign={brief()} initialEnquiryType="residential" initialContext={{sourcePath:'/products'}}/>));
+  expect(host.textContent).toContain('Google Ads and Meta');expect(host.querySelector('a[href="/privacy#advertising-measurement"]')).not.toBeNull();
 });
