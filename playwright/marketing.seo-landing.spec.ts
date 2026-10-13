@@ -309,8 +309,8 @@ for (const viewport of viewports) {
       await page.locator('#custom-meaning').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-fit.png`) });
       await page.locator('#custom-project-evidence').scrollIntoViewIfNeeded();
-      await page.locator('#project-evidence img').first().scrollIntoViewIfNeeded();
-      await expect.poll(() => page.locator('#project-evidence img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      await page.locator('#custom-project-evidence img').first().scrollIntoViewIfNeeded();
+      await expect.poll(() => page.locator('#custom-project-evidence img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-proof.png`) });
       await page.locator('#custom-conditions-title').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-decisions.png`) });

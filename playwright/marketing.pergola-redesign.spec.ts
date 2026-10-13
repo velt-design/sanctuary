@@ -244,3 +244,59 @@ test('public promotion retains canonical SEO, redirects old comparison links and
   const context = JSON.parse(await page.locator('input[name="enquiryContext"]').inputValue());
   expect(context).toMatchObject({ source_path: '/pergolas-auckland', source_focus: 'daylight', source_experience: 'guided-home-v1' });
 });
+
+for (const width of [390, 1440]) test(`direct designer edits return immediately with all details at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/configurator-preview?open=1#design=1.mono.4300.2400.ground.fascia.parallel.0');
+  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary.configurator-preview.v1') ?? '{}').input?.widthMm)).toBe(4300);
+  await page.goto(path);
+  await page.getByRole('radio', { name: 'Gable', exact: true }).check();
+  await expect(page.locator('#explore-options')).toContainText('$12,345');
+  const designer = page.getByRole('link', { name: 'Customise in 3D', exact: true });
+  const href = await designer.getAttribute('href');
+  expect(new URL(href!, 'http://localhost').hash).toMatch(/^#design=/);
+  await designer.click();
+  await expect(page).toHaveURL(/\/configurator-preview\?/);
+  await expect(page.getByRole('dialog')).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary.pergolas-auckland-selection.v1')!).explore)).toBe(false);
+  if (width < 800) await page.getByRole('button', { name: 'Edit Size & structure', exact: true }).click();
+  const size = page.getByRole('textbox', { name: 'Width in metres' });
+  await size.fill('5.7'); await size.press('Enter');
+  if (width < 800) {
+    await page.getByRole('button', { name: 'All sections', exact: true }).click();
+    await page.getByRole('button', { name: /Connection & design options/ }).click();
+  }
+  await page.getByRole('checkbox', { name: 'Gable infills', exact: true }).check();
+  await page.getByRole('button', { name: 'Close configurator', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(path+'$'));
+  const landing = page.locator('#explore-options');
+  for (const text of ['Your saved exploration', '5.7 × 3.0 m', 'Acrylic infills', '$12,345']) await expect(landing).toContainText(text);
+  await page.reload();
+  for (const text of ['Your saved exploration', '5.7 × 3.0 m', 'Acrylic infills', '$12,345']) await expect(landing).toContainText(text);
+  await page.getByRole('link', { name: 'Enquire about this design', exact: true }).click();
+  await page.getByText('View design details', { exact: true }).click();
+  await expect(page.getByLabel('Your design', { exact: true })).toContainText('Acrylic infills');
+  await expect.poll(() => page.evaluate(key => JSON.parse(sessionStorage.getItem(key)!).input.widthMm, draftKey)).toBe(5700);
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary.configurator-preview.v1')!).input.widthMm)).toBe(4300);
+  await test.info().attach('direct-designer-route', { body: JSON.stringify({ href, entry:'full route navigation, hash consumed on arrival', changedWidthMm:5700, infills:true }), contentType:'application/json' });
+});
+
+for (const product of [{ type:'gable', label:'Gable' }, { type:'box-perimeter', label:'Box' }]) test(`fresh tab restores ${product.type} source from the saved draft`, async ({ page, context }) => {
+  await page.goto(path);
+  await page.getByRole('radio', { name: product.label, exact: true }).check();
+  await page.getByRole('link', { name: 'Customise in 3D', exact: true }).click();
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}').roof?.family, draftKey)).toBe(product.type === 'gable' ? 'gable' : 'box');
+  const fresh = await context.newPage();
+  await fresh.route('**/api/configurator-price', route => route.fulfill({ json: price }));
+  await fresh.goto(path);
+  expect(await fresh.evaluate(() => sessionStorage.getItem('sanctuary.pergolas-auckland-selection.v1'))).toBeNull();
+  expect(await fresh.evaluate(key => sessionStorage.getItem(key), draftKey)).toBeNull();
+  await expect(fresh.locator('#explore-options')).toContainText('Your saved exploration');
+  await expect(fresh.locator('#explore-options')).toContainText('$12,345');
+  for (const label of ['Enquire about this design', 'Continue your design']) {
+    const href = await fresh.getByRole('link', { name:label, exact:true }).getAttribute('href');
+    expect(new URL(href!, 'http://localhost').searchParams.get('source_product')).toBe(product.type);
+  }
+  await fresh.getByRole('link', { name:'Enquire about this design', exact:true }).click();
+  await expect(fresh).toHaveURL(new RegExp('source_product='+product.type));
+});

@@ -1,5 +1,5 @@
 import { parseProductSelection, productSelectionDraft, productProjectionMax, designEntryHref } from '../../components/products/productSelection';
-import { isProductDesignType } from '../../components/products/productDesigns';
+import { isProductDesignType, PRODUCT_DESIGNS } from '../../components/products/productDesigns';
 import { parsePreviewDraft } from '../../components/configurator-prototype/previewDraft';
 import { landingSourcePath, withLandingDesignScope } from '../../components/configurator-prototype/draftScope';
 import { enquiryDesignSummary } from '../design-enquiry/enquiryDesignSummary';
@@ -13,7 +13,8 @@ export function prepareLandingDesign(value: unknown) {
   const prepared = productSelectionDraft(selection, input.type);
   const savedDraft = input.savedDraft ? parsePreviewDraft(input.savedDraft) : null;
   const draft = savedDraft ?? prepared.draft;
-  const context = { sourcePath: landingSourcePath(input.sourcePath), sourceComponent: 'product_cta' as const, sourceProduct: input.type };
+  const sourceProduct = Object.entries(PRODUCT_DESIGNS).find(([, product]) => product.family === draft.roof.family)?.[0];
+  const context = { sourcePath: landingSourcePath(input.sourcePath), sourceComponent: 'product_cta' as const, sourceProduct };
   return {
     draft, issue: savedDraft ? null : prepared.issue,
     projectionMax: productProjectionMax(selection, input.type),

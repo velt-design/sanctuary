@@ -12,6 +12,7 @@ describe('landing design server boundary', () => {
       const url = new URL(href, 'https://www.sanctuarypergolas.co.nz');
       expect(url.searchParams.get('design_scope')).toBe('pergolas-auckland');
       expect(url.searchParams.get('source_path')).toBe('/pergolas-auckland');
+      expect(url.searchParams.get('source_product')).toBe(type);
       expect(parsePreviewShareHash(url.hash)?.draft).toEqual(result.draft);
       expect(url.hash).not.toContain('estimate=');
     }
@@ -26,6 +27,11 @@ describe('landing design server boundary', () => {
     expect(result.enquiryHref).not.toContain('private');
     expect(result.summary).toContainEqual({ label: 'Gable ends', value: 'Acrylic infills' });
     expect(result.summary).toContainEqual({ label: 'Level', value: 'Elevated' });
+  });
+  it.each(['gable', 'box-perimeter'])('attributes restored %s from the validated draft rather than fresh-session defaults', type => {
+    const savedDraft = prepareLandingDesign({ type, selection: INITIAL_PRODUCT_SELECTION })!.draft;
+    const result = prepareLandingDesign({ type:'pitched', selection:INITIAL_PRODUCT_SELECTION, savedDraft })!;
+    for (const href of [result.enquiryHref, result.designerHref]) expect(new URL(href, 'https://www.sanctuarypergolas.co.nz').searchParams.get('source_product')).toBe(type);
   });
   it('reports an unsupported projection instead of silently handing off a smaller selection', () => {
     const result = prepareLandingDesign({ type: 'box-perimeter', selection: { ...INITIAL_PRODUCT_SELECTION, projectionMm: 6000, material: 'solid' } })!;

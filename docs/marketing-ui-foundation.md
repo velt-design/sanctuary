@@ -25,6 +25,8 @@ Both presentations use the same selection hook, closed source-path validator,
 server draft preparation, estimate and saved exploration slot. Canonical enquiries
 and designer returns use the canonical path. Comparison retains its own path and
 complete saved extras without overwriting the ordinary designer draft.
+Continuation product attribution is derived from the validated draft's roof family
+through `PRODUCT_DESIGNS`, including local-storage restoration in a fresh tab.
 
 Existing Riverhead and St Heliers photographs remain the visual evidence; roofline
 illustrations are labelled and do not claim exact configured geometry. No renderer
