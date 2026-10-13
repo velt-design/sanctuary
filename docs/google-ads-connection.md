@@ -20,6 +20,8 @@ reports. Application roles have no direct private-table rights. Authenticated
 confirmed developer access owns the staff read, using the existing Portal guard.
 Forward migration `20261013000003` extends the immediate source fingerprint check
 to claimed retractions; the first two installed migrations remain unchanged.
+Forward `20261013000005` scopes completed-run health to the current control
+generation without rewriting audit rows or hiding pending work and quarantine.
 The exact Google store module is registered in both service-role architecture and
 Portal boundary allowlists; no directory-wide exception is granted.
 
@@ -180,8 +182,11 @@ fractional attribution. Currency/timezone/source dates always belong to Google,
 not an assumed CRM period. No cost-per-CRM-sale, causal ROI or person-level match
 is inferred from these aggregate reports.
 
-Report collection, sale delivery and setup each retain their own last completed
-outcome, pending/expired lease and credential uncertainty. A success in one lane
+Report collection, sale delivery and setup each expose their own last completed
+outcome for the current control generation. Older completed runs remain in the
+audit history; no current-generation run means no completed result, not a successful
+verification. Pending/expired leases and credential uncertainty remain visible
+across all generations. A success in one lane
 does not erase another lane's failure. Shared credential quarantine prevents both
 capabilities. The Portal shows a compact attention notice beside the report for
 these failures, sale reviews, cancellations and provider diagnostics, with details
@@ -289,6 +294,16 @@ scoped transaction, ledger only the new version and reload PostgREST. Reconcile 
 uncertain install from the ledger and function readback before retrying. Keep all
 capabilities disabled; recovery is a reviewed forward correction, not reverting
 the source fence or replaying the first two migrations.
+
+For an installation already containing all three Google migrations, apply only
+`20261013000005_google_ads_current_generation_health.sql` for the health correction
+(`000004` belongs to Project Work). Require the exact installed staff-read function
+body and original Google ledger hashes, no version collision or unfinished run,
+and preserve the current reports-only control. Rehearse with ROLLBACK, then use the
+same bounded transaction and reviewed SQL bytes for COMMIT and the single ledger
+entry. Verify unchanged function grants, control, report, sale/diagnostic rows and
+complete run audit. This changes a read projection only; it neither records a
+successful verification nor establishes real-sale delivery or attribution.
 
 For actual PostgREST transport proof while application flags remain off, temporarily
 pin the existing approved actor and a synthetic non-secret binding only. Leave
@@ -412,7 +427,7 @@ provider matching, conversion-action configuration or production rollout.
 
 `node scripts/test-google-ads-db.mjs` repeats the source lifecycle tests on a
 disposable local PostgreSQL 17 instance using existing binaries selected by
-`PRAXIS_DISPOSABLE_POSTGRES_BIN`. It uses all three ordered migrations and synthetic
+`PRAXIS_DISPOSABLE_POSTGRES_BIN`. It uses the four ordered Google migrations and synthetic
 prerequisites, including precision-preserving timestamps and the staff DTO. The
 authority trigger uses a qualified singleton deletion compatible with the known
 safeupdate rule. The safeupdate extension, actual PostgREST authenticator session

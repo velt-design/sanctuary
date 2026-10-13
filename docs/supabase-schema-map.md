@@ -16,6 +16,9 @@ revoked from application roles. The auth-bound developer read returns aggregate
 report/coverage only. Forward `20261013000003_google_ads_retraction_source_fence.sql`
 adds the same immediate current-source fingerprint fence to claimed retractions
 as ingestion, preserving frozen receipts, attempt budgets and existing grants.
+Forward `20261013000005_google_ads_current_generation_health.sql` filters completed
+health by current control generation; audit rows, global pending work, credential
+quarantine and sale diagnostics remain unchanged.
 Source facts reuse current accepted quote families, first
 invoices, canonical payment entries/matches and original enquiry snapshots. No
 commercial record is mutated. See [google-ads-connection.md](google-ads-connection.md)
