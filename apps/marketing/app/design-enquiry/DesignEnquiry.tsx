@@ -20,6 +20,7 @@ import ContactEnquiryForm from '../contact/ContactEnquiryForm';
 import {buildContactDesignBrief} from '../contact/contactDesignBrief';
 import css from './enquiry.module.css';
 import type { EnquiryContext } from '../../lib/enquiryContext';
+import { isLandingDesign, landingSourcePath, withLandingDesignScope } from '../../components/configurator-prototype/draftScope';
 const Scene=dynamic(()=>import('../../components/configurator-prototype/PreviewScene'),{ssr:false});
 const noop=()=>{};
 export default function DesignEnquiry({initialContext={}}:{initialContext?:EnquiryContext}){
@@ -43,7 +44,7 @@ export default function DesignEnquiry({initialContext={}}:{initialContext?:Enqui
  </header>
  <div className={css.layout}>
  <section className={css.design} aria-label="Your design">
- <div className={css.designHeading}><h2>Your pergola.</h2><Link className={css.edit} href="/configurator-preview?open=1" prefetch={false}>← Edit my design</Link></div>
+ <div className={css.designHeading}><h2>Your pergola.</h2><Link className={css.edit} href={isLandingDesign(window.location.pathname, window.location.search) ? withLandingDesignScope(`/configurator-preview?open=1&source_path=${encodeURIComponent(landingSourcePath(initialContext.sourcePath))}`) : '/configurator-preview?open=1'} prefetch={false}>← Edit my design</Link></div>
  <LightingProvider input={input} roof={roof} onChange={noop}><RailProvider><PreviewBlindProvider input={input} roof={roof} onChange={noop}>
  <div className={css.visual}>
  <div className={css.views} role="group" aria-label="Design view">{(['3D','Plan'] as const).map(item=><button key={item} aria-pressed={view===item} onClick={()=>setView(item)}>{item}</button>)}</div>

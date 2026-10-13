@@ -1,0 +1,74 @@
+.section { padding: clamp(3.25rem, 6vw, 6.5rem) 0; background: var(--color-surface-elevated); scroll-margin-top: 90px; }
+.heading { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 2.5rem; }
+.heading h2 { margin-bottom: 0; }
+.heading > p { max-width: 27rem; margin: 0; color: var(--color-text-secondary); }
+.rooflines { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
+.rooflines legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.rooflines label { position: relative; cursor: pointer; border-bottom: 2px solid var(--color-rule); padding-bottom: 1rem; min-width: 0; }
+.rooflines label[data-selected=true] { border-color: var(--color-text-primary); }
+.rooflines img { width: 100%; height: auto; aspect-ratio: 1.35; object-fit: cover; object-position: 50% 12%; background: var(--color-surface-neutral); }
+.rooflines input { position: absolute; top: 1rem; left: 1rem; width: 20px; height: 20px; accent-color: var(--color-text-primary); }
+.rooflines label:focus-within { outline: var(--focus-ring); outline-offset: 4px; }
+.rooflineName { display: flex; justify-content: space-between; align-items: center; font: 500 clamp(1.4rem, 2.5vw, 2.6rem)/1.2 var(--font-display); letter-spacing: -.04em; margin-top: 1rem; }
+.rooflineName > span { font: 400 1.4rem var(--font-body); }
+.rooflineDetail { display: block; margin-top: .5rem; color: var(--color-text-secondary); font-size: .9rem; }
+.illustration { color: var(--color-text-subtle); font-size: .75rem; margin: 1rem 0 2.5rem; }
+.configure { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(2rem, 6vw, 6rem); }
+.choices { min-width: 0; }
+.dimensions, .materials { margin: 0; padding: 0; border: 0; }
+.dimensions legend, .materials legend { font: 600 .75rem/1.4 var(--font-body); letter-spacing: .06em; text-transform: uppercase; padding: 0 0 1.1rem; }
+.dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.materials { margin-top: 1rem; }
+.materials > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.materials label { display: flex; align-items: center; gap: .4rem; justify-content: center; min-height: 52px; padding: .6rem .3rem; border: 1px solid var(--color-rule-strong); cursor: pointer; font-size: .83rem; }
+.materials label[data-selected=true] { background: var(--color-text-primary); color: var(--color-surface-elevated); border-color: var(--color-text-primary); }
+.materials input { accent-color: currentColor; flex: 0 0 auto; }
+.materials p { min-height: 3.1em; margin: .7rem 0; font-size: .85rem; color: var(--color-text-secondary); }
+.assumptions, .scope, .issue, .next > p { color: var(--color-text-secondary); font-size: .82rem; line-height: 1.6; }
+.assumptions { padding-top: 1rem; border-top: 1px solid var(--color-rule); }
+.next { min-width: 0; border-left: 1px solid var(--color-rule); padding-left: clamp(1.5rem, 4vw, 4rem); }
+.estimate { min-height: 154px; }
+.estimate > span { font-size: .8rem; color: var(--color-text-secondary); }
+/* Reserve two text lines in every state, including preparation and retry. */
+.estimate strong { display: block; min-height: 2.32em; font: 500 clamp(1.8rem, 3.2vw, 3.25rem)/1.16 var(--font-display); letter-spacing: -.04em; margin-top: .3rem; }
+.estimate p { min-height: 3.2em; margin: .55rem 0 0; font-size: .8rem; line-height: 1.6; color: var(--color-text-secondary); }
+.retrySlot { min-height: 40px; }
+.retrySlot button, .textButton { background: transparent; color: inherit; border: 0; border-bottom: 1px solid currentColor; padding: .5rem 0; cursor: pointer; font-size: .8rem; min-height: 36px; }
+.actions { display: grid; gap: .5rem; }
+.primary, .secondary { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; font: 600 .9rem var(--font-body); border: 1px solid var(--color-accent-olive); text-decoration: none; cursor: pointer; }
+.primary { background: var(--color-accent-olive); color: var(--color-surface-elevated); }
+.secondary { color: var(--color-text-primary); background: transparent; border-color: var(--color-rule-strong); }
+.primary:disabled { cursor: wait; opacity: .6; }
+.issue { min-height: 3.2em; margin: .7rem 0; }
+.scope { border-top: 1px solid var(--color-rule); padding-top: 1rem; }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--color-rule); padding-top: 1.25rem; font-size: .85rem; }
+.foot a { display: inline-flex; align-items: center; gap: .7rem; min-height: 44px; }
+.resume { display: flex; justify-content: space-between; align-items: end; gap: 2rem; padding: 2rem 0; border-block: 1px solid var(--color-rule); margin-bottom: 2rem; }
+.resume h3 { margin: .6rem 0; font: 500 2rem/1.15 var(--font-display); letter-spacing: -.035em; }
+.resume p { color: var(--color-text-secondary); max-width: 35rem; font-size: .9rem; }
+.savedSummary > span { font: 500 2rem var(--font-display); }
+.savedSummary strong { display: block; font: 500 clamp(2.5rem, 5vw, 5rem)/1.3 var(--font-display); letter-spacing: -.04em; }
+.savedSummary p { max-width: 25rem; color: var(--color-text-secondary); }
+.savedSummary dl { margin: 1rem 0; font-size: .85rem; }
+.savedSummary dl > div { display: grid; grid-template-columns: 8rem 1fr; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid var(--color-rule); }
+.savedSummary dt { color: var(--color-text-secondary); }
+.savedSummary dd { margin: 0; }
+@media(max-width:720px) {
+  .heading { display: block; margin-bottom: 1.5rem; }
+  .heading > p { margin-top: 1rem; font-size: .9rem; }
+  .rooflines { gap: .5rem; }
+  .rooflines img { aspect-ratio: .8; object-position: center; }
+  .rooflines input { width: 17px; height: 17px; left: .4rem; top: .4rem; }
+  .rooflineName { font-size: 1.5rem; margin-top: .65rem; }
+  .rooflineName > span { display: none; }
+  .rooflineDetail { display: none; }
+  .illustration { margin-bottom: 1.6rem; font-size: .7rem; }
+  .configure { grid-template-columns: 1fr; gap: 1.2rem; }
+  .dimensions { gap: 1.5rem; }
+  .materials label { font-size: .77rem; min-height: 48px; }
+  .materials input { width: 12px; height: 12px; }
+  .next { border-left: 0; border-top: 1px solid var(--color-rule); padding: 1.25rem 0 0; }
+  .estimate { min-height: 136px; }
+  .estimate strong { font-size: 2.5rem; }
+  .resume { align-items: start; flex-direction: column; gap: .6rem; }
+}

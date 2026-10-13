@@ -1,15 +1,15 @@
 export const residentialProjectProof = [
   {
-    slug: 'dairy-flat-estate',
-    label: 'House-aligned acrylic gable',
-    summary: 'An aluminium and acrylic gable follows the existing house roofline.',
-    facts: ['8.6 x 3.3 m footprint', 'Acrylic roofing selected for daylight'],
+    slug: 'tindalls-bay-pavilion',
+    label: 'Light where the house needs it',
+    summary: 'A patio roof works around the house, combining solid shelter with acrylic over circulation areas.',
+    facts: ['Insulated and acrylic roof zones', 'Timber sarking and battens'],
   },
   {
-    slug: 'mt-maunganui-box',
-    label: 'First-floor opal acrylic cover',
-    summary: 'A box-perimeter cover preserves the balustrade, outlook and natural light.',
-    facts: ['Opal acrylic at a 5 degree fall', 'First-floor deck geometry'],
+    slug: 'ardmore-box-carport',
+    label: 'A clean perimeter',
+    summary: 'A box-perimeter roof brings a level edge to an Auckland home.',
+    facts: ['Box-perimeter form', 'Acrylic roofing'],
   },
   {
     slug: 'st-heliers-townhouse',
@@ -22,7 +22,7 @@ export const residentialProjectProof = [
 export const residentialProcessSteps = [
   {
     title: 'Share the site',
-    copy: 'Send the suburb, wide photos, rough dimensions and intended use.',
+    copy: 'Share your suburb and what you want the space to do. Add photos or rough dimensions if you have them.',
   },
   {
     title: 'Review the fit',
@@ -36,20 +36,20 @@ export const residentialProcessSteps = [
 
 export const investmentDrivers = [
   {
-    title: 'Size and structure',
-    text: 'Width, height, spans and posts shape the structure.',
+    title: 'Included in the estimate',
+    text: 'Your selected structure, roof and any options added in the designer, with standard installation allowances and GST. Your design details define the scope.',
   },
   {
-    title: 'Roof and connection',
-    text: 'Roofing, attachment and foundations respond to the house.',
+    title: 'Confirmed for your site',
+    text: 'Connections, foundations, drainage and access are reviewed against the measured site. Work beyond standard installation allowances may add cost.',
   },
   {
-    title: 'Drainage and site',
-    text: 'Drainage, exposure, access and existing conditions affect the work.',
+    title: 'Choose what to add',
+    text: 'Blinds, screens and lighting are optional. Selected options are included when the designer can price them. New electrical supply, furniture, planting and other landscape work are not included.',
   },
   {
-    title: 'Integrated options',
-    text: 'Screens, lighting, heating and approvals add scope.',
+    title: 'Agreed before work starts',
+    text: 'Any required engineering, consent and travel are assessed separately. The final proposal confirms scope and price before you commit.',
   },
 ] as const;
 
@@ -97,21 +97,6 @@ export const planningLinks = [
   },
 ] as const;
 
-export const siteSpecificChecks = [
-  {
-    title: 'Structure follows verified conditions',
-    text: 'Structure depends on the measured site and final design.',
-  },
-  {
-    title: 'Approval follows the final design',
-    text: 'Consent and property checks follow the final design.',
-  },
-  {
-    title: 'Products stay product-specific',
-    text: 'Use written information for the exact products selected.',
-  },
-] as const;
-
 export const faqItems = [
   {
     question: 'Which pergola form should I start with?',
@@ -140,7 +125,7 @@ export const faqItems = [
   {
     question: 'What should I send for a first assessment?',
     answer: [
-      'Send the suburb, wide photos, rough dimensions and intended use.',
+      'Start with your suburb and intended use. Wide photos and rough dimensions help if you have them, but you can enquire without them.',
     ],
   },
   {

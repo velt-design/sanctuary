@@ -1,5 +1,77 @@
 # Marketing UI Foundation
 
+## Auckland acquisition page (13 October 2026)
+
+Jordan accepted the photographic redesign and authorised refinement and release:
+"This is much better. Do a refinement pass and then push this live".
+The default canonical `/pergolas-auckland` now renders the accepted complete
+page: full-width built-project opening, integrated roofline/size/material/estimate
+workspace, material detail, Auckland proof, scope, process, direct enquiry and FAQ.
+Copy avoids repeated closing invitations. Material descriptions share a grid cell
+so the longest actual text at each width reserves space without fixed empty height.
+
+The server-only `MARKETING_PERGOLA_COMPARISON_PREVIEW=true` opt-in is for the
+protected comparison host only. It retains `LegacyPergolasPage` at the main route
+and the accepted page at `/pergolas-auckland/redesign`, with comparison links.
+Default off renders no comparison UI and redirects the old comparison route to
+the canonical page, retaining search parameters and browser fragment continuity.
+The comparison route remains noindex/nofollow with no sitemap entry.
+
+Implementation map: route wrappers own presentation choice;
+`redesign/PergolaLandingPage` owns the story; `DesignWorkspace` owns selector
+presentation; `landingSeo` shares canonical metadata and existing
+WebPage/Service/Breadcrumb schema. Guided and project-finder context remain supported.
+Both presentations use the same selection hook, closed source-path validator,
+server draft preparation, estimate and saved exploration slot. Canonical enquiries
+and designer returns use the canonical path. Comparison retains its own path and
+complete saved extras without overwriting the ordinary designer draft.
+
+Existing Riverhead and St Heliers photographs remain the visual evidence; roofline
+illustrations are labelled and do not claim exact configured geometry. No renderer
+or solver is loaded by the selector. Loading, price and retry preserve action
+positions. `marketing.pergola-redesign.spec.ts` runs the journey against the
+default route, or comparison mode with `PERGOLA_COMPARISON_TEST=true`. The
+release tests cover redirect/SEO, guided context and material-change stability.
+Private evidence distinguishes mock price/intake tests from actual environment
+verification. Prior accepted source is preserved privately. Release deployment
+and production runtime verification remain separate from local source checks.
+
+Initial baseline direction:
+Jordan approved one refreshed `/pergolas-auckland` for broad outdoor-pergola and
+Auckland-pergola arrivals. The preview leads with built Riverhead photography,
+then an optional Pitched/Gable/Box selector before local evidence, scope,
+process, FAQs and the existing direct enquiry. This first preview is retained for comparison. The later accepted redesign is
+authorised for release; no Google Ads Quality Score or lead-conversion gain is claimed.
+
+Implementation map: route-owned `LandingSelector`, `useLandingSelection` and
+`LandingEstimate` reuse `DimensionControl`, lightweight `productSelectionValues`
+and `/api/configurator-price`. `/api/pergola-selection` prepares the existing
+canonical product draft on the server through `landingDesign.server`; geometry
+and the renderer are not client imports of the landing selector. Illustrations
+show rooflines rather than the selected dimensions. Unsupported box projections
+ask for a smaller projection or direct assessment, never silently price a
+different selection. Pricing requires the existing approved published version;
+unavailable pricing does not prevent an enquiry and has an explicit retry.
+
+`draftScope` gives this exploration a separate saved slot. Scoped URLs carry
+exact choices into the existing designer and enquiry. Designer edits, refresh,
+enquiry editing, closing and returning retain the full draft; another previously
+saved designer draft remains available. The product-page/default slot is not
+overwritten. `productSelectionValues` is the extracted shared input contract,
+not a second geometry or pricing implementation.
+
+The resumed selection displays the existing customer design summary and level,
+so its estimate describes the actual saved options rather than base defaults.
+Tracking permits the closed scope/product/edit query values while rejecting
+unknown values; consent and attribution remain owned by the existing controls.
+
+Verification: marketing typecheck and production build, focused input/slot tests,
+desktop/mobile browser continuity and price recovery, broad-page responsive SEO
+checks, and direct enquiry validation/no-JavaScript fallback contract. Independent
+hosted review and owner acceptance are separate. Staging preview pricing uses its
+existing approved version, not the production version; provider delivery is
+disabled, so an intake check does not prove customer email delivery.
+
 ## Design Pillar And Public-Site Priority (28 September 2026)
 
 **Reduce the ordinary. Exaggerate the distinctive.**
