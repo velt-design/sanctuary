@@ -1,7 +1,13 @@
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
-import ProjectPageFrame from "./ProjectPageFrame";
+import Frame from "./ProjectPageFrame";
+import { useProjectTabSelection } from "./useProjectTabSelection";
+import type { ComponentProps } from "react";
+function ProjectPageFrame(props: Omit<ComponentProps<typeof Frame>, 'optimisticTab' | 'onTabSelect'>) {
+  const navigation = useProjectTabSelection(props.snapshot.project.id, props.tab, Boolean(props.snapshot.project.hasJobPacks));
+  return <Frame {...props} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab} />;
+}
 
 let mockSearchParams = "tab=activity";
 

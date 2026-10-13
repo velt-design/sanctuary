@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame';
+import ProjectPageFrame from './ProjectPageFixtureFrame';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import { coerceProjectTab } from '@/lib/projects/projectTabs';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';

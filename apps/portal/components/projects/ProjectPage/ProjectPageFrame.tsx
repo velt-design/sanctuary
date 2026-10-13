@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { coerceProjectTab, type ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
+import { useEffect, useRef } from "react";
+import type { ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
 import type {
   ProjectPageSnapshot,
   ProjectSnapshotLoadState,
@@ -19,6 +18,8 @@ export default function ProjectPageFrame({
   tab,
   calculatorWorkspace = false,
   onProjectAccessEnding,
+  optimisticTab,
+  onTabSelect,
 }: {
   snapshot: ProjectPageSnapshot;
   host: string;
@@ -27,40 +28,11 @@ export default function ProjectPageFrame({
   tab: string;
   calculatorWorkspace?: boolean;
   onProjectAccessEnding?: (status: number) => void;
+  optimisticTab: ProjectNavigationTabKey | null;
+  onTabSelect: (tab: ProjectNavigationTabKey) => void;
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const mastheadRef = useRef<HTMLDivElement | null>(null);
-  const searchParams = useSearchParams();
-  const [optimisticTab, setOptimisticTab] =
-    useState<ProjectNavigationTabKey | null>(null);
-  const canonicalTab = coerceProjectTab(
-    searchParams.get("tab") ?? tab,
-    Boolean(snapshot.project.hasJobPacks),
-  );
-  const pendingTabRef = useRef<{
-    from: typeof canonicalTab;
-    target: ProjectNavigationTabKey;
-  } | null>(null);
-
-  useEffect(() => {
-    const pending = pendingTabRef.current;
-    if (pending) {
-      if (canonicalTab === pending.target) {
-        pendingTabRef.current = null;
-      } else if (canonicalTab === pending.from) {
-        return;
-      } else {
-        pendingTabRef.current = null;
-      }
-    }
-    setOptimisticTab(null);
-  }, [canonicalTab]);
-
-  const selectTab = (nextTab: ProjectNavigationTabKey) => {
-    pendingTabRef.current = { from: canonicalTab, target: nextTab };
-    setOptimisticTab(nextTab);
-  };
-
   useEffect(() => {
     const frame = frameRef.current;
     const masthead = mastheadRef.current;
@@ -99,7 +71,7 @@ export default function ProjectPageFrame({
             ownerControlsPaused={snapshotState !== "fresh"}
             tabAvailabilityReady={snapshotContentReady}
             optimisticTab={optimisticTab}
-            onTabSelect={selectTab}
+            onTabSelect={onTabSelect}
           />
         </div>
       ) : null}

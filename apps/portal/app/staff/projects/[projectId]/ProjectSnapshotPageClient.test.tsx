@@ -9,6 +9,9 @@ const placeholderMock = vi.fn();
 const refetchMock = vi.fn();
 const removeQueriesMock = vi.fn();
 
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
+vi.mock("@/components/projects/ProjectPage/projectTabModules", () => ({ preloadProjectOverviewModule: vi.fn().mockResolvedValue(undefined) }));
+
 vi.mock("@/components/navigation/ProjectsIndexLink", () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
@@ -110,7 +113,7 @@ function mockProjectQueries({
 }) {
   useQueryMock.mockImplementation(
     (options: { queryKey?: readonly unknown[] }) =>
-      options.queryKey?.[2] === "summary" ? summary : snapshot,
+      options.queryKey?.[2] === "summary" ? summary : options.queryKey?.[2] === "snapshot" ? snapshot : pendingQuery(),
   );
 }
 

@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-10-14 - Keep tab rendering aligned with active read ownership
+
+A direct Job Packs entry preserved unknown availability in route/header state,
+but the body treated missing summary metadata as absence and mounted Overview
+with disabled readers. Keep pending distinct from absent through rendering and
+failure recovery. Test the actual tab body together with deferred route queries;
+a mocked frame can verify request counts while hiding this mismatch. Owner:
+`project-command-centre-architecture.md`.
+
+## 2026-10-13 - Start active project reads before lazy presentation
+
+Cold Overview waited for metadata, its module, Command Centre and then payment
+code/data in sequence. Own the active Command Centre and payment observers at
+the project route and let lazy presentation consume them. Prefetch followed by
+a new immediately-stale observer can repeat a completed request; moving the
+observer preserves one query/cache owner and return-to-Overview refresh. Keep
+optimistic tab intent above loading boundaries, scoped to the project, and hide
+all private facts when any authoritative read ends access, even if a parallel
+read succeeds later. Measure full snapshot, Command Centre and payment readiness
+separately from historical header/tabs and network-idle metrics. Owners:
+`project-command-centre-architecture.md` and `testing-and-qa.md`.
+
 ## 2026-10-13 - Distinguish historical setup failure from current health
 
 The Portal showed a setup warning from an older control generation beside a

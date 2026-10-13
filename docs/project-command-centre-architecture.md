@@ -450,9 +450,11 @@ The redesign should feel like one calm ruled operational sheet, not a collection
 
 Keep:
 
-- `ProjectSnapshotPageClient.tsx`: summary/full/unavailable page state.
+- `ProjectSnapshotPageClient.tsx`: summary/full/unavailable page state and active Overview read lifetime.
+- `ProjectOverviewReads.tsx`: one route-owned Command Centre observer and one payment observer in the authenticated QueryClient, shared with lazy consumers through a project/host-checked context.
+- `useProjectTabSelection.ts`: project-scoped optimistic tab intent shared by read enablement, header and body.
 - `ProjectPageFrame.tsx`, `ProjectHeader.tsx`, and tab owners: two-row shell and navigation, sticky above mobile and in normal flow on mobile.
-- `OverviewTab.tsx`: command-centre query, snapshot/command state coordination, access-ending reporting, and composition only. One failed command-centre read owns one recovery action for the unavailable Project Work and commercial regions.
+- `OverviewTab.tsx`: snapshot/command state coordination, access-ending reporting, and composition of the route-owned reads only. One failed command-centre read owns one recovery action for the unavailable Project Work and commercial regions.
 - `ProjectOrientationBand.tsx` plus `useProjectDetailsDraft`: active Overview details, stage-correction presentation, local-first save, and retry ownership.
 - `ProjectStatusDetailsCard.tsx`: compatibility wrapper around `ProjectOrientationBand` for the existing detail-mutation fixture and focused local-first tests; it is not an Overview V2 composition owner.
 - `ProjectHeader.tsx` plus `ProjectHeaderOwnerControl.tsx`: the single header Project Owner summary and management entry point.
@@ -647,7 +649,16 @@ The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the intern
 
 `ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition, page-level unavailable state, and focused-calculator page density. `ProjectPageFrame.tsx` owns the normal two-row project header, focused-workspace header suppression, and full-width body; the normal header is sticky above the mobile breakpoint and returns to normal flow on mobile. `ProjectTabNavigation.tsx` owns the shared tab registry, grouped active state, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering. `CommercialTab.tsx` owns Estimates/Quotes/Invoices composition, focused estimate-workspace subtab suppression, and quote Edit/Preview URL state without taking over specialist side effects. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
 
-The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
+The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned history remains explicitly updating until the full snapshot is ready. On active Overview entry, `ProjectSnapshotPageClient` starts the existing Command Centre and invoice-schedule queries alongside summary/snapshot reads. It also preloads the Overview module and its existing lazy children. The lazy views consume those same observers, so an early completed read does not cause a second `refetchOnMount` request. Direct Commercial/Job Packs entries do not activate these reads; unresolved Job Packs availability does not speculate an Overview request. `useProjectTabSelection` keeps optimistic navigation above the metadata boundary and discards prior-project intent.
+
+The loading change schedules the existing staff-authenticated reads earlier. Server aggregates, selected-detail failure, query keys, mutation invalidation and payment freshness remain their existing owners. Hosted verification also exposed invoice-schedule's pre-existing missing response cache policy: its route now explicitly wraps success, unauthenticated, validation and handled server-error responses with `private, no-store`, retaining the existing role-sensitive commercial reader and response values. No private server cache or second client promise store is introduced. Correspondence retains its separate in-flight-only warm-read privacy contract. Complete cold Overview readiness means a fresh full snapshot, ready Command Centre facts and resolved payment values; header/tabs alone remain a separately labelled shell metric.
+
+For a direct Job Packs entry, route intent, header selection and body all preserve
+unknown availability until the full snapshot resolves. `ProjectMainTabs` shows a
+pending availability message, or a failed-availability message using the route's
+existing Retry after a snapshot error. It mounts Job Packs when confirmed present
+and falls back to Overview only when confirmed absent. Summary metadata must not
+render Overview while the route deliberately keeps its observers disabled.
 
 The current staff-facing lazy navigation owners are:
 
@@ -763,7 +774,7 @@ No raw tokens, token hashes, internal true cost, margin, service-role data, or o
 
 ## 11. Existing loading, caching, and local-first model
 
-The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
+The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches when the active Overview observer is mounted or re-enabled, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
 
 Accepted V2 commands use `patchProjectWorkProjectionCaches` to fan the returned projection into matching command-centre, snapshot, and summary caches. Header-owner commands use `patchProjectCommandCentreCache` as the sole complete command-centre response patch owner. Both paths then use `invalidateProjectWorkReads` to refresh project, Work Queue, and Dashboard consumers. No Overview component calls `setQueryData` for those caches directly. Project Work controls are enabled only while their owning reads are fresh and the snapshot and command-centre agree; cached background-refresh, refresh-failed, rollout-incomplete, or model-mismatch facts stay visible without mutation controls.
 
@@ -776,7 +787,7 @@ Overview states are explicit:
 - Initial network/server failure: failure state with Retry, never a fake no-design state.
 - `401`/`403`/`404`: no cached commercial or project data is rendered.
 
-On access-ending command-centre responses, the child reports to `ProjectSnapshotPageClient`, which removes the current user's project, estimate, quote, invoice, and job-pack query families for the host and switches the page to unavailable. Local-first mutation ownership is unchanged.
+`ProjectSnapshotPageClient` observes access-ending summary, snapshot, Command Centre and payment responses before any lazy consumer mounts. A `401`/`403`/`404` hides the page immediately, disables its reads and removes the current user's project, estimate, quote, invoice and job-pack query families for the host. Late parallel successes cannot reopen it; cached/full data cannot overrule a denied read. Correspondence still reports access-ending responses to this same boundary. The denial is scoped to the project route, so another project can load normally. Local-first mutation ownership is unchanged.
 
 ## 12. Existing tests and performance gates
 
@@ -891,7 +902,7 @@ Every response, including errors, is `private, no-store`. Mutations require UUID
 
 Overview V2 component boundaries:
 
-- `OverviewTab.tsx`: query/state orchestration, access-ending reporting, and composition handoff only. One failed command-centre read owns one recovery action for the unavailable Project Work and commercial regions.
+- `OverviewTab.tsx`: state coordination, access-ending reporting, and composition handoff of route-owned reads only. One failed command-centre read owns one recovery action for the unavailable Project Work and commercial regions.
 - `overview/ProjectOverviewLayout.tsx`: route-owned responsive composition for orientation, Project Work, current design/commercial, and bounded recent notes/events.
 - `overview/ProjectOrientationBand.tsx`: active Overview owner for journey, customer, site, region, reference, operational state, freshness, local-first details editing/retry, and stage correction without repeating project identity, owner management, or the detailed stage already presented in the header.
 - `overview/ProjectStatusDetailsCard.tsx`: compatibility adapter that renders `ProjectOrientationBand` in compatibility mode for `ProjectDetailsMutationFixtureClient` and focused local-first tests. `OverviewTab` does not mount it.
