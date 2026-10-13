@@ -19,9 +19,12 @@ three source-read loops with a named authenticated raw-facts owner. Synthetic
 4,000-project reads fall from 131 to 19 with identical queue/index outputs and
 9.2% more source JSON for explicit completeness accounting. Existing policy,
 full composition and 5,000-row fail-closed inventory remain intact. Focused
-application and database regression checks pass; native growth validation,
-independent review, hosted migration rehearsal and candidate runtime checks are
-separate pending release evidence. No second-batch production release is claimed.
+application and database regression checks pass. Native PostgreSQL qualification
+and independent SQL review passed; the exact additive migration is installed and
+qualified in existing staging with unchanged source rows and authenticated,
+anonymous, service-only and missing-project HTTP checks. Whole-batch review and
+candidate runtime comparison remain separate release evidence. Production has
+not received this migration, and a second-batch production release is not approved.
 
 Portal action connection release candidate (22 September 2026): the scoped
 admin grant UI, delegated canonical close/reopen adapter and protected Windows

@@ -520,6 +520,17 @@ of the explicit completeness envelope. These are fixture request/byte results,
 not database or production timings. Native SQL and authenticated HTTP evidence
 remain distinct release checks.
 
+The exact migration passed native PostgreSQL 17 qualification against the selected
+source schema and is installed in existing staging only. Normal 4,000-project
+commercial histories completed in eight facts calls; a denser fixture completed
+in 56 calls, including 24 rejected oversized parent batches. Both matched an
+independent complete raw-facts oracle. Individual relations at 999/1,000/1,001
+rows, restrictive RLS, singleton/count overflow and statement cancellation passed.
+Inactive metadata is not charged as returned active data. Hosted staff HTTP
+returned every requested identity; anonymous/service-only calls were denied and
+missing IDs failed generically. Production installation and release require their
+own approval. Local query plans and process-backed timings are not hosted latency.
+
 `confirmationFacts.ts` indexes current confirmation project IDs once per loaded
 portfolio before `teamQueue.ts` maps specialist candidates. Retractions, type
 matching and duplicate facts use the same shared active-fact policy as individual
