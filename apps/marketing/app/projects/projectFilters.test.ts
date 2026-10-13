@@ -26,13 +26,13 @@ describe('project filters', () => {
 
   it('covers every audience and roof-form combination, including empty states', () => {
     const combinations = [
-      ['all', 'all', 14],
-      ['all', 'box-perimeter', 3],
+      ['all', 'all', 15],
+      ['all', 'box-perimeter', 4],
       ['all', 'gable', 6],
       ['all', 'hip', 1],
       ['all', 'pitched', 4],
-      ['residential', 'all', 9],
-      ['residential', 'box-perimeter', 3],
+      ['residential', 'all', 10],
+      ['residential', 'box-perimeter', 4],
       ['residential', 'gable', 4],
       ['residential', 'hip', 1],
       ['residential', 'pitched', 1],

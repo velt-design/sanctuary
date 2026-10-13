@@ -338,7 +338,7 @@ test('project filters persist through refresh, filter history, project Back, and
   await page.waitForURL(/audience=residential&form=gable/);
   await expect(visibleProjectCards(page)).toHaveCount(4);
   await expect(main.locator('.project-navigator__result-count'))
-    .toHaveText('4 of 14 projects');
+    .toHaveText('4 of 15 projects');
 
   await page.reload();
   await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
@@ -376,7 +376,7 @@ test('empty project filters keep a clear all-project recovery', async ({ page })
   const main = visibleProjectsMain(page);
   await expect(visibleProjectCards(page)).toHaveCount(0);
   await expect(main.locator('.project-navigator__result-count'))
-    .toHaveText('0 of 14 projects');
+    .toHaveText('0 of 15 projects');
   await expect(main.locator('.project-navigator__empty'))
     .toContainText('No projects match both filters.');
   const viewAll = main.getByRole('button', { name: 'View all projects' });
@@ -810,7 +810,7 @@ test('desktop view scale snaps, caps density, and restores local preference', as
   await expect(slider).toHaveValue('1');
   await expect(slider).toHaveAttribute('aria-valuetext', 'Editorial, 3 columns');
   await expect(main.locator('[data-project-index-bar]')).toBeVisible();
-  await expect(main.locator('.project-navigator__result-count')).toHaveText('14 projects');
+  await expect(main.locator('.project-navigator__result-count')).toHaveText('15 projects');
   await expect(main.locator('.project-card-size__heading output')).toHaveText('Editorial / 03');
   await expect(main.locator('.project-card-size__stop')).toHaveText(['02', '03', '04', '05']);
   expect((await main.locator('.project-card-size__control').boundingBox())?.height ?? 0)
