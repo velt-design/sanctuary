@@ -43,6 +43,7 @@ beforeAll(async()=>{
   await db.exec(readFileSync('supabase/migrations/20260813000003_commercial_truth_invariants.sql','utf8').split('create or replace function public.commercial_project_financial_truth')[0]);
   await db.exec(readFileSync('supabase/migrations/20261013000001_google_ads_source.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20261013000002_google_ads_commands.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261013000003_google_ads_retraction_source_fence.sql','utf8'));
 },30000);
 beforeEach(async()=>{
   await db.exec(`begin;insert into projects values('${id(1)}');insert into quotes values('${id(2)}','${id(1)}');
@@ -236,6 +237,56 @@ it('does not dispatch a pending cancellation after the sale becomes active again
   await db.exec(`insert into project_operational_states values('${id(1)}','CLOSED','CANCELLED')`);await freeze(runId);
   await db.exec(`delete from project_operational_states where project_id='${id(1)}'`);await freeze(runId);
   expect(await sale()).toMatchObject({state:'REVIEW_REQUIRED',reason:'SALE_RESTORED_BEFORE_RETRACTION'});expect(await command('claim',{},runId)).toBeNull();
+});
+it.each(['unchanged cancellation','restored cancellation','reversed opt-out','missing source','changed value'])(
+'fences a claimed retraction against %s immediately before the provider effect',async(change)=>{
+  await enable();await db.exec('update private.google_ads_control set retractions_enabled=true');
+  const {runId}=await begin();await freeze(runId);await command('claim',{},runId);
+  await command('complete',{quoteId:id(2),state:'SUBMITTED',requestId:'accepted-request'},runId);
+  await db.exec('update private.google_ads_sales set next_attempt_at=now()');await command('claim',{},runId);
+  await command('complete',{quoteId:id(2),state:'ACCEPTED'},runId);await command('finish',{},runId);
+  const original=await sale();
+  if(change==='reversed opt-out')await db.exec(`insert into private.google_ads_suppressions values('${id(1)}',now(),'CUSTOMER_OPT_OUT','test operator')`);
+  else await db.exec(`insert into project_operational_states values('${id(1)}','CLOSED','CANCELLED')`);
+  await db.exec('update private.google_ads_sales set next_attempt_at=now()');
+  const effects:unknown[]=[],denials:string[]=[];let claims=0;
+  const runtime:Parameters<typeof runGoogleConnection>[0]={lane:'sales',config:{actorId:id(90),binding,clientId:'fake-client',clientSecret:'fake-secret',vaultId:'a'.repeat(26),itemId:'b'.repeat(26),vaultToken:'fake-vault'},
+    vault:{authenticate:async()=>{},read:async()=>({refreshToken:'fake-refresh',version:1}),write:async()=>({version:2})},
+    store:async(action,input,run)=>{
+      // Each production RPC has its own transaction. Recover the intentional SQL
+      // denial inside this rollback-only fixture so the worker can persist review.
+      await db.exec('savepoint rpc');
+      try {
+        const result=action==='credential_settled'?await db.query('select google_ads_credential_settled($1,$2,$3)',[id(90),binding,run]):await command(action,input,run);
+        if(action==='claim'&&result?.state==='RETRACTING'){
+          claims++;
+          if(change==='restored cancellation')await db.exec(`delete from project_operational_states where project_id='${id(1)}'`);
+          if(change==='reversed opt-out')await db.exec(`delete from private.google_ads_suppressions where project_id='${id(1)}'`);
+          if(change==='changed value')await db.exec('update quote_versions set total_inc_gst_cents=1800000');
+          if(change==='missing source')await db.exec(`insert into projects values('10c5db1a-602c-4f0c-8193-855b186215bb');update quotes set project_id='10c5db1a-602c-4f0c-8193-855b186215bb' where id='${id(2)}'`);
+        }
+        await db.exec('release savepoint rpc');return result;
+      }catch(error){await db.exec('rollback to savepoint rpc');await db.exec('release savepoint rpc');
+        if(action==='check'&&input?.quoteId){denials.push((error as {code:string}).code);expect((error as Error).message).toContain('Sale changed before dispatch');}
+        throw error;
+      }
+    },signal:new AbortController().signal,fetcher:async(url,init)=>{
+      if(String(url).includes('oauth2'))return Response.json({access_token:'fake-access',token_type:'Bearer',scope:`${ADS_SCOPE} ${DATA_SCOPE}`,expires_in:3600});
+      const body=JSON.parse(String(init!.body));
+      if(String(url).includes('uploadConversionAdjustments')){effects.push(body);return Response.json({results:[{orderId:original.payload.transactionId,conversionAction:'customers/6328516633/conversionActions/123',adjustmentType:'RETRACTION'}]});}
+      if(body.query?.includes('FROM customer'))return Response.json({results:[{customer:{id:'6328516633',conversionTrackingSetting:{googleAdsConversionCustomer:'customers/6328516633'}}}]});
+      if(body.query?.includes('FROM conversion_action'))return Response.json({results:[{conversionAction:{id:'123',type:'UPLOAD_CLICKS',status:'ENABLED',category:'PURCHASE',primaryForGoal:false,countingType:'MANY_PER_CLICK',valueSettings:{alwaysUseDefaultValue:false},clickThroughLookbackWindowDays:'90'}}]});
+      throw Error('Unexpected provider request');
+    }};
+  expect((await runGoogleConnection(runtime)).completed).toBe(true);
+  expect(claims).toBe(1);expect(denials).toEqual(change==='unchanged cancellation'?[]:['40001']);
+  expect(effects).toHaveLength(change==='unchanged cancellation'?1:0);
+  expect(await sale()).toMatchObject({state:change==='unchanged cancellation'?'RETRACTED':'REVIEW_REQUIRED',
+    payload:original.payload,destination:original.destination,attempts:1,retraction_attempts:1,request_id:'accepted-request'});
+  if(change!=='unchanged cancellation')expect((await sale()).reason).toBe('DELIVERY_UNCONFIRMED');
+  // Later reconciliation cannot silently reset the irreversible adjustment budget.
+  await runGoogleConnection(runtime);expect(claims).toBe(1);expect((await sale()).retraction_attempts).toBe(1);
+  expect(effects).toHaveLength(change==='unchanged cancellation'?1:0);
 });
 it.each([['report','sales'],['sales','report']])('retains %s failure after a successful %s run until the failed lane recovers',async(failed,healthy)=>{
   await enable();const first=await command('begin',{lane:failed});await command('finish',{error:'GOOGLE_CONNECTION_REQUIRES_REVIEW'},first.runId);

@@ -18,6 +18,8 @@ the existing GA4 credential. The forward `20261013000001` and `000002` migration
 own source facts, control, lease fencing, delivery receipts, suppression and saved
 reports. Application roles have no direct private-table rights. Authenticated
 confirmed developer access owns the staff read, using the existing Portal guard.
+Forward migration `20261013000003` extends the immediate source fingerprint check
+to claimed retractions; the first two installed migrations remain unchanged.
 The exact Google store module is registered in both service-role architecture and
 Portal boundary allowlists; no directory-wide exception is granted.
 
@@ -120,6 +122,11 @@ event permits an automatic value-only restatement with the same identity/date.
 Eight ingestion attempts exhaust the automatic delivery budget. Cancellation has
 its own single automatic attempt, independent of the ingestion count; an uncertain
 retraction goes to operator review rather than being retried blindly.
+A claimed retraction rechecks the current source fingerprint immediately before
+the provider call. Restored cancellation, reversed opt-out, changed facts or missing
+source denies dispatch. The worker retains the original event, destination and
+attempt count in `REVIEW_REQUIRED` (`DELIVERY_UNCONFIRMED`); it does not silently
+reset the retraction budget. This fence cannot recall a request already in flight.
 
 Recovery states retain the original evidence. Operators follow these steps:
 
@@ -128,6 +135,7 @@ Recovery states retain the original evidence. Operators follow these steps:
 | Identity/date changed or value changed while unconfirmed | Compare the frozen event, source change, original destination and returned request ID if available. Resolve the original outcome before approving a corrected event. Do not overwrite the retained evidence. |
 | Delivery attempts exhausted | Inspect the recorded requests and provider status. Any approved retry uses the same transaction and frozen facts; never create another ID to escape the retry ceiling. |
 | Sale restored before retraction | Verify that no adjustment was dispatched, reconcile the original conversion, then explicitly restore the appropriate accepted or pending state. |
+| Retraction source check denied after claim | Compare current source/suppression facts with the frozen fingerprint and original conversion. Confirm the pre-dispatch denial in the private run evidence before restoring an accepted state. `DELIVERY_UNCONFIRMED` alone is not proof of no provider effect; never reset the attempt count without reconciliation. |
 | Retraction outcome uncertain | Inspect the original order ID, adjustment time and Google adjustment outcome. Confirm cancellation or use the supported manual correction flow; do not simply reset its attempt counter. |
 | Restored sale after confirmed retraction | Review a genuinely new sale cycle. Google cannot restore the retracted order ID. |
 | Credential quarantine | Reconcile the specific OAuth operation and dedicated vault version before settling the checkpoint. A successful run from the other capability cannot remove the quarantine. |
@@ -252,6 +260,19 @@ PostgREST to reload its schema after successful installation. There must still b
 no actor/binding, enabled capability, conversion action, contact-match approval,
 consent basis/cutoff, canary family, report or delivery row in the install seed.
 
+The first two versions were installed disabled on 13 October 2026. For that
+installation, apply **only** `20261013000003_google_ads_retraction_source_fence.sql`
+as a separately reviewed forward correction. Check the first two ledger statement
+hashes against the unchanged reviewed files and require version `000003` absent.
+Rehearse the correction in a bounded ROLLBACK transaction against the installed
+function. It requires exactly one old sending-state clause, preserves the full
+function otherwise, and fails on an unexpected baseline. Verify the new source
+check, unchanged grants and dark controls; only then apply the same bytes in a
+scoped transaction, ledger only the new version and reload PostgREST. Reconcile an
+uncertain install from the ledger and function readback before retrying. Keep all
+capabilities disabled; recovery is a reviewed forward correction, not reverting
+the source fence or replaying the first two migrations.
+
 For actual PostgREST transport proof while application flags remain off, temporarily
 pin the existing approved actor and a synthetic non-secret binding only. Leave
 conversion metadata null. Service-role RPC must reject `begin` for report/sales.
@@ -374,7 +395,7 @@ provider matching, conversion-action configuration or production rollout.
 
 `node scripts/test-google-ads-db.mjs` repeats the source lifecycle tests on a
 disposable local PostgreSQL 17 instance using existing binaries selected by
-`PRAXIS_DISPOSABLE_POSTGRES_BIN`. It uses the actual two migrations and synthetic
+`PRAXIS_DISPOSABLE_POSTGRES_BIN`. It uses all three ordered migrations and synthetic
 prerequisites, including precision-preserving timestamps and the staff DTO. The
 authority trigger uses a qualified singleton deletion compatible with the known
 safeupdate rule. The safeupdate extension, actual PostgREST authenticator session
