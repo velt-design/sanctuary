@@ -29,10 +29,11 @@ create table private.google_ads_sales (
   quote_id uuid primary key references public.quotes(id), project_id uuid not null references public.projects(id),
   generation bigint not null, source_fingerprint text not null,
   payload jsonb, destination jsonb not null, state text not null check(state in('SKIPPED','READY','SENDING','SUBMITTED','ACCEPTED','RETRY','FAILED','REVIEW_REQUIRED','RETRACTION_READY','RETRACTING','RETRACTED')),
-  reason text, request_id text, attempts integer not null default 0,
+  reason text, request_id text, attempts integer not null default 0, retraction_attempts integer not null default 0,
   lease_id uuid references private.google_ads_runs(id), next_attempt_at timestamptz not null default now(),
   first_submitted_at timestamptz, submitted_at timestamptz, checked_at timestamptz, updated_at timestamptz not null default now(),
-  adjustment_at timestamptz, warnings jsonb not null default '[]',
+  adjustment_at timestamptz, diagnostics jsonb,
+  check(diagnostics is null or octet_length(diagnostics::text)<=16000),
   check(payload is null or octet_length(payload::text)<=10000)
 );
 create table private.google_ads_suppressions (
@@ -56,7 +57,7 @@ begin
       update private.google_ads_sales set generation=new.generation,updated_at=now() where generation=old.generation;
       update private.google_ads_report set generation=new.generation where generation=old.generation;
     else
-      delete from private.google_ads_report;
+      delete from private.google_ads_report where singleton=true;
       update private.google_ads_sales set state='REVIEW_REQUIRED',reason='AUTHORITY_CHANGED',updated_at=now()
         where state not in('SKIPPED','RETRACTED');
     end if;

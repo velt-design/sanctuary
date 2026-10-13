@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { id } from './contract';
 import { googleJson, GoogleFailure } from './transport';
 import type { SaleEvent } from './sales';
+import { requestStatus, sanitizeCounts, recoveryFor } from './diagnostics';
 
 export type Destination = { customerId: string; managerId?: string; actionId: string };
 export function destination(config: Destination) {
@@ -22,11 +23,13 @@ export async function ingestSale(input: ProviderInput, event: SaleEvent, validat
 export async function saleRequestStatus(input: ProviderInput, requestId: string) {
   if (!requestId || requestId.length > 2000) throw new GoogleFailure('REQUEST_ID_INVALID');
   await input.before(); input.signal.throwIfAborted();
+  const count = z.string().regex(/^[01]$/); // Every request sent by this worker contains exactly one event.
+  const counts = z.array(z.object({ reason:z.string().optional(),recordCount:count })).max(64);
   const response = z.object({ requestStatusPerDestination: z.array(z.object({ destination: z.unknown(),
-    requestStatus: z.enum(['REQUEST_STATUS_UNKNOWN', 'SUCCESS', 'PROCESSING', 'FAILED', 'PARTIAL_SUCCESS']),
-    eventsIngestionStatus: z.object({ recordCount: z.string().regex(/^\d+$/) }).optional(),
-    errorInfo: z.object({ errorCounts: z.array(z.object({ reason: z.string(), recordCount: z.string().regex(/^\d+$/) })) }).optional(),
-    warningInfo: z.object({ warningCounts: z.array(z.object({ reason: z.string(), recordCount: z.string().regex(/^\d+$/) })) }).optional(),
+    requestStatus,
+    eventsIngestionStatus: z.object({ recordCount: count }).optional(),
+    errorInfo: z.object({ errorCounts: counts.default([]) }).optional(),
+    warningInfo: z.object({ warningCounts: counts.default([]) }).optional(),
   })).length(1) }).parse(await googleJson(input.fetcher ?? fetch,
     `https://datamanager.googleapis.com/v1/requestStatus:retrieve?requestId=${encodeURIComponent(requestId)}`,
     { headers: { Authorization: `Bearer ${input.token}` }, signal: input.signal }, 65536));
@@ -39,7 +42,10 @@ export async function saleRequestStatus(input: ProviderInput, requestId: string)
   }
   if (status.requestStatus === 'SUCCESS' && (status.eventsIngestionStatus?.recordCount !== '1' || status.errorInfo?.errorCounts.some(e => e.recordCount !== '0')))
     throw new GoogleFailure('INGESTION_COUNTS_UNCONFIRMED');
-  return { status: status.requestStatus, warnings: status.warningInfo?.warningCounts.map(w => w.reason).filter(w => /^[A-Z0-9_]{1,100}$/.test(w)) ?? [] };
+  if (status.requestStatus==='PROCESSING'&&(status.errorInfo||status.warningInfo)) throw new GoogleFailure('INGESTION_STATUS_INCONSISTENT');
+  const errors=sanitizeCounts(status.errorInfo?.errorCounts??[],'errors'),warnings=sanitizeCounts(status.warningInfo?.warningCounts??[],'warnings');
+  return { status: status.requestStatus, recordCount: status.eventsIngestionStatus?Number(status.eventsIngestionStatus.recordCount):null,
+    errors,warnings,recovery:recoveryFor(status.requestStatus,errors,warnings) };
 }
 export async function retractSale(input: ProviderInput, event: SaleEvent, adjustedAt: Date, validateOnly: boolean) {
   if (event.adIdentifiers?.wbraid) throw new GoogleFailure('WBRAID_RETRACTION_REQUIRES_REVIEW');

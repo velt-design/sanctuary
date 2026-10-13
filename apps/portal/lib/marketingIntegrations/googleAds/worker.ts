@@ -9,6 +9,7 @@ import { GoogleFailure } from './transport';
 import type { GoogleCommand } from './store';
 import type { Ga4Vault } from '../ga4/lifecycle';
 import { checkSaleDestination } from './preflight';
+import { diagnosticsSchema } from './diagnostics';
 
 const runSchema = z.object({ runId: z.uuid(), customerId: id, conversionCustomerId: id.nullable(), managerId: id.nullable(), actionId: id.nullable(),
   enhancedMatchingApproved: z.boolean(), consentPolicyApproved: z.boolean(), allowedConsentBases: z.array(z.string()),
@@ -50,10 +51,12 @@ export async function runGoogleConnection(input: { lane: 'report' | 'sales'; con
             if (!claim.requestId) throw new GoogleFailure('REQUEST_ID_MISSING');
             const status = await saleRequestStatus(saleProvider, claim.requestId);
             const expired = !claim.submittedAt || (input.now ?? new Date()).getTime() - Date.parse(claim.submittedAt) > 24 * 3600000;
-            outcome = status.status === 'SUCCESS' ? { state: 'ACCEPTED', warnings: status.warnings }
-              : ['FAILED','PARTIAL_SUCCESS'].includes(status.status) ? { state: 'FAILED', reason: 'GOOGLE_INGESTION_REJECTED' }
+            outcome = status.recovery === 'ACCEPTED' ? { state: 'ACCEPTED' }
+              : status.recovery==='RETRY' ? { state:claim.attempts<8?'RETRY':'REVIEW_REQUIRED',reason:claim.attempts<8?'GOOGLE_TRANSIENT_REJECTION':'DELIVERY_RETRY_EXHAUSTED',delaySeconds:10800 }
+              : status.recovery==='REVIEW' ? { state:'REVIEW_REQUIRED',reason:'GOOGLE_DIAGNOSTICS_REQUIRE_REVIEW' }
                 : expired ? { state: 'REVIEW_REQUIRED', reason: 'GOOGLE_DIAGNOSTIC_TIMEOUT' }
                   : { state: 'SUBMITTED', delaySeconds: 3600, reason: 'GOOGLE_PROCESSING' };
+            outcome.diagnostics={...diagnosticsSchema.parse(status),requestId:claim.requestId,destination:provider.config};
           } else if (claim.state === 'RETRACTING') {
             if (!run.retractionsEnabled || !claim.adjustmentAt) throw new GoogleFailure('RETRACTION_REQUIRES_OPERATOR');
             await retractSale(saleProvider, event, new Date(claim.adjustmentAt), false);
@@ -69,7 +72,8 @@ export async function runGoogleConnection(input: { lane: 'report' | 'sales'; con
             outcome = expired ? { state: 'REVIEW_REQUIRED', reason: 'GOOGLE_DIAGNOSTIC_TIMEOUT' } : { state: 'SUBMITTED', reason, delaySeconds: 3600 };
           }
           else if (claim.state === 'RETRACTING') outcome = { state: 'REVIEW_REQUIRED', reason };
-          else outcome = { state: error instanceof GoogleFailure && error.retryable && claim.attempts < 8 ? 'RETRY' : 'FAILED', reason, delaySeconds: Math.min(21600, 60 * 2 ** claim.attempts) };
+          else outcome = { state: error instanceof GoogleFailure && error.retryable ? (claim.attempts < 8 ? 'RETRY' : 'REVIEW_REQUIRED') : 'FAILED',
+            reason:error instanceof GoogleFailure&&error.retryable&&claim.attempts>=8?'DELIVERY_RETRY_EXHAUSTED':reason,delaySeconds:Math.min(21600,60*2**claim.attempts) };
         }
         await command('complete', { quoteId: claim.quoteId, ...outcome });
       }

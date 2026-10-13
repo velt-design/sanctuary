@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { providerCode } from './diagnostics';
 
 export const id = z.string().regex(/^[1-9]\d{0,19}$/);
 export const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -12,10 +13,14 @@ export const reportSchema = z.object({
   conversions: z.array(z.object({ day, dateBasis: z.enum(['interaction','conversion']), campaignId: id, adGroupId: id.optional(), criterionId: id.optional(), actionId: id, count: number, value: number }).strict()),
 }).strict();
 export type AdsReport = z.infer<typeof reportSchema>;
-export const statusSchema = z.object({ enabled: z.boolean(), uploadsEnabled: z.boolean(), collectedAt: z.iso.datetime().nullable(),
-  lastError: z.string().nullable(), counts: z.record(z.string(), z.number().int().nonnegative()),
+const laneHealth = z.object({lastCompletedAt:z.iso.datetime({offset:true}).nullable(),error:z.string().nullable(),
+  pending:z.enum(['NONE','RUNNING','EXPIRED']),credentialUncertain:z.boolean()}).strict();
+export const statusSchema = z.object({ enabled: z.boolean(), uploadsEnabled: z.boolean(), collectedAt: z.iso.datetime({offset:true}).nullable(),
+  health:z.object({report:laneHealth,sales:laneHealth,verify:laneHealth}).strict(),
+  diagnostics:z.array(z.object({severity:z.enum(['errors','warnings']),code:providerCode,count:z.number().int().nonnegative()}).strict()),
+  counts: z.record(z.string(), z.number().int().nonnegative()),
   reasons: z.record(z.string(), z.number().int().nonnegative()), saleActionId: id.nullable(), enquiryActionIds: z.array(id),
-  report: reportSchema.nullable(), checkedAt: z.iso.datetime(), expiresAt: z.iso.datetime().nullable(),
+  report: reportSchema.nullable(), checkedAt: z.iso.datetime({offset:true}), expiresAt: z.iso.datetime({offset:true}).nullable(),
 }).strict();
 export type AdsStatus = z.infer<typeof statusSchema>;
 export async function loadAdsStatus(signal: AbortSignal): Promise<AdsStatus> {

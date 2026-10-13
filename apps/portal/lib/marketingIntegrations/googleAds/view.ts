@@ -1,4 +1,4 @@
-import type { AdsReport } from './contract';
+import type { AdsReport, AdsStatus } from './contract';
 export type AdvertisingRow = { key: string; label: string; campaignId: string; cost: number; clicks: number; enquiries: number | null; sales: number | null; value: number | null };
 /** Costs and action-specific outcomes are independently grouped at the same grain. */
 export function advertisingRows(report: AdsReport, input: { grain: 'campaign' | 'keyword'; dateBasis: 'interaction' | 'conversion'; start: string; end: string;
@@ -31,4 +31,21 @@ export const reasonLabels: Record<string,string> = {
   RESTORED_SALE_REQUIRES_NEW_CYCLE:'Restored sale needs a new reviewed sale cycle',SALE_IDENTITY_OR_DATE_CHANGED:'Sale identity or date changed',
   RETRACTION_REQUIRES_OPERATOR:'Cancellation needs operator action',GOOGLE_INGESTION_REJECTED:'Google rejected the event',GOOGLE_DIAGNOSTIC_TIMEOUT:'Google status remains uncertain',
   GOOGLE_PROCESSING:'Waiting for Google processing',DISPATCH_OUTCOME_UNCERTAIN:'Delivery outcome uncertain; same sale will be checked or retried',
+  SALE_VALUE_CHANGED_WHILE_UNCONFIRMED:'Sale value changed while delivery remains unconfirmed',DELIVERY_RETRY_EXHAUSTED:'Delivery attempts exhausted; original request needs reconciliation',
+  RETRACTION_OUTCOME_UNCERTAIN:'Cancellation outcome uncertain; check the original adjustment',GOOGLE_TRANSIENT_REJECTION:'Google temporarily rejected the event; bounded retry scheduled',
+  GOOGLE_DIAGNOSTICS_REQUIRE_REVIEW:'Google returned diagnostic reasons requiring review',
+  SALE_RESTORED_BEFORE_RETRACTION:'Sale restored before cancellation; original request needs review',
 };
+export function advertisingAttention(status:AdsStatus):string[] {
+  const messages:string[]=[];
+  if(Object.values(status.health).some(lane=>lane.credentialUncertain))messages.push('Google access needs reconciliation before either connection can run.');
+  for(const [lane,label] of [['report','Google report refresh'],['sales','Sale delivery'],['verify','Google connection setup']] as const) {
+    const health=status.health[lane];
+    if(health.error||health.pending==='EXPIRED')messages.push(`${label} needs review${health.pending==='RUNNING'?'; a recovery run is in progress':''}.`);
+  }
+  const review=(status.counts.REVIEW_REQUIRED??0)+(status.counts.FAILED??0),cancellations=(status.counts.RETRACTION_READY??0)+(status.counts.RETRACTING??0);
+  if(review)messages.push(`${review} sale ${review===1?'record needs':'records need'} review.`);
+  if(cancellations)messages.push(`${cancellations} ${cancellations===1?'cancellation is':'cancellations are'} awaiting confirmation.`);
+  if(status.diagnostics.some(row=>row.count>0))messages.push('Google has saved processing errors or warnings. Check the recovery details below.');
+  return messages;
+}

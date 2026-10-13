@@ -30,7 +30,7 @@ export type SaleEvent = { transactionId: string; eventTimestamp: string; eventSo
   userData?: { userIdentifiers: Array<{ emailAddress: string } | { phoneNumber: string }> };
 };
 const hashed = z.string().regex(/^[a-f0-9]{64}$/), click = z.string().regex(/^[A-Za-z0-9_-]{1,600}$/);
-export const saleEventSchema = z.object({ transactionId: z.string().regex(/^sanctuary-scope-[0-9a-f-]{36}$/), eventTimestamp: z.iso.datetime(),
+export const saleEventSchema = z.object({ transactionId: z.string().regex(/^sanctuary-scope-[0-9a-f-]{36}$/), eventTimestamp: z.iso.datetime({offset:true}),
   eventSource: z.literal('OTHER'), conversionValue: z.number().finite().positive(), currency: z.literal('NZD'),
   consent: z.object({ adUserData: z.literal('CONSENT_GRANTED'), adPersonalization: z.literal('CONSENT_DENIED') }).strict(),
   adIdentifiers: z.object({ gclid: click.optional(), gbraid: click.optional(), wbraid: click.optional() }).strict().refine(v=>Object.keys(v).length>0).optional(),
@@ -58,7 +58,8 @@ export function prepareSale(source: SaleSource, policy: SalePolicy, now = new Da
   // An older enquiry cannot establish eligible recent interaction. A recent enquiry
   // still does not prove a click date or Google's eventual matching.
   if (!Object.keys(adIdentifiers).length && now.getTime() - received > 63 * 86400000) return { reason: 'ENHANCED_MATCHING_WINDOW_EXCEEDED' };
-  return { event: { transactionId: `sanctuary-scope-${source.quoteId}`, eventTimestamp: new Date(occurred).toISOString(), eventSource: 'OTHER',
+  // Preserve PostgreSQL sub-millisecond precision through the exact source freeze check.
+  return { event: { transactionId: `sanctuary-scope-${source.quoteId}`, eventTimestamp: source.occurredAt!, eventSource: 'OTHER',
     conversionValue: source.valueCents / 100, currency: 'NZD', consent: {
       adUserData: 'CONSENT_GRANTED', adPersonalization: 'CONSENT_DENIED' },
     ...(Object.keys(adIdentifiers).length ? { adIdentifiers } : {}), ...(userIdentifiers.length ? { userData: { userIdentifiers } } : {}) } };

@@ -15,4 +15,6 @@
 .coverage dd { font-size:20px;font-weight:600;margin:4px 0 0; }
 .reasons div { display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px solid var(--ui-border); }
 .reasons dd { margin:0;font-variant-numeric:tabular-nums; }
+.reasons dt { min-width:0;overflow-wrap:anywhere; }
+.reasons small { display:block;color:var(--ui-text-muted);font-size:10px; }
 @media(max-width:480px) { .toolbar { display:grid;grid-template-columns:repeat(2,minmax(0,1fr)); }.toolbar input,.toolbar select { width:100%;min-width:0; } }

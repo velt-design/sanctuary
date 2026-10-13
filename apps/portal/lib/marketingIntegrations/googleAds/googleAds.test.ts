@@ -63,8 +63,31 @@ it('retains transaction identity and distinguishes validation, ingestion and eve
   expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).toMatchObject({validateOnly:true,encoding:'HEX',destinations:[destination(provider.config)]});
   expect(await ingestSale({...provider,fetcher},event(),false)).toEqual({validated:false,requestId:'request-1'});
   const diagnostics=vi.fn(async()=>json({requestStatusPerDestination:[{destination:destination(provider.config),requestStatus:'SUCCESS',eventsIngestionStatus:{recordCount:'1'}}]}));
-  expect(await saleRequestStatus({...provider,fetcher:diagnostics},'request-1')).toEqual({status:'SUCCESS',warnings:[]});
-  await expect(saleRequestStatus({...provider,fetcher:async()=>json({requestStatusPerDestination:[{destination:destination(provider.config),requestStatus:'SUCCESS',eventsIngestionStatus:{recordCount:'2'}}]})},'request-1')).rejects.toThrow('COUNTS_UNCONFIRMED');
+  expect(await saleRequestStatus({...provider,fetcher:diagnostics},'request-1')).toEqual({status:'SUCCESS',recordCount:1,errors:[],warnings:[],recovery:'ACCEPTED'});
+  await expect(saleRequestStatus({...provider,fetcher:async()=>json({requestStatusPerDestination:[{destination:destination(provider.config),requestStatus:'SUCCESS',eventsIngestionStatus:{recordCount:'2'}}]})},'request-1')).rejects.toThrow();
+});
+const diagnostic=(body:Record<string,unknown>)=>saleRequestStatus({...provider,fetcher:async()=>json({requestStatusPerDestination:[{destination:destination(provider.config),eventsIngestionStatus:{recordCount:'1'},...body}]})},'request-private');
+it('retains only known diagnostic reason codes/counts and safely classifies recovery',async()=>{
+  expect(await diagnostic({requestStatus:'FAILED',errorInfo:{errorCounts:[{reason:'PROCESSING_ERROR_REASON_INTERNAL_ERROR',recordCount:'1'}]}}))
+    .toMatchObject({recovery:'RETRY',errors:[{code:'PROCESSING_ERROR_REASON_INTERNAL_ERROR',count:1}]});
+  const failed=await diagnostic({requestStatus:'FAILED',errorInfo:{errorCounts:[{reason:'PROCESSING_ERROR_REASON_DENIED_CONSENT',recordCount:'1'}]}});
+  expect(failed.recovery).toBe('REVIEW');expect(failed.errors[0].code).toBe('PROCESSING_ERROR_REASON_DENIED_CONSENT');
+  const unknown=await diagnostic({requestStatus:'FAILED',errorInfo:{errorCounts:[{reason:'customer@example.test '.repeat(100),recordCount:'1'}]}});
+  expect(unknown).toMatchObject({recovery:'REVIEW',errors:[{code:'UNKNOWN_PROVIDER_REASON',count:1}]});expect(JSON.stringify(unknown)).not.toContain('example.test');
+  expect((await diagnostic({requestStatus:'FAILED',errorInfo:{}})).recovery).toBe('REVIEW');
+});
+it('retains accepted warning counts without resending or mistaking unknown diagnostics for acceptance',async()=>{
+  expect(await diagnostic({requestStatus:'SUCCESS',warningInfo:{warningCounts:[{reason:'PROCESSING_WARNING_REASON_INTERNAL_ERROR',recordCount:'1'}]}}))
+    .toMatchObject({recovery:'ACCEPTED',warnings:[{code:'PROCESSING_WARNING_REASON_INTERNAL_ERROR',count:1}]});
+  expect((await diagnostic({requestStatus:'SUCCESS',warningInfo:{warningCounts:[{reason:'FUTURE_CODE',recordCount:'1'}]}})).recovery).toBe('REVIEW');
+  await expect(diagnostic({requestStatus:'SUCCESS',errorInfo:{errorCounts:[{reason:'PROCESSING_ERROR_REASON_INTERNAL_ERROR',recordCount:'1'}]}})).rejects.toThrow('COUNTS_UNCONFIRMED');
+  await expect(diagnostic({requestStatus:'PROCESSING',warningInfo:{warningCounts:[]}})).rejects.toThrow('STATUS_INCONSISTENT');
+});
+it.each(['-1','2','1.5','9223372036854775808','one'])('rejects malformed or impossible single-event diagnostic count %s',async(recordCount)=>{
+  await expect(diagnostic({requestStatus:'FAILED',errorInfo:{errorCounts:[{reason:'PROCESSING_ERROR_REASON_INTERNAL_ERROR',recordCount}]}})).rejects.toThrow();
+});
+it('bounds provider diagnostic arrays',async()=>{
+  await expect(diagnostic({requestStatus:'FAILED',errorInfo:{errorCounts:Array.from({length:65},()=>({reason:'PROCESSING_ERROR_REASON_INTERNAL_ERROR',recordCount:'1'}))}})).rejects.toThrow();
 });
 it('requires successful adjustment identity and never calls a zero-value restatement a cancellation',async()=>{
   const fetcher=vi.fn(async(_url:RequestInfo|URL,_init?:RequestInit)=>json({results:[{conversionAction:'customers/6328516633/conversionActions/123',orderId:event().transactionId,adjustmentType:'RETRACTION'}]}));

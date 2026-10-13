@@ -22,3 +22,15 @@ it('never displays unavailable source evidence as zero advertising performance',
   await act(async()=>root.render(<GoogleAdvertising loader={async()=>googleFixture('missing')}/>));
   expect(host.textContent).toContain('does not mean zero');expect(host.querySelector('table')).toBeNull();
 });
+it.each(['stale','report-failed','sales-failed','quarantined','diagnostics'])('keeps %s attention visible outside collapsed recovery details',async(mode)=>{
+  await act(async()=>root.render(<GoogleAdvertising loader={async()=>googleFixture(mode)}/>));
+  const attention=host.querySelector('[aria-label="Google advertising attention"]');expect(attention).not.toBeNull();expect(attention!.closest('details')).toBeNull();
+  expect(attention!.textContent).toContain('1 sale record needs review');expect(attention!.textContent).toContain('1 cancellation is awaiting confirmation');
+  if(mode==='report-failed'||mode==='stale')expect(attention!.textContent).toContain('Google report refresh needs review');
+  if(mode==='sales-failed')expect(attention!.textContent).toContain('Sale delivery needs review');
+  if(mode==='quarantined')expect(attention!.textContent).toContain('before either connection can run');
+});
+it('does not add an attention notice to healthy completed delivery',async()=>{
+  await act(async()=>root.render(<GoogleAdvertising loader={async()=>googleFixture('clean')}/>));
+  expect(host.querySelector('[aria-label="Google advertising attention"]')).toBeNull();
+});

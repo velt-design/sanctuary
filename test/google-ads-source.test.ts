@@ -1,19 +1,28 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
+import postgres from 'postgres';
 import { beforeAll, afterAll, beforeEach, afterEach, expect, it } from 'vitest';
 import { prepareSale, saleSourceSchema } from '../apps/portal/lib/marketingIntegrations/googleAds/sales';
 import { runGoogleConnection } from '../apps/portal/lib/marketingIntegrations/googleAds/worker';
 import { ADS_SCOPE,DATA_SCOPE } from '../apps/portal/lib/marketingIntegrations/googleAds/config';
-const db=new PGlite(), id=(n:number)=>`44444444-4444-4444-8444-${String(n).padStart(12,'0')}`, binding='a'.repeat(64);
+import { statusSchema } from '../apps/portal/lib/marketingIntegrations/googleAds/contract';
+const id=(n:number)=>`44444444-4444-4444-8444-${String(n).padStart(12,'0')}`, binding='a'.repeat(64);
+let db:{exec:(sql:string)=>Promise<unknown>;query:<T>(sql:string,args?:unknown[])=>Promise<{rows:T[]}>;close:()=>Promise<void>};
 const command=async(action:string,input:unknown={},run:string|null=null)=>(await db.query<{value:any}>('select public.google_ads_command($1,$2,$3,$4,$5) value',[id(90),binding,action,run,JSON.stringify(input)])).rows[0].value;
 const sources=async()=> (await db.query<{source:unknown}>('select source from private.google_ads_sources()')).rows.map(r=>saleSourceSchema.parse(r.source));
 const policy={enhancedMatchingApproved:true,allowedConsentBases:['user_choice','regional_default'],consentEffectiveFrom:'2026-01-01T00:00:00Z'};
 const enable=async()=>db.exec(`update private.google_ads_control set actor_id='${id(90)}',binding_sha256='${binding}',conversion_customer_id='6328516633',action_id='123',reports_enabled=true,uploads_enabled=true,consent_policy_approved=true,enhanced_matching_approved=true,allowed_consent_bases=array['user_choice','regional_default'],consent_effective_from='2026-01-01';`);
 const begin=()=>command('begin',{lane:'sales'});
+const sale=async()=>(await db.query<Record<string,any>>('select * from private.google_ads_sales')).rows[0];
+const staffRead=async()=>(await db.query<{value:any}>('select public.google_ads_staff_read() value')).rows[0].value;
 async function rejects(action:()=>Promise<unknown>,message:string) { await db.exec('savepoint rejected'); await expect(action()).rejects.toThrow(message);await db.exec('rollback to savepoint rejected'); }
 async function freeze(run:string) { const source=(await sources())[0],prepared=prepareSale(source,policy);await command('freeze',{quoteId:source.quoteId,fingerprint:source.fingerprint,...prepared},run);return source; }
 beforeAll(async()=>{
+  const native=process.env.GOOGLE_ADS_NATIVE_TEST_URL;
+  if(native){const url=new URL(native);if(url.hostname!=='127.0.0.1'||url.username!=='postgres'||url.pathname!=='/google_ads_fixture')throw Error('Disposable local database only');
+    const client=postgres(native,{max:1});db={exec:sql=>client.unsafe(sql),query:async<T>(sql:string,args:unknown[]=[])=>({rows:await client.unsafe(sql,args.map(value=>typeof value==='string'&&/^[{[]/.test(value)?client.json(JSON.parse(value)):value) as never[]) as unknown as T[]}),close:()=>client.end()};
+  }else db=new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create schema private;
     create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
     create function auth.role() returns text language sql as $$select current_setting('test.role',true)$$;
@@ -113,6 +122,10 @@ it('real SQL and worker reach one durable provider submission through refresh, p
   const result=await runGoogleConnection(runtime);
   expect(result.completed).toBe(true);expect(calls.filter(url=>url.includes('events:ingest'))).toHaveLength(1);
   expect((await db.query<{state:string;request_id:string}>('select state,request_id from private.google_ads_sales')).rows[0]).toEqual({state:'SUBMITTED',request_id:'provider-request'});
+  await db.exec('update private.google_ads_sales set next_attempt_at=now()');
+  await runGoogleConnection({...runtime,fetcher:async(url,init)=>String(url).includes('requestStatus')?Response.json({requestStatusPerDestination:[{destination:{operatingAccount:{accountType:'GOOGLE_ADS',accountId:'6328516633'},loginAccount:{accountType:'GOOGLE_ADS',accountId:'6596874249'},productDestinationId:'123'},requestStatus:'FAILED',eventsIngestionStatus:{recordCount:'1'},errorInfo:{errorCounts:[{reason:'PROCESSING_ERROR_REASON_INTERNAL_ERROR',recordCount:'1'}]}}]}):fetcher(url,init)});
+  expect(await sale()).toMatchObject({state:'RETRY',reason:'GOOGLE_TRANSIENT_REJECTION',diagnostics:{requestId:'provider-request',errors:[{code:'PROCESSING_ERROR_REASON_INTERNAL_ERROR',count:1}]}});
+  await db.exec('update private.google_ads_sales set next_attempt_at=now()');await runGoogleConnection(runtime);
   await db.exec("update private.google_ads_sales set submitted_at=now()-interval '25 hours',next_attempt_at=now()");
   await runGoogleConnection({...runtime,fetcher:async(url,init)=>String(url).includes('requestStatus')?new Response('',{status:503}):fetcher(url,init)});
   expect((await db.query<{state:string;reason:string}>('select state,reason from private.google_ads_sales')).rows[0]).toEqual({state:'REVIEW_REQUIRED',reason:'GOOGLE_DIAGNOSTIC_TIMEOUT'});
@@ -134,4 +147,80 @@ it('excludes never-paid scopes from delivery coverage and locks down RPC and pri
   await rejects(()=>db.query('select * from private.google_ads_sales'),'permission denied');
   await rejects(()=>command('sources',{},runId),'permission denied');
   await db.exec('reset role');
+});
+it.each(['date','identity','value'])('preserves uncertain dispatch payload and destination when %s changes',async(change)=>{
+  await enable();const {runId}=await begin();await freeze(runId);const first=await command('claim',{},runId),original=await sale();
+  await command('complete',{quoteId:id(2),state:'RETRY',reason:'TRANSPORT_UNCERTAIN'},runId);
+  if(change==='date')await db.exec("update deposit_invoices set paid_at=paid_at+interval '1 hour'");
+  if(change==='identity')await db.exec("update enquiry_requests set raw_payload=jsonb_set(raw_payload,'{email}','\"other@example.test\"')");
+  if(change==='value')await db.exec('update quote_versions set total_inc_gst_cents=1800000');
+  await freeze(runId);const after=await sale();expect(after.state).toBe('REVIEW_REQUIRED');expect(after.payload).toEqual(first.event);
+  expect(after.destination).toEqual(original.destination);expect(after.attempts).toBe(1);expect(after.request_id).toBeNull();
+});
+it('preserves expired possibly-sent evidence and prevents provenance changes from resetting attempts',async()=>{
+  await enable();const {runId}=await begin();await freeze(runId);const first=await command('claim',{},runId);
+  await db.exec(`update private.google_ads_runs set expires_at=clock_timestamp()-interval '1 second' where id='${runId}';update deposit_invoices set paid_at=paid_at+interval '1 hour'`);
+  const resumed=await begin();await freeze(resumed.runId);expect((await sale()).state).toBe('REVIEW_REQUIRED');expect((await sale()).payload).toEqual(first.event);
+});
+it('only confirmed acceptance permits a deliberate same-identity value restatement',async()=>{
+  await enable();const {runId}=await begin();await freeze(runId);const first=await command('claim',{},runId);
+  await command('complete',{quoteId:id(2),state:'SUBMITTED',requestId:'original'},runId);
+  await db.exec('update private.google_ads_sales set next_attempt_at=now()');await command('claim',{},runId);await command('complete',{quoteId:id(2),state:'ACCEPTED'},runId);
+  await db.exec('update quote_versions set total_inc_gst_cents=1800000');await freeze(runId);const correction=await command('claim',{},runId);
+  expect(correction.event).toEqual({...first.event,conversionValue:18000});expect(correction.attempts).toBe(1);
+});
+it('cancels after the eighth accepted ingestion attempt using its separate retraction budget',async()=>{
+  await enable();await db.exec('update private.google_ads_control set retractions_enabled=true');const {runId}=await begin();await freeze(runId);
+  for(let n=1;n<=8;n++){
+    const claimed=await command('claim',{},runId);expect(claimed.attempts).toBe(n);
+    await command('complete',{quoteId:id(2),state:n===8?'SUBMITTED':'RETRY',...(n===8?{requestId:'eighth'}:{reason:'TRANSPORT_UNCERTAIN'})},runId);
+    await db.exec('update private.google_ads_sales set next_attempt_at=now()');
+  }
+  await command('claim',{},runId);await command('complete',{quoteId:id(2),state:'ACCEPTED'},runId);
+  await db.exec(`insert into project_operational_states values('${id(1)}','CLOSED','CANCELLED')`);await freeze(runId);
+  await db.exec('update private.google_ads_sales set next_attempt_at=now()');expect((await command('claim',{},runId)).state).toBe('RETRACTING');
+  expect((await sale()).attempts).toBe(8);expect((await sale()).retraction_attempts).toBe(1);
+  await command('complete',{quoteId:id(2),state:'RETRACTED'},runId);expect((await sale()).state).toBe('RETRACTED');
+});
+it('makes an expired eighth dispatch explicitly reviewable rather than leaving an unclaimable retry',async()=>{
+  await enable();const {runId}=await begin();await freeze(runId);
+  await db.exec('update private.google_ads_sales set attempts=7');const first=await command('claim',{},runId);
+  await db.exec(`update private.google_ads_runs set expires_at=clock_timestamp()-interval '1 second' where id='${runId}'`);const resumed=await begin();
+  expect(await command('claim',{},resumed.runId)).toBeNull();expect(await sale()).toMatchObject({state:'REVIEW_REQUIRED',reason:'DELIVERY_RETRY_EXHAUSTED',attempts:8,payload:first.event});
+});
+it('does not dispatch a pending cancellation after the sale becomes active again',async()=>{
+  await enable();const {runId}=await begin();await freeze(runId);await command('claim',{},runId);await command('complete',{quoteId:id(2),state:'RETRY'},runId);
+  await db.exec(`insert into project_operational_states values('${id(1)}','CLOSED','CANCELLED')`);await freeze(runId);
+  await db.exec(`delete from project_operational_states where project_id='${id(1)}'`);await freeze(runId);
+  expect(await sale()).toMatchObject({state:'REVIEW_REQUIRED',reason:'SALE_RESTORED_BEFORE_RETRACTION'});expect(await command('claim',{},runId)).toBeNull();
+});
+it.each([['report','sales'],['sales','report']])('retains %s failure after a successful %s run until the failed lane recovers',async(failed,healthy)=>{
+  await enable();const first=await command('begin',{lane:failed});await command('finish',{error:'GOOGLE_CONNECTION_REQUIRES_REVIEW'},first.runId);
+  const second=await command('begin',{lane:healthy});await command('finish',{},second.runId);
+  expect(statusSchema.parse(await staffRead()).health[failed].error).toBe('GOOGLE_CONNECTION_REQUIRES_REVIEW');expect((await staffRead()).health[healthy].error).toBeNull();
+  const recovery=await command('begin',{lane:failed});expect((await staffRead()).health[failed]).toMatchObject({error:'GOOGLE_CONNECTION_REQUIRES_REVIEW',pending:'RUNNING'});
+  await command('finish',{},recovery.runId);expect((await staffRead()).health[failed].error).toBeNull();
+});
+it('exposes an expired credential quarantine even when another lane last succeeded',async()=>{
+  await enable();const report=await command('begin',{lane:'report'});await command('finish',{},report.runId);
+  const {runId}=await begin();await command('credential_pending',{},runId);await db.exec(`update private.google_ads_runs set expires_at=clock_timestamp()-interval '1 second' where id='${runId}'`);
+  expect((await staffRead()).health.sales).toMatchObject({pending:'EXPIRED',credentialUncertain:true});
+  await rejects(()=>command('begin',{lane:'report'}),'reconciliation');
+});
+it('retains sanitized provider diagnostics with private request evidence and exposes only code aggregates',async()=>{
+  await enable();const {runId}=await begin();await freeze(runId);await command('claim',{},runId);await command('complete',{quoteId:id(2),state:'SUBMITTED',requestId:'private-request'},runId);
+  await db.exec('update private.google_ads_sales set next_attempt_at=now()');await command('claim',{},runId);
+  const diagnostics={status:'FAILED',recordCount:1,recovery:'REVIEW',requestId:'private-request',destination:{customerId:'6328516633',actionId:'123'},errors:[{code:'PROCESSING_ERROR_REASON_DENIED_CONSENT',count:1}],warnings:[]};
+  await command('complete',{quoteId:id(2),state:'REVIEW_REQUIRED',reason:'GOOGLE_DIAGNOSTICS_REQUIRE_REVIEW',diagnostics},runId);
+  expect((await sale()).diagnostics).toEqual(diagnostics);const evidence=await staffRead();expect(evidence.diagnostics).toEqual([{severity:'errors',code:'PROCESSING_ERROR_REASON_DENIED_CONSENT',count:1}]);
+  expect(JSON.stringify(evidence)).not.toContain('private-request');expect(JSON.stringify(evidence)).not.toContain('transactionId');
+});
+it('uses a qualified singleton delete on authority rotation and retains prior sale destination',async()=>{
+  await enable();const {runId}=await command('begin',{lane:'report'});await command('report',{report:{customerId:'6328516633'}},runId);await command('finish',{},runId);
+  const sales=await begin();await freeze(sales.runId);const original=await sale();
+  await db.exec("update private.google_ads_control set action_id='456' where singleton=true");
+  expect((await db.query<{n:number}>('select count(*)::int n from private.google_ads_report')).rows[0].n).toBe(0);
+  expect((await sale()).destination).toEqual(original.destination);expect((await sale()).reason).toBe('AUTHORITY_CHANGED');
+  const source=readFileSync('supabase/migrations/20261013000001_google_ads_source.sql','utf8');
+  expect(source).toContain('delete from private.google_ads_report where singleton=true;');expect(source).not.toContain('delete from private.google_ads_report;');
 });

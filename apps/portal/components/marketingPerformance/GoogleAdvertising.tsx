@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/foundation/FoundationControls';
 import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 import { loadAdsStatus, type AdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
-import { advertisingRows, deliveryLabels, reasonLabels } from '@/lib/marketingIntegrations/googleAds/view';
+import { advertisingRows, advertisingAttention, deliveryLabels, reasonLabels } from '@/lib/marketingIntegrations/googleAds/view';
+import { diagnosticLabel } from '@/lib/marketingIntegrations/googleAds/diagnostics';
 import styles from './MarketingPerformance.module.css';
 import googleStyles from './GoogleAdvertising.module.css';
 export default function GoogleAdvertising({ loader = loadAdsStatus }: { loader?: typeof loadAdsStatus }) {
@@ -17,6 +18,7 @@ export default function GoogleAdvertising({ loader = loadAdsStatus }: { loader?:
   },[loader,revision]);
   useEffect(() => { const timer=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(timer); },[]);
   const report = status?.report && status.expiresAt && Date.parse(status.expiresAt)>now ? status.report : null;
+  const attention=status?advertisingAttention(status):[];
   const validDates = report && start>=report.start && end<=report.end && start<=end;
   const rows = report && validDates ? advertisingRows(report,{ grain,dateBasis:basis,start,end,saleActionId:status!.saleActionId,enquiryActionIds:status!.enquiryActionIds }) : [];
   const money = (value:number|null) => value===null?'Not mapped':new Intl.NumberFormat('en-NZ',{style:'currency',currency:report?.currency??'NZD'}).format(value);
@@ -26,6 +28,7 @@ export default function GoogleAdvertising({ loader = loadAdsStatus }: { loader?:
       <p>{report.start} to {report.end} · {report.currency} · {report.timezone}</p>
       <p className={styles.muted}>Fetched {new Date(report.fetchedAt).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'})} NZ.{now-Date.parse(report.fetchedAt)>30*3600000?' Older evidence.':''} Report dates are independent of the business-record filters.</p>
     </>}</div>
+    {attention.length>0&&<div role="status" aria-label="Google advertising attention"><p><strong>Google advertising needs attention</strong></p><ul>{attention.map(message=><li key={message}>{message}</li>)}</ul></div>}
     <Button variant="secondary" disabled={busy} onClick={()=>setRevision(n=>n+1)}>Check saved Google report</Button>
     {report&&<details><summary>Compare campaigns and keywords</summary>
       <p>Advertising spend, submitted enquiry actions and attributed closed sales. Website design starts and reviews are excluded from the enquiry mapping.</p>
@@ -48,7 +51,7 @@ export default function GoogleAdvertising({ loader = loadAdsStatus }: { loader?:
       {Object.keys(status.counts).length===0&&<p>No delivery records have been assessed yet.</p>}
       <p>Google ingestion confirmation means the event was processed. Matching and advertising credit are established separately by the report above; individual sales are not exposed by Google’s aggregate diagnostics.</p>
       <dl className={googleStyles.reasons}>{Object.entries(status.reasons).map(([reason,total])=><div key={reason}><dt>{reasonLabels[reason]??'Provider or connection issue requiring review'}</dt><dd>{total}</dd></div>)}</dl>
-      {status.lastError&&<p role="status">The latest connection run needs review. Saved evidence retains its own dates.</p>}
+      {status.diagnostics.length>0&&<dl className={googleStyles.reasons}>{status.diagnostics.map((entry,index)=><div key={`${entry.severity}/${entry.code}/${index}`}><dt>{diagnosticLabel(entry.code)} <small>{entry.code}</small></dt><dd>{entry.count} {entry.severity==='errors'?'error':'warning'} records</dd></div>)}</dl>}
     </details>}
   </Card>;
 }

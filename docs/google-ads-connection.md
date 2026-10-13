@@ -101,6 +101,34 @@ order ID; it requires a reviewed new legitimate sale cycle. Merely ageing beyond
 an upload window never retracts a valid sale. Identity/date changes after sending
 are held rather than silently rewritten.
 
+Any possibly attempted dispatch, including a timeout before Google returns a
+request ID or an expired sending lease, keeps its original event and destination.
+Unconfirmed value changes also require reconciliation. Only a confirmed accepted
+event permits an automatic value-only restatement with the same identity/date.
+Eight ingestion attempts exhaust the automatic delivery budget. Cancellation has
+its own single automatic attempt, independent of the ingestion count; an uncertain
+retraction goes to operator review rather than being retried blindly.
+
+Recovery states retain the original evidence. Operators follow these steps:
+
+| Review reason | Required reconciliation |
+| --- | --- |
+| Identity/date changed or value changed while unconfirmed | Compare the frozen event, source change, original destination and returned request ID if available. Resolve the original outcome before approving a corrected event. Do not overwrite the retained evidence. |
+| Delivery attempts exhausted | Inspect the recorded requests and provider status. Any approved retry uses the same transaction and frozen facts; never create another ID to escape the retry ceiling. |
+| Sale restored before retraction | Verify that no adjustment was dispatched, reconcile the original conversion, then explicitly restore the appropriate accepted or pending state. |
+| Retraction outcome uncertain | Inspect the original order ID, adjustment time and Google adjustment outcome. Confirm cancellation or use the supported manual correction flow; do not simply reset its attempt counter. |
+| Restored sale after confirmed retraction | Review a genuinely new sale cycle. Google cannot restore the retracted order ID. |
+| Credential quarantine | Reconcile the specific OAuth operation and dedicated vault version before settling the checkpoint. A successful run from the other capability cannot remove the quarantine. |
+
+Data Manager diagnostics retain bounded allowlisted error/warning codes and
+single-event counts alongside the private request/destination. Unknown provider
+strings become `UNKNOWN_PROVIDER_REASON`; messages and echoed customer data are
+never persisted. Only explicit temporary internal, recent-click or newly-created
+destination errors receive bounded three-hour retries of the same event. Other
+errors, missing diagnostics and unknown codes require review. Successful warnings
+remain visible without resending an accepted sale. These counts describe provider
+processing, not successful matches, unique sales or attribution.
+
 ## Reporting meaning and bounds
 
 Google Ads v25 supplies the preceding 90 completed account-timezone days. Search
@@ -120,6 +148,13 @@ mapped actions with no returned activity may show zero. Google can return
 fractional attribution. Currency/timezone/source dates always belong to Google,
 not an assumed CRM period. No cost-per-CRM-sale, causal ROI or person-level match
 is inferred from these aggregate reports.
+
+Report collection, sale delivery and setup each retain their own last completed
+outcome, pending/expired lease and credential uncertainty. A success in one lane
+does not erase another lane's failure. Shared credential quarantine prevents both
+capabilities. The Portal shows a compact attention notice beside the report for
+these failures, sale reviews, cancellations and provider diagnostics, with details
+in the existing recovery disclosure.
 
 ## Post-approval connection and activation
 
@@ -217,6 +252,16 @@ hashing, diagnostics and true retractions. The existing guarded marketing fixtur
 uses only invented Google reports; `?google=failure|missing|disabled|stale|unmapped`
 exercises evidence states. These checks do not establish live OAuth, API eligibility,
 provider matching, conversion-action configuration or production rollout.
+
+`node scripts/test-google-ads-db.mjs` repeats the source lifecycle tests on a
+disposable local PostgreSQL 17 instance using existing binaries selected by
+`PRAXIS_DISPOSABLE_POSTGRES_BIN`. It uses the actual two migrations and synthetic
+prerequisites, including precision-preserving timestamps and the staff DTO. The
+authority trigger uses a qualified singleton deletion compatible with the known
+safeupdate rule. The safeupdate extension, actual PostgREST authenticator session
+and complete production schema are not exercised by this local harness and remain
+explicit rollout checks. `.local-evidence/**` is excluded from Vitest discovery so
+archived build copies cannot duplicate test counts.
 
 Primary contracts: [Data Manager offline conversions](https://developers.google.com/data-manager/api/devguides/events/google-ads/offline),
 [conversion adjustments](https://developers.google.com/data-manager/api/devguides/events/google-ads/offline/conversion-adjustments),

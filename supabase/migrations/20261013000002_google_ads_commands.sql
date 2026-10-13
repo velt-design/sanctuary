@@ -57,6 +57,9 @@ begin
         or body->>'currency'<>'NZD' or (body ? 'userData' and not c.enhanced_matching_approved) then raise exception 'Invalid sale freeze'; end if;
     else body:=null; end if;
     select * into s from private.google_ads_sales where quote_id=key for update;
+    if found and s.state='SENDING' and exists(select 1 from private.google_ads_runs prior where prior.id=s.lease_id and (prior.finished_at is not null or prior.expires_at<=clock_timestamp())) then
+      update private.google_ads_sales set state='RETRY',reason='DISPATCH_OUTCOME_UNCERTAIN' where quote_id=key returning * into s;
+    end if;
     if not found then
       insert into private.google_ads_sales(quote_id,project_id,generation,source_fingerprint,payload,destination,state,reason)
       values(key,(source->>'projectId')::uuid,c.generation,source->>'fingerprint',body,
@@ -70,16 +73,22 @@ begin
     elsif body is null and (s.first_submitted_at is not null or s.attempts>0)
       and p_input->>'reason' not in('SALE_NO_LONGER_CURRENT','MARKETING_CONSENT_NOT_GRANTED') then
       -- Ageing beyond an import window is not a business cancellation.
-      update private.google_ads_sales set state=case when s.source_fingerprint=source->>'fingerprint' then state else 'REVIEW_REQUIRED' end,
+      update private.google_ads_sales set state=case when s.state='ACCEPTED' and s.source_fingerprint=source->>'fingerprint' then state else 'REVIEW_REQUIRED' end,
         reason=p_input->>'reason',updated_at=now() where quote_id=key;
     elsif body is null then
       update private.google_ads_sales set state=case when first_submitted_at is not null or attempts>0 then 'RETRACTION_READY' else 'SKIPPED' end,
         reason=p_input->>'reason',payload=case when first_submitted_at is null and attempts=0 then null else payload end,
         source_fingerprint=source->>'fingerprint',adjustment_at=coalesce(adjustment_at,now()),updated_at=now() where quote_id=key;
-    elsif s.payload is not null and (s.payload-'conversionValue') is distinct from (body-'conversionValue') and s.first_submitted_at is not null then
+    elsif s.state='RETRACTION_READY' and body is not null then
+      update private.google_ads_sales set state='REVIEW_REQUIRED',reason='SALE_RESTORED_BEFORE_RETRACTION',updated_at=now() where quote_id=key;
+    elsif s.payload is not null and (s.payload-'conversionValue') is distinct from (body-'conversionValue')
+      and (s.first_submitted_at is not null or s.attempts>0) then
       update private.google_ads_sales set state='REVIEW_REQUIRED',reason='SALE_IDENTITY_OR_DATE_CHANGED',updated_at=now() where quote_id=key;
-    elsif s.payload=body and s.state='ACCEPTED' then
-      update private.google_ads_sales set source_fingerprint=source->>'fingerprint',reason=null,updated_at=now() where quote_id=key;
+    elsif s.payload is distinct from body and s.attempts>0 and s.state<>'ACCEPTED' then
+      update private.google_ads_sales set state='REVIEW_REQUIRED',reason='SALE_VALUE_CHANGED_WHILE_UNCONFIRMED',updated_at=now() where quote_id=key;
+    elsif s.payload=body and (s.first_submitted_at is not null or s.attempts>0) then
+      -- A provenance-only change cannot reset a dispatch budget or resurrect a failed event.
+      update private.google_ads_sales set source_fingerprint=source->>'fingerprint',updated_at=now() where quote_id=key;
     elsif s.source_fingerprint<>source->>'fingerprint' or s.state='SKIPPED' then
       update private.google_ads_sales set payload=body,source_fingerprint=source->>'fingerprint',state='READY',reason=null,attempts=0,next_attempt_at=now(),request_id=null,updated_at=now() where quote_id=key;
     end if;
@@ -90,29 +99,34 @@ begin
       and lease_id in(select id from private.google_ads_runs where finished_at is not null);
     update private.google_ads_sales set state='REVIEW_REQUIRED',reason='RETRACTION_OUTCOME_UNCERTAIN' where state='RETRACTING'
       and lease_id in(select id from private.google_ads_runs where finished_at is not null);
+    update private.google_ads_sales set state='REVIEW_REQUIRED',reason='DELIVERY_RETRY_EXHAUSTED'
+      where state in('READY','RETRY') and attempts>=8;
+    update private.google_ads_sales set state='REVIEW_REQUIRED',reason='RETRACTION_OUTCOME_UNCERTAIN'
+      where state='RETRACTION_READY' and retraction_attempts>=1;
     select * into s from private.google_ads_sales where generation=c.generation and next_attempt_at<=now()
-      and state in('READY','RETRY','SUBMITTED','RETRACTION_READY') and (state='SUBMITTED' or attempts<8)
+      and (state='SUBMITTED' or (state in('READY','RETRY') and attempts<8) or (state='RETRACTION_READY' and retraction_attempts<1))
       order by case when state='SUBMITTED' then 0 else 1 end,next_attempt_at,quote_id for update skip locked limit 1;
     if not found then return 'null'; end if;
     if s.state='RETRACTION_READY' and not c.retractions_enabled then
       update private.google_ads_sales set state='REVIEW_REQUIRED',reason='RETRACTION_REQUIRES_OPERATOR' where quote_id=s.quote_id; return 'null';
     end if;
     update private.google_ads_sales set state=case when s.state='SUBMITTED' then 'SUBMITTED' when s.state='RETRACTION_READY' then 'RETRACTING' else 'SENDING' end,
-      lease_id=p_run,attempts=attempts+case when s.state='SUBMITTED' then 0 else 1 end,updated_at=now() where quote_id=s.quote_id returning * into s;
+      lease_id=p_run,attempts=attempts+case when s.state in('READY','RETRY') then 1 else 0 end,
+      retraction_attempts=retraction_attempts+case when s.state='RETRACTION_READY' then 1 else 0 end,updated_at=now() where quote_id=s.quote_id returning * into s;
     return jsonb_build_object('quoteId',s.quote_id,'state',s.state,'event',s.payload,'requestId',s.request_id,'attempts',s.attempts,'submittedAt',s.submitted_at,'adjustmentAt',s.adjustment_at);
   elsif p_action='complete' and r.lane='sales' then
     select * into strict s from private.google_ads_sales where quote_id=(p_input->>'quoteId')::uuid and lease_id=p_run for update;
     if p_input->>'state' not in('SUBMITTED','ACCEPTED','RETRY','FAILED','REVIEW_REQUIRED','RETRACTED') then raise exception 'Invalid delivery outcome'; end if;
     if not ((s.state='SENDING' and p_input->>'state' in('SUBMITTED','RETRY','FAILED','REVIEW_REQUIRED'))
-      or (s.state='SUBMITTED' and p_input->>'state' in('SUBMITTED','ACCEPTED','FAILED','REVIEW_REQUIRED'))
+      or (s.state='SUBMITTED' and p_input->>'state' in('SUBMITTED','ACCEPTED','RETRY','FAILED','REVIEW_REQUIRED'))
       or (s.state='RETRACTING' and p_input->>'state' in('RETRACTED','REVIEW_REQUIRED'))) then raise exception 'Invalid delivery transition'; end if;
     update private.google_ads_sales set state=p_input->>'state',reason=p_input->>'reason',
       request_id=coalesce(p_input->>'requestId',request_id),
       first_submitted_at=case when p_input->>'state'='SUBMITTED' then coalesce(first_submitted_at,now()) else first_submitted_at end,
       submitted_at=case when p_input ? 'requestId' then now() else submitted_at end,
       checked_at=case when s.state='SUBMITTED' then now() else checked_at end,
-      next_attempt_at=now()+make_interval(secs=>least(3600,greatest(60,coalesce((p_input->>'delaySeconds')::int,1800)))),
-      warnings=coalesce(p_input->'warnings','[]'),updated_at=now(),lease_id=null where quote_id=s.quote_id;
+      next_attempt_at=now()+make_interval(secs=>least(21600,greatest(60,coalesce((p_input->>'delaySeconds')::int,1800)))),
+      diagnostics=coalesce(p_input->'diagnostics',diagnostics),updated_at=now(),lease_id=null where quote_id=s.quote_id;
     return '{}';
   elsif p_action='report' and r.lane='report' then
     if p_input->'report'->>'customerId'<>c.customer_id or octet_length((p_input->'report')::text)>8*1024*1024 then raise exception 'Report binding invalid'; end if;
@@ -152,7 +166,17 @@ begin
   return jsonb_build_object('enabled',c.reports_enabled,'uploadsEnabled',c.uploads_enabled,'checkedAt',now(),
     'saleActionId',c.action_id,'enquiryActionIds',to_jsonb(c.enquiry_action_ids),
     'collectedAt',saved.fetched_at,'expiresAt',saved.expires_at,'report',saved.payload,
-    'lastError',(select error_code from private.google_ads_runs order by expires_at desc limit 1),
+    'health',(select jsonb_object_agg(lane,jsonb_build_object('lastCompletedAt',done.finished_at,'error',done.error_code,
+      'pending',case when pending.id is null then 'NONE' when pending.expires_at<=now() then 'EXPIRED' else 'RUNNING' end,
+      'credentialUncertain',exists(select 1 from private.google_ads_runs q where q.lane=lanes.lane and q.credential_uncertain)))
+      from (values('report'),('sales'),('verify')) lanes(lane)
+      left join lateral(select finished_at,error_code from private.google_ads_runs d where d.lane=lanes.lane and d.finished_at is not null order by d.finished_at desc,d.expires_at desc limit 1) done on true
+      left join lateral(select id,expires_at from private.google_ads_runs p where p.lane=lanes.lane and p.finished_at is null order by p.expires_at desc limit 1) pending on true),
+    'diagnostics',coalesce((select jsonb_agg(jsonb_build_object('severity',severity,'code',code,'count',n)) from (
+      select detail.key severity,item->>'code' code,sum((item->>'count')::int) n
+      from private.google_ads_sales sale cross join lateral jsonb_each(coalesce(sale.diagnostics,'{}')) detail
+      cross join lateral jsonb_array_elements(case when detail.key in('errors','warnings') then detail.value else '[]'::jsonb end) item
+      group by detail.key,item->>'code') aggregate_diagnostics),'[]'),
     'counts',coalesce((select jsonb_object_agg(state,n) from(select state,count(*) n from private.google_ads_sales group by state) t),'{}'),
     'reasons',coalesce((select jsonb_object_agg(reason,n) from(select reason,count(*) n from private.google_ads_sales where reason is not null group by reason) t),'{}'));
 end $$;
