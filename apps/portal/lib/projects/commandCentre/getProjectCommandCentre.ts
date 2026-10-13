@@ -24,6 +24,7 @@ import type {
 
 const PROJECT_COMMAND_CENTRE_SELECT = `
   id,
+  archived_at,
   pipeline_stage,
   ownerAssignment:project_owner_assignments(owner_key,updated_at),
   ${COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT}
@@ -266,6 +267,13 @@ export async function getProjectCommandCentre(
     const projectWork = await getProjectWorkProjection({
       supabase,
       projectUuid,
+      readContext: {
+        supabase,
+        projectUuid,
+        archivedAt: isoTimestamp(projectRow.archived_at),
+        modelVersion: 2,
+        projectOwnerKey: trimmedString(ownerRow?.owner_key),
+      },
       ...domainActions,
     });
     if (!projectWork) throw new Error('V2 project work could not be loaded');

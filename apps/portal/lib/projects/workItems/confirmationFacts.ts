@@ -33,3 +33,16 @@ export function hasActiveProjectConfirmation(
     (row) => text(row.project_id) === projectUuid && text(row.confirmation_type) === type,
   );
 }
+
+/** Index one portfolio read once, retaining the same append-only retraction rules. */
+export function activeConfirmationProjectIds(
+  rows: readonly ConfirmationEventIdentity[],
+  type: ProjectConfirmationType,
+): ReadonlySet<string> {
+  const projectIds = new Set<string>();
+  for (const row of activeConfirmationEventRows(rows)) {
+    const projectId = text(row.project_id);
+    if (projectId && text(row.confirmation_type) === type) projectIds.add(projectId);
+  }
+  return projectIds;
+}

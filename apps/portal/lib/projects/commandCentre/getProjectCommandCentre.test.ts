@@ -212,6 +212,13 @@ describe('getProjectCommandCentre', () => {
         projectUuid: UUID.project,
         recoveryAction: null,
         specialistAction: null,
+        readContext: {
+          supabase: client,
+          projectUuid: UUID.project,
+          archivedAt: null,
+          modelVersion: 2,
+          projectOwnerKey: null,
+        },
       }),
     );
   });

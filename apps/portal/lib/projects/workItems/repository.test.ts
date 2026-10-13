@@ -102,6 +102,30 @@ function item(overrides: Record<string, unknown> = {}) {
 describe("project work projection", () => {
   const now = new Date("2026-07-29T02:00:00.000Z");
 
+  it.each([
+    { state: "ACTIVE" as const, ownerKey: "jordan", archivedAt: null },
+    { state: "WAITING" as const, ownerKey: null, archivedAt: null, waitingUntil: "2026-07-28T00:00:00.000Z" },
+    { state: "CLOSED" as const, ownerKey: "ellen", archivedAt: null, closedOutcome: "COMPLETE" },
+    { state: "ACTIVE" as const, ownerKey: "jordan", archivedAt: "2026-07-28T00:00:00.000Z" },
+  ])("retains $state and archive/owner behavior when request facts are reused", async (facts) => {
+    const directClient = client({ ...facts, items: [item()] });
+    const reusedClient = client({ ...facts, items: [item()] });
+    const direct = await getProjectWorkProjection({ supabase: directClient, projectUuid: PROJECT_ID, now });
+    const reused = await getProjectWorkProjection({
+      supabase: reusedClient, projectUuid: PROJECT_ID, now,
+      readContext: {
+        supabase: reusedClient, projectUuid: PROJECT_ID, modelVersion: 2,
+        archivedAt: facts.archivedAt, projectOwnerKey: facts.ownerKey,
+      },
+    });
+    expect(reused).toEqual(direct);
+    expect(directClient.from).toHaveBeenCalledTimes(6);
+    expect(reusedClient.from).toHaveBeenCalledTimes(3);
+    expect(reusedClient.from).not.toHaveBeenCalledWith("projects");
+    expect(reusedClient.from).not.toHaveBeenCalledWith("project_work_model_versions");
+    expect(reusedClient.from).not.toHaveBeenCalledWith("project_owner_assignments");
+  });
+
   it("uses urgent durable work before a specialist action", async () => {
     const projection = await getProjectWorkProjection({
       supabase: client({
