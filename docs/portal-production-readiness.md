@@ -22,9 +22,15 @@ full composition and 5,000-row fail-closed inventory remain intact. Focused
 application and database regression checks pass. Native PostgreSQL qualification
 and independent SQL review passed; the exact additive migration is installed and
 qualified in existing staging with unchanged source rows and authenticated,
-anonymous, service-only and missing-project HTTP checks. Whole-batch review and
-candidate runtime comparison remain separate release evidence. Production has
-not received this migration, and a second-batch production release is not approved.
+anonymous, service-only and missing-project HTTP checks. Optimized build and
+unchanged bundle budgets pass. On the same existing 45-project staging data,
+seven warm samples showed median queue 795 to 652 ms, newest Projects 953 to
+820 ms and next-action Projects 955 to 794 ms; normalized response values matched
+and authenticated Projects/Dashboard, Overview and Work Queue journeys passed
+without mutation requests. These small-environment measurements do not establish
+production latency or large-portfolio capacity. Whole-batch independent review
+remains separate. Production has not received this migration, and a second-batch
+production release is not approved.
 
 Portal action connection release candidate (22 September 2026): the scoped
 admin grant UI, delegated canonical close/reopen adapter and protected Windows

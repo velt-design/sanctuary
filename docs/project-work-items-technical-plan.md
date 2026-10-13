@@ -531,6 +531,17 @@ returned every requested identity; anonymous/service-only calls were denied and
 missing IDs failed generically. Production installation and release require their
 own approval. Local query plans and process-backed timings are not hosted latency.
 
+The optimized application comparison used the same existing 45-project staging
+portfolio, environment and seven warm samples per route. Median queue time moved
+from 795.46 to 652.17 ms (18% lower), newest Projects from 953.4 to 819.55 ms
+(14% lower), and next-action Projects from 954.82 to 793.7 ms (16.9% lower).
+Every route returned HTTP 200 with deeply equal normalized JSON. Project summary
+and Command Centre medians were roughly 2–3% higher and snapshot 1.7% lower;
+this small sample is not a production latency or regression guarantee.
+Authenticated Projects/Dashboard, Overview and Work Queue journeys and unchanged
+bundle budgets passed; no mutation requests were made. Native growth fixtures,
+hosted reads and independent review remain separately identified evidence.
+
 `confirmationFacts.ts` indexes current confirmation project IDs once per loaded
 portfolio before `teamQueue.ts` maps specialist candidates. Retractions, type
 matching and duplicate facts use the same shared active-fact policy as individual
