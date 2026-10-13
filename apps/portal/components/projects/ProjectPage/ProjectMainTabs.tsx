@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { coerceProjectTab, type ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import layout from './ProjectPage.module.css';
+import loadingStyles from './projectTabModules.module.css';
 import { ProjectEmailReadingProvider } from './tabs/overview/ProjectEmailReadingState';
 import {
   CommercialTab,
@@ -32,7 +33,9 @@ export default function ProjectMainTabs({
 }) {
   const searchParams = useSearchParams();
   const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
-  const activeTab = coerceProjectTab(requestedTab, Boolean(snapshot.project.hasJobPacks));
+  // Summary metadata cannot prove a specialist is absent. Match route/navigation
+  // intent until the full snapshot resolves availability, including on failure.
+  const activeTab = coerceProjectTab(requestedTab, !snapshotContentReady || Boolean(snapshot.project.hasJobPacks));
 
   return (
     <section
@@ -65,7 +68,17 @@ export default function ProjectMainTabs({
             calculatorWorkspace={calculatorWorkspace}
           />
         ) : null}
-        {activeTab === 'job-packs' ? <JobPacksTab projectId={snapshot.project.id} /> : null}
+        {activeTab === 'job-packs' ? snapshotContentReady ? <JobPacksTab projectId={snapshot.project.id} /> : (
+          <div
+            className={loadingStyles.tabLoadingState}
+            data-project-job-packs-availability={snapshotState === 'refresh-failed' ? 'unavailable' : 'pending'}
+            role="status"
+          >
+            {snapshotState === 'refresh-failed'
+              ? 'Job Packs availability could not be loaded. Retry the project refresh above.'
+              : 'Checking Job Packs availability…'}
+          </div>
+        ) : null}
       </div>
       </ProjectEmailReadingProvider>
     </section>

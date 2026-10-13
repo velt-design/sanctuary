@@ -4,16 +4,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import { qk } from '@/lib/queries/keys';
 import { useActiveProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
+import ProjectMainTabs from '@/components/projects/ProjectPage/ProjectMainTabs';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 
 const state = vi.hoisted(() => ({ search: '', preload: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(state.search) }));
-vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({ preloadProjectOverviewModule: state.preload }));
+vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
+  preloadProjectOverviewModule: state.preload,
+  OverviewTab: () => <div data-testid="overview-tab" />,
+  CommercialTab: () => <div data-testid="commercial-tab" />,
+  JobPacksTab: () => <div data-testid="job-packs-tab" />,
+}));
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'host', supabaseRuntimeUrl: () => 'https://host.supabase.co' }));
 vi.mock('@/components/debug/PortalDebugExportButton', () => ({ default: () => null }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
 vi.mock('@/components/projects/ProjectPage/ProjectPageFrame', () => ({
-  default: ({ snapshot, host, optimisticTab, onTabSelect, snapshotState }: any) => {
+  default: ({ snapshot, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab }: any) => {
     const { commandQuery, paymentQuery } = useActiveProjectOverviewReads(host, snapshot.project.id);
     return <div data-frame={snapshot.project.id} data-snapshot={snapshotState}>
       <span>{snapshot.project.name}</span>
@@ -22,6 +28,8 @@ vi.mock('@/components/projects/ProjectPage/ProjectPageFrame', () => ({
       <span data-command-fetching={String(commandQuery.isFetching)} data-tab={optimisticTab} />
       <button onClick={() => onTabSelect('estimates')}>Commercial</button>
       <button onClick={() => onTabSelect('activity')}>Overview</button>
+      <ProjectMainTabs snapshot={snapshot} host={host} optimisticTab={optimisticTab}
+        snapshotState={snapshotState} snapshotContentReady={snapshotContentReady} tab={tab} />
     </div>;
   },
 }));
@@ -31,8 +39,8 @@ let requests: PendingRequest[];
 let client: QueryClient;
 let view: ReturnType<typeof renderIntoDocument> | undefined;
 
-function response(kind: string, id = 'proj_1') {
-  const project = { id: id === '00000000-0000-4000-8000-000000000001' ? `proj_${id}` : id, name: `Private ${id}`, stage: 'new', hasJobPacks: true };
+function response(kind: string, id = 'proj_1', hasJobPacks = true) {
+  const project = { id: id === '00000000-0000-4000-8000-000000000001' ? `proj_${id}` : id, name: `Private ${id}`, stage: 'new', ...(kind === 'summary' ? {} : { hasJobPacks }) };
   if (kind === 'command-centre') return { projectId: id, workModel: 'v2' };
   if (kind === 'invoice-schedule') return { schedule: { paidIncGstCents: 12345 } };
   return { snapshot: { project, workModel: 'v2', pipeline: { stage: 'new' }, activity: [], emails: [], notes: [] }, generatedAt: '2026-10-13T00:00:00Z' };
@@ -43,12 +51,12 @@ function element(projectId = 'proj_1', tab = 'activity') {
 async function settle() {
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
 }
-async function answer(kind: string, status = 200, id = 'proj_1') {
+async function answer(kind: string, status = 200, id = 'proj_1', body = response(kind, id)) {
   const request = requests.find((item) => !item.answered && item.path.includes(`/${id}/`) && item.path.endsWith(`/${kind}`));
   expect(request, `pending ${id}/${kind}`).toBeDefined();
   request!.answered = true;
   await act(async () => {
-    request!.resolve(new Response(JSON.stringify(status === 200 ? response(kind, id) : { error: 'Unavailable' }), { status }));
+    request!.resolve(new Response(JSON.stringify(status === 200 ? body : { error: 'Unavailable' }), { status }));
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   await settle();
@@ -114,6 +122,74 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     expect(requests).toHaveLength(2);
     await answer('snapshot');
     expect(requests).toHaveLength(2);
+  });
+
+  it.each([true, false])('keeps a failed direct Job Packs entry recoverable until Retry resolves availability=%s', async (hasJobPacks) => {
+    state.search = 'tab=job-packs';
+    view = renderIntoDocument(element('proj_1', 'job-packs'));
+    await answer('summary');
+    expect(view.container.querySelector('[data-project-active-tab="job-packs"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-project-job-packs-availability="pending"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-testid="overview-tab"]')).toBeNull();
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).toBeNull();
+    await answer('snapshot', 500);
+    expect(view.container.querySelector('[data-project-job-packs-availability="unavailable"]')).not.toBeNull();
+    expect(view.container.textContent).toContain('Retry the project refresh above.');
+    expect(count('command-centre')).toBe(0);
+    expect(count('invoice-schedule')).toBe(0);
+    expect(state.preload).not.toHaveBeenCalled();
+
+    act(() => [...view!.container.querySelectorAll('button')].find((button) => button.textContent === 'Retry')!.click());
+    await answer('snapshot', 200, 'proj_1', response('snapshot', 'proj_1', hasJobPacks));
+    expect(count('snapshot')).toBe(2);
+    expect(view.container.querySelector('[data-project-job-packs-availability]')).toBeNull();
+    expect(view.container.querySelector(`[data-project-active-tab="${hasJobPacks ? 'job-packs' : 'activity'}"]`)).not.toBeNull();
+    expect(count('command-centre')).toBe(hasJobPacks ? 0 : 1);
+    expect(count('invoice-schedule')).toBe(hasJobPacks ? 0 : 1);
+    if (hasJobPacks) {
+      expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
+      expect(view.container.querySelector('[data-testid="overview-tab"]')).toBeNull();
+    } else {
+      await answer('command-centre'); await answer('invoice-schedule');
+      expect(view.container.querySelector('[data-testid="overview-tab"]')).not.toBeNull();
+      expect(view.container.querySelector('[data-command="proj_1"]')).not.toBeNull();
+      expect(view.container.querySelector('[data-payment="12345"]')).not.toBeNull();
+    }
+  });
+
+  it.each(['Overview', 'Commercial'])('can leave unresolved Job Packs for %s with only the selected owner active', async (target) => {
+    state.search = 'tab=job-packs';
+    view = renderIntoDocument(element('proj_1', 'job-packs'));
+    await answer('summary'); await answer('snapshot', 500);
+    act(() => [...view!.container.querySelectorAll('button')].find((button) => button.textContent === target)!.click());
+    const overview = target === 'Overview';
+    expect(view.container.querySelector(`[data-project-active-tab="${overview ? 'activity' : 'estimates'}"]`)).not.toBeNull();
+    expect(count('command-centre')).toBe(overview ? 1 : 0);
+    expect(count('invoice-schedule')).toBe(overview ? 1 : 0);
+    if (overview) {
+      await answer('command-centre'); await answer('invoice-schedule');
+      expect(view.container.querySelector('[data-command="proj_1"]')).not.toBeNull();
+      expect(view.container.querySelector('[data-payment="12345"]')).not.toBeNull();
+    } else {
+      expect(view.container.querySelector('[data-testid="commercial-tab"]')).not.toBeNull();
+      expect(state.preload).not.toHaveBeenCalled();
+    }
+    expect(view.container.querySelector('[data-project-snapshot-state="refresh-failed"]')).not.toBeNull();
+  });
+
+  it.each([401, 403, 404])('removes the pending Job Packs body when snapshot access ends with %s', async (status) => {
+    state.search = 'tab=job-packs';
+    view = renderIntoDocument(element('proj_1', 'job-packs'));
+    await answer('summary');
+    expect(view.container.querySelector('[data-project-job-packs-availability="pending"]')).not.toBeNull();
+    await answer('snapshot', status);
+    expect(view.container.querySelector('[data-project-snapshot-state="unavailable"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-project-tab-body]')).toBeNull();
+    expect(view.container.textContent).not.toContain('Private proj_1');
+    expect(view.container.textContent).not.toContain('Retry');
+    expect(count('command-centre')).toBe(0);
+    expect(count('invoice-schedule')).toBe(0);
+    expect(client.getQueryData(qk.projects.summary('host', 'proj_1'))).toBeUndefined();
   });
 
   it.each(['summary', 'snapshot', 'command-centre', 'invoice-schedule'])('keeps early %s denial authoritative even when older project reads finish later', async (kind) => {

@@ -653,6 +653,13 @@ The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is al
 
 The loading change schedules the existing staff-authenticated reads earlier. Server aggregates, selected-detail failure, query keys, mutation invalidation and payment freshness remain their existing owners. Hosted verification also exposed invoice-schedule's pre-existing missing response cache policy: its route now explicitly wraps success, unauthenticated, validation and handled server-error responses with `private, no-store`, retaining the existing role-sensitive commercial reader and response values. No private server cache or second client promise store is introduced. Correspondence retains its separate in-flight-only warm-read privacy contract. Complete cold Overview readiness means a fresh full snapshot, ready Command Centre facts and resolved payment values; header/tabs alone remain a separately labelled shell metric.
 
+For a direct Job Packs entry, route intent, header selection and body all preserve
+unknown availability until the full snapshot resolves. `ProjectMainTabs` shows a
+pending availability message, or a failed-availability message using the route's
+existing Retry after a snapshot error. It mounts Job Packs when confirmed present
+and falls back to Overview only when confirmed absent. Summary metadata must not
+render Overview while the route deliberately keeps its observers disabled.
+
 The current staff-facing lazy navigation owners are:
 
 - Overview (`activity` key), the default project workflow.

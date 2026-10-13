@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-14 - Keep tab rendering aligned with active read ownership
+
+A direct Job Packs entry preserved unknown availability in route/header state,
+but the body treated missing summary metadata as absence and mounted Overview
+with disabled readers. Keep pending distinct from absent through rendering and
+failure recovery. Test the actual tab body together with deferred route queries;
+a mocked frame can verify request counts while hiding this mismatch. Owner:
+`project-command-centre-architecture.md`.
+
 ## 2026-10-13 - Start active project reads before lazy presentation
 
 Cold Overview waited for metadata, its module, Command Centre and then payment
