@@ -332,7 +332,7 @@ test('project filters persist through refresh, filter history, project Back, and
 
   await main.getByLabel('Filter by audience').selectOption('residential');
   await page.waitForURL(/audience=residential/);
-  await expect(visibleProjectCards(page)).toHaveCount(9);
+  await expect(visibleProjectCards(page)).toHaveCount(10);
 
   await main.getByLabel('Filter by roof form').selectOption('gable');
   await page.waitForURL(/audience=residential&form=gable/);
@@ -348,7 +348,7 @@ test('project filters persist through refresh, filter history, project Back, and
   await page.goBack();
   await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
   await expect(main.getByLabel('Filter by roof form')).toHaveValue('all');
-  await expect(visibleProjectCards(page)).toHaveCount(9);
+  await expect(visibleProjectCards(page)).toHaveCount(10);
   await page.goForward();
   await expect(visibleProjectCards(page)).toHaveCount(4);
 
