@@ -6,6 +6,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
+import { ingestRequest } from '../apps/portal/lib/marketingIntegrations/googleAds/ingestWire.mjs';
 export const scopes=['https://www.googleapis.com/auth/adwords','https://www.googleapis.com/auth/datamanager'];
 export const callback='http://127.0.0.1:8756/google-ads/callback';
 export function validCallbackState(given,expected) {
@@ -33,6 +34,14 @@ export async function json(url,init={},allowEmpty=false) {
 export function sourceRpc(origin,service,name,body) {
   // PostgREST returns 204 for this void function. Every other RPC requires JSON.
   return json(`${origin}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:service,Authorization:`Bearer ${service}`,'Content-Type':'application/json'},body:JSON.stringify(body)},name==='google_ads_credential_settled');
+}
+export function syntheticIngestRequest(run,now=new Date()) {
+  const target={operatingAccount:{accountType:'GOOGLE_ADS',accountId:run.conversionCustomerId},
+    ...(run.managerId?{loginAccount:{accountType:'GOOGLE_ADS',accountId:run.managerId}}:{}),productDestinationId:run.actionId};
+  const event={transactionId:'sanctuary-preflight-synthetic',eventTimestamp:now.toISOString(),eventSource:'OTHER',conversionValue:1,currency:'NZD',
+    consent:{adUserData:'CONSENT_STATUS_UNSPECIFIED',adPersonalization:'CONSENT_DENIED'},
+    userData:{userIdentifiers:[{emailAddress:createHash('sha256').update('synthetic@example.invalid').digest('hex')}]}};
+  return ingestRequest(target,event,true);
 }
 async function boundedVault(operation) {
   let timer;try{return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Vault outcome uncertain; reconcile before retry.')),15000);})]);}
@@ -100,7 +109,7 @@ export async function main(args=process.argv.slice(2)) {
     const action=await json(`https://googleads.googleapis.com/v25/customers/${run.conversionCustomerId}/googleAds:search`,{method:'POST',headers,body:JSON.stringify({query:`SELECT conversion_action.id, conversion_action.type, conversion_action.status, conversion_action.primary_for_goal, conversion_action.counting_type, conversion_action.value_settings.always_use_default_value FROM conversion_action WHERE conversion_action.id = ${run.actionId}`})});
     const a=action.results?.[0]?.conversionAction;if(action.results?.length!==1||a.id!==run.actionId||a.type!=='UPLOAD_CLICKS'||a.status!=='ENABLED'||a.primaryForGoal!==false||a.countingType!=='MANY_PER_CLICK'||a.valueSettings?.alwaysUseDefaultValue!==false)throw Error('Closed Sale action configuration does not match the reporting-only contract.');
     await command('check',{},run.runId);
-    await json('https://datamanager.googleapis.com/v1/events:ingest',{method:'POST',headers:{Authorization:`Bearer ${token.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({validateOnly:true,encoding:'HEX',destinations:[{operatingAccount:{accountType:'GOOGLE_ADS',accountId:run.conversionCustomerId},...(run.managerId?{loginAccount:{accountType:'GOOGLE_ADS',accountId:run.managerId}}:{}),productDestinationId:run.actionId}],events:[{transactionId:'sanctuary-preflight-synthetic',eventTimestamp:new Date().toISOString(),eventSource:'OTHER',conversionValue:1,currency:'NZD',consent:{adUserData:'CONSENT_STATUS_UNSPECIFIED',adPersonalization:'CONSENT_DENIED'},userData:{userIdentifiers:[{emailAddress:createHash('sha256').update('synthetic@example.invalid').digest('hex')}]}}]})});
+    await json('https://datamanager.googleapis.com/v1/events:ingest',{method:'POST',headers:{Authorization:`Bearer ${token.access_token}`,'Content-Type':'application/json'},body:JSON.stringify(syntheticIngestRequest(run))});
   }
   await command('finish',{},run.runId);
   process.stdout.write(JSON.stringify({outcome:args[0]==='--connect'?'dedicated_credential_connected':'synthetic_validation_passed',customerId:customer.id,conversionOwner:customer.conversionTrackingSetting?.googleAdsConversionCustomer,currency:customer.currencyCode,timezone:customer.timeZone,liveUploadsEnabled:false})+'\n');

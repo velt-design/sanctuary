@@ -44,6 +44,7 @@ beforeAll(async()=>{
   await db.exec(readFileSync('supabase/migrations/20261013000001_google_ads_source.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20261013000002_google_ads_commands.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20261013000003_google_ads_retraction_source_fence.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261013000005_google_ads_current_generation_health.sql','utf8'));
 },30000);
 beforeEach(async()=>{
   await db.exec(`begin;insert into projects values('${id(1)}');insert into quotes values('${id(2)}','${id(1)}');
@@ -299,6 +300,27 @@ it('exposes an expired credential quarantine even when another lane last succeed
   await enable();const report=await command('begin',{lane:'report'});await command('finish',{},report.runId);
   const {runId}=await begin();await command('credential_pending',{},runId);await db.exec(`update private.google_ads_runs set expires_at=clock_timestamp()-interval '1 second' where id='${runId}'`);
   expect((await staffRead()).health.sales).toMatchObject({pending:'EXPIRED',credentialUncertain:true});
+  await rejects(()=>command('begin',{lane:'report'}),'reconciliation');
+});
+it('retains historical setup failure as audit while projecting only current-generation completed health',async()=>{
+  await db.exec(`update private.google_ads_control set actor_id='${id(90)}',binding_sha256='${binding}' where singleton=true`);
+  const previous=await command('begin',{lane:'verify'});await command('finish',{error:'VALIDATION_DIAGNOSTIC_FAILED'},previous.runId);
+  expect((await staffRead()).health.verify.error).toBe('VALIDATION_DIAGNOSTIC_FAILED');
+  await db.exec('update private.google_ads_control set reports_enabled=true where singleton=true');
+  const current=await command('begin',{lane:'report'}),report={schemaVersion:1,customerId:'6328516633',currency:'NZD',timezone:'Pacific/Auckland',
+    start:'2026-07-16',end:'2026-10-13',fetchedAt:'2026-10-14T00:00:00Z',actions:[],campaigns:[],keywords:[],conversions:[]};
+  await command('report',{report},current.runId);await command('finish',{},current.runId);
+  const status=statusSchema.parse(await staffRead());
+  expect(status.health.verify).toEqual({lastCompletedAt:null,error:null,pending:'NONE',credentialUncertain:false});
+  expect(status.health.report.error).toBeNull();expect(status.health.report.lastCompletedAt).not.toBeNull();expect(status.report).toEqual(report);
+  expect(status.counts).toEqual({});expect(status.diagnostics).toEqual([]);
+  expect((await db.query<{error_code:string}>('select error_code from private.google_ads_runs where id=$1',[previous.runId])).rows[0].error_code).toBe('VALIDATION_DIAGNOSTIC_FAILED');
+});
+it('keeps historical-generation pending work and credential uncertainty visible and fenced',async()=>{
+  await enable();
+  await db.exec(`insert into private.google_ads_runs(lane,generation,expires_at,credential_uncertain)
+    select 'verify',generation-1,clock_timestamp()-interval '1 second',true from private.google_ads_control where singleton=true`);
+  expect(statusSchema.parse(await staffRead()).health.verify).toMatchObject({pending:'EXPIRED',credentialUncertain:true});
   await rejects(()=>command('begin',{lane:'report'}),'reconciliation');
 });
 it('retains sanitized provider diagnostics with private request evidence and exposes only code aggregates',async()=>{

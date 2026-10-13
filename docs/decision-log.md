@@ -1,5 +1,25 @@
 # Decision Log
 
+## 2026-10-13 - Distinguish historical setup failure from current health
+
+The Portal showed a setup warning from an older control generation beside a
+successful current report. Completed lane health now uses the current generation;
+the original failed run stays in the audit. Do not clear historical errors or
+infer one capability's health from another's success. Pending work and uncertain
+credentials remain global because they can still prevent safe operation. No
+current completed check means no result, not a fabricated pass. Owner:
+`google-ads-connection.md`.
+
+## 2026-10-13 - Route Data Manager events explicitly
+
+The first live synthetic validation reported `NOT_FOUND` on destination references.
+The generic API contract describes an omitted-reference fallback; the observed
+error alone does not distinguish routing from new-action availability. Runtime
+delivery and setup now share one request-envelope builder with an explicit matching destination/event
+reference. Preserve canonical sale facts and stored identity when adding provider
+routing metadata; test the actual serialized request in both entry paths and keep
+diagnostic account/action checks strict. Owner: `google-ads-connection.md`.
+
 ## 2026-10-13 - Preserve void RPC success through operator setup
 
 Google setup saved its credential and cleared the source uncertainty checkpoint,
