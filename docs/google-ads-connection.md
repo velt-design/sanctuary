@@ -1,0 +1,225 @@
+# Google advertising connections
+
+## Candidate status and ownership
+
+This is an install-only, default-disabled release candidate. It has not enabled
+Google APIs, granted OAuth scopes, changed an advertising action, deployed a
+schedule, uploaded a customer record or demonstrated attributed production sales.
+Production activation requires Jordan's approval. Browser access is setup and
+diagnostic access; the ongoing collectors are server-owned.
+
+`lib/marketingIntegrations/googleAds` owns the source credential adapter, provider
+contracts, sale preparation, delivery and report collection. It reuses the tested
+GA4 vault adapter with a **separate advertising item and grant**. It never changes
+the existing GA4 credential. The forward `20261013000001` and `000002` migrations
+own source facts, control, lease fencing, delivery receipts, suppression and saved
+reports. Application roles have no direct private-table rights. Authenticated
+confirmed developer access owns the staff read, using the existing Portal guard.
+
+The existing Marketing & Sales Data sources drawer provides campaign and keyword
+inspection and a separate delivery-coverage section. No ad-management, campaign,
+bidding or public-site tracking changes are included. Velt remains a potential
+consumer of Sanctuary-owned evidence; it is not a second collector or sale owner.
+
+## Business and privacy contract
+
+The proposed Closed Sale is one currently accepted **quote family/commercial
+scope** with a verified first-instalment deposit. An unreversed positive Xero
+deposit match counts even when the invoice remains OPEN; a PAID positive
+first-instalment invoice also counts. Multiple payment rows and duplicate first
+invoices cannot produce multiple scope sales. A later accepted revision uses the
+same family identity and updates its full accepted value. Paid prior versions
+within that family preserve the original deposit evidence. Distinct add-ons are
+separate scopes. CANCELLED projects and withdrawn current acceptances are not
+current sales. Pipeline labels are not proof of payment.
+Only current paid scopes and previously assessed delivery records enter delivery
+coverage. Never-paid drafts and unaccepted scopes are not counted as missed sales.
+
+Occurrence is the earliest applicable payment-ledger timestamp, falling back to
+the invoice's saved `paid_at` only where there is no unreversed ledger payment.
+Only NZD invoices are eligible. The amount is the current accepted scope's stored
+GST-inclusive NZD value, **not** the deposit amount or banked revenue. Date/value
+and first-deposit semantics are proposed for approval before activation. Existing
+explicit test project/receipt exclusions match the marketing owner.
+
+The first non-test linked enquiry supplies the original submitted email, phone,
+click identifiers and saved consent provenance. Current contact records are not
+substituted. Consent must be JSON boolean true. A separately approved control
+lists accepted consent bases and the earliest enquiry date covered by the reviewed
+advertising-data policy. Empty policy, unknown basis, older receipts and known
+opt-outs cannot dispatch. This does not redefine the website's existing NZ
+regional tracking policy or claim that a regional default was an explicit click.
+The approved policy may include that existing basis; the original basis remains
+unchanged. A further default-off control is required before hashed contact data
+is included. Missing historical permission cannot be repaired by hashing.
+
+Known later withdrawals are recorded in `private.google_ads_suppressions` against
+the project, with operator/reason/time. Original enquiry consent is a snapshot,
+not a current global preference registry. Before activation the operator must
+establish how customer opt-outs reach this suppression record. Do not infer later
+consent from an unrelated browser session. Every dispatch rechecks current source
+and suppression facts. A request already in flight can finish after revocation;
+the next reconciliation preserves its identity and correction requirement.
+
+Email is normalized and SHA-256 hashed; Gmail/googlemail dots and plus suffixes
+are removed according to current Google formatting guidance. Phones are hashed
+only when already unambiguous E.164 after punctuation removal. Local NZ-looking
+numbers are not silently assigned a country. A valid email can match without a
+phone. Only hashed contact values and permitted click IDs enter the frozen private
+event. No names, addresses, notes or CRM raw payload are exported. New events older
+than 90 days are held; enhanced-only origin enquiries older than 63 days are held.
+A recent enquiry does not establish the original click date or guarantee matching.
+Provider lookback limits and account eligibility can reject additional records.
+
+## Delivery and recovery
+
+`sanctuary-scope-<quote UUID>` is the stable transaction/order ID. Small hourly runs
+freeze authoritative eligible facts, dispatch at most five rows and later inspect
+one-event Data Manager request diagnostics. Retry uses that same identity, date
+and value. Data Manager duplicate transaction IDs support value restatement.
+Transport/429/server failures retry with a bounded attempt ceiling; explicit
+provider errors remain visible. A processing response is not success. An ingestion
+SUCCESS must match the pinned destination and record count. It still does not
+prove matching or advertising credit, which remain separate report evidence.
+
+Credential refresh and possible rotation have a durable uncertainty checkpoint.
+An uncertain token or vault write quarantines subsequent runs. Operators reconcile
+the specific run and vault item; lease expiry does not make a credential retry
+safe. Disabling control takes effect immediately through generation fences and
+preserves frozen event/destination evidence. A provider request in flight cannot
+be unsent. Changed account/credential bindings hold existing deliveries for review.
+
+Before initial sending, cancellation suppresses the event. After possible sending,
+real retractions use Google Ads `uploadConversionAdjustments` with RETRACTION and
+the original transaction ID, separately enabled. Zero-value restatement is never
+called a cancellation. Indexed/partial failures and uncertain adjustment results
+require review; WBRAID retractions require operator handling. Data Manager-origin
+to Ads-retraction portability remains a post-approval live verification item.
+Manual correction using Google's supported import workflow is the fallback.
+Restoring a terminally retracted family cannot silently reuse that irrecoverable
+order ID; it requires a reviewed new legitimate sale cycle. Merely ageing beyond
+an upload window never retracts a valid sale. Identity/date changes after sending
+are held rather than silently rewritten.
+
+## Reporting meaning and bounds
+
+Google Ads v25 supplies the preceding 90 completed account-timezone days. Search
+pagination is complete, cursor-checked and bounded to 20 pages/100,000 rows per
+query. Responses and final saved reports have byte limits. Incomplete, duplicate,
+malformed or failed reads never replace a saved complete report. The snapshot is
+retained for seven days, labelled stale after 30 hours and withheld on expiry.
+It is not a permanent historic spend ledger. Earlier periods remain unavailable.
+
+Costs/clicks/impressions are collected separately from conversion-action rows,
+avoiding repeated spend. Campaign/day and keyword/day are distinct grains, never
+summed together. Both interaction-date and conversion-date outcome projections
+are explicit. Conversion-date outcomes and dated spend are different cohorts.
+Configured submitted-enquiry actions exclude design starts/reviews. The pinned
+Closed Sale action is separate. Unmapped metrics stay unavailable; confirmed
+mapped actions with no returned activity may show zero. Google can return
+fractional attribution. Currency/timezone/source dates always belong to Google,
+not an assumed CRM period. No cost-per-CRM-sale, causal ROI or person-level match
+is inferred from these aggregate reports.
+
+## Post-approval connection and activation
+
+These are concrete operator steps, not instructions to execute before approval.
+
+1. Apply the two forward migrations to the approved database after the release
+   checks. They seed only a disabled control. Keep both application feature flags
+   off. Verify source row counts, privacy exclusions and database role tests.
+2. In the approved Google Cloud project, enable Google Ads API and Data Manager
+   API. Configure a **dedicated advertising Web OAuth client** with redirect
+   `http://127.0.0.1:8756/google-ads/callback`, correct production OAuth publishing/
+   user access status and the two exact scopes below. This is a new grant, not
+   scope expansion of GA4's existing refresh token. No retired developer-token
+   header is used. Confirm Cloud project Ads access eligibility.
+3. Provision a dedicated 1Password API credential item containing exactly one
+   concealed `refresh_token` field, initially empty. Scope its service account to
+   that approved vault/item. Set server-only variables listed below in private
+   operator/deployment storage. Pin `actor_id` to the approved active Portal
+   identity and the exact computed credential binding in the disabled control.
+4. `node scripts/google-ads-setup.mjs --plan` is safe without credentials. After
+   access approval, set `SANCTUARY_GOOGLE_ADS_SETUP_APPROVED=true` in the private
+   operator environment and run `--connect`. The script uses state and PKCE,
+   receives the callback only on loopback, checks exact scopes, verifies vault
+   version advancement and reads the pinned Ads customer. It never prints tokens.
+   The disabled-control `verify` lease prevents concurrent collection. A failure
+   leaves any uncertain credential operation quarantined for reconciliation.
+5. Resolve `customer.conversion_tracking_setting.google_ads_conversion_customer`.
+   Pin it separately from reporting customer `6328516633` and optional login
+   manager `6596874249`. Provision/review a reporting-only Closed Sale action in
+   that conversion-owner account: UPLOAD_CLICKS, ENABLED, PURCHASE,
+   `primary_for_goal=false`, MANY_PER_CLICK, varying uploaded values (not always
+   default), approved click lookback. Verify it is not used by custom campaign
+   goals. Record its ID and the exact submitted-enquiry action IDs. Do not alter
+   existing bidding or conversion actions as incidental setup.
+6. Run `--preflight` while collection/uploads remain off. It refreshes the separate
+   credential, reads account/action metadata and sends only a fictional identifier
+   with `validateOnly:true`. No real customer data is sent and no sale is ingested.
+   This validates syntax/access, not matching, diagnostics or real cancellation.
+7. Review the proposed sale/date/value contract, consent bases/cutoff, disclosure,
+   enhanced-data authority, opt-out handling and current eligible inventory. Pin
+   the approved policy in the control; no default date or retrospective consent
+   is supplied. Enable reports first and verify exact campaign/keyword/action
+   totals and both date bases against Google UI. Inspect the Portal report.
+8. Separately approve one genuine eligible sale, enable the required upload
+   authority, dispatch once and inspect request diagnostics plus later Ads credit.
+   Reconcile source date/value/order ID and replay the same sale to confirm no
+   duplicate. A genuine eligible source record is required; never upload synthetic
+   conversions to a live action. Only then enable the routine schedule and the
+   separately tested retraction capability. No eligible recent record means this
+   last proof remains pending, not a reason to manufacture data.
+
+Variables: `SANCTUARY_GOOGLE_ADS_REPORTS_ENABLED` and
+`SANCTUARY_GOOGLE_ADS_UPLOADS_ENABLED` default off. Credential authority uses
+`SANCTUARY_GOOGLE_ADS_ACTOR_ID`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_VAULT_ID`,
+`_CREDENTIAL_ITEM_ID`, `_SERVICE_ACCOUNT_TOKEN`, `_BINDING_SHA256` (same prefix).
+The binding is SHA-256 of the ordered config object in `config.ts`, including
+actor/client/vault authority, excluding the mutable refresh token. The operator
+tool also needs the approved Supabase origin/service key. Google scopes are
+`https://www.googleapis.com/auth/adwords` and
+`https://www.googleapis.com/auth/datamanager`. Scopes grant provider capabilities;
+application code and source controls restrict actual actions.
+
+Candidate cron paths reuse the existing `CRON_SECRET` boundary: report at 02:43
+UTC daily, sales at minute 13 hourly. Verify the deployment plan supports these
+schedules and the 300-second route limit before release. Disabled flags perform
+no provider calls. There is no chat timer, second external subscription or new
+service purchase. Keep QA fixtures disabled in production.
+
+## Stop, rollback and private retention
+
+First disable both database capabilities and application flags. Generation fencing
+prevents subsequent effects; inspect in-flight operation and delivery states.
+Revert the application/cron change if required, but retain the private tables and
+original destinations/transactions for reconciliation. Do not drop this migration
+to undo sent customer data. Google credential revoke, true conversion corrections
+and any provider deletion requests are separate explicit actions. After credential
+rotation, reconcile uncertain vault state before updating binding; never clear an
+uncertainty flag on a timer. Raw API payloads/tokens/customer identities do not
+belong in source control, browser logs, fixtures or public release evidence.
+
+The saved aggregated report expires after seven days; durable sale receipts and
+hashed matching evidence currently remain in the restricted source store for
+correction/reconciliation. Approve and implement a business retention policy before
+activation if that evidence must be automatically purged. Purging identifiers must
+retain non-identifying transaction/destination/state evidence required for genuine
+corrections; no automatic retention period is invented by this integration.
+
+## Verification
+
+Focused PGlite tests execute the real forward migrations and canonical accepted
+quote helper, covering multiple invoices, revisions, partial deposits/reversal,
+typed consent, suppression, freeze/replay, immediate revocation and credential
+uncertainty. Provider tests cover pagination, separate metric grains, policy-aware
+hashing, diagnostics and true retractions. The existing guarded marketing fixture
+uses only invented Google reports; `?google=failure|missing|disabled|stale|unmapped`
+exercises evidence states. These checks do not establish live OAuth, API eligibility,
+provider matching, conversion-action configuration or production rollout.
+
+Primary contracts: [Data Manager offline conversions](https://developers.google.com/data-manager/api/devguides/events/google-ads/offline),
+[conversion adjustments](https://developers.google.com/data-manager/api/devguides/events/google-ads/offline/conversion-adjustments),
+[Google Ads conversion setup](https://developers.google.com/google-ads/api/docs/conversions/getting-started),
+[reporting](https://developers.google.com/google-ads/api/docs/reporting/overview),
+[customer data policies](https://support.google.com/google-ads/answer/7475709).

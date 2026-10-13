@@ -1,5 +1,17 @@
 # Supabase Schema Map
 
+## Google advertising candidate (disabled)
+
+Forward migrations `20261013000001_google_ads_source.sql` and
+`20261013000002_google_ads_commands.sql` install private Google control, runs,
+aggregate snapshot, scope deliveries and known project opt-outs. They enable no
+authority. Service-role command RPCs own mutation; private tables/helpers are
+revoked from application roles. The auth-bound developer read returns aggregate
+report/coverage only. Source facts reuse current accepted quote families, first
+invoices, canonical payment entries/matches and original enquiry snapshots. No
+commercial record is mutated. See [google-ads-connection.md](google-ads-connection.md)
+for exact semantics, correction evidence, limits and activation/rollback.
+
 ## GA4 source ownership candidate — not activated
 
 `20260923070001_sanctuary_ga4_reporting.sql` adds private control, operation,

@@ -56,3 +56,5 @@ data/*.db-shm
 *.tsbuildinfo
 next-env.d.ts
 **/.private-preview/
+# Local alternate Next.js build directories contain generated output only.
+**/.next-google-connections/

@@ -1,5 +1,16 @@
 # Automation, Email, And Audit
 
+## Google advertising candidate
+
+The default-off Google source scheduler directly reconciles authoritative paid
+quote scopes and does not depend on the legacy GA4 deposit audit route. GA4
+delivery remains unchanged. The private Google outbox owns source freeze,
+deduplication, request receipts, retries and corrections; it never sends email or
+changes business records. Existing `CRON_SECRET` authenticates the proposed daily
+report/hourly small-batch delivery routes. No schedule is live before approval.
+See [google-ads-connection.md](google-ads-connection.md) for the complete owner and
+provider boundaries.
+
 ## Assigned email review and Outlook dispatch
 
 PR #181 released the initial private review queue and Outlook attempt ledger.
