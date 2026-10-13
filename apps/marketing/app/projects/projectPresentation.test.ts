@@ -25,6 +25,8 @@ describe('project presentation', () => {
         'A first-floor box-perimeter pergola designed around the balustrade and outlook.',
       'lilliput-mini-golf':
         'A pitched pergola supplied and installed within a consultant-led venue renovation.',
+      'milford-garden-retreat':
+        'Two cedar-lined pergolas connect outdoor dining with a private spa and sauna area, within an onsen-inspired Milford garden.',
       'waiheke-holiday-home':
         'A box-perimeter pergola extending the living space onto the deck.',
       'goodhome-commercial-terrace':
