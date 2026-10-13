@@ -4,7 +4,7 @@ import { ApiError } from '@/lib/repo/apiClient';
 import ProjectPaymentPositionQuery from './ProjectPaymentPositionQuery';
 
 const state = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
-vi.mock('@tanstack/react-query', () => ({ useQuery: () => state.value }));
+vi.mock('../../ProjectOverviewReads', () => ({ useActiveProjectOverviewReads: () => ({ paymentQuery: state.value }) }));
 vi.mock('./ProjectPaymentPosition', () => ({ default: () => <div>Saved private payment</div> }));
 afterEach(() => { document.body.innerHTML = ''; });
 

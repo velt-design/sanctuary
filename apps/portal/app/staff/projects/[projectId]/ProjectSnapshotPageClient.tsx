@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import ProjectPageFrame from "@/components/projects/ProjectPage/ProjectPageFrame";
+import { useProjectTabSelection } from "@/components/projects/ProjectPage/useProjectTabSelection";
+import { ProjectOverviewReadsProvider, useProjectOverviewReads } from "@/components/projects/ProjectPage/ProjectOverviewReads";
 import styles from "@/components/projects/ProjectPage/ProjectPage.module.css";
 import StaffPageHeader from "@/components/layout/StaffPageHeader";
 import {
@@ -48,13 +50,13 @@ export default function ProjectSnapshotPageClient({
   debugExportEnabled: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [commandCentreAccess, setCommandCentreAccess] = useState<{
+  const [projectAccess, setProjectAccess] = useState<{
     projectId: string;
     status: number;
   } | null>(null);
-  const commandCentreAccessStatus =
-    commandCentreAccess?.projectId === projectId
-      ? commandCentreAccess.status
+  const projectAccessStatus =
+    projectAccess?.projectId === projectId
+      ? projectAccess.status
       : null;
   const host = useMemo(
     () => supabaseHostFromUrl(supabaseRuntimeUrl()) || "unknown",
@@ -67,12 +69,13 @@ export default function ProjectSnapshotPageClient({
 
   const summaryQuery = useQuery({
     ...projectPageSummaryQueryOptions(host, projectId),
-    enabled: !cachedSummary,
+    enabled: !cachedSummary && projectAccessStatus === null,
   });
 
   const snapshotQuery = useQuery({
     ...projectPageSnapshotQueryOptions(host, projectId),
     placeholderData: cachedSummary ?? summaryQuery.data,
+    enabled: projectAccessStatus === null,
   });
 
   const snapshotStatus =
@@ -82,12 +85,18 @@ export default function ProjectSnapshotPageClient({
   const snapshotContentReady = Boolean(
     snapshotQuery.data && !snapshotQuery.isPlaceholderData,
   );
-  const accessUnavailable =
-    commandCentreAccessStatus !== null ||
-    (!snapshotContentReady &&
-      [snapshotStatus, summaryStatus].some(
-        (status) => status === 401 || status === 403 || status === 404,
-      ));
+  const navigation = useProjectTabSelection(
+    projectId,
+    tab,
+    snapshotContentReady ? Boolean(snapshotQuery.data?.snapshot.project.hasJobPacks) : undefined,
+  );
+  const overviewReads = useProjectOverviewReads(
+    host, projectId, navigation.activeTab === "activity" && projectAccessStatus === null,
+  );
+  const readAccessStatus = [summaryQuery.error, snapshotQuery.error, overviewReads.commandQuery.error, overviewReads.paymentQuery.error]
+    .find((error) => error instanceof ApiError && [401, 403, 404].includes(error.status));
+  const readAccessEndingStatus = readAccessStatus instanceof ApiError ? readAccessStatus.status : null;
+  const accessUnavailable = projectAccessStatus !== null || readAccessEndingStatus !== null;
   const handleProjectAccessEnding = useCallback(
     (status: number) => {
       if (![401, 403, 404].includes(status)) return;
@@ -96,10 +105,15 @@ export default function ProjectSnapshotPageClient({
       queryClient.removeQueries({ queryKey: ["quotes", host] });
       queryClient.removeQueries({ queryKey: ["invoices", host] });
       queryClient.removeQueries({ queryKey: ["jobPacks", host] });
-      setCommandCentreAccess({ projectId, status });
+      setProjectAccess({ projectId, status });
     },
     [host, projectId, queryClient],
   );
+  useEffect(() => {
+    if (readAccessEndingStatus !== null && projectAccessStatus === null) {
+      handleProjectAccessEnding(readAccessEndingStatus);
+    }
+  }, [readAccessEndingStatus, projectAccessStatus, handleProjectAccessEnding]);
   const knownSummary =
     cachedSummary ??
     summaryQuery.data ??
@@ -178,8 +192,9 @@ export default function ProjectSnapshotPageClient({
     const title = pending
       ? "Opening project…"
       : unavailable &&
-          (commandCentreAccessStatus === 401 ||
-            commandCentreAccessStatus === 403 ||
+          (readAccessEndingStatus === 401 || readAccessEndingStatus === 403 ||
+            projectAccessStatus === 401 ||
+            projectAccessStatus === 403 ||
             snapshotStatus === 401 ||
             snapshotStatus === 403 ||
             summaryStatus === 401 ||
@@ -255,6 +270,7 @@ export default function ProjectSnapshotPageClient({
           The latest refresh failed. Your last known details remain available.
         </AlertBanner>
       ) : null}
+      <ProjectOverviewReadsProvider value={overviewReads}>
       <ProjectPageFrame
         key={snapshot.project.id}
         snapshot={snapshot}
@@ -262,9 +278,12 @@ export default function ProjectSnapshotPageClient({
         snapshotContentReady={snapshotContentReady}
         snapshotState={loadState}
         tab={tab}
+        optimisticTab={navigation.optimisticTab}
+        onTabSelect={navigation.selectTab}
         calculatorWorkspace={calculatorWorkspace}
         onProjectAccessEnding={handleProjectAccessEnding}
       />
+      </ProjectOverviewReadsProvider>
     </PageLayout>
   );
 }

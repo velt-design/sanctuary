@@ -3,12 +3,12 @@
 import ProjectCommercialDetails from './overview/ProjectCommercialDetails';
 
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   ProjectPageSnapshot,
   ProjectSnapshotLoadState,
 } from "@/lib/projects/types";
-import { projectCommandCentreQueryOptions } from "@/lib/queries/projects";
+import { useActiveProjectOverviewReads } from "../ProjectOverviewReads";
 import { invalidateProjectWorkReads } from "@/lib/queries/projectWorkCache";
 import { ApiError } from "@/lib/repo/apiClient";
 import {
@@ -22,21 +22,26 @@ import ProjectOverviewLayout from "./overview/ProjectOverviewLayout";
 import { projectPositionLabel } from './overview/projectPositionLabel';
 import type { ProjectOrientationFreshness } from "./overview/ProjectOrientationBand";
 
-const ProjectCurrentDesignCommercialCard = lazy(
-  () => import("./overview/ProjectCurrentDesignCommercialCard"),
-);
-const ProjectOrientationBand = lazy(
-  () => import("./overview/ProjectOrientationBand"),
-);
-const ProjectRecentNotesEvents = lazy(
-  () => import("./overview/ProjectRecentNotesEvents"),
-);
-const ProjectWorkSection = lazy(() => import("./overview/ProjectWorkSection"));
-const ProjectPaymentPositionQuery = lazy(() => import("./overview/ProjectPaymentPositionQuery"));
-const ProjectCorrespondenceQuery = lazy(() => import("./overview/ProjectCorrespondenceQuery"));
-const ProjectWorkFilesCard = lazy(
-  () => import("./overview/ProjectWorkFilesCard"),
-);
+const overviewModules = {
+  commercial: () => import("./overview/ProjectCurrentDesignCommercialCard"),
+  orientation: () => import("./overview/ProjectOrientationBand"),
+  history: () => import("./overview/ProjectRecentNotesEvents"),
+  work: () => import("./overview/ProjectWorkSection"),
+  payment: () => import("./overview/ProjectPaymentPositionQuery"),
+  correspondence: () => import("./overview/ProjectCorrespondenceQuery"),
+  files: () => import("./overview/ProjectWorkFilesCard"),
+};
+const ProjectCurrentDesignCommercialCard = lazy(overviewModules.commercial);
+const ProjectOrientationBand = lazy(overviewModules.orientation);
+const ProjectRecentNotesEvents = lazy(overviewModules.history);
+const ProjectWorkSection = lazy(overviewModules.work);
+const ProjectPaymentPositionQuery = lazy(overviewModules.payment);
+const ProjectCorrespondenceQuery = lazy(overviewModules.correspondence);
+const ProjectWorkFilesCard = lazy(overviewModules.files);
+
+export async function preloadOverviewModules(): Promise<void> {
+  await Promise.all(Object.values(overviewModules).map((load) => load()));
+}
 
 type CommandCentreState =
   | "unavailable"
@@ -138,9 +143,7 @@ export default function OverviewTab({
   onAccessEnding?: (status: number) => void;
 }) {
   const queryClient = useQueryClient();
-  const commandQuery = useQuery(
-    projectCommandCentreQueryOptions(host, snapshot.project.id),
-  );
+  const { commandQuery } = useActiveProjectOverviewReads(host, snapshot.project.id);
   const accessEndingStatus =
     commandQuery.error instanceof ApiError &&
     [401, 403, 404].includes(commandQuery.error.status)

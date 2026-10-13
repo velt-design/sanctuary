@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, DataStatePanel, LoadingSkeleton } from "@/components/ui/foundation";
-import { qk } from "@/lib/queries/keys";
-import { loadProjectInvoiceSchedule } from "@/lib/repo/invoicesRepo";
+import { useActiveProjectOverviewReads } from "../../ProjectOverviewReads";
 import { ApiError } from "@/lib/repo/apiClient";
 import ProjectPaymentPosition from "./ProjectPaymentPosition";
 
@@ -13,10 +11,7 @@ export default function ProjectPaymentPositionQuery({ projectId, host, onAccessE
   host: string;
   onAccessEnding?: (status: number) => void;
 }) {
-  const query = useQuery({
-    queryKey: qk.invoices.scheduleByProject(host, projectId),
-    queryFn: () => loadProjectInvoiceSchedule(projectId),
-  });
+  const { paymentQuery: query } = useActiveProjectOverviewReads(host, projectId);
   const denied = query.error instanceof ApiError && [401, 403, 404].includes(query.error.status)
     ? query.error.status : null;
   useEffect(() => { if (denied !== null) onAccessEnding?.(denied); }, [denied, onAccessEnding]);

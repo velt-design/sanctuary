@@ -12,6 +12,10 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
 }));
 
+vi.mock("../ProjectOverviewReads", () => ({
+  useActiveProjectOverviewReads: () => ({ commandQuery: useQueryMock() }),
+}));
+
 vi.mock("./overview/ProjectOrientationBand", () => ({
   default: ({
     operationalState,

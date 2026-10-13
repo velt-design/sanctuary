@@ -14,7 +14,8 @@ verification; fixture measurements do not establish production latency or capaci
 Current owners: `project-command-centre-architecture.md` and
 `project-work-items-technical-plan.md`.
 
-Queue source-facts candidate (13 October 2026): the next bounded batch replaces
+Queue source-facts release (13 October 2026): PR208 merged as `f5694992` and
+the exact production application and additive migration were verified. The batch replaces
 three source-read loops with a named authenticated raw-facts owner. Synthetic
 4,000-project reads fall from 131 to 19 with identical queue/index outputs and
 9.2% more source JSON for explicit completeness accounting. Existing policy,
@@ -28,9 +29,24 @@ seven warm samples showed median queue 795 to 652 ms, newest Projects 953 to
 820 ms and next-action Projects 955 to 794 ms; normalized response values matched
 and authenticated Projects/Dashboard, Overview and Work Queue journeys passed
 without mutation requests. These small-environment measurements do not establish
-production latency or large-portfolio capacity. Whole-batch independent review
-remains separate. Production has not received this migration, and a second-batch
-production release is not approved.
+production latency or large-portfolio capacity. Whole-batch independent review,
+required CI and production read-only verification passed. Production queue,
+Projects pagination/next-action sort, project detail/return and anonymous denial
+were checked without business writes.
+
+Cold project-loading candidate (13 October 2026): active Overview now starts
+Command Centre and payment reads alongside summary/snapshot using the existing
+authenticated QueryClient. Lazy consumers share those observers; source policy,
+query invalidation and correspondence privacy remain unchanged. Five comparable
+cold browser opens of the local optimized app against existing staging measured
+complete Overview median 4,162 to 2,543 ms (-38.9%) and p95 4,485 to 2,757 ms.
+Five warm open/tab/return journeys and one commercially populated supporting
+project also passed without writes. Historical shell metrics and all performance
+ceilings remain unchanged; this does not establish production latency or broad
+history/load capacity. Typecheck, lint, focused regression tests, architecture
+checks, optimized build and bundle budgets pass. Independent whole-outcome review
+and a separate Sanctuary production decision remain required. Detailed metric
+identity and limitations are in `testing-and-qa.md`.
 
 Portal action connection release candidate (22 September 2026): the scoped
 admin grant UI, delegated canonical close/reopen adapter and protected Windows

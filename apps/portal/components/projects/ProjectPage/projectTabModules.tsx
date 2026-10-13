@@ -52,3 +52,9 @@ export async function preloadProjectTab(
     ),
   ]);
 }
+
+// Code only: the route owns active reads, so this must not prefetch query data.
+export async function preloadProjectOverviewModule(): Promise<void> {
+  const overview = await loaders.activity();
+  await overview.preloadOverviewModules();
+}

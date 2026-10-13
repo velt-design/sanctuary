@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-10-13 - Start active project reads before lazy presentation
+
+Cold Overview waited for metadata, its module, Command Centre and then payment
+code/data in sequence. Own the active Command Centre and payment observers at
+the project route and let lazy presentation consume them. Prefetch followed by
+a new immediately-stale observer can repeat a completed request; moving the
+observer preserves one query/cache owner and return-to-Overview refresh. Keep
+optimistic tab intent above loading boundaries, scoped to the project, and hide
+all private facts when any authoritative read ends access, even if a parallel
+read succeeds later. Measure full snapshot, Command Centre and payment readiness
+separately from historical header/tabs and network-idle metrics. Owners:
+`project-command-centre-architecture.md` and `testing-and-qa.md`.
+
 ## 2026-10-13 - Bound source histories, not only project IDs
 
 Queue growth required three 100-ID source-read loops after the inventory. A
