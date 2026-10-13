@@ -48,6 +48,37 @@ function isoTimestamp(value: unknown): string | null {
   return Number.isFinite(parsed.valueOf()) ? parsed.toISOString() : null;
 }
 
+// PostgreSQL records microseconds; Date.toISOString alone discards them. Keep
+// the remaining fraction for delivery ordering while normalizing the UTC instant.
+function preciseDeliveryTimestamp(value: unknown): string | null {
+  const iso = isoTimestamp(value);
+  if (!iso) return null;
+  const fraction = trimmedString(value)?.match(/\.(\d+)(?:z|[+-]\d{2}(?::?\d{2})?)$/i)?.[1] ?? '';
+  return `${iso.slice(0, -1)}${fraction.slice(3)}Z`;
+}
+
+function compareDeliveryLogs(
+  left: CommandCentreQuoteCandidate['sendLogs'][number],
+  right: CommandCentreQuoteCandidate['sendLogs'][number],
+): number {
+  const leftAt = preciseDeliveryTimestamp(left.createdAt ?? left.sentAt);
+  const rightAt = preciseDeliveryTimestamp(right.createdAt ?? right.sentAt);
+  if (leftAt !== null && rightAt !== null) {
+    const milliseconds = Date.parse(rightAt) - Date.parse(leftAt);
+    if (milliseconds) return milliseconds;
+    const leftFraction = leftAt.match(/\.(\d+)Z$/)?.[1] ?? '';
+    const rightFraction = rightAt.match(/\.(\d+)Z$/)?.[1] ?? '';
+    const width = Math.max(leftFraction.length, rightFraction.length);
+    const fraction = rightFraction.padEnd(width, '0').localeCompare(leftFraction.padEnd(width, '0'));
+    if (fraction) return fraction;
+  } else if (leftAt !== rightAt) {
+    return leftAt === null ? 1 : -1;
+  }
+  // A truly simultaneous/undated failure remains visible regardless of transport
+  // order. Accepted and draft quote semantics are handled before log selection.
+  return Number(right.status === 'FAILED') - Number(left.status === 'FAILED');
+}
+
 function positiveInteger(value: unknown): number | null {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
@@ -113,8 +144,8 @@ function normalizeQuoteRows(projectRow: AnyRecord): CommandCentreQuoteCandidate[
           if (logStatus !== 'SENT' && logStatus !== 'FAILED') return null;
           return {
             status: logStatus,
-            createdAt: isoTimestamp(log.created_at),
-            sentAt: isoTimestamp(log.sent_at),
+            createdAt: preciseDeliveryTimestamp(log.created_at),
+            sentAt: preciseDeliveryTimestamp(log.sent_at),
           } as const;
         })
         .filter((log): log is NonNullable<typeof log> => log !== null);
@@ -193,10 +224,6 @@ export function commandCentreQuoteDeliveryState(
 ): CommandCentreDeliveryState {
   if (quote.status === 'ACCEPTED') return 'accepted';
   if (quote.status === 'DRAFT') return 'draft';
-  const latestLog = quote.sendLogs.slice().sort((left, right) => {
-    const leftAt = left.createdAt ?? left.sentAt ?? '';
-    const rightAt = right.createdAt ?? right.sentAt ?? '';
-    return rightAt.localeCompare(leftAt);
-  })[0];
+  const latestLog = quote.sendLogs.slice().sort(compareDeliveryLogs)[0];
   return latestLog?.status === 'FAILED' ? 'failed' : 'sent';
 }

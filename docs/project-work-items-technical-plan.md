@@ -484,6 +484,64 @@ The project projection returns:
 
 ### Team queue projection
 
+`domainFactsRepository.ts` owns the queue's authenticated raw-fact transport.
+After the existing complete V2 marker inventory, it calls
+`staff_project_work_domain_facts_v1(uuid[])` in sequential batches of at most 500
+IDs. The additive invoker function accounts for every requested visible project,
+including inactive/archive dispositions, and returns only the existing commercial
+selection columns and complete Site Visit confirmation identities. Commercial
+normalization, selection, retractions and priority remain with the current
+TypeScript owners. Ordinary Projects pages request facts for their page only;
+next-action sorting and queue previews still compose the full portfolio first.
+
+The function checks a conservative selected-field byte bound and at most 50,001
+child rows before relation aggregation, then checks the serialized envelope.
+Its ceilings are 4 MiB and 50,000 child rows per response. Only the explicit size
+overflow splits an ID batch, sequentially, with a maximum depth of 9 and 128
+total facts calls per logical read. Singleton overflow, exhausted budgets,
+malformed arrays/counts or missing/duplicate/foreign IDs fail as
+`PROJECT_WORK_INVENTORY_INCOMPLETE`; no history is silently truncated. These are
+availability ceilings, not portfolio capacity or latency guarantees. Counts
+describe caller-visible facts under existing RLS. Each statement has its own
+snapshot; the portfolio does not acquire a transaction across HTTP requests.
+
+Migration `20261013000004` must precede the application. A missing new RPC maps
+to the existing unavailable response. There is no legacy-reader fallback: its
+100-ID child queries could clip histories at the hosted row limit. Old application
+with the new database and application rollback remain supported; the additive
+function can stay installed. This migration changes no business rows, table
+grants or RLS policies, and requires the normal controlled release review.
+
+Synthetic real-reader comparison at 100/556/2,000/4,000 projects measured
+6/21/67/131 requests becoming 4/5/11/19, and newest-25 Projects reads 7 becoming
+5. Queue, limited preview and both index-sort outputs matched the released reader
+deeply. The 4,000-project source JSON grew from 4,805,943 to 5,250,167 bytes because
+of the explicit completeness envelope. These are fixture request/byte results,
+not database or production timings. Native SQL and authenticated HTTP evidence
+remain distinct release checks.
+
+The exact migration passed native PostgreSQL 17 qualification against the selected
+source schema and is installed in existing staging only. Normal 4,000-project
+commercial histories completed in eight facts calls; a denser fixture completed
+in 56 calls, including 24 rejected oversized parent batches. Both matched an
+independent complete raw-facts oracle. Individual relations at 999/1,000/1,001
+rows, restrictive RLS, singleton/count overflow and statement cancellation passed.
+Inactive metadata is not charged as returned active data. Hosted staff HTTP
+returned every requested identity; anonymous/service-only calls were denied and
+missing IDs failed generically. Production installation and release require their
+own approval. Local query plans and process-backed timings are not hosted latency.
+
+The optimized application comparison used the same existing 45-project staging
+portfolio, environment and seven warm samples per route. Median queue time moved
+from 795.46 to 652.17 ms (18% lower), newest Projects from 953.4 to 819.55 ms
+(14% lower), and next-action Projects from 954.82 to 793.7 ms (16.9% lower).
+Every route returned HTTP 200 with deeply equal normalized JSON. Project summary
+and Command Centre medians were roughly 2–3% higher and snapshot 1.7% lower;
+this small sample is not a production latency or regression guarantee.
+Authenticated Projects/Dashboard, Overview and Work Queue journeys and unchanged
+bundle budgets passed; no mutation requests were made. Native growth fixtures,
+hosted reads and independent review remain separately identified evidence.
+
 `confirmationFacts.ts` indexes current confirmation project IDs once per loaded
 portfolio before `teamQueue.ts` maps specialist candidates. Retractions, type
 matching and duplicate facts use the same shared active-fact policy as individual

@@ -3,15 +3,15 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT,
   commandCentreQuoteDeliveryState,
   normalizeCommandCentreCommercialCandidates,
 } from '@/lib/projects/commandCentre/commercialSelection';
-import { fetchAllPages, fetchRowsByIdChunks, MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
+import { fetchAllPages, MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
 import { resolveCommandCentreSelection } from '@/lib/projects/commandCentre/resolve';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { projectWorkDomainActions, type ProjectWorkDomainActions } from './domainActionAdapters';
 import { activeConfirmationProjectIds } from './confirmationFacts';
+import { loadProjectWorkDomainFacts } from './domainFactsRepository';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
 import { getProjectWorkModelV2Ids, listProjectWorkModelV2Ids } from './modelBoundary';
 import { isApprovedSiteVisitSpecialistIdentity, isRetiredProjectWorkIdentity } from './prohibitedWork';
@@ -22,14 +22,6 @@ import type {
   ProjectWorkQueueEntry,
   ProjectWorkQueueGroup,
 } from './types';
-
-const ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT = `
-  id,
-  name,
-  pipeline_stage,
-  ownerAssignment:project_owner_assignments(owner_key),
-  ${COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT}
-`;
 
 const QUEUE_GROUPS = new Set<ProjectWorkQueueGroup>([
   'overdue',
@@ -290,35 +282,7 @@ async function loadActiveProjectDomainCandidates(
   ].sort();
   if (!v2ProjectIds.length) return [];
 
-  const activeStateRows = await fetchRowsByIdChunks<Row>(v2ProjectIds, (projectIds) =>
-    supabase
-      .from('project_operational_states')
-      .select('project_id,state')
-      .in('project_id', projectIds)
-      .eq('state', 'ACTIVE'),
-  );
-  const activeProjectIds = activeStateRows
-    .map((row) => text(row.project_id))
-    .filter((projectId): projectId is string => projectId !== null);
-  if (!activeProjectIds.length) return [];
-
-  const [projectRows, confirmationRows] = await Promise.all([
-    fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
-      supabase
-        .from('projects')
-        .select(ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT)
-        .in('id', projectIds)
-        .is('archived_at', null)
-        .order('id', { ascending: true }),
-    ),
-    fetchRowsByIdChunks<Row>(activeProjectIds, (projectIds) =>
-      supabase
-        .from('project_confirmation_events')
-        .select('id,project_id,event_kind,confirmation_type,retracts_event_id')
-        .in('project_id', projectIds)
-        .eq('confirmation_type', 'SITE_VISIT_COMPLETED'),
-    ),
-  ]);
+  const { projects: projectRows, confirmations: confirmationRows } = await loadProjectWorkDomainFacts(supabase, v2ProjectIds);
   const siteVisitCompletedProjectIds = activeConfirmationProjectIds(confirmationRows, 'SITE_VISIT_COMPLETED');
   return projectRows
     .map((row) => {

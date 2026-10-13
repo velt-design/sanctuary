@@ -1,5 +1,26 @@
 # Decision Log
 
+## 2026-10-13 - Bound source histories, not only project IDs
+
+Queue growth required three 100-ID source-read loops after the inventory. A
+500-ID raw-facts RPC removes those round trips while retaining the commercial
+and ranking owners in TypeScript. An ID batch alone does not bound event or
+commercial history: preflight child counts and conservative bytes before JSON
+aggregation, account for every requested identity, and fail visibly when bounded
+sequential splitting cannot complete. Do not retain a nominal compatibility
+fallback whose old child transport can silently clip history. Deploy the additive
+function before the application and test both missing-RPC failure and rollback.
+Transport validation must not invent business invariants such as nonblank project
+metadata; preserve the canonical candidate owner's normalization. Owners:
+`project-work-items-technical-plan.md`, `supabase-schema-map.md` and
+`testing-and-qa.md`.
+
+Changing raw transport also exposed arrival-order-dependent quote delivery ties.
+The existing shared commercial owner now preserves sub-millisecond timestamps,
+compares actual instants, and keeps failure visible on truly equal latest times.
+Accepted/draft overrides remain intact. Reversed-order and timezone fixtures prove
+queue and Command Centre agreement; do not move this policy into the SQL reader.
+
 ## 2026-10-13 - Fence irreversible corrections at the provider boundary
 
 A Google sale cancellation could be restored after its retraction was claimed.
