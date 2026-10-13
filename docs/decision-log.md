@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-14 - Keep cross-app identity tests outside scoped app builds
+
+Marketing's hosted build typechecks its tests with only its declared dependency
+graph. A test importing the Portal sale schema pulled in Portal-only Zod and
+failed despite a full-workspace local build passing. Keep marketing expected
+hashes self-contained and verify browser/offline equivalence in a root integration
+test. Do not add a Portal dependency to marketing to hide the test-boundary fault.
+Owner: `testing-and-qa.md`.
+
 ## 2026-10-14 - Preserve authority through recovered advertising delivery
 
 Independent candidate review found that a recovered uncertain event could retain

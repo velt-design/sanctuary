@@ -2,12 +2,12 @@ import { webcrypto, createHash } from 'node:crypto';
 import { afterEach, expect, it, vi } from 'vitest';
 import { emitSubmittedLead, googleLeadHashes, type GoogleEnhancedLead } from './googleEnhancedLead';
 import { CONSENT_STORAGE_KEY } from './consent';
-import { emailHash, phoneHash } from '../../portal/lib/marketingIntegrations/googleAds/sales';
 const target=window as Window & {dataLayer?:Array<Record<string,unknown>>;sanctuaryGoogleEnhancedLead?:GoogleEnhancedLead};
 afterEach(()=>{delete target.dataLayer;delete target.sanctuaryGoogleEnhancedLead;window.localStorage.clear();vi.useRealTimers();vi.unstubAllGlobals();});
-it('matches the Google offline hash normalization without putting contact or hashes in the generic event',async()=>{
+it('uses normalized hashes without putting contact or hashes in the generic event',async()=>{
   vi.stubGlobal('crypto',webcrypto);const contact={email:' Test.Person+project@Gmail.com ',phone:'+64 21 1234567'};
-  const expected={sha256_email_address:emailHash(contact.email),sha256_phone_number:phoneHash(contact.phone)};
+  const expected={sha256_email_address:createHash('sha256').update('testperson@gmail.com').digest('hex'),
+    sha256_phone_number:createHash('sha256').update('+64211234567').digest('hex')};
   expect(await googleLeadHashes(contact,webcrypto.subtle as SubtleCrypto)).toEqual(expected);
   await emitSubmittedLead({lead_event_id:'synthetic',enquiry_type:'residential'},contact,true,true);
   expect(target.sanctuaryGoogleEnhancedLead).toEqual(expected);

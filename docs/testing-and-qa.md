@@ -13,6 +13,9 @@ unchanged retry, accepted-event aging versus real correction, explicit refusal
 versus no decision, expired/revoked authority, all form notices, and edited
 idempotent replay without enhanced identity. Google source tests execute the
 forward disclosure compatibility policy and unchanged cutoff in both TS and SQL.
+Cross-app enhanced identity equivalence lives in the root integration test
+`test/google-enhanced-lead-contract.test.ts`. Marketing's app tests must remain
+independent of Portal-only dependencies because its hosted install is scoped.
 
 ## Bounded Project Work source facts
 
