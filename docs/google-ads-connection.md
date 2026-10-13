@@ -18,6 +18,8 @@ the existing GA4 credential. The forward `20261013000001` and `000002` migration
 own source facts, control, lease fencing, delivery receipts, suppression and saved
 reports. Application roles have no direct private-table rights. Authenticated
 confirmed developer access owns the staff read, using the existing Portal guard.
+The exact Google store module is registered in both service-role architecture and
+Portal boundary allowlists; no directory-wide exception is granted.
 
 The existing Marketing & Sales Data sources drawer provides campaign and keyword
 inspection and a separate delivery-coverage section. No ad-management, campaign,
