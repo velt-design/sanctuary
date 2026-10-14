@@ -1,5 +1,63 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Cloud campaign source candidate (14 October 2026)
+
+This is a default-off local candidate, not activated monitoring. The owner asked
+for a cloud improvement loop and confirmed that real enquiry outcomes are visible
+through Portal and Outlook. Velt owns scheduling, reports, bounded private
+correspondence review and proposed improvements. Sanctuary remains the canonical
+owner of Meta credentials and campaign-to-project facts. No ads, enquiries,
+customer records, email, offline-sale settings or budgets are mutated.
+
+Incremental map: `marketingIntegrations/campaignMonitor/{contract,reader,http}`
+and `/api/integrations/praxis/v1/marketing/campaign-health` add one fixed, no-query
+signed broker purpose. `meta/delegation` accepts that exact purpose;
+`meta/transport` admits the fixed account ads endpoint. Migration
+`20261014000006_campaign_health.sql` extends the existing credential-renewal-aware
+Meta command without changing its grants or seven-completed-day report contract.
+The source reads identity/account, four configured ads and current Auckland day /
+provider week insights (five bounded reads). Campaign budget takes precedence
+over adset budget. Scope, currency, timezone, pagination, duplicates, expiry,
+current generation and kill controls fail closed. Missing metrics stay unknown.
+
+The same delivery-fenced RPC counts the consented exact-ID launch cohort, latest
+recorded qualification, confirmed visit bookings, sent quotes, current accepted
+scopes and payment-backed projects. Only a project's first enquiry receives its
+project outcomes. Visits are bookings, not attended visits; no revenue/ROAS is
+inferred. The whole receipt scan is capped at2000; exceeding it is unavailable,
+not a partial total. Existing synthetic exclusions remain excluded.
+
+A protected transient context resolves exact enquiry/project/contact identity
+and canonical contact email for this cohort only. It returns at most200 identities,
+prioritizing recent entries with daily deterministic rotation; omitted/unlinked
+counts are explicit. Payloads are additionally bounded at240KB before the fixed
+broker response. Identities are not stored in Velt reports or supplied to the
+analytics model. Velt samples four/day using dated opaque review history and its
+existing customer correspondence primitive. Email-only findings remain tentative
+and separate from canonical qualification. See Velt's owning marketing outcomes
+record for the two fixed model phases and their combined admission.
+
+Configuration: `SANCTUARY_CAMPAIGN_MONITOR_ENABLED` defaults off;
+`SANCTUARY_CAMPAIGN_MONITOR_SCOPE` is strict JSON with account, campaign, adset,
+four ID/label pairs, launchDay, dailyAverage, maximumDay, weeklyAllowance,
+weekStartsOn and weeklyWindowVerified. Real identities and authority values belong
+only in private deployment configuration. The identical scope must be provisioned
+in `private.sanctuary_campaign_monitor_scope`, initially disabled. Existing source
+bearer, Meta control, credential vault and delegation callback remain required.
+No new credential store or ads_write permission is added. This server-only RPC
+is the documented service-role boundary; authenticated browser clients cannot
+call it. Release requires source owner approval and current-schema migration
+rehearsal. Enable the scope/control only after reviewed configuration; disable
+this scope and environment flag for recovery, retaining immutable audit history.
+
+Verification: focused reader/auth boundaries and native disposable PostgreSQL
+source/paired Velt tests cover scope, five-read cap, exact consented cohort,
+transient identity, private report separation, revocation, ownership, durable
+slots, two-phase combined model admission, Stop, failures, lease reconciliation,
+alert deduplication and last-success preservation. Local synthetic evidence is
+not a live provider, production migration or genuine cohort proof. Feature-branch
+Vercel builds are suppressed in both app configs; this is not a passing CI check.
+
 ## Advertising connections (14 October 2026)
 
 The existing Data sources drawer has a released Google campaign/keyword

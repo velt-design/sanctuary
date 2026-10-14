@@ -6,12 +6,15 @@ import type { MetaPeriod } from './report';
 // This checks the originating Velt operation, not Meta credentials or business
 // facts. Other Sanctuary callers can authorize the shared reader locally.
 export function metaDelegation(request:Request,period:MetaPeriod,retain:boolean,signal:AbortSignal,fetcher:typeof fetch=fetch) {
+  return scopedMetaDelegation(request, {kind:'marketing/meta',action:'refresh',period,retain}, signal, fetcher);
+}
+export function scopedMetaDelegation(request: Request, intent: {kind:'marketing/meta';action:'refresh';period:MetaPeriod;retain:boolean}|{kind:'marketing/campaign-health'}, signal:AbortSignal,fetcher:typeof fetch=fetch) {
   const value=z.object({operation:z.uuid(),binding:z.string().regex(/^[a-f0-9]{64}$/),query:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse({
     operation:request.headers.get('x-velt-meta-operation'),binding:request.headers.get('x-velt-meta-binding'),query:request.headers.get('x-velt-meta-query')});
   const key=z.string().min(43).max(256).parse(process.env.SANCTUARY_META_VELT_AUTHORITY_KEY);
   const signature=createHmac('sha256',key).update(JSON.stringify(value)).digest('hex');
   const supplied=z.string().regex(/^[a-f0-9]{64}$/).parse(request.headers.get('x-velt-meta-proof'));
-  const expectedQuery=createHash('sha256').update(JSON.stringify({kind:'marketing/meta',action:'refresh',period,retain})).digest('hex');
+  const expectedQuery=createHash('sha256').update(JSON.stringify(intent)).digest('hex');
   if(!timingSafeEqual(Buffer.from(signature),Buffer.from(supplied))||value.query!==expectedQuery)throw new Error('Delegation unavailable.');
   return async()=>{
     signal.throwIfAborted();
