@@ -1,5 +1,52 @@
 # Sanctuary "Your Pergola" Customer Configurator
 
+## Preloaded landing prices (14 October 2026, owner-authorised release)
+
+Jordan authorised production release of the accepted cost and shared landing
+estimates. Deployment and verification of the actual production artifact remain
+release steps; no new commercial rates or publication pin are approved here.
+
+The cost and Auckland landing journeys preload an exact public selling-price
+table for their standard open-side, ground-level, parallel-ridge selections.
+It covers 35,604 cells: three rooflines, three materials, widths 1500–10000 mm
+and projections 1500–6000 mm, both in 100 mm steps. Canonical product preparation
+marks unsupported projections before any constrained draft can be priced;
+canonical frozen calculation supplies every other total or tailored status.
+This adapter does not modify geometry, costing inputs, commercial rules or rates.
+Full restored drafts, including additions and different orientations/connections,
+remain on the complete canonical pricing path. Final designer/enquiry signed
+calculations and server verification remain authoritative.
+
+Run the existing `npm run build:marketing` (or app `npm run build`). Its prebuild
+script generates `apps/marketing/.generated/landing-price-table.json` from the
+target environment's current approved publication. The Node CSS shim only allows
+the canonical TSX default imports to load during this build operation. The output
+is ignored, outside public assets, traced only into the gated server API, and
+rebuilt rather than copied between environments. It contains totals/status and
+version identities only. No approved pin produces a deterministic disabled
+artifact. A configured pin with failed generation fails the build, clearing
+previous output first. Direct `next build` bypasses prebuild and is not the
+supported release command for these pages.
+
+Runtime never generates the grid. The artifact is read/checksummed once per
+process; each API response still resolves and validates the live publication,
+approved pin and publication fingerprint. A conditional request renews the
+30-second maximum browser lease without redownloading the table. The response is
+no-store. Client memory is bounded to one table with no persistent browser cache.
+Unavailable, mismatched or corrupt artifacts fall back to a fresh canonical
+request for the current full design. A publication/pin change needs a new build
+for instant table coverage; stale artifacts are never authorized as that version.
+Lease renewal, expiry, failure and focus/suspension behavior are owned by
+`landingPriceTableStore` and `useLandingPrice`, shared by all landing consumers.
+
+Verification distinguishes synthetic full-grid canonical parity and request
+failure tests from the real approved staging artifact. The original staging
+benchmark generated all cells in 30.4 seconds, with about 173 KB JSON / 64 KB gzip;
+that work runs at build time, not on a cold customer request. Browser checks block
+both per-change preparation and pricing after table load, then verify unseen
+selections and custom/unsupported states immediately. Existing full draft,
+consent, enquiry, attribution and return tests continue through canonical fallback.
+
 ## Outdoor configurator presentation and dining chair (8 October 2026)
 
 The approved natural-daylight presentation is integrated with the

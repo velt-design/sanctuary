@@ -150,11 +150,7 @@ const semanticParityRoutes = [
   },
   {
     path: '/pergola-cost-auckland',
-    requiredMarkers: [
-      'data-guide-first-layer-project',
-      'data-guide-first-layer-return',
-      'data-guide-supporting-depth',
-    ],
+    requiredMarkers: ['data-cost-calculator', 'id="cost-projects"', 'id="what-is-included"'],
   },
   {
     path: '/contact',

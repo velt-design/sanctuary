@@ -1,0 +1,81 @@
+.section { margin: 0 auto; max-width: 1500px; padding: 0 clamp(1.25rem,4vw,4.5rem) 3rem; scroll-margin-top: 90px; }
+.calculator { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); grid-template-areas: 'choices result' 'choices illustration'; border-top: 1px solid var(--color-rule-strong); border-bottom: 1px solid var(--color-rule-strong); }
+.choices { grid-area: choices; padding: 2.3rem 3.5rem 2rem 0; min-width: 0; }
+.result { grid-area: result; background: #eae7df; padding: 2rem 2rem 0; min-width: 0; }
+.priceContext { font-size: .72rem; line-height: 1.6; min-height: 3.2em; margin: 0 0 .65rem; }
+.choices fieldset { border: 0; min-width: 0; margin: 0 0 1.4rem; padding: 0; }
+.choices legend { font-size: .84rem; font-weight: 500; padding: 0 0 1rem; }
+.choices legend > span { color: var(--color-text-secondary); font-size: .68rem; margin-right: .65rem; }
+.rooflines > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+.rooflines label { display: flex; justify-content: space-between; align-items: center; position: relative; min-height: 60px; padding: 1rem; border: 1px solid var(--color-rule-strong); border-right: 0; font: 500 1.25rem var(--font-display); cursor: pointer; }
+.rooflines label:last-child { border-right: 1px solid var(--color-rule-strong); }
+.rooflines label[data-selected=true] { background: var(--color-accent-olive); color: var(--color-inverse-text); border-color: var(--color-accent-olive); }
+.rooflines label > span:last-child { font-size: .9rem; }
+.rooflines input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.rooflines label:focus-within { outline: 2px solid var(--color-text-primary); outline-offset: 3px; z-index: 1; }
+.dimensions > div { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; }
+.dimensions :global([data-dimension]) { margin: 0; }
+.dimensions :global([data-dimension="width"] [aria-hidden="true"] > span:nth-child(2)),
+.dimensions :global([data-dimension="width"] [aria-hidden="true"] > span:nth-child(4)),
+.dimensions :global([data-dimension="width"] [aria-hidden="true"] > span:nth-child(6)),
+.dimensions :global([data-dimension="width"] [aria-hidden="true"] > span:nth-child(8)) { font-size: 0; }
+.materials > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .45rem; }
+.materials label { cursor: pointer; display: flex; justify-content: center; align-items: center; gap: .35rem; min-height: 52px; padding: .65rem .25rem; border: 1px solid var(--color-rule-strong); font-size: .75rem; }
+.materials label[data-selected=true] { box-shadow: inset 0 -3px var(--color-accent-olive); background: var(--color-surface-elevated); }
+.materials input { margin: 0; width: 12px; height: 12px; accent-color: var(--color-accent-olive); }
+.materialDetail { display: grid; margin: .65rem 0 0; font-size: .75rem; line-height: 1.6; color: var(--color-text-secondary); }
+.materialDetail > span { grid-area: 1 / 1; visibility: hidden; }
+.materialDetail > span[data-active=true] { visibility: visible; }
+.section .assumptions, .section .issue, .section .materialDetail, .section .priceContext, .section .estimate > p { line-height: 1.6; }
+.assumptions { min-height: 3.2em; font-size: .72rem; line-height: 1.6; color: var(--color-text-secondary); margin: -.5rem 0 1rem; }
+.inclusions { border-top: 1px solid var(--color-rule); margin: 0; padding-top: 1rem; font-size: .78rem; line-height: 1.7; max-width: 34rem; }
+.inclusions a { display: block; margin-top: .5rem; color: inherit; text-underline-offset: 4px; }
+.estimate > span { font-size: .76rem; color: var(--color-text-secondary); }
+.estimate > strong { display: block; font: 500 clamp(2.5rem,4.6vw,4.25rem)/1.08 var(--font-display); letter-spacing: -.055em; min-height: 4.6rem; margin-top: .4rem; }
+.estimate:not([data-estimate-state="priced"]) > strong { font-size: 1.8rem; line-height: 1.2; letter-spacing: -.04em; }
+.estimate > p { font-size: .72rem; line-height: 1.6; min-height: 3.2em; color: var(--color-text-secondary); margin: .35rem 0 0; }
+.estimate > div { min-height: 40px; }
+.estimate button { border: 0; background: transparent; color: inherit; padding: .5rem 0; min-height: 40px; font-size: .8rem; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.actions { display: grid; grid-template-columns: 1fr; gap: .5rem; }
+.primary, .secondary, .actionHint { min-height: 50px; padding: .8rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: .8rem; text-decoration: none; font-size: .8rem; font-weight: 500; }
+.primary { background: var(--color-accent-olive); color: var(--color-inverse-text); }
+.secondary { border: 1px solid var(--color-rule-strong); color: var(--color-text-primary); }
+.actionHint { border: 1px solid transparent; font-size: .74rem; color: var(--color-text-secondary); }
+.issue { font-size: .7rem; line-height: 1.6; min-height: 4.8em; margin: .65rem 0 0; color: var(--color-text-secondary); }
+.illustration { grid-area: illustration; background: #eae7df; margin: 0; padding: 0 2rem 1.5rem; min-width: 0; }
+.illustration img { display: block; width: 100%; height: auto; aspect-ratio: 2.1; object-fit: contain; mix-blend-mode: multiply; }
+.illustration figcaption > strong { font: 500 1.2rem var(--font-display); display: flex; justify-content: space-between; gap: .5rem; margin: .4rem 0; }
+.illustration figcaption strong span { font: 400 .75rem var(--font-body); align-self: center; font-variant-numeric: tabular-nums; }
+.illustration figcaption > span { display: block; font-size: .67rem; line-height: 1.6; color: var(--color-text-secondary); }
+.savedHeading { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
+.savedHeading h2 { font: 500 1.6rem/1.1 var(--font-display); letter-spacing: -.04em; margin: 0; }
+.savedHeading button { min-height: 44px; display: flex; align-items: center; gap: .5rem; font: inherit; font-size: .75rem; border: 0; background: transparent; padding: 0; text-decoration: underline; text-underline-offset: 4px; color: inherit; cursor: pointer; }
+.savedSize { font: 500 1.35rem var(--font-display); }
+.saved dl { margin: 1.5rem 0; font-size: .78rem; }
+.saved dl > div { display: grid; grid-template-columns: 6.5rem 1fr; gap: .7rem; padding: .65rem 0; border-bottom: 1px solid var(--color-rule); }
+.saved dt { color: var(--color-text-secondary); }
+.saved dd { margin: 0; line-height: 1.5; }
+.saved > p:last-child, .notice { font-size: .78rem; line-height: 1.65; color: var(--color-text-secondary); }
+.help { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: .78rem; line-height: 1.7; padding-top: .75rem; }
+.help p { margin: 0; }
+.help a { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; color: inherit; text-underline-offset: 4px; }
+.primary, .secondary { transition: background-color 150ms, transform 150ms; }
+.primary:active, .secondary:active { transform: scale(.99); }
+@media(hover:hover) and (pointer:fine) { .primary:hover { background: var(--color-accent-olive-hover); } .secondary:hover { background: var(--color-surface-elevated); } }
+@media(max-width:1100px) { .choices { padding-right: 2rem; } .result { padding: 1.5rem 1.5rem 0; } .illustration { padding-inline: 1.5rem; } .materials label { font-size: .68rem; } }
+@media(max-width:760px) {
+  .section { padding-bottom: 1.5rem; }
+  .calculator { grid-template-columns: minmax(0,1fr); grid-template-areas: 'result' 'choices' 'illustration'; }
+  .result { padding: 1.5rem 1.25rem 0; }
+  .estimate > strong { font-size: 2.6rem; min-height: 3.8rem; }
+  .estimate:not([data-estimate-state="priced"]) > strong { font-size: 1.5rem; }
+  .choices { padding: 1.8rem 0; }
+  .illustration { padding: .5rem 1.25rem 1.25rem; }
+  .illustration img { aspect-ratio: 2; object-fit: contain; }
+  .help { display: block; }
+  .help a { min-height: 36px; }
+  .rooflines label { min-height: 56px; }
+  .choices fieldset { margin-bottom: 1.2rem; }
+}
+@media(max-width:359px) { .rooflines label { padding: .75rem; font-size: 1.15rem; } .rooflines label > span:last-child { display: none; } .dimensions > div { gap: 1rem; } .dimensions :global([data-dimension]) > div:first-child { flex-direction: column; gap: .25rem; align-items: start; } .materials label { font-size: .65rem; gap: .25rem; } .estimate > strong { font-size: 2.2rem; } .secondary, .actionHint { min-height: 64px; } }
+@media(prefers-reduced-motion:reduce) { .primary, .secondary { transition: none; } }

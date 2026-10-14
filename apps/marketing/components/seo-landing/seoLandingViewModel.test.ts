@@ -3,7 +3,6 @@ import { acrylicVsLouvreConfig } from '../../app/acrylic-pergolas-vs-louvre-roof
 import { aluminiumPergolasConfig } from '../../app/aluminium-pergolas-auckland/content';
 import { gablePergolasConfig } from '../../app/gable-pergolas-auckland/content';
 import { outdoorRoomsConfig } from '../../app/outdoor-rooms-auckland/content';
-import { pergolaCostConfig } from '../../app/pergola-cost-auckland/content';
 import { pergolasWithBlindsConfig } from '../../app/pergolas-with-blinds/content';
 import { pitchedPergolasConfig } from '../../app/pitched-pergolas-auckland/content';
 import type { SeoLandingBlock } from './types';
@@ -79,7 +78,6 @@ const guideConfigs = [
   aluminiumPergolasConfig,
   gablePergolasConfig,
   pitchedPergolasConfig,
-  pergolaCostConfig,
   pergolasWithBlindsConfig,
   acrylicVsLouvreConfig,
 ] as const;

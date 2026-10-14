@@ -28,6 +28,8 @@ apps/**/out/
 # production
 /build
 apps/**/dist/
+# Rebuilt per marketing deployment. Server-only customer price totals, never source/config.
+apps/marketing/.generated/
 
 # misc
 .DS_Store

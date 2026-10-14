@@ -292,28 +292,18 @@ const routeCases: readonly RouteCase[] = [
     id: 'guide detail',
     path: '/pergola-cost-auckland',
     canonicalPath: '/pergola-cost-auckland',
-    maximumVisibleWords: 650,
+    maximumVisibleWords: 1000,
     maximumVisibleHeadingRegions: 9,
     mobileSignals: [
-      'What will your pergola cost?',
-      'What your budget needs to cover.',
-      'Cost drivers, quote checks and questions',
-      'Design and estimate',
+      'What will your',
+      'Initial installed estimate',
+      'A cover. Or a whole',
+      'Compare the whole job.',
     ],
     primaryAction: {
-      name: 'Design and estimate',
-      href: '/contact?source_path=%2Fpergola-cost-auckland&source_component=hero&configurator=preview',
-    },
-    disclosures: {
-      selector: 'details[data-seo-landing-disclosure]',
-      count: 1,
-      idAttribute: 'data-seo-landing-disclosure',
-      ids: ['pergola-cost-auckland-supporting-depth'],
-    },
-    supporting: {
-      selector:
-        'details[data-seo-landing-disclosure="pergola-cost-auckland-supporting-depth"]',
-      phrase: 'Cost drivers, quote checks and questions',
+      name: 'Return to your estimate',
+      href: '#explore-options',
+      initialViewport: false,
     },
     stableSections: [
       '#cost-projects',

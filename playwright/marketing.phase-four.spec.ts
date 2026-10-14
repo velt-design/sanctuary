@@ -73,12 +73,6 @@ const guideDetailRoutes = [
     returnHref: '/products/pergolas/pitched',
   },
   {
-    path: '/pergola-cost-auckland',
-    projectSlug: 'warkworth-outdoor-room',
-    projectCount: 3,
-    returnHref: '/pergolas-auckland',
-  },
-  {
     path: '/pergolas-with-blinds',
     projectSlug: 'tindalls-bay-pavilion',
     projectCount: 2,
@@ -827,7 +821,7 @@ test('guide hub keeps all ten distinctions visible without repeated controls', a
   }
 });
 
-test('seven guide routes share answer, one project, route back and optional depth', async ({
+test('six guide routes share answer, one project, route back and optional depth', async ({
   page,
 }) => {
   for (const viewport of targetViewports) {
@@ -900,7 +894,7 @@ test('seven guide routes share answer, one project, route back and optional dept
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/pergola-cost-auckland', { waitUntil: 'networkidle' });
+  await page.goto('/aluminium-pergolas-auckland', { waitUntil: 'networkidle' });
   const supportingDepth = page.locator(
     'details[data-guide-supporting-depth]',
   );
@@ -909,9 +903,9 @@ test('seven guide routes share answer, one project, route back and optional dept
   await page.reload({ waitUntil: 'networkidle' });
   await expect(supportingDepth).not.toHaveAttribute('open', '');
   await page.locator('[data-guide-first-layer-return] a').click();
-  await expect(page).toHaveURL(/\/pergolas-auckland$/);
+  await expect(page).toHaveURL(/\/products$/);
   await page.goBack({ waitUntil: 'networkidle' });
-  await expect(page).toHaveURL(/\/pergola-cost-auckland$/);
+  await expect(page).toHaveURL(/\/aluminium-pergolas-auckland$/);
   await expect(page.locator('main[data-seo-landing]')).toBeVisible();
 });
 
