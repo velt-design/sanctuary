@@ -34,6 +34,8 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/marketingIntegrations/meta/store.ts', // Server-only delegated Meta lifecycle; one RPC rechecks actor, source, binding, generation and ordered operation. No table access.
   'apps/portal/lib/marketingIntegrations/ga4/store.ts', // Server-only GA4 lifecycle; one RPC pins source, actor, property and credential intent. No table access or secret persistence.
   'apps/portal/lib/marketingIntegrations/googleAds/store.ts', // Server-only advertising commands; two RPCs enforce actor, binding, generation and canary/policy scope. No direct table access.
+  'apps/portal/lib/marketingIntegrations/metaSales/store.ts', // Dedicated dataset sale command, exact source and canary fenced. No direct table access.
+  'apps/portal/lib/marketingIntegrations/metaCredentials/store.ts', // Exact credential lease/checkpoint RPC only; no token storage or table access.
   'apps/portal/lib/projects/createProjectCommand.ts',
   'apps/portal/lib/quotes/adminLifecycle.ts',
   'apps/portal/lib/quotes/internalName.server.ts',

@@ -45,6 +45,7 @@ beforeAll(async()=>{
   await db.exec(readFileSync('supabase/migrations/20261013000002_google_ads_commands.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20261013000003_google_ads_retraction_source_fence.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20261013000005_google_ads_current_generation_health.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261014000004_google_ads_disclosure_compatibility.sql','utf8'));
 },30000);
 beforeEach(async()=>{
   await db.exec(`begin;insert into projects values('${id(1)}');insert into quotes values('${id(2)}','${id(1)}');
@@ -56,6 +57,26 @@ afterEach(async()=>db.exec('rollback'));afterAll(async()=>db.close());
 it('installs dark and denies unbound or inactive operators',async()=>{
   await rejects(begin,'authority');await enable();
   await db.exec(`delete from portal_users where user_id='${id(90)}'`);await rejects(begin,'authority');
+});
+it.each([
+  ['v1','v1',true],['v1','v2',false],['v2','v1',true],['v2','v2',true],['v2',null,false],['v2','future',false],['future','future',false],
+] as const)('enforces selected Google disclosure policy %s for original receipt %s in TS and SQL',async(selected,version,allowed)=>{
+  const name=(value:string)=>`2026-10-sale-measurement-${value}`;
+  await enable();await db.query('update private.google_ads_control set disclosure_version=$1 where singleton=true',[name(selected)]);
+  const original=(await sources())[0],valid=prepareSale(original,policy);if(!('event' in valid))throw Error('Fixture invalid');
+  await db.query("update enquiry_requests set raw_payload=jsonb_set(raw_payload,'{advertisingDisclosureVersion}',coalesce(to_jsonb($1::text),'null'::jsonb)) where id=$2",[version===null?null:name(version),id(4)]);
+  const s=(await sources())[0],run=await begin(),prepared=prepareSale(s,{...policy,disclosureVersion:name(selected)});
+  expect('event' in prepared).toBe(allowed);
+  const input={quoteId:s.quoteId,fingerprint:s.fingerprint,event:valid.event};
+  if(allowed){await command('freeze',input,run.runId);expect((await sale()).state).toBe('READY');}
+  else await rejects(()=>command('freeze',input,run.runId),'Invalid sale freeze');
+  expect((await sources())[0]).toEqual(s);
+});
+it('retains the original consent cutoff when the Google policy moves to v2',async()=>{
+  await enable();await db.exec("update private.google_ads_control set disclosure_version='2026-10-sale-measurement-v2',consent_effective_from=now()-interval '20 days' where singleton=true");
+  const s=(await sources())[0],prepared=prepareSale(s,policy);if(!('event' in prepared))throw Error('Fixture invalid');
+  expect(prepareSale(s,{...policy,disclosureVersion:'2026-10-sale-measurement-v2',consentEffectiveFrom:new Date(Date.now()-20*86400000).toISOString()})).toEqual({reason:'CONSENT_POLICY_NOT_APPROVED_FOR_RECEIPT'});
+  const run=await begin();await rejects(()=>command('freeze',{quoteId:s.quoteId,fingerprint:s.fingerprint,...prepared},run.runId),'Invalid sale freeze');
 });
 it.each(['role','unconfirmed','banned','deleted'])('rejects revoked actor authority: %s',async(reason)=>{
   await enable();

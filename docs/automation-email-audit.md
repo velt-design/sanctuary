@@ -1,5 +1,12 @@
 # Automation, Email, And Audit
 
+Advertising capture candidate (14 October): enquiry intake continues its existing
+email/idempotency behavior. Attribution normalization now retains consented Meta
+identifiers and paid-click capture time, and recognized v1/v2 disclosure values
+preserve what the submitted form displayed. The new Meta sale sender is a separate
+source-owned flow; it does not send customer email or reuse the legacy contact
+route's CAPI credential. See [meta-offline-sales.md](meta-offline-sales.md).
+
 ## Google advertising candidate
 
 The approved new-enquiry rollout records the form bundle's recognized

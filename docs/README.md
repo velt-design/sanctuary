@@ -31,7 +31,8 @@ Marketing Performance implementation, definitions, spend proposal and review evi
 
 | Doc | Status | Use When |
 | --- | --- | --- |
-| `google-ads-connection.md` | Disabled release candidate | Google Ads reporting, offline scope-sale delivery, dedicated OAuth setup, consent policy and correction/recovery. |
+| `google-ads-connection.md` | Reporting live; real-sale canary pending | Google Ads reporting, offline scope-sale delivery, dedicated OAuth setup, consent policy and correction/recovery. |
+| `meta-offline-sales.md` | Local candidate | Shared paid-scope source, durable Google/Meta capture, Ads-only enhanced lead handoff, separate Meta sale authority, historical assessment and rollout. |
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
 | `customer-presentation-standard.md` | Owner-approved quality benchmark | You are creating or reviewing a customer PDF, proposal, partnership booklet or booklet output; use the written standard and inspect the approved references when available. |
 | `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |

@@ -2,7 +2,6 @@
 import ContactProjectPreferences from './ContactProjectPreferences';
 import ConfiguredEnquiryFields from './ConfiguredEnquiryFields';
 
-import Link from 'next/link';
 import {
   useEffect,
   useRef,
@@ -17,6 +16,8 @@ import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import SimpleCoverCalculator from '@/components/simple-cover-calculator/SimpleCoverCalculator';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
+import { emitSubmittedLead } from '../../lib/googleEnhancedLead';
+import AdvertisingMeasurementNotice from '../../components/enquiry/AdvertisingMeasurementNotice';
 import {
   createEnquirySubmissionId,
   ENQUIRY_ATTACHMENT_ACCEPT,
@@ -231,12 +232,13 @@ export default function ContactEnquiryForm({
     }
   };
 
-  const trackSubmitEvent = (
+  const trackSubmitEvent = async (
     phase: 'start' | 'success' | 'error',
     selectedRoofs: string[],
     selectedAddOns: string[],
     extra?: Record<string, unknown>,
     eventId?: string,
+    contact?: { email: string; phone: string },
   ) => {
     const trackingWindow = window as TrackingWindow;
     const canonicalAudience = contextProperties.enquiry_type ?? 'unknown';
@@ -257,12 +259,10 @@ export default function ContactEnquiryForm({
         trackingWindow.fbq('track', 'Lead', base, eventId ? { eventID: eventId } : undefined);
       }
       if (phase === 'success' && hasTrackingDecision && (consent.analytics || consent.marketing)) {
-        trackingWindow.dataLayer = trackingWindow.dataLayer || [];
-        trackingWindow.dataLayer.push({
-          event: 'lead_submitted',
+        await emitSubmittedLead({
           ...base,
           lead_event_id: eventId,
-        });
+        }, contact, hasTrackingDecision && consent.marketing);
       }
     } catch {
       // Optional analytics must never interrupt the enquiry.
@@ -480,7 +480,8 @@ export default function ContactEnquiryForm({
       sentDesignRef.current = JSON.stringify(configuredDesign?.snapshot);
       setReceivedEarlier(responsePayload.idempotentReplay === true);
       setSubmitState('success');
-      trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId);
+      await trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId,
+        responsePayload.idempotentReplay === true ? undefined : { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') });
     } catch (error) {
       const message = error instanceof Error && error.message
         ? error.message
@@ -738,10 +739,7 @@ export default function ContactEnquiryForm({
 
           <div className="contact-form__submit">
             <div>
-              <p>
-                We use your details and files to assess and respond. They are not published. With marketing tracking enabled, we also measure enquiries and sales with Google Ads. See our{' '}
-                <Link href="/privacy#advertising-measurement">Privacy Policy</Link> for details and choices.
-              </p>
+              <AdvertisingMeasurementNotice/>
               <div className="contact-form__live" aria-live="polite" aria-atomic="true">
                 {submitState === 'sending'
                   ? pathway === 'simple' || pathway === 'configured' ? 'Sending your request.' : 'Sending project brief.'

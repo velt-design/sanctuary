@@ -1,5 +1,33 @@
 # Testing And QA
 
+Meta credential renewal candidate: `npx vitest run
+apps/portal/lib/marketingIntegrations/metaCredentials test/meta-credentials-db.test.ts
+test/meta-sales-source.test.ts apps/portal/lib/marketingIntegrations/meta/http.test.ts
+apps/portal/components/marketingPerformance/MetaSaleDelivery.test.tsx`.
+Use `node scripts/test-google-ads-db.mjs --meta-credentials` for the same exact
+migration/lifecycle checks on disposable PostgreSQL 17. The synthetic source
+fixture is shared with the sale suite; native bigint/text transport differences
+are normalized only at test boundaries. No provider or customer event is sent.
+The current Velt source-mode delegation remains an independent read-only
+compatibility check; its direct-provider 30-day broker is not this credential path.
+
+Advertising extension (14 October local candidate): focused Meta source lifecycle
+tests are `npx vitest run test/meta-sales-source.test.ts`; native PostgreSQL 17 uses
+the existing disposable harness `node scripts/test-google-ads-db.mjs --meta` with
+`PRAXIS_DISPOSABLE_POSTGRES_BIN` set to installed binaries. Synthetic prerequisites
+do not establish production schema, PostgREST or safeupdate compatibility.
+Capture, Google prehashed handoff, provider wire, UI and release checks are mapped
+in [meta-offline-sales.md](meta-offline-sales.md). No test sends synthetic Purchase
+events to the production Meta dataset, including through `test_event_code`.
+Review regressions cover recovered dispatch after matching revocation, identical
+unchanged retry, accepted-event aging versus real correction, explicit refusal
+versus no decision, expired/revoked authority, all form notices, and edited
+idempotent replay without enhanced identity. Google source tests execute the
+forward disclosure compatibility policy and unchanged cutoff in both TS and SQL.
+Cross-app enhanced identity equivalence lives in the root integration test
+`test/google-enhanced-lead-contract.test.ts`. Marketing's app tests must remain
+independent of Portal-only dependencies because its hosted install is scoped.
+
 ## Bounded Project Work source facts
 
 Run `npx vitest run test/project-work-domain-facts-migration.test.ts

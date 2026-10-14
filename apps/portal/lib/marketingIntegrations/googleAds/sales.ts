@@ -38,11 +38,15 @@ export const saleEventSchema = z.object({ transactionId: z.string().regex(/^sanc
   userData: z.object({ userIdentifiers: z.array(z.union([z.object({emailAddress:hashed}).strict(),z.object({phoneNumber:hashed}).strict()])).min(1).max(2) }).strict().optional(),
 }).strict().refine(v=>Boolean(v.adIdentifiers||v.userData));
 export type SalePolicy = { enhancedMatchingApproved: boolean; allowedConsentBases: string[]; consentEffectiveFrom: string; disclosureVersion: string };
+export function acceptsGoogleDisclosure(policy: string, receipt: string | null): boolean {
+  return (policy === '2026-10-sale-measurement-v1' && receipt === policy)
+    || (policy === '2026-10-sale-measurement-v2' && (receipt === '2026-10-sale-measurement-v1' || receipt === policy));
+}
 export function prepareSale(source: SaleSource, policy: SalePolicy, now = new Date()): { event: SaleEvent } | { reason: string } {
   if (!source.active || source.valueCents === null) return { reason: 'SALE_NO_LONGER_CURRENT' };
   if (!source.receiptId) return { reason: 'ORIGIN_ENQUIRY_MISSING' };
   if (!source.marketingConsent) return { reason: 'MARKETING_CONSENT_NOT_GRANTED' };
-  if (!policy.disclosureVersion || source.disclosureVersion !== policy.disclosureVersion) return { reason: 'ADVERTISING_DISCLOSURE_NOT_CURRENT' };
+  if (!acceptsGoogleDisclosure(policy.disclosureVersion, source.disclosureVersion)) return { reason: 'ADVERTISING_DISCLOSURE_NOT_CURRENT' };
   if (!source.consentBasis || !policy.allowedConsentBases.includes(source.consentBasis)
     || !Number.isFinite(Date.parse(policy.consentEffectiveFrom)) || Date.parse(source.receivedAt ?? '') < Date.parse(policy.consentEffectiveFrom))
     return { reason: 'CONSENT_POLICY_NOT_APPROVED_FOR_RECEIPT' };

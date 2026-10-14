@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
 import AcrylicPergolaEnquiryForm from './AcrylicPergolaEnquiryForm';
+import { webcrypto } from 'node:crypto';
 
 let root: Root | null = null;
 let analyticsEnabled = false;
@@ -47,6 +48,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   analyticsEnabled = false; marketingEnabled = false;
+  localStorage.clear();
   window.history.replaceState({}, '', '/simple-pergolas-auckland');
 });
 
@@ -57,6 +59,7 @@ afterEach(async () => {
   }
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   document.body.innerHTML = '';
 });
 
@@ -114,6 +117,21 @@ function fillRequiredFields(container: HTMLElement) {
 }
 
 describe('AcrylicPergolaEnquiryForm Simple cover variant', () => {
+  it('omits enhanced contact identity when an edited retry receives the original idempotent receipt',async()=>{
+    marketingEnabled=true;vi.stubGlobal('crypto',webcrypto);vi.stubEnv('NEXT_PUBLIC_GOOGLE_ENHANCED_LEADS_ENABLED','true');
+    const identityReads:unknown[]=[];const layer:Record<string,unknown>[]=[];
+    layer.push=(...events)=>{identityReads.push((window as Window & {sanctuaryGoogleEnhancedLead?:unknown}).sanctuaryGoogleEnhancedLead);return Array.prototype.push.apply(layer,events);};
+    vi.stubGlobal('dataLayer',layer);
+    const network=vi.spyOn(globalThis,'fetch').mockRejectedValueOnce(Error('Lost response')).mockResolvedValueOnce({ok:true,json:async()=>({ok:true,idempotentReplay:true})} as Response);
+    const container=await renderForm(pricedHandoff);fillRequiredFields(container);
+    expect(container.textContent).toContain('Google Ads and Meta');
+    const submit=()=>act(async()=>{container.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});
+    await submit();(container.querySelector('[name=email]') as HTMLInputElement).value='edited@example.test';await submit();
+    const bodies=network.mock.calls.map(call=>JSON.parse(String(call[1]?.body)));
+    expect(bodies[0].submissionId).toBe(bodies[1].submissionId);expect(bodies[1].email).toBe('edited@example.test');
+    expect(identityReads).toEqual([undefined]);expect(JSON.stringify(layer)).not.toContain('edited@example');
+    (layer[0].eventCallback as ()=>void)();
+  });
   it('tracks one first edit separately from submission and never reports a failed receipt as success', async () => {
     analyticsEnabled = true;
     const gtag = vi.fn(); vi.stubGlobal('gtag', gtag);
@@ -162,7 +180,7 @@ describe('AcrylicPergolaEnquiryForm Simple cover variant', () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as SubmittedPayload;
     expect(body).toMatchObject({
       enquiryType: 'residential',
-      advertisingDisclosureVersion: '2026-10-sale-measurement-v1',
+      advertisingDisclosureVersion: '2026-10-sale-measurement-v2',
       calculationRef: pricedHandoff.calculationRef,
       simpleCoverStatus: 'priced',
       dimensions: { widthM: null, depthM: null, heightM: null },

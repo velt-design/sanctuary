@@ -1,5 +1,60 @@
 # Decision Log
 
+## 2026-10-14 - Keep credential verification within the existing read grant
+
+Live Meta bootstrap rejected the account projection containing `business` while
+the established account/status/currency/timezone projection had worked with the same
+read-only credential. Reuse that supported projection, keep account and identity
+checks strict, and retain business assignment as separately verified source
+evidence. Do not expand permission to satisfy an unnecessary probe. Owner:
+`meta-offline-sales.md`.
+
+## 2026-10-14 - Separate renewable credentials from business authority
+
+Meta's static token/expiry binding made routine renewal invalidate reports and
+quarantine sales. Keep stable app/principal/asset/vault identity distinct from
+credential revision. Owner approval remains finite until ongoing revocable access
+is explicitly approved. Persist exchange/write uncertainty, reconcile exact vault
+versions, and preserve sale IDs/bodies/attempts. A known rejected replacement is
+quarantined, not retried as an unknown exchange. Native OAuth GET avoids Next fetch
+URL tracing; no request secrets or raw errors enter telemetry. Owner:
+`meta-offline-sales.md`.
+
+## 2026-10-14 - Keep cross-app identity tests outside scoped app builds
+
+Marketing's hosted build typechecks its tests with only its declared dependency
+graph. A test importing the Portal sale schema pulled in Portal-only Zod and
+failed despite a full-workspace local build passing. Keep marketing expected
+hashes self-contained and verify browser/offline equivalence in a root integration
+test. Do not add a Portal dependency to marketing to hide the test-boundary fault.
+Owner: `testing-and-qa.md`.
+
+## 2026-10-14 - Preserve authority through recovered advertising delivery
+
+Independent candidate review found that a recovered uncertain event could retain
+contact hashes after matching permission changed. Validate the frozen matching
+body under current authority at both recovered claim and the pre-request boundary;
+never rewrite attempted identity or reset its budget. Import deadlines constrain
+new sends, not the truth of an unchanged accepted receipt. Display current actor
+and credential authority even when begin fails before a run exists. Share the
+actual form notice across compact and regular layouts, select explicit Google
+v1/v2 compatibility, and omit edited replay identity. Historical default false
+is missing authority, distinct from explicit user refusal. Owner:
+`meta-offline-sales.md`.
+
+## 2026-10-14 - Keep provider sale rules separate from accounting truth
+
+Google and Meta share one verified deposit/full-scope-value source, but their
+identity normalization, event windows, disclosure and correction capabilities
+differ. Meta's generic seven-day event window cannot inherit a physical-store
+exception, and `test_event_code` does not prevent measurement use. Freeze one
+event identity/time/value through bounded retries; do not invent a changed-value
+restatement where the provider retains the first copy. Keep historical permission
+evidence per source fingerprint and preserve old form notice versions. Website
+Google enhanced contact matching uses an explicitly gated, short-lived Ads-only
+hashed object, never generic analytics event properties. Owner:
+`meta-offline-sales.md`.
+
 ## 2026-10-14 - Keep tab rendering aligned with active read ownership
 
 A direct Job Packs entry preserved unknown availability in route/header state,

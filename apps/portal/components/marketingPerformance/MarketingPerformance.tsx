@@ -31,9 +31,10 @@ import type { FinancialsLoader } from '@/components/financials/useFinancials';
 import type { CommercialLoader } from './useCommercial';
 import useVisibleSelection from '@/components/financials/useVisibleSelection';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
+import type { loadMetaSaleStatus } from '@/lib/marketingIntegrations/metaSales/contract';
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,financialsLoader,commercialLoader}: {
-  financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;googleLoader?:typeof loadAdsStatus;
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader}: {
+  financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
   const [draft,setDraft]=useState<FiltersState>(()=>({...hubDefaults(initialFilters??defaultFilters()),view:'overview' as const}));
@@ -85,7 +86,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
 
         </>}
         <footer className={styles.reportFooter}><span>Acquisition cost: unavailable <Button variant="quiet" onClick={()=>setSources(true)}>Data sources</Button></span><span>{new Date(hub.asOf).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium',timeStyle:'short'})} NZ <Button variant="quiet" onClick={()=>setRevision(n=>n+1)}>Refresh</Button><Button variant="quiet" onClick={()=>setInfo(true)}>Data & definitions</Button></span></footer>
-        <Drawer title="Data sources" open={sources} onClose={()=>setSources(false)}>{sources&&<DataSources hub={hub} loader={metaLoader} googleLoader={googleLoader} synthetic={synthetic}/>}</Drawer>
+        <Drawer title="Data sources" open={sources} onClose={()=>setSources(false)}>{sources&&<DataSources hub={hub} loader={metaLoader} googleLoader={googleLoader} metaSaleLoader={metaSaleLoader} synthetic={synthetic}/>}</Drawer>
         <Drawer title="Data & definitions" open={info} onClose={()=>setInfo(false)}>
           <p className={styles.muted}>{previewDescription??'Authoritative saved business records; observed attribution is separate from platform claims.'}</p>
           <HubCompleteness hub={hub} filters={applied} apply={next=>{apply(next);setInfo(false);}}/>

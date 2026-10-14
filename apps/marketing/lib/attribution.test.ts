@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CAMPAIGN_SESSION_KEY, captureCampaignSession } from './campaignSession';
+import { capturePersistentIdentifiers, CAMPAIGN_PERSISTENCE_KEY } from './campaignPersistence';
 import {
   getBrowserMarketingAttribution,
   getGaClientIdFromCookie,
@@ -7,6 +8,18 @@ import {
 } from './attribution';
 
 describe('marketing browser attribution', () => {
+  it('carries a returning visitor’s independent click evidence into the consented submission', () => {
+    const values=new Map<string,string>(),storage={getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>{values.set(key,value);},removeItem:(key:string)=>{values.delete(key);}};
+    const now=Date.now();
+    capturePersistentIdentifiers({store:storage,googleIds:{gclid:'return_google'},fbclid:'return_meta',cookie:'',observedAt:now-86400000,newArrival:true},now);
+    vi.stubGlobal('window',{location:{search:'',href:'https://example.test/contact',hostname:'example.test'},localStorage:storage});
+    vi.stubGlobal('document',{cookie:'',referrer:''});
+    const result=getBrowserMarketingAttribution({consent:{analytics:false,marketing:true},trackingBasis:'regional_default',trackingRegionPolicy:'nz_automatic'});
+    expect(result.clickIds).toEqual({gclid:'return_google'});expect(result.meta?.fbc).toBe(`fb.1.${now-86400000}.return_meta`);
+    expect(result.clickCapturedAt).toBe(new Date(now-86400000).toISOString());
+    getBrowserMarketingAttribution({consent:{analytics:false,marketing:false},trackingBasis:'user_choice',trackingRegionPolicy:null});
+    expect(storage.getItem(CAMPAIGN_PERSISTENCE_KEY)).toBeNull();
+  });
   it('honors a cross-tab marketing withdrawal immediately at submission', () => {
     const values = new Map<string, string>();
     const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };

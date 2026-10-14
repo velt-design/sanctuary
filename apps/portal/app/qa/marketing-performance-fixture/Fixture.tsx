@@ -12,6 +12,7 @@ import { financialsLoader } from './financialFixtures';
 import { commercialLoader, commercialCoverageScenario } from './commercialFixtures';
 import FinancialScenarioControl from './FinancialScenarioControl';
 import { googleFixtureLoader } from './googleFixtures';
+import { metaSaleFixtureLoader } from './metaSaleFixtures';
 
 const loader: ReportLoader = async (filters, signal) => {
   await new Promise<void>((resolve, reject) => {
@@ -40,5 +41,5 @@ const metaLoader: MetaEvidenceLoader = async signal => {
   const fetchedAt=new Date(Date.now()-(mode==='stale'?48:1)*3600000).toISOString();
   return {status:'available',checkedAt:new Date().toISOString(),accountId:'123',expiresAt:new Date(Date.parse(fetchedAt)+7*86400000).toISOString(),report:{...sampleMetaReport({start:'2026-09-16',end:'2026-09-22'}),fetchedAt}};
 };
-export default function Fixture({representative=false}:{representative?:boolean}) { return <><MarketingPerformance commercialLoader={commercialLoader} financialsLoader={financialsLoader} metaLoader={metaLoader} googleLoader={googleFixtureLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
+export default function Fixture({representative=false}:{representative?:boolean}) { return <><MarketingPerformance commercialLoader={commercialLoader} financialsLoader={financialsLoader} metaLoader={metaLoader} googleLoader={googleFixtureLoader} metaSaleLoader={metaSaleFixtureLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
   previewDescription={representative?'Representative demo · 1,200 fictional projects across active, archived and legacy work. Dates, sources and payment amounts are invented; missing-history patterns resemble the business. Demo ends 22 September 2026.':undefined} /><FinancialScenarioControl/></>; }
