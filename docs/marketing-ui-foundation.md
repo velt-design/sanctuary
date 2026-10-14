@@ -5,7 +5,8 @@
 Jordan requested: "let's improve the acrylic page to the same level as the new
 landing page. Build it in preview so I can review it before we launch the ads."
 This is preview preparation, not production release or campaign launch approval.
-The approved Facebook page remains unchanged. `/acrylic-roof-pergolas-auckland`
+The acrylic page follows the approved Facebook photographic direction.
+`/acrylic-roof-pergolas-auckland`
 retains its canonical metadata, indexability, sitemap, structured data and enquiry
 contracts while its composition follows that page's photographic hierarchy.
 
@@ -14,7 +15,7 @@ St Heliers residential story, Warkworth mixed-roof detail, process, canonical
 enquiry and lower technical FAQs. Its new `acrylic-editorial.module.css` owns
 responsive composition without changing the shared acrylic form stylesheet.
 `AcrylicTintComparison` uses native radios and a stable CSS grid for the four
-existing descriptions from `content.ts`. Clearly labelled illustrative swatches
+existing descriptions from `content.ts`. Clearly labelled same-scene architectural illustrations
 are not simulated project images or measured product performance. Comparison
 works without JavaScript; it does not set an enquiry roof preference.
 
@@ -23,8 +24,8 @@ Dairy Flat gallery image 03, St Heliers image 01, Warkworth image 04 and Atelier
 Shu image 05. The cafe remains a subordinate dark-tint example in the FAQ. Original
 comfort factors, connection/drainage guidance, fixed-roof assembly requirements,
 product-document checks and related guides remain available below the enquiry.
-The workmanship statement uses the existing governed claim only. No prices,
-product performance thresholds, new offers or project videos are introduced.
+The workmanship statement and 99% UV-light wording use existing governed claims.
+No new price, performance threshold, offer or project video is introduced.
 
 Verification owners: `marketing.acrylic-foundation.spec.ts` covers six responsive
 layouts, menu/focus/validation, tint keyboard/no-JavaScript behavior, tint layout
@@ -33,16 +34,52 @@ stability at 320/390/1440px and intercepted retry/consent/Meta-source contracts.
 Mocked intake and blocked external requests do not establish real delivery.
 Independent hosted review and owner acceptance remain separate from local checks.
 
+## Featured designer on both campaign pages (14 October 2026)
+
+Jordan's later approval: "make those changes to both landing pages in preview.
+Strengthen the acrylic copy, make the tint differences clear and feature the
+configurator properly. I'll review them before we launch."
+
+Both routes keep their real project-led opening and feature the designer before
+project stories. `components/marketing-foundation/LandingDesigner.tsx` and its
+scoped stylesheet own the visual entry, qualified estimate explanation and help
+path. Images are the existing canonical `shape-gable-v1.webp` (acrylic) and
+`roof-gable-solid-v1.webp` illustrations, clearly distinct from built-project photos.
+Hero and section links use `buildConfiguratorEnquiryHref` with the existing
+`hero` / `project_cta` source identifiers and original residential route.
+
+`SiteConfigurator` owns modal entry; the optional material initializer in
+`usePreviewDraft` uses canonical defaults/roof finish. Valid in-memory, session,
+local and legacy Simple drafts take precedence over a new acrylic or
+ThermoPine-lined solid gable starting point. The separately scoped Auckland
+explorer is unchanged. Optional initializer failure still opens the designer;
+navigation away while loading cancels the opening. Dimensions, geometry, pricing,
+3D/plan, mobile inline enquiry and desktop design-enquiry continue with their
+existing owners. No duplicate calculator or fixed page price is introduced.
+
+Tint illustrations keep identical scene detail across transparent clear/grey
+panes. Opal is milky and conceals the view. Native controls remain keyboard and
+no-JavaScript capable, with a stable shared panel area. The illustration is
+explicitly not a project photograph, exact sample or measured transmission.
+
+Verification: `landingPreview.test.ts` covers stored/legacy/in-memory precedence;
+`SiteConfigurator.test.tsx` covers optional-entry failure and navigation races;
+`marketing.landing-designer.spec.ts` covers meaningful edits, reload, return and
+original enquiry context on phone and desktop. Prices and submissions are
+intercepted in that browser test; real pricing availability and intake delivery
+require separate provider evidence. This remains preview-only work.
+
 ## Facebook Auckland residential destination (14 October 2026)
 
 `/auckland-outdoor-living` is a campaign-specific, noindex destination prepared
 for one Auckland residential campaign. It is not added to the search sitemap.
 The route owns its photographic story and styles; the global header/footer,
 consent, attribution and canonical embedded enquiry remain shared owners.
-The primary action anchors to the enquiry. Optional design exploration opens
-the existing `/pergolas-auckland#explore-options` workspace, without copying its
-pricing, designer state or business rules. The campaign session retains its
-original landing source through that navigation while permitted by consent.
+The primary action opens the canonical pergola designer directly, with a retained
+secondary link to the embedded enquiry. The early featured designer section
+uses the established architectural gable illustration. Campaign context remains
+in the existing consent-aware session owner through design and enquiry.
+
 
 Implementation map: `app/auckland-outdoor-living/page.tsx` owns composition,
 metadata and source context; `outdoor-living.module.css` owns responsive layout.

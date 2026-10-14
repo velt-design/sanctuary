@@ -98,3 +98,7 @@
   .questions { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .page { scroll-behavior: auto; } }
+
+.heroActions { display:flex; align-items:center; gap:1.5rem; }
+.lightLink { display:inline-flex; align-items:center; gap:1rem; min-height:48px; color:#fff; text-decoration:underline; text-underline-offset:5px; font-size:.8rem; }
+@media(max-width:760px) { .heroActions { flex-direction:column; align-items:stretch; gap:.2rem; } .lightLink { justify-content:space-between; } }

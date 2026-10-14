@@ -22,7 +22,7 @@
 .introduction > .eyebrow { grid-column: 1 / -1; }
 .introduction > div { max-width: 30rem; }
 .introduction > div > p { font-size: 1rem; line-height: 1.75; color: var(--color-text-secondary); margin-bottom: 1rem; }
-.projectStory { padding: 0 var(--page-gutter) clamp(3.5rem, 6vw, 6rem); }
+.projectStory { padding: clamp(3.5rem, 6vw, 6rem) var(--page-gutter) clamp(3.5rem, 6vw, 6rem); }
 .storyHeader { padding-top: 1.5rem; border-top: 1px solid var(--color-rule-strong); margin-bottom: 2.5rem; }
 .storyHeader h2 { font-size: clamp(2.4rem, 4vw, 4.5rem); }
 .projectImage { display: block; position: relative; width: 82%; margin-left: auto; }
@@ -40,11 +40,16 @@
 .tintChoice { position: relative; display: block; min-width: 0; cursor: pointer; }
 .tintChoice input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 1; margin: 0; }
 .tintChoice:has(input:focus-visible) { outline: 2px solid var(--color-accent-olive); outline-offset: 5px; }
-.swatch { display: grid; place-items: center; width: 100%; height: clamp(110px, 13vw, 180px); background: linear-gradient(145deg, #dce5e8, #f4f4ee 52%, #a5b0a1); overflow: hidden; }
-.swatch > span { display: block; width: 64%; height: 72%; transform: skewY(-10deg); border: 1px solid rgba(255,255,255,.8); box-shadow: 4px 7px 8px rgba(17,18,16,.1); background: linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,255,255,.04) 45%, rgba(255,255,255,.45)); }
-.swatch[data-tint-tone='light-grey'] > span { background: linear-gradient(135deg, rgba(115,122,124,.3), rgba(128,138,141,.5)); }
-.swatch[data-tint-tone='dark-grey'] > span { background: linear-gradient(135deg, rgba(53,61,64,.65), rgba(61,67,68,.8)); }
-.swatch[data-tint-tone='opal'] > span { background: linear-gradient(135deg, #fafaf6, #dce0dd); }
+.swatch { display: block; width: 100%; overflow: hidden; }
+.tintScene { display: block; width: 100%; height: auto; }
+.tintPane { fill: transparent; }
+.tintScene[data-tint-tone='light-grey'] .tintPane { fill: #343e45; opacity: .25; }
+.tintScene[data-tint-tone='dark-grey'] .tintPane { fill: #222c32; opacity: .69; }
+.tintScene[data-tint-tone='opal'] .skyDetails { visibility: hidden; }
+.tintScene[data-tint-tone='opal'] .tintPane { fill: #e9eeeb; }
+.largeScene { position: relative; margin-bottom: 1.5rem; }
+.largeScene .tintScene { max-height: 310px; object-fit: cover; }
+.largeScene > span { display: block; background: #303a33; color: #fff; padding: .75rem 1rem; font-size: .8rem; }
 .tintLabel { display: flex; align-items: center; justify-content: space-between; gap: .2rem; min-height: 48px; padding-block: .7rem; border-bottom: 1px solid var(--color-rule); font-size: .75rem; }
 .selectedMark { visibility: hidden; }
 .tintChoice:has(input:checked) .tintLabel { border-bottom: 2px solid var(--color-text-primary); font-weight: 600; }
@@ -122,7 +127,7 @@
   .storyCaption > span { justify-self: start; border-top: 1px solid var(--color-rule); width: 100%; padding-top: .85rem; }
   .options { grid-template-columns: 1fr; scroll-margin-top: 80px; }
   .tintChoices { gap: .6rem; }
-  .swatch { height: 112px; }
+  .swatch { height: auto; }
   .tintLabel { font-size: .7rem; }
   .tintDescription dl > div { grid-template-columns: 4rem 1fr; gap: .75rem; }
   .mixedStory { grid-template-columns: 1fr; }

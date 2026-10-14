@@ -23,7 +23,7 @@ for (const width of [320, 390, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`campaign-${width}.png`), fullPage: true });
 
-    await page.getByRole('link', { name: 'Tell us about your space' }).click();
+    await page.getByRole('link', { name: 'Tell us about your space', exact: true }).click();
     const form = page.getByRole('form', { name: 'What do you have in mind?' });
     await expect(form.getByLabel('Project type')).toHaveValue('residential');
     let submitted: Record<string, any> | undefined;
@@ -62,11 +62,10 @@ test('accepted campaign attribution survives optional designer exploration and b
   await page.getByRole('button', { name: 'Accept all', exact: true }).click();
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem('sanctuary.campaign-context.v1'))).not.toBeNull();
   const before = await page.evaluate(() => sessionStorage.getItem('sanctuary.campaign-context.v1'));
-  await page.getByRole('link', { name: 'Explore your design', exact: true }).click();
-  await expect(page).toHaveURL(/\/pergolas-auckland#explore-options$/);
-  await expect(page.locator('#explore-options')).toBeVisible();
+  await page.getByRole('link', { name: 'Design your pergola', exact: true }).first().click();
+  await expect(page.getByRole('dialog', { name: 'Design your pergola' })).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('sanctuary.campaign-context.v1'))).toBe(before);
-  await page.goBack();
+  await page.getByRole('button', { name: 'Close configurator', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Make roomfor life outside.');
   let payload: Record<string, any> | undefined;
   await page.route('**/api/enquiry', route => { payload = route.request().postDataJSON(); return route.fulfill({ json: { ok: true } }); });

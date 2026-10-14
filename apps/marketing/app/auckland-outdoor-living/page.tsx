@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import LandingDesigner from '@/components/marketing-foundation/LandingDesigner';
+import { buildConfiguratorEnquiryHref } from '@/lib/configuratorEntry';
 import ArrowUpRight from '@/components/marketing-foundation/ArrowUpRight';
 import foundation from '@/components/marketing-foundation/foundation.module.css';
 import AcrylicPergolaEnquiryForm from '../acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
@@ -22,6 +24,7 @@ export const metadata: Metadata = {
 };
 
 export default function AucklandOutdoorLivingPage() {
+  const designHref = buildConfiguratorEnquiryHref({ enquiryType: 'residential', sourcePath: '/auckland-outdoor-living', sourceComponent: 'hero' });
   return (
     <main className={`${foundation.marketingPage} ${styles.page}`} data-marketing-foundation-page data-facebook-landing>
       <section className={styles.hero} aria-labelledby="outdoor-living-title">
@@ -31,7 +34,7 @@ export default function AucklandOutdoorLivingPage() {
         <div className={styles.heroContent}>
           <h1 id="outdoor-living-title">Make room<br />for life outside.</h1>
           <div className={styles.heroBottom}>
-            <div><p>A place for slow mornings. Long lunches.<br />And a little more everyday living.</p><a className={styles.primaryAction} href="#your-space">Tell us about your space <ArrowUpRight /></a></div>
+            <div><p>A place for slow mornings. Long lunches.<br />And a little more everyday living.</p><div className={styles.heroActions}><a className={styles.primaryAction} href={designHref} data-configurator-material="solid">Design your pergola <ArrowUpRight /></a><a className={styles.lightLink} href="#your-space">Tell us about your space <ArrowUpRight /></a></div></div>
             <Link className={styles.projectCaption} href="/projects/riverhead-gable-pavilion"><span>Built by Sanctuary</span>Riverhead, Auckland <ArrowUpRight /></Link>
           </div>
         </div>
@@ -44,6 +47,8 @@ export default function AucklandOutdoorLivingPage() {
         <h2 id="your-home-title">Not just a roof.<br />Your favourite place.</h2>
         <div><p>From a light-filled deck to a timber-lined outdoor lounge, the right pergola starts with your house and how you want to live.</p><p>We work through the roofline, materials and details with you, so the finished space feels like it belongs.</p><a className={styles.textLink} href="#built-in-auckland">See two different approaches <span aria-hidden="true">↓</span></a></div>
       </section>
+
+      <LandingDesigner sourcePath="/auckland-outdoor-living" material="solid" helpHref="#your-space" />
 
       <section className={styles.projects} id="built-in-auckland" aria-labelledby="built-title">
         <div className={styles.projectHeading}><p className={styles.eyebrow}>Real homes. Completed projects.</p><h2 id="built-title">At home in Auckland.</h2></div>
@@ -58,7 +63,6 @@ export default function AucklandOutdoorLivingPage() {
         <p className={styles.scopeNote}>These are completed custom projects. Your proposal confirms your design, materials and inclusions. Furniture, planting and landscaping are not included.</p>
       </section>
 
-      <section className={styles.explore} aria-labelledby="explore-title"><div><p className={styles.eyebrow}>Prefer to start with an idea?</p><h2 id="explore-title">Find your roofline.</h2><p>Try roof shapes and materials in our pergola designer. Or simply tell us about the space below.</p></div><Link className={styles.outlineAction} href="/pergolas-auckland#explore-options">Explore your design <ArrowUpRight /></Link></section>
 
       <section className={styles.process} aria-labelledby="process-title"><header><p className={styles.eyebrow}>A considered start</p><h2 id="process-title">From your first idea<br />to an agreed plan.</h2></header><ol>{residentialProcessSteps.map((step, index) => <li key={step.title}><span>0{index + 1}</span><h3>{step.title}</h3><p>{step.copy}</p></li>)}</ol></section>
 

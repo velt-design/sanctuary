@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import LandingDesigner from '@/components/marketing-foundation/LandingDesigner';
+import { buildConfiguratorEnquiryHref } from '@/lib/configuratorEntry';
 import JsonLd from '@/components/JsonLd';
 import ArrowUpRight from '@/components/marketing-foundation/ArrowUpRight';
 import { absoluteUrl } from '@/lib/seo';
@@ -29,6 +31,7 @@ export const metadata: Metadata = {
 };
 
 export default function AcrylicRoofPergolasAucklandPage() {
+  const designHref = buildConfiguratorEnquiryHref({ enquiryType: 'residential', sourcePath: route, sourceComponent: 'hero' });
   return (
     <main className={`acrylic-landing ${styles.page}`} data-marketing-foundation-page data-seo-landing="acrylic-roof-pergolas-auckland" data-acrylic-editorial>
       <JsonLd data={[
@@ -46,7 +49,7 @@ export default function AcrylicRoofPergolasAucklandPage() {
         <div className={styles.heroContent}>
           <h1 id="acrylic-hero-title">Keep the light.<br />Make room outside.</h1>
           <div className={styles.heroBottom}>
-            <div><p>A covered space, with daylight above.<br />Designed around the home you love.</p><div className={styles.heroActions}><a className={styles.primaryAction} href="#project-details">Tell us about your space <ArrowUpRight /></a><a className={styles.lightLink} href="#acrylic-options">Explore acrylic tints <span aria-hidden="true">↓</span></a></div></div>
+            <div><p>A covered space, with daylight above.<br />Designed around the home you love.</p><div className={styles.heroActions}><a className={styles.primaryAction} href={designHref} data-configurator-material="acrylic">Design your pergola <ArrowUpRight /></a><a className={styles.lightLink} href="#project-details">Tell us about your space <ArrowUpRight /></a><a className={styles.lightLink} href="#acrylic-options">Explore acrylic tints <span aria-hidden="true">↓</span></a></div></div>
             <Link className={styles.projectCaption} href="/projects/dairy-flat-estate"><span>Built by Sanctuary</span>Dairy Flat, Auckland <ArrowUpRight /></Link>
           </div>
         </div>
@@ -54,7 +57,9 @@ export default function AcrylicRoofPergolasAucklandPage() {
 
       <div className={styles.proofLine}><p>Designed around your home.</p><p>Auckland based.</p><p>10-year workmanship warranty.</p></div>
 
-      <section className={styles.introduction} aria-labelledby="daylight-title"><p className={styles.eyebrow}>A little closer to outside</p><h2 id="daylight-title">Shelter overhead.<br />Daylight in the picture.</h2><div><p>Breakfast on the deck. Friends around the table. A place to stay a little longer.</p><p>Acrylic roofing can provide cover while keeping daylight. We consider the tint, roof shape and the rooms beside it, so your pergola works with your home.</p></div></section>
+      <section className={styles.introduction} aria-labelledby="daylight-title"><p className={styles.eyebrow}>A little closer to outside</p><h2 id="daylight-title">Shelter overhead.<br />Daylight in the picture.</h2><div><p>Breakfast on the deck. Friends around the table. A place to stay a little longer.</p><p>Keep daylight coming through the roof while creating a covered place to eat, gather and unwind. Our acrylic roofing blocks 99% of UV light. Choose a clear view of the sky, a grey tint or the soft, diffused light of opal.</p><p>Roof proportions, frame and post positions are designed around the house. We resolve the connection, flashings and drainage together, then confirm the materials and installation in your proposal.</p></div></section>
+
+      <LandingDesigner sourcePath={route} material="acrylic" helpHref="#project-details" />
 
       <section className={styles.projectStory} aria-labelledby="completed-projects">
         <div className={styles.storyHeader}><p className={styles.eyebrow}>01 / A roof that belongs</p><h2 id="completed-projects">Light, from the inside out.</h2></div>

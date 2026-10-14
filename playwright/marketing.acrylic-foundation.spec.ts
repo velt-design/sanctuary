@@ -175,7 +175,7 @@ for (const marketing of [false, true]) test(`acrylic enquiry retries safely with
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(allowed => localStorage.setItem('sp_consent_v1', JSON.stringify({ version: 1, analytics: allowed, marketing: allowed, updatedAt: new Date().toISOString() })), marketing);
   await page.goto(`${route}?utm_source=facebook&utm_medium=paid_social&utm_campaign=acrylic_test&fbclid=synthetic-acrylic`);
-  await page.getByRole('link', { name: 'Tell us about your space' }).click();
+  await page.getByRole('link', { name: 'Tell us about your space', exact: true }).click();
   const form = page.getByRole('form', { name: 'Tell us about your project.' });
   await form.getByLabel('Name Required', { exact: true }).fill('Synthetic Acrylic Test');
   await form.getByLabel('Phone Required', { exact: true }).fill('0210000000');
