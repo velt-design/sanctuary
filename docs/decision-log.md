@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-15 - Compose credential checks without callback recursion
+
+A campaign route passed a callback containing `lease.check()` into the credential
+lifecycle, which itself calls that callback. Once assigned, the lease recursively
+re-authorized until the request deadline, before the first campaign provider read.
+Pass external authorization alone into acquisition; use the returned lifecycle
+check at later boundaries. Test the composed route and actual lifecycle, including
+finite call counts and revocation, instead of replacing lease checks with no-ops.
+Owner: `marketing-performance.md`. No timeout increase or weaker guard is needed.
+
 ## 2026-10-14 - Keep credential verification within the existing read grant
 
 Live Meta bootstrap rejected the account projection containing `business` while

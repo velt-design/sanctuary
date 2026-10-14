@@ -20,6 +20,16 @@ provider week insights (five bounded reads). Campaign budget takes precedence
 over adset budget. Scope, currency, timezone, pagination, duplicates, expiry,
 current generation and kill controls fail closed. Missing metrics stay unknown.
 
+Credential authorization and lease checking are separate callbacks: the real
+credential lifecycle invokes external authorization inside its returned `check`.
+The campaign route passes only external authorization into acquisition, then
+uses the lease check once per boundary (or external authorization for legacy
+credentials). Passing the combined check back into acquisition recursively called
+itself before the first report read. `campaignMonitor/http.test.ts` composes the
+route with the actual lifecycle and synthetic external boundaries, proving finite
+check counts, all five reads, and revocation before reads and delivery. The source
+deadline, delegation checks, durable fences and provider limits are unchanged.
+
 The same delivery-fenced RPC counts the consented exact-ID launch cohort, latest
 recorded qualification, confirmed visit bookings, sent quotes, current accepted
 scopes and payment-backed projects. Only a project's first enquiry receives its
