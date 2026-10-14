@@ -28,7 +28,9 @@ inferred. The whole receipt scan is capped at2000; exceeding it is unavailable,
 not a partial total. Existing synthetic exclusions remain excluded.
 
 A protected transient context resolves exact enquiry/project/contact identity
-and canonical contact email for this cohort only. It returns at most200 identities,
+and canonical contact email for this cohort only. Mailbox ambiguity counts
+projects across every contact sharing the case/whitespace-normalized email,
+including duplicate contact records. It returns at most200 identities,
 prioritizing recent entries with daily deterministic rotation; omitted/unlinked
 counts are explicit. Payloads are additionally bounded at240KB before the fixed
 broker response. Identities are not stored in Velt reports or supplied to the

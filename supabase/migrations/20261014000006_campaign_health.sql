@@ -76,7 +76,8 @@ begin
  ), identities as materialized (
    select e.id,e.ad,e.created_at,p.id project_id,c.id contact_id,lower(trim(c.email)) email,
      greatest(e.created_at,coalesce((to_jsonb(p)->>'updated_at')::timestamptz,e.created_at),coalesce((to_jsonb(c)->>'updated_at')::timestamptz,e.created_at)) changed_at,
-     (select count(*)>1 from public.projects other where other.contact_id=c.id) multiple_projects
+     (select count(*)>1 from public.projects other join public.contacts mailbox_contact on mailbox_contact.id=other.contact_id
+       where lower(trim(mailbox_contact.email))=lower(trim(c.email))) multiple_projects
    from included e join public.projects p on p.id=e.project_id join public.contacts c on c.id=p.contact_id
    where c.email~'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$' and length(c.email)<=254
      and coalesce(to_jsonb(e)->>'contact_id',p.contact_id::text)=p.contact_id::text

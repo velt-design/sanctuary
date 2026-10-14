@@ -39,6 +39,14 @@ it('executes scoped campaign source lifecycle and exact cohort without customer 
   expect(outcomesSchema.parse(outcome).correspondence.contacts[0]).toMatchObject({email:'private@example.test',projectId:project,multipleProjects:false});
   const { correspondence, ...aggregate } = outcomesSchema.parse(outcome);expect(correspondence.total).toBe(1);
   expect(JSON.stringify(aggregate)).not.toMatch(/Private sentinel|private@example|projectId|customerName/);
+  // Duplicate contact rows do not create independent mailbox identities.
+  await db.query('insert into contacts(id,email) values($1,$2)',[metaFixtureId(4),'  PRIVATE@Example.Test  ']);
+  await db.query('insert into projects(id,contact_id) values($1,$2)',[metaFixtureId(5),metaFixtureId(4)]);
+  const duplicateMailbox=(await db.query<{r:unknown}>('select public.sanctuary_campaign_outcomes($1,$2,$3,$4,$5,$6,$7) r',[actor,scope.account,binding,'fixture',connection,'test',op])).rows[0]!.r;
+  expect(outcomesSchema.parse(duplicateMailbox).correspondence.contacts[0]).toMatchObject({email:'private@example.test',projectId:project,multipleProjects:true});
+  await db.query('update contacts set email=$1 where id=$2',['different@example.test',metaFixtureId(4)]);
+  const distinctMailbox=(await db.query<{r:unknown}>('select public.sanctuary_campaign_outcomes($1,$2,$3,$4,$5,$6,$7) r',[actor,scope.account,binding,'fixture',connection,'test',op])).rows[0]!.r;
+  expect(outcomesSchema.parse(distinctMailbox).correspondence.contacts[0]?.multipleProjects).toBe(false);
   await db.exec('update private.sanctuary_campaign_monitor_scope set enabled=false');await expect(command('deliver',op)).rejects.toThrow();
   await db.exec('set role authenticated');await expect(command('claim',null,query)).rejects.toThrow();await db.exec('reset role');
  } finally { await db.close(); }
