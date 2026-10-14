@@ -6,7 +6,7 @@ import { providerJson } from "./boundedJson";
 // query in a POST body, keeping tokens and proofs out of the outgoing URL.
 // Callers are concrete server adapters, never browser/model-supplied requests.
 export async function metaRead(fetcher: typeof fetch, path: "debug_token" | `act_${string}`, parameters: URLSearchParams, credential: string) {
-  if (path !== "debug_token" && !/^act_[1-9]\d{0,19}(\/insights)?$/.test(path)) throw new Error("Invalid Meta read target.");
+  if (path !== "debug_token" && !/^act_[1-9]\d{0,19}(\/(insights|ads))?$/.test(path)) throw new Error("Invalid Meta read target.");
   const body = new URLSearchParams({ access_token: credential, batch: JSON.stringify([
     { method: "GET", relative_url: `${path}?${parameters.toString()}` },
   ]) });
