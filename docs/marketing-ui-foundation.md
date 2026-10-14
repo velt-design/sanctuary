@@ -1,5 +1,37 @@
 # Marketing UI Foundation
 
+## Facebook Auckland residential destination (14 October 2026)
+
+`/auckland-outdoor-living` is a campaign-specific, noindex destination prepared
+for one Auckland residential campaign. It is not added to the search sitemap.
+The route owns its photographic story and styles; the global header/footer,
+consent, attribution and canonical embedded enquiry remain shared owners.
+The primary action anchors to the enquiry. Optional design exploration opens
+the existing `/pergolas-auckland#explore-options` workspace, without copying its
+pricing, designer state or business rules. The campaign session retains its
+original landing source through that navigation while permitted by consent.
+
+Implementation map: `app/auckland-outdoor-living/page.tsx` owns composition,
+metadata and source context; `outdoor-living.module.css` owns responsive layout.
+`AcrylicPergolaEnquiryForm` owns validation, attachments, submission, retry and
+no-JavaScript fallback. The exact route is added to `clarityTracking`'s public
+allowlist and `enquiryContext`'s residential audience map. No query privacy,
+consent, conversion-event or provider behavior is broadened.
+
+Riverhead and St Heliers photography and project facts come from the existing
+public project catalogue. The workmanship statement uses the governed claim
+only; no general product warranty, price band, timing or weather guarantee is
+introduced. The page states that furniture and landscaping are not included.
+Campaign launch, production release, paid-media usage clearance and performance
+results remain separate from implementation. A built page is not a verified
+advertising improvement loop.
+
+`marketing.facebook-landing.spec.ts` covers mobile/desktop enquiry validation,
+failed-submit recovery with the same idempotency key, explicit opt-out, consented
+campaign/Meta click attribution through optional exploration and browser return,
+and Clarity's route/query boundary. All provider and intake requests are
+intercepted, so this proves the browser contract, not delivery or a live replay.
+
 ## Auckland acquisition page (13 October 2026)
 
 Jordan accepted the photographic redesign and authorised refinement and release:

@@ -3,7 +3,7 @@ import { isProjectDirection } from './projectFinderContract';
 import { isProductDesignType } from '../components/products/productDesigns';
 
 // Only public browsing and enquiry routes. Private/token/staff pages fail closed.
-const pages = new Set(['/', '/simple-pergolas-auckland', '/simple-cover-calculator',
+const pages = new Set(['/', '/auckland-outdoor-living', '/simple-pergolas-auckland', '/simple-cover-calculator',
   '/contact', '/design-enquiry', '/contact/thanks', '/configurator-preview', '/products', '/projects', '/gallery',
   '/pergola-guides', '/pergolas-auckland', '/pergolas-auckland/redesign', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland',
   '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland',
