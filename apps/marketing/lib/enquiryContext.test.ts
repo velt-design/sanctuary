@@ -11,6 +11,11 @@ import {
 } from './enquiryContext';
 
 describe('enquiry context', () => {
+  it('keeps the campaign destination residential for shared enquiry entries', () => {
+    expect(getEnquiryRouteContext('/auckland-outdoor-living')).toMatchObject({ enquiryType: 'residential' });
+    expect(buildEnquiryHref({ ...getEnquiryRouteContext('/auckland-outdoor-living'), sourcePath: '/auckland-outdoor-living', sourceComponent: 'header' }))
+      .toContain('source_path=%2Fauckland-outdoor-living');
+  });
   it('builds one canonical non-personal contact URL', () => {
     expect(buildEnquiryHref({
       enquiryType: 'commercial',

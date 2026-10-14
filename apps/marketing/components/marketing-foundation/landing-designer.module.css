@@ -1,0 +1,15 @@
+.section { display: grid; grid-template-columns: .8fr 1.2fr; gap: clamp(2rem, 5vw, 5rem); padding: clamp(3rem, 6vw, 6rem) var(--page-gutter); background: #e6e6dd; scroll-margin-top: 90px; }
+.copy { align-self: center; }
+.eyebrow { font-size: .7rem; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 1.25rem; }
+.copy h2 { margin-bottom: 1.5rem; }
+.copy > p:not(.eyebrow) { max-width: 28rem; font-size: .95rem; line-height: 1.7; color: var(--color-text-secondary); }
+.action { display: flex; justify-content: space-between; align-items: center; gap: 2rem; width: fit-content; min-height: 54px; margin-top: 1.75rem; padding: 1rem 1.2rem; background: #252c23; color: #fff; font-size: .85rem; }
+.help { display: flex; align-items: center; gap: .75rem; min-height: 48px; margin-top: .5rem; font-size: .75rem; text-decoration: underline; text-underline-offset: 4px; }
+.visual { min-width: 0; }
+.visual > a { display: block; position: relative; }
+.visual img { display: block; width: 100%; height: auto; }
+.open { position: absolute; bottom: 1rem; right: 1rem; display: flex; gap: 1.5rem; align-items: center; min-height: 48px; padding: .8rem 1rem; background: #fff; font-size: .8rem; }
+.features { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .7rem; border-bottom: 1px solid var(--color-rule-strong); padding: 1.2rem 0; font-size: .72rem; }
+.note { margin: 1rem 0 0; font-size: .72rem; line-height: 1.7; color: var(--color-text-subtle); }
+.section a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
+@media(max-width:760px) { .section { grid-template-columns: 1fr; } .action { width: 100%; } .features { font-size: .65rem; } .open { font-size: .75rem; bottom: .6rem; right: .6rem; } }

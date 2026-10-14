@@ -1,325 +1,95 @@
-import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import '@fontsource-variable/instrument-sans';
-import '@fontsource-variable/inter';
+import LandingDesigner from '@/components/marketing-foundation/LandingDesigner';
+import { buildConfiguratorEnquiryHref } from '@/lib/configuratorEntry';
 import JsonLd from '@/components/JsonLd';
-import {
-  Button,
-  Container,
-  Eyebrow,
-  Heading,
-  Section,
-  Text,
-} from '@/components/marketing-foundation';
-import { projects } from '@/data/projects';
+import ArrowUpRight from '@/components/marketing-foundation/ArrowUpRight';
 import { absoluteUrl } from '@/lib/seo';
 import AcrylicPergolaEnquiryForm from './AcrylicPergolaEnquiryForm';
-import {
-  comfortFactors,
-  faqItems,
-  tintOptions,
-  weatherDetails,
-} from './content';
+import AcrylicTintComparison from './AcrylicTintComparison';
+import { comfortFactors, faqItems, weatherDetails } from './content';
 import './acrylic-roof-pergolas-auckland.css';
+import styles from './acrylic-editorial.module.css';
 
 const route = '/acrylic-roof-pergolas-auckland';
-const heroImage = '/images/project-dairy-flat-01.jpg';
+const heroImage = '/images/project-dairy-flat-03.jpg';
 
 export const metadata: Metadata = {
   title: { absolute: 'Acrylic Roof Pergolas Auckland | Sanctuary Pergolas' },
-  description:
-    'Compare clear, grey and opal acrylic roofing, see completed Auckland pergolas and send Sanctuary your project brief.',
+  description: 'Compare clear, grey and opal acrylic roofing, see completed Auckland pergolas and send Sanctuary your project brief.',
   alternates: { canonical: route },
   openGraph: {
-    type: 'website',
-    url: route,
-    title: 'Acrylic Roof Pergolas for Auckland Homes',
-    description:
-      'Plan an acrylic roof around daylight, shade, drainage and the home.',
-    images: [{
-      url: heroImage,
-      alt: 'Acrylic-roof gable pergola extending an Auckland home',
-    }],
+    type: 'website', url: route, title: 'Acrylic Roof Pergolas for Auckland Homes',
+    description: 'Plan an acrylic roof around daylight, shade, drainage and the home.',
+    images: [{ url: heroImage, alt: 'Daylight through the acrylic roof of a completed Sanctuary pergola in Dairy Flat' }],
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'Acrylic Roof Pergolas for Auckland Homes',
-    description:
-      'Plan an acrylic roof around daylight, shade, drainage and the home.',
-    images: [heroImage],
+    card: 'summary_large_image', title: 'Acrylic Roof Pergolas for Auckland Homes',
+    description: 'Plan an acrylic roof around daylight, shade, drainage and the home.', images: [heroImage],
   },
 };
 
-const projectProof = [
-  {
-    slug: 'warkworth-outdoor-room',
-    label: 'Clear acrylic and mixed roofing',
-    summary:
-      'A freestanding gable combines clear acrylic, solid roofing and cedar lining.',
-  },
-  {
-    slug: 'st-heliers-townhouse',
-    label: 'Opal acrylic',
-    summary:
-      'An open gable uses opal acrylic and a custom street-facing frame.',
-  },
-  {
-    slug: 'atelier-shu-cafe',
-    label: 'Dark-tint acrylic',
-    summary:
-      'A dark-tint acrylic gable canopy aligns with the cafe frontage.',
-    image: {
-      src: '/images/project-atelier-shu-05.jpg',
-      alt: 'Dark-tint acrylic roofing and exposed gable frame above Atelier Shu Cafe seating',
-      objectPosition: '50% 42%',
-    },
-  },
-].flatMap((proof) => {
-  const project = projects.find((candidate) => candidate.slug === proof.slug);
-  if (!project) return [];
-  const image = 'image' in proof && proof.image
-    ? proof.image
-    : project.heroImage;
-  return [{ ...proof, project, image }];
-});
-
 export default function AcrylicRoofPergolasAucklandPage() {
+  const designHref = buildConfiguratorEnquiryHref({ enquiryType: 'residential', sourcePath: route, sourceComponent: 'hero' });
   return (
-    <main
-      className="acrylic-landing"
-      data-marketing-foundation-page
-      data-seo-landing="acrylic-roof-pergolas-auckland"
-    >
-      <JsonLd
-        data={[
-          {
-            '@context': 'https://schema.org',
-            '@type': 'WebPage',
-            name: 'Acrylic Roof Pergolas Auckland',
-            url: absoluteUrl(route),
-            description: metadata.description,
-            primaryImageOfPage: absoluteUrl(heroImage),
-          },
-          {
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              {
-                '@type': 'ListItem',
-                position: 1,
-                name: 'Home',
-                item: absoluteUrl('/'),
-              },
-              {
-                '@type': 'ListItem',
-                position: 2,
-                name: 'Acrylic Roof Pergolas Auckland',
-                item: absoluteUrl(route),
-              },
-            ],
-          },
-        ]}
-      />
+    <main className={`acrylic-landing ${styles.page}`} data-marketing-foundation-page data-seo-landing="acrylic-roof-pergolas-auckland" data-acrylic-editorial>
+      <JsonLd data={[
+        { '@context': 'https://schema.org', '@type': 'WebPage', name: 'Acrylic Roof Pergolas Auckland', url: absoluteUrl(route), description: metadata.description, primaryImageOfPage: absoluteUrl(heroImage) },
+        { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
+          { '@type': 'ListItem', position: 2, name: 'Acrylic Roof Pergolas Auckland', item: absoluteUrl(route) },
+        ] },
+      ]} />
 
-      <EditorialLandingHero id="acrylic-hero-title" eyebrow="Acrylic roof pergolas in Auckland" title="Acrylic roof pergolas for Auckland homes." intro="Acrylic roofing can provide cover while keeping daylight. The right tint, roof form and depth depend on your home, sun and how you use the deck." image={heroImage} alt="Gable pergola with acrylic roofing beside an Auckland home" objectPosition="50% 48%">
-        <div className="acrylic-hero__actions"><Button href="#project-details">Send project brief</Button><Link href="#acrylic-options">Compare acrylic options</Link></div>
-        <ul className="acrylic-hero__proof" aria-label="Acrylic roof approach"><li>Site-specific tint</li><li>Roof and drainage designed together</li><li>Built project evidence</li></ul>
-      </EditorialLandingHero>    <Section
-        id="acrylic-options"
-        tone="warm"
-        className="acrylic-section acrylic-section--tints"
-        aria-labelledby="compare-tints"
-      >
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Tint comparison</Eyebrow>
-            <Heading id="compare-tints">
-              Clear, light grey, dark grey or opal?
-            </Heading>
-            <Text size="large">
-              Choose for the whole site, not a small sample.
-            </Text>
-          </header>
-          <div className="acrylic-tint-grid">
-            {tintOptions.map((tint) => (
-              <article className="acrylic-tint" key={tint.name}>
-                <div
-                  className={`acrylic-tint__swatch acrylic-tint__swatch--${tint.tone}`}
-                  aria-hidden="true"
-                />
-                <h3>{tint.name}</h3>
-                <dl>
-                  <div><dt>Look</dt><dd>{tint.visual}</dd></div>
-                  <div><dt>Daylight</dt><dd>{tint.daylight}</dd></div>
-                  <div><dt>Assess</dt><dd>{tint.assess}</dd></div>
-                </dl>
-              </article>
-            ))}
+      <section className={styles.hero} aria-labelledby="acrylic-hero-title">
+        <Image className={styles.heroImage} src={heroImage} alt="Looking through the acrylic gable roof of a Sanctuary pergola towards the garden at Dairy Flat, Auckland" fill priority sizes="100vw" />
+        <div className={styles.heroShade} />
+        <p className={styles.heroLabel}>Acrylic roof pergolas / Auckland homes</p>
+        <div className={styles.heroContent}>
+          <h1 id="acrylic-hero-title">Keep the light.<br />Make room outside.</h1>
+          <div className={styles.heroBottom}>
+            <div><p>A covered space, with daylight above.<br />Designed around the home you love.</p><div className={styles.heroActions}><a className={styles.primaryAction} href={designHref} data-configurator-material="acrylic">Design your pergola <ArrowUpRight /></a><a className={styles.lightLink} href="#project-details">Tell us about your space <ArrowUpRight /></a><a className={styles.lightLink} href="#acrylic-options">Explore acrylic tints <span aria-hidden="true">↓</span></a></div></div>
+            <Link className={styles.projectCaption} href="/projects/dairy-flat-estate"><span>Built by Sanctuary</span>Dairy Flat, Auckland <ArrowUpRight /></Link>
           </div>
-        </Container>
-      </Section>
+        </div>
+      </section>
 
-      <Section
-        className="acrylic-section"
-        aria-labelledby="comfort-and-weather"
-      >
-        <Container width="wide" className="acrylic-intro-grid">
-          <div>
-            <Eyebrow className="acrylic-eyebrow">Comfort and weather</Eyebrow>
-            <Heading id="comfort-and-weather">
-              The roof product is only one part.
-            </Heading>
-            <ul className="acrylic-two-column-list">
-              {comfortFactors.map((factor) => <li key={factor}>{factor}</li>)}
-            </ul>
-          </div>
-          <div className="acrylic-price-grid">
-            {weatherDetails.map((detail) => (
-              <article key={detail.title}>
-                <h3>{detail.title}</h3>
-                <p>{detail.text}</p>
-              </article>
-            ))}
-          </div>
-        </Container>
-      </Section>
+      <div className={styles.proofLine}><p>Designed around your home.</p><p>Auckland based.</p><p>10-year workmanship warranty.</p></div>
 
-      <Section
-        tone="neutral"
-        className="acrylic-section"
-        aria-labelledby="completed-projects"
-      >
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Built examples</Eyebrow>
-            <Heading id="completed-projects">
-              Three acrylic roof responses.
-            </Heading>
-          </header>
-          <div className="acrylic-project-grid">
-            {projectProof.map(({ project, label, summary, image }) => (
-              <Link
-                href={`/projects/${project.slug}`}
-                className="acrylic-project-card"
-                key={project.slug}
-              >
-                <div className="acrylic-project-card__media">
-                  <Image
-                    src={image.src}
-                    alt={image.alt}
-                    fill
-                    sizes="(max-width: 720px) 100vw, 33vw"
-                    style={{ objectPosition: image.objectPosition }}
-                  />
-                </div>
-                <div className="acrylic-project-card__body">
-                  <Eyebrow className="acrylic-eyebrow">{label}</Eyebrow>
-                  <h3>{project.title}</h3>
-                  <p>{summary}</p>
-                  <span>View project</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </Container>
-      </Section>
+      <section className={styles.introduction} aria-labelledby="daylight-title"><p className={styles.eyebrow}>A little closer to outside</p><h2 id="daylight-title">Shelter overhead.<br />Daylight in the picture.</h2><div><p>Breakfast on the deck. Friends around the table. A place to stay a little longer.</p><p>Keep daylight coming through the roof while creating a covered place to eat, gather and unwind. Our acrylic roofing blocks 99% of UV light. Choose a clear view of the sky, a grey tint or the soft, diffused light of opal.</p><p>Roof proportions, frame and post positions are designed around the house. We resolve the connection, flashings and drainage together, then confirm the materials and installation in your proposal.</p></div></section>
 
-      <Section
-        tone="inverse"
-        className="acrylic-section acrylic-section--dark"
-        aria-labelledby="product-evidence"
-      >
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Project evidence</Eyebrow>
-            <Heading id="product-evidence">
-              Name the exact fixed-roof assembly in the proposal.
-            </Heading>
-          </header>
-          <div className="acrylic-weather-grid">
-            <article>
-              <h3>Roof product</h3>
-              <p>Confirm the product, thickness, tint and current limitations.</p>
-            </article>
-            <article>
-              <h3>Complete assembly</h3>
-              <p>Confirm the frame, fall, joints, flashings, gutters and outlets.</p>
-            </article>
-            <article>
-              <h3>Written documents</h3>
-              <p>Use current care and warranty information for the selected products.</p>
-            </article>
-          </div>
-          <p>
-            Consent depends on the final design and property. We’ll identify
-            the checks needed for your project.
-          </p>
-          <nav
-            className="acrylic-inline-links"
-            aria-label="Related roof and cost guides"
-          >
-            <Link href="/acrylic-pergolas-vs-louvre-roofs">
-              Compare fixed roofs with a louvre proposal
-            </Link>
-            <Link href="/pergola-cost-auckland">
-              Review scope and quote comparison
-            </Link>
-          </nav>
-        </Container>
-      </Section>
+      <LandingDesigner sourcePath={route} material="acrylic" helpHref="#project-details" />
 
-      <Section
-        tone="elevated"
-        className="acrylic-section acrylic-section--faq"
-        aria-labelledby="acrylic-faq"
-      >
-        <Container width="wide">
-          <header className="acrylic-section__header">
-            <Eyebrow className="acrylic-eyebrow">Questions</Eyebrow>
-            <Heading id="acrylic-faq">Acrylic pergola questions.</Heading>
-          </header>
-          <div className="acrylic-faq-list">
-            {faqItems.map((item, index) => (
-              <details key={item.question}>
-                <summary>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                  <h3>{item.question}</h3>
-                  <i aria-hidden="true" />
-                </summary>
-                <div>
-                  {item.answer.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                </div>
-              </details>
-            ))}
-          </div>
-        </Container>
-      </Section>
+      <section className={styles.projectStory} aria-labelledby="completed-projects">
+        <div className={styles.storyHeader}><p className={styles.eyebrow}>01 / A roof that belongs</p><h2 id="completed-projects">Light, from the inside out.</h2></div>
+        <Link className={styles.projectImage} href="/projects/st-heliers-townhouse" data-acrylic-project><Image src="/images/project-st-heliers-01.jpg" alt="An opal acrylic gable roof following the roofline of a St Heliers townhouse at dusk" width={1500} height={1028} sizes="(max-width: 760px) 100vw, 80vw" /><span>Explore the project <ArrowUpRight /></span></Link>
+        <div className={styles.storyCaption}><h3>St Heliers Townhouse</h3><p>An open gable, opal acrylic and a custom street-facing frame. A considered extension of the house, with its own character.</p><span>St Heliers, Auckland<br />6.0 × 3.0 m / Opal acrylic</span></div>
+      </section>
 
-      <Section
-        id="project-details"
-        tone="warm"
-        className="acrylic-section acrylic-section--estimate"
-        aria-label="Acrylic pergola project enquiry form"
-      >
-        <Container width="wide">
-          <AcrylicPergolaEnquiryForm
-            initialEnquiryType="residential"
-            sourceContext={{
-              enquiryType: 'residential',
-              sourcePath: route,
-              sourceComponent: 'embedded_form',
-            }}
-            eyebrow="Project brief"
-            heading="Tell us about your project."
-            intro="Share the site, intended use and what you know so far."
-            submitLabel="Send project brief"
-          />
-        </Container>
-      </Section>
+      <section className={styles.options} id="acrylic-options" aria-labelledby="compare-tints"><header><p className={styles.eyebrow}>02 / Find your light</p><h2 id="compare-tints">Four tints.<br />A different feeling.</h2><p>Start with the view and daylight you want. Then consider the sun, your roof area and the windows behind it.</p></header><AcrylicTintComparison /></section>
+
+      <section className={styles.mixedStory} aria-labelledby="mixed-title"><Link className={styles.mixedImage} href="/projects/warkworth-outdoor-room" data-acrylic-project><Image src="/images/project-warkworth-outdoor-room-04.jpg" alt="Clear acrylic roof zones beside cedar lining in the completed Warkworth outdoor room" width={3000} height={2562} sizes="(max-width: 760px) 100vw, 58vw" /><span>See the whole project <ArrowUpRight /></span></Link><div className={styles.mixedCopy}><p className={styles.eyebrow}>03 / A place for both</p><h2 id="mixed-title">Daylight above.<br />Timber beside it.</h2><p>Acrylic can also be part of a mixed roof. At Warkworth, clear acrylic roof and gable glazing sit alongside solid roofing and cedar lining.</p><p>We plan the materials, junctions and drainage together. The right balance depends on your home and the space below.</p><div className={styles.materialCaption}>Warkworth Outdoor Room<br /><span>A completed custom project. Furniture, landscaping and the fireplace are not standard pergola inclusions.</span></div></div></section>
+
+      <section className={styles.nextStep} aria-labelledby="next-step-title"><div><p className={styles.eyebrow}>A considered start</p><h2 id="next-step-title">Bring us the space.<br />We’ll work through the details.</h2></div><ol><li><span>01</span><div><h3>Share your idea</h3><p>Your suburb and how you want to use the space are enough to begin.</p></div></li><li><span>02</span><div><h3>Explore the fit</h3><p>We review the roof, daylight, house connection and site requirements.</p></div></li><li><span>03</span><div><h3>Agree the scope</h3><p>Your proposal confirms the design, products, inclusions and checks before you commit.</p></div></li></ol></section>
+
+      <section className={styles.enquiry} id="project-details" aria-label="Acrylic pergola project enquiry form"><AcrylicPergolaEnquiryForm
+        initialEnquiryType="residential"
+        sourceContext={{ enquiryType: 'residential', sourcePath: route, sourceComponent: 'embedded_form' }}
+        eyebrow="Your outdoor space"
+        heading="Tell us about your project."
+        intro="Tell us your suburb and how you’d like to use the space. Photos and rough dimensions help, but you can start without them."
+        directContact={{ intro: 'Prefer to talk?', phoneLabel: '022 854 5633', phoneHref: 'tel:+64228545633', emailLabel: 'info@sanctuarypergolas.co.nz', emailHref: 'mailto:info@sanctuarypergolas.co.nz' }}
+        submitLabel="Send project brief"
+      /></section>
+
+      <section className={styles.questions} aria-labelledby="acrylic-faq"><div><p className={styles.eyebrow}>The details, when you need them</p><h2 id="acrylic-faq">Acrylic pergola<br />questions.</h2></div><div className={styles.faqList}>
+        {faqItems.map(item => <details key={item.question}><summary>{item.question}<span aria-hidden="true">+</span></summary><div>{item.answer.map(paragraph => <p key={paragraph}>{paragraph}</p>)}</div></details>)}
+        <details><summary>What affects shade and comfort?<span aria-hidden="true">+</span></summary><div><p>The roof product is one part of the picture. We consider:</p><ul>{comfortFactors.map(factor => <li key={factor}>{factor}</li>)}</ul></div></details>
+        <details><summary>How are the roof and house connection planned?<span aria-hidden="true">+</span></summary><div>{weatherDetails.map(detail => <div key={detail.title}><h3>{detail.title}</h3><p>{detail.text}</p></div>)}</div></details>
+        <details><summary>What should my proposal confirm?<span aria-hidden="true">+</span></summary><div><p>Your proposal identifies the exact fixed-roof assembly, including the product, thickness, tint and current limitations.</p><p>It also confirms the frame, fall, joints, flashings, gutters and outlets, with current care and warranty information for the selected products. Consent depends on the final design and property. We’ll identify the checks needed for your project.</p><nav className={styles.guideLinks} aria-label="Related roof and cost guides"><Link href="/acrylic-pergolas-vs-louvre-roofs">Compare fixed roofs with a louvre proposal <ArrowUpRight /></Link><Link href="/pergola-cost-auckland">Review scope and quote comparison <ArrowUpRight /></Link></nav></div></details>
+        <details><summary>Can I see a built dark-tint example?<span aria-hidden="true">+</span></summary><div><Link className={styles.cafeExample} href="/projects/atelier-shu-cafe" data-acrylic-project><Image src="/images/project-atelier-shu-05.jpg" alt="Dark-tint acrylic roofing and exposed gable framing above Atelier Shu Cafe seating" width={1600} height={1200} sizes="(max-width: 760px) 90vw, 50vw" /><span>Atelier Shu Cafe <ArrowUpRight /></span></Link><p>A dark-tint acrylic gable canopy aligned with the cafe frontage. This is a commercial example; the right tint for your home depends on your site.</p></div></details>
+      </div></section>
     </main>
   );
 }

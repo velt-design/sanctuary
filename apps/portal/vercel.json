@@ -1,5 +1,5 @@
 {
-  "git": { "deploymentEnabled": { "codex/configurator-pricing-candidate-20260915": false, "codex/google-connections-20261013": false, "codex/pergola-landing-20261013": false, "codex/meta-offline-sales-20261014": false, "codex/pergola-cost-20261014": false } },
+  "git": { "deploymentEnabled": { "codex/configurator-pricing-candidate-20260915": false, "codex/google-connections-20261013": false, "codex/pergola-landing-20261013": false, "codex/meta-offline-sales-20261014": false, "codex/pergola-cost-20261014": false, "codex/facebook-campaign-20261014": false } },
   "crons": [
     { "path": "/api/integrations/xero/maintain", "schedule": "17 3 * * *" },
     { "path": "/api/integrations/xero/observe", "schedule": "* * * * *" },

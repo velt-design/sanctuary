@@ -10,6 +10,7 @@ import { SIMPLE_COVER_HANDOFF_STORAGE_KEY } from '../../lib/simpleCoverHandoff';
 import { legacySimpleDraft } from './legacySimpleDraft';
 import { updateDesignContinuation } from './designContinuation';
 import { isLandingDesign, LANDING_DRAFT_KEY } from './draftScope';
+import { DEFAULT_ROOF_FINISH } from '@sp/geometry';
 
 type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; sharedEstimate?: SharedEstimate | null; selectionNotice?:string };
 let snapshot: Snapshot | null = null;
@@ -27,7 +28,7 @@ function storageKey() {
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach(listener => listener());
 
-function restore() {
+function restore(fallback = DEFAULT_PREVIEW_DRAFT) {
   const key = storageKey();
   // A failed write leaves the in-memory draft newer than any saved value.
   if (snapshot?.storageAvailable === false) return;
@@ -45,11 +46,11 @@ function restore() {
         migratedSimple = draft !== null;
       } catch { /* Invalid legacy data must not prevent a new design. */ }
     }
-    snapshot = { draft: draft ?? DEFAULT_PREVIEW_DRAFT, storageAvailable: true,
+    snapshot = { draft: draft ?? fallback, storageAvailable: true,
       ...(migratedSimple ? {selectionNotice:'Your saved Simple cover dimensions are loaded. Your estimate is recalculated using current pricing.'} : {}) };
   } catch {
     // Preserve in-memory editing when browser storage is blocked.
-    snapshot = { draft: snapshot?.draft ?? DEFAULT_PREVIEW_DRAFT, storageAvailable: false };
+    snapshot = { draft: snapshot?.draft ?? fallback, storageAvailable: false };
   }
 }
 
@@ -128,6 +129,15 @@ export function retainPreviewDraft() {
   const key = storageKey();
   const draft = snapshot?.draft;
   if (draft) { try { window.localStorage.setItem(key, JSON.stringify(draft)); } catch { /* Optional cross-visit recovery. */ } }
+}
+
+/** Context is a first-visit starting point, never a replacement for saved work. */
+export function initializeLandingPreview(material: 'acrylic' | 'solid') {
+  if (storageKey() !== PREVIEW_DRAFT_KEY || snapshot) return;
+  restore({ ...DEFAULT_PREVIEW_DRAFT, roof: { ...DEFAULT_PREVIEW_DRAFT.roof, family: 'gable',
+    finish: { ...DEFAULT_ROOF_FINISH, material, ...(material === 'solid' ? { ceiling: 'thermopine-150' } : {}) } } });
+  if (snapshot) save((snapshot as Snapshot).draft);
+  emit();
 }
 
 export function usePreviewDraft() {

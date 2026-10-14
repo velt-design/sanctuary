@@ -41,6 +41,8 @@ it('excludes initial private pages and stops when navigation enters one', async 
   expect(clarityPageAllowed('/invoice/example', '')).toBe(false);
   expect(clarityPageAllowed('/', 'draft=private')).toBe(false);
   expect(clarityPageAllowed('/simple-pergolas-auckland', '')).toBe(true);
+  expect(clarityPageAllowed('/auckland-outdoor-living', 'utm_source=facebook&utm_medium=paid_social&utm_campaign=auckland_residential&utm_content=riverhead&fbclid=synthetic')).toBe(true);
+  expect(clarityPageAllowed('/auckland-outdoor-living', 'email=private@example.test')).toBe(false);
   expect(clarityPageAllowed('/pergolas-auckland/redesign', 'utm_source=google')).toBe(true);
   expect(clarityPageAllowed('/pergolas-auckland/redesign', 'draft=private')).toBe(false);
   expect(clarityPageAllowed('/design-enquiry', 'source_path=%2F&project_direction=cover')).toBe(true);

@@ -14,7 +14,7 @@ export default function SiteConfigurator() {
   useEffect(() => restoreConfiguratorScroll(), [pathname]);
   useEffect(() => {
     const show = () => { setVisited(true); setOpen(true); };
-    const click = (event: MouseEvent) => {
+    const click = async (event: MouseEvent) => {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       const link = event.target instanceof Element ? event.target.closest('a') : null;
       if (!link || link.target || link.hasAttribute('download')) return;
@@ -26,7 +26,18 @@ export default function SiteConfigurator() {
         return;
       }
       if (!isConfiguratorEntry(destination, window.location.origin)) return;
-      event.preventDefault(); event.stopPropagation(); rememberConfiguratorSource(link.href); show();
+      event.preventDefault(); event.stopPropagation(); rememberConfiguratorSource(link.href);
+      const entryPath = window.location.pathname;
+      const material = link.getAttribute('data-configurator-material');
+      if (['/acrylic-roof-pergolas-auckland', '/auckland-outdoor-living'].includes(window.location.pathname)
+        && (material === 'acrylic' || material === 'solid')) {
+        try {
+          const { initializeLandingPreview } = await import('./usePreviewDraft');
+          if (window.location.pathname !== entryPath) return;
+          initializeLandingPreview(material);
+        } catch { /* Optional starting context must not prevent the canonical designer opening. */ }
+      }
+      if (window.location.pathname === entryPath) show();
     };
     document.addEventListener('click', click, true);
     window.addEventListener(OPEN_CONFIGURATOR_EVENT, show);

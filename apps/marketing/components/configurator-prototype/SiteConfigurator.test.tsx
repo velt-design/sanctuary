@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import SiteConfigurator from './SiteConfigurator';
 import { designEnquiryHref, isConfiguratorEntry, openConfigurator, rememberConfiguratorSource } from './configuratorOverlay';
+import { initializeLandingPreview } from './usePreviewDraft';
+vi.mock('./usePreviewDraft', () => ({ initializeLandingPreview: vi.fn() }));
 
 let pathname = '/products';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
@@ -12,6 +14,7 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   pathname = '/products'; window.history.replaceState({}, '', '/products?view=roof');
+  vi.mocked(initializeLandingPreview).mockReset();
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); });
@@ -59,4 +62,20 @@ it('closes the edit overlay on enquiry return without navigating or clearing ent
   expect(host.querySelector('dialog')).toBeNull();
   expect(window.location.href).toBe(before);
   expect(host.querySelector('input')?.value).toBe('Jordan');
+});
+
+it('still opens the designer when optional landing initialization fails', async () => {
+  pathname = '/auckland-outdoor-living'; window.history.replaceState({}, '', pathname);
+  vi.mocked(initializeLandingPreview).mockImplementation(() => { throw new Error('Optional starter unavailable'); });
+  await act(async () => root.render(<><a href="/contact?configurator=preview" data-configurator-material="solid">Design</a><SiteConfigurator /></>));
+  await act(async () => host.querySelector('a')!.click());
+  expect(host.querySelector('dialog')).not.toBeNull();
+});
+
+it('does not open a late landing dialog after the visitor navigates away', async () => {
+  pathname = '/auckland-outdoor-living'; window.history.replaceState({}, '', pathname);
+  await act(async () => root.render(<><a href="/contact?configurator=preview" data-configurator-material="solid">Design</a><SiteConfigurator /></>));
+  await act(async () => { host.querySelector('a')!.click(); window.history.replaceState({}, '', '/projects'); });
+  expect(initializeLandingPreview).not.toHaveBeenCalled();
+  expect(host.querySelector('dialog')).toBeNull();
 });

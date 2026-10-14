@@ -1,5 +1,115 @@
 # Marketing UI Foundation
 
+## Campaign pages release preparation (14 October 2026)
+
+After reviewing both hosted pages, Jordan authorised: "Push these pages live."
+The accepted acrylic and Auckland outdoor-living pages are prepared for production
+release together. Main's immediate-price and cost-page owners are reconciled without
+changes to their behavior. Deployment and live verification remain separate release
+steps; this authorisation does not launch ads or activate campaign monitoring.
+
+## Acrylic page preview refinement (14 October 2026)
+
+Jordan requested: "let's improve the acrylic page to the same level as the new
+landing page. Build it in preview so I can review it before we launch the ads."
+The preview was accepted; the later two-page production authority is recorded above.
+The acrylic page follows the approved Facebook photographic direction.
+`/acrylic-roof-pergolas-auckland`
+retains its canonical metadata, indexability, sitemap, structured data and enquiry
+contracts while its composition follows that page's photographic hierarchy.
+
+Implementation map: route `page.tsx` owns the Dairy Flat under-roof opening,
+St Heliers residential story, Warkworth mixed-roof detail, process, canonical
+enquiry and lower technical FAQs. Its new `acrylic-editorial.module.css` owns
+responsive composition without changing the shared acrylic form stylesheet.
+`AcrylicTintComparison` uses native radios and a stable CSS grid for the four
+existing descriptions from `content.ts`. Clearly labelled same-scene architectural illustrations
+are not simulated project images or measured product performance. Comparison
+works without JavaScript; it does not set an enquiry roof preference.
+
+Source photographs and facts remain in the public `data/projects.ts` catalogue:
+Dairy Flat gallery image 03, St Heliers image 01, Warkworth image 04 and Atelier
+Shu image 05. The cafe remains a subordinate dark-tint example in the FAQ. Original
+comfort factors, connection/drainage guidance, fixed-roof assembly requirements,
+product-document checks and related guides remain available below the enquiry.
+The workmanship statement and 99% UV-light wording use existing governed claims.
+No new price, performance threshold, offer or project video is introduced.
+
+Verification owners: `marketing.acrylic-foundation.spec.ts` covers six responsive
+layouts, menu/focus/validation, tint keyboard/no-JavaScript behavior, tint layout
+stability at 320/390/1440px and intercepted retry/consent/Meta-source contracts.
+`marketing.acrylic-copy-variant.spec.ts` retains redirect/canonical/indexing checks.
+Mocked intake and blocked external requests do not establish real delivery.
+Independent hosted review and owner acceptance remain separate from local checks.
+
+## Featured designer on both campaign pages (14 October 2026)
+
+Jordan's later approval: "make those changes to both landing pages in preview.
+Strengthen the acrylic copy, make the tint differences clear and feature the
+configurator properly. I'll review them before we launch."
+
+Both routes keep their real project-led opening and feature the designer before
+project stories. `components/marketing-foundation/LandingDesigner.tsx` and its
+scoped stylesheet own the visual entry, qualified estimate explanation and help
+path. Images are the existing canonical `shape-gable-v1.webp` (acrylic) and
+`roof-gable-solid-v1.webp` illustrations, clearly distinct from built-project photos.
+Hero and section links use `buildConfiguratorEnquiryHref` with the existing
+`hero` / `project_cta` source identifiers and original residential route.
+
+`SiteConfigurator` owns modal entry; the optional material initializer in
+`usePreviewDraft` uses canonical defaults/roof finish. Valid in-memory, session,
+local and legacy Simple drafts take precedence over a new acrylic or
+ThermoPine-lined solid gable starting point. The separately scoped Auckland
+explorer is unchanged. Optional initializer failure still opens the designer;
+navigation away while loading cancels the opening. Dimensions, geometry, pricing,
+3D/plan, mobile inline enquiry and desktop design-enquiry continue with their
+existing owners. No duplicate calculator or fixed page price is introduced.
+
+Tint illustrations keep identical scene detail across transparent clear/grey
+panes. Opal is milky and conceals the view. Native controls remain keyboard and
+no-JavaScript capable, with a stable shared panel area. The illustration is
+explicitly not a project photograph, exact sample or measured transmission.
+
+Verification: `landingPreview.test.ts` covers stored/legacy/in-memory precedence;
+`SiteConfigurator.test.tsx` covers optional-entry failure and navigation races;
+`marketing.landing-designer.spec.ts` covers meaningful edits, reload, return and
+original enquiry context on phone and desktop. Prices and submissions are
+intercepted in that browser test; real pricing availability and intake delivery
+require separate provider evidence. The later release authority is recorded above.
+
+## Facebook Auckland residential destination (14 October 2026)
+
+`/auckland-outdoor-living` is a campaign-specific, noindex destination prepared
+for one Auckland residential campaign. It is not added to the search sitemap.
+The route owns its photographic story and styles; the global header/footer,
+consent, attribution and canonical embedded enquiry remain shared owners.
+The primary action opens the canonical pergola designer directly, with a retained
+secondary link to the embedded enquiry. The early featured designer section
+uses the established architectural gable illustration. Campaign context remains
+in the existing consent-aware session owner through design and enquiry.
+
+
+Implementation map: `app/auckland-outdoor-living/page.tsx` owns composition,
+metadata and source context; `outdoor-living.module.css` owns responsive layout.
+`AcrylicPergolaEnquiryForm` owns validation, attachments, submission, retry and
+no-JavaScript fallback. The exact route is added to `clarityTracking`'s public
+allowlist and `enquiryContext`'s residential audience map. No query privacy,
+consent, conversion-event or provider behavior is broadened.
+
+Riverhead and St Heliers photography and project facts come from the existing
+public project catalogue. The workmanship statement uses the governed claim
+only; no general product warranty, price band, timing or weather guarantee is
+introduced. The page states that furniture and landscaping are not included.
+Campaign launch, production release, paid-media usage clearance and performance
+results remain separate from implementation. A built page is not a verified
+advertising improvement loop.
+
+`marketing.facebook-landing.spec.ts` covers mobile/desktop enquiry validation,
+failed-submit recovery with the same idempotency key, explicit opt-out, consented
+campaign/Meta click attribution through optional exploration and browser return,
+and Clarity's route/query boundary. All provider and intake requests are
+intercepted, so this proves the browser contract, not delivery or a live replay.
+
 ## Immediate landing estimates (14 October 2026, owner-authorised release)
 
 Jordan authorised production release of the accepted cost rebuild and immediate
@@ -777,7 +887,10 @@ The token-scoped public quote route is an approved presentation-only adoption. `
 
 The token-scoped public invoice route is a separate approved presentation-only adoption. `apps/marketing/app/invoice/[invoiceId]/invoiceEditorial.module.css` and `InvoiceDocument.tsx` own its payment-led hierarchy: amount due, due date, payment reference, source quote context, GST ledger, authoritative bank-transfer lines, download actions, and clarification path. The route uses the same no-imagery type, colour, square-rule, and narrow-stacking vocabulary while remaining distinct from the quote owner. Public invoice lookup, token hashing/expiry, void handling, PDF and source-quote authorization, private/no-store behavior, server-owned service-role access, and invoice lifecycle remain unchanged.
 
-`/acrylic-roof-pergolas-auckland` is the first approved route-scoped adoption. It imports the foundation fonts and reusable layout and type primitives, while its concise tint comparison, comfort and weather checks, three governed projects, four focused FAQs and enquiry form remain route-owned.
+`/acrylic-roof-pergolas-auckland` was the first approved route-scoped adoption.
+Its current preview refinement is described above. The route retains the
+foundation typography and tokens, governed tint and project evidence, comfort
+and weather guidance, and the canonical enquiry form.
 
 The route defines the same semantic page tokens locally. Its canonical URL,
 metadata, visible FAQ content, project links, attribution, secure attachment

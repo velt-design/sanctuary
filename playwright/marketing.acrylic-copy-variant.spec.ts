@@ -26,6 +26,6 @@ test('the canonical acrylic page remains indexable and self-canonical', async ({
   );
   await expect(page.getByRole('heading', {
     level: 1,
-    name: 'Acrylic roof pergolas for Auckland homes.',
+    name: 'Keep the light. Make room outside.',
   })).toBeVisible();
 });
