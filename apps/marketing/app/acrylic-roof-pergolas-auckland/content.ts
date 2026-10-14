@@ -57,7 +57,7 @@ export const faqItems = [
   {
     question: 'Are acrylic roof pergolas waterproof?',
     answer: [
-      'Avoid a universal waterproof claim for an open-sided structure. Rain management depends on the exact roof, pitch, joints, flashings, drainage and installation.',
+      'Rain management depends on the exact roof, pitch, joints, flashings, drainage and installation. Wind-driven rain can enter through open sides, so any blind or infill needs to be planned with the roof.',
     ],
   },
   {
@@ -69,7 +69,7 @@ export const faqItems = [
   {
     question: 'Which acrylic tint should I choose?',
     answer: [
-      'Choose for the site, sun path, adjoining rooms, roof area and intended use—not the sample colour alone.',
+      'Consider the site, sun path, adjoining rooms, roof area and intended use alongside the sample colour.',
     ],
   },
   {

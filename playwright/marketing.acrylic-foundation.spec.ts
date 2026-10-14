@@ -14,6 +14,14 @@ const viewports = [
   { name: '360x800', width: 360, height: 800 },
 ];
 
+test.beforeEach(async ({ page, baseURL }) => {
+  await page.route('**/*', intercepted => {
+    if (new URL(intercepted.request().url()).origin !== new URL(baseURL!).origin) return intercepted.fulfill({ status: 200, body: '' });
+    return intercepted.continue();
+  });
+  await page.route('**/api/enquiry', intercepted => intercepted.fulfill({ status: 503, json: { ok: false } }));
+});
+
 async function preparePage(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem('sp_consent_v1', JSON.stringify({
@@ -33,7 +41,7 @@ for (const viewport of viewports) {
 
     await expect(page).toHaveTitle('Acrylic Roof Pergolas Auckland | Sanctuary Pergolas');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${route}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Acrylic roof pergolas for Auckland homes.' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Keep the light. Make room outside.' })).toBeVisible();
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('header.site')).toBeVisible();
     await expect(page.locator('footer')).toBeAttached();
@@ -60,7 +68,7 @@ for (const viewport of viewports) {
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-top.png`) });
       await page.locator('#compare-tints').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-tints.png`) });
-      const projectImages = page.locator('.acrylic-project-card img');
+      const projectImages = page.locator('[data-acrylic-project] img');
       await expect(projectImages).toHaveCount(3);
       await projectImages.first().scrollIntoViewIfNeeded();
       await expect(projectImages.first()).toBeVisible();
@@ -114,11 +122,83 @@ test('acrylic landing interactions remain accessible and preserve form input on 
   await faq.locator('summary').click();
   await expect(faq).toHaveAttribute('open', '');
   await expect(faq.getByText(
-    'Choose for the site, sun path, adjoining rooms, roof area and intended use—not the sample colour alone.',
+    'Consider the site, sun path, adjoining rooms, roof area and intended use alongside the sample colour.',
   )).toBeVisible();
 });
 
 test('acrylic landing route remains listed in the public sitemap', async ({ page }) => {
   await page.goto('/sitemap.xml');
   await expect(page.locator('body')).toContainText('/acrylic-roof-pergolas-auckland');
+});
+
+for (const width of [320, 390, 1440]) test(`native tint comparison stays stable at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await preparePage(page);
+  await page.goto(route);
+  await page.getByRole('link', { name: 'Explore acrylic tints' }).click();
+  const section = page.locator('#acrylic-options');
+  await page.evaluate(() => document.fonts.ready);
+  const geometry = () => section.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return { height: rect.height, controls: element.querySelector('fieldset')!.getBoundingClientRect().top - rect.top };
+  });
+  const baseline = await geometry();
+  for (const tint of ['Light grey', 'Dark grey', 'Opal', 'Clear']) {
+    await section.getByRole('radio', { name: tint, exact: true }).check();
+    await expect(section.getByRole('heading', { name: `${tint} acrylic`, exact: true })).toBeVisible();
+    const current = await geometry();
+    expect(Math.abs(current.height - baseline.height)).toBeLessThan(1);
+    expect(Math.abs(current.controls - baseline.controls)).toBeLessThan(1);
+  }
+  await section.getByRole('radio', { name: 'Clear', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(section.getByRole('radio', { name: 'Light grey', exact: true })).toBeChecked();
+  await expect(section.getByRole('heading', { name: 'Light grey acrylic', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('tints and canonical enquiry fallback remain useful without JavaScript', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto(`${baseURL}${route}`);
+  await page.getByRole('radio', { name: 'Opal', exact: true }).check();
+  await expect(page.getByRole('heading', { name: 'Opal acrylic', exact: true })).toBeVisible();
+  const form = page.getByRole('form', { name: 'Tell us about your project.' });
+  await expect(form).toHaveAttribute('action', '/api/enquiry/fallback');
+  await expect(form.locator('input[name="page"]')).toHaveValue(route);
+  await expect(form.getByRole('button', { name: 'Send project brief' })).toBeEnabled();
+  await expect(form.getByLabel('Photos, plans or sketches')).toBeDisabled();
+  await context.close();
+});
+
+for (const marketing of [false, true]) test(`acrylic enquiry retries safely with marketing consent ${marketing}`, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(allowed => localStorage.setItem('sp_consent_v1', JSON.stringify({ version: 1, analytics: allowed, marketing: allowed, updatedAt: new Date().toISOString() })), marketing);
+  await page.goto(`${route}?utm_source=facebook&utm_medium=paid_social&utm_campaign=acrylic_test&fbclid=synthetic-acrylic`);
+  await page.getByRole('link', { name: 'Tell us about your space' }).click();
+  const form = page.getByRole('form', { name: 'Tell us about your project.' });
+  await form.getByLabel('Name Required', { exact: true }).fill('Synthetic Acrylic Test');
+  await form.getByLabel('Phone Required', { exact: true }).fill('0210000000');
+  await form.getByLabel('Email Required', { exact: true }).fill('synthetic@example.test');
+  await form.getByLabel('Project suburb').fill('Auckland');
+  await form.locator('summary').click();
+  await form.locator('#acrylic-enquiry-roof').selectOption('Opal');
+  const payloads: Array<Record<string, any>> = [];
+  await page.route('**/api/enquiry', intercepted => {
+    payloads.push(intercepted.request().postDataJSON());
+    return intercepted.fulfill({ status: payloads.length === 1 ? 503 : 200, json: { ok: payloads.length > 1 } });
+  });
+  await form.getByRole('button', { name: 'Send project brief' }).click();
+  await expect(page.getByRole('heading', { name: 'Your enquiry was not sent.' })).toBeVisible();
+  await expect(form.getByLabel('Name Required', { exact: true })).toHaveValue('Synthetic Acrylic Test');
+  await expect(form.locator('#acrylic-enquiry-roof')).toHaveValue('Opal');
+  await form.getByRole('button', { name: 'Send project brief' }).click();
+  await expect(page.getByRole('heading', { name: 'Project brief sent.' })).toBeVisible();
+  expect(payloads[1].submissionId).toBe(payloads[0].submissionId);
+  expect(payloads[1].enquiryContext).toMatchObject({ source_path: route, enquiry_type: 'residential', source_component: 'embedded_form' });
+  expect(payloads[1].roofMaterials).toEqual(['acrylic']);
+  expect(payloads[1].projectDetails.acrylicOption).toBe('Opal');
+  expect(payloads[1].attribution.utm).toEqual(marketing ? { utm_source: 'facebook', utm_medium: 'paid_social', utm_campaign: 'acrylic_test' } : {});
+  if (marketing) expect(payloads[1].attribution.meta.fbc).toContain('synthetic-acrylic');
+  else expect(payloads[1].attribution.meta).toBeUndefined();
 });

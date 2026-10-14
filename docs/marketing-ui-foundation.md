@@ -1,5 +1,38 @@
 # Marketing UI Foundation
 
+## Acrylic page preview refinement (14 October 2026)
+
+Jordan requested: "let's improve the acrylic page to the same level as the new
+landing page. Build it in preview so I can review it before we launch the ads."
+This is preview preparation, not production release or campaign launch approval.
+The approved Facebook page remains unchanged. `/acrylic-roof-pergolas-auckland`
+retains its canonical metadata, indexability, sitemap, structured data and enquiry
+contracts while its composition follows that page's photographic hierarchy.
+
+Implementation map: route `page.tsx` owns the Dairy Flat under-roof opening,
+St Heliers residential story, Warkworth mixed-roof detail, process, canonical
+enquiry and lower technical FAQs. Its new `acrylic-editorial.module.css` owns
+responsive composition without changing the shared acrylic form stylesheet.
+`AcrylicTintComparison` uses native radios and a stable CSS grid for the four
+existing descriptions from `content.ts`. Clearly labelled illustrative swatches
+are not simulated project images or measured product performance. Comparison
+works without JavaScript; it does not set an enquiry roof preference.
+
+Source photographs and facts remain in the public `data/projects.ts` catalogue:
+Dairy Flat gallery image 03, St Heliers image 01, Warkworth image 04 and Atelier
+Shu image 05. The cafe remains a subordinate dark-tint example in the FAQ. Original
+comfort factors, connection/drainage guidance, fixed-roof assembly requirements,
+product-document checks and related guides remain available below the enquiry.
+The workmanship statement uses the existing governed claim only. No prices,
+product performance thresholds, new offers or project videos are introduced.
+
+Verification owners: `marketing.acrylic-foundation.spec.ts` covers six responsive
+layouts, menu/focus/validation, tint keyboard/no-JavaScript behavior, tint layout
+stability at 320/390/1440px and intercepted retry/consent/Meta-source contracts.
+`marketing.acrylic-copy-variant.spec.ts` retains redirect/canonical/indexing checks.
+Mocked intake and blocked external requests do not establish real delivery.
+Independent hosted review and owner acceptance remain separate from local checks.
+
 ## Facebook Auckland residential destination (14 October 2026)
 
 `/auckland-outdoor-living` is a campaign-specific, noindex destination prepared
@@ -726,7 +759,10 @@ The token-scoped public quote route is an approved presentation-only adoption. `
 
 The token-scoped public invoice route is a separate approved presentation-only adoption. `apps/marketing/app/invoice/[invoiceId]/invoiceEditorial.module.css` and `InvoiceDocument.tsx` own its payment-led hierarchy: amount due, due date, payment reference, source quote context, GST ledger, authoritative bank-transfer lines, download actions, and clarification path. The route uses the same no-imagery type, colour, square-rule, and narrow-stacking vocabulary while remaining distinct from the quote owner. Public invoice lookup, token hashing/expiry, void handling, PDF and source-quote authorization, private/no-store behavior, server-owned service-role access, and invoice lifecycle remain unchanged.
 
-`/acrylic-roof-pergolas-auckland` is the first approved route-scoped adoption. It imports the foundation fonts and reusable layout and type primitives, while its concise tint comparison, comfort and weather checks, three governed projects, four focused FAQs and enquiry form remain route-owned.
+`/acrylic-roof-pergolas-auckland` was the first approved route-scoped adoption.
+Its current preview refinement is described above. The route retains the
+foundation typography and tokens, governed tint and project evidence, comfort
+and weather guidance, and the canonical enquiry form.
 
 The route defines the same semantic page tokens locally. Its canonical URL,
 metadata, visible FAQ content, project links, attribution, secure attachment
