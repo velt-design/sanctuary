@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-14 - Keep credential verification within the existing read grant
+
+Live Meta bootstrap rejected the account projection containing `business` while
+the established account/status/currency/timezone projection had worked with the same
+read-only credential. Reuse that supported projection, keep account and identity
+checks strict, and retain business assignment as separately verified source
+evidence. Do not expand permission to satisfy an unnecessary probe. Owner:
+`meta-offline-sales.md`.
+
 ## 2026-10-14 - Separate renewable credentials from business authority
 
 Meta's static token/expiry binding made routine renewal invalidate reports and

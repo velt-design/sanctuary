@@ -53,10 +53,13 @@ export function metaCredentialProvider(config: MetaCredentialConfig, signal: Abo
       if (targets.length && !targets.includes(pin.targetId)) throw new Error('Meta asset target changed');
       if (pin.capability === 'reports') {
         await before();
-        const account = await metaRead(read, `act_${pin.targetId}`, new URLSearchParams({ fields: 'id,account_id,account_status,business',
+        const account = await metaRead(read, `act_${pin.targetId}`, new URLSearchParams({ fields: 'id,account_id,account_status,currency,timezone_name',
           appsecret_proof: createHmac('sha256', config.appSecret).update(token).digest('hex') }), token);
-        z.object({ id: z.literal(`act_${pin.targetId}`), account_id: z.literal(pin.targetId), account_status: z.literal(1),
-          business: z.object({ id: z.literal(pin.businessId) }) }).parse(account.body);
+        const verified = z.object({ id: z.literal(`act_${pin.targetId}`), account_id: z.literal(pin.targetId), account_status: z.literal(1),
+          currency: z.string().regex(/^[A-Z]{3}$/), timezone_name: z.string().min(1).max(80) }).parse(account.body);
+        new Intl.DateTimeFormat('en-CA', { timeZone: verified.timezone_name }).format();
+        // The existing ads_read grant supports this account projection. Business
+        // assignment remains pinned source evidence, not an extra Graph permission.
       }
       return { expiresAt: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
         dataAccessExpiresAt: data.data_access_expires_at ? new Date(data.data_access_expires_at * 1000).toISOString() : null };

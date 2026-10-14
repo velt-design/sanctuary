@@ -254,8 +254,11 @@ Revocation uses `private.meta_credentials.enabled=false` or records
 Stopping sale uploads remains separate from revoking credential maintenance.
 Asset evidence is preserved with its original verification date and remains valid
 only while the pinned assignment is unrevoked. Renewal is not a new asset grant.
-Exact app, principal and scopes are checked on use and renewal; report account and
-business are read, and any supplied granular targets must contain the pinned asset.
+Exact app, principal and scopes are checked on use and renewal. The report read
+checks the pinned account, active status, currency format and valid timezone using
+the existing `ads_read` projection. Business assignment remains separately pinned
+source evidence; it does not require Graph access to the account's `business`
+field. Any supplied granular targets must contain the pinned asset.
 Empty granular targets are not misrepresented as proof of assignment. The genuine
 canary remains required to establish actual sale-send capability.
 

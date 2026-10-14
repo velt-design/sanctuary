@@ -79,16 +79,29 @@ it('uses a dedicated concealed item and never retries an uncertain put',async()=
 function providerFixture(capability:'reports'|'sales'='reports') {
   const pin={...config,identity:{...identity,capability}};
   const debug={app_id:'123',user_id:'456',type:'SYSTEM_USER',is_valid:true,scopes:['public_profile','ads_read'],expires_at:Date.parse(expiresAt)/1000,data_access_expires_at:0,granular_scopes:[{scope:'ads_read',target_ids:[]}]};
+  const account={id:'act_101',account_id:'101',account_status:1,currency:'NZD',timezone_name:'Pacific/Auckland'};
   const fetcher=vi.fn<typeof fetch>(async(_url,init)=>{
     const batch=JSON.parse(new URLSearchParams(String(init?.body)).get('batch')!);
-    const body=batch[0].relative_url.startsWith('debug_token')?{data:debug}:{id:'act_101',account_id:'101',account_status:1,business:{id:'789'}};
+    const url=new URL(batch[0].relative_url,'https://graph.facebook.com/');
+    if(url.pathname.startsWith('/act_') && url.searchParams.get('fields')!=='id,account_id,account_status,currency,timezone_name')
+      return Response.json([{code:400,body:JSON.stringify({error:{code:100}})}]);
+    const body=batch[0].relative_url.startsWith('debug_token')?{data:debug}:account;
     return Response.json([{code:200,body:JSON.stringify(body)}]);
   });
   const exchange=vi.fn<ExchangeTransport>(async()=>({access_token:next})),before=vi.fn(async()=>{});
-  return {debug,fetcher,exchange,before,provider:metaCredentialProvider(pin,new AbortController().signal,fetcher,exchange)};
+  return {debug,account,fetcher,exchange,before,provider:metaCredentialProvider(pin,new AbortController().signal,fetcher,exchange)};
 }
-it('verifies exact report scope and account business, accepting empty granular targets',async()=>{
+it('verifies the supported ads_read account projection without requiring Graph business access',async()=>{
   const f=providerFixture();expect(await f.provider.verify(token,f.before)).toEqual({expiresAt,dataAccessExpiresAt:null});expect(f.fetcher).toHaveBeenCalledTimes(2);expect(f.before).toHaveBeenCalledTimes(2);
+});
+it.each(['id','account_id','account_status','currency','timezone_name'] as const)('rejects invalid report account %s without an exchange',async(field)=>{
+  const f=providerFixture();Object.assign(f.account,{[field]:field==='account_status'?2:field==='currency'?'nzd':field==='timezone_name'?'not/a-zone':'999'});
+  await expect(f.provider.verify(token,f.before)).rejects.toThrow();expect(f.exchange).not.toHaveBeenCalled();
+});
+it('does not release a credential after an account-read provider rejection',async()=>{
+  const f=providerFixture();f.fetcher.mockResolvedValueOnce(Response.json([{code:200,body:JSON.stringify({data:f.debug})}]))
+    .mockResolvedValueOnce(Response.json([{code:400,body:JSON.stringify({error:{code:100}})}]));
+  await expect(f.provider.verify(token,f.before)).rejects.toThrow('Meta read could not be confirmed');expect(f.exchange).not.toHaveBeenCalled();
 });
 it.each(['scope','principal','target','expired'] as const)('rejects %s drift without requesting new permissions',async(change)=>{
   const f=providerFixture();if(change==='scope')f.debug.scopes.push('ads_management');if(change==='principal')f.debug.user_id='999';
