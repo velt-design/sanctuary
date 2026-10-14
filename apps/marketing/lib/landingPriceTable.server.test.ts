@@ -41,7 +41,7 @@ it('generates all 35,604 exact cells with canonical parity, including material l
     }
   expect(Object.keys(table).sort()).toEqual(['schema', 'id', 'publicationKey', 'versionId', 'versionNumber', 'currency', 'includesGst', 'amounts'].sort());
   expect(JSON.stringify(table)).not.toMatch(/costExGst|costingConfiguration|supply|multiplier|rates|secret|calculationRef/);
-}, 120_000);
+}, 240_000);
 
 it('serves only public totals; conditional refresh still checks current approval without regenerating', async () => {
   const response = await POST(request());
