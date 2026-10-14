@@ -4,6 +4,22 @@ The current guide-cluster page roles and rewrite decisions are recorded in [Perg
 
 Status: Active implementation checklist.
 
+## 14 October 2026 cost-page and immediate-estimate release
+
+Jordan authorised rebuilding the cost page after the recommendation to place the
+existing approved selected-design estimate on the page. After accepting the
+protected preview and requesting immediate updates through a preloaded price
+table, he authorised production release with "Push these live". Deployment and
+live verification are the remaining release steps. The rebuilt page leads with
+that working estimate, concise scope/quote guidance and two actual project
+examples. Source and full-designer continuity are shared with the Auckland page;
+the cost entry retains its own enquiry and return path. Governed direct forms,
+canonical indexing, sitemap and research-page schema remain. The implementation
+and verification map lives in `../marketing-ui-foundation.md`; exact approval
+limits live in the claims register. This release permission covers the accepted
+cost page and shared immediate-estimate behavior, not new commercial assumptions.
+Generic price bands and project-price examples stay unapproved.
+
 ## 13 October 2026 acquisition page release
 
 Jordan accepted the complete photographic redesign and authorised a refinement
@@ -21,7 +37,7 @@ sitemap and search indexing; no preview labels appear on the public page.
 This does not change live ads or permanently exclude future keyword pages.
 Deployment and production verification are recorded separately from implementation.
 
-## 20 September 2026 cost-guide update
+## 20 September 2026 cost-guide update (historical released baseline)
 
 The cost guide now offers a direct, source-attributed entry to the existing
 pergola designer and retains the embedded brief for individual assessment.
@@ -41,7 +57,7 @@ This document tracks the ten approved Sanctuary marketing landing pages. Pages a
 | 1 | Pergolas Auckland | `/pergolas-auckland` | Complete | Broad category entry point. Starts with the relationship between the outdoor room, adjoining home and site; introduces form, roofing, edges, scope and process. |
 | 2 | Custom Pergolas Auckland | `/custom-pergolas-auckland` | Complete | Bespoke design and site-specific problem solving. |
 | 3 | Aluminium Pergolas Auckland | `/aluminium-pergolas-auckland` | Complete | Aluminium structure, architectural detailing and material decisions. |
-| 4 | Pergola Cost Auckland | `/pergola-cost-auckland` | Awaiting pricing approval | Scope, cost drivers, quotation comparison and qualification are complete. Numerical guidance needs a dated approved price set. |
+| 4 | Pergola Cost Auckland | `/pergola-cost-auckland` | Rebuilt review candidate | On-page approved input-specific estimate, scope evidence and quote comparison. No generic price-band approval or production release inferred. |
 | 5 | Gable Pergolas Auckland | `/gable-pergolas-auckland` | Complete | Gable form, height, proportion and integration with the existing roofline. |
 | 6 | Pitched Pergolas Auckland | `/pitched-pergolas-auckland` | Complete | Mono-pitched form, height constraints, drainage and restrained house connection. |
 | 7 | Outdoor Rooms Auckland | `/outdoor-rooms-auckland` | Complete | Complete room planning across roof, edges, lighting, heating and use. |

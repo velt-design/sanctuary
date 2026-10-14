@@ -1,5 +1,88 @@
 # Marketing UI Foundation
 
+## Immediate landing estimates (14 October 2026, owner-authorised release)
+
+Jordan authorised production release of the accepted cost rebuild and immediate
+landing estimates with "Push these live". Deployment and live verification remain
+release steps; this status does not claim they have completed.
+
+After accepting the cost-page preview, Jordan requested a cost table loaded on
+opening this page, Auckland and future similar pages so estimates update
+immediately. `LandingEstimate` is now always mounted by `CostEstimator`,
+`DesignWorkspace` and the retained `LandingSelector`. `useLandingPrice` reads the
+current roofline/size/material directly from the shared selection state, without
+waiting for design-link preparation. The table contains every supported 100 mm
+control-grid combination, including explicit tailored/unsupported cells. Saved
+full-designer drafts always use the existing canonical price API instead.
+
+`landingPriceTable` owns the compact public lookup contract;
+`landingPriceTableGenerator.server` uses the canonical product draft and frozen
+price owners once per marketing build. `landingPriceTableArtifact.server` checks
+the server artifact checksum, and `/api/landing-price-table` checks the current
+approved immutable publication before sending totals or a conditional renewal.
+`landingPriceTableStore` deduplicates consumers and keeps one memory-only table.
+Its authorization lease lasts at most 30 seconds, including transfer time; renewal
+starts halfway through it. Successful renewal does not blank the price. Failure,
+expiry, focus or tab suspension clears authorization. Remote revocation is bounded
+by this lease, not instantaneous. Canonical fallback starts fresh after each
+invalidated lease, so an earlier reply cannot reappear. Design-link failure keeps
+its own retry available even while a table price is usable. No layout or costing
+rule changes are part of this follow-up.
+
+Future similar landing pages should compose these same selection/estimate owners,
+keep the estimate mounted while preparing links, and use a deliberately allowed
+source path. Do not copy pricing, create another table, or treat saved extras as
+basic grid selections. See the customer-configurator architecture for build and
+failure behavior. Full-grid parity, server gate/artifact validation, lease/race
+tests and blocked-per-change-request browser checks own the changed risks. The
+real-publication browser suite requires `MARKETING_BASE_URL` to select a built
+target with approved pricing; the generic unconfigured development runner skips
+that integration suite.
+
+## Auckland cost page rebuild (14 October 2026, owner-authorised release)
+
+Jordan requested "Okay can you rebuild Pergola cost auckland?" after the
+recommendation to answer cost questions with the existing selected-design
+estimate. Jordan accepted the protected preview and subsequently authorised
+production release together with the shared immediate landing estimates.
+The cost page leads with its question and working price rather than a full-height
+photographic hero. Roofline, dimensions and materials sit beside the estimate;
+the mobile estimate states its exact selected basis before the controls. Actual
+St Heliers and Warkworth projects illustrate scope, with no project-price claim.
+One scope explanation, quote checklist, next step, FAQ and governed direct form
+replace the previous repeated generic blocks. Existing metadata intent, canonical,
+sitemap, WebPage/Breadcrumb research schema and useful planning links remain.
+The normal solid header now covers this route; other hero routes are unchanged.
+
+Implementation map: `pergola-cost-auckland/page` owns composition and SEO,
+`CostEstimator` owns only presentation, `CostGuide` owns editorial project/scope
+content, and `content` keeps metadata, FAQ and existing form configuration.
+`useLandingSelection`, `landingDesign.server`, `LandingEstimate`, canonical
+customer summaries and `DimensionControl` remain the shared behavioral owners.
+`draftScope` extends its closed route set by the cost path. Cost and Auckland
+intentionally share one pergola exploration, including full designer extras;
+the current entry page supplies attribution and return. The unrelated ordinary
+designer draft remains separate. Geometry/viewer code is not loaded to price
+the landing selection. No costing rules, API intake or disclosure owners change.
+The original rebuild added an estimate-state attribute used by cost CSS to keep
+loading/retry at stable positions without a large empty price band. The subsequent
+shared table behavior is documented above.
+
+Verification map: focused draft/source/header units; shared full-journey tests in
+`marketing.pergola-redesign.spec.ts` with `PERGOLA_COST_TEST=true`; cost-specific
+320/390/768/1440, keyboard/reduced-motion, SEO/no-JavaScript and cross-page
+continuity in `marketing.pergola-cost.spec.ts`. Auckland runs the same journey
+suite in its default mode. Synthetic pricing/intake results remain distinct
+from the actual staging estimate, independent review and owner acceptance.
+
+Initial rebuild checks: 49 focused units, 24 cost-mode browser cases (one
+Auckland-only redirect deliberately skipped), 19 Auckland regressions, four cost
+SEO viewport checks and the marketing production build/typecheck pass. Visible
+full-page inspection found legacy FAQ grid specificity; a cost-only selector
+correction and four viewport readability checks close that issue. This is local
+evidence, separate from the later protected-preview acceptance, production
+publication or measured SEO uplift.
+
 ## Auckland acquisition page (13 October 2026)
 
 Jordan accepted the photographic redesign and authorised refinement and release:

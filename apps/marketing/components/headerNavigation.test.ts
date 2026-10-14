@@ -35,6 +35,7 @@ describe('shared header navigation model', () => {
     expect(isHeaderHeroOverlayPath('/home-experimental')).toBe(false);
     expect(isHeaderHeroOverlayPath('/home-v2')).toBe(false);
     expect(isHeaderHeroOverlayPath('/contact')).toBe(false);
+    expect(isHeaderHeroOverlayPath('/pergola-cost-auckland')).toBe(false);
   });
 
   it('suppresses only the guided route desktop CTA', () => {

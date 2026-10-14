@@ -38,11 +38,11 @@ describe('landing design server boundary', () => {
     expect(result.issue).toBeTruthy();
     expect(result.projectionMax).toBeLessThan(6000);
   });
-  it.each(['/pergolas-auckland/redesign', 'https://example.invalid', '//example.invalid', '/contact?token=private', '/unapproved-return'])('only accepts the closed comparison return path: %s', sourcePath => {
+  it.each(['/pergola-cost-auckland', '/pergolas-auckland/redesign', 'https://example.invalid', '//example.invalid', '/contact?token=private', '/unapproved-return'])('only accepts closed landing return paths: %s', sourcePath => {
     const result = prepareLandingDesign({ type: 'gable', selection: INITIAL_PRODUCT_SELECTION, sourcePath })!;
     for (const href of [result.enquiryHref, result.designerHref]) {
       const url = new URL(href, 'https://www.sanctuarypergolas.co.nz');
-      expect(url.searchParams.get('source_path')).toBe(sourcePath === '/pergolas-auckland/redesign' ? sourcePath : '/pergolas-auckland');
+      expect(url.searchParams.get('source_path')).toBe(['/pergola-cost-auckland', '/pergolas-auckland/redesign'].includes(sourcePath) ? sourcePath : '/pergolas-auckland');
       expect(url.searchParams.get('design_scope')).toBe('pergolas-auckland');
     }
   });
