@@ -22,12 +22,15 @@ export async function campaignHealthResponse(request: Request): Promise<Response
     const control = metaControlConfig(), scope = campaignScope(), signal = AbortSignal.any([request.signal, AbortSignal.timeout(50_000)]);
     if (control.account !== scope.account) throw new Error('Account differs.');
     const delegation = scopedMetaDelegation(request, campaignRequest, signal);
-    const current = async () => {
+    // The credential lifecycle calls this callback from its own check(). It
+    // must not call the returned lease again, which would recurse indefinitely.
+    const authorize = async () => {
       signal.throwIfAborted();
       if (process.env.SANCTUARY_CAMPAIGN_MONITOR_ENABLED !== 'true' || JSON.stringify(metaControlConfig()) !== JSON.stringify(control) || JSON.stringify(campaignScope()) !== JSON.stringify(scope)) throw new Error('Monitor disabled.');
-      authorizePraxisRequest(request, loadPraxisConnectorConfig()); await delegation(); await lease?.check();
+      authorizePraxisRequest(request, loadPraxisConnectorConfig()); await delegation();
     };
-    await current(); lease = await openMetaReportCredential(signal, current);
+    await authorize(); lease = await openMetaReportCredential(signal, authorize);
+    const current = async () => { if (lease) await lease.check(); else await authorize(); };
     const config = lease?.reportConfig ?? metaConfig();
     if (config.actor !== control.actor || config.binding !== control.binding || config.account !== control.account) throw new Error('Credential association differs.');
     const command = metaStore(control, source), now = new Date(), period = campaignPeriods(now).week;
