@@ -1,14 +1,15 @@
-/** The landing-page exploration is separate from an existing product/designer draft. */
+/** Auckland and cost planning share one exploration, separate from a product/designer draft. */
 export const LANDING_DRAFT_KEY = 'sanctuary.pergolas-auckland-design.v1';
 export const LANDING_REDESIGN_PATH = '/pergolas-auckland/redesign';
-export type LandingSourcePath = '/pergolas-auckland' | typeof LANDING_REDESIGN_PATH;
+export const LANDING_COST_PATH = '/pergola-cost-auckland';
+export type LandingSourcePath = '/pergolas-auckland' | typeof LANDING_REDESIGN_PATH | typeof LANDING_COST_PATH;
 export function landingSourcePath(value: unknown): LandingSourcePath {
-  return value === LANDING_REDESIGN_PATH ? LANDING_REDESIGN_PATH : '/pergolas-auckland';
+  return value === LANDING_REDESIGN_PATH || value === LANDING_COST_PATH ? value : '/pergolas-auckland';
 }
 const LANDING_DESIGN_SCOPE = 'pergolas-auckland';
 export function isLandingDesign(pathname: string, search: string) {
   if (new URLSearchParams(search).get('design_scope') === 'default') return false;
-  return pathname === '/pergolas-auckland' || pathname === LANDING_REDESIGN_PATH
+  return pathname === '/pergolas-auckland' || pathname === LANDING_REDESIGN_PATH || pathname === LANDING_COST_PATH
     || new URLSearchParams(search).get('design_scope') === LANDING_DESIGN_SCOPE;
 }
 export function withLandingDesignScope(href: string) {

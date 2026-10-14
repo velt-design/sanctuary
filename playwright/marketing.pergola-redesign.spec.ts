@@ -2,10 +2,14 @@ import { expect, test } from '@playwright/test';
 import { ADVERTISING_DISCLOSURE_VERSION } from '../apps/marketing/lib/advertisingDisclosure';
 
 const comparison = process.env.PERGOLA_COMPARISON_TEST === 'true';
-const path = comparison ? '/pergolas-auckland/redesign' : '/pergolas-auckland';
+const costPage = process.env.PERGOLA_COST_TEST === 'true';
+const path = costPage ? '/pergola-cost-auckland' : comparison ? '/pergolas-auckland/redesign' : '/pergolas-auckland';
+const sendLabel = costPage ? 'Send project brief' : 'Send enquiry';
 const draftKey = 'sanctuary.pergolas-auckland-design.v1';
 const price = { status: 'priced', amountIncGst: 12345, currency: 'NZD', includesGst: true, breakdown: [], versionNumber: 2, calculationRef: 'synthetic-test-only' };
 test.beforeEach(async ({ page }, testInfo) => {
+  // This suite exercises canonical fallback and existing journey behavior; table-first behavior has its own suite.
+  await page.route('**/api/landing-price-table', route => route.fulfill({ status: 503, json: { status: 'unavailable' } }));
   await page.addInitScript(marketing => localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing, updatedAt: new Date().toISOString(), version: 1 })), testInfo.title.endsWith('marketing true'));
   await page.route('**/api/configurator-price', route => route.fulfill({ json: price }));
 });
@@ -122,16 +126,16 @@ test('failed options recover, oversize keeps direct help and keyboard changes th
   await expect(page.locator('#explore-options')).toContainText('Check the projection');
   await expect(page.locator('#explore-options')).not.toContainText('$12,345');
   await page.locator('#explore-options').getByRole('link', { name: 'Discuss your project' }).click();
-  await expect(page.locator('#project-details').getByRole('button', { name: 'Send enquiry' })).toBeVisible();
+  await expect(page.locator('#project-details').getByRole('button', { name: sendLabel })).toBeVisible();
 });
 
 test('no javascript retains direct enquiry and the route has appropriate indexing', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false }); const page = await context.newPage();
   await page.goto(path);
   await expect(page.locator('form.acrylic-form')).toHaveAttribute('action', '/api/enquiry/fallback');
-  await expect(page.getByRole('button', { name: 'Send enquiry' })).toBeVisible();
+  await expect(page.getByRole('button', { name: sendLabel })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', comparison ? 'noindex, nofollow' : 'index, follow');
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/pergolas-auckland$/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(costPage ? '/pergola-cost-auckland$' : '/pergolas-auckland$'));
   await context.close();
 });
 
@@ -155,12 +159,12 @@ test('direct help accepts unknown dimensions through the existing form and sourc
   await page.getByRole('link', { name: 'Talk about your project', exact: true }).click();
   await expect(page.locator('form.acrylic-form')).toHaveAttribute('novalidate', '');
   await expect(page.locator('form.acrylic-form')).toContainText('measure enquiries and sales with Google Ads');
-  await page.getByRole('button', { name: 'Send enquiry', exact: true }).click();
+  await page.getByRole('button', { name: sendLabel, exact: true }).click();
   await expect(page.locator('#acrylic-enquiry-error-summary')).toBeVisible();
   await page.locator('#acrylic-enquiry-name').fill('[Agent Scenario] landing-preview');
   await page.locator('#acrylic-enquiry-phone').fill('0210000000');
   await page.locator('#acrylic-enquiry-email').fill('landing-preview@example.invalid');
-  await page.getByRole('button', { name: 'Send enquiry', exact: true }).click();
+  await page.getByRole('button', { name: sendLabel, exact: true }).click();
   await expect(page.getByRole('button', { name: 'Project brief sent', exact: true })).toBeVisible();
   expect(payload.enquiryContext?.source_path).toBe(path);
   expect(payload.customerDesign).toBeUndefined();
@@ -228,7 +232,7 @@ for (const width of [320, 390, 1440]) test(`material changes keep the estimate a
 });
 
 test('public promotion retains canonical SEO, redirects old comparison links and keeps guided context', async ({ page }) => {
-  test.skip(comparison, 'Production route contract is exercised with the comparison flag off.');
+  test.skip(comparison || costPage, 'Auckland production route contract is exercised in the default mode.');
   await page.goto('/pergolas-auckland/redesign?utm_source=google&focus=daylight#explore-options');
   await expect(page).toHaveURL(/\/pergolas-auckland\?utm_source=google&focus=daylight#explore-options$/);
   await expect(page).toHaveTitle('Pergolas Auckland | Design, Build & Installation');
@@ -288,6 +292,7 @@ for (const product of [{ type:'gable', label:'Gable' }, { type:'box-perimeter', 
   await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}').roof?.family, draftKey)).toBe(product.type === 'gable' ? 'gable' : 'box');
   const fresh = await context.newPage();
   await fresh.route('**/api/configurator-price', route => route.fulfill({ json: price }));
+  await fresh.route('**/api/landing-price-table', route => route.fulfill({ status: 503, json: { status: 'unavailable' } }));
   await fresh.goto(path);
   expect(await fresh.evaluate(() => sessionStorage.getItem('sanctuary.pergolas-auckland-selection.v1'))).toBeNull();
   expect(await fresh.evaluate(key => sessionStorage.getItem(key), draftKey)).toBeNull();

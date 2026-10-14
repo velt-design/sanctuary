@@ -49,7 +49,6 @@ const heroOverlayPaths = new Set([
   '/pergolas-auckland',
   '/custom-pergolas-auckland',
   '/aluminium-pergolas-auckland',
-  '/pergola-cost-auckland',
   '/gable-pergolas-auckland',
   '/pitched-pergolas-auckland',
   '/outdoor-rooms-auckland',

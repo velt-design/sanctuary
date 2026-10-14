@@ -11,6 +11,7 @@ const marketingReleaseId = resolveMarketingReleaseId(process.env);
 const nextConfig: NextConfig = {
   ...(marketingPlaywrightDistDir ? { distDir: marketingPlaywrightDistDir } : {}),
   experimental: { externalDir: true },
+  outputFileTracingIncludes: { '/api/landing-price-table': ['./.generated/landing-price-table.json'] },
   allowedDevOrigins: ['127.0.0.1'],
   transpilePackages: ['@sp/costing', '@sp/email-provider', '@sp/quote-format', '@sp/theme', '@sp/configurator', '@sp/geometry', '@sp/geometry-viewer'],
   // Enforce TypeScript correctness during production builds.

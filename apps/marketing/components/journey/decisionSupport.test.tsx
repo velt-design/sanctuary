@@ -6,7 +6,7 @@ import PergolaGuideNavigation from '../seo-landing/PergolaGuideNavigation';
 import { getGuideDecisionLinks } from '../seo-landing/guideDecisionLinks';
 import { pergolaGuides } from '../../data/pergolaGuides';
 import { products } from '../../data/products';
-import { pergolaCostConfig } from '../../app/pergola-cost-auckland/content';
+import { buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
 import { designEnquiryHref, rememberConfiguratorSource } from '../configurator-prototype/configuratorOverlay';
 vi.mock('../ConsentProvider', () => ({ useConsent: () => ({ consent: { analytics: false }, hasTrackingDecision: true }) }));
 
@@ -43,15 +43,14 @@ describe('decision support journey boundaries', () => {
   });
 
   it('keeps cost-guide help in its existing contextual form and exposes the estimator', () => {
-    const host = render(<DesignNextSteps sourcePath={pergolaCostConfig.route} helpHref="#project-details" />);
+    const host = render(<DesignNextSteps sourcePath="/pergola-cost-auckland" helpHref="#project-details" />);
     expect(host.querySelector('a[href="#project-details"]')).not.toBeNull();
-    rememberConfiguratorSource(pergolaCostConfig.hero.primaryHref);
+    rememberConfiguratorSource(buildConfiguratorEnquiryHref({ sourcePath: '/pergola-cost-auckland', sourceComponent: 'hero' }));
     const enquiry = new URL(designEnquiryHref(), 'https://example.test');
     expect(enquiry.pathname).toBe('/design-enquiry');
     expect(enquiry.searchParams.get('source_path')).toBe('/pergola-cost-auckland');
     expect(enquiry.searchParams.get('source_component')).toBe('hero');
     sessionStorage.clear();
-    expect(pergolaCostConfig.showDesignNextSteps).toBe(true);
   });
 
   it('compares the three featured pergola forms without promoting Hip', () => {

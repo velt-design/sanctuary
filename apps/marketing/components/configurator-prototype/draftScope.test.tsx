@@ -46,9 +46,23 @@ it('navigates between scopes but preserves the enquiry edit overlay within the s
 });
 
 it('shares the exploration across both presentations while keeping an explicit default draft independent', () => {
+  expect(isLandingDesign('/pergola-cost-auckland', '')).toBe(true);
+  expect(isLandingDesign('/pergola-cost-auckland', '?design_scope=default')).toBe(false);
+  expect(isLandingDesign('/pergola-cost-auckland/unknown', '')).toBe(false);
   expect(isLandingDesign('/pergolas-auckland/redesign', '')).toBe(true);
   expect(isLandingDesign('/pergolas-auckland/redesign', '?design_scope=default')).toBe(false);
   expect(isLandingDesign('/pergolas-auckland/unrecognised', '')).toBe(false);
   window.history.replaceState({}, '', '/configurator-preview?open=1&source_path=%2Fpergolas-auckland%2Fredesign&design_scope=pergolas-auckland');
   expect(new URL(designEnquiryHref(), window.location.origin).searchParams.get('source_path')).toBe('/pergolas-auckland/redesign');
+});
+
+it('shares the complete Auckland exploration with cost planning without losing its cost return', async () => {
+  window.history.replaceState({}, '', withLandingDesignScope('/configurator-preview?open=1&source_path=%2Fpergolas-auckland#design=1.gable.5300.2800.ground.fascia.parallel.0'));
+  await act(async () => root.render(<Probe key="auckland"/>));
+  await act(async () => current!.setInput({ ...current!.input, level: 'elevated' }));
+  window.history.replaceState({}, '', '/pergola-cost-auckland');
+  await act(async () => root.render(<Probe key="cost"/>));
+  expect(current!.input).toMatchObject({ widthMm: 5300, level: 'elevated' });
+  window.history.replaceState({}, '', '/configurator-preview?open=1&source_path=%2Fpergola-cost-auckland&design_scope=pergolas-auckland');
+  expect(new URL(designEnquiryHref(), window.location.origin).searchParams.get('source_path')).toBe('/pergola-cost-auckland');
 });
