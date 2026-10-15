@@ -13,6 +13,53 @@ These changes address observed inert taps. Re-tapping an already-selected option
 telephone handoffs and hidden canvas fallback text are not, alone, failure evidence.
 No enquiry validation, pricing, tracking privacy or campaign rules change here.
 
+## Meta inline configurator release candidate (16 October 2026)
+
+Jordan accepted the recommendations for both pages: "Lets make the changes to
+both pages". `/auckland-outdoor-living` and `/acrylic-roof-pergolas-auckland` now
+reuse the released Google `FunnelJourney`, `FunnelControls`, `FunnelEstimate` and
+canonical compact `ContactEnquiryForm`. Their headlines, real project photography,
+outdoor acrylic/timber balance and acrylic same-scene tint comparison remain.
+An approved relevant customer quote sits below each hero, followed by the working
+inline design/installed estimate. Full 3D access stays visible beside the controls.
+The richer Meta stories remain below that section, with the compact residential
+form and useful questions after them. Focused brand/privacy chrome removes the
+global navigation/footer. Canonical and indexability policies stay page-specific.
+
+The existing `googleFunnel` route-policy module now distinguishes Google paths
+from the exact four inline-design paths; this is not a prefix-wide exception.
+Google storage keys and presentation remain unchanged. Meta uses its established
+shared customer draft, including local/session and legacy Simple restoration,
+without overwriting saved extras. Full-designer enquiry returns to the mounted
+form; direct enquiry does not invent a configured design. Optional phone uses
+the same client/API policy and forward SQL migration `20261016000001`, extending
+only the two exact Meta residential discussion paths. Email/name/suburb remain
+required; provided phones are validated. No staging/production migration or
+customer delivery is implied by local checks.
+
+Attachment uses the canonical draft store's validated-selection provenance, not
+the presence of a storage string. Corrupt or unsupported saved drafts fall back
+to editable defaults without adding a design to a direct enquiry. Valid restored
+or legacy selections and explicit new edits remain attached.
+
+The compact Meta form retains `acrylic-form`, POST `/api/enquiry/fallback`, exact
+hidden page, enabled contact fields and submit for the existing cloud markup
+check. `data-inline-enquiry` excludes it from old acrylic form styling. The marker
+alone is insufficient: browser tests inspect complete SSR below 256 KiB and actual
+no-JavaScript controls. Google/Meta browser tests intercept submissions and vendor
+traffic. Installed price fixtures are marked test data; production price rules,
+signed calculations and unavailable-price handling remain canonical. Jordan has
+approved final checks, a mobile UI audit and production release of both pages.
+This is the approved release candidate; deployment, installed schema and provider
+delivery require separate evidence. No completed release or conversion uplift is
+claimed by these source notes.
+
+The old unreferenced `LandingDesigner` teaser and its CSS are retired after both
+consumers move to the working journey. No canonical 3D functionality is retired.
+Mobile Meta heroes retain their viewport minimum but grow with wrapped content,
+so actions and project captions remain over the photograph at short/narrow sizes.
+The Facebook browser suite asserts containment at 320/360/390 by 740 and desktop.
+
 
 ## Google Ads funnel launch candidate (15 October 2026)
 

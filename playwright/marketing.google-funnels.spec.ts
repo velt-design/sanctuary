@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { LANDING_PRICE_CELLS, landingPriceIndex } from '../apps/marketing/lib/landingPriceTable';
-const routes = ['/ads/outdoor-living', '/ads/acrylic-pergolas'];
+const routes = ['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'];
 test.beforeEach(async ({ page, baseURL }) => {
   await page.route('**/*', r => new URL(r.request().url()).origin === new URL(baseURL!).origin ? r.continue() : r.abort());
   await page.route('**/api/*price*', r => r.fulfill({ json: { status: 'unavailable' } }));
@@ -23,7 +23,7 @@ for (const route of routes) for (const width of [390, 1440]) test(`${route}: dir
   await essential.click();
   await expect(page.locator('header.site')).toHaveCount(0);
   await expect(page.locator('[data-site-footer]')).toHaveCount(0);
-  await expect(page.locator('h1')).toHaveText(route.endsWith('outdoor-living') ? 'Make roomfor life outside.' : 'Cover the spacewithout losing light.');
+  await expect(page.locator('h1')).toHaveText(route.endsWith('outdoor-living') ? 'Make roomfor life outside.' : route.startsWith('/ads/') ? 'Cover the spacewithout losing light.' : 'Keep the light.Make room outside.');
   expect(await page.locator('html').evaluate(el => el.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await expect(page.getByRole('radio', { name: 'Acrylic', exact: true })).toBeEnabled();
   const form = page.locator('form[data-clarity-mask]');
@@ -46,8 +46,8 @@ for (const route of routes) for (const width of [390, 1440]) test(`${route}: dir
   await page.getByRole('radio', { name: 'Acrylic', exact: true }).check();
   await page.getByRole('textbox', { name: 'Width in metres' }).fill('5.4');
   await page.getByRole('textbox', { name: 'Width in metres' }).press('Tab');
-  await page.getByText('Blinds, screens, lighting and more', { exact: false }).click();
-  await page.getByRole('link', { name: 'Open the full designer' }).click();
+  if (route.startsWith('/ads/')) { await page.getByText('Blinds, screens, lighting and more', { exact: false }).click(); await page.getByRole('link', { name: 'Open the full designer' }).click(); }
+  else await page.getByRole('link', { name: 'Explore your design in 3D' }).click();
   const dialog = page.getByRole('dialog', { name: 'Design your pergola' });
   await expect(dialog).toBeVisible();
   if (width >= 720) await expect(dialog.locator('canvas')).toBeVisible();
@@ -196,4 +196,41 @@ test.describe('Google direct enquiry without JavaScript', () => {
     expect(submitted!.get('phone')).toBe('');
     expect(submitted!.has('customerDesign')).toBe(false);
   });
+});
+
+for (const route of ['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']) for (const width of [320, 390, 1440]) test(`Meta visual ${route} at ${width}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 });
+  const amounts = Array(LANDING_PRICE_CELLS).fill(12345);
+  await page.route('**/api/landing-price-table', r => r.fulfill({ json: { status: 'ready', leaseMs: 30000, table: { schema: 'landing-price-table.v1', id: 'a'.repeat(64), publicationKey: 'b'.repeat(64), versionId: '11111111-1111-4111-8111-111111111111', versionNumber: 1, currency: 'NZD', includesGst: true, amounts } } }));
+  await page.goto(route);
+  await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'Acrylic', exact: true })).toBeEnabled();
+  await expect(page.locator('header.site')).toHaveCount(0);
+  await expect(page.locator('[data-site-footer]')).toHaveCount(0);
+  expect(await page.locator('html').evaluate(el => el.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await page.screenshot({ path: info.outputPath('hero.png') });
+  await page.locator('#your-design').scrollIntoViewIfNeeded();
+  await expect(page.locator('[data-estimate-state]')).toHaveAttribute('data-estimate-state', 'priced');
+  await page.screenshot({ path: info.outputPath('design.png') });
+  await expect(page.getByRole('link', { name: 'Explore your design in 3D' })).toBeVisible();
+  await page.locator('#project-details').scrollIntoViewIfNeeded();
+  await expect(page.locator('#your-design')).toHaveAttribute('data-configuring', 'false');
+  const form = page.locator('form.acrylic-form[data-inline-enquiry]');
+  await expect(form.locator('[name=phone]')).not.toHaveAttribute('required');
+  await expect(form.locator('[name=enquiryType]')).toHaveValue('residential');
+  await page.screenshot({ path: info.outputPath('enquiry.png') });
+  const response = await page.request.get(route), html = await response.text();
+  expect(Buffer.byteLength(html)).toBeLessThan(262144);
+  expect(html).toContain('acrylic-form');
+  expect(html).toContain('action="/api/enquiry/fallback"');
+  const noScript = await page.context().browser()!.newContext({ javaScriptEnabled: false });
+  const fallback = await noScript.newPage();
+  await fallback.route('**/*', r => new URL(r.request().url()).origin === new URL(response.url()).origin ? r.continue() : r.abort());
+  await fallback.goto(response.url());
+  const native = fallback.locator('form.acrylic-form');
+  await expect(native).toHaveAttribute('method', 'post');
+  await expect(native.locator('[name=page]')).toHaveValue(route);
+  for (const field of ['name','phone','email']) await expect(native.locator(`[name=${field}]`)).toBeEnabled();
+  await expect(native.getByRole('button', {name:'Send my enquiry'})).toBeEnabled();
+  await noScript.close();
 });

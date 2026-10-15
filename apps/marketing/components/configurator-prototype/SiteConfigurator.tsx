@@ -1,5 +1,5 @@
 'use client';
-import { isGoogleFunnelPath, returnToGoogleFunnelEnquiry } from '../../lib/googleFunnel';
+import { isInlineFunnelPath, returnToInlineFunnelEnquiry } from '../../lib/googleFunnel';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -20,8 +20,8 @@ export default function SiteConfigurator() {
       const link = event.target instanceof Element ? event.target.closest('a') : null;
       if (!link || link.target || link.hasAttribute('download')) return;
       const destination = new URL(link.href);
-      if (isGoogleFunnelPath(window.location.pathname) && destination.origin === window.location.origin && destination.pathname === window.location.pathname && destination.hash === '#project-details' && link.closest('dialog[open]')) {
-        event.preventDefault(); event.stopPropagation(); returnToGoogleFunnelEnquiry(); setOpen(false); return;
+      if (isInlineFunnelPath(window.location.pathname) && destination.origin === window.location.origin && destination.pathname === window.location.pathname && destination.hash === '#project-details' && link.closest('dialog[open]')) {
+        event.preventDefault(); event.stopPropagation(); returnToInlineFunnelEnquiry(); setOpen(false); return;
       }
       rememberConfiguratorReturn(destination);
       if (window.location.pathname === '/design-enquiry' && destination.origin === window.location.origin

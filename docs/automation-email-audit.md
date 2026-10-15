@@ -15,7 +15,7 @@ Name, email and suburb remain required; a supplied phone number must still be va
 This applies to direct and configured enquiries without inventing a design for the
 direct path. The client and API share the scope predicate, and native form fallback
 delegates to the same API validation and existing intake. Other direct contact and
-Facebook page requirements remain unchanged. Complete acceptance requires forward
+Facebook page requirements remained unchanged in that candidate. The 16 October Meta preview extends the same exact residential eligibility to `/auckland-outdoor-living` and `/acrylic-roof-pergolas-auckland` via forward migration `20261016000001_marketing_meta_funnel_optional_phone.sql`. It preserves every existing intake, idempotency, notification and consent boundary. No database installation or real delivery is implied. Complete acceptance requires forward
 migration `20261015000001_marketing_google_funnel_optional_phone.sql`; the older
 configured-only SQL rejects direct blank-phone intake. Actual API/native tests now
 use the disposable real SQL intake with provider effects mocked, and verify the

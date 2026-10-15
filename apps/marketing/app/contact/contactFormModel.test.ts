@@ -8,12 +8,12 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe('contact form model', () => {
-  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas'])('keeps phone optional and suburb required for the direct %s enquiry', page => {
+  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'])('keeps phone optional and suburb required for the direct %s enquiry', page => {
     const values = { page, enquiryType: 'residential', name: 'Alex', phone: '', email: 'alex@example.test', suburb: 'Albany' };
     expect(validateContactForm(formData(values), [])).toEqual({});
     expect(validateContactForm(formData({ ...values, phone: 'bad' }), [])).toEqual({ phone: 'Enter a valid phone number.' });
     expect(validateContactForm(formData({ ...values, suburb: '' }), [])).toEqual({ suburb: 'Enter your suburb.' });
-    for (const existing of ['/contact', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland', '/ads/acrylic-pergolas-extra']) {
+    for (const existing of ['/contact', '/auckland-outdoor-living-extra', '/acrylic-roof-pergolas-auckland/', '/ads/acrylic-pergolas-extra']) {
       expect(validateContactForm(formData({ ...values, page: existing }), [])).toEqual({ phone: 'Enter your phone number.' });
     }
     expect(validateContactForm(formData({ ...values, enquiryType: 'commercial' }), [])).toEqual({ phone: 'Enter your phone number.' });
