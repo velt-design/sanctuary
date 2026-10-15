@@ -1,6 +1,6 @@
 # Marketing UI Foundation
 
-## Meta inline configurator preview (16 October 2026)
+## Meta inline configurator release candidate (16 October 2026)
 
 Jordan accepted the recommendations for both pages: "Lets make the changes to
 both pages". `/auckland-outdoor-living` and `/acrylic-roof-pergolas-auckland` now
@@ -30,8 +30,11 @@ check. `data-inline-enquiry` excludes it from old acrylic form styling. The mark
 alone is insufficient: browser tests inspect complete SSR below 256 KiB and actual
 no-JavaScript controls. Google/Meta browser tests intercept submissions and vendor
 traffic. Installed price fixtures are marked test data; production price rules,
-signed calculations and unavailable-price handling remain canonical. This is a
-protected-preview redesign, not a production release or conversion-uplift claim.
+signed calculations and unavailable-price handling remain canonical. Jordan has
+approved final checks, a mobile UI audit and production release of both pages.
+This is the approved release candidate; deployment, installed schema and provider
+delivery require separate evidence. No completed release or conversion uplift is
+claimed by these source notes.
 
 The old unreferenced `LandingDesigner` teaser and its CSS are retired after both
 consumers move to the working journey. No canonical 3D functionality is retired.
