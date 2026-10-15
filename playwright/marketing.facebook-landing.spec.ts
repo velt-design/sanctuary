@@ -123,3 +123,23 @@ test('reduced-motion keyboard visitors can open and close useful answers', async
   await expect(question.locator('..')).not.toHaveAttribute('open');
   await expect(question).toBeFocused();
 });
+
+for (const route of ['/acrylic-roof-pergolas-auckland', '/auckland-outdoor-living']) {
+  for (const width of [320, 360, 390, 1440]) test(`hero containment ${route} at ${width}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: width < 760 ? 740 : 900 });
+    await page.goto(route);
+    await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+    await page.evaluate(() => document.fonts.ready);
+    const hero = page.locator('main > section').first();
+    const geometry = await hero.evaluate(el => {
+      const bounds = el.getBoundingClientRect();
+      const next = el.nextElementSibling!.getBoundingClientRect();
+      return { bottom: bounds.bottom, nextTop: next.top, children: [...el.querySelectorAll('h1, p, a')].map(child => ({ text: child.textContent, bottom: child.getBoundingClientRect().bottom })) };
+    });
+    await page.screenshot({ path: info.outputPath('hero.png'), fullPage: false });
+    await hero.screenshot({ path: info.outputPath('complete-hero.png') });
+    expect(geometry.nextTop).toBeGreaterThanOrEqual(geometry.bottom - 1);
+    for (const child of geometry.children) expect(child.bottom, child.text ?? 'hero content').toBeLessThanOrEqual(geometry.bottom - 16);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}

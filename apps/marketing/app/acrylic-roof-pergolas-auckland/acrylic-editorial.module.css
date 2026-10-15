@@ -103,7 +103,7 @@
 /* Beat the older shared acrylic-route shell without changing other landing pages. */
 @media(max-width: 900px) { :global([data-editorial-website]) .page.page[data-acrylic-editorial] { padding-top: 64px; } }
 @media(max-width: 760px) {
-  .hero { min-height: 680px; height: calc(100svh - 64px); max-height: 900px; padding-top: 1.4rem; padding-bottom: 1.5rem; }
+  .hero { min-height: max(680px, calc(100svh - 64px)); height: auto; max-height: none; padding-top: 1.4rem; padding-bottom: 1.5rem; }
   .heroImage { object-position: 48% 32%; }
   .heroContent { padding-top: 11rem; }
   .hero h1 { font-size: clamp(3.05rem, 10.5vw, 5rem); margin-bottom: 1.25rem; }

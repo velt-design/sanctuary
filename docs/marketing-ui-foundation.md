@@ -35,6 +35,9 @@ protected-preview redesign, not a production release or conversion-uplift claim.
 
 The old unreferenced `LandingDesigner` teaser and its CSS are retired after both
 consumers move to the working journey. No canonical 3D functionality is retired.
+Mobile Meta heroes retain their viewport minimum but grow with wrapped content,
+so actions and project captions remain over the photograph at short/narrow sizes.
+The Facebook browser suite asserts containment at 320/360/390 by 740 and desktop.
 
 
 ## Google Ads funnel launch candidate (15 October 2026)
