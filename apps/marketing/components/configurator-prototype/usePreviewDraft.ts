@@ -13,7 +13,7 @@ import { isLandingDesign, LANDING_DRAFT_KEY } from './draftScope';
 import { DEFAULT_ROOF_FINISH } from '@sp/geometry';
 import { inlineFunnelDraftKey, isInlineFunnelPath } from '../../lib/googleFunnel';
 
-type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; sharedEstimate?: SharedEstimate | null; selectionNotice?:string };
+type Snapshot = { draft: PreviewDraft; hasChosenDraft: boolean; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; sharedEstimate?: SharedEstimate | null; selectionNotice?:string };
 let snapshot: Snapshot | null = null;
 let activeKey = PREVIEW_DRAFT_KEY;
 const snapshots = new Map<string, Snapshot | null>();
@@ -53,11 +53,11 @@ function restore(fallback = DEFAULT_PREVIEW_DRAFT) {
         migratedSimple = draft !== null;
       } catch { /* Invalid legacy data must not prevent a new design. */ }
     }
-    snapshot = { draft: draft ?? fallback, storageAvailable: true,
+    snapshot = { draft: draft ?? fallback, hasChosenDraft: draft !== null, storageAvailable: true,
       ...(migratedSimple ? {selectionNotice:'Your saved Simple cover dimensions are loaded. Your estimate is recalculated using current pricing.'} : {}) };
   } catch {
     // Preserve in-memory editing when browser storage is blocked.
-    snapshot = { draft: snapshot?.draft ?? fallback, storageAvailable: false };
+    snapshot = { draft: snapshot?.draft ?? fallback, hasChosenDraft: snapshot?.hasChosenDraft ?? false, storageAvailable: false };
   }
 }
 
@@ -73,7 +73,7 @@ function save(draft: PreviewDraft) {
   try { window.sessionStorage.setItem(key, JSON.stringify(draft)); }
   catch { storageAvailable = false; }
   try { window.localStorage.setItem(key, JSON.stringify(draft)); } catch { /* Session storage remains usable. */ }
-  snapshot = { draft, storageAvailable };
+  snapshot = { draft, hasChosenDraft: true, storageAvailable };
 }
 
 function importLink() {
@@ -150,5 +150,6 @@ export function initializeLandingPreview(material: 'acrylic' | 'solid') {
 export function usePreviewDraft() {
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return { ...(current?.draft ?? DEFAULT_PREVIEW_DRAFT), ready: current !== null,
+    hasChosenDraft: current?.hasChosenDraft ?? false,
     storageAvailable: current?.storageAvailable ?? true, linkNotice: current?.linkNotice, sharedEstimate: current?.sharedEstimate, selectionNotice:current?.selectionNotice, setInput, setRoof };
 }

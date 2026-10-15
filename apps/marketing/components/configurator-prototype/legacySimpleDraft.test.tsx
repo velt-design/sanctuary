@@ -32,6 +32,7 @@ it('uses legacy selections only as a fallback, with newer edits and shared desig
   try {
     await React.act(async () => root.render(<Harness />));
     expect(current!.input).toEqual(handoff.input);
+    expect(current!.hasChosenDraft).toBe(true);
     expect(current!.sharedEstimate).toBeUndefined();
     expect(current!.selectionNotice).toContain('recalculated using current pricing');
     await React.act(async () => current!.setInput({...current!.input,widthMm:6500}));
@@ -50,6 +51,7 @@ it('uses legacy selections only as a fallback, with newer edits and shared desig
     window.sessionStorage.setItem(SIMPLE_COVER_HANDOFF_STORAGE_KEY,'invalid JSON');
     await restore();
     expect(current!.input).toEqual(DEFAULT_PREVIEW_DRAFT.input);
+    expect(current!.hasChosenDraft).toBe(false);
   } finally {
     await React.act(async () => root.unmount());
     window.sessionStorage.clear();

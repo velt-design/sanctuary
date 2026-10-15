@@ -4,9 +4,7 @@ import { usePreviewDraft } from '../configurator-prototype/usePreviewDraft';
 import { buildContactDesignBrief } from '../../app/contact/contactDesignBrief';
 import ContactEnquiryForm from '../../app/contact/ContactEnquiryForm';
 import { enquiryDesignSummary } from '../../app/design-enquiry/enquiryDesignSummary';
-import { inlineFunnelDraftKey, isMetaFunnelPath, GOOGLE_FUNNEL_ENQUIRE_EVENT, type InlineFunnelPath } from '../../lib/googleFunnel';
-import { PREVIEW_DRAFT_KEY } from '../configurator-prototype/previewDraft';
-import { SIMPLE_COVER_HANDOFF_STORAGE_KEY } from '../../lib/simpleCoverHandoff';
+import { isMetaFunnelPath, GOOGLE_FUNNEL_ENQUIRE_EVENT, type InlineFunnelPath } from '../../lib/googleFunnel';
 import { buildConfiguratorEnquiryHref } from '../../lib/configuratorEntry';
 import { useConsent } from '../ConsentProvider';
 import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
@@ -28,12 +26,11 @@ export default function FunnelJourney({ path, children, afterEnquiry }: { path: 
   const [attached, setAttached] = useState(false);
   const { openBanner } = useConsent();
   useEffect(() => {
-    const key = inlineFunnelDraftKey(path, PREVIEW_DRAFT_KEY);
-    try { setAttached(Boolean(sessionStorage.getItem(key) ?? localStorage.getItem(key) ?? (key === PREVIEW_DRAFT_KEY ? sessionStorage.getItem(SIMPLE_COVER_HANDOFF_STORAGE_KEY) : null))); } catch { /* Choices remain usable in memory. */ }
+    setAttached(state.hasChosenDraft);
     const include = () => setAttached(true);
     window.addEventListener(GOOGLE_FUNNEL_ENQUIRE_EVENT, include);
     return () => window.removeEventListener(GOOGLE_FUNNEL_ENQUIRE_EVENT, include);
-  }, [path]);
+  }, [path, state.hasChosenDraft]);
   const draft = { version: 1 as const, input: state.input, roof: state.roof };
   const price = useFunnelEstimate(draft, state.ready, attached);
   const context = { enquiryType: 'residential' as const, sourcePath: path, sourceComponent: 'embedded_form' as const };

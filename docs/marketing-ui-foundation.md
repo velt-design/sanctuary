@@ -24,6 +24,11 @@ only the two exact Meta residential discussion paths. Email/name/suburb remain
 required; provided phones are validated. No staging/production migration or
 customer delivery is implied by local checks.
 
+Attachment uses the canonical draft store's validated-selection provenance, not
+the presence of a storage string. Corrupt or unsupported saved drafts fall back
+to editable defaults without adding a design to a direct enquiry. Valid restored
+or legacy selections and explicit new edits remain attached.
+
 The compact Meta form retains `acrylic-form`, POST `/api/enquiry/fallback`, exact
 hidden page, enabled contact fields and submit for the existing cloud markup
 check. `data-inline-enquiry` excludes it from old acrylic form styling. The marker

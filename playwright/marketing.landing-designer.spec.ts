@@ -53,3 +53,29 @@ for (const route of routes) test(`${route}: existing local draft, modal close an
   await page.reload();
   expect(await page.evaluate(k => JSON.parse(sessionStorage.getItem(k)!), key)).toEqual(selected);
 });
+
+for (const route of routes) for (const storage of ['sessionStorage', 'localStorage'] as const) for (const raw of ['{invalid', '{"version":0,"input":{},"roof":{}}']) {
+  test(`${route}: ${storage} ${raw.startsWith('{invalid') ? 'corrupt' : 'obsolete'} draft stays direct until an explicit edit`, async ({ page }) => {
+    await page.addInitScript(({ storage, key, raw }) => window[storage].setItem(key, raw), { storage, key, raw });
+    await page.goto(route);
+    await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+    await expect(page.getByRole('radio', { name: 'Acrylic', exact: true })).toBeEnabled();
+    await expect(page.getByText('Your selected design is included', { exact: true })).toHaveCount(0);
+    const form = page.locator('form[data-inline-enquiry]');
+    await form.locator('[name=name]').fill('Synthetic draft recovery');
+    await form.locator('[name=suburb]').fill('Albany');
+    await form.locator('[name=email]').fill('recovery@example.test');
+    const payloads: any[] = [];
+    await page.route('**/api/enquiry', r => { payloads.push(r.request().postDataJSON()); return r.fulfill({ status: 503, json: { ok: false } }); });
+    await form.getByRole('button', { name: 'Send my enquiry', exact: true }).click();
+    await expect.poll(() => payloads.length).toBe(1);
+    expect(payloads[0].customerDesign).toBeUndefined();
+    const width = page.getByRole('textbox', { name: 'Width in metres' });
+    await width.fill('5.4'); await width.press('Tab');
+    await expect(page.getByText('Your selected design is included', { exact: true })).toBeVisible();
+    await form.getByRole('button', { name: 'Send my enquiry', exact: true }).click();
+    await expect.poll(() => payloads.length).toBe(2);
+    expect(payloads[1].customerDesign.input.widthMm).toBe(5400);
+    expect(payloads[1].enquiryContext.source_path).toBe(route);
+  });
+}
