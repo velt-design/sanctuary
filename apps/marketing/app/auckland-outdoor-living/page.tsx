@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import LandingDesigner from '@/components/marketing-foundation/LandingDesigner';
-import { buildConfiguratorEnquiryHref } from '@/lib/configuratorEntry';
+import FunnelJourney from '@/components/google-funnel/FunnelJourney';
+import FunnelReview from '@/components/google-funnel/FunnelReview';
+import funnelStyles from '@/components/google-funnel/funnel.module.css';
 import ArrowUpRight from '@/components/marketing-foundation/ArrowUpRight';
 import foundation from '@/components/marketing-foundation/foundation.module.css';
-import AcrylicPergolaEnquiryForm from '../acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
-import { generalRoofPreference, residentialProcessSteps } from '../pergolas-auckland/content';
+import { residentialProcessSteps } from '../pergolas-auckland/content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import styles from './outdoor-living.module.css';
 
@@ -24,17 +24,17 @@ export const metadata: Metadata = {
 };
 
 export default function AucklandOutdoorLivingPage() {
-  const designHref = buildConfiguratorEnquiryHref({ enquiryType: 'residential', sourcePath: '/auckland-outdoor-living', sourceComponent: 'hero' });
   return (
-    <main className={`${foundation.marketingPage} ${styles.page}`} data-marketing-foundation-page data-facebook-landing>
+    <main className={`${foundation.marketingPage} ${styles.page} ${funnelStyles.page}`} data-marketing-foundation-page data-facebook-landing>
       <section className={styles.hero} aria-labelledby="outdoor-living-title">
         <Image className={styles.heroImage} src="/images/project-riverhead-gable-01.jpg" alt="A timber-lined Sanctuary gable pavilion framing the garden beside a pool in Riverhead, Auckland" fill priority sizes="(max-width: 760px) 1100px, 100vw" />
         <div className={styles.heroShade} />
-        <p className={styles.heroLabel}>Sanctuary pergolas / Auckland homes</p>
+        <div className={funnelStyles.brand}><span>sanctuary<small>PERGOLAS</small></span><p>Outdoor living · Auckland</p></div>
         <div className={styles.heroContent}>
           <h1 id="outdoor-living-title">Make room<br />for life outside.</h1>
+          <p className={funnelStyles.heroService}>Custom pergolas and covered outdoor spaces, designed and installed in Auckland.</p>
           <div className={styles.heroBottom}>
-            <div><p>A place for slow mornings. Long lunches.<br />And a little more everyday living.</p><div className={styles.heroActions}><a className={styles.primaryAction} href={designHref} data-configurator-material="solid">Design your pergola <ArrowUpRight /></a><a className={styles.lightLink} href="#your-space">Tell us about your space <ArrowUpRight /></a></div></div>
+            <div><p>A place for slow mornings. Long lunches.<br />And a little more everyday living.</p><div className={styles.heroActions}><a className={styles.primaryAction} href="#your-design">Design your pergola <ArrowUpRight /></a><a className={styles.lightLink} href="#project-details">Tell us about your space <ArrowUpRight /></a></div></div>
             <Link className={styles.projectCaption} href="/projects/riverhead-gable-pavilion"><span>Built by Sanctuary</span>Riverhead, Auckland <ArrowUpRight /></Link>
           </div>
         </div>
@@ -42,13 +42,20 @@ export default function AucklandOutdoorLivingPage() {
 
       <div className={styles.proofLine}><p>Designed around your home.</p><p>Auckland based.</p><p>10-year workmanship warranty.</p></div>
 
+      <FunnelReview />
+      <FunnelJourney path="/auckland-outdoor-living" afterEnquiry={<section className={styles.questions} aria-labelledby="questions-title"><h2 id="questions-title">A few useful answers.</h2><div>
+        <details><summary>Do I need a design or measurements first?<span aria-hidden="true">+</span></summary><p>No. Start with your suburb and what you would like the space to do. Photos and rough dimensions are helpful if you have them.</p></details>
+        <details><summary>What will my pergola cost?<span aria-hidden="true">+</span></summary><p>Size, roof materials, selected options and site requirements shape the price. Your final proposal confirms measurements, installation scope and any engineering or consent requirements.</p><Link href="/pergola-cost-auckland">See what shapes the cost <ArrowUpRight /></Link></details>
+        <details><summary>Can it attach to my house?<span aria-hidden="true">+</span></summary><p>Often, but support, cladding, flashing and drainage need review. We assess the connection against your home and site.</p></details>
+        <details><summary>Can I include blinds, screens or lighting?<span aria-hidden="true">+</span></summary><p>Yes, where they suit the structure and selected products. These are optional and are confirmed in your proposal.</p></details>
+      </div></section>}>
+
       <section className={styles.introduction} aria-labelledby="your-home-title">
         <p className={styles.eyebrow}>Your home, with room to breathe</p>
         <h2 id="your-home-title">Not just a roof.<br />Your favourite place.</h2>
         <div><p>From a light-filled deck to a timber-lined outdoor lounge, the right pergola starts with your house and how you want to live.</p><p>We work through the roofline, materials and details with you, so the finished space feels like it belongs.</p><a className={styles.textLink} href="#built-in-auckland">See two different approaches <span aria-hidden="true">↓</span></a></div>
       </section>
 
-      <LandingDesigner sourcePath="/auckland-outdoor-living" material="solid" helpHref="#your-space" />
 
       <section className={styles.projects} id="built-in-auckland" aria-labelledby="built-title">
         <div className={styles.projectHeading}><p className={styles.eyebrow}>Real homes. Completed projects.</p><h2 id="built-title">At home in Auckland.</h2></div>
@@ -66,27 +73,10 @@ export default function AucklandOutdoorLivingPage() {
 
       <section className={styles.process} aria-labelledby="process-title"><header><p className={styles.eyebrow}>A considered start</p><h2 id="process-title">From your first idea<br />to an agreed plan.</h2></header><ol>{residentialProcessSteps.map((step, index) => <li key={step.title}><span>0{index + 1}</span><h3>{step.title}</h3><p>{step.copy}</p></li>)}</ol></section>
 
-      <section className={styles.enquiry} id="your-space" aria-label="Tell us about your Auckland residential project">
-        <AcrylicPergolaEnquiryForm
-          initialEnquiryType="residential"
-          sourceContext={{ enquiryType: 'residential', sourcePath: '/auckland-outdoor-living', sourceComponent: 'embedded_form' }}
-          eyebrow="Your outdoor space"
-          heading="What do you have in mind?"
-          intro="Tell us your Auckland suburb and how you’d like to use the space. Photos and rough dimensions help, but you can start without them."
-          directContact={{ intro: 'Prefer to talk?', phoneLabel: '022 854 5633', phoneHref: 'tel:+64228545633', emailLabel: 'info@sanctuarypergolas.co.nz', emailHref: 'mailto:info@sanctuarypergolas.co.nz' }}
-          submitLabel="Send enquiry"
-          messageLabel="Your project"
-          messagePlaceholder="A place for outdoor dining, a sheltered deck, somewhere to unwind…"
-          roofPreference={generalRoofPreference}
-        />
-      </section>
 
-      <section className={styles.questions} aria-labelledby="questions-title"><h2 id="questions-title">A few useful answers.</h2><div>
-        <details><summary>Do I need a design or measurements first?<span aria-hidden="true">+</span></summary><p>No. Start with your suburb and what you would like the space to do. Photos and rough dimensions are helpful if you have them.</p></details>
-        <details><summary>What will my pergola cost?<span aria-hidden="true">+</span></summary><p>Size, roof materials, selected options and site requirements shape the price. Your final proposal confirms measurements, installation scope and any engineering or consent requirements.</p><Link href="/pergola-cost-auckland">See what shapes the cost <ArrowUpRight /></Link></details>
-        <details><summary>Can it attach to my house?<span aria-hidden="true">+</span></summary><p>Often, but support, cladding, flashing and drainage need review. We assess the connection against your home and site.</p></details>
-        <details><summary>Can I include blinds, screens or lighting?<span aria-hidden="true">+</span></summary><p>Yes, where they suit the structure and selected products. These are optional and are confirmed in your proposal.</p></details>
-      </div></section>
+
+
+      </FunnelJourney>
     </main>
   );
 }

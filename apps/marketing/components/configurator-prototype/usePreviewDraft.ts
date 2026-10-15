@@ -11,14 +11,14 @@ import { legacySimpleDraft } from './legacySimpleDraft';
 import { updateDesignContinuation } from './designContinuation';
 import { isLandingDesign, LANDING_DRAFT_KEY } from './draftScope';
 import { DEFAULT_ROOF_FINISH } from '@sp/geometry';
-import { googleFunnelDraftKey, isGoogleFunnelPath } from '../../lib/googleFunnel';
+import { inlineFunnelDraftKey, isInlineFunnelPath } from '../../lib/googleFunnel';
 
 type Snapshot = { draft: PreviewDraft; storageAvailable: boolean; linkNotice?: 'loaded' | 'invalid'; sharedEstimate?: SharedEstimate | null; selectionNotice?:string };
 let snapshot: Snapshot | null = null;
 let activeKey = PREVIEW_DRAFT_KEY;
 const snapshots = new Map<string, Snapshot | null>();
 function storageKey() {
-  const key = isGoogleFunnelPath(window.location.pathname) ? googleFunnelDraftKey(window.location.pathname)
+  const key = isInlineFunnelPath(window.location.pathname) ? inlineFunnelDraftKey(window.location.pathname, PREVIEW_DRAFT_KEY)
     : isLandingDesign(window.location.pathname, window.location.search) ? LANDING_DRAFT_KEY : PREVIEW_DRAFT_KEY;
   if (key !== activeKey) {
     snapshots.set(activeKey, snapshot);
@@ -32,8 +32,8 @@ const emit = () => listeners.forEach(listener => listener());
 
 function restore(fallback = DEFAULT_PREVIEW_DRAFT) {
   const key = storageKey();
-  if (isGoogleFunnelPath(window.location.pathname)) {
-    const material = window.location.pathname === '/ads/outdoor-living' ? 'solid' : 'acrylic';
+  if (isInlineFunnelPath(window.location.pathname)) {
+    const material = ['/ads/outdoor-living', '/auckland-outdoor-living'].includes(window.location.pathname) ? 'solid' : 'acrylic';
     fallback = { ...DEFAULT_PREVIEW_DRAFT, input: { ...DEFAULT_PREVIEW_DRAFT.input, connection: 'fascia' }, roof: { ...DEFAULT_PREVIEW_DRAFT.roof, family: 'gable',
       finish: { ...DEFAULT_ROOF_FINISH, material, ...(material === 'solid' ? { ceiling: 'thermopine-150' } : {}) } } };
   }

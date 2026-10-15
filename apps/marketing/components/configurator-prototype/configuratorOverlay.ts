@@ -1,4 +1,4 @@
-import { isGoogleFunnelPath } from '../../lib/googleFunnel';
+import { isInlineFunnelPath } from '../../lib/googleFunnel';
 import { isLandingDesign, withLandingDesignScope } from './draftScope';
 import { parseEnquiryContext, buildEnquiryHref } from '../../lib/enquiryContext';
 const SOURCE_KEY = 'sanctuary.configurator-source.v1';
@@ -21,7 +21,7 @@ export function rememberConfiguratorSource(href: string) {
 
 export function designEnquiryHref() {
   const current = new URL(window.location.href);
-  if (isGoogleFunnelPath(current.pathname)) return `${current.pathname}#project-details`;
+  if (isInlineFunnelPath(current.pathname)) return `${current.pathname}#project-details`;
   let query = '';
   try { query = window.sessionStorage.getItem(SOURCE_KEY) ?? ''; } catch { /* Keep enquiry available. */ }
   if (current.searchParams.has('source_path')) query = current.searchParams.toString();

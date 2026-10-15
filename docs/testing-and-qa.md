@@ -1,5 +1,15 @@
 # Testing And QA
 
+Meta inline preview (16 October): `marketing.google-funnels.spec.ts` covers all
+four inline routes, with intercepted direct/configured submissions, retry, 3D
+return, reload and 320/390/desktop SSR/form checks. The Facebook and landing-designer
+specs cover consent/attribution, keyboard, existing local drafts and browser Back.
+`test/marketing-google-funnel-intake.test.ts` and
+`supabase/tests/marketing_meta_funnel_optional_phone.sql` extend the canonical
+four-route blank-phone contract, preserving denials, atomicity and replay.
+Disposable native PostgreSQL proves forward and rollback compatibility; these
+fixtures do not establish production delivery. Price screenshots use labelled
+synthetic data and do not approve new pricing. Provider requests are intercepted.
 Portal shared-email type dependencies are covered by
 `apps/portal/lib/sharedEmails.dependencies.test.ts` in `npm run test:portal`.
 It checks the actual cross-app preview import chain against Portal's declared

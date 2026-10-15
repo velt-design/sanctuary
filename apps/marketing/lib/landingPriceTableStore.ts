@@ -1,5 +1,5 @@
 import { LANDING_PRICE_LEASE_MS, parseLandingPriceTable, type LandingPriceTable } from './landingPriceTable';
-import { isGoogleFunnelPath } from './googleFunnel';
+import { isInlineFunnelPath } from './googleFunnel';
 import { CONFIGURATOR_PRICE_MODE_HEADER } from './configuratorPriceLease';
 
 export type LandingTableState = {
@@ -27,7 +27,7 @@ export function createLandingPriceTableStore() {
   function load(): Promise<void> {
     if (pending) return pending;
     const requestGeneration = generation, started = Date.now();
-    const funnel = isGoogleFunnelPath(window.location.pathname);
+    const funnel = isInlineFunnelPath(window.location.pathname);
     controller = new AbortController();
     const signal = controller.signal;
     pending = (async () => {

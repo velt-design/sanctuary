@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+test.use({ actionTimeout: 15000 });
+
 const path = '/auckland-outdoor-living';
 const taggedPath = `${path}?utm_source=facebook&utm_medium=paid_social&utm_campaign=auckland_residential&utm_content=riverhead&fbclid=synthetic-campaign-click`;
 
@@ -9,6 +11,7 @@ test.beforeEach(async ({ page, baseURL }) => {
     if (new URL(route.request().url()).origin !== new URL(baseURL!).origin) return route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
     return route.continue();
   });
+  await page.route('**/api/*price*', route => route.fulfill({ json: { status: 'unavailable' } }));
   await page.route('**/api/tracking-region', route => route.fulfill({ json: { policy: 'consent_required' } }));
 });
 
@@ -24,8 +27,8 @@ for (const width of [320, 390, 1440]) {
     await page.screenshot({ path: testInfo.outputPath(`campaign-${width}.png`), fullPage: true });
 
     await page.getByRole('link', { name: 'Tell us about your space', exact: true }).click();
-    const form = page.getByRole('form', { name: 'What do you have in mind?' });
-    await expect(form.getByLabel('Project type')).toHaveValue('residential');
+    const form = page.locator('form[data-inline-enquiry]');
+    await expect(form.locator('[name=enquiryType]')).toHaveValue('residential');
     let submitted: Record<string, any> | undefined;
     let attempts = 0;
     await page.route('**/api/enquiry', route => {
@@ -33,26 +36,27 @@ for (const width of [320, 390, 1440]) {
       submitted = route.request().postDataJSON();
       return route.fulfill({ status: attempts === 1 ? 503 : 200, json: { ok: attempts > 1 } });
     });
-    await form.getByRole('button', { name: 'Send enquiry', exact: true }).click();
-    await expect(page.locator('#acrylic-enquiry-error-summary')).toBeFocused();
+    await form.getByRole('button', { name: 'Send my enquiry', exact: true }).click();
+    await expect(form.getByRole('alert')).toBeFocused();
     expect(attempts).toBe(0);
-    await form.getByLabel('Name Required', { exact: true }).fill('Synthetic Campaign Test');
-    await form.getByLabel('Phone Required', { exact: true }).fill('0210000000');
-    await form.getByLabel('Email Required', { exact: true }).fill('synthetic@example.test');
-    await form.getByLabel('Project suburb').fill('Auckland');
-    await form.getByLabel('Your project').fill('Synthetic local test. Do not send.');
-    await form.getByRole('button', { name: 'Send enquiry', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Your enquiry was not sent.' })).toBeVisible();
-    await expect(form.getByLabel('Name Required', { exact: true })).toHaveValue('Synthetic Campaign Test');
+    await form.locator('[name=name]').fill('Synthetic Campaign Test');
+    await form.locator('[name=phone]').fill('0210000000');
+    await form.locator('[name=email]').fill('synthetic@example.test');
+  await form.locator('[name=suburb]').fill('Albany');
+    await form.locator('[name=suburb]').fill('Auckland');
+    await form.locator('[name=message]').fill('Synthetic local test. Do not send.');
+    await form.getByRole('button', { name: 'Send my enquiry', exact: true }).click();
+    await expect(form.getByRole('alert')).toBeVisible();
+    await expect(form.locator('[name=name]')).toHaveValue('Synthetic Campaign Test');
     const submissionId = submitted!.submissionId;
-    await form.getByRole('button', { name: 'Send enquiry', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Project brief sent.' })).toBeVisible();
+    await form.getByRole('button', { name: 'Send my enquiry', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Your enquiry has been sent.' })).toBeVisible();
     expect(submitted!.submissionId).toBe(submissionId);
     expect(submitted!.page).toBe(path);
     expect(submitted!.enquiryContext).toMatchObject({ source_path: path, enquiry_type: 'residential', source_component: 'embedded_form' });
     expect(submitted!.attribution.utm).toEqual({});
     expect(submitted!.attribution.meta).toBeUndefined();
-    await expect(form.getByRole('button', { name: 'Project brief sent', exact: true })).toBeDisabled();
+    await expect(form).toHaveCount(0);
   });
 }
 
@@ -62,19 +66,20 @@ test('accepted campaign attribution survives optional designer exploration and b
   await page.getByRole('button', { name: 'Accept all', exact: true }).click();
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem('sanctuary.campaign-context.v1'))).not.toBeNull();
   const before = await page.evaluate(() => sessionStorage.getItem('sanctuary.campaign-context.v1'));
-  await page.getByRole('link', { name: 'Design your pergola', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Explore your design in 3D', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Design your pergola' })).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('sanctuary.campaign-context.v1'))).toBe(before);
   await page.getByRole('button', { name: 'Close configurator', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Make roomfor life outside.');
   let payload: Record<string, any> | undefined;
   await page.route('**/api/enquiry', route => { payload = route.request().postDataJSON(); return route.fulfill({ json: { ok: true } }); });
-  const form = page.getByRole('form', { name: 'What do you have in mind?' });
-  await form.getByLabel('Name Required', { exact: true }).fill('Synthetic Test');
-  await form.getByLabel('Phone Required', { exact: true }).fill('0210000000');
-  await form.getByLabel('Email Required', { exact: true }).fill('synthetic@example.test');
-  await form.getByRole('button', { name: 'Send enquiry', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Project brief sent.' })).toBeVisible();
+  const form = page.locator('form[data-inline-enquiry]');
+  await form.locator('[name=name]').fill('Synthetic Test');
+  await form.locator('[name=phone]').fill('0210000000');
+  await form.locator('[name=email]').fill('synthetic@example.test');
+  await form.locator('[name=suburb]').fill('Albany');
+  await form.getByRole('button', { name: 'Send my enquiry', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your enquiry has been sent.' })).toBeVisible();
   expect(payload!.attribution.utm).toMatchObject({ utm_source: 'facebook', utm_medium: 'paid_social', utm_campaign: 'auckland_residential', utm_content: 'riverhead' });
   expect(payload!.attribution.landingPage).toMatch(/\/auckland-outdoor-living$/);
   expect(payload!.attribution.meta.fbc).toContain('synthetic-campaign-click');
@@ -95,13 +100,13 @@ test('no-JavaScript visitors retain the canonical fallback and explicit campaign
   const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await page.goto(`${baseURL}${path}`);
-  const form = page.getByRole('form', { name: 'What do you have in mind?' });
+  const form = page.locator('form[data-inline-enquiry]');
   await expect(form).toHaveAttribute('action', '/api/enquiry/fallback');
   await expect(form).toHaveAttribute('method', 'post');
   await expect(form.locator('input[name="page"]')).toHaveValue(path);
-  await expect(form.getByLabel('Name Required', { exact: true })).toHaveAttribute('required', '');
-  await expect(form.getByLabel('Photos, plans or sketches')).toBeDisabled();
-  await expect(form.getByRole('button', { name: 'Send enquiry' })).toBeEnabled();
+  await expect(form.locator('[name=name]')).toHaveAttribute('required', '');
+  await expect(form.locator('[name=phone]')).not.toHaveAttribute('required');
+  await expect(form.getByRole('button', { name: 'Send my enquiry' })).toBeEnabled();
   await context.close();
 });
 

@@ -393,14 +393,14 @@ describe('POST /api/enquiry attribution', () => {
     const response=await send(payload);expect(response.status).toBe(200);
   });
 
-  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas'])('accepts blank phone for direct and configured %s with all other contact validation intact', async page => {
+  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'])('accepts blank phone for direct and configured %s with all other contact validation intact', async page => {
     const { POST } = await import('./route');
     const base = { submissionId: SUBMISSION_ID, enquiryType: 'residential', name: 'Alex', email: 'alex@example.test', phone: '', suburb: 'Albany', requestType: 'project-discussion', page };
     const send = (body: unknown) => POST(new Request('http://localhost/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
     for (const field of ['name', 'email', 'suburb']) expect((await send({ ...base, [field]: '' })).status).toBe(422);
     expect((await send({ ...base, phone: 'bad' })).status).toBe(422);
     expect((await send({ ...base, email: 'invalid' })).status).toBe(422);
-    for (const existing of ['/contact', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland', '/ads/acrylic-pergolas-extra']) {
+    for (const existing of ['/contact', '/auckland-outdoor-living-extra', '/acrylic-roof-pergolas-auckland/', '/ads/acrylic-pergolas-extra']) {
       expect((await send({ ...base, page: existing })).status).toBe(422);
     }
     expect((await send({ ...base, enquiryType: 'commercial' })).status).toBe(422);
@@ -416,14 +416,14 @@ describe('POST /api/enquiry attribution', () => {
     }
   });
 
-  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas'])('accepts a native blank-phone %s form through the actual fallback and governed intake', async page => {
+  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'])('accepts a native blank-phone %s form through the actual fallback and governed intake', async page => {
     const { POST } = await import('./fallback/route');
     const { client, db } = makeDb(); h.createClient.mockReturnValue(client);
     const base = { enquiryType: 'residential', name: 'Alex', email: 'alex@example.test', phone: '', suburb: 'Albany', page };
     const send = (body: Record<string, string>) => POST(new Request('http://localhost/api/enquiry/fallback', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'http://localhost' }, body: new URLSearchParams(body) }));
     expect((await send({ ...base, phone: 'bad' })).status).toBe(422);
     expect((await send({ ...base, suburb: '' })).status).toBe(422);
-    expect((await send({ ...base, page: '/auckland-outdoor-living' })).status).toBe(422);
+    expect((await send({ ...base, page: '/pergolas-auckland' })).status).toBe(422);
     expect(db.enquiry_requests).toHaveLength(0);
     const response = await send(base);
     expect(response.status).toBe(303);
