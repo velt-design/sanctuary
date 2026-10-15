@@ -105,6 +105,8 @@ it.each([
       initialEnquiryType="residential" initialIntent="help"
       initialContext={{enquiryType:'residential',sourcePath:page,sourceComponent:'embedded_form'}}/>));
     await fill();await submit();
+    // React act does not await the Web Crypto digest used by the Ads handoff.
+    await vi.waitFor(()=>expect(layer).toHaveLength(1));
     const payload=JSON.parse(network.mock.calls[0][1].body);
     expect(payload.phone).toBe('');expect(payload.page).toBe(page);expect(Boolean(payload.customerDesign)).toBe(configured);
     expect(reads).toEqual([{sha256_email_address:createHash('sha256').update('fixture@example.test').digest('hex')}]);
