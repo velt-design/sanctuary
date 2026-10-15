@@ -11,7 +11,7 @@
 .heroBottom { display: flex; align-items: end; justify-content: space-between; gap: 2rem; }
 .heroBottom p { margin: 0 0 1.5rem; font-size: clamp(.95rem, 1.25vw, 1.1rem); line-height: 1.6; }
 .primaryAction, .outlineAction { display: inline-flex; align-items: center; justify-content: space-between; gap: 2.5rem; min-height: 54px; padding: .9rem 1.15rem; font-size: .85rem; font-weight: 500; text-decoration: none; }
-.primaryAction { background: var(--color-surface-elevated); color: var(--color-text-primary); }
+.hero .primaryAction { background: var(--color-surface-elevated); color: var(--color-text-primary); }
 .primaryAction svg, .outlineAction svg { flex-shrink: 0; }
 .projectCaption { display: grid; grid-template-columns: 1fr auto; gap: .4rem 1.5rem; padding-top: .8rem; border-top: 1px solid rgba(255,255,255,.6); color: #fff; font-size: .75rem; text-decoration: none; }
 .projectCaption > span { grid-column: 1 / -1; font-size: .7rem; }
@@ -62,14 +62,14 @@
 .questions details a { display: inline-flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; min-height: 44px; font-size: .85rem; color: var(--color-text-primary); text-underline-offset: 5px; }
 @media (max-width: 900px) { .page { padding-top: 64px; } }
 @media (max-width: 760px) {
-  .hero { min-height: 650px; height: calc(100svh - 64px); max-height: 900px; padding-top: 1.5rem; padding-bottom: 1.5rem; }
+  .hero { min-height: max(650px, calc(100svh - 64px)); height: auto; max-height: none; padding-top: 1.5rem; padding-bottom: 1.5rem; }
   .heroImage { object-position: 52% 38%; }
   .heroLabel { font-size: .65rem; }
   .heroContent { padding-top: 14rem; }
   .hero h1 { font-size: clamp(3.25rem, 11.8vw, 5rem); margin-bottom: 1.25rem; }
   .heroBottom { display: block; }
   .heroBottom p { font-size: .9rem; margin-bottom: 1.25rem; }
-  .primaryAction { width: 100%; max-width: 24rem; }
+  .hero .primaryAction { width: 100%; max-width: 24rem; }
   .projectCaption { display: flex; align-items: center; gap: .6rem; margin-top: 1.25rem; font-size: .65rem; }
   .projectCaption > span { font-size: .65rem; }
   .projectCaption svg { width: 14px; margin-left: auto; }

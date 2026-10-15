@@ -1,4 +1,6 @@
-/* Google funnel routes only. Existing campaign pages keep their own styles. */
+/* Shared inline design/enquiry composition; each route retains its own story. */
+.designerLink { display:flex; align-items:center; justify-content:space-between; gap:1rem; min-height:48px; font-size:14px; text-underline-offset:4px; }
+.designerLink svg { width:18px; height:18px; }
 .page{
   --font-display:'Instrument Sans Variable','Instrument Sans',sans-serif;--font-body:'Inter Variable','Inter',sans-serif;background:#eeeee9;color:#20251f;font-family:var(--font-body);padding:0!important;
 }

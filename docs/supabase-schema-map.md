@@ -751,6 +751,15 @@ and `supabase/tests/marketing_google_funnel_optional_phone.sql`. Installation in
 shared staging or production is a separate reviewed step; local passage does not
 establish live acceptance.
 
+`20261016000001_marketing_meta_funnel_optional_phone.sql` extends only that exact
+page predicate to `/auckland-outdoor-living` and
+`/acrylic-roof-pergolas-auckland`. All four routes require residential discussion
+intent, email and suburb for a design-free blank-phone enquiry. Other routes and
+audiences retain their existing rule. `marketing_meta_funnel_optional_phone.sql`
+checks exact paths, service-only execution, contact deduplication, immutable
+replay and atomic failure with rollback. Shared installation remains a separately
+reviewed release step; local synthetic tests never send customer messages.
+
 `20260914062001_marketing_enquiry_durable_delivery.sql` introduces
 `private.marketing_enquiry_deliveries`, with no browser or direct service-role
 table grants. It retains the exact rendered message (up to 16 MiB), an outbox

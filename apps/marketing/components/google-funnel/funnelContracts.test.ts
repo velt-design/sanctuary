@@ -7,7 +7,7 @@ import { buildCustomerBrief } from '../../lib/enquiryDesign';
 import { funnelPriceState } from './FunnelEstimate';
 import { clarityPageAllowed } from '../../lib/clarityTracking';
 import { shouldHideMarketingHeader, shouldHideMarketingFooter } from '../marketingRouteChrome';
-import { GOOGLE_FUNNEL_PATHS, googleFunnelDraftKey } from '../../lib/googleFunnel';
+import { GOOGLE_FUNNEL_PATHS, META_FUNNEL_PATHS, googleFunnelDraftKey, inlineFunnelDraftKey } from '../../lib/googleFunnel';
 import { getEnquiryRouteContext } from '../../lib/enquiryContext';
 
 it('keeps tint through parser, shared design and the actual server enquiry brief', () => {
@@ -33,7 +33,7 @@ it('uses table estimates only for the complete standard configuration', () => {
   expect(funnelPriceState({ ...retainedDefaultCeiling, roof: { ...retainedDefaultCeiling.roof, finish: { ...retainedDefaultCeiling.roof.finish, ceiling: 'cedar-100' } } }, true).resume).toBe(true);
 });
 it('isolates exact advertising routes, residential attribution and page chrome', () => {
-  for (const route of GOOGLE_FUNNEL_PATHS) {
+  for (const route of [...GOOGLE_FUNNEL_PATHS, ...META_FUNNEL_PATHS]) {
     expect(shouldHideMarketingHeader(route)).toBe(true);
     expect(shouldHideMarketingFooter(route)).toBe(true);
     expect(clarityPageAllowed(route, 'utm_source=google')).toBe(true);
@@ -41,8 +41,9 @@ it('isolates exact advertising routes, residential attribution and page chrome',
     expect(getEnquiryRouteContext(route)).toMatchObject({ enquiryType: 'residential' });
   }
   expect(googleFunnelDraftKey(GOOGLE_FUNNEL_PATHS[0])).not.toBe(googleFunnelDraftKey(GOOGLE_FUNNEL_PATHS[1]));
-  for (const route of ['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland', '/ads/other']) {
+  for (const route of ['/pergolas-auckland', '/ads/other']) {
     expect(shouldHideMarketingHeader(route)).toBe(false);
     expect(shouldHideMarketingFooter(route)).toBe(false);
   }
+  for (const route of META_FUNNEL_PATHS) expect(inlineFunnelDraftKey(route, 'existing-customer-key')).toBe('existing-customer-key');
 });

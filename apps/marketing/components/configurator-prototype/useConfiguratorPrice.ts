@@ -2,14 +2,14 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import type { ConfiguratorPublicPrice } from '../../lib/configuratorPublicPrice';
 import type { PreviewDraft } from './previewDraft.types';
-import { isGoogleFunnelPath } from '../../lib/googleFunnel';
+import { isInlineFunnelPath } from '../../lib/googleFunnel';
 import { configuratorPriceStore } from '../../lib/configuratorPriceStore';
 
 const serverPrice = () => null;
 
 export function useConfiguratorPrice(draft: PreviewDraft, ready: boolean) {
   const key = JSON.stringify(draft), [attempt, setAttempt] = useState(0);
-  const funnel = typeof window !== 'undefined' && isGoogleFunnelPath(window.location.pathname);
+  const funnel = typeof window !== 'undefined' && isInlineFunnelPath(window.location.pathname);
   const subscribedKey = funnel && ready ? key : null;
   const subscribe = useCallback((listener: () => void) => configuratorPriceStore.subscribe(subscribedKey, listener), [subscribedKey]);
   const snapshot = useCallback(() => configuratorPriceStore.getSnapshot(subscribedKey), [subscribedKey]);

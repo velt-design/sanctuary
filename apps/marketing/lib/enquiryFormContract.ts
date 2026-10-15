@@ -4,7 +4,7 @@ import {
   isValidEnquiryEmail,
 } from './enquiryContactValidation';
 import type { EnquiryAudience, EnquiryContext } from './enquiryContext';
-import { isGoogleFunnelEnquiry } from './googleFunnel';
+import { isInlineFunnelEnquiry } from './googleFunnel';
 import {
   commercialProfessionalPathLabels,
   projectDirectionLabels,
@@ -50,7 +50,7 @@ export function validateEnquiryForm(formData: FormData, files: File[], configure
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
-  const funnel = isGoogleFunnelEnquiry(enquiryType, String(formData.get('page') ?? ''));
+  const funnel = isInlineFunnelEnquiry(enquiryType, String(formData.get('page') ?? ''));
   if (formData.get('requestType') === 'site-measure' && !String(formData.get('suburb') ?? '').trim()) {
     errors.suburb = 'Enter the site address for your measure request.';
   }

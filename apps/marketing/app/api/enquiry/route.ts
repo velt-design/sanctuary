@@ -1,5 +1,5 @@
 import { parsePreviewDraft } from '../../../components/configurator-prototype/previewDraft';
-import { isGoogleFunnelEnquiry } from '../../../lib/googleFunnel';
+import { isInlineFunnelEnquiry } from '../../../lib/googleFunnel';
 import { prepareEnquiryEmail } from '../../../lib/enquiryEmailPreparation';
 import { normalizeEnquiryProjectPreferences } from '../../../lib/enquiryProjectPreferences';
 import { normalizeAdvertisingDisclosure } from '../../../lib/advertisingDisclosure';
@@ -188,7 +188,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Name is required' }, { status: 422 });
   }
   const configuredEnquiry = enquiryType === 'residential' && getField('requestType') === 'project-discussion' && parsePreviewDraft(payload.customerDesign) !== null;
-  const funnelEnquiry = isGoogleFunnelEnquiry(enquiryType, getField('page'));
+  const funnelEnquiry = isInlineFunnelEnquiry(enquiryType, getField('page'));
   if (!phone && !configuredEnquiry && !funnelEnquiry) {
     return NextResponse.json({ ok: false, error: 'Phone is required' }, { status: 422 });
   }
