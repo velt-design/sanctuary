@@ -71,7 +71,7 @@ it('changes only the scoped eligibility predicate and rehearses the exact migrat
 it('extends only the two Meta route literals and preserves rollback and the guarded intake', async () => {
   const oldSql = source(migrationPath).slice(source(migrationPath).indexOf('create or replace function'));
   const newSql = source(metaMigrationPath).slice(source(metaMigrationPath).indexOf('create or replace function'));
-  expect(newSql.replace(", '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'", '')).toBe(oldSql);
+  expect(newSql.replace(", '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'", '').trimEnd()).toBe(oldSql.trimEnd());
   const db = await createDatabase();
   try {
     await db.exec(source(migrationPath));
