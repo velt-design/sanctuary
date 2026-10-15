@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-15 - Declare shared email type dependencies in scoped Portal builds
+
+Portal's existing email-preview fixture imports reach Marketing's preview draft
+types and the canonical `@sp/configurator/core` tint contract. Root `npm ci`
+linked that workspace, so CI passed while Portal's scoped hosted installation
+failed TypeScript resolution. Declare the existing workspace in Portal's package
+manifest and lock record; keep the type canonical and the typecheck strict. The
+focused shared-email dependency test walks that actual import chain and includes
+an undeclared-package negative control. Owner: `testing-and-qa.md`.
+
 ## 2026-10-15 - Verify public form requirements through the database boundary
 
 Making phone optional in client/API checks did not change the canonical intake

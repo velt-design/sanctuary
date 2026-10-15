@@ -1,5 +1,11 @@
 # Testing And QA
 
+Portal shared-email type dependencies are covered by
+`apps/portal/lib/sharedEmails.dependencies.test.ts` in `npm run test:portal`.
+It checks the actual cross-app preview import chain against Portal's declared
+workspace packages, including a missing-package negative control. Root installs
+alone do not prove a scoped hosted app can resolve its transitive types.
+
 Meta credential renewal candidate: `npx vitest run
 apps/portal/lib/marketingIntegrations/metaCredentials test/meta-credentials-db.test.ts
 test/meta-sales-source.test.ts apps/portal/lib/marketingIntegrations/meta/http.test.ts

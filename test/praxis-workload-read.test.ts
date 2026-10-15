@@ -24,6 +24,14 @@ async function seed(size=1,patch:Record<string,unknown>={}) {
   await db.query(`insert into praxis_reporting.workload_v1 select ('20000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,('30000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,$1::jsonb,0 from generate_series(1,$2) i`,[JSON.stringify(payload),size]);
 }
 describe('recorded manual workload',()=>{
+  it('excludes the two exact test projects while retaining other synthetic-looking work',async()=>{
+    await seed(3);
+    await db.exec(`update praxis_reporting.workload_v1 set project_id='10c5db1a-602c-4f0c-8193-855b186215bb' where right(work_item_id::text,12)='000000000002';
+      update praxis_reporting.workload_v1 set project_id='9d98b82b-679a-4ecb-8265-9fa05eaa78ef' where right(work_item_id::text,12)='000000000003'`);
+    const result=await readPraxisWorkload(query,config,'test');
+    expect(result.counts.open).toBe(1);expect(result.coverageCounts.excludedTestProjects).toBe(2);
+    expect((await db.query('select * from praxis_reporting.workload_v1')).rows).toHaveLength(3);
+  });
   it('returns complete counts independent of details and authoritative owner labels',async()=>{
     await seed(125);const result=await readPraxisWorkload(query,config,'test');
     expect(result.counts).toEqual({open:125,blocked:0,completed:0,inconsistent:0});

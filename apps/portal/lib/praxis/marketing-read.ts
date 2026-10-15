@@ -1,10 +1,9 @@
+import { REPORTING_TEST_PROJECT_IDS, REPORTING_TEST_ENQUIRY_IDS } from './reportingTestRecords';
 import 'server-only';
 import { PraxisConnectorError, withPraxisReadTransaction, type ConnectorConfig, type PraxisServerDependencies } from './server';
 
 type Period = { start: string; end: string };
 export type MarketingQuery = { period: Period; comparison: Period | null };
-const TEST_ENQUIRY = 'f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70';
-const TEST_PROJECT = '10c5db1a-602c-4f0c-8193-855b186215bb';
 const labels = ['Enquiries received', 'Quotes created', 'Quotes sent', 'Quotes accepted'] as const;
 const invalid = () => new PraxisConnectorError(400, 'INVALID_QUERY', 'Choose 1–90 completed days and an optional equal earlier comparison.');
 function date(value: string | null): string {
@@ -49,7 +48,7 @@ export async function readPraxisMarketing(query: MarketingQuery, config: Connect
         union all select resource, id, project_id, parent_id, payload, omission_count from praxis_reporting.quotes_v1
         union all select resource, id, project_id, parent_id, payload, omission_count from praxis_reporting.quote_versions_v1
       ), marked as materialized (
-        select *, (id = ${TEST_ENQUIRY}::uuid or project_id = ${TEST_PROJECT}::uuid) is true as excluded,
+        select *, (id = any(${REPORTING_TEST_ENQUIRY_IDS}::uuid[]) or project_id = any(${REPORTING_TEST_PROJECT_IDS}::uuid[])) is true as excluded,
           ((payload->>'createdAt')::timestamptz at time zone 'Pacific/Auckland')::date as created_day,
           ((payload->>'sentAt')::timestamptz at time zone 'Pacific/Auckland')::date as sent_day,
           ((payload->>'acceptedAt')::timestamptz at time zone 'Pacific/Auckland')::date as accepted_day

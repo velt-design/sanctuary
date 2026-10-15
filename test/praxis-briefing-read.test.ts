@@ -114,7 +114,9 @@ describe('complete compact briefing source SQL',()=>{
   });
   it('retains archived/cancelled current records and excludes only established test records',async()=>{
     await db.exec(`update praxis_reporting.projects_v1 set payload=jsonb_set(payload,'{archivedAt}','"2026-09-20T00:00:00Z"');update praxis_reporting.workload_v1 set payload=jsonb_set(payload,'{status}','"CANCELLED"');
-    insert into praxis_reporting.enquiry_requests_v1(id,payload) values('f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70','{}');`);
+    insert into praxis_reporting.enquiry_requests_v1(id,payload) values('f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70','{}'),('fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118','{}');
+    insert into praxis_reporting.projects_v1(id,payload) values('9d98b82b-679a-4ecb-8265-9fa05eaa78ef','{}');
+    insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload) values('${id(405)}','9d98b82b-679a-4ecb-8265-9fa05eaa78ef','{}');`);
     const value=await read();expect(value.domains.projects).toMatchObject({status:'available',count:1});expect(value.domains.manualWork).toMatchObject({status:'available',count:1});expect(value.domains.enquiries).toMatchObject({status:'available',count:1});
   });
   it.each(['omission','duplicate','future'])('marks invalid entire family unavailable: %s',async kind=>{

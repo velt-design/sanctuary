@@ -1,3 +1,4 @@
+import { REPORTING_TEST_PROJECT_IDS } from './reportingTestRecords';
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { projectOwnerOption } from '../projects/commandCentre/projectOwners';
@@ -87,7 +88,7 @@ export async function readPraxisWorkload(query:WorkloadQuery,config:ConnectorCon
           ((payload->>'completedAt')::timestamptz at time zone 'Pacific/Auckland')::date between ${query.start}::date and ${query.end}::date as in_period,
           jsonb_build_object('kind',case when payload->>'assigneeUserId' is not null then 'staff' when payload->>'ownerKey' is not null then 'projectOwner' else 'unassigned' end,
             'key',coalesce(payload->>'assigneeUserId',payload->>'ownerKey'),'sourceName',case when payload->>'assigneeUserId' is not null then payload->>'assigneeName' else null end) as identity
-        from source where project_id <> '10c5db1a-602c-4f0c-8193-855b186215bb'::uuid
+        from source where project_id <> all(${REPORTING_TEST_PROJECT_IDS}::uuid[])
       ), eligible as materialized (
         select *,((payload->>'dueAt')::timestamptz at time zone 'Pacific/Auckland')::date < (transaction_timestamp() at time zone 'Pacific/Auckland')::date as past_due,
           case when status='DONE' then 'completed' when state in ('CLOSED','ARCHIVED') then 'inconsistent'
@@ -131,7 +132,7 @@ export async function readPraxisWorkload(query:WorkloadQuery,config:ConnectorCon
           'excludedNonManualItems',count(*) filter(where work_item_id is not null and not manual),
           'excludedRetiredManualItems',count(*) filter(where manual and retired),'cancelledManualItems',count(*) filter(where manual and not retired and status='CANCELLED'),
           'completedOutsidePeriod',count(*) filter(where manual and not retired and status='DONE' and not in_period),
-          'excludedTestProjects',(select count(distinct project_id) from source where project_id='10c5db1a-602c-4f0c-8193-855b186215bb'::uuid)) from records) as coverage,
+          'excludedTestProjects',(select count(distinct project_id) from source where project_id = any(${REPORTING_TEST_PROJECT_IDS}::uuid[]))) from records) as coverage,
         coalesce((select jsonb_agg(jsonb_build_object('workItemId',work_item_id,'projectId',project_id,'projectName',payload->>'projectName',
           'title',payload->>'title','status',status,'bucket',bucket,'projectState',state,'identity',identity,'dueAt',payload->>'dueAt',
           'completedAt',payload->>'completedAt','completedBy',payload->>'completedBy','recordedAt',payload->>'recordedAt') order by bucket,(payload->>'dueAt')::timestamptz,work_item_id) from limited),'[]') as items

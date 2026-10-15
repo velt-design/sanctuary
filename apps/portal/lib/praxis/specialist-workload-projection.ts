@@ -1,3 +1,4 @@
+import { REPORTING_TEST_PROJECT_IDS } from './reportingTestRecords';
 import {z} from 'zod';
 import {DESIGN_PACKAGE_DESIGNERS} from '../designPackages/designers';
 import {PraxisConnectorError} from './server';
@@ -33,7 +34,7 @@ export function buildSpecialistWorkload(raw:readonly unknown[],query:SpecialistQ
       if(Date.parse(p.recordedAt)>Date.parse(asOf))throw unavailable();
       if(p.projectPresent!==Boolean(p.projectName))throw unavailable();
       const cov=covered[domain],q=qualities[domain];cov.totalRecords++;
-      if(source.project_id==='10c5db1a-602c-4f0c-8193-855b186215bb'){cov.excludedTestRecords++;continue;}
+      if(REPORTING_TEST_PROJECT_IDS.includes(source.project_id)){cov.excludedTestRecords++;continue;}
       const designer=DESIGN_PACKAGE_DESIGNERS.find(d=>d.id===p.identityKey);
       const name=domain==='installation'?p.identityName:designer?.name??null;
       const identity:SpecialistIdentity={kind:domain==='installation'?'crew':'designer',key:p.identityKey,

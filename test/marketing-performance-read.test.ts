@@ -4,6 +4,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { reportSchema, summarize, filteredRows, validPeriod, aucklandDay, UNKNOWN_SOURCE } from '../apps/portal/lib/marketingPerformance/contract';
 import { hubSchema } from '../apps/portal/lib/marketingPerformance/hub';
+import { installReportingTestExclusions } from './fixtures/reporting-test-exclusion-db';
 
 const db = new PGlite();
 const id = (n: number) => `11111111-1111-4111-8111-${String(n).padStart(12, '0')}`;
@@ -35,6 +36,7 @@ beforeAll(async () => {
   await db.exec(sql('20260922000002_marketing_performance_read'));
   await db.exec(sql('20260922000003_marketing_performance_developer_access'));
   await db.exec(sql('20261008000001_marketing_google_ads_source'));
+  await installReportingTestExclusions(db);
   await db.query('insert into auth.users values ($1,$2,now()),($3,$4,now()),($5,$2,null)',
     [id(90),'jordan@sanctuarypergolas.co.nz',id(93),'other@example.test',id(94)]);
   const payload = { requestType: 'project-discussion', customerBrief: { version: 1, audience: 'residential', design: { input: {}, roof: {} } },
@@ -121,8 +123,7 @@ it('reads the whole portfolio separately from enquiry cohorts and dated sales ac
     insert into projects(id,name,created_at,pipeline_stage,archived_at) values ('${id(3)}','Synthetic legacy settled','2024-01-01','PAID',now());
     insert into project_payment_entries values ('${id(70)}','${id(3)}','PAYMENT',25000,'2026-08-31T12:00:00Z',null),('${id(71)}','${id(3)}','REVERSAL',-25000,'2026-09-02T00:00:00Z','${id(70)}');
   `);
-  await db.exec(sql('20260922070001_marketing_sales_hub'));
-  await db.exec(sql('20261008000001_marketing_google_ads_source'));
+  // Current guarded reader definitions were installed in beforeAll.
   const get=async(start='2026-09-01',end='2026-09-22')=>hubSchema.parse((await db.query<{value:unknown}>('select marketing_sales_hub_read($1,$2) value',[start,end])).rows[0].value);
   await db.exec(`set role authenticated; set test.uid='${id(93)}'`);
   await expect(get()).rejects.toThrow('Developer access');
@@ -180,6 +181,28 @@ it('classifies saved Google identifiers consistently without rewriting evidence 
   await db.exec('rollback to permission_probe; reset role');
   expect((await db.query('select id,raw_payload,utm from enquiry_requests order by id')).rows).toEqual(before);
   await db.exec('rollback');
+});
+it('excludes exact launch records while retaining audit portfolio and unrelated test-looking receipts', async () => {
+  await db.exec('reset role; begin');
+  try {
+    const before = await read();
+    const launchProject = '9d98b82b-679a-4ecb-8265-9fa05eaa78ef', launchEnquiry = 'fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118';
+    await db.query('insert into projects(id,name) values ($1,$2),($3,$2)', [launchProject, 'Synthetic verification', '10c5db1a-602c-4f0c-8193-855b186215bb']);
+    await db.exec(`insert into enquiry_requests values
+      ('${launchEnquiry}',null,'2026-09-04','{}','{}'),
+      ('${id(401)}','${launchProject}','2026-09-04','{}','{}'),
+      ('${id(402)}','10c5db1a-602c-4f0c-8193-855b186215bb','2026-09-04','{}','{}'),
+      ('${id(403)}',null,'2026-09-04','{"name":"TEST ONLY synthetic verification"}','{}');
+      insert into project_payment_entries values ('${id(404)}','${launchProject}','PAYMENT',100,'2026-09-04',null)`);
+    const hub = hubSchema.parse((await db.query<{ value: unknown }>("select marketing_sales_hub_read('2026-09-01','2026-09-22') value")).rows[0].value);
+    expect(hub.enquiries.excludedTests).toBe(before.excludedTests + 3);
+    expect(hub.enquiries.rows).toHaveLength(before.rows.length + 1);
+    expect(hub.enquiries.rows.find(row => row.enquiryId === id(403))).toMatchObject({ projectId: null });
+    expect(hub.projects.find(project => project.id === launchProject)).toMatchObject({ knownTest: true, receiptCount: 1 });
+    expect(hub.projects.find(project => project.id === '10c5db1a-602c-4f0c-8193-855b186215bb')?.knownTest).toBe(true);
+    expect(hub.events.some(event => event.projectId === launchProject)).toBe(false);
+    expect((await db.query('select id from enquiry_requests where id=$1', [launchEnquiry])).rows).toHaveLength(1);
+  } finally { await db.exec('rollback'); }
 });
 it('fails closed above the read bound instead of displaying truncated totals', async () => {
   await db.exec('reset role');

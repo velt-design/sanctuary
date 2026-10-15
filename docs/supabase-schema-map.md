@@ -1,5 +1,12 @@
 # Supabase Schema Map
 
+`20261015000002_launch_verification_reporting_exclusion.sql` extends only the
+four existing marketing performance, sales hub, commercial performance and
+campaign-outcome read functions with exact confirmed launch-verification IDs.
+Baseline body hashes guard application; access, limits, null handling and older
+test exclusions remain. Audit rows and conversion-source/dispatch owners are
+unchanged. See `marketing-performance.md` for reporting ownership.
+
 Meta renewal candidate `20261014000005_meta_credential_renewal.sql` adds private
 per-capability credentials, leases and append-only metadata events. No token or
 app secret is stored in SQL. `meta_credential_command` is the sole service-role
