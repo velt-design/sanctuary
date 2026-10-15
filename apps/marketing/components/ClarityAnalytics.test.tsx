@@ -75,3 +75,59 @@ it('contains lifecycle vendor exceptions during grant, update and withdrawal', a
   await expect(render()).resolves.toBeUndefined();
   expect(target.sanctuaryClarityActive).toBe(false);
 });
+
+const metaPaths = ['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'];
+const campaignQuery = 'utm_source=facebook&utm_medium=paid_social&utm_campaign=99200&utm_content=99401&utm_term=99300';
+const campaignId = '12345678901234567890'; // Deliberately exceeds JS safe integer precision.
+it.each(metaPaths)('allows one bounded public campaign ID on %s without widening private routes', path => {
+  expect(clarityPageAllowed(path, campaignQuery)).toBe(true);
+  expect(clarityPageAllowed(path, `${campaignQuery}&utm_id=${campaignId}`)).toBe(true);
+  for (const suffix of ['utm_id=', 'utm_id=0', 'utm_id=0123', 'utm_id=-1', 'utm_id=1.2', 'utm_id=1e3',
+    'utm_id=%20' + campaignId, 'utm_id=private%40example.test', 'utm_id=' + '1'.repeat(21),
+    `utm_id=${campaignId}&utm_id=${campaignId}`, `utm_id=${campaignId}&utm_id=`,
+    `utm_id=private&utm_id=${campaignId}`, `utm_id=${campaignId}&%75tm_id=99200`,
+    `utm_id=${campaignId}&email=private%40example.test`, `utm_id=${campaignId}&utm_private=secret`]) {
+    expect(clarityPageAllowed(path, `${campaignQuery}&${suffix}`), suffix).toBe(false);
+  }
+  expect(clarityPageAllowed('/quote/private-token', `utm_id=${campaignId}`)).toBe(false);
+});
+it.each(metaPaths)('keeps campaign-ID SDK lifecycle behind consent and stops on unsafe navigation on %s', async path => {
+  state.path = path; state.search = `${campaignQuery}&utm_id=${campaignId}`;
+  const network = vi.fn(() => { throw new Error('No vendor requests in fixture'); }); vi.stubGlobal('fetch', network);
+  await render(); expect(document.querySelector('#sp-clarity')).toBeNull();
+  state.decision = true; state.marketing = true;
+  await render(); expect(document.querySelector('#sp-clarity')).toBeNull();
+  state.analytics = true; state.marketing = false;
+  await render(); expect(document.querySelectorAll('#sp-clarity')).toHaveLength(1);
+  expect(target.clarity?.q).toContainEqual(['consentv2', { analytics_Storage: 'granted', ad_Storage: 'denied' }]);
+  expect(target.sanctuaryClarityActive).toBe(true);
+  // Simulate the installed SDK; jsdom does not fetch external scripts.
+  const sdk = vi.fn(); target.clarity = sdk;
+  state.analytics = false; await render();
+  expect(sdk).toHaveBeenCalledWith('consentv2', { analytics_Storage: 'denied', ad_Storage: 'denied' });
+  expect(sdk).toHaveBeenLastCalledWith('stop'); expect(target.sanctuaryClarityActive).toBe(false);
+  state.analytics = true; await render(); expect(sdk).toHaveBeenLastCalledWith('start');
+  state.search += '&email=private%40example.test'; await render();
+  expect(sdk).toHaveBeenLastCalledWith('stop'); expect(target.sanctuaryClarityActive).toBe(false);
+  state.search = `${campaignQuery}&utm_id=${campaignId}`; await render();
+  expect(sdk).toHaveBeenLastCalledWith('start');
+  state.path = '/quote/private-token'; await render();
+  expect(sdk).toHaveBeenLastCalledWith('stop'); expect(target.sanctuaryClarityActive).toBe(false);
+  expect(document.querySelectorAll('#sp-clarity')).toHaveLength(1); expect(network).not.toHaveBeenCalled();
+  expect(JSON.stringify(sdk.mock.calls)).not.toMatch(/12345678901234567890|private%40|99200|99401/);
+});
+it.each(metaPaths)('does not install the SDK on initially ambiguous campaign IDs on %s', async path => {
+  state.path = path; state.decision = state.analytics = true;
+  state.search = `${campaignQuery}&utm_id=${campaignId}&utm_id=${campaignId}`;
+  await render(); expect(document.querySelector('#sp-clarity')).toBeNull(); expect(target.clarity).toBeUndefined();
+  state.search = `${campaignQuery}&utm_id=${campaignId}&unknown=private`;
+  await render(); expect(document.querySelector('#sp-clarity')).toBeNull();
+});
+it.each(metaPaths)('retains closed journey events without ID payloads on %s', path => {
+  const sdk = vi.fn(); target.clarity = sdk; target.sanctuaryClarityActive = true;
+  vi.stubGlobal('location', { pathname: path, search: `${campaignQuery}&utm_id=${campaignId}` });
+  sendClarityJourneyEvent('design_review');
+  expect(sdk).toHaveBeenCalledExactlyOnceWith('event', 'design_review');
+  vi.stubGlobal('location', { pathname: path, search: `${campaignQuery}&utm_id=${campaignId}&utm_id=99200` });
+  sendClarityJourneyEvent('design_review'); expect(sdk).toHaveBeenCalledTimes(1);
+});

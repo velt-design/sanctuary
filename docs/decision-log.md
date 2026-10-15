@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-16 - Test capture eligibility with complete campaign arrival parameters
+
+An allowlisted public page and valid consent were insufficient when the query
+filter rejected an otherwise valid campaign `utm_id`. Cover the complete URL
+through the mounted analytics lifecycle as well as the predicate. Add only the
+required public identifier with bounded string validation and reject duplicate
+or unknown keys; do not widen privacy rules to make tracking work. Application
+eligibility is separate from vendor receipt and attributed monitor coverage.
+Owner: `security-privacy-quality.md`; test: `ClarityAnalytics.test.tsx`.
+
 ## 2026-10-15 - Declare shared email type dependencies in scoped Portal builds
 
 Portal's existing email-preview fixture imports reach Marketing's preview draft

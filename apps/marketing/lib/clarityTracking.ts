@@ -13,8 +13,11 @@ const pages = new Set(['/ads/outdoor-living', '/ads/acrylic-pergolas', '/', '/au
 export function clarityPageAllowed(pathname: string, search: string): boolean {
   const query = new URLSearchParams(search);
   // Tracking URLs must not contain drafts, staff IDs, customer tokens or free text.
-  const allowedKeys = new Set(['source_path', 'source_component', 'source_experience', 'enquiry_type', 'project_direction', 'request_type', 'pathway', 'configurator', 'open', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'msclkid', 'design_scope', 'source_product', 'entry']);
+  const allowedKeys = new Set(['source_path', 'source_component', 'source_experience', 'enquiry_type', 'project_direction', 'request_type', 'pathway', 'configurator', 'open', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_id', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'msclkid', 'design_scope', 'source_product', 'entry']);
   if ([...query.keys()].some(key => !allowedKeys.has(key))) return false;
+  // Public campaign IDs stay strings; duplicate or free-text values fail closed.
+  const campaignIds = query.getAll('utm_id');
+  if (campaignIds.length > 1 || campaignIds.some(value => !/^[1-9]\d{0,19}$/.test(value))) return false;
   if (query.getAll('design_scope').some(value => !['pergolas-auckland', 'default'].includes(value))) return false;
   if (query.getAll('source_product').some(value => !isProductDesignType(value))) return false;
   if (query.getAll('entry').some(value => value !== 'edit')) return false;
