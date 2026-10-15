@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import { outcomesSchema } from '../apps/portal/lib/marketingIntegrations/campaignMonitor/contract';
 import { metaFixtureDb, metaFixtureId } from './fixtures/meta-source-db';
+import { installReportingTestExclusions } from './fixtures/reporting-test-exclusion-db';
 const scope = { account: '99100', campaign: '99200', adset: '99300', ads: [{ id: '99401', label: 'Riverhead photo' }, { id: '99402', label: 'Riverhead video' }, { id: '99403', label: 'Acrylic video' }, { id: '99404', label: 'Acrylic photo' }], launchDay: '2026-01-01', dailyAverage: 100, maximumDay: 175, weeklyAllowance: 700, weekStartsOn: 0, weeklyWindowVerified: true };
 it('executes scoped campaign source lifecycle and exact cohort without customer payloads', async () => {
  const db = await metaFixtureDb(), actor = metaFixtureId(90), connection = metaFixtureId(91), binding = 'a'.repeat(64);
@@ -16,6 +17,7 @@ it('executes scoped campaign source lifecycle and exact cohort without customer 
    insert into private.sanctuary_meta_control(actor_id,account_id,binding_hash,enabled,expires_at,source_key,connection_id,environment)
    values('${actor}','99100','${binding}',true,now()+interval '1 day','fixture','${connection}','test');`);
   await db.exec((await readFile('supabase/migrations/20261014000006_campaign_health.sql', 'utf8')).replace(/\r?\n/g,'\r\n'));
+  await installReportingTestExclusions(db);
   await db.query('insert into private.sanctuary_campaign_monitor_scope(scope,enabled) values($1,true)', [JSON.stringify(scope)]);
   const today = (await db.query<{today:string;start:string}>("select to_char(clock_timestamp() at time zone 'Pacific/Auckland','YYYY-MM-DD') today,to_char((clock_timestamp() at time zone 'Pacific/Auckland')::date-extract(dow from clock_timestamp() at time zone 'Pacific/Auckland')::integer,'YYYY-MM-DD') start")).rows[0]!;
   const command = async (action: string, op: string | null = null, query: unknown = null, step: string | null = null, payload: unknown = null) =>
@@ -39,6 +41,17 @@ it('executes scoped campaign source lifecycle and exact cohort without customer 
   expect(outcomesSchema.parse(outcome).correspondence.contacts[0]).toMatchObject({email:'private@example.test',projectId:project,multipleProjects:false});
   const { correspondence, ...aggregate } = outcomesSchema.parse(outcome);expect(correspondence.total).toBe(1);
   expect(JSON.stringify(aggregate)).not.toMatch(/Private sentinel|private@example|projectId|customerName/);
+  await db.exec('begin');
+  try {
+   const payload = JSON.stringify({ name:'TEST ONLY synthetic verification', attribution:{consent:{marketing:true},utm:{utm_campaign:scope.campaign,utm_term:scope.adset,utm_content:'99401'}} });
+   for (const [testId, testProject] of [['fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118', null], ['f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70', null], [metaFixtureId(401), '9d98b82b-679a-4ecb-8265-9fa05eaa78ef'], [metaFixtureId(402), '10c5db1a-602c-4f0c-8193-855b186215bb']]) {
+    await db.query('insert into enquiry_requests(id,project_id,created_at,raw_payload) values($1,$2,now(),$3)', [testId,testProject,payload]);
+   }
+   const readOutcomes = async () => outcomesSchema.parse((await db.query<{r:unknown}>('select public.sanctuary_campaign_outcomes($1,$2,$3,$4,$5,$6,$7) r',[actor,scope.account,binding,'fixture',connection,'test',op])).rows[0].r);
+   expect((await readOutcomes()).ads.find(row=>row.id==='99401')?.enquiries).toBe(1);
+   await db.query('insert into enquiry_requests(id,project_id,created_at,raw_payload) values($1,null,now(),$2)', [metaFixtureId(403),payload]);
+   expect((await readOutcomes()).ads.find(row=>row.id==='99401')?.enquiries).toBe(2);
+  } finally { await db.exec('rollback'); }
   // Duplicate contact rows do not create independent mailbox identities.
   await db.query('insert into contacts(id,email) values($1,$2)',[metaFixtureId(4),'  PRIVATE@Example.Test  ']);
   await db.query('insert into projects(id,contact_id) values($1,$2)',[metaFixtureId(5),metaFixtureId(4)]);

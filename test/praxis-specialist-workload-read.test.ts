@@ -44,6 +44,14 @@ afterAll(async()=>{await db.close();});
 async function installs(size=1,patch='') {for(let n=0;n<size;n++)await db.exec(`insert into public.scheduled_jobs(id,job_id,crew_id,status,planned_start) values('${id(100+n)}','${id(1)}','${id(2)}','not_started','2020-09-20')`);if(patch)await db.exec(`update public.scheduled_jobs set ${patch}`);}
 async function design(patch='') {await db.exec(`insert into public.design_package_requests(id,project_id,status,assigned_designer) values('${id(500)}','${id(1)}','OPEN','11111111-1111-4111-8111-111111111111')`);if(patch)await db.exec(`update public.design_package_requests set ${patch}`);}
 describe('complete specialist source evidence',()=>{
+  it('excludes exact known-test installations without filtering other synthetic-looking projects',async()=>{
+    await installs(3);
+    await db.exec(`insert into projects(id,name) values('10c5db1a-602c-4f0c-8193-855b186215bb','Synthetic verification'),('9d98b82b-679a-4ecb-8265-9fa05eaa78ef','Synthetic verification');
+      update scheduled_jobs set job_id='10c5db1a-602c-4f0c-8193-855b186215bb' where id='${id(101)}';
+      update scheduled_jobs set job_id='9d98b82b-679a-4ecb-8265-9fa05eaa78ef' where id='${id(102)}'`);
+    const result=await read();expect(result.counts.installation.current).toBe(1);
+    expect(result.coverage.installation.excludedTestRecords).toBe(2);
+  });
   it('reads exact safe SQL view with distinct crew/domain-designer names and complete counts before paging',async()=>{
     await installs(65);await design();const first=await read();expect(first.counts).toEqual({installation:{current:65,completed:0,inconsistent:0},design:{current:1,completed:0,inconsistent:0}});
     expect(first.assignments.map(a=>a.identity.displayName)).toEqual(['Synthetic Crew','Joe']);

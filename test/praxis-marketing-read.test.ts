@@ -28,6 +28,9 @@ describe('complete marketing aggregation through reporting views', () => {
       select md5(i::text)::uuid, '{"createdAt":"2020-09-15T13:00:00Z","name":"test is not an exclusion rule"}'::jsonb from generate_series(1,1152) i;
       insert into praxis_reporting.enquiry_requests_v1(id,payload) values ('f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70','{"createdAt":"2020-09-16T00:00:00Z"}'),
       ('10000000-0000-4000-8000-000000000007','{"createdAt":"2020-09-15T00:00:00Z"}');
+      insert into praxis_reporting.enquiry_requests_v1(id,project_id,payload) values
+      ('fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118',null,'{"createdAt":"2020-09-16T00:00:00Z"}'),
+      ('10000000-0000-4000-8000-000000000008','9d98b82b-679a-4ecb-8265-9fa05eaa78ef','{"createdAt":"2020-09-16T00:00:00Z"}');
       insert into praxis_reporting.quotes_v1(resource,id,payload) values ('quote','10000000-0000-4000-8000-000000000010','{"createdAt":"2020-09-01T00:00:00Z"}');
       insert into praxis_reporting.quote_versions_v1(resource,id,parent_id,payload)
       select 'quote_version',md5(('version'||i)::text)::uuid,'10000000-0000-4000-8000-000000000010',
@@ -35,7 +38,7 @@ describe('complete marketing aggregation through reporting views', () => {
     const result = await readPraxisMarketing(query, config, 'test');
     expect(result.counts.map(row => row.value)).toEqual([1152, 0, 1, 1]);
     expect(result.counts.map(row => row.previous)).toEqual([1, 0, 0, 0]);
-    expect(result.excludedTestRecords).toBe(1);
+    expect(result.excludedTestRecords).toBe(3);
     expect(JSON.stringify(result)).not.toContain('name');
     expect(result.coverage).toBe('complete_period_activity');
   });

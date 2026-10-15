@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { installReportingTestExclusions } from './fixtures/reporting-test-exclusion-db';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, afterAll, expect, it } from 'vitest';
@@ -31,6 +32,7 @@ beforeAll(async () => {
   await db.exec(readFileSync('supabase/migrations/20260813000003_commercial_truth_invariants.sql', 'utf8').split('create or replace function public.commercial_project_financial_truth')[0]);
   await db.exec(readFileSync('supabase/migrations/20261008000002_marketing_commercial_performance.sql', 'utf8'));
   await db.exec(readFileSync('supabase/migrations/20261008000003_marketing_commercial_send_coverage.sql', 'utf8'));
+  await installReportingTestExclusions(db);
 }, 30000);
 afterAll(async () => db.close());
 it('requires staff and confirmed exact developer identity, with private table/helper access', async () => {
@@ -43,6 +45,17 @@ it('requires staff and confirmed exact developer identity, with private table/he
   expect((await read()).rows).toHaveLength(4);
   await expect(db.query('select * from quote_versions')).rejects.toThrow('permission denied');
   await db.exec('set role anon'); await expect(read()).rejects.toThrow('permission denied'); await db.exec('set role authenticated');
+});
+it('excludes only known-test project families and keeps genuine origin dates and audit rows', async () => {
+  await db.exec('reset role; begin');
+  try {
+    const before = await read();
+    await db.exec(`insert into projects values ('9d98b82b-679a-4ecb-8265-9fa05eaa78ef'),('10c5db1a-602c-4f0c-8193-855b186215bb');
+      insert into quotes values ('${id(401)}','9d98b82b-679a-4ecb-8265-9fa05eaa78ef','Synthetic launch',null),('${id(402)}','10c5db1a-602c-4f0c-8193-855b186215bb','Existing test',null);
+      insert into enquiry_requests values ('fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118','${id(1)}','2000-01-01')`);
+    expect((await read()).rows).toEqual(before.rows);
+    expect((await db.query('select id from quotes where id in ($1,$2)', [id(401), id(402)])).rows).toHaveLength(2);
+  } finally { await db.exec('rollback; set role authenticated'); }
 });
 it('counts sent revisions once per family, retains add-ons, excludes withdrawn acceptance and undated acceptance from periods', async () => {
   const report = await read(), current = contributions(report, report.rows), prior = contributions(report, report.rows, true);

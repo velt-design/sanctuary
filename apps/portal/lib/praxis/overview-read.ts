@@ -1,7 +1,7 @@
+import { REPORTING_TEST_PROJECT_IDS } from './reportingTestRecords';
 import 'server-only';
 import { PraxisConnectorError, withPraxisReadTransaction, type ConnectorConfig, type PraxisServerDependencies } from './server';
 
-const TEST_PROJECT = '10c5db1a-602c-4f0c-8193-855b186215bb';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const unavailable = () => new PraxisConnectorError(503, 'PROJECTION_NOT_READY', 'Complete business overview evidence is unavailable.', true);
 export function parseOverviewLimit(url: URL): number {
@@ -41,10 +41,10 @@ export async function readPraxisOverview(limit: number, config: ConnectorConfig,
     // retains the reporting role boundary and never transfers whole portfolios.
     const rows = await transaction<Aggregate[]>`
       with projects as materialized (
-        select * from praxis_reporting.projects_v1 where id <> ${TEST_PROJECT}::uuid
+        select * from praxis_reporting.projects_v1 where id <> all(${REPORTING_TEST_PROJECT_IDS}::uuid[])
       ), contacts as materialized (select * from praxis_reporting.contacts_v1),
-      quotes as materialized (select * from praxis_reporting.quotes_v1 where project_id <> ${TEST_PROJECT}::uuid or project_id is null),
-      versions as materialized (select * from praxis_reporting.quote_versions_v1 where project_id <> ${TEST_PROJECT}::uuid or project_id is null),
+      quotes as materialized (select * from praxis_reporting.quotes_v1 where project_id <> all(${REPORTING_TEST_PROJECT_IDS}::uuid[]) or project_id is null),
+      versions as materialized (select * from praxis_reporting.quote_versions_v1 where project_id <> all(${REPORTING_TEST_PROJECT_IDS}::uuid[]) or project_id is null),
       attention as materialized (
         select distinct on (q.id) p.id as project_id, c.id as contact_id, q.id as quote_id, v.id as version_id,
           p.payload as project, c.payload as contact, q.payload as quote, v.payload as version,
@@ -62,7 +62,7 @@ export async function readPraxisOverview(limit: number, config: ConnectorConfig,
       select (select count(*)::text from projects) as total,
         (select count(*)::text from projects where payload->>'archivedAt' is not null) as archived,
         (select count(*)::text from attention) as attention_total,
-        (select count(*)::text from praxis_reporting.projects_v1 where id=${TEST_PROJECT}::uuid) as excluded,
+        (select count(*)::text from praxis_reporting.projects_v1 where id = any(${REPORTING_TEST_PROJECT_IDS}::uuid[])) as excluded,
         (exists (select 1 from projects p where omission_count<>0 or not (payload ?& array['name','pipelineStage','archivedAt','contactId'])
           or jsonb_typeof(payload->'name') is distinct from 'string' or length(payload->>'name') not between 1 and 1024
           or (payload->'pipelineStage' <> 'null'::jsonb and (jsonb_typeof(payload->'pipelineStage') <> 'string' or length(payload->>'pipelineStage') > 100))

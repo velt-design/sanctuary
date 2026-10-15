@@ -51,10 +51,10 @@ describe('business overview reporting SQL', () => {
     await db.exec(`update praxis_reporting.quote_versions_v1 set payload=payload||'{"acceptedAt":"2026-09-02T00:00:00Z"}' where id='40000000-0000-4000-8000-000000000001';
       update praxis_reporting.projects_v1 set payload=payload||'{"archivedAt":"2026-09-02T00:00:00Z"}' where id='20000000-0000-4000-8000-000000000002';
       update praxis_reporting.quote_versions_v1 set payload=payload||'{"expiresAt":"2020-01-01T00:00:00Z"}' where id='40000000-0000-4000-8000-000000000003';
-      insert into praxis_reporting.projects_v1(id,payload) values ('10c5db1a-602c-4f0c-8193-855b186215bb','{}');`);
+      insert into praxis_reporting.projects_v1(id,payload) values ('10c5db1a-602c-4f0c-8193-855b186215bb','{}'),('9d98b82b-679a-4ecb-8265-9fa05eaa78ef','{}');`);
     const result = await readPraxisOverview(20,config,'request');
     expect(result.pipeline).toMatchObject({ totalProjects:4,activeProjects:3,archivedProjects:1 });
-    expect(result.excludedTestProjects).toBe(1);
+    expect(result.excludedTestProjects).toBe(2);
     expect(result.quoteAttention.total).toBe(2);
     expect(result.quoteAttention.items[0].reason).toBe('sent_expired');
   });
