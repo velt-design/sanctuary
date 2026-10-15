@@ -8,6 +8,17 @@ retention, focus return and edited-design validation/failure/retry. Enquiry APIs
 and native fallback are intercepted before input; fixture success is not delivery
 proof. Use the existing marketing Playwright command and an isolated local runtime.
 
+Clarity campaign-ID correction (production release approved, 16 October): `ClarityAnalytics.test.tsx` exercises
+both Meta paths with the actual mounted loader and mocked vendor runtime. It
+covers a bounded numeric `utm_id`, invalid/duplicate/unknown/private queries,
+consent denial/grant/revoke and stop/restart during navigation. Pure predicates
+also preserve private-route denial and exact closed event payloads. jsdom does
+not load external scripts; no provider event or enquiry is sent. These fixtures
+prove application eligibility and lifecycle, not actual replay receipt or the
+cloud monitor's next scheduled consumption. Production publication is owner-approved;
+actual deployment, vendor capture and natural scheduled monitor proof remain
+separate verification steps.
+
 Meta inline release candidate (16 October): `marketing.google-funnels.spec.ts` covers all
 four inline routes, with intercepted direct/configured submissions, retry, 3D
 return, reload and 320/390/desktop SSR/form checks. The Facebook and landing-designer

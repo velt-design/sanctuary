@@ -1,5 +1,5 @@
 {
-  "git": { "deploymentEnabled": { "codex/configurator-pricing-candidate-20260915": false, "codex/google-connections-20261013": false, "codex/pergola-landing-20261013": false, "codex/meta-offline-sales-20261014": false, "codex/pergola-cost-20261014": false, "codex/facebook-campaign-20261014": false, "codex/facebook-cloud-monitor-20261014": false, "codex/campaign-lease-recovery-20261015": false, "codex/google-funnels-20261015": false, "codex/meta-landing-configurator-20261016": false, "codex/clarity-enquiry-friction-20261016": false } },
+  "git": { "deploymentEnabled": { "codex/configurator-pricing-candidate-20260915": false, "codex/google-connections-20261013": false, "codex/pergola-landing-20261013": false, "codex/meta-offline-sales-20261014": false, "codex/pergola-cost-20261014": false, "codex/facebook-campaign-20261014": false, "codex/facebook-cloud-monitor-20261014": false, "codex/campaign-lease-recovery-20261015": false, "codex/google-funnels-20261015": false, "codex/meta-landing-configurator-20261016": false, "codex/clarity-enquiry-friction-20261016": false, "codex/clarity-campaign-id-integrated-20261016": false } },
   "crons": [
     { "path": "/api/integrations/xero/maintain", "schedule": "17 3 * * *" },
     { "path": "/api/integrations/xero/observe", "schedule": "* * * * *" },
