@@ -1,5 +1,56 @@
 # Security, Privacy, And Quality
 
+
+## Google funnel launch verification boundary (15 October 2026)
+
+The two exact `/ads/outdoor-living` and `/ads/acrylic-pergolas` paths are added to
+the public Clarity allowlist and residential enquiry context. Query filtering,
+consent gates, conversion triggers and provider behavior are unchanged. Their
+compact form uses the same intake and remains masked for Clarity; confirmed intake
+success is the only success event. The native form fallback posts to the canonical
+fallback route, keeping personal fields out of URL queries. Privacy and consent
+controls remain available even though marketing menus and footer are hidden.
+
+The conversion pass permits a blank phone only for residential submissions carrying
+one of the two exact Google funnel page paths, in addition to the existing configured
+discussion rule. Shared client/API validation still requires name, valid email and
+suburb for these routes and rejects an invalid nonempty phone. Native fallback
+delegates to the same API with page identity and the submitted discussion intent;
+it does not invent a design or create a second intake. Unchanged ordinary
+Facebook/SEO/contact submissions still require phone. Full database acceptance
+requires forward migration `20261015000001_marketing_google_funnel_optional_phone.sql`.
+The prior database rule accepted only configured designs, which mocked intake
+tests did not expose. Disposable tests now compose actual fallback, API and intake
+adapter with the real SQL function, while mocking pricing/provider side effects.
+The SQL contract verifies refusals, grants, replay and atomic rollback. Shared
+database installation and live delivery remain separate verification boundaries.
+
+The protected preview uses the established staging environment and disables external
+tracking/delivery. Browser tests intercept native and fetch enquiry routes before
+filling synthetic details. Test receipts do not establish real delivery, offline
+matching, qualified-lead outcomes or Performance Max readiness. The owner now
+authorises controlled enquiry-delivery verification, Google enquiry-tracking
+verification, the final responsive audit and then production release. Synthetic
+verification must not fabricate ad clicks or live conversions. Existing GTMv10
+enquiry measurement is reused; offline-sale uploads, campaign/bidding and budget
+changes remain outside this release. Actual production evidence belongs to the
+owning release record and is distinct from the earlier intercepted preview tests.
+Focused enhanced-identity tests exercise both Google routes through the actual
+form success handoff, with and without an attached design. A blank optional phone
+still supplies the email hash when marketing is allowed and removes any earlier
+phone identity. Personal fields and hashes remain outside generic event payloads.
+
+Google-funnel pricing opts into server-only reuse of the approved immutable
+publication for at most the existing 30-second authorization lease. The approval
+pin is checked on every request; the original validation-start deadline is shared
+with browser results so server and browser leases cannot accumulate. Responses
+remain no-store and contain only the existing customer selling projection/signed
+reference plus public publication identity and remaining lease headers. Private
+costing configuration, rates and calculations remain server-owned. Exact browser
+results are memory-only and bounded; expiry, denial, failure and focus clear
+authority, including fencing older concurrent responses. Legacy callers retain
+their current publication-read behavior.
+
 This doc combines operational controls for tracking, consent, security, and quality gates.
 
 The isolated Auckland landing preview sets `MARKETING_TRACKING_DISABLED=true` to

@@ -1,4 +1,5 @@
 import type { EnquiryAudience } from './enquiryContext';
+import { isGoogleFunnelEnquiry } from './googleFunnel';
 
 const MAX_FIELD_LENGTH = 400;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -123,10 +124,14 @@ export function buildEnquiryFallbackPayload(
     || readText(formData, 'enquiry_type')
   ).toLowerCase() as EnquiryAudience;
   const style = readText(formData, 'style');
+  const page = readText(formData, 'page');
 
   return {
     submissionId,
     enquiryType,
+    ...(isGoogleFunnelEnquiry(enquiryType, page)
+      ? { requestType: readText(formData, 'requestType') }
+      : {}),
     name: readText(formData, 'name'),
     email: readText(formData, 'email'),
     phone: readText(formData, 'phone'),
@@ -143,7 +148,7 @@ export function buildEnquiryFallbackPayload(
     addOns: readAddOns(formData),
     projectDetails: readProjectDetails(formData),
     enquiryContext: readContext(formData),
-    page: readText(formData, 'page'),
+    page,
     source: readText(formData, 'source') || 'website',
     honeypot: readText(formData, 'website'),
   };

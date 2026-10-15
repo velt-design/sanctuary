@@ -1,5 +1,79 @@
 # Marketing UI Foundation
 
+
+## Google Ads funnel launch candidate (15 October 2026)
+
+Advertising routes `/ads/outdoor-living` and `/ads/acrylic-pergolas` share the
+new `components/google-funnel` composition. The former retains the outdoor-living
+headline and timber/acrylic balance. The latter reuses the Simple customer-language
+headline and selected proposal/connection wording. Real project photography and
+approved reviews remain separate from labelled designer illustrations. Existing
+Facebook page source and behavior remain unchanged. Both routes are noindex,
+nofollow and absent from the public sitemap. Jordan has authorised delivery and
+Google conversion verification, a final responsive UI audit and then production
+release. This is a launch candidate, not a claim that the routes are already live.
+The accepted protected preview and separate production verification/release
+receipts remain in the owning work record. No campaign or budget change is included.
+
+The owner-approved visual revision keeps the original photographic openings and
+customer wording. One central composition contains the roof illustration, compact
+shape/material controls, same-row width/projection, prominent estimate and enquiry
+action. Mobile moves that same estimate/action into a restrained bottom bar only
+while the design section is in view; it clears the enquiry form. At narrow phone
+widths, each dimension label sits above its editable value so the metre unit stays
+visible while Width and Projection remain side by side. Further options remain in
+the full-designer disclosure. The optional acrylic tint comparison reuses
+the original same-scene component as explanation, without writing draft choices.
+
+The approved conversion pass retains both exact headlines and adds a plain service
+description beneath each. The existing Rob Ebert/Stuart Jones Google review moves
+above the configurator in one compact treatment; there is no duplicate review or
+new rating/count claim. The enquiry action states that measurements are not needed,
+Auckland site measures are free and Sanctuary usually responds within the working
+day. The preceding text explains review/contact and agreeing a site-measure time.
+
+Implementation map: `GoogleFunnelPage` owns story and proof; `FunnelJourney` owns
+on-page design/enquiry composition; `FunnelControls` adapts canonical draft controls;
+`FunnelEstimate` delegates to `LandingEstimate`, its published table lease and full
+price fallback. Table use requires complete canonical starting-draft equivalence.
+Saved tint is ignored only in that comparison after canonical price parity checks.
+Google-only full-price requests share exact current results and publication
+validation, removing the former per-component debounce and duplicate calls.
+Previously unseen extras still use the server's complete canonical calculation.
+Optional full-designer changes retain the full draft. The basic acrylic/solid/acrylic
+round trip ignores its inactive default timber ceiling only for table eligibility;
+saved choices and genuine extras remain intact. Each funnel has its own draft key,
+separate from Facebook/default and SEO exploration drafts. Direct enquiry
+starts without submitting a default configuration. Editing or explicitly requesting
+the displayed design includes it. Configurator Enquire returns to the mounted
+on-page form on phone and desktop, preserving fields. The compact intake is an
+opt-in presentation of `ContactEnquiryForm`, including its validation, attachments
+owner, attribution, idempotency and confirmed-success semantics. Both direct and
+configured residential enquiries on the two exact Google routes keep phone optional;
+name, email and suburb remain required, and a supplied phone must be valid. The
+shared `isGoogleFunnelEnquiry` policy is used by client validation and the governed
+API. Native fallback preserves page identity and submitted discussion intent into
+that same API; the forward database rule is `20261015000001`. Existing
+Facebook, SEO and contact-route requirements remain unchanged; a direct enquiry
+does not manufacture a configured design to qualify for the smaller form.
+
+Exact route chrome gates remove the menu and full footer. A non-link brand,
+privacy policy and consent settings remain. No acquisition-wide restyle is implied.
+The canonical form and optional designer keep their existing recovery behavior.
+
+Focused verification: `funnelContracts.test.ts`, existing draft/overlay/intake/price
+regressions, and `playwright/marketing.google-funnels.spec.ts` cover both widths,
+direct and configured payloads, designer return, saved choices and failed-submission
+retry. Browser tests intercept all enquiry routes and vendor traffic. They do not
+prove production delivery or a conversion uplift. Hosted preview and independent
+review evidence belong to the owning Google-funnels work record.
+
+Marketing deployment config explicitly uses Sydney (`syd1`) to retain the verified
+estimate-response performance. Both app configs suppress automatic deployment of
+the exact working branch; production-main policy, schedules and Portal region are
+unchanged. Production needs the reviewed forward migration and its existing
+approved pricing/delivery/tracking settings, verified before release.
+
 ## Campaign pages release preparation (14 October 2026)
 
 After reviewing both hosted pages, Jordan authorised: "Push these pages live."

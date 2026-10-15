@@ -11,6 +11,7 @@ import { POST as reviewPOST } from '../app/api/configurator-review-price/route';
 import type { PreviewDraft } from '../components/configurator-prototype/previewDraft.types';
 import { defaultBlind } from '../components/configurator-prototype/blindCatalog';
 import { previewBlindOpenings } from '../components/configurator-prototype/blindSelection';
+import { CONFIGURATOR_PRICE_MODE_HEADER, CONFIGURATOR_PRICE_LEASE_HEADER } from './configuratorPriceLease';
 
 const mocks = vi.hoisted(() => ({ current: vi.fn(), historical: vi.fn() }));
 vi.mock('./publishedCostingConfiguration.server', () => ({ getPublishedCostingConfiguration: mocks.current, getPublishedCostingConfigurationByProvenance: mocks.historical }));
@@ -36,6 +37,37 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('approved configurator pricing endpoint', () => {
+  it('prices unseen funnel designs and extras identically while reusing only leased server configuration', async () => {
+    const designs = [draft(), { ...draft(), input: { ...draft().input, widthMm: 5400 } }];
+    const withExtras = draft(); withExtras.roof.family = 'gable'; withExtras.roof.infills = true;
+    withExtras.roof.blinds = [defaultBlind(previewBlindOpenings(withExtras.input, withExtras.roof)[0].id)];
+    designs.push(withExtras);
+    for (const design of designs) {
+      const input = request(design); input.headers.set(CONFIGURATOR_PRICE_MODE_HEADER, 'funnel');
+      const response = await POST(input), body = await response.json();
+      const canonical = calculateFrozenConfiguratorPrice(design, resolved())!;
+      expect(body.amountIncGst).toBe(canonical.customerPrice.amountIncGst);
+      expect(body.breakdown).toEqual(canonical.customerPrice.breakdown);
+      expect(readConfiguratorCalculationRef(body.calculationRef)).not.toBeNull();
+      expect(Number(response.headers.get(CONFIGURATOR_PRICE_LEASE_HEADER))).toBeGreaterThan(0);
+      expect(Number(response.headers.get(CONFIGURATOR_PRICE_LEASE_HEADER))).toBeLessThanOrEqual(30000);
+      expect(JSON.stringify(body)).not.toMatch(/costExGst|costingConfiguration|multiplier|supply|detail/);
+    }
+    expect(mocks.current).toHaveBeenCalledTimes(1);
+    // Existing non-funnel clients retain their live-validation behavior.
+    await POST(request(draft())); await POST(request(draft()));
+    expect(mocks.current).toHaveBeenCalledTimes(3);
+  });
+  it.each(['clear', 'light_grey', 'dark_grey', 'opal'] as const)('retains %s tint without changing canonical structure/accessory prices', tint => {
+    for (const infills of [false, true]) {
+      const design = draft(); design.roof.family = 'gable'; design.roof.infills = infills;
+      const original = calculateFrozenConfiguratorPrice(design, resolved())!;
+      const selected = calculateFrozenConfiguratorPrice({ ...design, roof: { ...design.roof, acrylicTint: tint } }, resolved())!;
+      expect(selected.customerPrice).toEqual(original.customerPrice);
+      expect(selected.siteInputs).toEqual(original.siteInputs);
+      expect(selected.design.roof.acrylicTint).toBe(tint);
+    }
+  });
   it('does not expose draft review prices in production', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const response = await reviewPOST(request(draft()));

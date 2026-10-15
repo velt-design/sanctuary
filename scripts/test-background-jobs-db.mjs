@@ -1004,6 +1004,8 @@ async function run() {
   applySql('supabase/tests/marketing_enquiry_delivery.sql');
   applySql('supabase/migrations/20260915080001_marketing_enquiry_optional_phone.sql', { singleTransaction: true });
   applySql('supabase/tests/marketing_enquiry_optional_phone.sql');
+  applySql('supabase/migrations/20261015000001_marketing_google_funnel_optional_phone.sql', { singleTransaction: true });
+  applySql('supabase/tests/marketing_google_funnel_optional_phone.sql');
   applySql('supabase/migrations/20260914173001_configurator_estimate_revisions.sql', { singleTransaction: true });
   applySql('supabase/tests/configurator_estimate_revisions.sql');
   runXeroFinanceContracts({ repositoryRoot, migrationsDirectory, applySql, executeSql });

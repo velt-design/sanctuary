@@ -29,3 +29,14 @@ it('clears a tag read timeout and omits ambiguous local phone numbers',async()=>
   expect(target.sanctuaryGoogleEnhancedLead).toBeUndefined();vi.restoreAllMocks();
   (target.dataLayer![0].eventCallback as ()=>void)();
 });
+it('replaces a prior phone hash with email-only identity and an old callback cannot clear the new lead',async()=>{
+  vi.stubGlobal('crypto',webcrypto);
+  await emitSubmittedLead({}, {email:'first@example.test',phone:'+64211234567'},true,true);
+  expect(target.sanctuaryGoogleEnhancedLead?.sha256_phone_number).toBeDefined();
+  const oldCallback=target.dataLayer![0].eventCallback as ()=>void;
+  await emitSubmittedLead({}, {email:'second@example.test',phone:''},true,true);
+  const expected={sha256_email_address:createHash('sha256').update('second@example.test').digest('hex')};
+  expect(target.sanctuaryGoogleEnhancedLead).toEqual(expected);
+  oldCallback();expect(target.sanctuaryGoogleEnhancedLead).toEqual(expected);
+  (target.dataLayer![1].eventCallback as ()=>void)();expect(target.sanctuaryGoogleEnhancedLead).toBeUndefined();
+});

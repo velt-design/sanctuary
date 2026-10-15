@@ -1,4 +1,5 @@
 import { parsePreviewDraft } from '../../../components/configurator-prototype/previewDraft';
+import { isGoogleFunnelEnquiry } from '../../../lib/googleFunnel';
 import { prepareEnquiryEmail } from '../../../lib/enquiryEmailPreparation';
 import { normalizeEnquiryProjectPreferences } from '../../../lib/enquiryProjectPreferences';
 import { normalizeAdvertisingDisclosure } from '../../../lib/advertisingDisclosure';
@@ -187,7 +188,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Name is required' }, { status: 422 });
   }
   const configuredEnquiry = enquiryType === 'residential' && getField('requestType') === 'project-discussion' && parsePreviewDraft(payload.customerDesign) !== null;
-  if (!phone && !configuredEnquiry) {
+  const funnelEnquiry = isGoogleFunnelEnquiry(enquiryType, getField('page'));
+  if (!phone && !configuredEnquiry && !funnelEnquiry) {
     return NextResponse.json({ ok: false, error: 'Phone is required' }, { status: 422 });
   }
   if (phoneRaw && !isPlausibleEnquiryPhone(phoneRaw)) {
@@ -210,7 +212,7 @@ export async function POST(req: Request) {
   const uploadSessionToken = sanitizeSingleLine(getField('uploadSessionToken'), 128);
 
   const suburb = sanitizeSingleLine(getField('suburb'), MAX_FIELD_LENGTH);
-  if (configuredEnquiry && !suburb) return NextResponse.json({ ok: false, error: 'Enter your suburb.' }, { status: 422 });
+  if ((configuredEnquiry || funnelEnquiry) && !suburb) return NextResponse.json({ ok: false, error: 'Enter your suburb.' }, { status: 422 });
   if (getField('requestType') === 'site-measure' && !suburb) {
     return NextResponse.json({ ok: false, error: 'Enter the site address for your measure request.' }, { status: 422 });
   }

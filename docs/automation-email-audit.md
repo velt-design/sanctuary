@@ -9,6 +9,19 @@ route's CAPI credential. See [meta-offline-sales.md](meta-offline-sales.md).
 
 ## Google advertising candidate
 
+The Google funnel candidate accepts an omitted phone number for residential enquiries
+whose submitted page is exactly `/ads/outdoor-living` or `/ads/acrylic-pergolas`.
+Name, email and suburb remain required; a supplied phone number must still be valid.
+This applies to direct and configured enquiries without inventing a design for the
+direct path. The client and API share the scope predicate, and native form fallback
+delegates to the same API validation and existing intake. Other direct contact and
+Facebook page requirements remain unchanged. Complete acceptance requires forward
+migration `20261015000001_marketing_google_funnel_optional_phone.sql`; the older
+configured-only SQL rejects direct blank-phone intake. Actual API/native tests now
+use the disposable real SQL intake with provider effects mocked, and verify the
+submitted discussion intent reaches SQL. Browser submissions are intercepted.
+Installation and real delivery are separate from these local contract checks.
+
 The approved new-enquiry rollout records the form bundle's recognized
 `advertisingDisclosureVersion` in the original enquiry receipt. Missing/old values
 remain null, including pre-release tabs submitted later; receipt replay must not

@@ -8,6 +8,7 @@ import { generateLandingPriceTable } from './landingPriceTableGenerator.server';
 import { LANDING_PRICE_CELLS, LANDING_PRICE_LEASE_MS, LANDING_PRICE_MATERIALS, LANDING_PRICE_TYPES, lookupLandingPrice, type LandingPriceTable } from './landingPriceTable';
 import { landingPricePublicationKey } from './landingPriceTableArtifact.server';
 import { POST } from '../app/api/landing-price-table/route';
+import { CONFIGURATOR_PRICE_MODE_HEADER } from './configuratorPriceLease';
 
 const mocks = vi.hoisted(() => ({ current: vi.fn(), artifact: vi.fn() }));
 vi.mock('./publishedCostingConfiguration.server', () => ({ getPublishedCostingConfiguration: mocks.current }));
@@ -25,7 +26,23 @@ const fixture: LandingPriceTable = { schema: 'landing-price-table.v1', id: 'a'.r
 function request(body: unknown = {}) { return new Request('http://localhost:3013/api/landing-price-table', {
   method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3013' }, body: JSON.stringify(body) }); }
 beforeEach(() => { vi.clearAllMocks(); vi.stubEnv('WEBSITE_CONFIGURATOR_APPROVED_VERSION_ID', versionId); mocks.current.mockResolvedValue(publication); mocks.artifact.mockResolvedValue(fixture); });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
+
+it('funnel conditional responses share only the remaining original publication lease and recheck the pin', async () => {
+  vi.useFakeTimers(); vi.setSystemTime(100000);
+  const first = request(); first.headers.set(CONFIGURATOR_PRICE_MODE_HEADER, 'funnel');
+  expect((await (await POST(first)).json()).leaseMs).toBe(30000);
+  await vi.advanceTimersByTimeAsync(10000);
+  const conditional = () => { const input = request({ knownId: fixture.id }); input.headers.set(CONFIGURATOR_PRICE_MODE_HEADER, 'funnel'); return input; };
+  expect(await (await POST(conditional())).json()).toEqual({ status: 'current', id: fixture.id, leaseMs: 20000 });
+  expect(mocks.current).toHaveBeenCalledOnce();
+  vi.stubEnv('WEBSITE_CONFIGURATOR_APPROVED_VERSION_ID', 'different-version');
+  expect((await POST(conditional())).status).toBe(503);
+  expect(mocks.current).toHaveBeenCalledTimes(2);
+  vi.stubEnv('WEBSITE_CONFIGURATOR_APPROVED_VERSION_ID', '');
+  expect(await (await POST(conditional())).json()).toEqual({ status: 'disabled' });
+  expect(mocks.current).toHaveBeenCalledTimes(2);
+});
 
 it('generates all 35,604 exact cells with canonical parity, including material limits and area boundaries', () => {
   // Synthetic complete published fixture, not evidence of an approved live pricebook.

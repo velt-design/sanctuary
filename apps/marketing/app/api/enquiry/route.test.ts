@@ -393,6 +393,46 @@ describe('POST /api/enquiry attribution', () => {
     const response=await send(payload);expect(response.status).toBe(200);
   });
 
+  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas'])('accepts blank phone for direct and configured %s with all other contact validation intact', async page => {
+    const { POST } = await import('./route');
+    const base = { submissionId: SUBMISSION_ID, enquiryType: 'residential', name: 'Alex', email: 'alex@example.test', phone: '', suburb: 'Albany', requestType: 'project-discussion', page };
+    const send = (body: unknown) => POST(new Request('http://localhost/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+    for (const field of ['name', 'email', 'suburb']) expect((await send({ ...base, [field]: '' })).status).toBe(422);
+    expect((await send({ ...base, phone: 'bad' })).status).toBe(422);
+    expect((await send({ ...base, email: 'invalid' })).status).toBe(422);
+    for (const existing of ['/contact', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland', '/ads/acrylic-pergolas-extra']) {
+      expect((await send({ ...base, page: existing })).status).toBe(422);
+    }
+    expect((await send({ ...base, enquiryType: 'commercial' })).status).toBe(422);
+    expect(h.createClient).not.toHaveBeenCalled();
+    const { client, db } = makeDb(); h.createClient.mockReturnValue(client);
+    for (const [index, customerDesign] of [undefined, DEFAULT_PREVIEW_DRAFT].entries()) {
+      const submissionId = index === 0 ? SUBMISSION_ID : '11111111-1111-4111-8111-111111111111';
+      expect((await send({ ...base, submissionId, customerDesign })).status).toBe(200);
+      expect(db.contacts[index].phone).toBe('');
+      expect(db.enquiry_requests).toHaveLength(index + 1);
+      if (customerDesign) expect(db.enquiry_requests[index].raw_payload.customerBrief.design).toEqual(customerDesign);
+      else expect(db.enquiry_requests[index].raw_payload.customerBrief?.design).toBeUndefined();
+    }
+  });
+
+  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas'])('accepts a native blank-phone %s form through the actual fallback and governed intake', async page => {
+    const { POST } = await import('./fallback/route');
+    const { client, db } = makeDb(); h.createClient.mockReturnValue(client);
+    const base = { enquiryType: 'residential', name: 'Alex', email: 'alex@example.test', phone: '', suburb: 'Albany', page };
+    const send = (body: Record<string, string>) => POST(new Request('http://localhost/api/enquiry/fallback', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'http://localhost' }, body: new URLSearchParams(body) }));
+    expect((await send({ ...base, phone: 'bad' })).status).toBe(422);
+    expect((await send({ ...base, suburb: '' })).status).toBe(422);
+    expect((await send({ ...base, page: '/auckland-outdoor-living' })).status).toBe(422);
+    expect(db.enquiry_requests).toHaveLength(0);
+    const response = await send(base);
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('http://localhost/contact/thanks');
+    expect(db.contacts[0].phone).toBe('');
+    expect(db.enquiry_requests).toHaveLength(1);
+    expect(db.enquiry_requests[0].raw_payload.customerBrief?.design).toBeUndefined();
+  });
+
   it('rejects an invalid design before any database writes', async () => {
     const { POST } = await import('./route');
     const response = await POST(new Request('http://localhost/api/enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({

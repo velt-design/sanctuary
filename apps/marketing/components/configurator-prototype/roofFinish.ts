@@ -1,3 +1,4 @@
+import { CUSTOMER_ACRYLIC_TINT_OPTIONS } from '@sp/configurator/core';
 import { isCeilingOption } from '@sp/costing';
 import {hasLighting} from './lightingSelection';
 import { DEFAULT_ROOF_FINISH, roofFinishBayLimit, representativeBoxRoofMaxProjection, type RepresentativeRoofFinish } from '@sp/geometry';
@@ -33,7 +34,9 @@ export function parseRoofFinish(value: unknown): RepresentativeRoofFinish | null
 }
 export function roofFinishDescription(roof: PreviewRoofChoices) {
   const f = getRoofFinish(roof);
-  if (f.material === 'acrylic') return 'Acrylic roof';
+  const tint = roof.acrylicTint ? ` · ${CUSTOMER_ACRYLIC_TINT_OPTIONS.find(option => option.value === roof.acrylicTint)!.label} acrylic` : '';
+  if (f.material === 'acrylic') return 'Acrylic roof' + tint;
   return `${f.profile === 'tray' ? `Tray ${f.trayWidth} mm` : f.profile === 'trapezoidal' ? 'Trapezoidal' : 'Corrugated'} Colorsteel · ${f.ceiling?.startsWith('thermopine') ? 'ThermoPine' : 'Cedar'} ceiling${f.ceiling ? ' · ' + f.ceiling.split('-')[1] + ' mm boards' : ''}`
+    + (f.material === 'combination' ? tint : '')
     + (f.material === 'combination' ? ` · ${f.layout === 'central' ? 'Central skylight · equal thirds' : 'House-side skylight · equal halves'}` : '');
 }

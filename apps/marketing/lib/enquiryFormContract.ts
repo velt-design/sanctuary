@@ -4,6 +4,7 @@ import {
   isValidEnquiryEmail,
 } from './enquiryContactValidation';
 import type { EnquiryAudience, EnquiryContext } from './enquiryContext';
+import { isGoogleFunnelEnquiry } from './googleFunnel';
 import {
   commercialProfessionalPathLabels,
   projectDirectionLabels,
@@ -49,15 +50,16 @@ export function validateEnquiryForm(formData: FormData, files: File[], configure
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
+  const funnel = isGoogleFunnelEnquiry(enquiryType, String(formData.get('page') ?? ''));
   if (formData.get('requestType') === 'site-measure' && !String(formData.get('suburb') ?? '').trim()) {
     errors.suburb = 'Enter the site address for your measure request.';
   }
 
   if (!enquiryType) errors.enquiryType = 'Choose a project type.';
   if (!name) errors.name = 'Enter your name.';
-  if (!phone && !configured) errors.phone = 'Enter your phone number.';
+  if (!phone && !configured && !funnel) errors.phone = 'Enter your phone number.';
   else if (phone && !isPlausibleEnquiryPhone(phone)) errors.phone = 'Enter a valid phone number.';
-  if (configured && !String(formData.get('suburb') ?? '').trim()) errors.suburb = 'Enter your suburb.';
+  if ((configured || funnel) && !String(formData.get('suburb') ?? '').trim()) errors.suburb = 'Enter your suburb.';
   if (!email) errors.email = 'Enter your email address.';
   else if (!isValidEnquiryEmail(email)) errors.email = 'Enter a valid email address.';
 

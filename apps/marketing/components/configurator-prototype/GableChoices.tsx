@@ -1,10 +1,11 @@
+import type { CustomerAcrylicTintV1 } from '@sp/configurator/core';
 import type { PergolaLighting, RepresentativeRoofBattens, RepresentativeRoofFinish } from "@sp/geometry";
 import type { PreviewBlind } from './blindCatalog';
 import type { SidePanel } from './sidePanelCatalog';
 import styles from './prototype.module.css';
 import guide from './roofGuide.module.css';
 
-export type PreviewRoofChoices = { attachmentIntent?: 'freestanding' | 'unsure'; family: 'mono' | 'gable' | 'box'; orientation: 'parallel' | 'away'; infills: boolean; finish?: RepresentativeRoofFinish; roofBattens?:RepresentativeRoofBattens; lighting?:PergolaLighting; blinds?: PreviewBlind[]; sidePanels?:SidePanel[] };
+export type PreviewRoofChoices = { acrylicTint?: CustomerAcrylicTintV1; attachmentIntent?: 'freestanding' | 'unsure'; family: 'mono' | 'gable' | 'box'; orientation: 'parallel' | 'away'; infills: boolean; finish?: RepresentativeRoofFinish; roofBattens?:RepresentativeRoofBattens; lighting?:PergolaLighting; blinds?: PreviewBlind[]; sidePanels?:SidePanel[] };
 export const INITIAL_ROOF: PreviewRoofChoices = { family: 'mono', orientation: 'parallel', infills: false };
 
 export function RoofTypeChoice({ value, onChange }: { value: PreviewRoofChoices; onChange: (next: PreviewRoofChoices) => void }) {

@@ -1,6 +1,6 @@
 import type { PreviewDraft } from './previewDraft.types';
 import { constrainRoofFinish, parseRoofFinish, previewProjectionMax } from "./roofFinish";
-import { CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
+import { CUSTOMER_ACRYLIC_TINT_OPTIONS, CUSTOMER_DIMENSION_BOUNDS } from '@sp/configurator/core';
 import { parseSimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import { constrainPreviewConnection, INITIAL_INPUT } from './model';
 import { INITIAL_ROOF, type PreviewRoofChoices } from './GableChoices';
@@ -30,6 +30,7 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
     || input.projectionMm < CUSTOMER_DIMENSION_BOUNDS.projectionMm.minimum
     || (roof.family !== 'mono' && roof.family !== 'gable' && roof.family !== 'box')
     || (roof.orientation !== 'parallel' && roof.orientation !== 'away') || typeof roof.infills !== 'boolean') return null;
+  if (roof.acrylicTint !== undefined && !CUSTOMER_ACRYLIC_TINT_OPTIONS.some(option => option.value === roof.acrylicTint)) return null;
   if (roof.attachmentIntent !== undefined && roof.attachmentIntent !== 'freestanding' && roof.attachmentIntent !== 'unsure') return null;
   const finish = roof.finish === undefined ? undefined : parseRoofFinish(roof.finish);
   if (finish === null) return null;
@@ -37,7 +38,7 @@ export function parsePreviewDraft(value: unknown): PreviewDraft | null {
   if(blinds===null) return null;
   const panels=roof.sidePanels===undefined?undefined:parseSidePanels(roof.sidePanels);
   if(panels===null || panels?.some(p=>blinds?.some(b=>b.opening===p.opening)))return null;
-  const selectedRoof: PreviewRoofChoices = { ...(roof.attachmentIntent ? { attachmentIntent: roof.attachmentIntent as 'freestanding' | 'unsure' } : {}), family: roof.family, orientation: roof.orientation, infills: roof.infills, ...(finish ? { finish } : {}) };
+  const selectedRoof: PreviewRoofChoices = { ...(roof.acrylicTint ? { acrylicTint: roof.acrylicTint as PreviewRoofChoices['acrylicTint'] } : {}), ...(roof.attachmentIntent ? { attachmentIntent: roof.attachmentIntent as 'freestanding' | 'unsure' } : {}), family: roof.family, orientation: roof.orientation, infills: roof.infills, ...(finish ? { finish } : {}) };
   if(roof.roofBattens!==undefined){const battens=parseRoofBattens(roof.roofBattens);if(!battens)return null;if(finish?.material!=='solid')selectedRoof.roofBattens=battens;}
   const sizedInput = { ...input, projectionMm: Math.min(input.projectionMm, previewProjectionMax(selectedRoof)) };
   const validInput=constrainPreviewConnection(sizedInput, roof.family);

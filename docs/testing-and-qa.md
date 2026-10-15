@@ -418,6 +418,14 @@ TypeScript and ESLint, the production build, and the relevant browser specs.
 invoice tokens cannot read or mutate downstream resources. Enquiry coverage
 includes durable signing limits, metadata/content/path validation, cleanup,
 safe errors, atomic retry/concurrency semantics, and the migration contract.
+For Google funnel phone acceptance, run
+`npx vitest run test/marketing-google-funnel-intake.test.ts apps/marketing/lib/enquiryFallback.test.ts`.
+This uses an in-memory PGlite instance, exact canonical intake migrations and
+rollback-wrapped SQL assertions, then composes the actual JSON/native API paths
+with that database. Pricing, provider transport and post-intake audit writes are
+mocked; no Supabase credentials or remote database are used. The existing Docker
+jobs harness also includes the new SQL contract. Single-process PGlite does not
+prove concurrent-session advisory locking or live database installation.
 `playwright/marketing.consent.spec.ts` observes real requests and fails if GTM,
 GA, Meta, ArchiPro, or a GTM noscript resource loads before the corresponding
 explicit consent.

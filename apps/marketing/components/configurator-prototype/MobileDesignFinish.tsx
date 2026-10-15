@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { returnToGoogleFunnelEnquiry } from '../../lib/googleFunnel';
 import ContactEnquiryForm from '../../app/contact/ContactEnquiryForm';
 import { buildContactDesignBrief } from '../../app/contact/contactDesignBrief';
 import { parseEnquiryContext, type EnquiryContext } from '../../lib/enquiryContext';
@@ -29,6 +30,7 @@ export default function MobileDesignFinish({ visible, selection, pricePanel, est
   const brief = buildContactDesignBrief(selection);
   function enquire() {
     emitDesignEvent('design_enquiry_open', hasTrackingDecision && consent.analytics);
+    if (returnToGoogleFunnelEnquiry()) return;
     if (window.location.pathname === '/design-enquiry') {
       form.current?.closest('dialog')?.close();
       requestAnimationFrame(() => document.getElementById('contact-name')?.focus());

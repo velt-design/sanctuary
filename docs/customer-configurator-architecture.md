@@ -1,5 +1,60 @@
 # Sanctuary "Your Pergola" Customer Configurator
 
+
+## Google funnel adaptation (15 October 2026, launch candidate)
+
+The active draft accepts an optional `acrylicTint`, restricted to the
+existing `@sp/configurator/core` tint values. Missing tint remains valid for all
+legacy designs. The canonical parser, share serializer and roof descriptions retain
+an explicit choice through edits, customer brief creation and reopening. This is
+preference capture, not a new geometry/material-rendering or pricing rule. Current
+3D roof rendering does not simulate tint. The revised funnel no longer offers
+text-only tint selection; its optional existing same-scene visual comparison is
+explanatory and does not write the draft. Previously saved explicit tint remains
+intact through compact changes, full-designer return, brief creation and reload.
+
+Each exact Google funnel path uses a separate durable draft key through the existing
+`usePreviewDraft` store. Full-designer entry stays on that path in the existing
+overlay; desktop and mobile Enquire close it and return to the page's mounted form.
+Default/Facebook and Auckland exploration keys are unchanged. `FunnelEstimate`
+uses the existing landing-price owner and permits its preloaded table only for an
+exact standard draft. Comparison ignores only a saved tint (proved absent from
+canonical costing inputs) and the inactive default timber ceiling under acrylic;
+neither is removed from the saved design. Extras and changed site/connection
+details use canonical per-design calculation. No persistent saved price is reused.
+
+The Google routes opt into `configuratorPriceStore`: immediate, deduplicated
+full-draft requests and a bounded memory cache of exact signed results. There is
+no debounce, interpolation or additive accessory-price model. A new full design
+still needs its first server calculation; standard supported dimensions use the
+existing exact table as soon as its current-publication authorization arrives.
+Restoration and cold loads must validate current pricing before showing a number.
+
+`configuratorPricingLease.server` shares immutable approved publication resolution
+for the two opted-in price APIs, within the existing 30-second publication lease.
+The deadline starts before validation, the approval pin is checked on every call,
+and responses carry only publication identity and remaining validity. Renewal uses
+Next.js `after` to survive serverless response completion; new edits may use the
+original still-valid lease during renewal, never beyond its deadline. Denial clears
+the server lease immediately. Clients
+deduct transfer time, renew halfway, clear on expiry/failure/focus, and fence older
+in-flight results after denial or publication change. Private configuration never
+leaves the server. All other routes keep their existing request behavior.
+
+Healthy React Three Fiber canvases no longer carry the paused-error message as
+native canvas fallback content. That content was exposed to accessibility tools
+despite a healthy visible renderer. The outer render-error boundary, context-loss
+Plan fallback and explicit 3D retry remain; tests cover both healthy reopening and
+actual context-loss recovery without losing the selected design.
+
+The owner has authorised production release after actual enquiry-delivery and
+Google tracking checks plus the final responsive audit. Candidate8's protected
+review is complete; the release record owns completion of those external checks.
+Marketing config pins Sydney execution to retain the accepted response latency.
+Cold/restored authorization and first unseen full-design calculation still require
+server results; local/preview evidence does not establish universal instantaneous
+initial loads or live conversion receipt.
+
 ## Preloaded landing prices (14 October 2026, owner-authorised release)
 
 Jordan authorised production release of the accepted cost and shared landing

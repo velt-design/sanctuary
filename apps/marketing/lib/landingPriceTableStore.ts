@@ -1,4 +1,6 @@
 import { LANDING_PRICE_LEASE_MS, parseLandingPriceTable, type LandingPriceTable } from './landingPriceTable';
+import { isGoogleFunnelPath } from './googleFunnel';
+import { CONFIGURATOR_PRICE_MODE_HEADER } from './configuratorPriceLease';
 
 export type LandingTableState = {
   status: 'loading' | 'ready' | 'disabled' | 'unavailable'; table: LandingPriceTable | null; expiresAt: number; epoch: number;
@@ -25,12 +27,13 @@ export function createLandingPriceTableStore() {
   function load(): Promise<void> {
     if (pending) return pending;
     const requestGeneration = generation, started = Date.now();
+    const funnel = isGoogleFunnelPath(window.location.pathname);
     controller = new AbortController();
     const signal = controller.signal;
     pending = (async () => {
       try {
         const response = await fetch('/api/landing-price-table', { method: 'POST', cache: 'no-store',
-          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cached ? { knownId: cached.id } : {}), signal });
+          headers: { 'Content-Type': 'application/json', ...(funnel ? { [CONFIGURATOR_PRICE_MODE_HEADER]: 'funnel' } : {}) }, body: JSON.stringify(cached ? { knownId: cached.id } : {}), signal });
         const body = await response.json();
         if (requestGeneration !== generation || signal.aborted) return;
         if (body?.status === 'disabled') { invalidate('disabled'); return; }
@@ -45,7 +48,7 @@ export function createLandingPriceTableStore() {
         clearTimers();
         emit({ status: 'ready', table, expiresAt, epoch: state.epoch });
         expiration = setTimeout(() => invalidate('unavailable'), expiresAt - Date.now());
-        renewal = setTimeout(() => { void load(); }, Math.max(0, expiresAt - Date.now() - LANDING_PRICE_LEASE_MS / 2));
+        renewal = setTimeout(() => { void load(); }, Math.max(funnel ? 1000 : 0, expiresAt - Date.now() - LANDING_PRICE_LEASE_MS / 2));
       } catch {
         if (requestGeneration === generation && !signal.aborted) invalidate('unavailable');
       } finally {

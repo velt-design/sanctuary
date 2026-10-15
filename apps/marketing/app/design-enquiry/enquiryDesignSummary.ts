@@ -1,3 +1,5 @@
+import { CUSTOMER_ACRYLIC_TINT_OPTIONS } from '@sp/configurator/core';
+import { getRoofFinish } from '../../components/configurator-prototype/roofFinish';
 import type { PreviewDraft } from '../../components/configurator-prototype/previewDraft';
 import { roofFinishDescription } from '../../components/configurator-prototype/roofFinish';
 import { describeBlinds } from '../../components/configurator-prototype/blindCatalog';
@@ -14,6 +16,7 @@ export function enquiryDesignSummary(draft: PreviewDraft) {
     { label: 'Roofline', value: roof.family === 'mono' ? 'Pitched' : roof.family === 'gable' ? 'Gable' : 'Box perimeter' },
     ...(roof.family === 'gable' ? [{ label: 'Direction', value: designRidgeDescription(draft) }] : []),
     { label: 'Roof & ceiling', value: roofFinishDescription(roof) },
+    ...(roof.acrylicTint && getRoofFinish(roof).material !== 'solid' ? [{ label: 'Acrylic tint', value: CUSTOMER_ACRYLIC_TINT_OPTIONS.find(option => option.value === roof.acrylicTint)!.label }] : []),
     { label: 'House connection', value: designAttachmentDescription(draft) },
     { label: 'Sides', value: sides.join('; ') || 'Open sides' },
     ...(roof.family === 'gable' ? [{ label: 'Gable ends', value: roof.infills ? 'Acrylic infills' : 'Open gable ends' }] : []),
