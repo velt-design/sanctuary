@@ -1,5 +1,13 @@
 # Testing And QA
 
+The homepage price-link and mobile side-summary regressions live in
+`playwright/marketing.homepage-challenger.spec.ts` and
+`playwright/marketing.configurator-mobile.spec.ts`. They cover full-row/keyboard
+navigation without saved-choice replacement, each selected face, other-side
+retention, focus return and edited-design validation/failure/retry. Enquiry APIs
+and native fallback are intercepted before input; fixture success is not delivery
+proof. Use the existing marketing Playwright command and an isolated local runtime.
+
 Meta inline release candidate (16 October): `marketing.google-funnels.spec.ts` covers all
 four inline routes, with intercepted direct/configured submissions, retry, 3D
 return, reload and 320/390/desktop SSR/form checks. The Facebook and landing-designer

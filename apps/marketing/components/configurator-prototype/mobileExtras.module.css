@@ -2,6 +2,12 @@
 .faces > div + div { border-left:1px solid var(--color-rule); }
 .faces dt { font-size:10px; line-height:1.5; text-transform:capitalize; color:var(--color-text-secondary); }
 .faces dd { margin:1px 0 0; font-size:12px; line-height:1.5; }
+.faces button { display:grid; place-content:center; gap:1px; width:100%; min-height:44px; padding:2px 4px; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; touch-action:manipulation; }
+.faces button small { font-size:11px; text-decoration:underline; text-underline-offset:2px; }
+.faces button:focus-visible { outline:var(--focus-ring); outline-offset:-2px; }
+.faces button:active { background:var(--color-surface-warm); }
+.faces button:disabled { cursor:default; color:var(--color-text-secondary); }
+@media(hover:hover) and (pointer:fine){.faces button:hover:not(:disabled) { background:var(--color-surface-warm); }}
 .estimate { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:32px; margin:0; font-size:11px; line-height:1.5; color:var(--color-text-secondary); }
 .estimate strong { font-size:14px; font-weight:500; color:var(--color-text-primary); }
 .lightingChoices { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--color-rule-strong); margin:12px 0 0; background:var(--color-surface-warm); color:var(--color-text-primary); }

@@ -35,6 +35,18 @@ describe('example commercial states', () => {
     expect(html.match(/Draft · review only/g)).toHaveLength(3);
     expect(html.match(/Approximately /g)).toHaveLength(3);
   });
+  it.each(PRODUCT_FORM_CHOICES)('links every $type example to its existing product without a design override', ({ type, title }) => {
+    vi.mocked(useProductExampleEstimate).mockReturnValue({ estimate: { amount: 10000, draft: false, excluded: [], breakdown: [] }, complete: true, retry: vi.fn() });
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(React.createElement(ChallengerPriceExamples, { type }));
+    expect(host.textContent).toContain('Explore this roofline, then choose your size.');
+    const links = [...host.querySelectorAll('a')];
+    expect(links).toHaveLength(3);
+    for (const [index, link] of links.entries()) {
+      expect(link.getAttribute('href')).toBe(`/products/pergolas/${type}`);
+      expect(link.getAttribute('aria-label')).toBe(`Explore ${title} pergolas, ${CHALLENGER_EXAMPLE_SELECTIONS[index].widthMm / 1000} × 3 m example`);
+    }
+  });
   it('does not present incomplete review amounts or tailored quotes as prices', () => {
     for (const estimate of [
       { amount: 10000, draft: true, excluded: ['site work'], breakdown: [] },

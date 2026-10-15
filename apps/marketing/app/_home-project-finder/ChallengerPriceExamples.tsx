@@ -1,4 +1,6 @@
 'use client';
+import Link from 'next/link';
+import ArrowUpRight from '../../components/marketing-foundation/ArrowUpRight';
 import { INITIAL_PRODUCT_SELECTION } from '../../components/products/productSelection';
 import { PRODUCT_FORM_CHOICES, type ProductDesignType } from '../../components/products/productDesigns';
 import { useProductExampleEstimate } from '../../components/products/useProductExampleEstimate';
@@ -12,8 +14,9 @@ function PriceRow({ type, selection }: { type: ProductDesignType; selection: typ
   const { estimate, complete, retry } = useProductExampleEstimate(type, selection);
   const label = `${selection.widthMm / 1000} × ${selection.projectionMm / 1000} m`;
   const roofline = PRODUCT_FORM_CHOICES.find(choice => choice.type === type)!.title;
-  return <div className={styles.row} data-price-example={selection.widthMm}>
-    <dt>{label}</dt>
+  const unavailable = 'retry' in estimate && estimate.retry;
+  return <div className={styles.row} data-price-example={selection.widthMm} data-price-unavailable={unavailable || undefined}>
+    <dt><Link className={styles.productLink} href={`/products/pergolas/${type}`} aria-label={`Explore ${roofline} pergolas, ${label} example`}>{label}{!unavailable && <ArrowUpRight />}</Link></dt>
     <dd aria-live="polite" aria-atomic="true">
       {complete ? <strong data-priced="true"><span className={styles.approximateWord}>Approximately </span>{formatChallengerExampleAmount(estimate.amount!)}</strong>
         : 'retry' in estimate && estimate.retry
@@ -27,5 +30,5 @@ function PriceRow({ type, selection }: { type: ProductDesignType; selection: typ
 export default function ChallengerPriceExamples({ type }: { type: ProductDesignType }) {
   return <div><p className={styles.installation}>Installed estimates</p><dl className={styles.examples} aria-label="Example sizes and installed estimates">
     {CHALLENGER_EXAMPLE_SELECTIONS.map(selection => <PriceRow key={selection.widthMm} type={type} selection={selection} />)}
-  </dl></div>;
+  </dl><p className={styles.exploreNote}>Explore this roofline, then choose your size.</p></div>;
 }

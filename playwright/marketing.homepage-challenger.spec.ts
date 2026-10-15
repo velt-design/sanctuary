@@ -1,12 +1,82 @@
 import { expect, test } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('sp_consent_v1', JSON.stringify({
     analytics: false, marketing: false, updatedAt: new Date().toISOString(), version: 1,
   })));
   // Never send an enquiry or load a vendor while verifying preview navigation.
-  await page.route(/\/api\/(enquiry|contact)(?:\?|$)/, route => route.abort());
+  await page.route(/\/api\/(enquiry|contact)(?:\/fallback)?(?:\?|$)/, route => route.abort());
   await page.route(/google-analytics|googletagmanager|facebook\.net|clarity\.ms/, route => route.abort());
+});
+
+test('price-row links work from the price itself and preserve saved product choices', async ({ page }) => {
+  await page.route('**/api/configurator-price', route => route.fulfill({ json: { status: 'priced', amountIncGst: 23829, breakdown: [] } }));
+  await page.goto('/');
+  const saved = { widthMm: 7400, projectionMm: 3500, material: 'solid', sides: 'left', orientation: 'parallel' };
+  await page.evaluate(value => sessionStorage.setItem('sanctuary:gable-product:v1', JSON.stringify(value)), saved);
+  for (const type of ['pitched', 'gable', 'box-perimeter']) {
+    for (const width of [3000, 6000, 9000]) {
+      await expect(page.locator(`[data-product-type="${type}"] [data-price-example="${width}"] a`)).toHaveAttribute('href', `/products/pergolas/${type}`);
+    }
+  }
+  const row = page.locator('[data-product-type="gable"] [data-price-example="3000"]');
+  await row.scrollIntoViewIfNeeded();
+  await expect(row.locator('[data-priced]')).toBeVisible();
+  // Hit the displayed amount, covered by the row link, rather than only its size label.
+  const price = await row.locator('[data-priced]').boundingBox();
+  await page.mouse.click(price!.x + price!.width / 2, price!.y + price!.height / 2);
+  await expect(page).toHaveURL(/\/products\/pergolas\/gable$/);
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('sanctuary:gable-product:v1')!))).toEqual(saved);
+  await page.goBack();
+  const keyboardLink = page.locator('[data-product-type="pitched"] [data-price-example="6000"] a');
+  await keyboardLink.focus(); await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/products\/pergolas\/pitched$/);
+});
+
+test('unavailable prices keep retry separate from the product row link', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/api/configurator-price', route => { requests += 1; return route.fulfill({ json: { status: 'unavailable' } }); });
+  await page.setViewportSize({ width: 390, height: 750 }); await page.goto('/');
+  const row = page.locator('[data-product-type="gable"] [data-price-example="3000"]');
+  await row.scrollIntoViewIfNeeded();
+  const retry = row.getByRole('button', { name: /Retry/ });
+  await expect(retry).toBeVisible();
+  const before = requests;
+  await retry.click(); await expect.poll(() => requests).toBeGreaterThan(before);
+  await expect(page).toHaveURL(/\/$/);
+  await row.getByRole('link').focus(); await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/products\/pergolas\/gable$/);
+});
+
+for (const width of [320, 390, 1440]) test(`price arrows stay clear of text with late homepage SVG styling at ${width}px`, async ({ page }, testInfo) => {
+  await page.route('**/api/configurator-price', route => route.fulfill({ json: { status: 'priced', amountIncGst: 23829, breakdown: [] } }));
+  await page.setViewportSize({ width, height: 900 }); await page.goto('/');
+  // Reapply the real broad owner last, reproducing its production cascade order.
+  const pageClass = await page.locator('[data-homepage-composition]').evaluate(element => element.classList.item(element.classList.length - 1));
+  await page.addStyleTag({ content: `.${pageClass} svg { width:24px; height:24px; flex-shrink:0 }` });
+  const measurements = [];
+  for (const row of await page.locator('[data-price-example]').all()) {
+    await expect(row.locator('[data-priced]')).toBeVisible();
+    const bounds = await row.evaluate(element => {
+      const link = element.querySelector('a')!, icon = link.querySelector('svg')!;
+      const label = document.createRange(); label.selectNode(link.firstChild!);
+      const arrow = icon.getBoundingClientRect();
+      const price = element.querySelector('[data-priced]')!.getBoundingClientRect();
+      return { iconWidth: arrow.width, labelGap: arrow.left - label.getBoundingClientRect().right,
+        priceGap: arrow.left - price.right, bottomDifference: Math.abs(arrow.bottom - price.bottom) };
+    });
+    measurements.push(bounds);
+    expect(bounds.iconWidth).toBeLessThan(18);
+    expect(bounds.labelGap).toBeGreaterThanOrEqual(0);
+    if (width > 1100) {
+      expect(bounds.priceGap).toBeGreaterThanOrEqual(7.5);
+      expect(bounds.bottomDifference).toBeLessThanOrEqual(4);
+    }
+  }
+  const evidence = testInfo.outputPath('rendered-price-arrow-spacing.json');
+  await writeFile(evidence, JSON.stringify({ width, measurements }, null, 2));
+  await testInfo.attach('rendered-price-arrow-spacing', { path: evidence, contentType: 'application/json' });
 });
 
 for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
@@ -25,6 +95,7 @@ for (const width of [320, 390, 820, 1024, 1100, 1101, 1440]) {
       await expect.poll(() => card.locator('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await expect(card.locator('h3 a')).toHaveAttribute('href', `/products/pergolas/${type}`);
       await expect(card.getByText('Installed estimates', { exact: true })).toBeVisible();
+      await expect(card.getByText('Explore this roofline, then choose your size.', { exact: true })).toBeVisible();
       const rows = card.locator('[data-price-example]');
       await expect(rows).toHaveCount(3);
       for (const [index, widthMm] of [3000, 6000, 9000].entries()) {
