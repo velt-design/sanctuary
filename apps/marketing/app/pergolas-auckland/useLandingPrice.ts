@@ -4,7 +4,7 @@ import { landingPriceTableStore } from '../../lib/landingPriceTableStore';
 import { lookupLandingPrice } from '../../lib/landingPriceTable';
 import type { useLandingSelection } from './useLandingSelection';
 
-export type LandingSelectionState = ReturnType<typeof useLandingSelection>;
+export type LandingSelectionState = Pick<ReturnType<typeof useLandingSelection>, 'ready' | 'resume' | 'type' | 'selection' | 'design' | 'failed' | 'retry'> & Partial<ReturnType<typeof useLandingSelection>>;
 export function useLandingPrice(state: LandingSelectionState) {
   const snapshot = useSyncExternalStore(landingPriceTableStore.subscribe, landingPriceTableStore.getSnapshot, landingPriceTableStore.getServerSnapshot);
   // Full saved drafts always use the canonical calculation, even if their visible dimensions match a basic cell.

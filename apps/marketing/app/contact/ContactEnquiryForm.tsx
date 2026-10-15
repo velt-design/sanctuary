@@ -64,6 +64,7 @@ import {
 
 export type ContactEnquiryFormProps = {
   compactConfigured?: boolean;
+  funnel?: boolean;
   mobileFinish?: boolean;
   configuredDesign?: ContactDesignBrief;
   initialEnquiryType: EnquiryAudience | null;
@@ -118,6 +119,7 @@ export default function ContactEnquiryForm({
   sourceProductLabel,
   configuredDesign,
   compactConfigured = false,
+  funnel = false,
   mobileFinish = false,
 }: ContactEnquiryFormProps) {
   const {
@@ -145,11 +147,11 @@ export default function ContactEnquiryForm({
   const sentDesignRef = useRef<string | null>(null);
   const currentDesign = JSON.stringify(configuredDesign?.snapshot);
   useEffect(() => {
-    if (mobileFinish && submitState === 'success' && sentDesignRef.current !== currentDesign) {
+    if ((mobileFinish || funnel) && submitState === 'success' && sentDesignRef.current !== currentDesign) {
       setSubmitState('idle');
       setReceivedEarlier(false);
     }
-  }, [mobileFinish, submitState, currentDesign]);
+  }, [mobileFinish, funnel, submitState, currentDesign]);
   const attachmentErrorRef = useRef<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
   const shouldFocusErrorSummaryRef = useRef(false);
@@ -494,7 +496,7 @@ export default function ContactEnquiryForm({
     }
   };
 
-  if(compactConfigured && configuredDesign)return <ConfiguredEnquiryFields mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
+  if(funnel || (compactConfigured && configuredDesign))return <ConfiguredEnquiryFields sourcePath={initialContext.sourcePath} sourceContext={JSON.stringify(contextProperties)} funnel={funnel} hasDesign={!!configuredDesign} mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'

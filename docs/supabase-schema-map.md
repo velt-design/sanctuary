@@ -731,6 +731,19 @@ stores an absent phone as NULL; other enquiry pathways retain their phone
 requirement. Service-only grants, upload validation and submission locking are
 unchanged. Regression: `supabase/tests/marketing_enquiry_optional_phone.sql`.
 
+The forward candidate `20261015000001_marketing_google_funnel_optional_phone.sql`
+extends that same phone exception to direct residential enquiries whose top-level
+page is exactly `/ads/outdoor-living` or `/ads/acrylic-pergolas`, with email, suburb
+and `project-discussion` intent. It does not require or invent a design. Only this
+eligibility predicate changes; all writes, blank-phone deduplication safeguards,
+upload binding, replay, search path and grants remain identical. Both ordinary
+and durable intake use this function. The native fallback preserves the submitted
+discussion intent for these two residential paths. Disposable SQL and actual
+fallback/API-to-SQL coverage live in `test/marketing-google-funnel-intake.test.ts`
+and `supabase/tests/marketing_google_funnel_optional_phone.sql`. Installation into
+shared staging or production is a separate reviewed step; local passage does not
+establish live acceptance.
+
 `20260914062001_marketing_enquiry_durable_delivery.sql` introduces
 `private.marketing_enquiry_deliveries`, with no browser or direct service-role
 table grants. It retains the exact rendered message (up to 16 MiB), an outbox

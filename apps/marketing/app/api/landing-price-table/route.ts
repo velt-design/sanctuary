@@ -2,6 +2,8 @@ import { readBoundedJson, isAllowedMarketingOrigin } from '../../../lib/marketin
 import { getPublishedCostingConfiguration } from '../../../lib/publishedCostingConfiguration.server';
 import { landingPricePublicationKey, readLandingPriceTableArtifact } from '../../../lib/landingPriceTableArtifact.server';
 import { LANDING_PRICE_LEASE_MS, type LandingPriceTableReply } from '../../../lib/landingPriceTable';
+import { CONFIGURATOR_PRICE_MODE_HEADER } from '../../../lib/configuratorPriceLease';
+import { getLeasedConfiguratorPricing } from '../../../lib/configuratorPricingLease.server';
 
 export async function POST(request: Request) {
   const json = (body: LandingPriceTableReply, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -15,13 +17,17 @@ export async function POST(request: Request) {
     || Object.keys(input).some(key => key !== 'knownId')
     || ('knownId' in input && (typeof input.knownId !== 'string' || !/^[a-f0-9]{64}$/.test(input.knownId)))) return json({ status: 'unavailable' }, 422);
   try {
-    // Check the live publication even on a conditional response. Never authorize a cached former publication.
-    const resolved = await getPublishedCostingConfiguration();
+    // Conditional responses require current publication authority. Only opted-in
+    // funnels share the existing bounded lease; other callers validate each time.
+    const lease = request.headers.get(CONFIGURATOR_PRICE_MODE_HEADER) === 'funnel' ? await getLeasedConfiguratorPricing(approved) : null;
+    const resolved = lease?.resolved ?? await getPublishedCostingConfiguration();
     if (resolved.provenance.versionId !== approved) return json({ status: 'unavailable' }, 503);
     const table = await readLandingPriceTableArtifact();
     if (!table || table.versionId !== approved || table.versionNumber !== resolved.provenance.versionNumber
       || table.publicationKey !== landingPricePublicationKey(resolved.provenance)) return json({ status: 'unavailable' }, 503);
-    return json(input.knownId === table.id ? { status: 'current', id: table.id, leaseMs: LANDING_PRICE_LEASE_MS }
-      : { status: 'ready', table, leaseMs: LANDING_PRICE_LEASE_MS });
+    const leaseMs = lease ? Math.max(0, lease.expiresAt - Date.now()) : LANDING_PRICE_LEASE_MS;
+    if (!leaseMs) return json({ status: 'unavailable' }, 503);
+    return json(input.knownId === table.id ? { status: 'current', id: table.id, leaseMs }
+      : { status: 'ready', table, leaseMs });
   } catch { return json({ status: 'unavailable' }, 503); }
 }

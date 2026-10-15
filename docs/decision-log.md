@@ -1,5 +1,27 @@
 # Decision Log
 
+## 2026-10-15 - Verify public form requirements through the database boundary
+
+Making phone optional in client/API checks did not change the canonical intake
+function's configured-only exception. Mocked intake tests passed while a direct
+Google enquiry still failed at SQL. Test actual API and native fallback payloads
+against the real function in a disposable database. Preserve submitted intent
+through every adapter and add a forward migration instead of manufacturing a
+design or editing applied SQL. Owners: `supabase-schema-map.md`,
+`security-privacy-quality.md`; regression: `test/marketing-google-funnel-intake.test.ts`.
+
+## 2026-10-15 - Verify visible renderer failures and preserve price authority while reducing latency
+
+A healthy React Three Fiber canvas exposed its native fallback text to accessibility
+inspection, which was mistaken for a visible 3D failure. Verify the rendered canvas
+and error path together; keep genuine context-loss/retry recovery when removing
+misleading fallback content. For Google-funnel estimates, duplicate debounced
+requests and repeated publication reads caused avoidable delay. Share exact results
+and immutable server configuration only under the original bounded publication
+lease, with denial fencing for concurrent requests. Never substitute stale totals
+or publish private pricing inputs to make an interface appear instant. Owners:
+`customer-configurator-architecture.md`, `security-privacy-quality.md`.
+
 ## 2026-10-15 - Compose credential checks without callback recursion
 
 A campaign route passed a callback containing `lease.check()` into the credential

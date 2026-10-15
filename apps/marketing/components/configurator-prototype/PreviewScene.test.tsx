@@ -35,6 +35,7 @@ it.each(['context loss','render error'])('can retry after %s without resetting t
   }
   try{
     await React.act(async()=>root.render(<Harness/>));
+    expect(host.textContent).not.toContain('The 3D view paused');
     expect(onReady).not.toHaveBeenCalled(); // Native canvas fallback children are mounted before a real frame.
     await React.act(async()=>host.querySelector('button')!.click());
     if(reason==='context loss')await React.act(async()=>{fixture.canvas!.dispatchEvent(new Event('webglcontextlost'));});

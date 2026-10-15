@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { buildEnquiryFallbackPayload } from './enquiryFallback';
 
 describe('buildEnquiryFallbackPayload', () => {
+  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas'])('preserves the submitted discussion intent for %s without inventing one', page => {
+    const form = new FormData();
+    form.set('enquiryType', 'residential'); form.set('page', page);
+    expect(buildEnquiryFallbackPayload(form, 'fixture')).toMatchObject({ requestType: '' });
+    form.set('requestType', 'project-discussion');
+    const payload = buildEnquiryFallbackPayload(form, 'fixture');
+    expect(payload).toMatchObject({ requestType: 'project-discussion', page });
+    expect(payload).not.toHaveProperty('customerDesign');
+    form.set('page', '/auckland-outdoor-living');
+    expect(buildEnquiryFallbackPayload(form, 'fixture')).not.toHaveProperty('requestType');
+    form.set('page', page); form.set('enquiryType', 'commercial');
+    expect(buildEnquiryFallbackPayload(form, 'fixture')).not.toHaveProperty('requestType');
+  });
+
   it('preserves direct-form arrays, context, reachability, and technical details', () => {
     const formData = new FormData();
     formData.set('enquiryType', 'commercial');

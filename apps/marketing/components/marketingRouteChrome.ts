@@ -1,3 +1,4 @@
+import { isGoogleFunnelPath } from '../lib/googleFunnel';
 const shelllessRoutePrefixes = [
   '/design-enquiry',
   '/quote',
@@ -18,7 +19,7 @@ export function shouldHideMarketingHeader(
   pathname: string | null,
 ): boolean {
   if (!pathname) return false;
-  return pathname === '/home-journey'
+  return isGoogleFunnelPath(pathname) || pathname === '/home-journey'
     || shelllessRoutePrefixes.some((route) =>
       matchesRouteOrChild(pathname, route),
     );
@@ -28,7 +29,7 @@ export function shouldHideMarketingFooter(
   pathname: string | null,
 ): boolean {
   if (!pathname) return false;
-  return pathname === '/home-journey'
+  return isGoogleFunnelPath(pathname) || pathname === '/home-journey'
     || pathname === '/projects'
     || shelllessRoutePrefixes.some((route) =>
       matchesRouteOrChild(pathname, route),

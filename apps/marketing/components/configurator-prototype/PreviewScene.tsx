@@ -85,7 +85,7 @@ export default function PreviewScene({ enhanced = false, eyeLevel = false, reali
   return <SceneBoundary key={attempt} fallback={readyFallback}>
     <Canvas shadows={studio ? 'percentage' : false} frameloop="demand" dpr={[1, mobile ? 1.25 : 1.75]} style={{ touchAction: 'pan-y' }}
       camera={{ position: [12000, -18000, 12000], up: [0, 0, 1], fov: 24, near: 10, far: 200000 }}
-      fallback={fallback}>
+      aria-label="Interactive 3D pergola preview">
       <SceneReady onReady={onReady}/><ContextWatch onFallback={() => { setUnavailable(true); onFallback(); }} />
       <DayNightTransition presentation={nightPresentation}>
       <StudioTreatment.Provider value={studio}>

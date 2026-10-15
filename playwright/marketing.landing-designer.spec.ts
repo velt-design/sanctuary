@@ -5,7 +5,7 @@ const key = 'sanctuary.configurator-preview.v1';
 test.beforeEach(async ({ page, baseURL }) => {
   await page.route('**/*', r => new URL(r.request().url()).origin === new URL(baseURL!).origin ? r.continue() : r.abort());
   await page.route('**/api/*price', r => r.fulfill({ json: { status: 'unavailable' } }));
-  await page.route('**/api/enquiry', r => r.abort());
+  await page.route('**/api/enquiry**', r => r.abort());
 
 });
 for (const route of routes) for (const width of [390, 1440]) test(`${route} full design, edit and return at ${width}`, async ({ page }, info) => {

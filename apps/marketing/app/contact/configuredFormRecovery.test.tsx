@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import ContactEnquiryForm from './ContactEnquiryForm';
 import { buildContactDesignBrief } from './contactDesignBrief';
 import { DEFAULT_PREVIEW_DRAFT } from '../../components/configurator-prototype/previewDraft';
-import { webcrypto } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 let marketingEnabled=false;
 
 vi.mock('@/components/ConsentProvider', () => ({ useConsent: () => ({
@@ -86,4 +86,30 @@ it('identifies an earlier receipt after a lost response and edited retry without
 it.each([[false,false],[true,false],[true,true]])('shows the v2 Google and Meta notice for compact=%s mobile=%s',async(compactConfigured,mobileFinish)=>{
   await act(async()=>root.render(<ContactEnquiryForm compactConfigured={compactConfigured} mobileFinish={mobileFinish} configuredDesign={brief()} initialEnquiryType="residential" initialContext={{sourcePath:'/products'}}/>));
   expect(host.textContent).toContain('Google Ads and Meta');expect(host.querySelector('a[href="/privacy#advertising-measurement"]')).not.toBeNull();
+});
+
+it.each([
+  ['/ads/outdoor-living',false],['/ads/outdoor-living',true],
+  ['/ads/acrylic-pergolas',false],['/ads/acrylic-pergolas',true],
+] as const)('emits email-only enhanced identity after accepted %s enquiry, configured=%s',async(page,configured)=>{
+  marketingEnabled=true;vi.stubGlobal('crypto',webcrypto);vi.stubEnv('NEXT_PUBLIC_GOOGLE_ENHANCED_LEADS_ENABLED','true');
+  const priorPath=window.location.href;window.history.replaceState({},'',page);
+  const target=window as Window & {sanctuaryGoogleEnhancedLead?:unknown};
+  const reads:unknown[]=[];const layer:Record<string,unknown>[]=[];
+  layer.push=(...events)=>{reads.push(target.sanctuaryGoogleEnhancedLead);return Array.prototype.push.apply(layer,events);};
+  vi.stubGlobal('dataLayer',layer);
+  Object.defineProperty(target,'sanctuaryGoogleEnhancedLead',{configurable:true,value:{sha256_phone_number:'stale'}});
+  network.mockResolvedValueOnce({ok:true,status:200,json:async()=>({ok:true})});
+  try {
+    await act(async()=>root.render(<ContactEnquiryForm funnel compactConfigured configuredDesign={configured?brief():undefined}
+      initialEnquiryType="residential" initialIntent="help"
+      initialContext={{enquiryType:'residential',sourcePath:page,sourceComponent:'embedded_form'}}/>));
+    await fill();await submit();
+    const payload=JSON.parse(network.mock.calls[0][1].body);
+    expect(payload.phone).toBe('');expect(payload.page).toBe(page);expect(Boolean(payload.customerDesign)).toBe(configured);
+    expect(reads).toEqual([{sha256_email_address:createHash('sha256').update('fixture@example.test').digest('hex')}]);
+    expect(layer).toHaveLength(1);expect(layer[0]).toMatchObject({event:'lead_submitted',enquiry_type:'residential',source_path:page});
+    expect(JSON.stringify(layer)).not.toContain('fixture@example');expect(JSON.stringify(layer)).not.toContain('sha256');
+    (layer[0].eventCallback as ()=>void)();expect(target.sanctuaryGoogleEnhancedLead).toBeUndefined();
+  } finally {delete target.sanctuaryGoogleEnhancedLead;window.history.replaceState({},'',priorPath);}
 });
