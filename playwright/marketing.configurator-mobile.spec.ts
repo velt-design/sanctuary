@@ -5,8 +5,50 @@ const toReview=async(page:Page)=>{await toExtras(page);await next(page,'Review y
 async function aboveFold(page:Page,locator:Locator){const b=await locator.boundingBox();const c=await page.locator('[data-journey-content]').boundingBox();expect(b).not.toBeNull();expect(b!.y).toBeGreaterThanOrEqual(c!.y-1);expect(b!.y+b!.height).toBeLessThanOrEqual(c!.y+c!.height+1);}
 test.beforeEach(async({page,baseURL})=>{
  await page.route('**/*',r=>new URL(r.request().url()).origin===new URL(baseURL!).origin?r.continue():r.abort());
- await page.route('**/api/enquiry',r=>r.abort());
+ await page.route(/\/api\/(enquiry|contact)(?:\/fallback)?(?:\?|$)/,r=>r.abort());
  await page.addInitScript(()=>localStorage.setItem('sp_consent_v1',JSON.stringify({analytics:false,marketing:false,version:1,updatedAt:new Date().toISOString()})));
+});
+
+test('side summaries select their face, retain other choices and return keyboard focus',async({page})=>{
+ await page.setViewportSize({width:390,height:750});await page.goto('/configurator-preview?open=1');await toExtras(page);
+ for(const side of ['left','front','right']){
+  const summary=page.locator(`[data-side-edit="${side}"]`);
+  await summary.focus();await page.keyboard.press('Enter');
+  const face=page.locator(`[data-side-choice="${side}"]`);
+  await expect(face).toBeFocused();await expect(face).toHaveAttribute('aria-pressed','true');
+  for(const other of ['left','front','right'].filter(value=>value!==side))await expect(page.locator(`[data-side-choice="${other}"]`)).toHaveAttribute('aria-pressed','false');
+  await page.getByRole('radio',{name:'Timber',exact:true}).check();
+  if(side==='front')await page.keyboard.press('Escape');else await next(page,'Done editing sides');
+  await expect(summary).toBeFocused();await expect(summary).toHaveAccessibleName(`Edit ${side} side, currently Timber`);
+ }
+ for(const side of ['left','front','right'])await expect(page.locator(`[data-side-edit="${side}"]`)).toHaveAccessibleName(`Edit ${side} side, currently Timber`);
+ const before=await page.evaluate(()=>localStorage.getItem('sanctuary.configurator-preview.v1'));
+ expect(before).toContain('timber');
+ await page.locator('[data-side-edit="left"]').click();await next(page,'Done editing sides');
+ expect(await page.evaluate(()=>localStorage.getItem('sanctuary.configurator-preview.v1'))).toBe(before);
+ await next(page,'Review your design');await expect(page.getByRole('button',{name:'Enquire',exact:true})).toBeVisible();
+});
+
+test('mobile edited design completes enquiry after accessible validation and a recoverable failure',async({page})=>{
+ const payloads:Record<string,unknown>[]=[];
+ await page.route(/\/api\/enquiry(?:\?|$)/,async route=>{
+  payloads.push(route.request().postDataJSON());
+  await route.fulfill({status:payloads.length===1?503:200,json:payloads.length===1?{error:'Please try again.'}:{ok:true}});
+ });
+ await page.setViewportSize({width:390,height:750});await page.goto('/configurator-preview?open=1');await toExtras(page);
+ await page.locator('[data-side-edit="right"]').click();await page.getByRole('radio',{name:'Timber',exact:true}).check();await next(page,'Done editing sides');
+ await next(page,'Review your design');await next(page,'Enquire');
+ const form=page.locator('form[action="/api/enquiry/fallback"]:visible');
+ await form.getByRole('button',{name:'Enquire about this design',exact:true}).click();
+ expect(payloads).toHaveLength(0);await expect(form.getByRole('alert')).toBeFocused();
+ await form.locator('[name="name"]').fill('Fixture Customer');await form.locator('[name="email"]').fill('fixture@example.test');await form.locator('[name="suburb"]').fill('Albany');
+ await form.getByRole('button',{name:'Enquire about this design',exact:true}).click();await expect(form.getByText('Please try again.',{exact:true})).toBeVisible();
+ await expect(form.locator('[name="name"]')).toHaveValue('Fixture Customer');
+ await form.getByRole('button',{name:'Enquire about this design',exact:true}).click();await expect(page.getByRole('heading',{name:'Design saved. Enquiry sent.',exact:true})).toBeVisible();
+ expect(payloads).toHaveLength(2);expect(payloads[1].submissionId).toBe(payloads[0].submissionId);
+ expect(payloads[1].customerDesign).toEqual(payloads[0].customerDesign);
+ expect(JSON.stringify(payloads[1].customerDesign)).toContain('right-');
+ expect(JSON.stringify(payloads[1].customerDesign)).toContain('timber');
 });
 for(const width of [360,390,430])test(`four pages keep primary choices above fold at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:width===390?667:750});await page.goto('/configurator-preview?open=1');

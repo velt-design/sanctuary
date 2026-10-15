@@ -17,7 +17,7 @@ export default function MobileSideChoices({flow,roof}:{flow:ReturnType<typeof us
         const ids=openings.filter(o=>o.side===side).map(o=>o.id);
         const all=ids.length>0&&ids.every(id=>flow.selected.includes(id));
         const some=ids.some(id=>flow.selected.includes(id));
-        return <button key={side} type="button" disabled={!ids.length} aria-pressed={all ? true : some ? 'mixed' : false} onClick={()=>flow.toggleGroup(ids)}>{side[0].toUpperCase()+side.slice(1)}</button>;
+        return <button key={side} type="button" data-side-choice={side} disabled={!ids.length} aria-pressed={all ? true : some ? 'mixed' : false} onClick={()=>flow.toggleGroup(ids)}>{side[0].toUpperCase()+side.slice(1)}</button>;
       })}
     </fieldset>
     <fieldset className={css.treatmentTabs} disabled={!flow.selected.length}><legend>Choose your treatment</legend>{sideTreatments.map(t=><label key={t.id} data-selected={flow.kind===t.id}>

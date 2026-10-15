@@ -1,18 +1,21 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { usePreviewBlinds } from './PreviewBlindProvider';
 import type { PreviewRoofChoices } from './GableChoices';
 import type { useSideLookComparison } from './useSideLookComparison';
 import css from './mobileSideLooks.module.css';
-import MobileSideSummary from './MobileSideSummary';
+import MobileSideSummary, { type MobileSideFace } from './MobileSideSummary';
 
-export default function MobileSideLooks({ roof, comparison, preview, estimate, children }: {
+export default function MobileSideLooks({ roof, comparison, preview, estimate, children, onEditSide }: {
   roof: PreviewRoofChoices; comparison: ReturnType<typeof useSideLookComparison>; preview: ReactNode; estimate: ReactNode; children: ReactNode;
+  onEditSide: (side: MobileSideFace) => void;
 }) {
   const workspace = usePreviewBlinds()!;
   const [editing, setEditing] = useState(false);
   const section = useRef<HTMLElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
+  const editOrigin = useRef<MobileSideFace | null>(null);
+  const focusAfterEdit = useRef(false);
   const { looks, index, move } = comparison;
   const current = looks[index];
   const pointer = useRef<{ x: number; y: number; id: number } | null>(null);
@@ -20,14 +23,22 @@ export default function MobileSideLooks({ roof, comparison, preview, estimate, c
     if (!editing) return;
     const dialog = section.current?.closest('dialog');
     const cancel = (event: Event) => {
-      event.preventDefault(); setEditing(false); workspace.setEditing(false);
-      section.current?.closest('[data-journey-content]')?.scrollTo({ top: 0, behavior: 'instant' });
-      toggle.current?.focus();
+      event.preventDefault(); edit(false);
     };
     dialog?.addEventListener('cancel', cancel);
     return () => dialog?.removeEventListener('cancel', cancel);
   }, [editing, workspace]);
-  function edit(value: boolean) {
+  useLayoutEffect(() => {
+    if (!focusAfterEdit.current) return;
+    focusAfterEdit.current = false;
+    const side = editOrigin.current;
+    const target = side ? section.current?.querySelector<HTMLButtonElement>(`[data-side-${editing ? 'choice' : 'edit'}="${side}"]`) : toggle.current;
+    target?.focus({ preventScroll: true });
+    if (!editing) editOrigin.current = null;
+  }, [editing]);
+  function edit(value: boolean, side?: MobileSideFace) {
+    if (side) { editOrigin.current = side; onEditSide(side); }
+    focusAfterEdit.current = true;
     setEditing(value); workspace.setEditing(false);
     section.current?.closest('[data-journey-content]')?.scrollTo({ top: 0, behavior: 'instant' });
   }
@@ -55,7 +66,7 @@ export default function MobileSideLooks({ roof, comparison, preview, estimate, c
       <div className={css.description} aria-live="polite" aria-atomic="true">
         <p className={css.count}>{index < 0 ? 'Custom' : `${index + 1} of ${looks.length}`}</p>
         <h2>{current?.name ?? 'Your combination'}</h2>
-        <MobileSideSummary roof={roof}/>
+        <MobileSideSummary roof={roof} onEdit={side => edit(true, side)}/>
       </div>
       <div className={css.comparisonActions}>
         {current?.id === 'privacy' && <button onClick={comparison.flipPrivacy}>Use {comparison.privacySide === 'left' ? 'right' : 'left'} side</button>}
@@ -64,6 +75,6 @@ export default function MobileSideLooks({ roof, comparison, preview, estimate, c
       {estimate}
     </>}
     <button ref={toggle} className={css.editToggle} aria-expanded={editing} aria-controls="mobile-side-editor" onClick={() => edit(!editing)}>{editing ? 'Done editing sides' : 'Customise sides'}<span aria-hidden="true">{editing ? '−' : '+'}</span></button>
-    {editing && <div id="mobile-side-editor" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); edit(false); toggle.current?.focus(); } }}>{children}{estimate}</div>}
+    {editing && <div id="mobile-side-editor" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); edit(false); } }}>{children}{estimate}</div>}
   </section>;
 }

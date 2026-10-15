@@ -1,5 +1,13 @@
 # Testing And QA
 
+The homepage price-link and mobile side-summary regressions live in
+`playwright/marketing.homepage-challenger.spec.ts` and
+`playwright/marketing.configurator-mobile.spec.ts`. They cover full-row/keyboard
+navigation without saved-choice replacement, each selected face, other-side
+retention, focus return and edited-design validation/failure/retry. Enquiry APIs
+and native fallback are intercepted before input; fixture success is not delivery
+proof. Use the existing marketing Playwright command and an isolated local runtime.
+
 Portal shared-email type dependencies are covered by
 `apps/portal/lib/sharedEmails.dependencies.test.ts` in `npm run test:portal`.
 It checks the actual cross-app preview import chain against Portal's declared

@@ -1,5 +1,13 @@
 # Sanctuary "Your Pergola" Customer Configurator
 
+Mobile side-summary entry (16 October 2026): `MobileSideSummary` delegates the
+tapped Left, Front or Right face through `MobileSideLooks` to the existing
+`useMobileSides.start` selection. Opening the editor changes only the editing
+target, not treatments or the saved design. `MobileSideChoices` receives focus on
+that face; Done or Escape restores focus to its summary. Unavailable faces stay
+disabled. The existing generic Customise sides entry and grouped-treatment rules
+remain in place. No new pricing or geometry owner is introduced.
+
 
 ## Google funnel adaptation (15 October 2026, launch candidate)
 

@@ -1,5 +1,18 @@
 # Marketing UI Foundation
 
+## Enquiry-path friction corrections (16 October 2026)
+
+`ChallengerPriceExamples` makes each installed-size/price row a link to the
+existing roofline product page, with a restrained arrow and keyboard focus state.
+Visible copy beside each estimate group explains that the roofline opens first,
+then the customer chooses a size. The row does not seed a design or replace saved
+product choices. Unavailable-price
+retry remains a separate button. `MobileSideSummary` exposes each available face
+as an Edit button into the existing side editor, preserving the current design.
+These changes address observed inert taps. Re-tapping an already-selected option,
+telephone handoffs and hidden canvas fallback text are not, alone, failure evidence.
+No enquiry validation, pricing, tracking privacy or campaign rules change here.
+
 
 ## Google Ads funnel launch candidate (15 October 2026)
 
