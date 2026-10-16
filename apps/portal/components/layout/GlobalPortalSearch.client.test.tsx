@@ -10,6 +10,7 @@ import { GlobalPortalSearchStateProvider } from './GlobalPortalSearchState';
 const navigation = vi.hoisted(() => ({
   pathname: '/staff/dashboard',
   search: '',
+  instantRoute: null as 'projects-index' | null,
   beginRouteTransition: vi.fn(),
   prefetch: vi.fn(),
 }));
@@ -26,7 +27,7 @@ vi.mock('@/components/page-state/PortalRouteTransition', async (importOriginal) 
       beginRouteTransition: navigation.beginRouteTransition,
       beginInstantRoute: vi.fn(),
       finishInstantRoute: vi.fn(),
-      instantRoute: null,
+      instantRoute: navigation.instantRoute,
       pathname: navigation.pathname,
       routeKey: `${navigation.pathname}?${navigation.search}`,
     }),
@@ -120,6 +121,7 @@ describe('GlobalPortalSearch', () => {
     });
     navigation.pathname = '/staff/dashboard';
     navigation.search = '';
+    navigation.instantRoute = null;
     navigation.beginRouteTransition.mockReset();
     navigation.prefetch.mockReset();
     window.history.replaceState(null, '', navigation.pathname);
@@ -434,8 +436,60 @@ describe('GlobalPortalSearch', () => {
 
   it('owns one results panel while two route headers overlap', () => {
     const rendered = renderIntoDocument(<QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><GlobalPortalSearchStateProvider><GlobalPortalSearch /><GlobalPortalSearch shortcutEnabled={false} /></GlobalPortalSearchStateProvider></PortalQueryClientScope></QueryClientProvider>);
-    act(() => (rendered.container.querySelector('input') as HTMLInputElement).focus());
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    expect(document.activeElement).toBe(input);
+    expect(input.getAttribute('aria-controls')).toBe(document.querySelector('[role="listbox"]')?.id);
     expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(1);
     rendered.unmount();
   });
+  it.each([true, false])('keeps focus and the panel on the visible header through an instant-route overlap (pending first: %s)', async (pendingFirst) => {
+    function OverlappingHeaders({ pending }: { pending: boolean }) {
+      const pendingHeader = pending ? <div key="pending" data-testid="pending-header"><GlobalPortalSearch /></div> : null;
+      const loadedHeader = <div key="loaded" data-testid="loaded-header" style={{ display: pending ? 'none' : 'contents' }} aria-hidden={pending || undefined}><GlobalPortalSearch /></div>;
+      return <GlobalPortalSearchStateProvider>{pendingFirst ? [pendingHeader, loadedHeader] : [loadedHeader, pendingHeader]}</GlobalPortalSearchStateProvider>;
+    }
+    const view = (pending: boolean) => <QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><OverlappingHeaders pending={pending} /></PortalQueryClientScope></QueryClientProvider>;
+    navigation.instantRoute = 'projects-index';
+    const rendered = renderIntoDocument(view(true));
+    const pendingInput = rendered.container.querySelector('[data-testid="pending-header"] input') as HTMLInputElement;
+    const loadedInput = rendered.container.querySelector('[data-testid="loaded-header"] input') as HTMLInputElement;
+    const pendingRoot = pendingInput.closest('[data-global-portal-search]') as HTMLElement;
+    const loadedRoot = loadedInput.closest('[data-global-portal-search]') as HTMLElement;
+    const visibleRect = { bottom: 100, height: 40, left: 500, right: 800, top: 60, width: 300, x: 500, y: 60, toJSON: () => ({}) };
+    vi.spyOn(pendingRoot, 'getBoundingClientRect').mockReturnValue(visibleRect);
+    const loadedRect = vi.spyOn(loadedRoot, 'getBoundingClientRect');
+    const expectOwner = (input: HTMLInputElement) => {
+      expect(document.activeElement).toBe(input);
+      expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(1);
+      expect(input.getAttribute('aria-controls')).toBe(document.querySelector('[role="listbox"]')?.id);
+      expect(document.querySelector<HTMLElement>('[data-global-search-panel]')?.style.top).toBe('104px');
+    };
+
+    act(() => pendingInput.focus());
+    inputText(pendingInput, 're');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    await flushQueryNotifications();
+    expectOwner(pendingInput);
+    expect(loadedInput.getAttribute('aria-expanded')).toBe('false');
+    expect(document.body.textContent).toContain('Remuera Residence');
+    act(() => document.querySelector('[data-global-search-panel]')?.dispatchEvent(new Event('pointerdown', { bubbles: true })));
+    expectOwner(pendingInput);
+    for (const modifiers of [{ ctrlKey: true }, { metaKey: true }]) {
+      act(() => pendingInput.blur());
+      act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ...modifiers, bubbles: true, cancelable: true })));
+      expectOwner(pendingInput);
+    }
+
+    loadedRect.mockReturnValue(visibleRect);
+    navigation.instantRoute = null;
+    rendered.rerender(view(false));
+    expect(loadedInput.value).toBe('re');
+    expectOwner(loadedInput);
+    act(() => loadedInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
+    expect(loadedInput.value).toBe('re');
+    rendered.unmount();
+  });
+
 });

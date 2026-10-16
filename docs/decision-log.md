@@ -12,6 +12,12 @@ late responses, retry and remounts. Routine contact information is visible witho
 Edit, and commercial return retains list context. See `ui-foundation.md` and
 `projects-contacts-estimates-calculator.md`. No new approval or release authority.
 
+Release review exposed a narrower overlap race: counting one overlay did not prove
+that the visible search owned it. Hidden retained headers must neither claim focus
+nor dismiss another instance. Cover both DOM orders, keyboard shortcuts, pointer
+interaction and the retained-header handoff, checking the controlling input and
+anchor as well as the overlay count.
+
 Delivery review also found three trust boundaries that unit-only presentation checks
 had missed: a raw fixture bypassed UI flashing defaults, a legacy row-level version
 overrode the saved snapshot version during an estimate update, and an invoice iframe

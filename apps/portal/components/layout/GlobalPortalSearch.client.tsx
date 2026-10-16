@@ -59,6 +59,10 @@ const SEARCH_PANEL_DESKTOP_WIDTH_PX = 560;
 const SEARCH_PANEL_MOBILE_MIN_WIDTH_PX = 280;
 const SEARCH_PANEL_MOBILE_BREAKPOINT_PX = 767;
 
+function isHiddenSearchElement(element: Element): boolean {
+  return Boolean(element.closest('[hidden], [inert], [aria-hidden="true"]'));
+}
+
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
@@ -133,6 +137,7 @@ function ActiveGlobalPortalSearch({
   const prefetchedHrefRef = useRef(new Set<string>());
   const listboxId = useId();
   const sharedState = useOptionalGlobalPortalSearchState();
+  const activeInstanceId = sharedState?.activeInstanceId;
   const setActiveInstanceId = sharedState?.setActiveInstanceId;
   const setNavigationRouteKey = sharedState?.setNavigationRouteKey;
   const sharedNavigationRouteKey = sharedState?.navigationRouteKey;
@@ -198,11 +203,19 @@ function ActiveGlobalPortalSearch({
   }, [setInteractionActive, setNavigationRouteKey, setQuery]);
 
   useLayoutEffect(() => {
-    if (!interactionActive) return;
+    const input = inputRef.current;
+    if (!interactionActive || !input || isHiddenSearchElement(input)) return;
+    const focused = document.activeElement;
+    if (focused !== input) {
+      // Restore typing after the previous header disappears, without taking
+      // ownership from another visible input or control.
+      if (!shortcutEnabled || (focused && focused !== document.body && !isHiddenSearchElement(focused))) return;
+      input.focus({ preventScroll: true });
+    }
+    if (document.activeElement !== input) return;
     setActiveInstanceId?.(listboxId);
-    inputRef.current?.focus({ preventScroll: true });
     setOpen(true);
-  }, [interactionActive, listboxId, setActiveInstanceId]);
+  }, [interactionActive, listboxId, routeTransition.instantRoute, setActiveInstanceId, shortcutEnabled]);
 
   useEffect(() => {
     const startKey = sharedNavigationRouteKey ?? navigationStartRouteKeyRef.current;
@@ -218,20 +231,24 @@ function ActiveGlobalPortalSearch({
   useEffect(() => {
     if (!shortcutEnabled) return;
     const onShortcut = (event: globalThis.KeyboardEvent) => {
+      const input = inputRef.current;
+      if (event.defaultPrevented || !input || isHiddenSearchElement(input)) return;
       const commandShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
       const slashShortcut = event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey;
       if (!commandShortcut && (!slashShortcut || isEditableTarget(event.target))) return;
       event.preventDefault();
-      inputRef.current?.focus();
+      input.focus({ preventScroll: true });
+      setActiveInstanceId?.(listboxId);
       setInteractionActive(true);
       setOpen(true);
     };
     window.addEventListener('keydown', onShortcut);
     return () => window.removeEventListener('keydown', onShortcut);
-  }, [setInteractionActive, shortcutEnabled]);
+  }, [listboxId, setActiveInstanceId, setInteractionActive, shortcutEnabled]);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
+      if (activeInstanceId !== undefined && activeInstanceId !== listboxId) return;
       const target = event.target as Node;
       if (
         !rootRef.current?.contains(target)
@@ -243,10 +260,10 @@ function ActiveGlobalPortalSearch({
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [setInteractionActive]);
+  }, [activeInstanceId, listboxId, setInteractionActive]);
 
   useLayoutEffect(() => {
-    if (!open || !rootRef.current) {
+    if (!open || !rootRef.current || isHiddenSearchElement(rootRef.current)) {
       setPanelPlacement(null);
       return;
     }
@@ -266,7 +283,7 @@ function ActiveGlobalPortalSearch({
       window.removeEventListener('scroll', updatePlacement, true);
       resizeObserver?.disconnect();
     };
-  }, [open]);
+  }, [open, routeTransition.instantRoute]);
 
   useEffect(() => {
     setActiveIndex(-1);

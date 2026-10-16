@@ -12,9 +12,12 @@ rules, historical documents, authentication and database schema are unchanged.
 
 Independent authenticated staging checks passed the connected duplicate, save,
 reopen and quote handoff, invoice draft/save/discard, desktop and 390px journeys.
-The final correction passed 615 tests across 105 files (11 existing skips),
-portal typecheck, lint, docs and architecture checks; the exact hosted build and
-anonymous access-denial checks passed. This evidence does not establish a real
+The prior reviewed candidate passed 615 tests across 105 files (11 existing skips),
+portal typecheck, lint, docs and architecture checks; its exact hosted build and
+anonymous access-denial checks passed. A subsequent pending-header search ownership
+correction passed 162 shared-shell tests, including deterministic visible-focus,
+panel-anchor and retained-header handoff checks in both DOM orders. The corrected
+hosted preview and production verification remain pending. This evidence does not establish a real
 customer send/accept/payment lifecycle or physical-phone use. A preview-origin
 email logo limitation remains isolated from the separately verified public asset.
 Release metadata disables Git preview builds only for this task branch in both

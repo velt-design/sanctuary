@@ -8,6 +8,10 @@ changing query clears old links immediately while the pending read is announced.
 Errors offer a real retry. `GlobalPortalSearchState` owns the active overlay instance
 and pending navigation origin across header replacement, so overlapping route shells
 cannot render duplicate result panels and completed navigation clears/closes search.
+Only the focused visible search may claim the overlay; shortcuts ignore hidden
+headers. When the pending header disappears, the visible shortcut-enabled header
+restores the shared query and focus, including a retained header becoming visible.
+Only the active overlay owner handles outside-pointer dismissal.
 Selection closes the panel immediately while the existing route-transition owner gives
 navigation feedback. Escape/outside click retain the query for reopening.
 
