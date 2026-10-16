@@ -1,5 +1,27 @@
 # Portal Production Readiness
 
+Portal experience release approved (16 October 2026): Jordan requested "push live"
+after independent review of protected candidate `bd0ec70`. Production deployment
+and production read-only verification are still pending. The reviewed scope
+covers visible contact details and keyboard continuity, reliable search, retained
+commercial list context, current-versus-historical quote clarity, estimate
+save/reopen and canonical-ID handoff, clearer invoice next steps and protected PDF
+preview, and concise newly generated customer wording with resolved payment
+amounts. Internal material grouping preserves exact customer totals; pricing
+rules, historical documents, authentication and database schema are unchanged.
+
+Independent authenticated staging checks passed the connected duplicate, save,
+reopen and quote handoff, invoice draft/save/discard, desktop and 390px journeys.
+The final correction passed 615 tests across 105 files (11 existing skips),
+portal typecheck, lint, docs and architecture checks; the exact hosted build and
+anonymous access-denial checks passed. This evidence does not establish a real
+customer send/accept/payment lifecycle or physical-phone use. A preview-origin
+email logo limitation remains isolated from the separately verified public asset.
+Release metadata disables Git preview builds only for this task branch in both
+Vercel projects; existing default/main deployment behavior and crons are retained.
+Current behavior owners: `projects-contacts-estimates-calculator.md`,
+`quotes-invoices-job-packs.md` and `ui-foundation.md`.
+
 Meta renewal extension (14 October local candidate): dedicated report/sale vault
 identities, finite versus ongoing source approval, default-off maintenance and
 durable exchange/write reconciliation are implemented alongside the unreleased
