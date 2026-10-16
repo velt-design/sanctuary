@@ -177,6 +177,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
   const siteCostsDescription = buildSiteCostsDescription(siteCostCopyParams);
   const inputPergolas = buildInputPergolaModules(inputs);
   const lineItems: Omit<QuoteLineItem, 'id'>[] = [];
+  let primaryPergolaLine: Omit<QuoteLineItem, 'id'> | undefined;
   const blockingIssues: QuoteMappingBlockingIssue[] = [];
   let coreTotalIncCents = 0;
 
@@ -232,6 +233,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
         sortOrder: lineItems.length,
       });
       coreTotalIncCents += lineTotalIncGstCents;
+      primaryPergolaLine ??= lineItems[lineItems.length - 1];
     });
 
     if (showSharedLine) {
@@ -289,7 +291,12 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
       customerPriceUpliftPct,
       customerPriceMultiplier,
     );
-    lineItems.push({
+    // Additional materials supporting a pergola are an internal costing input.
+    // Add the separately rounded sell cents, so presentation never reprices it.
+    if (primaryPergolaLine) {
+      primaryPergolaLine.unitPriceIncGstCents += unitPriceIncGstCents;
+      primaryPergolaLine.lineTotalIncGstCents += unitPriceIncGstCents;
+    } else lineItems.push({
       description: withQuoteDiscountDescription(
         buildAdditionalAluminiumDescription(inputs, itemCount),
         quoteDiscountPct,

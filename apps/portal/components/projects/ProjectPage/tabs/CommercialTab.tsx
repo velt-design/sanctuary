@@ -80,7 +80,7 @@ export default function CommercialTab({
   const replaceParams = (update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
     update(query);
-    router.replace(`${pathname}?${query.toString()}`);
+    router.replace(`${pathname}?${query.toString()}`, { scroll: false });
   };
 
   const setView = (nextView: CommercialView) => {
@@ -142,7 +142,7 @@ export default function CommercialTab({
           ariaLabel="Commercial sections"
         />
 
-        {activeView === 'quotes' ? (
+        {activeView === 'quotes' && selectedQuoteId ? (
           <div className={styles.quoteViews} role="group" aria-label="Quote view">
             {(['edit', 'preview'] as const).map((value) => {
               const disabled = value === 'preview' && !selectedQuoteId;
@@ -157,7 +157,7 @@ export default function CommercialTab({
                   title={disabled ? 'Select a quote to preview' : undefined}
                   onClick={() => setQuotePreview(value === 'preview')}
                 >
-                  {value === 'preview' ? 'Preview' : 'Edit'}
+                  {value === 'preview' ? 'Preview' : 'Details'}
                 </Button>
               );
             })}

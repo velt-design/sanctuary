@@ -423,7 +423,7 @@ export function prepareMetaLines(
   }
 
   const invoiceDetails = [
-    vm.header.draft ? 'Not issued — draft preview' : `Issued ${vm.dates.issue}`,
+    vm.header.draft ? 'Not issued: draft preview' : `Issued ${vm.dates.issue}`,
     ...(vm.header.quoteRef ? [`Quote ${vm.header.quoteRef} v${vm.header.quoteVersionNumber}`] : []),
     `${vm.deposit.label} ${vm.deposit.basis}`,
     "Currency NZD",

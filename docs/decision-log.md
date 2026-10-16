@@ -1,5 +1,35 @@
 # Decision Log
 
+
+## 2026-10-16: Search results must belong to the active query
+
+Status: candidate. Area: Portal search and project navigation.
+Previous-query placeholder data stayed selectable while a new query was pending;
+header replacement could also retain interaction state and duplicate the overlay.
+The search owner now gates links by response query, shares overlay ownership and
+navigation origin, and closes on selection/completion. Regression checks exercise
+late responses, retry and remounts. Routine contact information is visible without
+Edit, and commercial return retains list context. See `ui-foundation.md` and
+`projects-contacts-estimates-calculator.md`. No new approval or release authority.
+
+Release review exposed a narrower overlap race: counting one overlay did not prove
+that the visible search owned it. Hidden retained headers must neither claim focus
+nor dismiss another instance. Cover both DOM orders, keyboard shortcuts, pointer
+interaction and the retained-header handoff, checking the controlling input and
+anchor as well as the overlay count.
+
+Delivery review also found three trust boundaries that unit-only presentation checks
+had missed: a raw fixture bypassed UI flashing defaults, a legacy row-level version
+overrode the saved snapshot version during an estimate update, and an invoice iframe
+could not render a correctly protected PDF response. Compare exact input requests
+before treating a price difference as an engine error; preserve saved version
+identity across read/save/reopen; and verify the rendered artifact through the real
+authenticated response headers. The candidate now gates calculator hydration, uses
+snapshot version identity and renders protected invoice bytes on canvas. Quote
+pagination and payment-copy checks include an ordinary full-scope/default-terms
+document as well as long fixtures. Hosted review and production approval remain
+separate from these source checks.
+
 ## 2026-10-16 - Test capture eligibility with complete campaign arrival parameters
 
 An allowlisted public page and valid consent were insufficient when the query
@@ -6013,3 +6043,17 @@ and `test/marketing-performance-read.test.ts`.
 ## 2026-10-08 - Saved source evidence
 
 Marketing source reporting must inspect permitted saved click evidence before declaring a source unknown. Keep one classifier for receipt and project-origin reads; preserve explicit source labels, consent and unknowns. A saved identifier does not establish provider-verified attribution or campaign detail. See `marketing-performance.md`.
+
+### 2026-10-16: preserve calculator identity through save acknowledgement
+
+The protected Portal review found a duplicate saved successfully while its URL
+still selected a temporary ID, and a pending Save toolbar rerender rehydrated
+older inputs. Project selection now follows the existing alias store with a
+project-scoped temporary working-copy bridge, then replaces the URL. Workspace
+hydration follows session identity and explicit retry; canonical ID promotion
+carries newer edits. Save confirmation baseline updates wait for local save
+completion. No pricing, persistence queue, schema or authorization rules change.
+The same review found a new quote-version name field that the existing family
+contract ignored. Named families now show their shared name and direct changes
+to Rename; optimistic creation uses the same name. New/unnamed/manual scopes
+retain the optional field.

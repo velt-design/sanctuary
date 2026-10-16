@@ -205,3 +205,12 @@
     min-height: 44px;
   }
 }
+
+.contactValue { display: flex; align-items: center; gap: var(--ui-space-1); flex-wrap: wrap; }
+.contactValue a { color: var(--ui-text-strong); text-underline-offset: 3px; overflow-wrap: anywhere; }
+.copyButton { display: inline-grid; place-items: center; flex: 0 0 auto; min-width: 28px; min-height: 28px; padding: 4px; color: var(--ui-text-muted); border: 0; background: transparent; cursor: pointer; }
+.copyButton svg { width: 14px; height: 14px; }
+.copyButton:hover { color: var(--ui-text-strong); background: var(--ui-surface-secondary); }
+.copyButton:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 2px; }
+.copyStatus { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
+@media (pointer: coarse) { .copyButton { min-width: 44px; min-height: 44px; } }

@@ -167,7 +167,11 @@
   font-size: var(--ui-font-size-small);
 }
 
-.pdfFrame,
+.pdfDocument {
+  min-height: 0;
+  overflow: auto;
+}
+
 .emailFrame {
   width: 100%;
   height: 100%;

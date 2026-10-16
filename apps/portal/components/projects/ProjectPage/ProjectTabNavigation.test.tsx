@@ -76,7 +76,7 @@ describe('ProjectTabNavigation', () => {
     const rendered = renderIntoDocument(
       <ProjectTabNavigation hasJobPacks={false} tabAvailabilityReady host="host" initialTab="job-packs" projectId="proj_1" />,
     );
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter');
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter', { scroll: false });
     rendered.unmount();
   });
 
@@ -86,7 +86,7 @@ describe('ProjectTabNavigation', () => {
       <ProjectTabNavigation hasJobPacks host="host" initialTab="details" projectId="proj_1" />,
     );
 
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter');
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter', { scroll: false });
     rendered.unmount();
   });
 
@@ -110,7 +110,7 @@ describe('ProjectTabNavigation', () => {
     });
 
     expect(preloadMock).toHaveBeenCalledWith('estimates', expect.objectContaining({ host: 'host', projectId: 'proj_1' }));
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates');
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates', { scroll: false });
     expect(onTabSelect).toHaveBeenCalledWith('estimates');
     rendered.unmount();
   });
@@ -135,7 +135,7 @@ describe('ProjectTabNavigation', () => {
 
     act(() => commercial?.click());
 
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter');
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter', { scroll: false });
     rendered.unmount();
   });
 
@@ -145,7 +145,7 @@ describe('ProjectTabNavigation', () => {
       <ProjectTabNavigation hasJobPacks host="host" initialTab="emails" projectId="proj_1" />,
     );
 
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter');
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter', { scroll: false });
     rendered.unmount();
   });
 });

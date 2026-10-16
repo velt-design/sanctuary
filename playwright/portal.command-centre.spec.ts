@@ -488,7 +488,7 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
         ),
       );
     expect(regionOrder).toEqual([
-      "project-work", "recent", "commercial", "orientation",
+      "orientation", "project-work", "commercial", "recent",
     ]);
     await expectNoDocumentOverflow(page);
     await expectNoCroppedOverviewControls(page);
@@ -570,7 +570,7 @@ test("recomposes from available Overview width instead of viewport width", async
       ),
     );
   expect(regionOrder).toEqual([
-    "project-work", "recent", "commercial", "orientation",
+    "orientation", "project-work", "commercial", "recent",
   ]);
   await expectNoDocumentOverflow(page);
 });
@@ -658,7 +658,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     tabStopRegions.filter(
       (region, index) => region && region !== tabStopRegions[index - 1],
     ),
-  ).toEqual(["project-work", "recent", "commercial", "orientation"]);
+  ).toEqual(["orientation", "project-work", "commercial", "recent"]);
 
   await page.locator('[data-overview-tab-stop="0"]').focus();
   for (let index = 1; index < tabStopCount; index += 1) {

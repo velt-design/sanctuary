@@ -92,6 +92,7 @@ export function useCalculatorSaveController({
     if (savePendingRef.current) return;
     savePendingRef.current = true;
     setGenerateError(null);
+    let savedEstimate: EstimateDetail | null = null;
     try {
       const outcome = await saveEstimate({
         ...saveContext,
@@ -101,7 +102,8 @@ export function useCalculatorSaveController({
             onError(message);
           },
           setGenerating,
-          setLoadedEstimateDetail,
+          // Keep the confirmation's stored baseline stable until this save completes.
+          setLoadedEstimateDetail: (estimate) => { savedEstimate = estimate; },
         },
         request: {
           createDesignRequest,
@@ -110,6 +112,7 @@ export function useCalculatorSaveController({
         },
       });
       if (!outcome) return;
+      if (savedEstimate) setLoadedEstimateDetail(savedEstimate);
       setConfirmOpen(false);
       setSaveOutcome(outcome);
       onSaved(outcome);

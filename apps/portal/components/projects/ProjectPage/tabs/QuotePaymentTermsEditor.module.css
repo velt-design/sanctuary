@@ -29,6 +29,11 @@
 .removeButton { color: var(--ui-destructive); }
 .summary { color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
 .errors { margin: 0; padding-left: 1.25rem; color: var(--ui-destructive); font-size: var(--ui-font-size-small); }
+.readOnlyTerms { margin: 0; padding: 0; list-style-position: inside; }
+.readOnlyTerms li { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ui-space-3); padding: var(--ui-space-3) 0; border-bottom: 1px solid var(--ui-border-subtle); }
+.readOnlyTerms strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.calculationDetails { color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
+.calculationDetails summary { cursor: pointer; }
 
 @media (max-width: 960px) {
   .row { grid-template-columns: auto 1fr 1fr; }

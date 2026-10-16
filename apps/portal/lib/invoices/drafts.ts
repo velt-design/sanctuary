@@ -44,7 +44,7 @@ export async function previewInvoiceDraft(projectId: string, invoiceId: string) 
     paymentTermLabel: row.payment_term_label, paymentTermCalculation: 'fixed',
     quoteTotalIncGstCents: row.quote_total_inc_gst_cents, totalIncGstCents: row.total_inc_gst_cents,
     totalExGstCents: row.total_ex_gst_cents, gstCents: row.gst_cents,
-  }, { paymentLines: ['DRAFT PREVIEW ONLY — do not pay. No invoice has been issued.'] });
+  }, { paymentLines: ['DRAFT PREVIEW ONLY: do not pay. No invoice has been issued.'] });
 }
 
 export async function runInvoiceDraftCommand(supabase: SupabaseClient, projectId: string, body: Record<string, any>, actor: string) {

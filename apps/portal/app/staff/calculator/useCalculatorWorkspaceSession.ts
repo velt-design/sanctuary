@@ -1,7 +1,7 @@
 'use client';
 
 import type { QueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EstimateDetail } from '@/lib/estimates/types';
 import {
@@ -89,12 +89,13 @@ export function useCalculatorWorkspaceSession({
     fromEstimateId,
     shouldOpenActiveDraft,
   } = route;
+  const isProjectWorkspace = Boolean(workspace);
   const routeEditEstimateId = editEstimateId.trim();
   const [editSession, setEditSession] = useState(() => ({
     routeEstimateId: routeEditEstimateId,
     estimateId: routeEditEstimateId,
   }));
-  const activeEditEstimateId = workspace || editSession.routeEstimateId !== routeEditEstimateId
+  const activeEditEstimateId = isProjectWorkspace || editSession.routeEstimateId !== routeEditEstimateId
     ? routeEditEstimateId
     : editSession.estimateId;
   const setEditSessionEstimateId = useCallback((estimateId: string) => {
@@ -133,12 +134,43 @@ export function useCalculatorWorkspaceSession({
     startEmptyDesign: route.newEstimateCommercialScopeKind === 'add_on',
     ...(draftPersistence ? { persistence: draftPersistence } : null),
   });
+  const previousSessionRef = useRef({ projectId, estimateId: activeEditEstimateId, values, activeModuleIndex });
+  const promotedDraftRef = useRef<{ key: string; values: CalculatorInputs; activeModuleIndex: number } | null>(null);
+  useEffect(() => {
+    const previous = previousSessionRef.current;
+    if (previous.projectId === projectId && previous.estimateId !== activeEditEstimateId
+      && isLocalEstimateId(previous.estimateId)
+      && resolveLocalFirstId(previous.estimateId) === activeEditEstimateId) {
+      // Server acknowledgement changes identity, not the user's current editing session.
+      promotedDraftRef.current = { key: draftEntityKey, values: previous.values, activeModuleIndex: previous.activeModuleIndex };
+    }
+    previousSessionRef.current = { projectId, estimateId: activeEditEstimateId, values, activeModuleIndex };
+  }, [activeEditEstimateId, activeModuleIndex, draftEntityKey, projectId, values]);
+
   const [project, setProject] = useState<Project | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [externalLoad, setExternalLoad] = useState<{ key: string; error: string | null; ready: boolean } | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const loadedSessionRef = useRef<{ key: string; attempt: number } | null>(null);
+  const retryDraftLoad = useCallback(() => setLoadAttempt((attempt) => attempt + 1), []);
+  const requiresExternalDraft = Boolean(activeEditEstimateId || fromEstimateId);
+  const draftLoadError = externalLoad?.key === draftEntityKey ? externalLoad.error : null;
+  const draftReady = draftHydrated && (!requiresExternalDraft || (
+    externalLoad?.key === draftEntityKey && externalLoad.ready
+  ));
+  const matchesLoadedEstimate = useMemo(() => {
+    if (!loadedEstimateDetail || !draftReady) return false;
+    try {
+      return JSON.stringify(calculatorInputsFromEstimateDetail(loadedEstimateDetail)) === JSON.stringify(values);
+    } catch {
+      return false;
+    }
+  }, [draftReady, loadedEstimateDetail, values]);
 
   useEffect(() => {
     setLoadedEstimateDetail(null);
+    loadedSessionRef.current = null;
   }, [draftEntityKey]);
 
   useEffect(() => {
@@ -176,7 +208,7 @@ export function useCalculatorWorkspaceSession({
   }, [projectId, projectLoader, setValues]);
 
   useEffect(() => {
-    if (workspace) return;
+    if (isProjectWorkspace) return;
     if (!draftHydrated || !projectId || activeEditEstimateId || fromEstimateId) return;
     if (restoredFromLocalDraft && !shouldOpenActiveDraft) return;
     if (!activeDraftEstimateMetaId) return;
@@ -196,7 +228,7 @@ export function useCalculatorWorkspaceSession({
     router,
     searchParams,
     shouldOpenActiveDraft,
-    workspace,
+    isProjectWorkspace,
   ]);
 
   useEffect(() => {
@@ -207,7 +239,13 @@ export function useCalculatorWorkspaceSession({
       return;
     }
 
+    if (loadedSessionRef.current?.key === draftEntityKey && loadedSessionRef.current.attempt === loadAttempt) return;
     let cancelled = false;
+    const markReady = () => {
+      loadedSessionRef.current = { key: draftEntityKey, attempt: loadAttempt };
+      setExternalLoad({ key: draftEntityKey, error: null, ready: true });
+    };
+    setExternalLoad({ key: draftEntityKey, error: null, ready: false });
     void (async () => {
       try {
         if (activeEditEstimateId) {
@@ -229,9 +267,10 @@ export function useCalculatorWorkspaceSession({
           setLoadedEstimateDetail(estimate);
           if (estimate.editability.isLocked) {
             const message = `Design ${estimate.versionLabel} is locked and can no longer be edited.`;
+            setExternalLoad({ key: draftEntityKey, error: message, ready: false });
             setDraftNotice(message);
             toast.error(message);
-            if (projectId && !workspace) {
+            if (projectId && !isProjectWorkspace) {
               router.replace(
                 `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(
                   resolvedEditEstimateId || activeEditEstimateId,
@@ -241,12 +280,23 @@ export function useCalculatorWorkspaceSession({
             return;
           }
 
+          const promotedDraft = promotedDraftRef.current;
+          if (promotedDraft?.key === draftEntityKey) {
+            acceptExternalDraft(promotedDraft.values, promotedDraft.activeModuleIndex);
+            promotedDraftRef.current = null;
+            setDraftNotice(`Editing design ${estimate.versionLabel}`);
+            markReady();
+            return;
+          }
+
           if (restoredFromLocalDraft) {
             setDraftNotice(`Restored unsaved edits for ${estimate.versionLabel}`);
+            markReady();
             return;
           }
 
           acceptExternalDraft(calculatorInputsFromEstimateDetail(estimate));
+          markReady();
           const message =
             isLocalEstimateId(estimate.id)
               || (resolvedEditEstimateId ?? activeEditEstimateId).startsWith('local-estimate:')
@@ -257,7 +307,10 @@ export function useCalculatorWorkspaceSession({
           return;
         }
 
-        if (restoredFromLocalDraft) return;
+        if (restoredFromLocalDraft) {
+          markReady();
+          return;
+        }
 
         const draft = await estimateDuplicator(fromEstimateId);
         if (cancelled) return;
@@ -269,12 +322,14 @@ export function useCalculatorWorkspaceSession({
         } as CalculatorInputs, { allowEmpty: route.newEstimateCommercialScopeKind === 'add_on' });
 
         acceptExternalDraft(normalizedDraft);
+        markReady();
         const message = `Draft design started from ${fromEstimateId}`;
         setDraftNotice(message);
         toast.success(message);
       } catch (error) {
         if (cancelled) return;
         const message = error instanceof Error ? error.message : 'Failed to start design revision';
+        setExternalLoad({ key: draftEntityKey, error: message, ready: false });
         setDraftNotice(message);
         toast.error(message);
       }
@@ -285,18 +340,20 @@ export function useCalculatorWorkspaceSession({
   }, [
     acceptExternalDraft,
     activeEditEstimateId,
+    draftEntityKey,
     draftHydrated,
     estimateDuplicator,
     estimateLoader,
     fromEstimateId,
     hostKey,
+    loadAttempt,
     projectId,
     queryClient,
     restoredFromLocalDraft,
     router,
     route.newEstimateCommercialScopeKind,
     toast,
-    workspace,
+    isProjectWorkspace,
   ]);
 
   return {
@@ -311,10 +368,18 @@ export function useCalculatorWorkspaceSession({
     setValues,
     activeModuleIndex,
     setActiveModuleIndex,
-    localDraftStatus,
+    // Hydrating an unchanged estimate also caches a browser copy. That is not an unsaved edit.
+    localDraftStatus: matchesLoadedEstimate && localDraftStatus.kind !== 'error'
+      ? { kind: 'idle' as const }
+      : localDraftStatus,
     project,
     setProject,
     projectError,
-    draftNotice,
+    draftNotice: matchesLoadedEstimate && draftNotice?.startsWith('Restored unsaved edits')
+      ? `Editing design ${loadedEstimateDetail?.versionLabel}`
+      : draftNotice,
+    draftReady,
+    draftLoadError,
+    retryDraftLoad,
   };
 }

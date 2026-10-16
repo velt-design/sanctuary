@@ -1,5 +1,29 @@
 # Staff Portal UI System
 
+## Search and commercial continuity (16 October 2026 candidate)
+
+`GlobalPortalSearch.client` only exposes selectable results whose normalized response
+query exactly matches the current input. Same-query cached results remain useful;
+changing query clears old links immediately while the pending read is announced.
+Errors offer a real retry. `GlobalPortalSearchState` owns the active overlay instance
+and pending navigation origin across header replacement, so overlapping route shells
+cannot render duplicate result panels and completed navigation clears/closes search.
+Only the focused visible search may claim the overlay; shortcuts ignore hidden
+headers. When the pending header disappears, the visible shortcut-enabled header
+restores the shared query and focus, including a retained header becoming visible.
+Only the active overlay owner handles outside-pointer dismissal.
+Selection closes the panel immediately while the existing route-transition owner gives
+navigation feedback. Escape/outside click retain the query for reopening.
+
+Project contact placement and commercial list return use the existing Portal tokens
+and owner components, not a new shared theme. See the projects and quote/invoice docs
+for the changed information hierarchy and preserved commercial boundaries.
+Saved calculator inputs gate the editable workspace during hydration and expose
+retry on failure. Invoice PDFs reuse the quote canvas renderer so protected API
+frame-denial headers remain intact. Contact edit/Done/Reset transitions retain
+keyboard focus without forcing a scroll jump.
+
+
 Status: Current portal UI contract.
 
 ## Design Pillar (28 September 2026)

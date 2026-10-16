@@ -4,10 +4,10 @@
   max-width: var(--ui-content-max);
   margin-inline: auto;
   grid-template-areas:
+    "orientation orientation"
     "exception exception"
     "project-work commercial"
-    "recent admin"
-    "orientation orientation";
+    "recent admin";
   grid-template-columns: minmax(0, 1.65fr) minmax(360px, 1fr);
   align-items: start;
   gap: var(--ui-grid-gutter);
@@ -16,9 +16,9 @@
 
 .layout:not([data-has-exception]) {
   grid-template-areas:
+    "orientation orientation"
     "project-work commercial"
-    "recent admin"
-    "orientation orientation";
+    "recent admin";
 }
 
 .layout > * {
@@ -65,20 +65,20 @@
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) {
     grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr);
     /* Let the lower row absorb the spanning email panel's height, not the work row. */
-    grid-template-rows: auto min-content minmax(0, 1fr) auto;
+    grid-template-rows: auto auto min-content minmax(0, 1fr);
     grid-template-areas:
-      "exception exception"
+      "orientation orientation"
+    "exception exception"
       "project-work recent"
-      "commercial recent"
-      "orientation orientation";
+      "commercial recent";
   }
 
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]):not([data-has-exception]) {
-    grid-template-rows: min-content minmax(0, 1fr) auto;
+    grid-template-rows: auto min-content minmax(0, 1fr);
     grid-template-areas:
+      "orientation orientation"
       "project-work recent"
-      "commercial recent"
-      "orientation orientation";
+      "commercial recent";
   }
 
   .layout[data-overview-composition="wide"][data-has-recent]:not([data-has-admin]) .recent {
@@ -92,41 +92,41 @@
 
 .layout[data-overview-composition="stacked"] {
   grid-template-areas:
+    "orientation"
     "exception"
     "project-work"
-    "recent"
     "commercial"
-    "orientation"
+    "recent"
     "admin";
   grid-template-columns: minmax(0, 1fr);
 }
 
 .layout[data-overview-composition="stacked"]:not([data-has-exception]) {
   grid-template-areas:
-    "project-work"
-    "recent"
-    "commercial"
     "orientation"
+    "project-work"
+    "commercial"
+    "recent"
     "admin";
 }
 
 .layout[data-overview-composition="mobile"] {
   grid-template-areas:
+    "orientation"
     "exception"
     "project-work"
-    "recent"
     "commercial"
-    "orientation"
+    "recent"
     "admin";
   grid-template-columns: minmax(0, 1fr);
 }
 
 .layout[data-overview-composition="mobile"]:not([data-has-exception]) {
   grid-template-areas:
-    "project-work"
-    "recent"
-    "commercial"
     "orientation"
+    "project-work"
+    "commercial"
+    "recent"
     "admin";
 }
 
@@ -140,21 +140,21 @@
 @media (max-width: 768px) {
   .layout:not([data-overview-composition="mobile"]) {
     grid-template-areas:
+      "orientation"
       "exception"
       "project-work"
-      "recent"
       "commercial"
-      "orientation"
+      "recent"
       "admin";
     grid-template-columns: minmax(0, 1fr);
   }
 
   .layout:not([data-overview-composition="mobile"]):not([data-has-exception]) {
     grid-template-areas:
-      "project-work"
-      "recent"
-      "commercial"
       "orientation"
+      "project-work"
+      "commercial"
+      "recent"
       "admin";
   }
 }

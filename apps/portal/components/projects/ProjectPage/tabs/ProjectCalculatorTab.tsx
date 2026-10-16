@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import CalculatorGridClient from '@/app/staff/calculator/CalculatorGridClient';
@@ -20,6 +20,9 @@ import { apiJson } from '@/lib/repo/apiClient';
 import { qk } from '@/lib/queries/keys';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
+import { getLocalFirstWorkingCopy, resolveLocalFirstId } from '@/lib/localFirst/store';
+import { buildEstimateEntityKey, isLocalEstimateId } from '@/lib/localFirst/portalEntities';
 
 function versionNumber(label: string): number {
   const match = label.match(/\d+/);
@@ -82,6 +85,7 @@ export default function ProjectCalculatorTab({
     ?? null;
   const editEstimateId = searchParams.get('estimateId')?.trim() ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId')?.trim() ?? '';
+  const resolvedEditEstimateId = useResolvedLocalFirstId(editEstimateId) ?? editEstimateId;
   const newDesign = searchParams.get('newDesign') === '1';
   const estimateQuotesQuery = useQuery({
     ...quoteVersionsByProjectQueryOptions(host, projectId),
@@ -90,14 +94,25 @@ export default function ProjectCalculatorTab({
   const newEstimateInternalName = searchParams.get('estimateName')?.trim() || null;
   const requestedCommercialScopeId = searchParams.get('commercialScopeId')?.trim() || null;
   const requestedEstimateKind = searchParams.get('estimateKind') === 'add_on' ? 'add_on' : 'base';
-  const selectedEstimate = estimates.find((estimate) => estimate.id === editEstimateId) ?? null;
+  // A create acknowledgement can replace the list row before its durable ID alias arrives.
+  const localSelection = isLocalEstimateId(editEstimateId)
+    ? getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(editEstimateId))?.data
+    : null;
+  const selectedEstimate = estimates.find((estimate) => estimate.id === resolvedEditEstimateId)
+    ?? estimates.find((estimate) => estimate.id === editEstimateId)
+    ?? (localSelection?.projectId === projectId ? localSelection : null);
   const revisionSource = estimates.find((estimate) => estimate.id === fromEstimateId) ?? null;
 
   const replaceParams = useCallback((update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
     update(query);
-    router.replace(`${pathname}?${query.toString()}`);
+    router.replace(`${pathname}?${query.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (resolvedEditEstimateId === editEstimateId || selectedEstimate?.id !== resolvedEditEstimateId) return;
+    replaceParams((query) => query.set('estimateId', resolvedEditEstimateId));
+  }, [editEstimateId, replaceParams, resolvedEditEstimateId, selectedEstimate?.id]);
 
   const pushParams = useCallback((update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
@@ -108,7 +123,7 @@ export default function ProjectCalculatorTab({
   const openDraft = useCallback((estimateId: string) => {
     replaceParams((query) => {
       query.set('tab', 'estimates');
-      query.set('estimateId', estimateId);
+      query.set('estimateId', resolveLocalFirstId(estimateId));
       query.delete('fromEstimateId');
       query.delete('newDesign');
       query.delete('estimateName');
@@ -226,7 +241,9 @@ export default function ProjectCalculatorTab({
       openBlankDesign();
       return;
     }
-    const [kind, estimateId] = value.split(':', 2);
+    const separator = value.indexOf(':');
+    const kind = value.slice(0, separator);
+    const estimateId = value.slice(separator + 1);
     if (!estimateId) return;
     if (kind === 'draft') openDraft(estimateId);
     else replaceParams((query) => {
@@ -256,6 +273,9 @@ export default function ProjectCalculatorTab({
           ? `${selectedEstimate.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}${selectedEstimate.isActiveDraft ? 'Current draft' : 'Revision source'} · ${selectedEstimate.versionLabel}`
           : 'Project design',
     options: [
+      ...(selectedEstimate?.isActiveDraft && !activeDrafts.some((estimate) => estimate.id === selectedEstimate.id)
+        ? [{ value: `draft:${selectedEstimate.id}`, label: `Current draft · ${selectedEstimate.versionLabel}` }]
+        : []),
       ...activeDrafts.map((estimate) => ({
         value: `draft:${estimate.id}`,
         label: `${estimate.commercialScopeKind === 'add_on' ? 'Add-on · ' : ''}Current draft · ${estimate.versionLabel}`,
@@ -332,6 +352,7 @@ export default function ProjectCalculatorTab({
     return (
       <>
       <EstimatesListView
+        projectId={projectId}
         estimates={estimates}
         quotes={estimateQuotesQuery.isError ? undefined : estimateQuotesQuery.data}
         quoteReadState={estimateQuotesQuery.isError ? 'unavailable' : estimateQuotesQuery.data ? 'ready' : 'loading'}

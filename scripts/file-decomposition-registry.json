@@ -182,7 +182,7 @@
         "apps/portal/components/projects/ProjectPage/tabs/useQuotesTabSelection.ts"
       ],
       "whyLarge": "QuotesTab is just above the critical threshold and composes named selection/query, lifecycle, PDF-preview, modal, list, detail, and pure-model owners. Draft editing, local-first create/persist, send-form orchestration, and prepared-delivery recovery state remain in the composition owner; the actual frozen-intent read/retry and dialog presentation are already extracted.",
-      "nextSafeExtraction": "Extract a useQuoteDeliveryRecovery controller, then draft editing plus local-first create/persist orchestration, before adding another inline quote workflow.",
+      "nextSafeExtraction": "Extract a useQuoteDeliveryRecovery controller, then draft editing plus local-first create/persist orchestration, before adding another inline quote workflow. The 16 October experience candidate adds the projectId boundary prop to QuotesListView and a three-line existing-family name guard in the established create action; view continuity is extracted to useCommercialListState and contact actions to ProjectContactValue. QuoteDetailView copy reduction and payment presentation stay with existing child owners. Further parent extraction is deferred to preserve delivery/lock behavior during this UI pass.",
       "focusedTests": [
         "npm run test:portal:projects",
         "npm run test:portal:quotes",

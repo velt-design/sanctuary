@@ -101,8 +101,11 @@ describe("public invoice presentation", () => {
       items: [{ id: 'item-1', description: 'Pergola structure\nPowder coated frame and roof', qty: 2, unitPriceIncGstCents: 57500, lineTotalIncGstCents: 115000 }] };
     const linked = await renderOpenInvoice({ contentSnapshot, invoiceKind: 'QUOTE_LINKED', quoteTotalIncGstCents: 115000, totalIncGstCents: 57500, totalExGstCents: 50000, gstCents: 7500 });
     const linkedHtml = renderToStaticMarkup(linked);
-    expect(linkedHtml).toContain('Quoted scope — reference');
-    expect(linkedHtml).toContain('This invoice —');
+    expect(linkedHtml).toContain('Quoted scope (reference)');
+    expect(linkedHtml).toContain('This invoice:');
+    expect(linkedHtml).not.toContain('\u2014');
+    expect(linkedHtml).toContain('$1,150.00');
+    expect(linkedHtml).toContain('$575.00');
     expect(linkedHtml).toContain('Invoice-specific note');
     await writeVisualFixture(linked, 'itemised-deposit');
     const standalone = await renderOpenInvoice({ contentSnapshot, invoiceKind: 'STANDALONE', quoteRef: undefined,

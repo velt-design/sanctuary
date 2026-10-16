@@ -1,12 +1,60 @@
 # Quotes, Invoices, And Job Packs
 
+## Connected commercial presentation (16 October 2026 candidate)
+
+`CommercialTab` shows Details/Preview only for a selected quote. `QuotesListView`
+keeps current drafts, prepared deliveries, accepted agreements and still-sent versions
+visible; declined, superseded and historical acceptances recede behind Show historical
+versions. Searching includes every version. No quote status or acceptance selection
+is inferred from visual order. `QuotePaymentTermsEditor` presents saved schedules as
+term/amount rows with calculation details available on demand and invalid schedules
+still visible. Editable schedules retain the same validation and save commands.
+
+`InvoicesTab` links invoice references directly to preview and source quotes to the
+exact version. Invoice search includes reference, source, payment label and status.
+The empty journey routes to Quotes or standalone drafts before ledger controls;
+advance payments remain available to admins. Totals retain the authoritative schedule
+owner, and a failed refresh with cached invoices preserves those records as stale.
+
+New estimate mapping groups separately calculated additional-aluminium sell cents into
+the first priced pergola line when a pergola scope exists. This is presentation only:
+the original separate rounding, discount, frozen uplift and total cents are preserved.
+Without a priced pergola, aluminium remains an explicit supply-only line with its
+installation exclusion. Genuine blinds, infills, approvals and lighting remain separate.
+Existing quote rows and issued/accepted artifacts are never rewritten; only a new
+creation or explicit draft refresh uses the changed mapping. Generated copy retains
+real selections and exclusions but removes internal process commentary and em dashes.
+Quote/invoice email template emphasis uses normal weight per the owner's email rule.
+Stored, frozen delivery payloads keep their existing replay identity.
+
+Newly generated schedule text uses resolved stage amounts including the allocated
+rounding cent, with GST identified. Authored schedule prose is preserved. PDF next
+steps use the resolved first payment label and amount; the legacy deposit-percent
+field does not substitute for that schedule. Short terms remain together and normal
+document spacing avoids a one-line continuation on an ordinary quote. Long scope
+and terms still paginate at the existing body size.
+
+`InvoicePdfInlinePreview` fetches the staff PDF with same-origin credentials and
+`no-store`, then uses the existing PDF canvas renderer. It never embeds the protected
+PDF route in an iframe or weakens frame-denial headers. PDF fetch failures offer
+retry. Generated invoice labels use the same plain punctuation in PDF, email and
+public presentation; stored descriptions and already-issued files stay untouched.
+
+Implementation map: presentation owners above plus `useCommercialListState`,
+`estimateQuoteDescriptions`, `estimateQuoteAddonDescriptions`, `mapping`, `defaults`,
+and the existing quote/invoice HTML template owners. Focused tests cover exact-cent
+mapping conservation, standalone scope, readonly payment amounts, search/history and
+context return. Runtime staging/render evidence belongs in the task work record;
+these changes alone do not establish production release or owner acceptance.
+
+
 ## Invoice drafts and standalone work
 
 The invoice expansion is gated by `INVOICE_DRAFTS_ENABLED=true` on the portal server. Deploy compatible portal and public readers first, apply the forward invoice migrations `20260911000002` through `20260911000008`, then enable creation after staging verification. Disabling the flag stops draft commands through the application; issued invoices remain readable, payable, previewable and sendable. It does not remove administrator database command privileges. Do not roll back the storage expansion or rewrite issued records.
 
 Admins save, edit, delete and issue drafts from the project Invoices tab. Authenticated direct table writes are revoked; commands recheck the admin role, and a restrictive read policy hides drafts from staff while retaining issued reads. Drafts live in `deposit_invoices`, have no number/token/artifact and reserve no balance. Save uses an expected revision; issue uses a stable UUID command, assigns the number in the transaction and checks current quote/scope availability again. A send failure after issue returns an issued result with a separate delivery error: retry sending from history, never create a replacement for a transport failure.
 
-Quote-linked drafts copy the exact accepted version's items. Only their descriptions, billing details, notes, due date, reference and requested payment can change. Stage, custom, remaining and split modes continue through the existing commercial invoice owner. The full quoted scope is labelled **Quoted scope — reference**, separately from **This invoice — amount due**. Standalone drafts have editable/reorderable items and bill their whole rounded item total. Their issued, non-void value is additional project value, separately identified from accepted quotes.
+Quote-linked drafts copy the exact accepted version's items. Only their descriptions, billing details, notes, due date, reference and requested payment can change. Stage, custom, remaining and split modes continue through the existing commercial invoice owner. The full quoted scope is labelled **Quoted scope (reference)**, separately from **This invoice: amount due**. Standalone drafts have editable/reorderable items and bill their whole rounded item total. Their issued, non-void value is additional project value, separately identified from accepted quotes.
 
 The versioned invoice content plus immutable issued invoice fields supply PDF, email and public content. Draft PDFs are watermarked and never persisted as customer artifacts. Null content is explicit legacy compatibility; historical issued snapshots and existing PDF/email artifacts are not backfilled. Staff retain issued viewing/preview/sending. Corrections use void-and-recreate or the payment reversal owner.
 
@@ -398,3 +446,9 @@ No lifecycle, payment, PDF, email, permissions or spreadsheet write contracts ch
 Quote selection explicitly sets `tab=quotes` when writing its selection URL,
 including an immediate click after an optimistic Commercial tab switch. This
 preserves unrelated filters without allowing a stale Invoices URL to win.
+
+When creating a version from an estimate in an already named quote family, the
+create dialog displays the shared family name and directs name changes to Rename.
+The optimistic create and queued request retain that same family name, matching
+`ensureQuote`. New or unnamed families and manual quote scopes retain the optional
+name field. Creating a version does not rename historical versions.

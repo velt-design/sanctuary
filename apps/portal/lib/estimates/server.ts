@@ -23,8 +23,12 @@ function normaliseEstimateStatus(value: unknown): EstimateStatus {
 }
 
 export function extractVersionNumber(row: any): number | null {
-  const raw = row?.version ?? row?.outputs?.version;
-  return typeof raw === 'number' && Number.isFinite(raw) ? raw : null;
+  // Snapshot versions are assigned by the save path and read by the lists.
+  // Some legacy rows retain a default top-level version of 1.
+  for (const raw of [row?.outputs?.version, row?.version]) {
+    if (typeof raw === 'number' && Number.isInteger(raw) && raw > 0) return raw;
+  }
+  return null;
 }
 
 export function buildVersionLabelMap(rows: any[]): Map<string, string> {

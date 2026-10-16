@@ -13,8 +13,15 @@ vi.mock("@/lib/repo/invoicesRepo", () => ({
     `/api/staff/v1/invoices/${invoiceId}/preview/pdf`,
 }));
 
+vi.mock('./QuotePdfInlinePreview', () => ({
+  default: ({ data }: { data: Uint8Array }) => <canvas aria-label="Rendered PDF" data-byte-length={data.byteLength} />,
+}));
+
 describe("InvoiceArtifactPreviewDialog", () => {
   beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([37, 80, 68, 70]), {
+      headers: { 'content-type': 'application/pdf', 'x-frame-options': 'DENY', 'content-security-policy': "frame-ancestors 'none'" },
+    })));
     loadDepositInvoiceArtifactPreview.mockReset();
     loadDepositInvoiceArtifactPreview.mockResolvedValue({
       invoiceId: "inv_1",
@@ -33,6 +40,7 @@ describe("InvoiceArtifactPreviewDialog", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     document.body.innerHTML = "";
   });
 
@@ -63,12 +71,12 @@ describe("InvoiceArtifactPreviewDialog", () => {
     expect(document.body.textContent).toMatch(/CC.*project@example\.invalid/);
     expect(document.body.textContent).toMatch(/BCC.*audit@example\.invalid/);
 
-    const pdfFrame = document.querySelector<HTMLIFrameElement>(
-      'iframe[title*="PDF preview"]',
-    );
-    expect(pdfFrame?.getAttribute("src")).toBe(
-      "/api/staff/v1/invoices/inv_1/preview/pdf",
-    );
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
+    expect(fetch).toHaveBeenCalledWith('/api/staff/v1/invoices/inv_1/preview/pdf', expect.objectContaining({
+      credentials: 'same-origin', cache: 'no-store', signal: expect.any(AbortSignal),
+    }));
+    expect(document.querySelector('canvas[aria-label="Rendered PDF"]')?.getAttribute('data-byte-length')).toBe('4');
+    expect(document.querySelector('iframe[title*="PDF preview"]')).toBeNull();
 
     const narrowTab = Array.from(
       document.querySelectorAll<HTMLButtonElement>(
@@ -91,6 +99,18 @@ describe("InvoiceArtifactPreviewDialog", () => {
       "?token=[redacted]",
     );
 
+    rendered.unmount();
+  });
+
+  it('offers a retry when the protected PDF request fails', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('Unavailable', { status: 503 }));
+    const rendered = renderIntoDocument(<InvoiceArtifactPreviewDialog invoiceId="inv_1" invoiceRef="INV-1" onClose={vi.fn()} />);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    expect(document.body.textContent).toContain('Could not load invoice PDF (503).');
+    const retry = Array.from(document.querySelectorAll('button')).find((button) => /retry/i.test(button.textContent ?? ''));
+    await act(async () => { retry!.click(); await new Promise((resolve) => setTimeout(resolve, 10)); });
+    expect(document.querySelector('canvas[aria-label="Rendered PDF"]')).not.toBeNull();
+    expect(document.body.textContent).not.toContain('(503)');
     rendered.unmount();
   });
 });

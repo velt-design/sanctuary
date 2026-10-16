@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
 import ProjectJourneyStatus from "@/components/projects/ProjectJourneyStatus";
@@ -16,6 +16,7 @@ import {
   type BadgeTone,
 } from "@/components/ui/foundation";
 import styles from "./ProjectOrientationBand.module.css";
+import ProjectContactValue from "./ProjectContactValue";
 
 const ProjectStageControl = lazy(() => import("./ProjectStageControl"));
 
@@ -58,9 +59,17 @@ export default function ProjectOrientationBand({
     updateDraftField,
   } = useProjectDetailsDraft(project);
   useUnsavedChangesGuard(isEditing && canSave);
+  const formRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (isEditing) formRef.current?.querySelector('input')?.focus({ preventScroll: true });
+    else if (wasEditing.current) actionsRef.current?.querySelector('button')?.focus({ preventScroll: true });
+    wasEditing.current = isEditing;
+  }, [isEditing]);
 
   const detailsActions = (
-    <div className={styles.detailsActions}>
+    <div ref={actionsRef} className={styles.detailsActions}>
       {statusText ? (
         <Badge tone={isSaving ? "info" : "neutral"}>{statusText}</Badge>
       ) : null}
@@ -119,7 +128,7 @@ export default function ProjectOrientationBand({
       ) : null}
 
       {isEditing ? (
-        <div className={styles.detailsForm} aria-label="Edit project details">
+        <div ref={formRef} className={styles.detailsForm} aria-label="Edit project details">
           <Input
             id="contactName"
             label="Contact"
@@ -280,8 +289,6 @@ export default function ProjectOrientationBand({
       {editState}
 
       {!isEditing ? (
-        <details className={styles.contextDetails}>
-        <summary>Contact, address & reference</summary>
         <div className={styles.orientationSummary}>
           <ProjectJourneyStatus
             stage={project.stage}
@@ -299,13 +306,14 @@ export default function ProjectOrientationBand({
               <dt>Customer</dt>
               <dd>
                 <strong>{displayed.contactName || "Not provided"}</strong>
-                <span>{displayed.contactEmail || "Email not provided"}</span>
+                <ProjectContactValue label="Phone" value={displayed.contactPhone} href={displayed.contactPhone ? `tel:${displayed.contactPhone.replace(/[^\d+]/g, "")}` : undefined} />
+                <ProjectContactValue label="Email" value={displayed.contactEmail} href={displayed.contactEmail ? `mailto:${displayed.contactEmail}` : undefined} />
               </dd>
             </div>
             <div data-context-priority="primary">
               <dt>Site</dt>
               <dd>
-                <strong>{displayed.siteAddress || "Not provided"}</strong>
+                <ProjectContactValue label="Address" value={displayed.siteAddress} href={displayed.siteAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayed.siteAddress)}` : undefined} external />
                 <span>
                   {displayed.region
                     ? `Region: ${displayed.region}`
@@ -336,7 +344,6 @@ export default function ProjectOrientationBand({
             </div>
           </dl>
         </div>
-        </details>
       ) : null}
     </section>
   );

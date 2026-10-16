@@ -10,6 +10,7 @@ import { GlobalPortalSearchStateProvider } from './GlobalPortalSearchState';
 const navigation = vi.hoisted(() => ({
   pathname: '/staff/dashboard',
   search: '',
+  instantRoute: null as 'projects-index' | null,
   beginRouteTransition: vi.fn(),
   prefetch: vi.fn(),
 }));
@@ -26,7 +27,7 @@ vi.mock('@/components/page-state/PortalRouteTransition', async (importOriginal) 
       beginRouteTransition: navigation.beginRouteTransition,
       beginInstantRoute: vi.fn(),
       finishInstantRoute: vi.fn(),
-      instantRoute: null,
+      instantRoute: navigation.instantRoute,
       pathname: navigation.pathname,
       routeKey: `${navigation.pathname}?${navigation.search}`,
     }),
@@ -120,6 +121,7 @@ describe('GlobalPortalSearch', () => {
     });
     navigation.pathname = '/staff/dashboard';
     navigation.search = '';
+    navigation.instantRoute = null;
     navigation.beginRouteTransition.mockReset();
     navigation.prefetch.mockReset();
     window.history.replaceState(null, '', navigation.pathname);
@@ -197,8 +199,7 @@ describe('GlobalPortalSearch', () => {
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })));
     expect(document.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain('Remuera Residence');
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
-    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
-    expect(document.querySelector('[role="option"]')?.textContent).toContain('Opening');
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
     expect(navigation.beginRouteTransition).toHaveBeenCalledWith(expect.objectContaining({
       href: '/staff/projects/proj_1',
       source: 'global-portal-search',
@@ -228,7 +229,7 @@ describe('GlobalPortalSearch', () => {
     expect(navigation.prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
     act(() => projectResult.click());
     expect(input.value).toBe('re');
-    expect(document.body.textContent).toContain('Opening');
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
 
     navigation.pathname = '/staff/projects/proj_1';
     window.history.pushState(null, '', navigation.pathname);
@@ -339,7 +340,7 @@ describe('GlobalPortalSearch', () => {
     rendered.unmount();
   });
 
-  it('keeps prior results visible while an uncached query refreshes', async () => {
+  it('removes old-query links immediately while an uncached query waits for results', async () => {
     let finishRefresh: ((response: Response) => void) | null = null;
     vi.mocked(fetch)
       .mockResolvedValueOnce(Response.json(searchResponse()))
@@ -359,8 +360,11 @@ describe('GlobalPortalSearch', () => {
     await flushQueryNotifications();
 
     inputText(input, 'rem');
-    expect(document.body.textContent).toContain('Remuera Residence');
-    expect(document.body.textContent).toContain('Updating results');
+    expect(document.body.textContent).not.toContain('Remuera Residence');
+    expect(document.querySelector('[role="option"]')).toBeNull();
+    expect(document.body.textContent).toContain('Searching the portal');
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    expect(navigation.beginRouteTransition).not.toHaveBeenCalled();
 
     await act(async () => {
       vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
@@ -369,7 +373,8 @@ describe('GlobalPortalSearch', () => {
       await Promise.resolve();
     });
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(document.body.textContent).toContain('Remuera Residence');
+    expect(document.body.textContent).not.toContain('Remuera Residence');
+    expect(document.querySelector('[role="option"]')).toBeNull();
 
     await act(async () => {
       finishRefresh?.(Response.json(searchResponse('rem', 'Remuera Courtyard')));
@@ -383,4 +388,108 @@ describe('GlobalPortalSearch', () => {
     expect(document.body.textContent).not.toContain('Updating results');
     rendered.unmount();
   });
+
+  it('keeps completed search navigation closed across a header remount', async () => {
+    const view = (pending: boolean) => <QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><SearchHost pending={pending} /></PortalQueryClientScope></QueryClientProvider>;
+    const rendered = renderIntoDocument(view(true));
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    inputText(input, 're');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    await flushQueryNotifications();
+    const viewAll = Array.from(document.querySelectorAll('a')).find((link) => link.textContent?.includes('View all matching projects'))!;
+    act(() => viewAll.click());
+    expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(0);
+    navigation.pathname = '/staff/projects';
+    navigation.search = 'q=re';
+    rendered.rerender(view(false));
+    expect(rendered.container.querySelector('input')?.value).toBe('');
+    expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(0);
+    rendered.unmount();
+  });
+
+  it('ignores a late older query and allows explicit retry after the current query fails', async () => {
+    let finishOld: ((response: Response) => void) | undefined;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => { finishOld = resolve; }))
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockResolvedValueOnce(Response.json(searchResponse('new', 'New project')));
+    const rendered = renderSearch();
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    inputText(input, 'old');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    inputText(input, 'new');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    await flushQueryNotifications();
+    expect(document.body.textContent).toContain('Search is unavailable');
+    await act(async () => { finishOld?.(Response.json(searchResponse('old', 'Old project'))); await Promise.resolve(); });
+    await flushQueryNotifications();
+    expect(document.body.textContent).not.toContain('Old project');
+    expect(document.querySelector('[role="option"]')).toBeNull();
+    const retry = Array.from(document.querySelectorAll('button')).find((button) => button.textContent === 'Try again')!;
+    await act(async () => { retry.click(); await Promise.resolve(); });
+    await flushQueryNotifications();
+    expect(document.body.textContent).toContain('New project');
+    expect(input.value).toBe('new');
+    rendered.unmount();
+  });
+
+  it('owns one results panel while two route headers overlap', () => {
+    const rendered = renderIntoDocument(<QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><GlobalPortalSearchStateProvider><GlobalPortalSearch /><GlobalPortalSearch shortcutEnabled={false} /></GlobalPortalSearchStateProvider></PortalQueryClientScope></QueryClientProvider>);
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    expect(document.activeElement).toBe(input);
+    expect(input.getAttribute('aria-controls')).toBe(document.querySelector('[role="listbox"]')?.id);
+    expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(1);
+    rendered.unmount();
+  });
+  it.each([true, false])('keeps focus and the panel on the visible header through an instant-route overlap (pending first: %s)', async (pendingFirst) => {
+    function OverlappingHeaders({ pending }: { pending: boolean }) {
+      const pendingHeader = pending ? <div key="pending" data-testid="pending-header"><GlobalPortalSearch /></div> : null;
+      const loadedHeader = <div key="loaded" data-testid="loaded-header" style={{ display: pending ? 'none' : 'contents' }} aria-hidden={pending || undefined}><GlobalPortalSearch /></div>;
+      return <GlobalPortalSearchStateProvider>{pendingFirst ? [pendingHeader, loadedHeader] : [loadedHeader, pendingHeader]}</GlobalPortalSearchStateProvider>;
+    }
+    const view = (pending: boolean) => <QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><OverlappingHeaders pending={pending} /></PortalQueryClientScope></QueryClientProvider>;
+    navigation.instantRoute = 'projects-index';
+    const rendered = renderIntoDocument(view(true));
+    const pendingInput = rendered.container.querySelector('[data-testid="pending-header"] input') as HTMLInputElement;
+    const loadedInput = rendered.container.querySelector('[data-testid="loaded-header"] input') as HTMLInputElement;
+    const pendingRoot = pendingInput.closest('[data-global-portal-search]') as HTMLElement;
+    const loadedRoot = loadedInput.closest('[data-global-portal-search]') as HTMLElement;
+    const visibleRect = { bottom: 100, height: 40, left: 500, right: 800, top: 60, width: 300, x: 500, y: 60, toJSON: () => ({}) };
+    vi.spyOn(pendingRoot, 'getBoundingClientRect').mockReturnValue(visibleRect);
+    const loadedRect = vi.spyOn(loadedRoot, 'getBoundingClientRect');
+    const expectOwner = (input: HTMLInputElement) => {
+      expect(document.activeElement).toBe(input);
+      expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(1);
+      expect(input.getAttribute('aria-controls')).toBe(document.querySelector('[role="listbox"]')?.id);
+      expect(document.querySelector<HTMLElement>('[data-global-search-panel]')?.style.top).toBe('104px');
+    };
+
+    act(() => pendingInput.focus());
+    inputText(pendingInput, 're');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    await flushQueryNotifications();
+    expectOwner(pendingInput);
+    expect(loadedInput.getAttribute('aria-expanded')).toBe('false');
+    expect(document.body.textContent).toContain('Remuera Residence');
+    act(() => document.querySelector('[data-global-search-panel]')?.dispatchEvent(new Event('pointerdown', { bubbles: true })));
+    expectOwner(pendingInput);
+    for (const modifiers of [{ ctrlKey: true }, { metaKey: true }]) {
+      act(() => pendingInput.blur());
+      act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ...modifiers, bubbles: true, cancelable: true })));
+      expectOwner(pendingInput);
+    }
+
+    loadedRect.mockReturnValue(visibleRect);
+    navigation.instantRoute = null;
+    rendered.rerender(view(false));
+    expect(loadedInput.value).toBe('re');
+    expectOwner(loadedInput);
+    act(() => loadedInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
+    expect(loadedInput.value).toBe('re');
+    rendered.unmount();
+  });
+
 });

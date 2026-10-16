@@ -551,13 +551,16 @@ export default function QuotesTab({
           (await queryClient.fetchQuery(
             estimateDetailQueryOptions(hostKey, estimateId),
           ));
+        const sharedInternalName = quotes.find((quote) =>
+          (quote.commercialScopeId ?? null) === (estimateDetail.commercialScopeId ?? null) && quote.internalName,
+        )?.internalName;
         const localQuoteId = createLocalQuoteId();
         const optimisticDetail = buildOptimisticQuoteDetail({
           quoteVersionId: localQuoteId,
           projectId,
           estimateDetail,
           existingQuotes: quotes,
-          internalName: opts?.internalName ?? estimateDetail.internalName ?? null,
+          internalName: sharedInternalName ?? opts?.internalName ?? estimateDetail.internalName ?? null,
         });
 
         upsertQuoteDetailCache(
@@ -1341,6 +1344,7 @@ export default function QuotesTab({
   return (
     <>
     <QuotesListView
+      projectId={projectId}
       quotes={quotes}
       quotesLoading={quotesLoading}
       quotesError={quotesError}

@@ -243,25 +243,25 @@ export function paymentScheduleCompatibilityDepositPercent(
 }
 
 function paymentScheduleSummary(terms: readonly QuotePaymentTerm[]): string {
-  return terms.map((term) => {
-    const basis = term.calculationType === 'fixed'
-      ? `$${((term.fixedAmountIncGstCents ?? 0) / 100).toFixed(2)}`
-      : `${term.percentageOfRemainder ?? 0}% of the balance after fixed payments`;
-    return `${term.label}: ${basis}`;
-  }).join('; ');
+  const money = new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' });
+  return terms.map((term) => `${term.label}: ${money.format(term.resolvedAmountIncGstCents / 100)}`).join('; ');
 }
 
 const LEGACY_DEPOSIT_TERMS_LINE = /A\s+\d+(?:\.\d+)?%\s+deposit\s+is\s+required\s+to\s+confirm\s+your\s+booking\.?/i;
-const PAYMENT_SCHEDULE_TERMS_LINE = /Payment schedule:\s*[^\r\n]*/i;
+const PAYMENT_SCHEDULE_TERMS_LINE = /Payment schedule(?: \(incl\. GST\))?:\s*[^\r\n]*/i;
 
 export function applyPaymentScheduleToTerms(
   terms: string | null | undefined,
   paymentTerms: readonly QuotePaymentTerm[],
 ): string {
-  const scheduleLine = `Payment schedule: ${paymentScheduleSummary(paymentTerms)}.`;
+  const scheduleLine = `Payment schedule (incl. GST): ${paymentScheduleSummary(paymentTerms)}.`;
   const base = String(terms ?? '').trim();
   if (!base) return scheduleLine;
-  if (PAYMENT_SCHEDULE_TERMS_LINE.test(base)) {
+  const existingSchedule = base.match(PAYMENT_SCHEDULE_TERMS_LINE)?.[0];
+  if (existingSchedule) {
+    const entries = existingSchedule.replace(/^Payment schedule(?: \(incl\. GST\))?:\s*/i, '').replace(/\.$/, '').split('; ');
+    const generated = entries.every((entry) => /^.+: (?:\$\d[\d,.]*|\d+(?:\.\d+)?% of the balance after fixed payments)$/.test(entry));
+    if (!generated) return base;
     return base.replace(PAYMENT_SCHEDULE_TERMS_LINE, scheduleLine);
   }
   if (LEGACY_DEPOSIT_TERMS_LINE.test(base)) {

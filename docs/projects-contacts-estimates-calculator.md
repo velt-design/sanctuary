@@ -1,5 +1,34 @@
 # Projects, Contacts, Estimates, And Calculator
 
+## Portal contact and return continuity (16 October 2026 candidate)
+
+Jordan's approved connected-workflow improvement explicitly requires ordinary contact
+information without entering Edit. This supersedes the earlier compact Overview's
+omitted phone and collapsed contact disclosure. `ProjectOrientationBand` now exposes
+name, phone, email and site address at the top of Overview, with direct contact/maps
+links and copy actions owned by `ProjectContactValue`. Missing values stay explicit.
+These are read actions and do not create call tasks or alter the email-only lead cadence.
+`ProjectOverviewLayout` places this region before the work/commercial/email columns.
+
+`useCommercialListState` retains project-scoped estimate/quote/invoice search choices
+and list reading position in the existing staff query client. State is isolated when
+the project or staff client changes and is cleared with the existing access-ending
+client boundary. It is in-session continuity, not a new durable business store.
+Commercial and project tab URL replacements preserve scroll; explicit calculator
+open/create still uses the existing focused workspace and save/lock/conflict owners.
+`CalculatorSessionBoundary` hides default controls and prevents costing until the
+selected saved inputs have hydrated. Failed loads offer retry; unchanged hydrated
+inputs do not receive the browser-only unsaved-work label. Contact edit transitions
+focus the first field and restore the Edit details trigger without scrolling.
+
+Estimate identity uses the saved `outputs.version` before the legacy row-level
+default. List, detail and subsequent saves therefore retain the same version;
+no historical data is backfilled. Price-source and costing rules are unchanged.
+Synthetic scenario factories must pass through the same UI normalization before
+calculation: an empty flashing list otherwise gains the existing primary-flashing
+default on reopen and makes a fixture look like unexplained repricing.
+
+
 Calculator pricing classification displays **Standard** while retaining the saved
 `simple` value. The automatic switch to Bespoke follows the authoritative pricing
 policy from the response for the current inputs; stale responses cannot reclassify
@@ -458,3 +487,21 @@ with no geocoding or persistence changes. Estimate lists retain their current
 calculator action, while Rename and Duplicate use the existing keyboard-accessible
 overflow menu. Duplicate still creates a revision through the original URL and
 controller. Calculator editing, locks and costing remain unchanged.
+
+The project calculator follows the existing local-first ID alias after a new or
+duplicated estimate is acknowledged. Its selected draft stays available while
+list reconciliation and alias persistence arrive in either order, and the URL
+is replaced with the canonical ID without adding browser history. Temporary
+working copies remain scoped to their project. Hydration runs for a selected
+session or explicit retry, not for pending-save toolbar rerenders. A temporary
+ID promotion carries newer local inputs and the selected module into the same
+editing session; it does not replace them with the acknowledged older snapshot.
+The original queue, offline retries, conflicts and server lock checks remain the
+persistence owners. Regression coverage exercises both acknowledgement orders,
+delayed route updates, local-ID selection, in-flight edits and canonical promotion.
+
+The Save confirmation keeps its original comparison baseline until the local
+save returns successfully. Optimistic list/cache writes still happen immediately
+through the existing queue, but they cannot change an open confirmation to
+"Inputs unchanged" midway through its command. Failures retain the original
+baseline and error for retry.

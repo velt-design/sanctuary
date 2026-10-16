@@ -7,15 +7,18 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import styles from './InvoicesTab.module.css';
 import InvoiceScheduleTotals from './InvoiceScheduleTotals';
+import { useCommercialListScroll, useCommercialListState } from './useCommercialListState';
 import {
   Badge,
   AlertBanner,
   Button,
+  ButtonLink,
   Card,
   DataStatePanel,
   LoadingSkeleton,
   MetricGrid,
   OverflowMenu,
+  SearchFilterBar,
   Table,
   TableBody,
   TableCell,
@@ -102,6 +105,7 @@ function deliveryTone(status: DepositInvoiceDeliveryStatus): BadgeTone {
 }
 
 export default function InvoicesTab({ projectId }: { projectId: string }) {
+  const [invoiceSearch, setInvoiceSearch] = useCommercialListState(projectId, 'invoices-search', '');
   const { isAdmin } = usePortalSession();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -131,6 +135,9 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
 
   const invoicesQuery = useQuery(depositInvoicesByProjectQueryOptions(hostKey, projectId));
   const invoices = invoicesQuery.data ?? [];
+  useCommercialListScroll(projectId, 'invoices', !invoicesQuery.isPending);
+  const visibleInvoices = invoices.filter((invoice) => [invoice.invoiceRef, invoice.quoteRef, invoice.reference, invoice.status, invoice.paymentTermLabel]
+    .some((value) => String(value ?? '').toLocaleLowerCase().includes(invoiceSearch.trim().toLocaleLowerCase())));
   const scheduleQuery = useQuery({
     queryKey: qk.invoices.scheduleByProject(hostKey, projectId),
     queryFn: () => loadProjectInvoiceSchedule(projectId),
@@ -388,7 +395,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     || paymentPending;
   const financialActionsLocked = financialActionPending || recoveryNotice !== null;
 
-  if (invoicesQuery.isError) {
+  if (invoicesQuery.isError && !invoices.length) {
     return (
       <DataStatePanel
         state="error"
@@ -424,6 +431,17 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
 
       {scheduleQuery.isError ? (
         <DataStatePanel state="error" title="Could not load the job payment schedule" description={scheduleQuery.error instanceof Error ? scheduleQuery.error.message : 'Failed to load payment totals.'} onRetry={() => void scheduleQuery.refetch()} />
+      ) : null}
+
+      {invoicesQuery.isError ? <DataStatePanel state="stale" title="Showing saved invoices" description="Invoice updates could not be loaded." onRetry={() => void invoicesQuery.refetch()} /> : null}
+
+      {!schedule && scheduleQuery.isPending ? <LoadingSkeleton rows={2} columns={4} label="Loading payment position" /> : null}
+
+      {schedule && !schedule.acceptedQuoteVersionId && !schedule.standaloneTotalIncGstCents && !invoices.length ? (
+        <Card title="Prepare the first invoice" headingLevel={4} padding="compact">
+          <p>Accept the customer's quote to create the first scheduled invoice. For work without a quote, use a standalone invoice draft.</p>
+          <ButtonLink href={`/staff/projects/${encodeURIComponent(projectId)}?tab=quotes`} variant="secondary">Open quotes</ButtonLink>
+        </Card>
       ) : null}
 
       {schedule && (schedule.acceptedQuoteVersionId || (schedule.standaloneTotalIncGstCents ?? 0) > 0) ? (
@@ -491,6 +509,13 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         </Card>
       ) : null}
 
+      {isAdmin && draftsEnabled ? <Card title="Invoice drafts"><p>Editable drafts have no balance impact until issued.</p>
+        <Button onClick={newStandaloneDraft} disabled={financialActionsLocked}>New standalone invoice</Button>
+        {(draftsQuery.data?.drafts ?? []).map((draft) => <Button key={draft.id} variant="secondary" onClick={() => setEditingDraft(draft)}>
+          Edit draft — {draft.options.label} · {draft.quoteVersionId ? 'Quote-linked' : 'Standalone'}
+        </Button>)}
+      </Card> : null}
+
       {isAdmin && schedule?.paymentEntries ? (
         <Card title="Payments & credits" eyebrow={`${schedule.paymentEntries.length} ledger ${schedule.paymentEntries.length === 1 ? 'entry' : 'entries'}`} padding="none" headingLevel={4} aria-label="Payments and credits">
           <div className={styles.paymentToolbar}>
@@ -535,6 +560,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         <DataStatePanel state="empty" title="No invoices yet" description="The first invoice is created when a quote is accepted. Admins can create later scheduled, custom, remaining-balance, or split invoices here." />
       ) : (
       <Card title="Invoice history" eyebrow={`${invoices.length} ${invoices.length === 1 ? 'invoice' : 'invoices'}`} padding="none" headingLevel={4}>
+      <SearchFilterBar query={invoiceSearch} onQueryChange={setInvoiceSearch} queryPlaceholder="Search invoice, quote or status" searchId="invoice-search" filters={[]} onClearAll={() => setInvoiceSearch('')} />
+      {!visibleInvoices.length ? <DataStatePanel state="empty" title="No matching invoices" description="Try another reference or clear the search." /> : null}
       <Table aria-label="Invoices" className={styles.invoiceTable}>
         <TableHeader>
           <TableRow>
@@ -547,7 +574,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {invoices.map((invoice) => {
+          {visibleInvoices.map((invoice) => {
             const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT' && !invoice.finalFailure;
             const isSending = sendingInvoiceId === invoice.id;
             const isHistorical = Boolean(invoice.quoteVersionId) && currentAcceptedQuoteVersionIds.size > 0
@@ -557,7 +584,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
               <TableRow key={invoice.id}>
                 <TableCell>
                   <div className={styles.meta}>
-                    <strong>{invoice.invoiceRef}</strong>
+                    <Button type="button" variant="quiet" size="small" onClick={() => setPreviewInvoice(invoice)}>{invoice.invoiceRef}</Button>
                     <div className={styles.statusRow}>
                       <Badge tone={invoiceStatusTone(invoice.status)}>{invoice.status}</Badge>
                       <Badge tone={deliveryTone(invoice.lastDeliveryStatus)}>{deliveryLabel(invoice.lastDeliveryStatus)}</Badge>
@@ -568,9 +595,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 </TableCell>
                 <TableCell data-label="Quote">
                   <div className={styles.meta}>
-                    <strong>
-                      {invoice.quoteVersionId ? `${invoice.quoteRef} v${invoice.quoteVersionNumber}` : 'Standalone invoice'}
-                    </strong>
+                    {invoice.quoteVersionId ? <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(projectId)}?tab=quotes&quoteId=${encodeURIComponent(invoice.quoteVersionId)}`}>{invoice.quoteRef} v{invoice.quoteVersionNumber}</ButtonLink> : <strong>Standalone invoice</strong>}
                     <span className={styles.muted}>{invoice.reference || invoice.projectName || '-'}</span>
                   </div>
                 </TableCell>
@@ -665,12 +690,6 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       />
       {restoreTarget ? <RestoreInvoiceDialog key={restoreTarget.id} invoice={restoreTarget} pending={restoringInvoice}
         onClose={() => setRestoreTarget(null)} onRestore={handleRestore} /> : null}
-      {isAdmin && draftsEnabled ? <Card title="Invoice drafts"><p>Editable drafts have no balance impact until issued.</p>
-        <Button onClick={newStandaloneDraft} disabled={financialActionsLocked}>New standalone invoice</Button>
-        {(draftsQuery.data?.drafts ?? []).map((draft) => <Button key={draft.id} variant="secondary" onClick={() => setEditingDraft(draft)}>
-          Edit draft — {draft.options.label} · {draft.quoteVersionId ? 'Quote-linked' : 'Standalone'}
-        </Button>)}
-      </Card> : null}
       {isAdmin && draftsEnabled && editingDraft ? <InvoiceDraftEditor key={editingDraft.id} initial={editingDraft}
         onClose={() => setEditingDraft(null)} onSaved={() => { void draftsQuery.refetch(); }}
         onIssued={async (message, sendError) => {

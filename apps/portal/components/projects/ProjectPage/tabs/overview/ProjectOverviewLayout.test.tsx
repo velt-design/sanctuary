@@ -32,11 +32,11 @@ describe("ProjectOverviewLayout", () => {
         node.getAttribute("data-project-overview-region"),
       ),
     ).toEqual([
+      "orientation",
       "exception",
       "project-work",
-      "recent",
       "commercial",
-      "orientation",
+      "recent",
       "admin",
     ]);
 
@@ -125,7 +125,7 @@ describe("ProjectOverviewLayout", () => {
       Array.from(layout.children).map((node) =>
         node.getAttribute("data-project-overview-region"),
       ),
-    ).toEqual(["project-work", "commercial", "orientation"]);
+    ).toEqual(["orientation", "project-work", "commercial"]);
     expect(rendered.container.querySelector("button")?.textContent).toBe(
       "Orientation edits 1",
     );

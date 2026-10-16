@@ -2,6 +2,7 @@ import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderIntoDocument } from '../../../../../test/reactHarness';
+import type { EstimateDetail } from '@/lib/estimates/types';
 import type { CalculatorEstimateSaveOutcome } from './calculatorEstimateSave';
 import {
   useCalculatorSaveController,
@@ -165,6 +166,38 @@ describe('useCalculatorSaveController', () => {
     expect(controller().generateError).toBe('Save failed.');
     expect(setup.onError).toHaveBeenCalledWith('Save failed.');
     expect(setup.onSaved).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+
+  it.each([true, false])('keeps the confirmation baseline stable until the local save resolves (success %s)', async (succeeds) => {
+    let finish!: (outcome: CalculatorEstimateSaveOutcome | null) => void;
+    const optimistic = { id: 'estimate-1', versionLabel: 'V2' } as EstimateDetail;
+    const saveEstimate: SaveEstimate = async ({ callbacks }) => {
+      callbacks.setGenerating(true);
+      callbacks.setLoadedEstimateDetail(optimistic);
+      const outcome = await new Promise<CalculatorEstimateSaveOutcome | null>((resolve) => { finish = resolve; });
+      if (!outcome) callbacks.fail('Local save failed.');
+      callbacks.setGenerating(false);
+      return outcome;
+    };
+    const setup = makeArgs({ saveEstimate });
+    const rendered = renderIntoDocument(<Probe args={setup.args} />);
+    act(() => controller().openSaveConfirmation());
+    let saving!: Promise<void>;
+    act(() => { saving = controller().repriceLatest(); });
+    expect(controller().isGenerating).toBe(true);
+    expect(controller().confirmOpen).toBe(true);
+    expect(setup.setLoadedEstimateDetail).not.toHaveBeenCalled();
+    await act(async () => { finish(succeeds ? makeOutcome() : null); await saving; });
+    if (succeeds) {
+      expect(setup.setLoadedEstimateDetail).toHaveBeenCalledWith(optimistic);
+      expect(controller().confirmOpen).toBe(false);
+    } else {
+      expect(setup.setLoadedEstimateDetail).not.toHaveBeenCalled();
+      expect(controller().confirmOpen).toBe(true);
+      expect(controller().generateError).toBe('Local save failed.');
+    }
     rendered.unmount();
   });
 

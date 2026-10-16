@@ -36,10 +36,10 @@ const PERGOLA_INCLUDED_SCOPE = 'Custom-designed pergola, supplied and installed'
 
 function formatCustomerRoof(module: CalculatorModuleInputs): string | null {
   if (module.roofMaterial === 'acrylic') {
-    return 'Acrylic roofing — admits natural light while adding overhead shelter';
+    return 'Acrylic roofing';
   }
   if (module.roofMaterial === 'none') {
-    return 'Open pergola structure — roof covering excluded';
+    return 'Open pergola structure, roof covering excluded';
   }
 
   const solidRoof = module.timberRoofAboveType === 'steel_corrugated'
@@ -179,7 +179,7 @@ export function buildPergolaDescription(params: {
 
   if (!params.modules.length) {
     lines.push('- Included: Pergola works');
-    lines.push('- Scope note: Final dimensions and selections require confirmation');
+    lines.push('- Final dimensions and selections require confirmation');
     return lines.join('\n');
   }
 

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
+import { buildOptimisticQuoteDetail } from '@/lib/localFirst/portalEntities';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -183,6 +185,8 @@ let activeQuoteDetail: any = quoteDetail;
 
 describe('QuotesTab draft ownership UI', () => {
   beforeEach(() => {
+    vi.mocked(buildOptimisticQuoteDetail).mockReset();
+    vi.mocked(enqueueAndProcessLocalFirstMutation).mockReset();
     replace.mockReset();
     push.mockReset();
     toastSuccess.mockReset();
@@ -251,6 +255,47 @@ describe('QuotesTab draft ownership UI', () => {
     });
   });
 
+
+  it('shows an existing family name as shared text and submits the same optimistic name', async () => {
+    searchParamsValue = '';
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" />);
+    const openCreate = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Create quote');
+    act(() => openCreate!.click());
+    expect(document.body.querySelector('input[placeholder="e.g. Front deck pergola"]')).not.toBeNull();
+    activeQuoteList = [{ ...activeQuoteList[0], internalName: 'Main pergola' }];
+    act(() => rendered.rerender(<QuotesTab projectId="proj_1" />));
+    const modal = document.body.querySelector('[role="dialog"]')!;
+    expect(modal.textContent).toContain('Main pergola');
+    expect(modal.textContent).toContain('Shared by all versions. Use Rename');
+    expect(modal.querySelector('input[placeholder="e.g. Front deck pergola"]')).toBeNull();
+    getQueryData.mockImplementation((key: unknown[]) => key.includes('est_v2')
+      ? { id: 'est_v2', internalName: 'Different estimate name', commercialScopeId: null }
+      : undefined);
+    vi.mocked(buildOptimisticQuoteDetail).mockReturnValue({ ...quoteDetail, internalName: 'Main pergola' } as any);
+    const create = Array.from(modal.querySelectorAll('button')).find((button) => button.textContent === 'Create quote');
+    await act(async () => create!.click());
+    expect(buildOptimisticQuoteDetail).toHaveBeenCalledWith(expect.objectContaining({ internalName: 'Main pergola' }));
+    expect(enqueueAndProcessLocalFirstMutation).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ internalName: 'Main pergola' }),
+    }));
+    rendered.unmount();
+  });
+
+  it('keeps the name editable for a new manual scope even when the estimate family is named', () => {
+    searchParamsValue = '';
+    activeQuoteList = [{ ...activeQuoteList[0], internalName: 'Existing family' }];
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" />);
+    const openCreate = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Create quote');
+    act(() => openCreate!.click());
+    const modal = document.body.querySelector('[role="dialog"]')!;
+    expect(modal.querySelector('input[placeholder="e.g. Front deck pergola"]')).toBeNull();
+    const manual = Array.from(modal.querySelectorAll('button')).find((button) => button.textContent === 'Manual quote');
+    act(() => manual!.click());
+    expect(modal.querySelector('input[placeholder="e.g. Front deck pergola"]')).not.toBeNull();
+    expect(modal.textContent).not.toContain('Shared by all versions');
+    rendered.unmount();
+  });
+
   it('does not turn an accepted agreement into an expired quote', () => {
     activeQuoteDetail = { ...quoteDetail, status: 'ACCEPTED', expiresAt: '2020-01-01', acceptedAt: '2019-12-01T00:00:00Z' };
     activeQuoteList = [{ ...activeQuoteList[0], ...activeQuoteDetail }];
@@ -285,7 +330,7 @@ describe('QuotesTab draft ownership UI', () => {
     rendered.unmount();
   });
 
-  it('labels an older accepted version as historical acceptance', () => {
+  it('keeps historical acceptance discoverable without competing with the current agreement', () => {
     searchParamsValue = '';
     activeQuoteList = [
       {
@@ -301,6 +346,9 @@ describe('QuotesTab draft ownership UI', () => {
     ];
     const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId={null} />);
     expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
+    expect(rendered.container.textContent).not.toContain('Historical acceptance');
+    const history = rendered.container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    act(() => history.click());
     expect(rendered.container.textContent).toContain('Historical acceptance');
     rendered.unmount();
   });
@@ -311,7 +359,7 @@ describe('QuotesTab draft ownership UI', () => {
     const row = rendered.container.querySelector<HTMLTableRowElement>('tr[aria-label="Open Q-1001, Q-1001 version 1"]');
     expect(row).not.toBeNull();
     act(() => row?.click());
-    expect(replace).toHaveBeenLastCalledWith('?tab=quotes&campaign=winter&quoteId=qv_1');
+    expect(replace).toHaveBeenLastCalledWith('?tab=quotes&campaign=winter&quoteId=qv_1', { scroll: false });
     rendered.unmount();
   });
 
@@ -325,7 +373,7 @@ describe('QuotesTab draft ownership UI', () => {
     expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-quotes-view="detail"]')).toBeNull();
     expect(replace).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith('?tab=quotes');
+    expect(replace).toHaveBeenCalledWith('?tab=quotes', { scroll: false });
     rendered.unmount();
   });
 
