@@ -6037,3 +6037,17 @@ and `test/marketing-performance-read.test.ts`.
 ## 2026-10-08 - Saved source evidence
 
 Marketing source reporting must inspect permitted saved click evidence before declaring a source unknown. Keep one classifier for receipt and project-origin reads; preserve explicit source labels, consent and unknowns. A saved identifier does not establish provider-verified attribution or campaign detail. See `marketing-performance.md`.
+
+### 2026-10-16: preserve calculator identity through save acknowledgement
+
+The protected Portal review found a duplicate saved successfully while its URL
+still selected a temporary ID, and a pending Save toolbar rerender rehydrated
+older inputs. Project selection now follows the existing alias store with a
+project-scoped temporary working-copy bridge, then replaces the URL. Workspace
+hydration follows session identity and explicit retry; canonical ID promotion
+carries newer edits. Save confirmation baseline updates wait for local save
+completion. No pricing, persistence queue, schema or authorization rules change.
+The same review found a new quote-version name field that the existing family
+contract ignored. Named families now show their shared name and direct changes
+to Rename; optimistic creation uses the same name. New/unnamed/manual scopes
+retain the optional field.

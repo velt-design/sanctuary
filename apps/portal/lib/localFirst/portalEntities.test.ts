@@ -213,7 +213,7 @@ describe('portalEntities', () => {
     });
 
     expect(updated.depositPercent).toBe(25);
-    expect(updated.termsText).toContain('Payment schedule: Initial payment: 25% of the balance after fixed payments; Final payment: 75% of the balance after fixed payments.');
+    expect(updated.termsText).toContain('Payment schedule (incl. GST): Initial payment: $11.50; Final payment: $34.50.');
     expect(updated.totals).toEqual({
       totalIncGstCents: 4600,
       totalExGstCents: 4000,

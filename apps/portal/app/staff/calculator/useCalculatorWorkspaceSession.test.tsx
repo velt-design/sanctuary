@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { act } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { CalculatorInputs } from '@/lib/types/calculator';
@@ -10,6 +10,8 @@ import type { CalculatorDraftPersistence } from './calculatorDraftPersistence';
 import { makeDefaultCalculatorInputs } from './calculatorInputs';
 import { useCalculatorWorkspaceSession } from './useCalculatorWorkspaceSession';
 import CalculatorSessionBoundary from './CalculatorSessionBoundary';
+import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, ensureLocalFirstStoreReady, registerLocalFirstIdAlias } from '@/lib/localFirst/store';
+import { qk } from '@/lib/queries/keys';
 
 type WorkspaceSessionOptions = Parameters<typeof useCalculatorWorkspaceSession>[0];
 type WorkspaceSession = ReturnType<typeof useCalculatorWorkspaceSession>;
@@ -120,6 +122,12 @@ async function waitUntil(assertion: () => void): Promise<void> {
   throw lastError;
 }
 
+beforeEach(async () => {
+  __resetLocalFirstStoreForTests();
+  __setLocalFirstStorageAdapterForTests({ get: async () => undefined, set: async () => undefined });
+  await ensureLocalFirstStoreReady();
+});
+
 afterEach(() => {
   latest = null;
   document.body.innerHTML = '';
@@ -151,6 +159,81 @@ describe('useCalculatorWorkspaceSession', () => {
       ...values, modules: [{ ...values.modules[0], lengthM: '8.5' }],
     })));
     await waitUntil(() => expect(session().localDraftStatus.kind).toBe('saved'));
+    rendered.unmount();
+  });
+
+
+  it('keeps edited inputs and module selection while pending Save changes the workspace controls', async () => {
+    const inputs = makeDefaultCalculatorInputs();
+    inputs.modules[0].lengthM = '6.2';
+    inputs.modules.push({ ...inputs.modules[0], lengthM: '4' });
+    const estimate = makeEstimate({ id: 'estimate-pending-save', versionLabel: 'V2', calculatorSnapshot: { inputs } });
+    const workspace = {
+      kind: 'project' as const, host: 'test-host', projectId: 'project-1', editEstimateId: estimate.id,
+      designNavigation: { value: estimate.id, stateLabel: 'Editing', options: [], onChange: vi.fn(), disabled: false },
+      onEstimateSaved: vi.fn(), onOpenProject: vi.fn(),
+    };
+    const options = makeOptions({
+      workspace,
+      route: { projectId: '', editEstimateId: estimate.id, fromEstimateId: '', shouldOpenActiveDraft: false },
+      estimateLoader: vi.fn().mockResolvedValue(estimate),
+    });
+    options.queryClient.setQueryData(qk.estimates.detail('test-host', estimate.id), estimate);
+    const rendered = renderIntoDocument(<Probe options={options} />);
+    await waitUntil(() => expect(session().draftReady).toBe(true));
+    await act(async () => {
+      session().setValues((values) => ({ ...values, modules: [{ ...values.modules[0], lengthM: '6.3' }, values.modules[1]] }));
+      session().setActiveModuleIndex(1);
+    });
+    const saveAcknowledgement = deferred<void>();
+    const savingOptions = { ...options, workspace: { ...workspace, designNavigation: { ...workspace.designNavigation, disabled: true } } };
+    await act(async () => rendered.rerender(<Probe options={savingOptions} />));
+    expect(session().draftReady).toBe(true);
+    expect(session().values.modules[0].lengthM).toBe('6.3');
+    expect(session().activeModuleIndex).toBe(1);
+    expect((session().loadedEstimateDetail?.calculatorSnapshot?.inputs as CalculatorInputs).modules[0].lengthM).toBe('6.2');
+    const completing = saveAcknowledgement.promise.then(() => {
+      session().setLoadedEstimateDetail({ ...estimate, calculatorSnapshot: { inputs: session().values } });
+      rendered.rerender(<Probe options={{ ...options, workspace: { ...workspace } }} />);
+    });
+    await act(async () => { saveAcknowledgement.resolve(); await completing; });
+    expect(session().values.modules[0].lengthM).toBe('6.3');
+    expect(session().activeModuleIndex).toBe(1);
+    expect((session().loadedEstimateDetail?.calculatorSnapshot?.inputs as CalculatorInputs).modules[0].lengthM).toBe('6.3');
+    rendered.unmount();
+  });
+
+  it('carries newer unsaved edits and module selection across acknowledgement of a temporary ID', async () => {
+    const localId = 'local-estimate:workspace-promotion';
+    const canonicalId = 'estimate-promoted';
+    const inputs = makeDefaultCalculatorInputs();
+    inputs.modules[0].lengthM = '6.2';
+    inputs.modules.push({ ...inputs.modules[0], lengthM: '4' });
+    const local = makeEstimate({ id: localId, versionLabel: 'V2', calculatorSnapshot: { inputs } });
+    const canonical = { ...local, id: canonicalId };
+    const options = makeOptions({
+      route: { projectId: '', editEstimateId: localId, fromEstimateId: '', shouldOpenActiveDraft: false },
+      estimateLoader: vi.fn().mockResolvedValue(canonical),
+    });
+    options.queryClient.setQueryData(qk.estimates.detail('test-host', localId), local);
+    const rendered = renderIntoDocument(<Probe options={options} />);
+    await waitUntil(() => expect(session().draftReady).toBe(true));
+    await act(async () => {
+      session().setValues((values) => ({ ...values, modules: [{ ...values.modules[0], lengthM: '6.3' }, values.modules[1]] }));
+      session().setActiveModuleIndex(1);
+    });
+    await act(async () => {
+      options.queryClient.setQueryData(qk.estimates.detail('test-host', canonicalId), canonical);
+      await registerLocalFirstIdAlias(localId, canonicalId);
+      rendered.rerender(<Probe options={{ ...options, route: { ...options.route, editEstimateId: canonicalId } }} />);
+    });
+    await waitUntil(() => expect(session().draftReady).toBe(true));
+    expect(session().activeEditEstimateId).toBe(canonicalId);
+    expect(session().values.modules[0].lengthM).toBe('6.3');
+    expect(session().activeModuleIndex).toBe(1);
+    expect(session().loadedEstimateDetail?.id).toBe(canonicalId);
+    expect((session().loadedEstimateDetail?.calculatorSnapshot?.inputs as CalculatorInputs).modules[0].lengthM).toBe('6.2');
+    expect(session().localDraftStatus.kind).toBe('saved');
     rendered.unmount();
   });
 

@@ -487,3 +487,21 @@ with no geocoding or persistence changes. Estimate lists retain their current
 calculator action, while Rename and Duplicate use the existing keyboard-accessible
 overflow menu. Duplicate still creates a revision through the original URL and
 controller. Calculator editing, locks and costing remain unchanged.
+
+The project calculator follows the existing local-first ID alias after a new or
+duplicated estimate is acknowledged. Its selected draft stays available while
+list reconciliation and alias persistence arrive in either order, and the URL
+is replaced with the canonical ID without adding browser history. Temporary
+working copies remain scoped to their project. Hydration runs for a selected
+session or explicit retry, not for pending-save toolbar rerenders. A temporary
+ID promotion carries newer local inputs and the selected module into the same
+editing session; it does not replace them with the acknowledged older snapshot.
+The original queue, offline retries, conflicts and server lock checks remain the
+persistence owners. Regression coverage exercises both acknowledgement orders,
+delayed route updates, local-ID selection, in-flight edits and canonical promotion.
+
+The Save confirmation keeps its original comparison baseline until the local
+save returns successfully. Optimistic list/cache writes still happen immediately
+through the existing queue, but they cannot change an open confirmation to
+"Inputs unchanged" midway through its command. Failures retain the original
+baseline and error for retry.

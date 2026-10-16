@@ -102,6 +102,10 @@ export default function QuotesListView({
   closeRename,
   saveRename,
 }: QuotesListViewProps) {
+  const createEstimate = estimates.find((estimate) => estimate.id === createEstimateId);
+  const sharedCreateName = createMode === 'estimate' && createEstimate
+    ? quotes.find((quote) => (quote.commercialScopeId ?? null) === (createEstimate.commercialScopeId ?? null) && quote.internalName)?.internalName
+    : null;
   const [query, setQuery] = useCommercialListState(projectId, 'quotes-search', '');
   const [showHistory, setShowHistory] = useCommercialListState(projectId, 'quotes-history', false);
   useCommercialListScroll(projectId, 'quotes', !quotesLoading);
@@ -413,7 +417,13 @@ export default function QuotesListView({
                 <Input label="Unit price (inc GST)" disabled={createBusy} type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} helperText="Add more lines and edit payment terms after creation." />
               </div>
             )}
-            <Input
+            {sharedCreateName ? (
+              <div>
+                <span className={styles.metaLabel}>Internal quote name</span>
+                <p className={styles.metaValue}>{sharedCreateName}</p>
+                <p className={styles.muted}>Shared by all versions. Use Rename in the quote list to change it.</p>
+              </div>
+            ) : <Input
               label="Internal quote name (optional)"
               value={createInternalName}
               disabled={createBusy}
@@ -421,7 +431,7 @@ export default function QuotesListView({
               placeholder="e.g. Front deck pergola"
               maxLength={COMMERCIAL_INTERNAL_NAME_MAX_LENGTH}
               helperText="For staff use only; customer documents keep the quote reference."
-            />
+            />}
           </div>
           <div className={styles.modalFooter}>
             <button

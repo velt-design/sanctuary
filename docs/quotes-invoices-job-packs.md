@@ -446,3 +446,9 @@ No lifecycle, payment, PDF, email, permissions or spreadsheet write contracts ch
 Quote selection explicitly sets `tab=quotes` when writing its selection URL,
 including an immediate click after an optimistic Commercial tab switch. This
 preserves unrelated filters without allowing a stale Invoices URL to win.
+
+When creating a version from an estimate in an already named quote family, the
+create dialog displays the shared family name and directs name changes to Rename.
+The optimistic create and queued request retain that same family name, matching
+`ensureQuote`. New or unnamed families and manual quote scopes retain the optional
+name field. Creating a version does not rename historical versions.

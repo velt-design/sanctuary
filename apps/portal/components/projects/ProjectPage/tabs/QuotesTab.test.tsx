@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
+import { buildOptimisticQuoteDetail } from '@/lib/localFirst/portalEntities';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -183,6 +185,8 @@ let activeQuoteDetail: any = quoteDetail;
 
 describe('QuotesTab draft ownership UI', () => {
   beforeEach(() => {
+    vi.mocked(buildOptimisticQuoteDetail).mockReset();
+    vi.mocked(enqueueAndProcessLocalFirstMutation).mockReset();
     replace.mockReset();
     push.mockReset();
     toastSuccess.mockReset();
@@ -249,6 +253,47 @@ describe('QuotesTab draft ownership UI', () => {
       callIndex += 1;
       return response;
     });
+  });
+
+
+  it('shows an existing family name as shared text and submits the same optimistic name', async () => {
+    searchParamsValue = '';
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" />);
+    const openCreate = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Create quote');
+    act(() => openCreate!.click());
+    expect(document.body.querySelector('input[placeholder="e.g. Front deck pergola"]')).not.toBeNull();
+    activeQuoteList = [{ ...activeQuoteList[0], internalName: 'Main pergola' }];
+    act(() => rendered.rerender(<QuotesTab projectId="proj_1" />));
+    const modal = document.body.querySelector('[role="dialog"]')!;
+    expect(modal.textContent).toContain('Main pergola');
+    expect(modal.textContent).toContain('Shared by all versions. Use Rename');
+    expect(modal.querySelector('input[placeholder="e.g. Front deck pergola"]')).toBeNull();
+    getQueryData.mockImplementation((key: unknown[]) => key.includes('est_v2')
+      ? { id: 'est_v2', internalName: 'Different estimate name', commercialScopeId: null }
+      : undefined);
+    vi.mocked(buildOptimisticQuoteDetail).mockReturnValue({ ...quoteDetail, internalName: 'Main pergola' } as any);
+    const create = Array.from(modal.querySelectorAll('button')).find((button) => button.textContent === 'Create quote');
+    await act(async () => create!.click());
+    expect(buildOptimisticQuoteDetail).toHaveBeenCalledWith(expect.objectContaining({ internalName: 'Main pergola' }));
+    expect(enqueueAndProcessLocalFirstMutation).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ internalName: 'Main pergola' }),
+    }));
+    rendered.unmount();
+  });
+
+  it('keeps the name editable for a new manual scope even when the estimate family is named', () => {
+    searchParamsValue = '';
+    activeQuoteList = [{ ...activeQuoteList[0], internalName: 'Existing family' }];
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" />);
+    const openCreate = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Create quote');
+    act(() => openCreate!.click());
+    const modal = document.body.querySelector('[role="dialog"]')!;
+    expect(modal.querySelector('input[placeholder="e.g. Front deck pergola"]')).toBeNull();
+    const manual = Array.from(modal.querySelectorAll('button')).find((button) => button.textContent === 'Manual quote');
+    act(() => manual!.click());
+    expect(modal.querySelector('input[placeholder="e.g. Front deck pergola"]')).not.toBeNull();
+    expect(modal.textContent).not.toContain('Shared by all versions');
+    rendered.unmount();
   });
 
   it('does not turn an accepted agreement into an expired quote', () => {

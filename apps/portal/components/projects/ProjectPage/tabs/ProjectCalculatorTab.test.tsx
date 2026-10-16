@@ -2,11 +2,14 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import ProjectCalculatorTab from './ProjectCalculatorTab';
+import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, ensureLocalFirstStoreReady, registerLocalFirstIdAlias, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
+import { buildEstimateEntityKey } from '@/lib/localFirst/portalEntities';
 
 const replace = vi.fn();
 const push = vi.fn();
 const useQueryMock = vi.fn();
 let search = 'tab=estimates';
+let savedFixtureId = 'est_saved';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/staff/projects/proj_1',
@@ -52,7 +55,7 @@ vi.mock('@/app/staff/calculator/CalculatorGridClient', () => ({
         ))}
       </select>
       <span data-testid="design-state">{workspace.designNavigation.stateLabel}</span>
-      <button type="button" onClick={() => workspace.onEstimateSaved('est_saved')}>Save fixture</button>
+      <button type="button" onClick={() => workspace.onEstimateSaved(savedFixtureId)}>Save fixture</button>
     </div>
   ),
 }));
@@ -73,7 +76,11 @@ const activeDraft = {
 const historical = { ...activeDraft, id: 'est_history', versionLabel: 'V1', isActiveDraft: false };
 
 describe('ProjectCalculatorTab', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    __resetLocalFirstStoreForTests();
+    __setLocalFirstStorageAdapterForTests({ get: async () => undefined, set: async () => undefined });
+    await ensureLocalFirstStoreReady();
+    savedFixtureId = 'est_saved';
     replace.mockReset();
     push.mockReset();
     search = 'tab=estimates';
@@ -128,6 +135,81 @@ describe('ProjectCalculatorTab', () => {
     expect(replace).toHaveBeenCalledWith(
       '/staff/projects/proj_1?tab=estimates&campaign=winter&estimateId=est_saved', { scroll: false }
     );
+    rendered.unmount();
+  });
+
+
+  it.each(['list-first', 'alias-first'] as const)('keeps a duplicate open through %s save acknowledgement and delayed route updates', async (order) => {
+    search = 'tab=estimates&fromEstimateId=est_history&campaign=winter';
+    savedFixtureId = 'local-estimate:pending-create';
+    const localDraft = { ...activeDraft, id: savedFixtureId };
+    const canonicalDraft = { ...activeDraft, id: 'est_saved' };
+    let rows = [localDraft, historical];
+    useQueryMock.mockImplementation(() => ({ data: rows, isPending: false, isError: false }));
+    await writeLocalFirstWorkingCopy({ entityKey: buildEstimateEntityKey(localDraft.id), data: localDraft });
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const assertOpen = (id: string) => {
+      expect(rendered.container.querySelector('[data-calculator-invalid-source]')).toBeNull();
+      expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')?.getAttribute('data-edit-estimate-id')).toBe(id);
+      expect(rendered.container.querySelector<HTMLSelectElement>('[aria-label="Design version"]')?.value).toBe(`draft:${id}`);
+    };
+    const save = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Save fixture');
+    act(() => save!.click());
+    search = new URL(String(replace.mock.calls.at(-1)?.[0]), 'https://portal.example').search.slice(1);
+    act(() => rendered.rerender(<ProjectCalculatorTab host="host" projectId="proj_1" />));
+    assertOpen(localDraft.id);
+
+    if (order === 'list-first') {
+      rows = [canonicalDraft, historical];
+      act(() => rendered.rerender(<ProjectCalculatorTab host="host" projectId="proj_1" />));
+      assertOpen(localDraft.id);
+      await act(async () => registerLocalFirstIdAlias(localDraft.id, canonicalDraft.id));
+    } else {
+      await act(async () => registerLocalFirstIdAlias(localDraft.id, canonicalDraft.id));
+      assertOpen(localDraft.id);
+      rows = [canonicalDraft, historical];
+      act(() => rendered.rerender(<ProjectCalculatorTab host="host" projectId="proj_1" />));
+    }
+    assertOpen(canonicalDraft.id);
+    expect(replace).toHaveBeenLastCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter&estimateId=est_saved', { scroll: false });
+    search = new URL(String(replace.mock.calls.at(-1)?.[0]), 'https://portal.example').search.slice(1);
+    act(() => rendered.rerender(<ProjectCalculatorTab host="host" projectId="proj_1" />));
+    assertOpen(canonicalDraft.id);
+    rendered.unmount();
+  });
+
+  it('opens an already acknowledged local save with its canonical URL', async () => {
+    search = 'tab=estimates&fromEstimateId=est_history';
+    savedFixtureId = 'local-estimate:fast-create';
+    await registerLocalFirstIdAlias(savedFixtureId, 'est_saved');
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const save = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Save fixture');
+    act(() => save!.click());
+    expect(replace).toHaveBeenLastCalledWith('/staff/projects/proj_1?tab=estimates&estimateId=est_saved', { scroll: false });
+    rendered.unmount();
+  });
+
+  it('preserves the complete temporary ID when selecting a queued local draft', async () => {
+    const localDraft = { ...activeDraft, id: 'local-estimate:offline' };
+    useQueryMock.mockReturnValue({ data: [localDraft, historical], isPending: false, isError: false });
+    search = 'tab=estimates&newDesign=1';
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const select = rendered.container.querySelector<HTMLSelectElement>('[aria-label="Design version"]')!;
+    act(() => {
+      select.value = `draft:${localDraft.id}`;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(replace).toHaveBeenLastCalledWith('/staff/projects/proj_1?tab=estimates&estimateId=local-estimate%3Aoffline', { scroll: false });
+    rendered.unmount();
+  });
+
+  it('does not recover a temporary working copy from another project', async () => {
+    const id = 'local-estimate:foreign-project';
+    await writeLocalFirstWorkingCopy({ entityKey: buildEstimateEntityKey(id), data: { ...activeDraft, id, projectId: 'proj_2' } });
+    search = `tab=estimates&estimateId=${encodeURIComponent(id)}`;
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    expect(rendered.container.querySelector('[data-calculator-invalid-source]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
     rendered.unmount();
   });
 
