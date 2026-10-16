@@ -12,6 +12,18 @@ late responses, retry and remounts. Routine contact information is visible witho
 Edit, and commercial return retains list context. See `ui-foundation.md` and
 `projects-contacts-estimates-calculator.md`. No new approval or release authority.
 
+Delivery review also found three trust boundaries that unit-only presentation checks
+had missed: a raw fixture bypassed UI flashing defaults, a legacy row-level version
+overrode the saved snapshot version during an estimate update, and an invoice iframe
+could not render a correctly protected PDF response. Compare exact input requests
+before treating a price difference as an engine error; preserve saved version
+identity across read/save/reopen; and verify the rendered artifact through the real
+authenticated response headers. The candidate now gates calculator hydration, uses
+snapshot version identity and renders protected invoice bytes on canvas. Quote
+pagination and payment-copy checks include an ordinary full-scope/default-terms
+document as well as long fixtures. Hosted review and production approval remain
+separate from these source checks.
+
 ## 2026-10-16 - Test capture eligibility with complete campaign arrival parameters
 
 An allowlisted public page and valid consent were insufficient when the query

@@ -96,6 +96,21 @@ describe("ProjectOrientationBand", () => {
     document.body.innerHTML = "";
   });
 
+  it('moves focus into contact editing and returns it to Edit details without scrolling', () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    const rendered = renderIntoDocument(<ProjectOrientationBand project={project} host="host" />);
+    mocks.details.isEditing = true;
+    rendered.rerender(<ProjectOrientationBand project={project} host="host" />);
+    expect(document.activeElement?.id).toBe('contactName');
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+    mocks.details.isEditing = false;
+    rendered.rerender(<ProjectOrientationBand project={project} host="host" />);
+    expect(document.activeElement?.textContent).toBe('Edit details');
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+    rendered.unmount();
+    focus.mockRestore();
+  });
+
   it("shows customer contact details without entering edit mode", async () => {
     const rendered = renderIntoDocument(
       <ProjectOrientationBand

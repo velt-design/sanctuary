@@ -135,7 +135,7 @@ export async function renderDepositInvoicePdfDocument(
       ? drawFirstPageHeader(page, vm, fonts, logo)
       : drawContinuationHeader(page, vm, fonts, logo);
     if (data.draft) {
-      drawText(page, 'DRAFT — PREVIEW ONLY', { x: CONTENT_X0, y: PAGE_HEIGHT - 22, size: 10, font: fonts.semibold, color: brandColors.accent });
+      drawText(page, 'DRAFT: PREVIEW ONLY', { x: CONTENT_X0, y: PAGE_HEIGHT - 22, size: 10, font: fonts.semibold, color: brandColors.accent });
     }
   };
 
@@ -358,7 +358,7 @@ export async function renderDepositInvoicePdfDocument(
   ] as const;
   const calculationHeight = 20 + calculationRows.length * 22 + 40;
   ensureSpace(calculationHeight + 22);
-  drawSectionLabel(data.contentSnapshot ? 'This invoice — amount due' : 'Calculation');
+  drawSectionLabel(data.contentSnapshot ? 'This invoice: amount due' : 'Calculation');
   const calculationTopY = cursorY;
   page.drawLine({
     start: { x: CONTENT_X0, y: calculationTopY },

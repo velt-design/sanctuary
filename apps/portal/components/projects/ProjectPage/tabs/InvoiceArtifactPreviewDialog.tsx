@@ -9,6 +9,7 @@ import {
   loadDepositInvoiceArtifactPreview,
 } from "@/lib/repo/invoicesRepo";
 import styles from "./InvoiceArtifactPreviewDialog.module.css";
+import InvoicePdfInlinePreview from './InvoicePdfInlinePreview';
 
 type PreviewMode = "pdf" | "email" | "narrow" | "text";
 
@@ -180,11 +181,9 @@ export default function InvoiceArtifactPreviewDialog({
                   Open PDF
                 </ButtonLink>
               </div>
-              <iframe
-                className={styles.pdfFrame}
-                src={pdfUrl}
-                title={`Invoice ${invoiceRef} PDF preview`}
-              />
+              <div className={styles.pdfDocument} aria-label={`Invoice ${invoiceRef} PDF preview`}>
+                <InvoicePdfInlinePreview url={pdfUrl} />
+              </div>
             </div>
           ) : null}
 

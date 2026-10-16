@@ -9,7 +9,7 @@ export default function InvoiceItemisedScope({ invoice }: { invoice: PublicDepos
   const linked = invoice.invoiceKind !== 'STANDALONE';
   return <section className={styles.calculationSection}>
     <div className={styles.sectionHeading}>
-      <h2 className={styles.sectionTitle}>{linked ? 'Quoted scope — reference' : 'Itemised invoice'}</h2>
+      <h2 className={styles.sectionTitle}>{linked ? 'Quoted scope (reference)' : 'Itemised invoice'}</h2>
       {linked ? <p>The full accepted scope is shown for reference. This invoice requests only the amount shown in the payment summary.</p> : null}
     </div>
     <div className={styles.tableFrame}>
@@ -23,8 +23,8 @@ export default function InvoiceItemisedScope({ invoice }: { invoice: PublicDepos
         </tr>)}</tbody>
       </table>
     </div>
-    {linked ? <p><strong>Quoted scope total: {money(invoice.quoteTotalIncGstCents)} incl GST — reference only</strong></p> : null}
-    <h2 className={styles.sectionTitle}>This invoice — {invoice.status === 'PAID' ? 'amount paid' : 'amount due'}</h2>
+    {linked ? <p><strong>Quoted scope total: {money(invoice.quoteTotalIncGstCents)} incl GST. Reference only.</strong></p> : null}
+    <h2 className={styles.sectionTitle}>This invoice: {invoice.status === 'PAID' ? 'amount paid' : 'amount due'}</h2>
     <dl className={styles.totalsBreakdown}>
       <div className={styles.totalsRow}><dt>{invoice.paymentTermLabel}</dt><dd>{money(invoice.totalIncGstCents)}</dd></div>
       <div className={styles.totalsRow}><dt>Subtotal excluding GST</dt><dd>{money(invoice.totalExGstCents)}</dd></div>

@@ -9,6 +9,7 @@ import { renderIntoDocument } from '../../../../../test/reactHarness';
 import type { CalculatorDraftPersistence } from './calculatorDraftPersistence';
 import { makeDefaultCalculatorInputs } from './calculatorInputs';
 import { useCalculatorWorkspaceSession } from './useCalculatorWorkspaceSession';
+import CalculatorSessionBoundary from './CalculatorSessionBoundary';
 
 type WorkspaceSessionOptions = Parameters<typeof useCalculatorWorkspaceSession>[0];
 type WorkspaceSession = ReturnType<typeof useCalculatorWorkspaceSession>;
@@ -22,7 +23,12 @@ function session(): WorkspaceSession {
 
 function Probe({ options }: { options: WorkspaceSessionOptions }) {
   latest = useCalculatorWorkspaceSession(options);
-  return null;
+  return (
+    <CalculatorSessionBoundary ready={latest.draftReady} error={latest.draftLoadError} onRetry={latest.retryDraftLoad}>
+      <input aria-label="Length" value={latest.values.modules[0]?.lengthM ?? ''} readOnly />
+      <button type="button">Save</button>
+    </CalculatorSessionBoundary>
+  );
 }
 
 function makePersistence(): CalculatorDraftPersistence {
@@ -121,6 +127,52 @@ afterEach(() => {
 });
 
 describe('useCalculatorWorkspaceSession', () => {
+  it('keeps defaults and save controls hidden until the selected estimate is hydrated', async () => {
+    const pending = deferred<EstimateDetail>();
+    const options = makeOptions({
+      route: { projectId: '', editEstimateId: 'estimate-loading', fromEstimateId: '', shouldOpenActiveDraft: false },
+      estimateLoader: vi.fn().mockReturnValue(pending.promise),
+    });
+    const rendered = renderIntoDocument(<Probe options={options} />);
+    await waitUntil(() => expect(options.estimateLoader).toHaveBeenCalled());
+    expect(session().draftReady).toBe(false);
+    expect(document.querySelector('input')).toBeNull();
+    expect(document.body.textContent).not.toContain('Save');
+    const inputs = makeDefaultCalculatorInputs();
+    inputs.modules[0].lengthM = '8.4';
+    await act(async () => pending.resolve(makeEstimate({
+      id: 'estimate-loading', calculatorSnapshot: { inputs },
+    })));
+    await waitUntil(() => expect(document.querySelector('input')?.value).toBe('8.4'));
+    expect(session().draftReady).toBe(true);
+    expect(document.body.textContent).toContain('Save');
+    expect(session().localDraftStatus.kind).toBe('idle');
+    await act(async () => session().setValues((values) => ({
+      ...values, modules: [{ ...values.modules[0], lengthM: '8.5' }],
+    })));
+    await waitUntil(() => expect(session().localDraftStatus.kind).toBe('saved'));
+    rendered.unmount();
+  });
+
+  it('keeps a failed load closed and retries without presenting the default estimate', async () => {
+    const estimateLoader = vi.fn().mockRejectedValueOnce(new Error('Connection interrupted'))
+      .mockResolvedValueOnce(makeEstimate({ id: 'estimate-retry' }));
+    const options = makeOptions({
+      route: { projectId: '', editEstimateId: 'estimate-retry', fromEstimateId: '', shouldOpenActiveDraft: false },
+      estimateLoader,
+    });
+    const rendered = renderIntoDocument(<Probe options={options} />);
+    await waitUntil(() => expect(document.body.textContent).toContain('Connection interrupted'));
+    expect(document.querySelector('input')).toBeNull();
+    const retry = Array.from(document.querySelectorAll('button')).find((button) => /retry/i.test(button.textContent ?? ''));
+    expect(retry).toBeTruthy();
+    await act(async () => retry!.click());
+    await waitUntil(() => expect(session().draftReady).toBe(true));
+    expect(estimateLoader).toHaveBeenCalledTimes(2);
+    expect(document.body.textContent).not.toContain('Connection interrupted');
+    rendered.unmount();
+  });
+
   it('hydrates selected project metadata into a fresh calculator draft', async () => {
     const project = makeProject();
     const projectLoader = vi.fn().mockResolvedValue(project);

@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
 import ProjectJourneyStatus from "@/components/projects/ProjectJourneyStatus";
@@ -59,9 +59,17 @@ export default function ProjectOrientationBand({
     updateDraftField,
   } = useProjectDetailsDraft(project);
   useUnsavedChangesGuard(isEditing && canSave);
+  const formRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (isEditing) formRef.current?.querySelector('input')?.focus({ preventScroll: true });
+    else if (wasEditing.current) actionsRef.current?.querySelector('button')?.focus({ preventScroll: true });
+    wasEditing.current = isEditing;
+  }, [isEditing]);
 
   const detailsActions = (
-    <div className={styles.detailsActions}>
+    <div ref={actionsRef} className={styles.detailsActions}>
       {statusText ? (
         <Badge tone={isSaving ? "info" : "neutral"}>{statusText}</Badge>
       ) : null}
@@ -120,7 +128,7 @@ export default function ProjectOrientationBand({
       ) : null}
 
       {isEditing ? (
-        <div className={styles.detailsForm} aria-label="Edit project details">
+        <div ref={formRef} className={styles.detailsForm} aria-label="Edit project details">
           <Input
             id="contactName"
             label="Contact"

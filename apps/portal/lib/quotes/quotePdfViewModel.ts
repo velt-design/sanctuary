@@ -5,6 +5,7 @@ import {
   type QuoteLineDescriptionEntry,
 } from '@sp/quote-format';
 import { normalizeDepositPercent } from './defaults';
+import { normalizeStoredQuotePaymentSchedule } from './paymentSchedule';
 import type { QuoteVersionDetail } from './types';
 import { fromCents } from './utils';
 
@@ -114,6 +115,11 @@ export function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewM
     formatDate(quote.expiresAt) ??
     (sentOrCreatedAt ? formatDate(addDays(sentOrCreatedAt, 30)) : null);
   const depositPercent = formatDepositPercent(quote.depositPercent);
+  const firstPayment = normalizeStoredQuotePaymentSchedule(
+    quote.paymentTerms,
+    quote.totals.totalIncGstCents,
+    quote.depositPercent,
+  )[0];
 
   return {
     header: {
@@ -160,7 +166,7 @@ export function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewM
     },
     deposit: {
       percent: depositPercent,
-      nextStep: `If you accept this quote, we will issue a ${depositPercent}% deposit invoice with payment details. No payment is due with this quote.`,
+      nextStep: `After acceptance, your first invoice will be ${formatMoneyFromCents(firstPayment.resolvedAmountIncGstCents)} incl. GST (${firstPayment.label}). Payment details will be included. No payment is due with this quote.`,
     },
     terms: formatQuoteTermsText(quote.termsText, { sentAt: quote.sentAt }),
     footer: {

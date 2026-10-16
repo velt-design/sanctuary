@@ -10,6 +10,8 @@ import {
   generateDepositInvoicePdfBytesWithLayout,
   type DepositInvoicePdfData,
 } from "./pdf";
+import { buildDepositInvoiceEmailInput } from './emailPresentation';
+import { renderDepositInvoiceEmail } from '../emails/invoice';
 
 const SYNTHETIC_PAYMENT_LINES = [
   "Please make payment by bank transfer:",
@@ -115,6 +117,35 @@ describe("deposit invoice artifact view model", () => {
 });
 
 describe("deposit invoice PDF", () => {
+  it('renders current scope and draft labels without generated em dashes, preserving money and authored notes', async () => {
+    const data = fixture({
+      draft: true, invoiceKind: 'QUOTE_LINKED',
+      contentSnapshot: {
+        version: 1, billingName: 'Taylor Morgan', billingEmail: 'taylor@example.invalid', billingAddress: '',
+        notes: 'Keep this authored note unchanged.',
+        items: [{ id: 'item-1', description: 'Supplied and installed pergola', qty: 1, unitPriceIncGstCents: 575000, lineTotalIncGstCents: 575000 }],
+      },
+    });
+    const { bytes } = await generateDepositInvoicePdfBytesWithLayout(data, { paymentLines: SYNTHETIC_PAYMENT_LINES });
+    const text = (await extractPdfPages(bytes)).map((page) => page.text).join('\n');
+    expect(text).not.toContain('\u2014');
+    expect(text).toContain('THIS INVOICE: AMOUNT DUE');
+    expect(text).toContain('Quoted scope (reference)');
+    expect(text).toContain('$5,750.00');
+    expect(text).toContain('$2,875.00');
+    expect(text).toContain('Keep this authored note unchanged.');
+    const email = await renderDepositInvoiceEmail(buildDepositInvoiceEmailInput({
+      ...data, paymentLines: SYNTHETIC_PAYMENT_LINES, recipients: { to: ['taylor@example.invalid'], cc: [], bcc: [] },
+      subject: 'Invoice preview', invoiceLink: 'https://example.invalid/invoice',
+    }));
+    for (const rendered of [email.html, email.text ?? '']) {
+      expect(rendered).not.toContain('\u2014');
+      expect(rendered).toContain('Quoted scope (reference)');
+      expect(rendered).toContain('$2,875.00');
+      expect(rendered).toContain('Keep this authored note unchanged.');
+    }
+  });
+
   it("renders the payment-ledger hierarchy and document metadata", async () => {
     const { bytes, layout } = await generateDepositInvoicePdfBytesWithLayout(
       fixture(),

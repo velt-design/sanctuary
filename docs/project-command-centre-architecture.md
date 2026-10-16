@@ -1,5 +1,10 @@
 # Project Operational Command Centre Architecture
 
+The 16 October Portal candidate keeps contact details at the top of Overview.
+Entering contact edit focuses its first field; Done or Reset restores the Edit
+details trigger without scrolling. The existing draft/autosave owner remains
+unchanged. See `projects-contacts-estimates-calculator.md` for the current journey.
+
 ## Email reading continuity (21 September 2026)
 
 Within a mounted project page, `ProjectEmailReadingProvider` retains only open

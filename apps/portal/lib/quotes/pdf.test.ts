@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { generateQuotePdfBytesWithLayout } from './pdf';
 import { buildPdfQuoteViewModel } from './quotePdfViewModel';
 import type { QuoteVersionDetail } from './types';
+import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS } from './defaults';
+import { applyPaymentScheduleToTerms, buildDefaultQuotePaymentSchedule } from './paymentSchedule';
 
 async function extractPdfText(bytes: Uint8Array): Promise<string> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -89,6 +91,48 @@ const buildQuoteDetail = (overrides: Partial<QuoteVersionDetail> = {}): QuoteVer
 };
 
 describe('quote pdf layout', () => {
+  it('keeps a complete ordinary generated quote on one page without orphaning its last term', async () => {
+    const paymentTerms = buildDefaultQuotePaymentSchedule({ quoteTotalIncGstCents: 1_455_359 });
+    const quote = buildQuoteDetail({
+      project: { name: 'Courtyard pergola and outdoor living area renovation', siteAddress: '16 Example Lane, Auckland', region: null, quoteRef: null },
+      introText: DEFAULT_QUOTE_INTRO,
+      termsText: applyPaymentScheduleToTerms(DEFAULT_QUOTE_TERMS, paymentTerms),
+      paymentTerms,
+      totals: { totalIncGstCents: 1_455_359, totalExGstCents: 1_265_530, gstCents: 189_829 },
+      lineItems: [{ ...buildLineItem(1), unitPriceIncGstCents: 1_455_359, lineTotalIncGstCents: 1_455_359, description: [
+        'Pergola 1', '- Included: Custom-designed pergola, supplied and installed',
+        '- Project delivery: installation setup included in this item', '- Roof form: Pitched',
+        '- Overall size: 6m x 3m', '- Roof covering: Acrylic roofing', '- Frame finish: Black',
+        '- Support posts: 4', '- Connection to home: Soffit brackets', '- Post foundations and fixings: Deck brackets',
+      ].join('\n') }],
+    });
+    const { bytes, layout } = await generateQuotePdfBytesWithLayout(quote);
+    expect(layout.pages).toHaveLength(1);
+    expect(layout.pages[0].contentBottomY).toBeGreaterThanOrEqual(92);
+    const text = await extractPdfText(bytes);
+    expect(text).toContain('Lead times will be confirmed once the deposit is received.');
+    expect(text).toContain('Initial payment: $7,276.80');
+    expect(text).toContain('Final payment: $7,276.79');
+    expect(text).toContain('$14,553.59');
+  });
+
+  it('uses the resolved first payment for the next step and leaves saved terms unchanged', () => {
+    const paymentTerms = buildDefaultQuotePaymentSchedule({
+      quoteTotalIncGstCents: 2_000_001, approvalRequirement: 'full_building_consent', approvalIncGstCents: 500_000,
+    });
+    const quote = buildQuoteDetail({
+      paymentTerms, depositPercent: 25,
+      totals: { totalIncGstCents: 2_000_001, totalExGstCents: 1_739_131, gstCents: 260_870 },
+      termsText: 'Special agreement: payment after the site meeting.',
+    });
+    const before = structuredClone(quote);
+    const vm = buildPdfQuoteViewModel(quote);
+    expect(vm.deposit.nextStep).toContain('$5,000.00 incl. GST (Consent and engineering)');
+    expect(vm.deposit.nextStep).not.toContain('25%');
+    expect(vm.terms).toContain('Special agreement: payment after the site meeting.');
+    expect(quote).toEqual(before);
+  });
+
   it('paints an explicit page background', async () => {
     const quote = buildQuoteDetail();
     const { layout } = await generateQuotePdfBytesWithLayout(quote);

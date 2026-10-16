@@ -14,6 +14,10 @@ navigation feedback. Escape/outside click retain the query for reopening.
 Project contact placement and commercial list return use the existing Portal tokens
 and owner components, not a new shared theme. See the projects and quote/invoice docs
 for the changed information hierarchy and preserved commercial boundaries.
+Saved calculator inputs gate the editable workspace during hydration and expose
+retry on failure. Invoice PDFs reuse the quote canvas renderer so protected API
+frame-denial headers remain intact. Contact edit/Done/Reset transitions retain
+keyboard focus without forcing a scroll jump.
 
 
 Status: Current portal UI contract.

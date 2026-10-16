@@ -16,7 +16,17 @@ the project or staff client changes and is cleared with the existing access-endi
 client boundary. It is in-session continuity, not a new durable business store.
 Commercial and project tab URL replacements preserve scroll; explicit calculator
 open/create still uses the existing focused workspace and save/lock/conflict owners.
-No estimate persistence or price-source boundary changed.
+`CalculatorSessionBoundary` hides default controls and prevents costing until the
+selected saved inputs have hydrated. Failed loads offer retry; unchanged hydrated
+inputs do not receive the browser-only unsaved-work label. Contact edit transitions
+focus the first field and restore the Edit details trigger without scrolling.
+
+Estimate identity uses the saved `outputs.version` before the legacy row-level
+default. List, detail and subsequent saves therefore retain the same version;
+no historical data is backfilled. Price-source and costing rules are unchanged.
+Synthetic scenario factories must pass through the same UI normalization before
+calculation: an empty flashing list otherwise gains the existing primary-flashing
+default on reopen and makes a fixture look like unexplained repricing.
 
 
 Calculator pricing classification displays **Standard** while retaining the saved

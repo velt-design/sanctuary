@@ -40,7 +40,7 @@ function previewDiagnostics() {
 }
 
 function formatPhaseError(phase: string, error: unknown): string {
-  return `Quote preview failed during ${phase}: ${errorMessage(error)}`;
+  return `PDF preview failed during ${phase}: ${errorMessage(error)}`;
 }
 
 async function destroyLoadingTask(task: PdfLoadingTask | null): Promise<void> {
@@ -85,7 +85,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
 
     setPageCount(0);
     setRenderError(null);
-    setStatusMessage(data.byteLength ? 'Loading quote preview...' : null);
+    setStatusMessage(data.byteLength ? 'Loading PDF preview...' : null);
     canvasRefs.current = [];
 
     const previousPdf = pdfRef.current;
@@ -138,7 +138,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
             diagnostics: previewDiagnostics(),
             byteLength: data.byteLength,
           });
-          setStatusMessage('Retrying quote preview with fallback renderer...');
+          setStatusMessage('Retrying PDF preview with fallback renderer...');
           pdf = await loadPdf('fake');
         }
 
@@ -150,7 +150,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
         pdfRef.current = pdf;
         canvasRefs.current = new Array(pdf.numPages).fill(null);
         setPageCount(pdf.numPages);
-        setStatusMessage('Rendering quote preview...');
+        setStatusMessage('Rendering PDF preview...');
       } catch (error) {
         if (cancelled || isCancellationError(error)) return;
         console.error('[quote_preview] document load failed', {
@@ -185,7 +185,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
     let cancelled = false;
     const renderTasks: PdfRenderTask[] = [];
     setRenderError(null);
-    setStatusMessage('Rendering quote preview...');
+    setStatusMessage('Rendering PDF preview...');
 
     const run = async () => {
       try {

@@ -10,6 +10,9 @@ variables and delivery/idempotency boundaries remain with their existing owners.
 This affects newly rendered messages only; frozen delivery requests and historical
 send artifacts are not rewritten. See `quotes-invoices-job-packs.md` for the connected
 commercial presentation changes and candidate verification limits.
+Generated consultation-booked, scheduled and completed message punctuation also
+follows the owner's no-em-dash rule. Template facts, timing and delivery remain
+unchanged; this is not a rewrite of stored sent messages.
 
 Advertising capture candidate (14 October): enquiry intake continues its existing
 email/idempotency behavior. Attribution normalization now retains consented Meta

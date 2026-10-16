@@ -109,6 +109,7 @@ import {
   updateCalculatorPergolaLighting,
 } from './calculatorLightingUi';
 import CalculatorWorkspaceView, { type CalculatorWorkspaceViewProps } from './CalculatorWorkspaceView';
+import CalculatorSessionBoundary from './CalculatorSessionBoundary';
 import type { CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
 import {
   resolveCalculatorWorkspaceRoute,
@@ -175,6 +176,9 @@ export default function CalculatorGridClient({
     setProject,
     projectError,
     draftNotice,
+    draftReady,
+    draftLoadError,
+    retryDraftLoad,
   } = useCalculatorWorkspaceSession({
     workspace,
     route: workspaceRoute,
@@ -308,7 +312,7 @@ export default function CalculatorGridClient({
   const infillsState = useStandaloneInfills
     ? standaloneInfillsState
     : normalizeInfillsStateForUi(activeModule.infills);
-  const readyToCalculate = (hasActiveModule || allowEmptyDesign) && !hasModuleErrors && !additionalAluminiumError;
+  const readyToCalculate = draftReady && (hasActiveModule || allowEmptyDesign) && !hasModuleErrors && !additionalAluminiumError;
 
   const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
 
@@ -1131,5 +1135,9 @@ export default function CalculatorGridClient({
     },
   };
 
-  return <CalculatorWorkspaceView {...workspaceViewProps} />;
+  return (
+    <CalculatorSessionBoundary ready={draftReady} error={draftLoadError} onRetry={retryDraftLoad}>
+      <CalculatorWorkspaceView {...workspaceViewProps} />
+    </CalculatorSessionBoundary>
+  );
 }

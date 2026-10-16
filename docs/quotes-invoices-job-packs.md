@@ -27,6 +27,19 @@ real selections and exclusions but removes internal process commentary and em da
 Quote/invoice email template emphasis uses normal weight per the owner's email rule.
 Stored, frozen delivery payloads keep their existing replay identity.
 
+Newly generated schedule text uses resolved stage amounts including the allocated
+rounding cent, with GST identified. Authored schedule prose is preserved. PDF next
+steps use the resolved first payment label and amount; the legacy deposit-percent
+field does not substitute for that schedule. Short terms remain together and normal
+document spacing avoids a one-line continuation on an ordinary quote. Long scope
+and terms still paginate at the existing body size.
+
+`InvoicePdfInlinePreview` fetches the staff PDF with same-origin credentials and
+`no-store`, then uses the existing PDF canvas renderer. It never embeds the protected
+PDF route in an iframe or weakens frame-denial headers. PDF fetch failures offer
+retry. Generated invoice labels use the same plain punctuation in PDF, email and
+public presentation; stored descriptions and already-issued files stay untouched.
+
 Implementation map: presentation owners above plus `useCommercialListState`,
 `estimateQuoteDescriptions`, `estimateQuoteAddonDescriptions`, `mapping`, `defaults`,
 and the existing quote/invoice HTML template owners. Focused tests cover exact-cent
@@ -41,7 +54,7 @@ The invoice expansion is gated by `INVOICE_DRAFTS_ENABLED=true` on the portal se
 
 Admins save, edit, delete and issue drafts from the project Invoices tab. Authenticated direct table writes are revoked; commands recheck the admin role, and a restrictive read policy hides drafts from staff while retaining issued reads. Drafts live in `deposit_invoices`, have no number/token/artifact and reserve no balance. Save uses an expected revision; issue uses a stable UUID command, assigns the number in the transaction and checks current quote/scope availability again. A send failure after issue returns an issued result with a separate delivery error: retry sending from history, never create a replacement for a transport failure.
 
-Quote-linked drafts copy the exact accepted version's items. Only their descriptions, billing details, notes, due date, reference and requested payment can change. Stage, custom, remaining and split modes continue through the existing commercial invoice owner. The full quoted scope is labelled **Quoted scope — reference**, separately from **This invoice — amount due**. Standalone drafts have editable/reorderable items and bill their whole rounded item total. Their issued, non-void value is additional project value, separately identified from accepted quotes.
+Quote-linked drafts copy the exact accepted version's items. Only their descriptions, billing details, notes, due date, reference and requested payment can change. Stage, custom, remaining and split modes continue through the existing commercial invoice owner. The full quoted scope is labelled **Quoted scope (reference)**, separately from **This invoice: amount due**. Standalone drafts have editable/reorderable items and bill their whole rounded item total. Their issued, non-void value is additional project value, separately identified from accepted quotes.
 
 The versioned invoice content plus immutable issued invoice fields supply PDF, email and public content. Draft PDFs are watermarked and never persisted as customer artifacts. Null content is explicit legacy compatibility; historical issued snapshots and existing PDF/email artifacts are not backfilled. Staff retain issued viewing/preview/sending. Corrections use void-and-recreate or the payment reversal owner.
 

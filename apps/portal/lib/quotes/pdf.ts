@@ -489,7 +489,7 @@ function drawFirstPageHeader(params: {
   }
 
   const metaBottomY = Math.min(leftY, middleY, rightY);
-  let cursorY = metaBottomY - 25;
+  let cursorY = metaBottomY - 18;
 
   if (vm.intro) {
     const introLines = wrapText(fonts.regular, vm.intro, FONT_SIZES.body, CONTENT_W);
@@ -845,7 +845,7 @@ async function generateQuotePdf(
     x1: CONTENT_X1,
     y: totalsTopY,
   });
-  cursorY -= 22;
+  cursorY -= 18;
   drawText(page, 'COMMERCIAL SUMMARY', {
     x: CONTENT_X0,
     y: cursorY,
@@ -857,7 +857,7 @@ async function generateQuotePdf(
   const totalsX0 = CONTENT_X1 - 238;
   const totalsX1 = CONTENT_X1;
   const totalsHeaderY = cursorY;
-  cursorY -= 22;
+  cursorY -= 18;
   const subtotalY = cursorY;
   drawText(page, 'Subtotal excl. GST', {
     x: totalsX0,
@@ -984,7 +984,7 @@ async function generateQuotePdf(
       lineCount: nextStepLines.length,
     };
   }
-  cursorY -= 18;
+  cursorY -= 14;
   recordBottom(cursorY);
 
   if (vm.terms.length) {
@@ -999,16 +999,19 @@ async function generateQuotePdf(
       cursorY -= 19;
     };
 
-    ensureSpace(50);
+    const preparedTerms = vm.terms.map((term) => wrapText(
+      fonts.regular, term, FONT_SIZES.body, CONTENT_W - 17,
+    ));
+    const termsHeight = 19 + preparedTerms.reduce((height, lines) => height + lines.length * LINE_HEIGHTS.terms + 3, 0);
+    // Keep short terms together; longer terms still flow over continuation pages.
+    ensureSpace(termsHeight <= 120 ? termsHeight : 50);
     drawTermsHeader(false);
 
-    for (const term of vm.terms) {
-      const wrapped = wrapText(
-        fonts.regular,
-        term,
-        FONT_SIZES.body,
-        CONTENT_W - 17,
-      );
+    for (const wrapped of preparedTerms) {
+      if (wrapped.length * LINE_HEIGHTS.terms <= 120 && cursorY - wrapped.length * LINE_HEIGHTS.terms < CONTENT_BOTTOM_Y) {
+        addPage(false);
+        drawTermsHeader(true);
+      }
       for (let index = 0; index < wrapped.length; index += 1) {
         if (cursorY - LINE_HEIGHTS.terms < CONTENT_BOTTOM_Y) {
           addPage(false);
