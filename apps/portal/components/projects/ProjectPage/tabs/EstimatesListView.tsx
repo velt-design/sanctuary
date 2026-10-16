@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { useCommercialListScroll, useCommercialListState } from './useCommercialListState';
 
 import {
   Badge,
@@ -33,6 +34,7 @@ function estimateStatus(estimate: EstimateMeta): { label: string; tone: BadgeTon
 }
 
 export default function EstimatesListView({
+  projectId,
   estimates,
   quotes,
   quoteReadState,
@@ -45,6 +47,7 @@ export default function EstimatesListView({
   onDuplicate,
   onRename,
 }: {
+  projectId: string;
   estimates: EstimateMeta[];
   quotes?: QuoteVersion[];
   quoteReadState: 'loading' | 'unavailable' | 'ready';
@@ -57,7 +60,8 @@ export default function EstimatesListView({
   onDuplicate: (estimateId: string) => void;
   onRename: (estimate: EstimateMeta) => void;
 }) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useCommercialListState(projectId, 'estimates', '');
+  useCommercialListScroll(projectId, 'estimates', !loading);
   const accepted = useMemo(() => acceptedEstimateQuoteIds(quotes ?? []), [quotes]);
   const visibleEstimates = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();

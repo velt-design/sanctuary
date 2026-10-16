@@ -189,9 +189,19 @@ Status: Current architecture. The Overview V2 composition and portfolio-wide Pro
 
 Approved handover baseline: `060bea19` on 2026-07-30.
 
-Current product authority for the redesign: `## Approved Overview V2 Implementation Handover (READ FIRST)` below, together with `project-command-centre-vision.md` and the Project Work contract in `project-work-items-and-follow-up.md`.
+Current product authority for the redesign: `## Approved Overview V2 Implementation Handover (READ FIRST)` below, together with `project-command-centre-vision.md` and the Project Work contract in `project-work-items-and-follow-up.md`. The later contact-visibility correction below supersedes only its contact presentation.
 
 `project-command-centre-v1.md` remains the historical V1 product baseline and the source of non-conflicting design/commercial precedence rules. This handover supersedes its call, Site Visit, legacy task-selection, four-card workstream, communication-channel, and lead-to-quote-only presentation rules.
+
+## Contact visibility correction (16 October 2026 candidate)
+
+Jordan's later request, "customer details like the phone number can only be seen when
+you go to edit their details is weird and not user friendly", and approval to proceed
+supersede the compact contact-disclosure/phone omission. Ordinary customer details
+now stay visible at the top of Overview. Phone/email links and copy are contact
+utilities, not call tasks or a change to the email-only lead/quote cadence. Existing
+command ranking, project-state facts, commercial truth and specialist ownership remain.
+See `projects-contacts-estimates-calculator.md` for implementation and verification.
 
 ## Approved Overview V2 Implementation Handover (READ FIRST)
 

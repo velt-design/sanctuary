@@ -7,12 +7,12 @@ import {
 } from '@sp/costing';
 
 function formatBlindWidthMetres(widthMm: number | null): string {
-  if (!Number.isFinite(widthMm ?? NaN)) return '—';
+  if (!Number.isFinite(widthMm ?? NaN)) return 'Not specified';
   return (Number(widthMm) / 1000).toFixed(3).replace(/\.?0+$/, '');
 }
 
 function formatBlindDimension(valueMm: number | null): string {
-  if (!Number.isFinite(valueMm ?? NaN)) return '—';
+  if (!Number.isFinite(valueMm ?? NaN)) return 'Not specified';
   return new Intl.NumberFormat('en-NZ', { maximumFractionDigits: 0 }).format(Math.round(Number(valueMm)));
 }
 
@@ -39,7 +39,7 @@ function formatBlindRollCover(item: BlindLineItemInput, pricing?: BlindLineItemP
   const label = rollCover === 'FLASHING' ? 'Flashing' : 'Pelmet';
   const rate = getBlindRollCoverRateIncCents(rollCover) / 100;
   const amount = (pricing?.rollCoverIncCents ?? 0) / 100;
-  return `${label} — ${formatBlindWidthMetres(item.widthMm)}m charged at $${rate.toFixed(0)}/m; $${amount.toFixed(2)} incl GST`;
+  return `${label}, ${formatBlindWidthMetres(item.widthMm)}m at $${rate.toFixed(0)}/m; $${amount.toFixed(2)} incl GST`;
 }
 
 export function buildBlindDescription(
@@ -51,26 +51,28 @@ export function buildBlindDescription(
 ): string {
   const lines = [
     formatBlindHeading(label, index),
-    '- Included: Custom-sized blind system',
+    '- Custom-sized blind system',
     `- System: ${formatBlindSystem(item.system)}`,
-    `- Dimensions: ${formatBlindDimension(item.widthMm)}mm wide × ${formatBlindDimension(item.coverLengthMm)}mm drop`,
+    `- Dimensions: ${Number.isFinite(item.widthMm ?? NaN) && Number.isFinite(item.coverLengthMm ?? NaN) ? `${formatBlindDimension(item.widthMm)}mm wide × ${formatBlindDimension(item.coverLengthMm)}mm drop` : 'To be confirmed'}`,
     `- Fabric: ${formatBlindFabric(item.fabric)}`,
     `- Operation: ${item.motorised ? 'Motorised' : 'Manual'}`,
     `- Roll cover: ${formatBlindRollCover(item, pricing)}`,
   ];
-  if (errors?.length) lines.push(`- Scope note: ${errors.join(' ')}`);
+  if (errors?.length) lines.push(`- ${errors.join(' ')}`);
   return lines.join('\n');
 }
 
 function formatStandaloneInfillSize(
   item: NonNullable<CalculatorInputs['standaloneInfills']>['items'][number],
 ): string {
-  const width = item.shape?.widthM?.trim() || '—';
+  const width = item.shape?.widthM?.trim() || 'Not specified';
+  const dimensions = [item.shape?.widthM, ...(item.shape?.type === 'rect' ? [item.shape.heightM] : [item.shape?.heightLowM, item.shape?.heightHighM])];
+  if (dimensions.some((value) => !value?.trim())) return 'Dimensions to be confirmed';
   if (item.shape?.type === 'rect') {
-    return `${width}m × ${item.shape.heightM?.trim() || '—'}m`;
+    return `${width}m × ${item.shape.heightM?.trim() || 'Not specified'}m`;
   }
-  const low = item.shape?.heightLowM?.trim() || '—';
-  const high = item.shape?.heightHighM?.trim() || '—';
+  const low = item.shape?.heightLowM?.trim() || 'Not specified';
+  const high = item.shape?.heightHighM?.trim() || 'Not specified';
   return `${width}m × ${low}–${high}m high`;
 }
 
@@ -92,13 +94,13 @@ export function buildStandaloneInfillsDescription(inputs: CalculatorInputs | nul
   const items = state?.items ?? [];
   return [
     'Custom infills for existing pergola',
-    '- Included: Custom-made acrylic infills, supplied and installed',
+    '- Custom-made acrylic infills, supplied and installed',
     `- Frame finish: ${formatFinish(state)}`,
     ...items.map((item, index) => {
       const label = item.label?.trim() || `Infill ${index + 1}`;
       return `- ${label}: ${formatStandaloneInfillSize(item)}${Number(item.qty) > 1 ? `; quantity ${item.qty}` : ''}`;
     }),
-    '- Scope boundary: Existing pergola structure excluded',
+    '- Existing pergola structure excluded',
   ].join('\n');
 }
 
@@ -119,10 +121,10 @@ export function buildAdditionalAluminiumDescription(inputs: CalculatorInputs | n
     details.push(`- ${itemCount} specified aluminium item${itemCount === 1 ? '' : 's'}`);
   }
   return [
-    'Additional aluminium — supply only',
+    'Aluminium supply only',
     `- Frame finish: ${formatFinish(state)}`,
     ...details,
-    '- Scope boundary: Materials supplied; installation excluded',
+    '- Materials supplied; installation excluded',
   ].join('\n');
 }
 
@@ -130,7 +132,7 @@ export function buildApprovalDescription(requirement: 'engineering_required' | '
   if (requirement === 'full_building_consent') {
     return [
       'Design, engineering and consent documentation',
-      '- Included: Additional design and documentation allowance required to support the pergola through the building consent process',
+      '- Design and documentation allowance for building consent',
       '- Structural engineering calculations',
       "- Engineer's PS1 documentation",
       '- Full shop drawing set for the pergola structure',
@@ -142,8 +144,8 @@ export function buildApprovalDescription(requirement: 'engineering_required' | '
   }
   return [
     'Project engineering allowance',
-    '- Included: Allowance for professional engineering required by this project',
-    '- Scope note: Final requirements depend on the completed design and site conditions',
+    '- Allowance for professional engineering',
+    '- Final requirements depend on the completed design and site conditions',
   ].join('\n');
 }
 
@@ -156,7 +158,7 @@ export function buildLightingDescription(lighting: {
   const label = lighting.label?.trim();
   return [
     `${label ? `${label} ` : ''}integrated rafter lighting`,
-    '- Included: Rafter-integrated lighting package and installation labour',
+    '- Rafter-integrated lights, supplied and installed',
     `- Lights: ${lighting.lightCount} rafter light${lighting.lightCount === 1 ? '' : 's'}`,
     `- Drivers: ${lighting.driverCount}`,
     ...(lighting.dimmer ? ['- Control: Dimming included'] : []),
@@ -166,7 +168,6 @@ export function buildLightingDescription(lighting: {
 export function buildHistoricalLightingDescription(): string {
   return [
     'Lighting allowance',
-    '- Included: Lighting allowance carried forward from the saved project estimate',
-    '- Scope note: Final fittings and controls require confirmation',
+    '- Final fittings and controls require confirmation',
   ].join('\n');
 }

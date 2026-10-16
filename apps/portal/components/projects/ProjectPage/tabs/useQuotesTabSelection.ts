@@ -146,7 +146,7 @@ export function useQuotesTabSelection({
         else query.set("createFromEstimateId", next.createFromEstimateId);
       }
       const queryString = query.toString();
-      router.replace(queryString ? `?${queryString}` : "?");
+      router.replace(queryString ? `?${queryString}` : "?", { scroll: false });
     },
     [router, searchParams],
   );

@@ -526,16 +526,15 @@ export default function QuoteDetailView({
           <section className={styles.card}>
             <div className={styles.cardHeader}>
               <h4 className={styles.cardTitle}>Quote details</h4>
-              <QuoteStatusBadge status={detail.status} />
             </div>
             <div className={styles.metaGrid}>
               <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Prepared for (snapshot)</div>
+                <div className={styles.metaLabel}>Customer on this quote</div>
                 <div className={styles.metaValue}>
                   {detail.customerName || "Customer"}
                 </div>
                 <div className={styles.metaValueMuted}>
-                  Preserved with this quote version
+                  Saved with this version
                 </div>
               </div>
               <div className={styles.metaBlock}>
@@ -599,13 +598,13 @@ export default function QuoteDetailView({
             </div>
 
             <div className={styles.metaBlock}>
-              <div className={styles.metaLabel}>Provenance</div>
+              <div className={styles.metaLabel}>Source estimate</div>
               <div className={styles.metaValue}>
                 {detail.sourceEstimateVersionId ? (
                   <Link
                     href={`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(detail.sourceEstimateVersionId)}`}
                   >
-                    Built from design {detail.sourceEstimateVersionLabel}
+                    Open estimate {detail.sourceEstimateVersionLabel}
                   </Link>
                 ) : "Manual quote · no source estimate"}
               </div>

@@ -1,5 +1,40 @@
 # Quotes, Invoices, And Job Packs
 
+## Connected commercial presentation (16 October 2026 candidate)
+
+`CommercialTab` shows Details/Preview only for a selected quote. `QuotesListView`
+keeps current drafts, prepared deliveries, accepted agreements and still-sent versions
+visible; declined, superseded and historical acceptances recede behind Show historical
+versions. Searching includes every version. No quote status or acceptance selection
+is inferred from visual order. `QuotePaymentTermsEditor` presents saved schedules as
+term/amount rows with calculation details available on demand and invalid schedules
+still visible. Editable schedules retain the same validation and save commands.
+
+`InvoicesTab` links invoice references directly to preview and source quotes to the
+exact version. Invoice search includes reference, source, payment label and status.
+The empty journey routes to Quotes or standalone drafts before ledger controls;
+advance payments remain available to admins. Totals retain the authoritative schedule
+owner, and a failed refresh with cached invoices preserves those records as stale.
+
+New estimate mapping groups separately calculated additional-aluminium sell cents into
+the first priced pergola line when a pergola scope exists. This is presentation only:
+the original separate rounding, discount, frozen uplift and total cents are preserved.
+Without a priced pergola, aluminium remains an explicit supply-only line with its
+installation exclusion. Genuine blinds, infills, approvals and lighting remain separate.
+Existing quote rows and issued/accepted artifacts are never rewritten; only a new
+creation or explicit draft refresh uses the changed mapping. Generated copy retains
+real selections and exclusions but removes internal process commentary and em dashes.
+Quote/invoice email template emphasis uses normal weight per the owner's email rule.
+Stored, frozen delivery payloads keep their existing replay identity.
+
+Implementation map: presentation owners above plus `useCommercialListState`,
+`estimateQuoteDescriptions`, `estimateQuoteAddonDescriptions`, `mapping`, `defaults`,
+and the existing quote/invoice HTML template owners. Focused tests cover exact-cent
+mapping conservation, standalone scope, readonly payment amounts, search/history and
+context return. Runtime staging/render evidence belongs in the task work record;
+these changes alone do not establish production release or owner acceptance.
+
+
 ## Invoice drafts and standalone work
 
 The invoice expansion is gated by `INVOICE_DRAFTS_ENABLED=true` on the portal server. Deploy compatible portal and public readers first, apply the forward invoice migrations `20260911000002` through `20260911000008`, then enable creation after staging verification. Disabling the flag stops draft commands through the application; issued invoices remain readable, payable, previewable and sendable. It does not remove administrator database command privileges. Do not roll back the storage expansion or rewrite issued records.

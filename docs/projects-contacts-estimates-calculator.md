@@ -1,5 +1,24 @@
 # Projects, Contacts, Estimates, And Calculator
 
+## Portal contact and return continuity (16 October 2026 candidate)
+
+Jordan's approved connected-workflow improvement explicitly requires ordinary contact
+information without entering Edit. This supersedes the earlier compact Overview's
+omitted phone and collapsed contact disclosure. `ProjectOrientationBand` now exposes
+name, phone, email and site address at the top of Overview, with direct contact/maps
+links and copy actions owned by `ProjectContactValue`. Missing values stay explicit.
+These are read actions and do not create call tasks or alter the email-only lead cadence.
+`ProjectOverviewLayout` places this region before the work/commercial/email columns.
+
+`useCommercialListState` retains project-scoped estimate/quote/invoice search choices
+and list reading position in the existing staff query client. State is isolated when
+the project or staff client changes and is cleared with the existing access-ending
+client boundary. It is in-session continuity, not a new durable business store.
+Commercial and project tab URL replacements preserve scroll; explicit calculator
+open/create still uses the existing focused workspace and save/lock/conflict owners.
+No estimate persistence or price-source boundary changed.
+
+
 Calculator pricing classification displays **Standard** while retaining the saved
 `simple` value. The automatic switch to Bespoke follows the authoritative pricing
 policy from the response for the current inputs; stale responses cannot reclassify

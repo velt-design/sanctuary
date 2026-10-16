@@ -78,13 +78,16 @@ describe('formatDimension', () => {
     expect(formatDimension('3.25')).toBe('3.25');
   });
 
-  it('falls back to em dash on invalid input', () => {
-    expect(formatDimension('not-a-number')).toBe('—');
-    expect(formatDimension('')).toBe('—');
+  it('labels missing or invalid dimensions explicitly', () => {
+    expect(formatDimension('not-a-number')).toBe('Not specified');
+    expect(formatDimension('')).toBe('Not specified');
   });
 });
 
 describe('formatModuleSize', () => {
+  it('keeps missing dimensions readable without made-up measurements', () => {
+    expect(formatModuleSize(module({ lengthM: '', projectionM: '3' }))).toBe('Dimensions to be confirmed');
+  });
   it('returns a length-by-projection string for normal styles', () => {
     expect(formatModuleSize(module({ lengthM: '6', projectionM: '3' }))).toBe('6m x 3m');
   });

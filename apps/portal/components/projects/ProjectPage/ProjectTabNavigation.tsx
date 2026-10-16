@@ -57,7 +57,7 @@ export default function ProjectTabNavigation({
       query.delete('newDesign');
     }
     query.delete('mode');
-    router.replace(`${pathname}?${query.toString()}`);
+    router.replace(`${pathname}?${query.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
   useEffect(() => {

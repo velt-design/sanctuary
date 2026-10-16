@@ -126,7 +126,7 @@ describe('ProjectCalculatorTab', () => {
       .find((button) => button.textContent === 'Save fixture');
     act(() => saveFixture?.click());
     expect(replace).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=estimates&campaign=winter&estimateId=est_saved',
+      '/staff/projects/proj_1?tab=estimates&campaign=winter&estimateId=est_saved', { scroll: false }
     );
     rendered.unmount();
   });
@@ -142,7 +142,7 @@ describe('ProjectCalculatorTab', () => {
     const startRevision = Array.from(rendered.container.querySelectorAll('button'))
       .find((button) => button.textContent === 'Start revision');
     act(() => startRevision?.click());
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&fromEstimateId=est_history');
+    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&fromEstimateId=est_history', { scroll: false });
     rendered.unmount();
   });
 
@@ -214,7 +214,7 @@ describe('ProjectCalculatorTab', () => {
     const back = Array.from(rendered.container.querySelectorAll('button'))
       .find((button) => button.textContent === 'Back to estimates');
     act(() => back?.click());
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter');
+    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter', { scroll: false });
     rendered.unmount();
   });
 

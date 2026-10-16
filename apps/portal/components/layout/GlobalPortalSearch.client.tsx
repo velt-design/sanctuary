@@ -133,6 +133,9 @@ function ActiveGlobalPortalSearch({
   const prefetchedHrefRef = useRef(new Set<string>());
   const listboxId = useId();
   const sharedState = useOptionalGlobalPortalSearchState();
+  const setActiveInstanceId = sharedState?.setActiveInstanceId;
+  const setNavigationRouteKey = sharedState?.setNavigationRouteKey;
+  const sharedNavigationRouteKey = sharedState?.navigationRouteKey;
   const [localQuery, setLocalQuery] = useState('');
   const [localInteractionActive, setLocalInteractionActive] = useState(false);
   const query = sharedState?.query ?? localQuery;
@@ -154,9 +157,12 @@ function ActiveGlobalPortalSearch({
   const searchQuery = useQuery({
     ...portalSearchQueryOptions(requestQuery),
     enabled: searchEnabled && requestQuery.length >= PORTAL_SEARCH_MIN_LENGTH,
-    placeholderData: (previousData) => previousData,
   });
-  const response = searchEnabled ? searchQuery.data : undefined;
+  // During the debounce the observer may still contain the previous query.
+  // Only an exact response may supply selectable links or empty-result copy.
+  const response = searchEnabled
+    && normalizePortalSearchQuery(searchQuery.data?.query ?? '') === normalizedQuery
+    ? searchQuery.data : undefined;
   const projects = useMemo(
     () => Array.isArray(response?.projects) ? response.projects : [],
     [response],
@@ -174,7 +180,7 @@ function ActiveGlobalPortalSearch({
   const hasResults = results.length > 0;
   const state: SearchState = !searchEnabled
     ? 'idle'
-    : searchQuery.isError && (!response || showingPreviousResults)
+    : searchQuery.isError && requestQuery === normalizedQuery && !response
       ? 'error'
       : response
         ? hasResults ? 'results' : 'empty'
@@ -188,18 +194,20 @@ function ActiveGlobalPortalSearch({
     setActiveIndex(-1);
     setNavigatingHref(null);
     navigationStartRouteKeyRef.current = null;
-  }, [setInteractionActive, setQuery]);
+    setNavigationRouteKey?.(null);
+  }, [setInteractionActive, setNavigationRouteKey, setQuery]);
 
   useLayoutEffect(() => {
     if (!interactionActive) return;
+    setActiveInstanceId?.(listboxId);
     inputRef.current?.focus({ preventScroll: true });
     setOpen(true);
-  }, [interactionActive]);
+  }, [interactionActive, listboxId, setActiveInstanceId]);
 
   useEffect(() => {
-    if (!navigatingHref || navigationStartRouteKeyRef.current === null) return;
-    if (navigationStartRouteKeyRef.current !== routeKey) resetSearch();
-  }, [navigatingHref, resetSearch, routeKey]);
+    const startKey = sharedNavigationRouteKey ?? navigationStartRouteKeyRef.current;
+    if (startKey !== null && startKey !== undefined && startKey !== routeKey) resetSearch();
+  }, [resetSearch, routeKey, sharedNavigationRouteKey]);
 
   useEffect(() => {
     if (!navigatingHref) return;
@@ -317,8 +325,10 @@ function ActiveGlobalPortalSearch({
     }
 
     navigationStartRouteKeyRef.current = routeKey;
+    setNavigationRouteKey?.(routeKey);
     setNavigatingHref(href);
-    setOpen(true);
+    setOpen(false);
+    setInteractionActive(false);
     beginRouteTransition({
       href,
       label,
@@ -389,8 +399,8 @@ function ActiveGlobalPortalSearch({
     );
   };
 
-  const showPanel = open;
-  const activeOptionId = activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined;
+  const showPanel = open && interactionActive && (!sharedState || sharedState.activeInstanceId === listboxId);
+  const activeOptionId = results[activeIndex] ? `${listboxId}-option-${activeIndex}` : undefined;
 
   return (
     <div
@@ -419,11 +429,13 @@ function ActiveGlobalPortalSearch({
           aria-haspopup="listbox"
           role="combobox"
           onFocus={() => {
+            setActiveInstanceId?.(listboxId);
             setInteractionActive(true);
             setOpen(true);
           }}
           onChange={(event) => {
             setQuery(event.target.value);
+            setActiveIndex(-1);
             setInteractionActive(true);
             setOpen(true);
             setNavigatingHref(null);
@@ -450,7 +462,9 @@ function ActiveGlobalPortalSearch({
             <div className={styles.message} role="status">No projects or contacts match “{trimmedQuery}”.</div>
           ) : null}
           {state === 'error' ? (
-            <div className={`${styles.message} ${styles.error}`} role="alert">Search is unavailable. Try again.</div>
+            <div className={`${styles.message} ${styles.error}`} role="alert">
+              Search is unavailable. <button type="button" onClick={() => void searchQuery.refetch()}>Try again</button>
+            </div>
           ) : null}
           {state === 'results' && refreshing ? (
             <div className={styles.refreshStatus} role="status">Updating results…</div>

@@ -1,5 +1,17 @@
 # Decision Log
 
+
+## 2026-10-16: Search results must belong to the active query
+
+Status: candidate. Area: Portal search and project navigation.
+Previous-query placeholder data stayed selectable while a new query was pending;
+header replacement could also retain interaction state and duplicate the overlay.
+The search owner now gates links by response query, shares overlay ownership and
+navigation origin, and closes on selection/completion. Regression checks exercise
+late responses, retry and remounts. Routine contact information is visible without
+Edit, and commercial return retains list context. See `ui-foundation.md` and
+`projects-contacts-estimates-calculator.md`. No new approval or release authority.
+
 ## 2026-10-16 - Test capture eligibility with complete campaign arrival parameters
 
 An allowlisted public page and valid consent were insufficient when the query

@@ -1,5 +1,16 @@
 # Automation, Email, And Audit
 
+
+## Commercial email presentation (16 October 2026 candidate)
+
+The quote-ready and deposit-invoice-ready HTML templates use normal-weight text,
+including headings, totals, links and attachment labels, in line with Jordan's
+9 October email-formatting direction. Copy, recipient, payment terms, template
+variables and delivery/idempotency boundaries remain with their existing owners.
+This affects newly rendered messages only; frozen delivery requests and historical
+send artifacts are not rewritten. See `quotes-invoices-job-packs.md` for the connected
+commercial presentation changes and candidate verification limits.
+
 Advertising capture candidate (14 October): enquiry intake continues its existing
 email/idempotency behavior. Attribution normalization now retains consented Meta
 identifiers and paid-click capture time, and recognized v1/v2 disclosure values

@@ -96,7 +96,7 @@ describe("ProjectOrientationBand", () => {
     document.body.innerHTML = "";
   });
 
-  it("shows approved orientation facts without repeating header identity or phone", async () => {
+  it("shows customer contact details without entering edit mode", async () => {
     const rendered = renderIntoDocument(
       <ProjectOrientationBand
         project={project}
@@ -131,9 +131,11 @@ describe("ProjectOrientationBand", () => {
     expect(orientation?.textContent).toContain("Waiting");
     expect(orientation?.textContent).toContain("Updating");
     expect(orientation?.textContent).not.toContain("Pergola project");
-    expect(orientation?.textContent).not.toContain("0210000000");
+    expect(orientation?.querySelector('a[href="tel:0210000000"]')?.textContent).toBe("0210000000");
+    expect(orientation?.querySelector('a[href="mailto:taylor@example.com"]')).not.toBeNull();
+    expect(orientation?.querySelector("details")).toBeNull();
     expect(orientation?.textContent).not.toContain("Jordan");
-    expect(orientation?.querySelectorAll("button")).toHaveLength(2);
+    expect(orientation?.querySelectorAll("button")).toHaveLength(5);
     expect(
       Array.from(orientation?.querySelectorAll("button") ?? []).filter(
         (button) => button.textContent === "Edit details",

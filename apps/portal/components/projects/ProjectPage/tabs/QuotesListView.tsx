@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useMemo, type Dispatch, type SetStateAction } from "react";
+import { useCommercialListScroll, useCommercialListState } from './useCommercialListState';
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
 import { Badge, Button, ButtonLink, Card, EmptyState, Input, OverflowMenu, SearchFilterBar } from "@/components/ui/foundation";
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
@@ -27,6 +28,7 @@ import { selectAuthoritativeAcceptedVersions } from "@/lib/commercial/authoritat
 import { estimateDisplayName } from './estimateListPresentation';
 
 type QuotesListViewProps = {
+  projectId: string;
   quotes: QuoteVersion[];
   quotesLoading: boolean;
   quotesError: string | null;
@@ -64,6 +66,7 @@ type QuotesListViewProps = {
 };
 
 export default function QuotesListView({
+  projectId,
   quotes,
   quotesLoading,
   quotesError,
@@ -99,8 +102,10 @@ export default function QuotesListView({
   closeRename,
   saveRename,
 }: QuotesListViewProps) {
-  const [query, setQuery] = useState("");
-  const visibleQuotes = useMemo(() => {
+  const [query, setQuery] = useCommercialListState(projectId, 'quotes-search', '');
+  const [showHistory, setShowHistory] = useCommercialListState(projectId, 'quotes-history', false);
+  useCommercialListScroll(projectId, 'quotes', !quotesLoading);
+  const matchingQuotes = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (!needle) return quotes;
     return quotes.filter((quote) => [
@@ -118,6 +123,14 @@ export default function QuotesListView({
       createdAt: quote.createdAt,
     }))).map((quote) => quote.id),
   ), [quotes]);
+  const isHistorical = (quote: QuoteVersion) => quote.status === 'SUPERSEDED'
+    || quote.status === 'DECLINED'
+    || (quote.status === 'ACCEPTED' && !currentAcceptedIds.has(quote.id))
+    || (quote.status === 'DRAFT' && !quote.isCurrentDraft && !quote.deliveryPreparedAt);
+  const historicalCount = quotes.filter(isHistorical).length;
+  // Search always includes history. Older SENT versions remain available until
+  // explicitly retired; a newer draft must not silently replace their status.
+  const visibleQuotes = query.trim() || showHistory ? matchingQuotes : matchingQuotes.filter((quote) => !isHistorical(quote));
 
   return (
     <div
@@ -193,10 +206,12 @@ export default function QuotesListView({
         />
       ) : null}
 
+      {historicalCount > 0 ? <label className={styles.historyToggle}><input type="checkbox" checked={showHistory} onChange={(event) => setShowHistory(event.target.checked)} /> Show historical versions ({historicalCount}){query.trim() ? <span>Search includes history</span> : null}</label> : null}
+
       {!quotesLoading && quotes.length && !visibleQuotes.length ? (
         <EmptyState
-          title="No matching quotes"
-          description="Try a different internal name, reference, or version."
+          title={query.trim() ? "No matching quotes" : "Only historical versions"}
+          description={query.trim() ? "Try a different internal name, reference, or version." : "Show historical versions to review earlier quotes, or create a new quote."}
         />
       ) : null}
 
@@ -231,6 +246,7 @@ export default function QuotesListView({
                   <tr
                     key={quote.id}
                     className={styles.rowClickable}
+                    data-historical={isHistorical(quote) ? 'true' : undefined}
                     tabIndex={0}
                     aria-label={`Open ${quoteIdentity}, ${quoteRefLabel} version ${quote.versionNumber}`}
                     onClick={() => {

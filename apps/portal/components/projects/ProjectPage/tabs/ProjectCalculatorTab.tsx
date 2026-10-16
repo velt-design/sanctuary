@@ -96,7 +96,7 @@ export default function ProjectCalculatorTab({
   const replaceParams = useCallback((update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
     update(query);
-    router.replace(`${pathname}?${query.toString()}`);
+    router.replace(`${pathname}?${query.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
   const pushParams = useCallback((update: (query: URLSearchParams) => void) => {
@@ -332,6 +332,7 @@ export default function ProjectCalculatorTab({
     return (
       <>
       <EstimatesListView
+        projectId={projectId}
         estimates={estimates}
         quotes={estimateQuotesQuery.isError ? undefined : estimateQuotesQuery.data}
         quoteReadState={estimateQuotesQuery.isError ? 'unavailable' : estimateQuotesQuery.data ? 'ready' : 'loading'}

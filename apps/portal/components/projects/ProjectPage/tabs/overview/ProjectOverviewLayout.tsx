@@ -98,7 +98,6 @@ export default function ProjectOverviewLayout({
     () => overviewCompositionSnapshot(layoutRef.current),
     () => "wide" as const,
   );
-  const mobile = composition === "mobile";
   const orientationRegion = (
     <Region key="orientation" name="orientation" className={styles.orientation}>
       {orientation}
@@ -151,25 +150,12 @@ export default function ProjectOverviewLayout({
         recent !== null && recent !== undefined ? "true" : undefined
       }
     >
-      {mobile ? (
-        <>
-          {exceptionRegion}
-          {projectWorkRegion}
-          {recentRegion}
-          {commercialRegion}
-          {orientationRegion}
-          {adminRegion}
-        </>
-      ) : (
-        <>
-          {exceptionRegion}
-          {projectWorkRegion}
-          {recentRegion}
-          {commercialRegion}
-          {orientationRegion}
-          {adminRegion}
-        </>
-      )}
+      {orientationRegion}
+      {exceptionRegion}
+      {projectWorkRegion}
+      {commercialRegion}
+      {recentRegion}
+      {adminRegion}
     </div>
   );
 }

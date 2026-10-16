@@ -1444,3 +1444,7 @@
 .wrapper[data-quotes-view="list"] { gap: var(--ui-density-section-gap); min-width: 0; }
 .wrapper[data-quotes-view="list"] .title { font-family: var(--ui-font-display); font-size: var(--ui-font-size-section); }
 .wrapper[data-quotes-view="list"] .listTable { background: var(--ui-surface-primary); }
+.historyToggle { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ui-space-2); min-height: 36px; color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
+.historyToggle input { accent-color: var(--ui-action); }
+.historyToggle span { margin-left: auto; }
+.rowClickable[data-historical='true'] { background: var(--ui-surface-secondary); }

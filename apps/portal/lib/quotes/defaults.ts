@@ -1,4 +1,4 @@
-export const DEFAULT_QUOTE_INTRO = `Thank you for the opportunity to quote for your pergola. Please review the scope and let us know if you would like to proceed.`;
+export const DEFAULT_QUOTE_INTRO = `Your pergola quote is detailed below. Please review the scope, price and payment schedule before accepting.`;
 
 const DEPOSIT_TERMS_LINE_PATTERN = /A\s+\d+(?:\.\d+)?%\s+deposit\s+is\s+required\s+to\s+confirm\s+your\s+booking\.?/i;
 

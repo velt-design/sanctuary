@@ -17,7 +17,7 @@ export function toTitleCase(value: string): string {
 
 export function formatDimension(value: string): string {
   const n = toNumber(value);
-  if (!Number.isFinite(n)) return '—';
+  if (!Number.isFinite(n)) return 'Not specified';
   const rounded = Math.round(n * 100) / 100;
   if (Number.isInteger(rounded)) return `${rounded}`;
   return rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
@@ -46,6 +46,8 @@ export function formatModuleColour(module: CalculatorModuleInputs): string | nul
 }
 
 export function formatModuleSize(module: CalculatorModuleInputs): string {
+  const dimensions = [module.lengthM, module.projectionM, ...(module.pergolaStyle === 'hip_corner' ? [module.hipCornerLengthBM, module.hipCornerProjectionBM] : [])];
+  if (dimensions.some((value) => !Number.isFinite(toNumber(value)))) return 'Dimensions to be confirmed';
   const length = formatDimension(module.lengthM);
   const projection = formatDimension(module.projectionM);
   if (module.pergolaStyle === 'hip_corner') {

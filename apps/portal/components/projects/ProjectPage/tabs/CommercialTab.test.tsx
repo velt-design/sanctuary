@@ -73,7 +73,7 @@ describe('CommercialTab', () => {
 
     act(() => estimates?.click());
 
-    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter');
+    expect(replace).toHaveBeenCalledWith('/staff/projects/proj_1?tab=estimates&campaign=winter', { scroll: false });
     expect(rendered.container.querySelector('[data-testid="estimates-subview"]')).not.toBeNull();
     rendered.unmount();
   });
@@ -97,7 +97,7 @@ describe('CommercialTab', () => {
     act(() => invoices?.click());
 
     expect(replace).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=invoices&createFromEstimateId=est_1&campaign=winter',
+      '/staff/projects/proj_1?tab=invoices&createFromEstimateId=est_1&campaign=winter', { scroll: false }
     );
     expect(invoices?.getAttribute('aria-selected')).toBe('true');
     expect(rendered.container.querySelector('[data-testid="invoices-subview"]')).not.toBeNull();
@@ -113,7 +113,7 @@ describe('CommercialTab', () => {
     expect(preview?.disabled).toBe(false);
     act(() => preview?.click());
     expect(replace).toHaveBeenCalledWith(
-      '/staff/projects/proj_1?tab=quotes&quoteId=q_1&campaign=winter&quotePreview=1',
+      '/staff/projects/proj_1?tab=quotes&quoteId=q_1&campaign=winter&quotePreview=1', { scroll: false }
     );
     rendered.unmount();
   });

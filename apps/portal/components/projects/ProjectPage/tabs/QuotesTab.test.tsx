@@ -285,7 +285,7 @@ describe('QuotesTab draft ownership UI', () => {
     rendered.unmount();
   });
 
-  it('labels an older accepted version as historical acceptance', () => {
+  it('keeps historical acceptance discoverable without competing with the current agreement', () => {
     searchParamsValue = '';
     activeQuoteList = [
       {
@@ -301,6 +301,9 @@ describe('QuotesTab draft ownership UI', () => {
     ];
     const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId={null} />);
     expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
+    expect(rendered.container.textContent).not.toContain('Historical acceptance');
+    const history = rendered.container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    act(() => history.click());
     expect(rendered.container.textContent).toContain('Historical acceptance');
     rendered.unmount();
   });
@@ -311,7 +314,7 @@ describe('QuotesTab draft ownership UI', () => {
     const row = rendered.container.querySelector<HTMLTableRowElement>('tr[aria-label="Open Q-1001, Q-1001 version 1"]');
     expect(row).not.toBeNull();
     act(() => row?.click());
-    expect(replace).toHaveBeenLastCalledWith('?tab=quotes&campaign=winter&quoteId=qv_1');
+    expect(replace).toHaveBeenLastCalledWith('?tab=quotes&campaign=winter&quoteId=qv_1', { scroll: false });
     rendered.unmount();
   });
 
@@ -325,7 +328,7 @@ describe('QuotesTab draft ownership UI', () => {
     expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-quotes-view="detail"]')).toBeNull();
     expect(replace).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith('?tab=quotes');
+    expect(replace).toHaveBeenCalledWith('?tab=quotes', { scroll: false });
     rendered.unmount();
   });
 

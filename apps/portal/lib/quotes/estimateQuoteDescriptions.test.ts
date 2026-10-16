@@ -123,7 +123,7 @@ describe('estimate quote descriptions', () => {
       '- Included: Custom-designed pergola, supplied and installed',
       '- Roof form: Pitched',
       '- Overall size: 6m x 3m',
-      '- Roof covering: Acrylic roofing — admits natural light while adding overhead shelter',
+      '- Roof covering: Acrylic roofing',
       '- Frame finish: Black',
       '- Roof pitch: 5°',
       '- Support posts: 2',
@@ -179,12 +179,12 @@ describe('estimate quote descriptions', () => {
 
     expect(buildBlindDescription(blind, 0, blind.label, [], pricing)).toBe([
       'Pool blind',
-      '- Included: Custom-sized blind system',
+      '- Custom-sized blind system',
       '- System: Omni',
       '- Dimensions: 2,000mm wide × 2,400mm drop',
       '- Fabric: Fine mesh',
       '- Operation: Motorised',
-      '- Roll cover: Flashing — 2m charged at $44/m; $88.00 incl GST',
+      '- Roll cover: Flashing, 2m at $44/m; $88.00 incl GST',
     ].join('\n'));
   });
 
@@ -215,15 +215,15 @@ describe('estimate quote descriptions', () => {
     });
 
     expect(buildStandaloneInfillsDescription(copyInputs)).toContain(
-      'Included: Custom-made acrylic infills, supplied and installed',
+      'Custom-made acrylic infills, supplied and installed',
     );
     expect(buildStandaloneInfillsDescription(copyInputs)).toContain('Side wall: 2.4m × 1.2m; quantity 2');
     expect(buildStandaloneInfillsDescription(copyInputs)).toContain('Existing pergola structure excluded');
     expect(buildAdditionalAluminiumDescription(copyInputs, 1)).toBe([
-      'Additional aluminium — supply only',
+      'Aluminium supply only',
       '- Frame finish: Black',
       '- 2 × 6m lengths: 100 × 100 post',
-      '- Scope boundary: Materials supplied; installation excluded',
+      '- Materials supplied; installation excluded',
     ].join('\n'));
   });
 
@@ -232,10 +232,10 @@ describe('estimate quote descriptions', () => {
     const consent = buildApprovalDescription('full_building_consent');
     const lighting = buildLightingDescription({ label: 'Courtyard', lightCount: 8, driverCount: 1, dimmer: true });
 
-    expect(engineering).toContain('Allowance for professional engineering required by this project');
+    expect(engineering).toContain('Allowance for professional engineering');
     expect(consent).toBe([
       'Design, engineering and consent documentation',
-      '- Included: Additional design and documentation allowance required to support the pergola through the building consent process',
+      '- Design and documentation allowance for building consent',
       '- Structural engineering calculations',
       "- Engineer's PS1 documentation",
       '- Full shop drawing set for the pergola structure',
@@ -244,7 +244,7 @@ describe('estimate quote descriptions', () => {
       "- Builder's PS3 on completion",
       '- Coordination with the engineer, as required',
     ].join('\n'));
-    expect(lighting).toContain('Rafter-integrated lighting package and installation labour');
+    expect(lighting).toContain('Rafter-integrated lights, supplied and installed');
     expect(lighting).toContain('Control: Dimming included');
     expect([engineering, consent, lighting].join('\n')).not.toMatch(/not discountable|customer allowance/i);
   });
@@ -253,7 +253,8 @@ describe('estimate quote descriptions', () => {
     const historicalLighting = buildHistoricalLightingDescription();
     const historicalPergola = buildLegacyPergolaDescription([module()]);
 
-    expect(historicalLighting).toContain('carried forward from the saved project estimate');
+    expect(historicalLighting).toContain('Final fittings and controls require confirmation');
+    expect(historicalLighting).not.toContain('saved project estimate');
     expect(historicalPergola).toContain('Included: Custom-designed pergola, supplied and installed');
     expect(`${historicalLighting}\n${historicalPergola}`).not.toMatch(/legacy|historical|regenerate/i);
   });

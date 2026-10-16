@@ -62,6 +62,31 @@ function makeEstimate(overrides: Record<string, unknown> = {}) {
 }
 
 describe('buildQuoteLineItemsFromEstimate', () => {
+  it.each([0, 7.5, 15])('includes internal aluminium in pergola scope without changing separately rounded price cents (discount %s)', (discount) => {
+    const estimate = makeEstimate({
+      inputs: { ...makeEstimate().inputs, quoteDiscountPct: String(discount) },
+      outputs: {
+        ...makeEstimate().outputs,
+        pricing_policy: { customer_price_uplift_pct: 21 },
+        pergolas: [{ id: 'pergola-1', totals: { cost_ex_gst: 1234.57 } }],
+        additional_aluminium: { item_count: 2, totals: { cost_ex_gst: 78.93 } },
+      },
+    });
+    const withoutAluminium = buildQuoteLineItemsFromEstimate({ ...estimate, outputs: { ...estimate.outputs, additional_aluminium: undefined } });
+    const aluminiumOnly = buildQuoteLineItemsFromEstimate({ ...estimate,
+      inputs: { ...estimate.inputs, modules: [], pergolas: [] },
+      outputs: { ...estimate.outputs, pergolas: [] },
+    });
+    const snapshotBefore = JSON.stringify(estimate);
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.lineTotalIncGstCents).toBe(withoutAluminium.coreTotalIncCents + aluminiumOnly.coreTotalIncCents);
+    expect(result.items[0]?.unitPriceIncGstCents).toBe(result.items[0]?.lineTotalIncGstCents);
+    expect(result.coreTotalIncCents).toBe(result.items[0]?.lineTotalIncGstCents);
+    expect(result.items[0]?.description).not.toMatch(/aluminium|stock|supply only|—/i);
+    expect(JSON.stringify(estimate)).toBe(snapshotBefore);
+  });
+
   it('creates a blind-only add-on quote without a fake pergola line', () => {
     const estimate = makeEstimate({
       inputs: {
@@ -143,7 +168,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     const result = buildQuoteLineItemsFromEstimate(estimate);
 
     expect(result.items.map((item) => item.description.split('\n')[0])).toEqual([
-      'Additional aluminium — supply only',
+      'Aluminium supply only',
       'Project travel and site allowance',
     ]);
     expect(result.blockingIssues).toEqual([]);
@@ -499,7 +524,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     const blindLine = result.items.find((item) => item.description.includes('Pool blind'));
 
     expect(blindLine?.unitPriceIncGstCents).toBe(187050);
-    expect(blindLine?.description).toContain('Roll cover: Flashing — 2m charged at $44/m; $88.00 incl GST');
+    expect(blindLine?.description).toContain('Roll cover: Flashing, 2m at $44/m; $88.00 incl GST');
     expect(result.blockingIssues).toEqual([]);
   });
 
@@ -578,7 +603,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.items[0]?.description).toContain('Included: Custom-designed pergola, supplied and installed');
     expect(result.items[0]?.description).toContain('Configuration: Gable + Perimeter roof sections');
     expect(result.items[0]?.description).toContain('Shared across all roof sections');
-    expect(result.items[0]?.description).toContain('Roof covering: Acrylic roofing — admits natural light while adding overhead shelter');
+    expect(result.items[0]?.description).toContain('Roof covering: Acrylic roofing');
     expect(result.items[0]?.description).toContain('Frame finish: Black');
     expect(result.items[0]?.description).toContain('Roof section 1: Gable');
     expect(result.items[0]?.description).toContain('Roof section 2: Perimeter');

@@ -1341,6 +1341,7 @@ export default function QuotesTab({
   return (
     <>
     <QuotesListView
+      projectId={projectId}
       quotes={quotes}
       quotesLoading={quotesLoading}
       quotesError={quotesError}

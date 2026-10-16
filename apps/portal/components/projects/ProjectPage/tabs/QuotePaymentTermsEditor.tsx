@@ -36,6 +36,22 @@ export default function QuotePaymentTermsEditor({ editable, quoteTotalIncGstCent
     setTerms((current) => current.map((term, termIndex) => termIndex === index ? { ...term, ...patch } : term));
   };
 
+  if (!editable) return (
+    <section className={styles.card} aria-label="Payment schedule">
+      <div className={styles.header}><h4 className={styles.title}>Payment schedule</h4><span className={styles.note}>Including GST</span></div>
+      <ol className={styles.readOnlyTerms}>
+        {evaluation.terms.map((term) => <li key={term.id}><span>{term.label}</span><strong>{money(term.resolvedAmountIncGstCents)}</strong></li>)}
+      </ol>
+      <details className={styles.calculationDetails}>
+        <summary>How payments are calculated</summary>
+        <p>Fixed payments are deducted first. Percentages apply to the remaining balance.</p>
+        {evaluation.terms.map((term) => <p key={term.id}>{term.label}: {term.calculationType === "fixed" ? `${money(term.fixedAmountIncGstCents ?? 0)} fixed` : `${term.percentageOfRemainder}% of the remaining balance`}</p>)}
+        <p>Total: {money(evaluation.allocatedTotalIncGstCents)} of {money(quoteTotalIncGstCents)}</p>
+      </details>
+      {evaluation.errors.length ? <ul className={styles.errors} role="alert">{evaluation.errors.map((error) => <li key={error}>{error}</li>)}</ul> : null}
+    </section>
+  );
+
   return (
     <section className={styles.card} aria-label="Payment schedule">
       <div className={styles.header}>

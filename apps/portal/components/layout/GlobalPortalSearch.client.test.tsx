@@ -197,8 +197,7 @@ describe('GlobalPortalSearch', () => {
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })));
     expect(document.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain('Remuera Residence');
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
-    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
-    expect(document.querySelector('[role="option"]')?.textContent).toContain('Opening');
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
     expect(navigation.beginRouteTransition).toHaveBeenCalledWith(expect.objectContaining({
       href: '/staff/projects/proj_1',
       source: 'global-portal-search',
@@ -228,7 +227,7 @@ describe('GlobalPortalSearch', () => {
     expect(navigation.prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
     act(() => projectResult.click());
     expect(input.value).toBe('re');
-    expect(document.body.textContent).toContain('Opening');
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
 
     navigation.pathname = '/staff/projects/proj_1';
     window.history.pushState(null, '', navigation.pathname);
@@ -339,7 +338,7 @@ describe('GlobalPortalSearch', () => {
     rendered.unmount();
   });
 
-  it('keeps prior results visible while an uncached query refreshes', async () => {
+  it('removes old-query links immediately while an uncached query waits for results', async () => {
     let finishRefresh: ((response: Response) => void) | null = null;
     vi.mocked(fetch)
       .mockResolvedValueOnce(Response.json(searchResponse()))
@@ -359,8 +358,11 @@ describe('GlobalPortalSearch', () => {
     await flushQueryNotifications();
 
     inputText(input, 'rem');
-    expect(document.body.textContent).toContain('Remuera Residence');
-    expect(document.body.textContent).toContain('Updating results');
+    expect(document.body.textContent).not.toContain('Remuera Residence');
+    expect(document.querySelector('[role="option"]')).toBeNull();
+    expect(document.body.textContent).toContain('Searching the portal');
+    act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    expect(navigation.beginRouteTransition).not.toHaveBeenCalled();
 
     await act(async () => {
       vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
@@ -369,7 +371,8 @@ describe('GlobalPortalSearch', () => {
       await Promise.resolve();
     });
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(document.body.textContent).toContain('Remuera Residence');
+    expect(document.body.textContent).not.toContain('Remuera Residence');
+    expect(document.querySelector('[role="option"]')).toBeNull();
 
     await act(async () => {
       finishRefresh?.(Response.json(searchResponse('rem', 'Remuera Courtyard')));
@@ -381,6 +384,58 @@ describe('GlobalPortalSearch', () => {
     await flushQueryNotifications();
     expect(document.body.textContent).toContain('Remuera Courtyard');
     expect(document.body.textContent).not.toContain('Updating results');
+    rendered.unmount();
+  });
+
+  it('keeps completed search navigation closed across a header remount', async () => {
+    const view = (pending: boolean) => <QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><SearchHost pending={pending} /></PortalQueryClientScope></QueryClientProvider>;
+    const rendered = renderIntoDocument(view(true));
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    inputText(input, 're');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    await flushQueryNotifications();
+    const viewAll = Array.from(document.querySelectorAll('a')).find((link) => link.textContent?.includes('View all matching projects'))!;
+    act(() => viewAll.click());
+    expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(0);
+    navigation.pathname = '/staff/projects';
+    navigation.search = 'q=re';
+    rendered.rerender(view(false));
+    expect(rendered.container.querySelector('input')?.value).toBe('');
+    expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(0);
+    rendered.unmount();
+  });
+
+  it('ignores a late older query and allows explicit retry after the current query fails', async () => {
+    let finishOld: ((response: Response) => void) | undefined;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => { finishOld = resolve; }))
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockResolvedValueOnce(Response.json(searchResponse('new', 'New project')));
+    const rendered = renderSearch();
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    inputText(input, 'old');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    inputText(input, 'new');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS + 2); });
+    await flushQueryNotifications();
+    expect(document.body.textContent).toContain('Search is unavailable');
+    await act(async () => { finishOld?.(Response.json(searchResponse('old', 'Old project'))); await Promise.resolve(); });
+    await flushQueryNotifications();
+    expect(document.body.textContent).not.toContain('Old project');
+    expect(document.querySelector('[role="option"]')).toBeNull();
+    const retry = Array.from(document.querySelectorAll('button')).find((button) => button.textContent === 'Try again')!;
+    await act(async () => { retry.click(); await Promise.resolve(); });
+    await flushQueryNotifications();
+    expect(document.body.textContent).toContain('New project');
+    expect(input.value).toBe('new');
+    rendered.unmount();
+  });
+
+  it('owns one results panel while two route headers overlap', () => {
+    const rendered = renderIntoDocument(<QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><GlobalPortalSearchStateProvider><GlobalPortalSearch /><GlobalPortalSearch shortcutEnabled={false} /></GlobalPortalSearchStateProvider></PortalQueryClientScope></QueryClientProvider>);
+    act(() => (rendered.container.querySelector('input') as HTMLInputElement).focus());
+    expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(1);
     rendered.unmount();
   });
 });

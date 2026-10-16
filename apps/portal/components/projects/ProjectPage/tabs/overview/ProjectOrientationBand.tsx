@@ -16,6 +16,7 @@ import {
   type BadgeTone,
 } from "@/components/ui/foundation";
 import styles from "./ProjectOrientationBand.module.css";
+import ProjectContactValue from "./ProjectContactValue";
 
 const ProjectStageControl = lazy(() => import("./ProjectStageControl"));
 
@@ -280,8 +281,6 @@ export default function ProjectOrientationBand({
       {editState}
 
       {!isEditing ? (
-        <details className={styles.contextDetails}>
-        <summary>Contact, address & reference</summary>
         <div className={styles.orientationSummary}>
           <ProjectJourneyStatus
             stage={project.stage}
@@ -299,13 +298,14 @@ export default function ProjectOrientationBand({
               <dt>Customer</dt>
               <dd>
                 <strong>{displayed.contactName || "Not provided"}</strong>
-                <span>{displayed.contactEmail || "Email not provided"}</span>
+                <ProjectContactValue label="Phone" value={displayed.contactPhone} href={displayed.contactPhone ? `tel:${displayed.contactPhone.replace(/[^\d+]/g, "")}` : undefined} />
+                <ProjectContactValue label="Email" value={displayed.contactEmail} href={displayed.contactEmail ? `mailto:${displayed.contactEmail}` : undefined} />
               </dd>
             </div>
             <div data-context-priority="primary">
               <dt>Site</dt>
               <dd>
-                <strong>{displayed.siteAddress || "Not provided"}</strong>
+                <ProjectContactValue label="Address" value={displayed.siteAddress} href={displayed.siteAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayed.siteAddress)}` : undefined} external />
                 <span>
                   {displayed.region
                     ? `Region: ${displayed.region}`
@@ -336,7 +336,6 @@ export default function ProjectOrientationBand({
             </div>
           </dl>
         </div>
-        </details>
       ) : null}
     </section>
   );
