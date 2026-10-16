@@ -89,7 +89,17 @@ for (const width of [1440, 390]) for (const example of examples) {
     }
     await expect(work.getByRole('button', { name: /Record email sent|Record customer reply/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
-    await page.locator('summary', { hasText: 'Contact, address & reference' }).click();
+    const contact = page.getByRole('region', { name: 'Project orientation', exact: true });
+    await expect(contact.getByText('Aroha Smith', { exact: true })).toBeVisible();
+    await expect(contact.getByRole('link', { name: '021 555 0100', exact: true })).toBeVisible();
+    await expect(contact.getByRole('link', { name: '021 555 0100', exact: true })).toHaveAttribute('href', 'tel:0215550100');
+    await expect(contact.getByRole('link', { name: 'aroha@example.invalid', exact: true })).toBeVisible();
+    await expect(contact.getByRole('link', { name: 'aroha@example.invalid', exact: true })).toHaveAttribute('href', 'mailto:aroha@example.invalid');
+    for (const action of ['Copy phone', 'Copy email']) {
+      await expect(contact.getByRole('button', { name: action, exact: true })).toBeVisible();
+      await expect(contact.getByRole('button', { name: action, exact: true })).toBeDisabled();
+    }
+    await expect(contact.locator('input')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Correct stage', exact: true })).toBeDisabled();
     expect(writes).toEqual([]);
   });
