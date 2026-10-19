@@ -17,7 +17,7 @@ export function scheduleHref(view: 'board' | 'gantt') {
 }
 
 export function siteVisitsHref() {
-  return '/staff/schedule?view=site-visits';
+  return '/staff/site-visits';
 }
 
 export function journeyHref(journey: string) {

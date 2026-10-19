@@ -11,7 +11,7 @@ export function isApprovedSiteVisitSpecialistIdentity(values: {
   return (
     (values.actionKind === undefined || values.actionKind === "specialist") &&
     key.startsWith(SITE_VISIT_SPECIALIST_KEY_PREFIX) &&
-    /^\/staff\/schedule\?view=site-visits&project=proj_[a-z0-9_.%-]+$/i.test(
+    /^\/staff\/(?:schedule\?view=site-visits&project=proj_[a-z0-9_.%-]+|site-visits\?project=proj_[a-z0-9_.%-]+&view=upcoming)$/i.test(
       values.href ?? "",
     )
   );

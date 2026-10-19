@@ -7,6 +7,7 @@ import dash from './dashboard.module.css';
 import DashboardHero from './_components/DashboardHero';
 import RecentEstimatesCard from './_components/RecentEstimatesCard';
 import ProjectWorkQueueCard from './_components/ProjectWorkQueueCard';
+import TodayVisits from '@/components/site-visits/TodayVisits';
 
 export default function DashboardView({
   data,
@@ -48,6 +49,7 @@ export default function DashboardView({
           />
 
           <div className={dash.workspaceGrid}>
+            <TodayVisits />
             <ProjectWorkQueueCard
               items={data.projectWorkQueue ?? []}
               available={data.projectWorkQueueAvailable !== false}

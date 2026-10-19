@@ -1,5 +1,27 @@
 # Staff API And Auth Contracts
 
+## Outlook site visits
+
+`GET /api/staff/v1/outlook-site-visits` accepts only an optional project UUID
+(or existing `proj_` identity prefix). `/projects?q=` accepts one 2–100 character
+query and returns at most 21 candidates plus a truncation flag. Both use the
+auth-bound client and RPCs that recheck confirmed, active staff/admin identity.
+Private mirror tables have no direct authenticated or service-role grants.
+`POST /review` requires the exact configured origin and strict JSON command:
+visit ID, revision, nullable project ID, manual/auto link mode and nullable local
+classification. SQL serializes the row, checks the revision and current project,
+and audits the local decision. No source dates/staff/body edits are accepted.
+
+`POST /refresh` requires an empty same-origin request and rechecks the current
+actor through the authenticated read RPC before invoking the server sync owner.
+`GET /api/integrations/outlook-calendar` requires the existing constant-time cron
+secret and no query parameters. Only the server-owned `siteVisits/syncCalendar`
+adapter uses service role, through the enabled/source-bound/lease-fenced sync RPC.
+Staff cannot select a tenant, mailbox, calendar or provider token. Ordinary reads
+do not contact Microsoft. Errors are fixed safe strings; all responses are
+private/no-store, nosniff and no-referrer. See `schedule.md` and
+`environment-auth-supabase.md` for source and federation boundaries.
+
 ## Google advertising candidate
 
 `GET /api/staff/v1/marketing-performance/google-ads` requires the existing staff

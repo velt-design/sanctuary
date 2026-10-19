@@ -1,5 +1,13 @@
 # Project Operational Command Centre Architecture
 
+Outlook site visits (20 October candidate): Overview composes the separate
+`components/site-visits/ProjectNextVisit` owner below project orientation. Its
+authenticated query reads linked mirrored visits and source freshness; no source
+calls or matching policy lives in the Overview hotspot. The specialist action
+opens `/staff/site-visits?project=...&view=upcoming`. Calendar appointments do not
+change command-centre completion, customer notification or stage facts. The
+existing manual completion owner remains independent. See `schedule.md`.
+
 The 16 October Portal candidate keeps contact details at the top of Overview.
 Entering contact edit focuses its first field; Done or Reset restores the Edit
 details trigger without scrolling. The existing draft/autosave owner remains

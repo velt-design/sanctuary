@@ -1,0 +1,14 @@
+import { requireStaffContext } from '@/lib/api/staffApi';
+import { calendarJson } from '@/lib/siteVisits/http';
+import { z } from 'zod';
+export const runtime='nodejs';
+export async function GET(request:Request){
+  const auth=await requireStaffContext();if(!auth.ok)return calendarJson({error:'Unauthorized'},401);
+  const params=new URL(request.url).searchParams;
+  if([...params.keys()].some(k=>k!=='project')||params.getAll('project').length>1)return calendarJson({error:'Invalid calendar query'},400);
+  const project=params.get('project')?.replace(/^proj_/,'')??null;
+  if(project!==null&&!z.uuid().safeParse(project).success)return calendarJson({error:'Invalid project'},400);
+  const result=await auth.supabase.rpc('outlook_site_visits_read',{p_project:project});
+  if(result.error)return calendarJson({error:'Site visits could not be loaded.'},result.error.code==='42501'?403:503);
+  return calendarJson({...result.data,enabled:Boolean(result.data?.enabled)&&process.env.SANCTUARY_OUTLOOK_ENABLED==='true'});
+}

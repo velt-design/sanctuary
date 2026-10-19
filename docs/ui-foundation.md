@@ -1,5 +1,19 @@
 # Staff Portal UI System
 
+## Outlook site-visit agenda (20 October 2026 candidate)
+
+`components/site-visits` composes the existing Portal Foundation and cream/ink/
+orange tokens. Day groups prioritize time, customer/place, attending staff and
+address; linked contact phone is visible. Filters and project return are URL-owned.
+Ambiguous/provisional/duplicate entries and missing project links have a review
+view, with cancellation/removal/exclusion recovery in Changes. Inline review
+keeps selection during search and preserves drafts on source revision; the revision
+must be acknowledged before resubmission. Pending saves lock the form and its exit.
+Freshness, stale/error and read retry stay near the agenda rather than relying on
+a successful-looking empty list. New source queries and editing state are extracted
+from the existing Dashboard and Overview hotspots. Source/security ownership is
+in `schedule.md`; this does not authorize a shared-theme or install-board redesign.
+
 ## Search and commercial continuity (16 October 2026 candidate)
 
 `GlobalPortalSearch.client` only exposes selectable results whose normalized response

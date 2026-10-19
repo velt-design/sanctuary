@@ -1,6 +1,82 @@
 # Schedule
 
-Schedule V2 owns install planning. Its Site Visits capability is retained but hidden from normal staff navigation.
+Schedule V2 owns install planning. The Outlook site-visit agenda is a separate
+source-backed workflow at `/staff/site-visits`, available under Schedule navigation.
+Its implementation is a candidate until the environment and source qualification
+steps below are complete. The older Portal booking editor remains a compatibility
+surface; imported Outlook visits never enter its booking/confirmation commands.
+
+## Outlook site visits (20 October 2026)
+
+Ellen books in the shared Outlook calendar. `lib/siteVisits` owns the bounded
+Graph reader, normalization and mirror publication; `components/site-visits`
+owns the agenda, project summary and dashboard slice. Staff see Today, This week,
+Upcoming, Needs review and Changes, with attending-person and text filters. Views
+and filters live in the URL for project/agenda return. All times use
+`Pacific/Auckland`; provisional bookings are counted separately, and duplicate or
+uncertain entries stay out of the scheduled count. Cancelled, removed and manually
+excluded entries remain reachable in Changes. Passing time never means completed.
+Every normal-sensitivity appointment without explicit visit/provisional evidence
+is retained as Needs review, including an unlabelled place or person. This is a
+conservative capture decision: it may include ordinary nonvisit appointments for
+local exclusion, never schedules them or adds dashboard alerts. The source window
+bounds the review list. Private/personal/confidential entries remain withheld.
+
+The source read expands recurrence through Graph `calendarView`, from 30 days ago
+to 90 days ahead. Every page must succeed before atomic publication and absence
+reconciliation. Paging is mailbox/calendar-bound, capped at 20 pages/2,000 source
+events and 4 MB per response. Failed, malformed or partial reads preserve the last
+successful mirror and its timestamp. A two-minute lease fences overlapping runs;
+all triggers share a five-minute attempt cooldown. The existing Vercel scheduler
+calls the protected integration route every 15 minutes. Staff may request a bounded
+refresh. The UI polls only saved Portal data and marks a success older than
+30 minutes as overdue. No source call occurs on ordinary page navigation.
+
+Staff are recognized by an explicitly configured set of exact invitation emails,
+not the old salesperson roster. A person named in a title remains an assignment
+hint. Customer emails come from invitees or exact authored `Email`, `Email to
+search up in info` and `Email to search info` fields, excluding staff/mailbox
+addresses and quoted reply chains. For explicit/provisional visits only, a standalone
+email in the first authored nonempty field also corroborates customer identity;
+later unlabelled signature emails do not. Address extraction accepts labelled and bare
+street lines after inline media; missing extraction is labelled "Address not
+captured", not a claim that Outlook has no address. Raw bodies and attachments
+are not persisted. Private/personal/confidential events are withheld, including
+previously visible records whose sensitivity changes.
+
+Automatic project linking requires an exact customer email plus the street
+address of exactly one unarchived project. Normalization preserves unit separators,
+number and word boundaries and expands only final street abbreviations. Names,
+suburbs and email alone never establish a link. Automatic linking requires a
+leading street/unit number; other addresses remain available for a manual link.
+Staff can choose a project, leave
+a visit unlinked, restore automatic matching, or classify a candidate. These local
+choices have optimistic revision checks and an append-only review trail and survive
+later source updates. Dates and attending staff stay in Outlook. Review drafts
+survive source revisions and require acknowledgement before saving against the
+new revision. Linked contact phone numbers are visible without editing details.
+
+Project Overview composes the extracted `ProjectNextVisit` read component;
+Dashboard composes `TodayVisits`. Neither rewrites command-centre domain facts.
+The existing specialist action now opens the project-filtered Outlook agenda.
+Separate legacy Portal bookings, manual completion facts, customer notification,
+analytics and stage transitions keep their existing owners. An Outlook calendar
+entry creates none of those facts.
+
+Activation requires the migration, disabled-control binding, exact Microsoft
+grant and production federation, then a real-source first-read qualification.
+Synthetic staging proves API/UI recovery, not live Graph extraction. See
+`environment-auth-supabase.md`, `staff-api-auth-contracts.md` and
+`supabase-schema-map.md` for the environment/security contracts. Disable the
+source environment flag to stop pulls; disable the database control to withhold
+the mirror. Preserve records for recovery rather than rolling back schema.
+
+Focused checks: `vitest run test/outlook-site-visits-db.test.ts
+apps/portal/lib/siteVisits apps/portal/app/api/staff/v1/outlook-site-visits
+apps/portal/components/site-visits`. Database tests execute the actual migration
+in disposable PostgreSQL-compatible storage. Hosted migration rehearsal must also
+run transactionally with rollback before installation. Browser checks use only
+labelled synthetic staging records until live-source access is qualified.
 
 CI verification (2026-09-15): the Gantt-to-Board test now waits for the resolved
 query notification before asserting the returned Board, and ScheduleClient test
@@ -34,7 +110,14 @@ Schedule has two normal staff views:
 - Board: crew lanes, unscheduled jobs, drag/drop assignment and reorder.
 - Gantt: timeline by crew with bars, range controls, and collision/conflict visibility.
 
-The existing Site Visits route/data owner remains directly addressable as a bounded specialist workflow but is not shown in the Schedule tabs or portal navigation. Project work items do not link to it; the shared server ranking may expose **Arrange the site visit** at `Contacted` and **Book or confirm site visit** at `Site Visit`. Its `project` deep link resolves the project's active booking independently of the currently displayed week and salesperson filter: an existing visit switches to its week, highlights it, and opens the edit dialog, while a project with no visit opens the create dialog already linked to that project. In that direct compatibility surface, booking creates a tentative visit and the edit dialog saves its current date, time, salesperson, and notes before an explicit **Confirm booking** action. Confirmation is a compare-and-swap from `TENTATIVE` to `CONFIRMED`; only a verified affected row emits qualified-lead analytics, using the immutable database-owned `confirmed_at`. A recent confirmed replay may repair the idempotent event with that original time, while an old replay cannot create a fresh conversion; legacy confirmed rows with no `confirmed_at` fail closed. Confirmation does not mark the customer notified because this path sends no email. Staff may also record the separate bounded manual `SITE_VISIT_COMPLETED` confirmation; that fact removes the visit specialist candidate but does not create work, mutate Schedule, or advance pipeline stage.
+The older `view=site-visits` route remains directly addressable as a compatibility
+workflow, outside the Schedule tabs. Project work actions now link to the separate
+Outlook agenda: **Arrange the site visit** at `Contacted` and **View site visits**
+at `Site Visit`. The old booking editor retains its tentative/confirmed contract,
+explicit confirmation compare-and-swap, immutable `confirmed_at` and idempotent
+qualified-lead analytics. It does not send customer email. Staff may still record
+the separate bounded manual `SITE_VISIT_COMPLETED` confirmation; that fact removes
+the specialist candidate but does not create work, mutate Schedule or advance stage.
 
 ## Authored dates and conflict resolution
 

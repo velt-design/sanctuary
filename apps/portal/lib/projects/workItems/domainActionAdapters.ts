@@ -34,7 +34,7 @@ function projectPath(projectId: string): string {
 }
 
 function siteVisitHref(projectId: string): string {
-  return `/staff/schedule?view=site-visits&project=${encodeURIComponent(projectId)}`;
+  return `/staff/site-visits?project=${encodeURIComponent(projectId)}&view=upcoming`;
 }
 
 function quoteCreationHref(projectId: string, estimateId: string): string {
@@ -66,9 +66,9 @@ function journeySpecialistAction(context: ProjectWorkDomainActionContext): Speci
       title: 'Complete the site visit',
       reason: 'The project is at Site Visit and no completion has been recorded.',
       owner: 'Operations',
-      expectedResult: 'The visit is booked or confirmed and its completion is recorded before quoting.',
+      expectedResult: 'The visit is booked in Outlook and its completion is recorded separately before quoting.',
       href: siteVisitHref(context.projectId),
-      actionLabel: 'Book or confirm site visit',
+      actionLabel: 'View site visits',
     };
   }
 

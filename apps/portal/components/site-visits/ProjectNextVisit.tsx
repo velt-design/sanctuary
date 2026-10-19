@@ -1,0 +1,20 @@
+'use client';
+import Link from 'next/link';
+import { useEffect } from 'react';
+import { Card,Button,LoadingSkeleton } from '@/components/ui/foundation';
+import { useCalendarVisits } from './useCalendarVisits';
+import { visitDate,visitTime,isScheduledVisit } from '@/lib/siteVisits/calendarModel';
+import CalendarFreshness from './CalendarFreshness';
+import styles from './siteVisits.module.css';
+export default function ProjectNextVisit({projectId,host,onAccessEnding}:{projectId:string;host:string;onAccessEnding?:(status:number)=>void}){
+  const query=useCalendarVisits(projectId,host);
+  useEffect(()=>{if(query.denied)onAccessEnding?.(403);},[query.denied,onAccessEnding]);
+  if(query.denied)return null;
+  const visit=query.data?.events.filter(v=>(isScheduledVisit(v)||v.kind==='provisional')&&!v.cancelled&&!v.removed&&!v.duplicate&&Date.parse(v.endsAt)>=Date.now()).sort((a,b)=>a.startsAt.localeCompare(b.startsAt))[0];
+  return <Card title="Next site visit" padding="compact" className={styles.projectCard} action={<Link href={`/staff/site-visits?project=${encodeURIComponent(projectId)}&view=upcoming`}>View visits</Link>}>
+    {!query.data?query.isPending?<LoadingSkeleton rows={1} label="Loading next site visit" />:<p>Site visits could not be loaded. <Button variant="quiet" size="small" onClick={()=>void query.refetch()}>Retry</Button></p>:<>
+      {visit?<div className={styles.nextVisit}><strong>{visitDate(visit.startsAt)}, {visitTime(visit.startsAt)} to {visitTime(visit.endsAt)}</strong><span>{visit.staff.length?visit.staff.map(p=>p.name).join(', '):'Staff not assigned'}{visit.kind==='provisional'?' · Provisional':''}</span>{visit.address&&<span>{visit.address}</span>}</div>:<p>{query.data.lastSuccess?'No upcoming Outlook visit is linked to this project.':'Outlook visits have not been synced yet.'}</p>}
+      <CalendarFreshness data={query.data} readFailed={query.isError} />
+    </>}
+  </Card>;
+}

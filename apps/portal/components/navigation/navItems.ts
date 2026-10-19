@@ -46,6 +46,7 @@ export const NAV_ITEMS = [
     children: [
       { key: 'schedule-board', label: 'Board', href: '/staff/schedule?view=board' },
       { key: 'schedule-gantt', label: 'Gantt', href: '/staff/schedule?view=gantt' },
+      { key: 'site-visits', label: 'Site Visits', href: '/staff/site-visits' },
     ],
   },
   { key: 'finance', label: 'Finance', href: '/staff/payments', Icon: Wallet, adminOnly: false, financeOnly: true },

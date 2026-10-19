@@ -116,14 +116,14 @@ describe('project-work domain actions', () => {
       title: 'Arrange the site visit',
       actionLabel: 'Arrange site visit',
       owner: 'Operations',
-      href: `/staff/schedule?view=site-visits&project=${PROJECT_ID}`,
+      href: `/staff/site-visits?project=${PROJECT_ID}&view=upcoming`,
     });
 
     const siteVisit = projectWorkDomainActions(context('site_visit', estimateDesign()));
     expect(siteVisit.specialistAction).toMatchObject({
       title: 'Complete the site visit',
-      actionLabel: 'Book or confirm site visit',
-      href: `/staff/schedule?view=site-visits&project=${PROJECT_ID}`,
+      actionLabel: 'View site visits',
+      href: `/staff/site-visits?project=${PROJECT_ID}&view=upcoming`,
     });
   });
 

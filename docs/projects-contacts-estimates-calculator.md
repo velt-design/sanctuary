@@ -1,5 +1,12 @@
 # Projects, Contacts, Estimates, And Calculator
 
+The 20 October Outlook site-visit candidate adds an extracted next-visit summary
+to Overview and changes site-visit specialist links to the project-filtered
+`/staff/site-visits` agenda. Its source dates/staff, linking decisions and freshness
+are owned by `lib/siteVisits` and `components/site-visits`, documented in
+`schedule.md`. Calendar imports do not confirm, notify, complete or advance a
+project. Existing manual completion and commercial evidence remain independent.
+
 ## Portal contact and return continuity (16 October 2026 candidate)
 
 Jordan's approved connected-workflow improvement explicitly requires ordinary contact

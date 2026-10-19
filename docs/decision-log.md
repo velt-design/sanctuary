@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-20: Imported bookings preserve source and local decision boundaries
+
+The Outlook visit mirror publishes only complete source reads and preserves local
+classification/link choices separately. Calendar existence and elapsed time do not
+prove customer confirmation, notification or completion. Source parsing must keep
+authored labelled fields and bare addresses after inline media while excluding
+quoted correspondence. Project corroboration cannot erase meaningful address
+separators: `1/23` and `12/3`, or `St. James` and `St. Heliers`, are different
+addresses. Actual-migration regressions cover those distinctions. The UI keeps
+unmatched visits visible and provides explicit review/recovery. See `schedule.md`.
+
 
 ## 2026-10-16: Search results must belong to the active query
 
