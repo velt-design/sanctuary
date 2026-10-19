@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMemo,useRef,useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
@@ -11,16 +12,17 @@ import VisitAgendaRow from './VisitAgendaRow';
 import CalendarFreshness from './CalendarFreshness';
 import styles from './siteVisits.module.css';
 const views=[['today','Today'],['week','This week'],['upcoming','Upcoming'],['review','Needs review'],['changes','Changes']] as const;
-export default function SiteVisitsAgenda({projectId,initialView='today',initialPerson='',initialQuery=''}:{projectId?:string;initialView?:string;initialPerson?:string;initialQuery?:string}){
+export default function SiteVisitsAgenda(){
+  const params=useSearchParams(),requestedView=params.get('view');
+  const view=views.some(([key])=>key===requestedView)?requestedView!:'today',person=params.get('person')??'',search=params.get('q')??'',projectId=params.get('project')||undefined;
   const query=useCalendarVisits(projectId),client=useQueryClient(),lock=useRef(false),searchRef=useRef<HTMLInputElement>(null);
-  const [view,setView]=useState(views.some(([key])=>key===initialView)?initialView:'today'),[person,setPerson]=useState(initialPerson),[search,setSearch]=useState(initialQuery);
   const [refreshing,setRefreshing]=useState(false),[message,setMessage]=useState('');
   const data=query.data;
   const events=useMemo(()=>visibleVisits(data?.events??[],view,person,search),[data,view,person,search]);
   const scheduledCount=events.filter(isScheduledVisit).length;
   const groups=new Map<string,typeof events>();for(const visit of events){const day=visitDay(visit.startsAt);groups.set(day,[...(groups.get(day)??[]),visit]);}
   function select(next:{view?:string;person?:string;q?:string}){
-    if(next.view!==undefined)setView(next.view);if(next.person!==undefined)setPerson(next.person);if(next.q!==undefined)setSearch(next.q);
+    // Next's native history bridge keeps controls and cached-route returns on the same URL state.
     const url=new URL(window.location.href);for(const [key,value] of Object.entries(next)){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}window.history.replaceState(null,'',url);
   }
   async function refresh(){if(lock.current)return;lock.current=true;setRefreshing(true);setMessage('');try{

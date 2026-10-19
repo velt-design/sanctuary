@@ -5,6 +5,10 @@
 `components/site-visits` composes the existing Portal Foundation and cream/ink/
 orange tokens. Day groups prioritize time, customer/place, attending staff and
 address; linked contact phone is visible. Filters and project return are URL-owned.
+The agenda reads current Next search parameters directly, including project scope;
+native history replacement updates typing without adding entries. Cached route
+props are not copied into independent filter state. Regression coverage includes
+project round trips, Back/Forward, rapid typing and clearing without losing scope.
 Ambiguous/provisional/duplicate entries and missing project links have a review
 view, with cancellation/removal/exclusion recovery in Changes. Inline review
 keeps selection during search and preserves drafts on source revision; the revision
