@@ -86,7 +86,7 @@ jobs:
       matrix:
         include:
           - database: supabase-postgres-pg17
-            image: "public.ecr.aws/supabase/postgres:17.6.1.107"
+            image: "supabase/postgres@sha256:fb89af68fff612994be47167f6754ea386f5a71f889227289a02aac35f4cd806"
             postgres_major: "17"
           - database: upstream-postgres-pg18
             image: "postgres:18-alpine"

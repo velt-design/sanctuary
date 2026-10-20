@@ -1,5 +1,23 @@
 # Decision Log
 
+## 2026-10-20: Verify retirement against the committed PR comparison
+
+Studio's first CI run found three orphan helpers after their historical importers
+were removed. Local intent-to-add status had classified added files as modified,
+and a supplemental check read only Knip's top-level `files`, missing
+`issues[].files`. Preserve the failed receipt, inspect both representations and
+run the unchanged strict checker with the actual committed PR base/head.
+Recheck the remaining dependency closure after removal; a local green report is
+not equivalent to the committed CI comparison. Platform-sensitive path guards
+also need their real Linux CI result; preserve the required query owner rather
+than weakening a rule that Windows did not match.
+
+Continue the full mandatory chain after its first failure is corrected. Studio's
+three fixed RPC adapters were already reviewed in the Portal boundary test but
+missing from the architecture report's named server flows. Align only those exact
+paths, retain the strict predicate and prove neighboring names/locations still
+fail. A directory-wide exception would grant authority that was never reviewed.
+
 ## 2026-10-20: Preserve pending interaction authority when integrating Studio
 
 The saved Studio adaptation retained gesture math but initially omitted the

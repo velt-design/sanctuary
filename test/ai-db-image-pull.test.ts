@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { pullAiDatabaseImage } from "../scripts/ci/pull-ai-db-image.mjs";
 
-const image = "public.ecr.aws/supabase/postgres:17.6.1.107";
+const image = "supabase/postgres@sha256:fb89af68fff612994be47167f6754ea386f5a71f889227289a02aac35f4cd806";
 const success = { status: 0, stdout: "Downloaded", stderr: "" };
 const throttle = { status: 1, stdout: "", stderr: "Error response from daemon: toomanyrequests: Rate exceeded\n" };
 
@@ -96,9 +96,18 @@ describe("AI database image pre-pull", () => {
   it("keeps pre-pull before one ordinary harness step, with no workflow retry or failure bypass", () => {
     const workflow = readFileSync(".github/workflows/ai-foundation.yml", "utf8");
     const databaseJob = workflow.slice(workflow.indexOf("  database-contract:"));
-    expect(databaseJob).toContain('image: "public.ecr.aws/supabase/postgres:17.6.1.107"');
+    expect(databaseJob).toContain('image: "supabase/postgres@sha256:fb89af68fff612994be47167f6754ea386f5a71f889227289a02aac35f4cd806"');
     expect(databaseJob).toMatch(/run: node scripts\/ci\/pull-ai-db-image\.mjs\s+- name: Exact-file rollback and executable database contract\s+run: npm run test:ai:db/);
     expect(databaseJob.match(/run: npm run test:ai:db/g)).toHaveLength(1);
     expect(databaseJob).not.toMatch(/continue-on-error|always\(\)|retry|while |until /);
+  });
+
+  it("pins both PG17 workflow legs to the identical official image without replacing PG18", () => {
+    for (const workflow of ["ai-foundation", "background-jobs"]) {
+      const source = readFileSync(`.github/workflows/${workflow}.yml`, "utf8").replaceAll("\r\n", "\n");
+      expect(source).toContain(`image: "${image}"\n            postgres_major: "17"`);
+      expect(source).toContain('postgres_major: "18"');
+      expect(source.match(/supabase\/postgres@sha256:/g)).toHaveLength(1);
+    }
   });
 });
