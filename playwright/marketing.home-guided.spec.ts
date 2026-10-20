@@ -2,6 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 
+test.beforeEach(async ({ page, baseURL }) => {
+  await page.route('**/*', route => new URL(route.request().url()).origin === new URL(baseURL!).origin
+    ? route.continue() : route.abort());
+  await page.route('**/api/enquiry**', route => route.abort());
+});
+
 async function allowAnalytics(page: Page) {
   await setAnalyticsConsent(page, true);
 }
@@ -318,14 +324,13 @@ test('the primary result link reaches the existing dedicated landing route', asy
   await expect(page.locator('h1')).toHaveCount(1);
 });
 
-test('all five destinations continue valid context, route-appropriate evidence and enquiry attribution', async ({
+for (const continuation of destinationContinuations) test(`${continuation.resultId} destination continues valid context, route-appropriate evidence and enquiry attribution`, async ({
   page,
 }) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await setAnalyticsConsent(page, false);
 
-  for (const continuation of destinationContinuations) {
     await page.goto(continuation.route, { waitUntil: 'domcontentloaded' });
     const context = page.locator('[data-guided-journey-context]');
     await expect(context).toBeVisible();
@@ -348,7 +353,10 @@ test('all five destinations continue valid context, route-appropriate evidence a
       `${publicOrigin}${continuation.canonical}`,
     );
     await expect(page.locator('h1')).toHaveCount(1);
-    if (continuation.firstProject) {
+    if (continuation.resultId === 'bespoke') {
+      await expect(page.getByRole('navigation', { name: 'Projects for your starting point' })
+        .getByRole('link').first()).toContainText(continuation.firstProject);
+    } else if (continuation.firstProject) {
       await expect(page.getByRole('heading', {
         level: 3,
         name: continuation.firstProject,
@@ -357,6 +365,16 @@ test('all five destinations continue valid context, route-appropriate evidence a
       await expect(page.getByRole('link', { name: 'View project' })).toHaveCount(0);
     }
     await expectNoHorizontalOverflow(page);
+
+    if (continuation.resultId === 'residential-cover') {
+      // Simple deliberately continues to Contact rather than embedding a form.
+      const designerLink = page.getByRole('link', { name: 'Design your pergola', exact: true }).first();
+      await expect(designerLink).toHaveAttribute('href', /configurator=preview/);
+      await page.getByRole('link', { name: /^Need help choosing\?/ }).click();
+      await expect(page).toHaveURL(/\/contact\?.*enquiry_intent=help#contact-form$/);
+      await expect(page.locator('#contact-form')).toHaveAttribute('data-contact-pathway', 'help');
+      await expect(page.getByRole('dialog', { name: 'Design your pergola' })).toHaveCount(0);
+    }
 
     const enquiryContext = JSON.parse(await page.locator(
       'input[name="enquiryContext"]',
@@ -369,7 +387,6 @@ test('all five destinations continue valid context, route-appropriate evidence a
       source_pathway: continuation.resultId,
       source_focus: continuation.focusId,
     });
-  }
 });
 
 test('direct and invalid destination visits stay canonical and omit guided context', async ({
@@ -491,12 +508,16 @@ test('global mobile navigation remains available without adding a desktop CTA', 
   await setAnalyticsConsent(page, false);
   await page.goto('/home-guided');
   await page.getByRole('button', { name: 'Open menu' }).click();
-  await expect(page.getByRole('navigation', { name: 'Mobile primary' }))
-    .toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Mobile primary' })
-    .getByRole('link', { name: 'Start your project' }))
-    .toBeVisible();
-  await page.getByRole('button', { name: 'Close menu' }).click();
+  const navigation = page.getByRole('navigation', { name: 'Mobile primary' });
+  await expect(navigation).toBeVisible();
+  const discussion = navigation.getByRole('link', { name: 'Discuss your project', exact: true });
+  await expect(discussion).toBeVisible();
+  await expect(discussion).toHaveAttribute('href', '/contact?source_path=%2Fhome-guided&source_component=header#contact-form');
+  const designer = navigation.getByRole('link', { name: 'Design your pergola', exact: true });
+  await expect(designer).toBeVisible();
+  await expect(designer).toHaveAttribute('href', '/contact?source_path=%2Fhome-guided&source_component=header&configurator=preview');
+  await page.getByRole('dialog', { name: 'Site navigation' }).getByRole('button', { name: 'Close menu' }).click();
+  await expect(navigation).not.toBeVisible();
   await expect(page.locator('header.site .nav-cta')).toHaveCount(0);
 });
 

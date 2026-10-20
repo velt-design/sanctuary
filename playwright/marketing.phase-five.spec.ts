@@ -88,7 +88,7 @@ const semanticParityRoutes = [
     path: '/custom-pergolas-auckland',
     requiredMarkers: [
       'data-seo-landing="custom-pergolas-auckland"',
-      'data-seo-landing-disclosure="custom-planning-support"',
+      'id="custom-projects"',
     ],
     forbiddenMarkers: [
       'Pergola guide progression',
@@ -97,8 +97,8 @@ const semanticParityRoutes = [
       'Next guide',
     ],
     exactMarkerCounts: [
-      ['class="acrylic-project-card"', 3],
-      ['data-seo-landing-disclosure=', 1],
+      ['id="custom-projects"', 1],
+      ['id="custom-pergolas-faq"', 1],
     ],
   },
   {
