@@ -193,6 +193,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
+          projectId: "proj_1",
           workModel: "v2",
           currentDesign: { source: "estimate", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
@@ -254,6 +255,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
+          projectId: "proj_1",
           workModel: "v2",
           currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
@@ -327,6 +329,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
+          projectId: "proj_1",
           workModel: "v2",
           currentDesign: { source: "sent_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
@@ -377,6 +380,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
+          projectId: "proj_1",
           workModel: "v2",
           currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
@@ -426,6 +430,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
+          projectId: "proj_1",
           workModel: "legacy",
           currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
           legacyWork: { status: "retired" },
@@ -475,6 +480,7 @@ describe("OverviewTab", () => {
   it("keeps the Files card available when Project Work is not ready", async () => {
     useQueryMock.mockReturnValue(queryState({
       data: {
+        projectId: "proj_1",
         workModel: "legacy",
         currentDesign: { source: "draft_quote", price: { totalIncGstCents: null }, warnings: [] },
         legacyWork: { status: "retired" },
@@ -545,6 +551,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
+          projectId: "proj_1",
           workModel: "v2",
           currentDesign: { source: "accepted_quote", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,
@@ -586,6 +593,7 @@ describe("OverviewTab", () => {
     useQueryMock.mockReturnValue(
       queryState({
         data: {
+          projectId: "proj_1",
           workModel: "v2",
           currentDesign: { source: "estimate", price: { totalIncGstCents: null }, warnings: [] },
           projectWork: v2Projection,

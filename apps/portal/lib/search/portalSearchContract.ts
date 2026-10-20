@@ -1,4 +1,5 @@
 import type { PipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import type { ProjectStatusFacts } from '@/lib/projects/projectCurrentStatus';
 
 export const PORTAL_SEARCH_MIN_LENGTH = 2;
 export const PORTAL_SEARCH_MAX_LENGTH = 80;
@@ -14,6 +15,7 @@ export type PortalProjectSearchResult = {
   contactName: string | null;
   stage: PipelineStageKey;
   archived: boolean;
+  status: ProjectStatusFacts | null;
 };
 
 export type PortalContactSearchResult = {

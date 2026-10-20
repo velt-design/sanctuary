@@ -28,7 +28,7 @@ import {
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
-import { ProjectStageBadge } from '@/components/ui/foundation';
+import ProjectCurrentStatusBadge from '@/components/projects/ProjectCurrentStatusBadge';
 import {
   PORTAL_SEARCH_MAX_LENGTH,
   PORTAL_SEARCH_MIN_LENGTH,
@@ -406,7 +406,7 @@ function ActiveGlobalPortalSearch({
         {result.kind === 'project' || current || pending ? (
           <span className={styles.resultMeta}>
             {result.kind === 'project' ? (
-              result.archived ? <span className={styles.archived}>Archived</span> : <ProjectStageBadge stage={result.stage} compact />
+              <ProjectCurrentStatusBadge stage={result.stage} facts={result.status} />
             ) : null}
             {current ? <span className={styles.current}>Current</span> : null}
             {pending ? <span className={styles.pending} role="status"><LoaderCircle aria-hidden="true" /> Opening</span> : null}

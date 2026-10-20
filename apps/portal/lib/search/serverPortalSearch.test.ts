@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const rpc = vi.fn();
+const statusRead = vi.fn();
+const select = vi.fn(() => ({ in: statusRead }));
+const from = vi.fn(() => ({ select }));
 const getSupabaseServerAuth = vi.fn();
 
 vi.mock('@/lib/supabase/serverClient', () => ({ getSupabaseServerAuth }));
@@ -8,11 +11,14 @@ vi.mock('@/lib/supabase/serverClient', () => ({ getSupabaseServerAuth }));
 describe('searchPortal', () => {
   beforeEach(() => {
     rpc.mockReset();
+    from.mockClear();
+    select.mockClear();
+    statusRead.mockReset().mockResolvedValue({ data: [], error: null });
     getSupabaseServerAuth.mockReset();
     getSupabaseServerAuth.mockResolvedValue({ rpc });
   });
 
-  it('uses one bounded RPC and maps its ordered project and contact groups', async () => {
+  it('preserves ranked groups and enriches only the bounded project IDs', async () => {
     rpc.mockResolvedValue({
       data: [
         {
@@ -51,7 +57,11 @@ describe('searchPortal', () => {
       error: null,
     });
 
-    const client = { rpc } as any;
+    statusRead.mockResolvedValue({ data: [
+      { id: '11111111-1111-4111-8111-111111111111', project_work_model_versions: { model_version: 2 }, project_operational_states: { state: 'CLOSED', closed_outcome: 'CANCELLED' } },
+      { id: '44444444-4444-4444-8444-444444444444', archived_at: '2026-07-01T00:00:00Z', project_work_model_versions: { model_version: 2 }, project_operational_states: { state: 'CLOSED', closed_outcome: 'COMPLETE' } },
+    ], error: null });
+    const client = { rpc, from } as any;
     const { searchPortal } = await import('./serverPortalSearch');
     const result = await searchPortal(client, '  alex  ');
 
@@ -69,6 +79,24 @@ describe('searchPortal', () => {
     ]);
     expect(result.projects[0]?.href).toContain('/staff/projects/proj_');
     expect(result.contacts[0]?.href).toContain('/staff/contacts/ct_');
+    expect(statusRead).toHaveBeenCalledWith('id', [
+      '11111111-1111-4111-8111-111111111111', '44444444-4444-4444-8444-444444444444',
+    ]);
+    expect(result.projects[0]?.status).toEqual({ workModel: 'v2', effectiveState: 'CLOSED', closedOutcome: 'CANCELLED' });
+    expect(result.projects[1]?.status?.effectiveState).toBe('ARCHIVED');
+  });
+
+  it.each([
+    [{ code: 'PGRST301', message: 'Expired JWT' }, 401],
+    [{ code: '42501', message: 'permission denied for table projects' }, undefined],
+  ])('does not claim a current status after enrichment access fails', async (error, status) => {
+    rpc.mockResolvedValue({ data: [
+      { access_granted: true, entity_kind: null },
+      { entity_kind: 'project', entity_id: '11111111-1111-4111-8111-111111111111', name: 'QA project', pipeline_stage: 'SCHEDULED' },
+    ], error: null });
+    statusRead.mockResolvedValue({ data: null, error });
+    const { searchPortal } = await import('./serverPortalSearch');
+    await expect(searchPortal({ rpc, from } as any, 'QA')).rejects.toMatchObject(status ? { status } : error);
   });
 
   it('rejects a failed database operation rather than presenting partial groups', async () => {

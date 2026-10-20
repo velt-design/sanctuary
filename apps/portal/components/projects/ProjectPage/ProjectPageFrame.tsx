@@ -9,6 +9,8 @@ import type {
 import ProjectHeader from "./ProjectHeader";
 import ProjectPageShell from "./ProjectPageShell";
 import styles from "./ProjectPage.module.css";
+import { currentProjectWork } from "@/lib/projects/projectCurrentStatus";
+import { useOptionalProjectOverviewReads } from "./ProjectOverviewReads";
 
 export default function ProjectPageFrame({
   snapshot,
@@ -31,6 +33,8 @@ export default function ProjectPageFrame({
   optimisticTab: ProjectNavigationTabKey | null;
   onTabSelect: (tab: ProjectNavigationTabKey) => void;
 }) {
+  const overviewReads = useOptionalProjectOverviewReads(host, snapshot.project.id);
+  const projectWork = currentProjectWork(snapshot, overviewReads?.commandQuery.data);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const mastheadRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -66,6 +70,8 @@ export default function ProjectPageFrame({
           <ProjectHeader
             project={snapshot.project}
             workModel={snapshot.workModel}
+            projectWork={projectWork}
+            snapshotState={snapshotState}
             host={host}
             tab={tab}
             ownerControlsPaused={snapshotState !== "fresh"}

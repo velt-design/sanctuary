@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/foundation";
 import ProjectOverviewLayout from "./overview/ProjectOverviewLayout";
 import { projectPositionLabel } from './overview/projectPositionLabel';
+import { currentProjectWork } from '@/lib/projects/projectCurrentStatus';
 import type { ProjectOrientationFreshness } from "./overview/ProjectOrientationBand";
 
 const overviewModules = {
@@ -171,12 +172,7 @@ export default function OverviewTab({
                 : "failed";
   const projectWorkControlsStale =
     commandCentreState !== "ready" || snapshotState !== "fresh";
-  const orientationProjection =
-    !workModelMismatch && commandQuery.data?.workModel === "v2"
-      ? commandQuery.data.projectWork
-      : snapshot.workModel === "v2"
-        ? snapshot.projectWork
-        : undefined;
+  const orientationProjection = currentProjectWork(snapshot, commandQuery.data);
   const refreshProjectWorkModel = () => {
     void invalidateProjectWorkReads(queryClient, host, snapshot.project.id);
   };
@@ -281,9 +277,9 @@ export default function OverviewTab({
               workModel="v2"
               projectId={snapshot.project.id}
               host={host}
-              projectWork={commandQuery.data.projectWork}
+              projectWork={orientationProjection ?? commandQuery.data.projectWork}
               ownerLabel={commandQuery.data.owner.owner?.displayName}
-              positionLabel={projectPositionLabel(snapshot.project.stage, commandQuery.data.projectWork.effectiveState, commandQuery.data.currentDesign)}
+              positionLabel={projectPositionLabel(snapshot.project.stage, (orientationProjection ?? commandQuery.data.projectWork).effectiveState, commandQuery.data.currentDesign, (orientationProjection ?? commandQuery.data.projectWork).closedOutcome)}
               pipelineStage={snapshot.project.stage}
               stale={projectWorkControlsStale}
               onRefresh={() => void commandQuery.refetch()}

@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import { projectSearchStatuses } from './projectSearchStatus';
 import {
   PORTAL_SEARCH_GROUP_LIMIT,
   type PortalContactSearchResult,
@@ -67,6 +68,7 @@ function mapProject(row: PortalSearchRpcRow): PortalProjectSearchResult | null {
     contactName: textValue(row.contact_name),
     stage: normalizePipelineStageKey(textValue(row.pipeline_stage)) ?? 'new',
     archived: Boolean(textValue(row.archived_at)),
+    status: null,
   };
 }
 
@@ -114,15 +116,23 @@ export async function searchPortal(
   const accessRow = rows.find((row) => row.entity_kind == null);
   if (!accessRow) throw new Error('portal_search_v1 did not return its access result');
   if (accessRow.access_granted !== true) throw new PortalSearchAccessError(403);
+  const projects = uniqueBounded(rows.map(mapProject));
+  let statuses: Awaited<ReturnType<typeof projectSearchStatuses>>;
+  try {
+    statuses = await projectSearchStatuses(client, projects.map((project) => project.id));
+  } catch (error) {
+    if (isUnauthenticatedRpcError(error)) throw new PortalSearchAccessError(401);
+    throw error;
+  }
   return {
-    projects: uniqueBounded(rows.map(mapProject)),
+    projects: projects.map((project) => ({ ...project, status: statuses.get(project.id) ?? null })),
     contacts: uniqueBounded(rows.map(mapContact)),
   };
 }
 
 // This intentionally avoids the general staff API auth helper's two preliminary
-// provider calls. The single SECURITY INVOKER RPC verifies portal membership and
-// performs the RLS-protected read using this request's cookie-bound access token.
+// provider calls. The SECURITY INVOKER RPC verifies portal membership and ranks
+// results; one bounded RLS read adds current status using the same cookie-bound token.
 export async function searchPortalForRequest(rawQuery: string) {
   return searchPortal(await getSupabaseServerAuth(), rawQuery);
 }

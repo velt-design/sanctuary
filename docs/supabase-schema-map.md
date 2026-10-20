@@ -382,7 +382,7 @@ Primary read path:
 - `apps/portal/lib/projects/getProjectPageSnapshot.ts`.
 - Project, contact, and estimate server/query helpers under `apps/portal/lib/projects`, `apps/portal/lib/contacts`, `apps/portal/lib/estimates`, and related app routes. Ordinary Projects/Contacts lists call their bounded index RPC through authenticated staff routes; browser components never call those RPCs directly.
 - Auth role lookup through `apps/portal/lib/portalAccess.ts` and server auth helpers.
-- Global Projects/Contacts discovery through `GET /api/staff/v1/search`, whose domain helper makes one auth-bound `portal_search_v1()` call.
+- Global Projects/Contacts discovery through `GET /api/staff/v1/search`, whose domain helper makes one auth-bound `portal_search_v1()` call, followed for project results only by one bounded authenticated Projects read embedding existing work-model and operational-state relations for at most five returned IDs. This adds current status without changing ranking, schema, grants or the RPC.
 
 Access rule:
 

@@ -99,6 +99,7 @@ function searchResponse(query = 're', projectName = 'Remuera Residence') {
       contactName: 'Alex Mason',
       stage: 'quoting',
       archived: false,
+      status: { workModel: 'v2', effectiveState: 'ACTIVE', closedOutcome: null },
     }],
     contacts: [{
       kind: 'contact',
@@ -114,6 +115,25 @@ function searchResponse(query = 're', projectName = 'Remuera Residence') {
 }
 
 describe('GlobalPortalSearch', () => {
+  it.each([
+    [{ workModel: 'v2', effectiveState: 'CLOSED', closedOutcome: 'CANCELLED' }, 'Closed · Cancelled'],
+    [{ workModel: 'v2', effectiveState: null, closedOutcome: null }, 'Status unavailable'],
+    [null, 'Status unavailable'],
+  ])('shows current status without falling back to Scheduled', async (status, label) => {
+    const response = searchResponse();
+    vi.mocked(fetch).mockResolvedValue(Response.json({
+      ...response, projects: [{ ...response.projects[0], stage: 'scheduled', status }],
+    }));
+    const rendered = renderSearch();
+    const input = rendered.container.querySelector('input')!;
+    act(() => input.focus());
+    inputText(input, 're');
+    await act(async () => { await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS); });
+    await flushQueryNotifications();
+    expect(document.querySelector('[role="option"]')?.textContent).toContain(label);
+    expect(document.querySelector('[role="option"]')?.textContent).not.toContain('Scheduled');
+    rendered.unmount();
+  });
   beforeEach(() => {
     vi.useFakeTimers();
     queryClient = new QueryClient({

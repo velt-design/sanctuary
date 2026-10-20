@@ -39,9 +39,15 @@ export function useProjectOverviewReads(host: string, routeProjectId: string, en
 const ProjectOverviewReadsContext = createContext<ReturnType<typeof useProjectOverviewReads> | null>(null);
 export const ProjectOverviewReadsProvider = ProjectOverviewReadsContext.Provider;
 
-export function useActiveProjectOverviewReads(host: string, projectId: string) {
+/** The shared masthead can reuse Overview's observer without starting another read. */
+export function useOptionalProjectOverviewReads(host: string, projectId: string) {
   const reads = useContext(ProjectOverviewReadsContext);
-  if (!reads || reads.host !== host || reads.projectId !== overviewProjectId(projectId)) {
+  return reads?.host === host && reads.projectId === overviewProjectId(projectId) ? reads : null;
+}
+
+export function useActiveProjectOverviewReads(host: string, projectId: string) {
+  const reads = useOptionalProjectOverviewReads(host, projectId);
+  if (!reads) {
     throw new Error('Overview reads must belong to the active project route');
   }
   return reads;
