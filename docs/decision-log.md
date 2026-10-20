@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-21: Stable navigation also needs stable pointer targets
+
+The agenda's URL owner preserved the latest intent, but removing project scope
+and loading calendar notices still moved the next pointer target. Keep view and
+filter controls before changing source context, and reserve count/select widths
+through pending and loaded states. Preserve visible freshness and retry below
+the controls. Verify rapid pointer transitions and actual geometry alongside
+URL, keyboard and delayed-data tests; correct state logic alone does not prove
+an interaction is calm.
+
 ## 2026-10-21: Overlap project facts after the access boundary, not around it
 
 Matched first-load traces showed selected-estimate, repair and operational reads

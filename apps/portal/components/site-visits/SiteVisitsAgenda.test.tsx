@@ -12,8 +12,12 @@ vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(useSyncE
 vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({invalidateQueries:vi.fn()})}));
 vi.mock('./useCalendarVisits',()=>({calendarVisitKey:['test-visits'],useCalendarVisits:h.read}));
 vi.mock('@/components/layout/StaffPageHeader',()=>({default:({title}:{title:string})=><h1>{title}</h1>}));
-vi.mock('@/components/ui/foundation',()=>({PageLayout:({children}:{children:ReactNode})=><main>{children}</main>,Button:({children,...props}:{children:ReactNode})=><button {...props}>{children}</button>}));
-vi.mock('./CalendarFreshness',()=>({default:()=>null}));
+vi.mock('@/components/ui/foundation',()=>({
+  PageLayout:({children}:{children:ReactNode})=><main>{children}</main>,
+  Button:({children,...props}:{children:ReactNode})=><button {...props}>{children}</button>,
+  LoadingSkeleton:({label}:{label:string})=><p>{label}</p>,
+  DataStatePanel:({title}:{title:string})=><p>{title}</p>,
+}));
 vi.mock('./VisitAgendaRow',()=>({default:({visit}:{visit:CalendarVisit})=><article>{visit.subject}</article>}));
 let mounted:ReturnType<typeof renderIntoDocument>|undefined;
 const base:CalendarVisit={id:'first',revision:1,sourceKey:'synthetic',subject:'Courtyard next day',startsAt:'2026-10-21T00:00:00Z',endsAt:'2026-10-21T01:00:00Z',isAllDay:false,allDayStartDate:null,allDayEndDate:null,sourceUrl:null,address:'12 Example Road',staff:[{email:'morgan@example.test',name:'Morgan'}],assignmentHint:null,kind:'visit',sourceKind:'visit',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:'project',projectName:'Courtyard',contactName:null,phone:null,linkMode:'auto',kindOverride:null};
@@ -40,6 +44,45 @@ beforeEach(()=>{
 });
 afterEach(()=>{mounted?.unmount();mounted=undefined;vi.restoreAllMocks();vi.useRealTimers();replace(null,'','/');});
 describe('Site visit URL and return state',()=>{
+  it('keeps controls before changing source/scope content through delayed data, errors and scope clearing',()=>{
+    replace(null,'','/staff/site-visits?project=project&view=history');
+    const saved=h.read();const refetch=vi.fn();
+    h.read.mockReturnValue({data:undefined,isPending:true,denied:false,isError:false,refetch});
+    mounted=renderIntoDocument(<SiteVisitsAgenda/>);
+    const group=mounted.container.querySelector('[aria-label="Show visits"]')!;
+    const review=Array.from(group.querySelectorAll('button')).find(b=>b.textContent?.startsWith('Needs review'))!;
+    const count=review.querySelector('span')!,attending=mounted.container.querySelector('select')!,search=mounted.container.querySelector('input')!;
+    const context=mounted.container.querySelector('[aria-label="Calendar source and scope"]')!;
+    const before=(left:Node,right:Node)=>expect(left.compareDocumentPosition(right)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    before(group,context);before(attending,context);before(search,context);
+    expect(count.getAttribute('data-pending')).toBe('true');
+    expect(mounted.container.textContent).toContain('Loading site visits');
+    act(()=>mounted!.container.querySelector<HTMLAnchorElement>('a')!.click());
+    act(()=>review.click());
+    expect(new URL(window.location.href).searchParams.get('view')).toBe('review');
+    expect(new URL(window.location.href).searchParams.has('project')).toBe(false);
+    expect(review.getAttribute('aria-pressed')).toBe('true');
+    h.read.mockReturnValue({...saved,isPending:false,isError:true,refetch});mounted.rerender(<SiteVisitsAgenda/>);
+    expect(mounted.container.querySelector('[aria-label="Show visits"]')).toBe(group);
+    expect(mounted.container.querySelector('select')).toBe(attending);expect(mounted.container.querySelector('input')).toBe(search);
+    expect(review.querySelector('span')).toBe(count);expect(count.hasAttribute('data-pending')).toBe(false);
+    expect(context.textContent).toContain('Latest Portal read failed. Showing saved data.');
+    before(search,button('Retry loading saved visits'));act(()=>button('Retry loading saved visits').click());expect(refetch).toHaveBeenCalledOnce();
+    expect(review.getAttribute('aria-pressed')).toBe('true');
+  });
+  it('retains one count slot for zero, larger counts and loading without changing later button identity',()=>{
+    mounted=renderIntoDocument(<SiteVisitsAgenda/>);
+    const review=Array.from(mounted.container.querySelectorAll('button')).find(b=>b.textContent?.startsWith('Needs review'))!;
+    const count=review.querySelector('span')!,history=button('History'),changes=button('Changes');
+    expect(count.textContent).toBe('0');
+    const saved=h.read();
+    h.read.mockReturnValue({...saved,data:{...saved.data,events:Array.from({length:1000},(_,i)=>({...base,id:`review-${i}`,kind:'review',sourceKind:'review'}))}});mounted.rerender(<SiteVisitsAgenda/>);
+    expect(review.querySelector('span')).toBe(count);expect(count.textContent).toBe('999+');expect(review.getAttribute('aria-label')).toBe('Needs review, 1000 entries');
+    expect(button('History')).toBe(history);expect(button('Changes')).toBe(changes);
+    h.read.mockReturnValue({data:undefined,isPending:true,denied:false,isError:false});mounted.rerender(<SiteVisitsAgenda/>);
+    expect(review.querySelector('span')).toBe(count);expect(count.getAttribute('data-pending')).toBe('true');
+    expect(button('History')).toBe(history);expect(button('Changes')).toBe(changes);
+  });
   it('changes scope immediately so a rapid next view cannot restore the previous project',async()=>{
     replace({__NA:true,tree:['existing-router-state']},'','/staff/site-visits?project=project&view=upcoming&q=Courtyard');
     mounted=renderIntoDocument(<SiteVisitsAgenda/>);

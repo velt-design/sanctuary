@@ -3,13 +3,19 @@
 Schedule V2 owns install planning. The Outlook site-visit agenda is a separate
 source-backed workflow at `/staff/site-visits`, available under Schedule navigation.
 
-The 21 October local/preview navigation candidate makes agenda scope and filters
+The released 21 October navigation change makes agenda scope and filters
 share `siteVisitNavigation.ts`. Plain "Show all visits"
 navigation clears only project scope through native history, preserving the
 selected view/search/person and avoiding a late server transition that can
 overwrite a newer click. Back restores the scoped URL; modified clicks retain
 normal link behavior. `navRouteMatch.ts` keeps Schedule active in both sidebar
 sizes, with Site Visits selected only on the agenda route.
+The subsequent first-load candidate keeps these controls above changing scope,
+freshness, retry and refresh-result content. A reserved review-count slot and
+bounded attending-select width prevent data arrival from moving later targets;
+counts above 999 display 999+ with the full count in the button's accessible name.
+Source/scope information stays visible immediately below the controls. This is
+layout stability, not delayed interaction or a change to URL/read semantics.
 The Outlook integration and reviewed corrections were qualified and released on
 20 October, including the 15-minute source update. The qualification steps below
 remain the activation/recovery contract, not unfinished initial setup.
