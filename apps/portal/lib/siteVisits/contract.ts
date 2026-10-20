@@ -1,14 +1,17 @@
 import { z } from 'zod';
+import type { VisitCorrection,VisitDetails,VisitPerson } from './correctionContract';
 
 const visitKind = z.enum(['visit', 'provisional', 'review', 'excluded']);
 export type VisitKind = z.infer<typeof visitKind>;
 export type CalendarVisit = {
-  id: string; revision: number; sourceKey: string; subject: string; startsAt: string; endsAt: string;
+  id: string; revision: number; sourceKey: string; subject: string; startsAt: string|null; endsAt: string|null;
   isAllDay: boolean; allDayStartDate: string|null; allDayEndDate: string|null;
-  sourceUrl: string | null; address: string | null; staff: Array<{ name: string; email: string }>;
+  sourceUrl: string | null; address: string | null; staff: VisitPerson[];
   assignmentHint: string | null; kind: VisitKind; sourceKind: VisitKind; cancelled: boolean; removed: boolean;
   duplicate: boolean; reviewReasons: string[]; projectId: string | null; projectName: string | null;
   contactName: string | null; phone: string | null; linkMode: 'auto' | 'manual'; kindOverride:VisitKind|null;
+  origin?:'outlook'|'history'; correction?:VisitCorrection|null; purpose?:VisitDetails['purpose']; status?:VisitDetails['status'];
+  timing?:VisitDetails['timing']; withdrawn?:boolean; source?:Omit<CalendarVisit,'source'>;
 };
 export type VisitSnapshot = {
   enabled: boolean; lastSuccess: string | null; lastAttempt: string | null; error: string | null;

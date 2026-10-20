@@ -11,7 +11,7 @@ surface; imported Outlook visits never enter its booking/confirmation commands.
 Ellen books in the shared Outlook calendar. `lib/siteVisits` owns the bounded
 Graph reader, normalization and mirror publication; `components/site-visits`
 owns the agenda, project summary and dashboard slice. Staff see Today, This week,
-Upcoming, Needs review and Changes, with attending-person and text filters. Views
+Upcoming, Needs review, History and Changes, with attending-person and text filters. Views
 and filters live in the URL for project/agenda return. All times use
 `Pacific/Auckland`; provisional bookings are counted separately, and duplicate or
 uncertain entries stay out of the scheduled count. Cancelled, removed and manually
@@ -70,16 +70,62 @@ leading street/unit number; other addresses remain available for a manual link.
 Staff can choose a project, leave
 a visit unlinked, restore automatic matching, or classify a candidate. These local
 choices have optimistic revision checks and an append-only review trail and survive
-later source updates. Dates and attending staff stay in Outlook. Review drafts
+later source updates. Outlook retains its original booking. Staff can separately
+correct attending staff, address, visit purpose, booking status and known timing
+in the Portal, with a basis and specific outstanding questions. Review drafts
 survive source revisions and require acknowledgement before saving against the
 new revision. Linked contact phone numbers are visible without editing details.
 
-Project Overview composes the extracted `ProjectNextVisit` read component;
+`correctionContract` owns the strict commands, `reviewedVisit` applies saved facts
+at the authenticated API boundary, and `calendarModel` drives every consumer's
+effective dates, filters and counts. `VisitDetailsEditor` composes the common
+fields, project link and secondary source comparison. Agreed appointment times,
+access windows and intentionally unknown historical dates remain distinct. A past
+booking never becomes recorded attendance merely because its time has passed.
+Material source conflicts reopen a specific review warning and withhold the entry
+from upcoming summaries until reconciled; metadata changes, equivalent formatting
+and Outlook catching up to the verified value do not reopen settled questions.
+Source restoration, revision conflicts and failed saves preserve recovery paths.
+`useVisitSave` owns the editor's bounded command and recovery state. POST waits
+stop after 20 seconds; aborting that wait does not prove the server rolled back.
+The draft and historical record UUID remain stable, Cancel becomes available,
+and another write requires a successful fresh read plus explicit revision
+acknowledgement. Global and project reads reconcile project moves and retained
+history. An absent historical create retries only its original UUID/revision0;
+the database's idempotency/revision fence also covers a later first commit.
+A confirmed save followed by a failed, separately bounded refresh is labelled
+saved, not failed or unknown. Late responses never silently close or rebase a
+retained draft. No automatic command retry or shared API-client policy changes.
+
+Private `site_visit_staff_identities` binds verified recognized Outlook addresses
+to the existing roster keys for the configured source binding. Operators seed only
+corroborated allowlisted staff identities; customer names and guessed addresses
+never establish a mapping. Forward005 enriches saved projections without editing
+the original payload, so imported full names and manual short names share one
+chooser/filter identity. Source catch-up compares these identities rather than
+display labels. Unmapped addresses remain distinct, and the mapping has no staff
+or service-role write surface. Canonical labels come from the existing roster;
+source comparison preserves Outlook's supplied name.
+
+`ProjectVisitHistory` keeps past linked bookings and separately recorded historical
+visits accessible, including on closed projects. Recording an original visit does
+not reattribute a later measurement booking. Historical records support edits and
+audited withdrawal/restoration, with no fabricated date or staff invitation.
+Unknown historical dates do not create a review question; a future date-only
+booking still needs its time resolved. Missing address/staff and explicitly
+unanswered questions remain actionable. No blanket review dismissal exists.
+
+Project Overview composes `ProjectNextVisit` and its extracted history/editor;
 Dashboard composes `TodayVisits`. Neither rewrites command-centre domain facts.
 The existing specialist action now opens the project-filtered Outlook agenda.
 Separate legacy Portal bookings, manual completion facts, customer notification,
 analytics and stage transitions keep their existing owners. An Outlook calendar
 entry creates none of those facts.
+
+Forward migration `20261020010004_site_visit_corrections.sql` is additive to the
+enabled mirror. It preserves the original source projection and importer contract,
+stores corrections/history separately and audits their revisions. Schema rollout
+precedes the new code and must retain existing enabled control and saved reviews.
 
 Activation requires the migration, disabled-control binding, exact Microsoft
 grant and production federation, then a real-source first-read qualification.

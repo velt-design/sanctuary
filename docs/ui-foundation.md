@@ -16,11 +16,34 @@ views at the exclusive Auckland end date; timed visits retain clock labels.
 Ambiguous/provisional/duplicate entries and missing project links have a review
 view, with cancellation/removal/exclusion recovery in Changes. Inline review
 keeps selection during search and preserves drafts on source revision; the revision
-must be acknowledged before resubmission. Pending saves lock the form and its exit.
+must be acknowledged before resubmission. Pending saves lock the form and its exit
+for at most 20 seconds per command/read. A timeout releases Cancel and preserves
+the draft, with an honest unknown-outcome notice and a fresh-read/revision
+acknowledgement before another write. A confirmed save with a failed refresh is
+labelled saved. Historical retry keeps the original record ID.
 Freshness, stale/error and read retry stay near the agenda rather than relying on
 a successful-looking empty list. New source queries and editing state are extracted
 from the existing Dashboard and Overview hotspots. Source/security ownership is
 in `schedule.md`; this does not authorize a shared-theme or install-board redesign.
+
+The correction editor keeps attending staff, address, type/status and known timing
+up front. Its basis and specific remaining questions stay visible, with original
+Outlook details and project-link controls secondary. Reviewed facts drive agenda,
+project and dashboard consistently; source conflicts remain visible. Project visit
+history includes original visits with intentionally unknown dates and separate
+return measurements, with audited edit/withdraw/restore actions. Source bookings
+never silently acquire an attendance outcome. Native date/time inputs retain the
+browser's calendar and keyboard behavior.
+Recognized full Outlook names and manual roster names use one configured identity
+and canonical roster label in the chooser, filter and visit summaries. Legacy
+email-filter URLs resolve to that same identity without losing project/return
+context. The original Outlook display name remains in source comparison.
+
+`ProjectRecentNotesEvents.module.css` owns the notes/history composition. Columns
+split only when the card itself has 680 px of space, rather than using viewport
+width to infer sidebar capacity. Narrow cards stack notes above system events;
+text, metadata and actions wrap within their column. This is local layout repair,
+not a shared timeline or theme change.
 
 ## Search and commercial continuity (16 October 2026 candidate)
 

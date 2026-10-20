@@ -19,6 +19,25 @@ source payload's all-day flag and exclusive date range in the existing private
 JSON projection. Legacy payloads default to timed until a complete refresh.
 Tables, grants, review choices and the sync command remain unchanged.
 
+Forward `20261020010004_site_visit_corrections.sql` adds private `site_visit_details`
+and append-only `site_visit_detail_history`. Staff-only `site_visit_correct` and
+`site_visit_history_save` own corrections, historical records and reversible
+withdrawal. Row revisions protect concurrent edits; original source JSON remains
+separate. Field-aware freshness ignores metadata/no-op changes and source values
+catching up to reviewed facts, but flags conflicting time, staff, address and
+cancellation changes. The read projection includes retained project history and
+manual records without imposing a source timestamp on unknown historical dates.
+Existing enabled control, sync publication and business-domain tables are preserved.
+Direct table/helper access remains revoked and RLS enabled.
+
+Forward `20261020010005_site_visit_staff_identity.sql` adds private
+`site_visit_staff_identities(source_binding,email,staff_id)`, with RLS and all
+public/anon/authenticated/service-role access revoked. Root-controlled verified
+configuration is scoped to the exact existing source binding. Projection wrappers
+add canonical identity keys to source and correction staff while preserving raw
+payloads and stored details. The private equality helper compares mapped identities
+for freshness, never names. No provider, sync, review, lifecycle or data reset occurs.
+
 ## Facebook channel-path intake contract (20 October 2026)
 
 Forward `20261020000001_marketing_facebook_channel_optional_phone.sql` retains

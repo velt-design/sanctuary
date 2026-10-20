@@ -2,6 +2,15 @@
 
 ## Outlook calendar source
 
+Forward005's private `site_visit_staff_identities` is operator-managed identity
+configuration for the existing calendar binding, not a Microsoft access grant.
+Seed only exact emails already in the recognized staff allowlist and independently
+corroborated with the existing roster key. Keep real mapping evidence private;
+synthetic staging mapping is separate. Bind each row to the current control hash,
+preserve existing source/correction/audit rows, and verify projected IDs plus
+same-person catch-up before release. No browser or service-role mapping write is
+granted. Changing the calendar binding does not carry identities into another source.
+
 The 20 October site-visit candidate uses a dedicated single-tenant Microsoft app
 with Exchange mailbox-scoped `Application Calendars.Read`. Do not add a tenant-wide
 Entra calendar grant alongside Exchange RBAC: their permissions are additive.

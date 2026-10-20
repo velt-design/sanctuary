@@ -32,6 +32,13 @@ beforeEach(()=>{
 });
 afterEach(()=>{mounted?.unmount();mounted=undefined;vi.restoreAllMocks();vi.useRealTimers();replace(null,'','/');});
 describe('Site visit URL and return state',()=>{
+  it('shows one attending filter for mapped Outlook and manual versions of the same staff member',()=>{
+    h.read.mockReturnValue({data:{enabled:false,lastSuccess:'2026-10-20T00:00:00Z',events:[{...base,staff:[{name:'Jordan Synthetic Fullname',email:'original-rep@example.test',staffId:'jordan'}]},{...base,id:'manual',staff:[{name:'Jordan',email:'',staffId:'jordan'}]}]},denied:false,isError:false});
+    replace(null,'','/staff/site-visits?view=week&person=original-rep%40example.test');mounted=renderIntoDocument(<SiteVisitsAgenda/>);
+    expect(Array.from(mounted.container.querySelectorAll('option')).filter(o=>o.value==='staff:jordan').map(o=>o.textContent)).toEqual(['Jordan']);
+    expect(mounted.container.querySelector('select')!.value).toBe('staff:jordan');expect(mounted.container.querySelectorAll('article')).toHaveLength(2);
+    change(mounted.container.querySelector('select')!,'staff:jordan');expect(mounted.container.querySelectorAll('article')).toHaveLength(2);
+  });
   it('reevaluates the all-day boundary on a poll render even when saved data is unchanged',()=>{
     h.read.mockReturnValue({data:{enabled:false,lastSuccess:'2026-10-20T00:00:00Z',events:[{...base,isAllDay:true,allDayStartDate:'2026-10-20',allDayEndDate:'2026-10-21',startsAt:'2026-10-19T11:00:00Z',endsAt:'2026-10-20T11:00:00Z'}]},denied:false,isError:false});
     vi.setSystemTime(new Date('2026-10-20T10:59:59Z'));mounted=renderIntoDocument(<SiteVisitsAgenda/>);expect(mounted.container.querySelectorAll('article')).toHaveLength(1);

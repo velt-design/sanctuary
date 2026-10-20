@@ -8,6 +8,14 @@ opens `/staff/site-visits?project=...&view=upcoming`. Calendar appointments do n
 change command-centre completion, customer notification or stage facts. The
 existing manual completion owner remains independent. See `schedule.md`.
 
+The extracted `ProjectVisitHistory` now composes retained bookings and separately
+recorded historical visits, including closed projects and intentionally unknown
+dates. `VisitDetailsEditor` owns corrections and reversible historical withdrawal;
+`reviewedVisit` supplies effective details to the project, agenda and dashboard.
+These records never reopen projects or write lifecycle/completion/owner facts.
+The notes/system-events card uses its own container width to stack safely inside
+the project sidebar; the existing note actions and system-event owner remain intact.
+
 The 16 October Portal candidate keeps contact details at the top of Overview.
 Entering contact edit focuses its first field; Done or Reset restores the Edit
 details trigger without scrolling. The existing draft/autosave owner remains

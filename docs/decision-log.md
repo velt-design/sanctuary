@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-10-20: Correct known visit facts without fabricating attendance
+
+An imported booking is evidence of scheduling, not attendance. Keep reviewed facts
+and historical attendance separate from the source, with provenance, revision
+checks and reversible actions. Unknown historical dates are valid facts; an
+unresolved future booking time remains a real question. Compare later source
+changes by field so metadata and matching updates do not recreate false warnings,
+while conflicting facts require reconciliation. Never reattribute a later return
+measurement as the original visit. Narrow sidebar layouts must respond to their
+container width, not the full viewport. See `schedule.md` and `ui-foundation.md`.
+
+Independent delivery review exposed that matching a staff short name to an Outlook
+full name by display text splits filters and reopens settled questions. Use one
+explicit, source-bound identity map to the existing roster for presentation and
+source comparison; preserve the original name and never infer identities from
+customer names or email spelling. Cover both filtering and actual SQL catch-up.
+
+The independent staged journey also encountered a request that took more than
+two minutes to fail, trapping the form's Cancel action. Bound this editor's POST
+and refresh waits separately, preserve the draft and client record ID, and treat
+an interrupted wait as an unknown outcome until a fresh read is acknowledged.
+A successful command followed by refresh failure remains a known save. Cover
+late completion, failed reconciliation, and the original-ID create retry fence;
+do not broaden this local correction into a shared-client retry policy.
+
 ## 2026-10-20: Imported bookings preserve source and local decision boundaries
 
 The Outlook visit mirror publishes only complete source reads and preserves local
