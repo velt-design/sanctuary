@@ -1,5 +1,24 @@
 # Supabase Schema Map
 
+Outlook site visits: `20261020010001_outlook_site_visits.sql` owns private
+`outlook_calendar_control`, `outlook_calendar_visits` and append-only
+`outlook_calendar_reviews`. Control installs disabled and requires the exact
+source configuration hash. The sole service-role sync RPC claims a bounded lease,
+publishes a complete normalized snapshot with absence reconciliation, or records
+a safe failure while retaining last success. Staff read/search/review RPCs use the
+authenticated client and recheck current confirmed staff/admin membership.
+Direct tables and private helper functions are revoked from public, anon,
+authenticated and service_role. No legacy `site_visits`, project stage, completion,
+customer-send or conversion table is mutated. See `schedule.md` for field/link
+ownership and `environment-auth-supabase.md` for the default-off activation contract.
+Forward migration `20261020010002_outlook_site_visits_address_match.sql` requires
+a source street/unit number before automatic linking, so matching suburb or
+provisional labels cannot masquerade as exact-street corroboration.
+Forward migration `20261020010003_outlook_site_visits_all_day.sql` exposes the
+source payload's all-day flag and exclusive date range in the existing private
+JSON projection. Legacy payloads default to timed until a complete refresh.
+Tables, grants, review choices and the sync command remain unchanged.
+
 ## Facebook channel-path intake contract (20 October 2026)
 
 Forward `20261020000001_marketing_facebook_channel_optional_phone.sql` retains

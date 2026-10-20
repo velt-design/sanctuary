@@ -1,5 +1,40 @@
 # Environment, Auth, And Supabase
 
+## Outlook calendar source
+
+The 20 October site-visit candidate uses a dedicated single-tenant Microsoft app
+with Exchange mailbox-scoped `Application Calendars.Read`. Do not add a tenant-wide
+Entra calendar grant alongside Exchange RBAC: their permissions are additive.
+Do not reuse Velt's mail-only credentials or interactive chat-connector tokens.
+Production uses the exact Portal Vercel OIDC issuer/audience/production subject
+federation. The request's platform-issued `x-vercel-oidc-token` is exchanged at the
+pinned tenant token endpoint for `https://graph.microsoft.com/.default` using
+`client_credentials` and a JWT bearer assertion. No client secret, refresh token
+or provider token is persisted or logged. Previews/development have no production
+trust and must use synthetic mirrored records for integration checks.
+
+Server-only configuration: `SANCTUARY_OUTLOOK_ENABLED=true`,
+`SANCTUARY_OUTLOOK_TENANT_ID`, `SANCTUARY_OUTLOOK_CLIENT_ID`,
+`SANCTUARY_OUTLOOK_MAILBOX_ID` (verified mailbox GUID),
+`SANCTUARY_OUTLOOK_MAILBOX` (verified address), `SANCTUARY_OUTLOOK_CALENDAR_ID`,
+and `SANCTUARY_OUTLOOK_STAFF_EMAILS` (comma-separated exact invitation addresses).
+`SANCTUARY_OUTLOOK_PORTAL_ORIGIN` is the exact canonical origin used for staff
+mutation CSRF checks. It is independent of provider enablement, so protected
+synthetic staging can review records without provider credentials. HTTPS is
+required except explicit localhost/127.0.0.1 development origins. Cron uses the
+existing `CRON_SECRET`, minimum 32 characters.
+
+The private control installs disabled. Its SHA-256 binding is over `JSON.stringify`
+of ordered fields `{tenantId,clientId,mailboxId,mailbox,calendarId,staffEmails}`;
+mailbox is lowercase and staff emails are distinct, lowercase and sorted. Setup
+pins this exact hash before activation. Changing mailbox/calendar/staff config
+requires deliberate control rebinding, not a caller-supplied source. Every sync
+command rechecks enabled state and binding. Run lease, bounded paging and atomic
+publication are described in `schedule.md`. Deployment does not establish a
+successful connection: qualify the real granted source before calling sync live.
+To stop pulls, disable the source environment flag; to withhold staff data also
+disable the database control. Keep the last good mirror for investigated recovery.
+
 Meta offline sales candidate (14 October): the existing Meta reporting credential
 retains its ads_read-only boundary. Event delivery requires a separately bound
 dataset token and `SANCTUARY_META_SALES_ENABLED` (default off),

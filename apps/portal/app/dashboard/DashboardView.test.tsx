@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import DashboardView from './DashboardView';
 import type { DashboardData } from '@/lib/dashboard/types';
 
+vi.mock('@/components/site-visits/TodayVisits', () => ({default:()=> <section>Today’s site visits</section>}));
+
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));

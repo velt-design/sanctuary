@@ -92,6 +92,9 @@ function isApprovedServerFlow(file) {
   if (file.startsWith('apps/portal/app/api/admin/')) return true;
   if (file.startsWith('apps/portal/lib/automation/')) return true;
   if (file === 'apps/portal/lib/backgroundJobs/providerWebhookRepository.ts') return true;
+  // Calendar cron has no staff session. One RPC enforces the enabled source binding,
+  // lease and atomic snapshot publication; no direct table or legacy booking writes.
+  if (file === 'apps/portal/lib/siteVisits/syncCalendar.ts') return true;
   // Delegated bearer grants cannot use staff cookies. This server-only adapter
   // calls scoped grant RPCs (which recheck authority) and the existing lost-
   // conversion owner; see docs/staff-api-auth-contracts.md. No general DB access.

@@ -1,5 +1,27 @@
 # Staff Portal UI System
 
+## Outlook site-visit agenda (20 October 2026 candidate)
+
+`components/site-visits` composes the existing Portal Foundation and cream/ink/
+orange tokens. Day groups prioritize time, customer/place, attending staff and
+address; linked contact phone is visible. Filters and project return are URL-owned.
+The agenda reads current Next search parameters directly, including project scope;
+native history replacement updates typing without adding entries. Cached route
+props are not copied into independent filter state. Regression coverage includes
+project round trips, Back/Forward, rapid typing and clearing without losing scope.
+All-day and provisional source entries use an All day label with their actual
+calendar date range in agenda/project detail and an All day dashboard marker.
+Multi-day entries remain visible during the covered dates and leave upcoming
+views at the exclusive Auckland end date; timed visits retain clock labels.
+Ambiguous/provisional/duplicate entries and missing project links have a review
+view, with cancellation/removal/exclusion recovery in Changes. Inline review
+keeps selection during search and preserves drafts on source revision; the revision
+must be acknowledged before resubmission. Pending saves lock the form and its exit.
+Freshness, stale/error and read retry stay near the agenda rather than relying on
+a successful-looking empty list. New source queries and editing state are extracted
+from the existing Dashboard and Overview hotspots. Source/security ownership is
+in `schedule.md`; this does not authorize a shared-theme or install-board redesign.
+
 ## Search and commercial continuity (16 October 2026 candidate)
 
 `GlobalPortalSearch.client` only exposes selectable results whose normalized response

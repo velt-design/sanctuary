@@ -6,6 +6,8 @@ import { ApiError } from "@/lib/repo/apiClient";
 const useQueryMock = vi.fn();
 const invalidateQueriesMock = vi.fn();
 
+vi.mock('@/components/site-visits/ProjectNextVisit', () => ({default:({projectId}:{projectId:string})=><section data-next-visit-project={projectId}>Next site visit</section>}));
+
 vi.mock("@tanstack/react-query", () => ({
   queryOptions: (options: unknown) => options,
   useQuery: (...args: unknown[]) => useQueryMock(...args),

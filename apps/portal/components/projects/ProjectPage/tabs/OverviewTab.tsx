@@ -1,6 +1,7 @@
 "use client";
 
 import ProjectCommercialDetails from './overview/ProjectCommercialDetails';
+import ProjectNextVisit from '@/components/site-visits/ProjectNextVisit';
 
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -394,6 +395,7 @@ export default function OverviewTab({
                 commandQuery.data?.generatedAt,
               )}
             />
+            {accessEndingStatus === null && <ProjectNextVisit projectId={snapshot.project.id} host={host} onAccessEnding={onAccessEnding} />}
           </Suspense>
         }
         exception={exception}

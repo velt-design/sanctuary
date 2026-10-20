@@ -235,8 +235,8 @@ describe('composeProjectWorkQueue', () => {
       reason: 'The project is at Site Visit and no completion is recorded.',
       owner: 'Operations',
       expectedResult: 'The visit is completed and recorded before quoting.',
-      href: `/staff/schedule?view=site-visits&project=${PROJECT_ID}`,
-      actionLabel: 'Book or confirm site visit',
+      href: `/staff/site-visits?project=${PROJECT_ID}&view=upcoming`,
+      actionLabel: 'View site visits',
     };
 
     const result = composeProjectWorkQueue({
@@ -249,8 +249,8 @@ describe('composeProjectWorkQueue', () => {
       actionKind: 'specialist',
       title: 'Complete the site visit',
       sourceKey: `journey-site-visit:complete:${PROJECT_ID}`,
-      actionLabel: 'Book or confirm site visit',
-      href: `/staff/schedule?view=site-visits&project=${PROJECT_ID}`,
+      actionLabel: 'View site visits',
+      href: `/staff/site-visits?project=${PROJECT_ID}&view=upcoming`,
     });
   });
 
