@@ -18,3 +18,11 @@ it('turning roof battens off omits the option but retains dormant raw input safe
  await act(async()=>{(host.querySelector('input[type=checkbox]') as HTMLInputElement).click();});
  expect(next).toBeDefined();expect(Object.hasOwn(next!.selection.roof,'roofBattens')).toBe(false);expect(next!.rawGaps).toEqual({roof:'bad'});expect(parseStudioWebsiteDesign(next,'p1').ok).toBe(true);await act(async()=>root.unmount());
 });
+
+it('labels house support as intent while retaining every support choice and strict intent transition',async()=>{
+ const value=newStudioWebsiteDesign('intent-proof');value.selection.roof.attachmentIntent='freestanding';let next:StudioWebsiteDesign|undefined;
+ const host=document.createElement('div'),root=createRoot(host);await act(async()=>root.render(<Shape value={value} onChange={v=>{next=v;}} onConnection={()=>{}}/>));
+ expect(host.textContent).toContain('Support intent');expect(host.textContent).toContain('House supported');expect(host.textContent).toContain('Freestanding');expect(host.textContent).toContain('Not sure');
+ await act(async()=>Array.from(host.querySelectorAll('button')).find(b=>b.textContent==='House supported')!.click());
+ expect(Object.hasOwn(next!.selection.roof,'attachmentIntent')).toBe(false);expect(parseStudioWebsiteDesign(next,'intent-proof').ok).toBe(true);expect(next!.selection.input.connection).toBe(value.selection.input.connection);await act(async()=>root.unmount());
+});

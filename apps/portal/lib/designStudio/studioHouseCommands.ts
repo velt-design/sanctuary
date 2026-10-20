@@ -10,9 +10,11 @@ import {studioWebsiteBrackets} from './studioHouseWebsiteBrackets';
 import {studioHouseScene,type StudioHouseScene,type StudioHouseAttachment,type HouseReference,type StudioHouse} from './studioHouseScene';
 import {studioHouseTargets,houseNumber,solveStudioHouse} from './studioHouseGeometry';
 import type {StudioJsonObject} from './contracts';
+import {StudioConnectionError,type StudioConnectionMeasurements} from './studioConnectionDiagnostics';
 
 export function resolveStudioAttachment(scene:StudioHouseScene,binding:StudioHouseAttachment,value:StudioWebsiteDesign){
-  const fail=(error:string)=>({error,position:null as HouseReference['position']|null,geometryOptions:undefined as {supportDatumMm:number}|undefined,attachmentHeightMm:null as number|null,target:null as ReturnType<typeof studioHouseTargets>[number]|null,reference:binding.reference});
+  let measurements:StudioConnectionMeasurements|null=null;
+  const fail=(error:string)=>({error,measurements,position:null as HouseReference['position']|null,geometryOptions:undefined as {supportDatumMm:number}|undefined,attachmentHeightMm:null as number|null,target:null as ReturnType<typeof studioHouseTargets>[number]|null,reference:binding.reference});
   try{
     const h=scene.houses.find(h=>h.id===binding.houseId);if(!h)return fail('The attached house is missing. Change the connection or detach using the retained reference.');
     let target=(binding.method==='soffit')?websiteSoffitTarget(h,binding.edge):studioHouseTargets(h,binding.method).find(t=>t.side===binding.edge&&t.kind===binding.kind);
@@ -22,10 +24,11 @@ export function resolveStudioAttachment(scene:StudioHouseScene,binding:StudioHou
     const assembly=solvePergolaPreview(d.input,d.roof).geometry?.assembly;if(!assembly)return fail('This pergola cannot use the selected connection.');
     const demo=binding.contactBasis==='canonical-house.v1'?demoContact(h,binding.edge,d,target):null;if(demo)target=demo.target;const edge=demo?.edge??websiteConnectionEdge(assembly,binding.method==='soffit'?'top':'underside'),length=Math.hypot(edge.end.x-edge.start.x,edge.end.y-edge.start.y);
     let {start,end}=target;
+    measurements={targetAttachmentHeightMm:target.heightMm,availableSpanMm:Math.hypot(end.x-start.x,end.y-start.y),requiredSpanMm:length,authoredWidthMm:d.input.widthMm,alongEdgeMm:binding.alongEdgeMm??0,target:{start:{x:start.x,y:start.y},end:{x:end.x,y:end.y}}};
     if(Math.hypot(end.x-start.x,end.y-start.y)+1e-6<length)return fail('The house edge is shorter than this pergola. Choose another edge or resize the house.');
     const dx=end.x-start.x,dy=end.y-start.y;if(-dy*(target.centre.x-(start.x+end.x)/2)+dx*(target.centre.y-(start.y+end.y)/2)>0)[start,end]=[end,start];
     const a=Math.atan2(end.y-start.y,end.x-start.x)-Math.atan2(edge.end.y-edge.start.y,edge.end.x-edge.start.x),c=Math.cos(a),s=Math.sin(a);
-    const supportedDatum=(datum:number)=>{try{return previewSupportDatum({supportDatumMm:datum});}catch{throw Error(`This ${binding.method==='facade'?'wall':'roof edge'} places the pergola support at ${Math.round(datum)} mm. The current product supports 2000–5000 mm. Check the actual house height or choose another connection.`);}};
+    const supportedDatum=(datum:number)=>{if(measurements)measurements.supportDatumMm=datum;try{return previewSupportDatum({supportDatumMm:datum});}catch{throw Error(`This ${binding.method==='facade'?'wall':'roof edge'} places the pergola support at ${Math.round(datum)} mm. The current product supports 2000–5000 mm. Check the actual house height or choose another connection.`);}};
     let supportDatumMm=supportedDatum(2400+target.heightMm-edge.start.z);
     const targetLength=Math.hypot(end.x-start.x,end.y-start.y),along=binding.alongEdgeMm??0;
     if(!Number.isFinite(along)||along<0||along>targetLength-length+1e-6||along!==0&&binding.contactBasis!=='canonical-house.v1')return fail('This placement extends beyond the selected house edge.');
@@ -35,7 +38,7 @@ export function resolveStudioAttachment(scene:StudioHouseScene,binding:StudioHou
       if(!resolvedAssembly)return fail('The connected product cannot be resolved.');
       studioWebsiteBrackets(h,binding.edge,resolvedAssembly,position,d.input.widthMm);
     }
-    return {error:null,position,geometryOptions:{supportDatumMm},attachmentHeightMm:target.heightMm,target,reference:binding.reference};
+    return {error:null,measurements,position,geometryOptions:{supportDatumMm},attachmentHeightMm:target.heightMm,target,reference:binding.reference};
   }catch(e){return fail(e instanceof Error?e.message:'The house connection is unavailable.');}
 }
 function valueFor(edit:StudioAuthoringEdit,id:string){const row=edit.objectOptions.find(r=>r.objectId===id);const parsed=parseStudioWebsiteDesign(row?.values.websiteDesign,id);if(!row||!parsed.ok)throw Error('Select a current website pergola.');return {row,value:parsed.value};}
@@ -89,7 +92,7 @@ export function previewStudioAttachment(edit:StudioAuthoringEdit,choice:Omit<Stu
   choice={...choice,contactBasis:'canonical-house.v1'};
   const {scene,value}=studioAttachmentIntent(edit,choice);
   const binding={...choice,reference:{position:{x:0,y:0,rotation:0},supportDatumMm:2400}},r=resolveStudioAttachment(scene,binding,value);
-  if(r.error||!r.position||!r.geometryOptions)throw Error(r.error??'This connection cannot be resolved.');
+  if(r.error||!r.position||!r.geometryOptions)throw new StudioConnectionError(r.error??'This connection cannot be resolved.',r.measurements);
   return applyResolvedStudioAttachment(edit,choice,{position:r.position,supportDatumMm:r.geometryOptions.supportDatumMm});
 }
 export function detachStudioPergola(edit:StudioAuthoringEdit,objectId:string,useReference=false){

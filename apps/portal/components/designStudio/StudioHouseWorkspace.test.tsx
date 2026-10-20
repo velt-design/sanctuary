@@ -1,3 +1,6 @@
+import {DEFAULT_ROOF_FINISH} from '@sp/geometry';
+import {studioHouseContextKey} from './studioHouseContext';
+import {changeStudioProduct} from '@/lib/designStudio/studioHouseCommands';
 import {act} from 'react';
 import {expect,it,vi} from 'vitest';
 import {renderIntoDocument} from '../../../../test/reactHarness';
@@ -12,7 +15,7 @@ const observed=vi.hoisted(()=>({scene:null as any,direct:null as any}));
 vi.mock('next/dynamic',()=>({default:()=> (props:any)=>{observed.scene=props;return <div/>;}}));
 vi.mock('@sp/configurator/react/controls',()=>({LightingProvider:({children}:any)=>children,PreviewBlindProvider:({children}:any)=>children}));
 vi.mock('./StudioHouseProductNavigation',()=>({default:()=>null}));
-vi.mock('./StudioWebsiteControls',()=>({default:()=>null}));
+vi.mock('./StudioWebsiteControls',()=>({default:({section,choose}:any)=><div data-section={section}><button onClick={()=>choose('Roof')}>Roof options</button><input aria-label="Width in millimetres"/></div>}));
 vi.mock('./StudioWebsiteRecovery',()=>({default:()=>null}));
 vi.mock('./StudioWebsiteJoinControls',()=>({default:()=>null}));
 vi.mock('./StudioAttachmentChoices',()=>({default:({onChange}:any)=><><button onClick={()=>onChange('fascia')}>Choose Fascia</button><button onClick={()=>onChange('soffit')}>Choose Soffit</button></>}));
@@ -34,4 +37,23 @@ it('opens Change on its existing side, preserves its anchor and unlocks only the
  expect(websiteComposition(observed.direct[3].edit)[0].position!.x).toBeCloseTo(original.x,6);
  expect(observed.scene.preview).toBe(observed.direct[3].edit);
  click('Cancel');expect(change).not.toHaveBeenCalled();expect(observed.direct[3]).toBeNull();m.unmount();
+});
+
+it('guides the measured failed roof connection into the relevant house input and back to the prior Roof section',async()=>{
+ let edit:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:'repair-workspace',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};
+ const added=applyStudioHouseEdit(edit.spatial,{kind:'add',id:'house'});if(!added.ok)throw Error(added.message);edit.spatial=added.spatial;
+ edit=previewStudioAttachment(addWebsitePergola(edit,'p'),{objectId:'p',houseId:'house',edge:'rear',kind:'eave',method:'soffit'});
+ const value=structuredClone(websiteComposition(edit)[0].value!);value.selection.roof.finish={...DEFAULT_ROOF_FINISH,material:'combination',ceiling:'thermopine-150'};edit=changeStudioProduct(edit,value);
+ const scope={actorId:'actor',projectId:'project',estimateId:'repair-estimate',designId:edit.designId};
+ sessionStorage.clear();sessionStorage.setItem(studioHouseContextKey(scope),JSON.stringify({selected:'p',mode:'options',section:'Roof',view:'3D'}));
+ const change=vi.fn(),controller={edit,change,canEdit:true,canSave:false,session:{dirty:true,baselinePergolaIds:['p']},save:vi.fn()};
+ const m=renderIntoDocument(<StudioHouseWorkspace controller={controller as any} scope={scope} versionLabel="V1"/>);
+ const click=async(text:string)=>{await act(async()=>{const b=[...m.container.querySelectorAll('button')].find(b=>b.textContent===text);expect(b).toBeTruthy();b!.click();});};
+ expect(m.container.textContent).toContain('Connection needs repair');expect(m.container.textContent).toContain('Soffit brackets');
+ await click('Check connection');expect(m.container.textContent).toContain('Available house edge');expect(m.container.textContent).toContain('Required physical connection');
+ expect(observed.scene.repairTarget).toBeTruthy();await click('Show affected edge in Plan');expect(observed.scene.view).toBe('Plan');
+ await click('Check house dimensions');await act(async()=>{await new Promise(resolve=>setTimeout(resolve,35));});
+ expect(document.activeElement?.getAttribute('aria-label')).toBe('Width (mm)');expect(observed.scene.repairTarget).toBeTruthy();
+ await click('Return to Pergola 1 · Roof');expect(m.container.querySelector('[data-section="Roof"]')).toBeTruthy();
+ expect(observed.scene.view).toBe('Plan');expect(change).not.toHaveBeenCalled();expect(controller.save).not.toHaveBeenCalled();m.unmount();
 });

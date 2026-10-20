@@ -26,8 +26,15 @@ it('keeps current engine costs exclusively in the authenticated admin response',
  const send=(role:'admin'|'staff')=>studioWebsitePriceRequest(new Request('http://localhost/api/price',{method:'POST',body:JSON.stringify(source(role))}),{projectId,estimateId});
  const staff=await send('staff'),admin=await send('admin');expect(staff.status).toBe(200);expect(admin.status).toBe(200);
  const staffBody=await staff.json(),adminBody=await admin.json();expect(staffBody.amount).toBe(adminBody.amount);
+ expect(staffBody.siteAssumptions).toEqual({access:'Normal',height:'Single storey',jobType:'Residential',pricingClassification:'Simple',approvalRequirement:'Neither'});
  expect(staffBody).not.toHaveProperty('internalCosts');expect(staffBody).not.toHaveProperty('siteOutput');
  expect(adminBody.internalCosts.travelExGst).toBe(123);expect(Object.keys(adminBody.internalCosts).sort()).toEqual(['crewHours','engineCostExGst','extrasExGst','installExGst','materialsExGst','overheadExGst','travelExGst']);
  expect(adminBody).not.toHaveProperty('siteOutput');expect(adminBody).not.toHaveProperty('config');
  const forged=await studioWebsitePriceRequest(new Request('http://localhost/api/price',{method:'POST',body:JSON.stringify({...source('staff'),role:'admin'})}),{projectId,estimateId});expect(forged.status).toBe(400);
+});
+
+it('returns the current effective site assumptions with explicit staff choices, without pricing internals',async()=>{
+ const payload=source('staff');payload.composition.site={...payload.composition.site,access:'hard',height:'two_storey',jobType:'commercial',pricingClassification:'bespoke'};
+ const response=await studioWebsitePriceRequest(new Request('http://localhost/api/price',{method:'POST',body:JSON.stringify(payload)}),{projectId,estimateId});expect(response.status).toBe(200);
+ const body=await response.json();expect(body.siteAssumptions).toMatchObject({access:'Difficult',height:'Two storey',jobType:'Commercial',pricingClassification:'Bespoke'});expect(body).not.toHaveProperty('siteInputs');expect(body).not.toHaveProperty('config');
 });

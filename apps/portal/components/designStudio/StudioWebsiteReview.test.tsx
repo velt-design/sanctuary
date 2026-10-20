@@ -3,23 +3,23 @@ import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {renderIntoDocument} from '../../../../test/reactHarness';
 import {createStudioAuthoringEdit,type StudioAuthoringView} from '@/lib/designStudio/authoringView';
 import StudioWebsiteReview from './StudioWebsiteReview';
-const mocks=vi.hoisted(()=>({api:vi.fn(),push:vi.fn(),session:vi.fn(),invalidate:vi.fn()}));
+const mocks=vi.hoisted(()=>({api:vi.fn(),push:vi.fn(),session:vi.fn(),invalidate:vi.fn(),price:{status:'priced',amount:100,versionNumber:15} as any}));
 vi.mock('next/navigation',()=>({useRouter:()=>({push:mocks.push})}));
-vi.mock('next/dynamic',()=>({default:()=>({onCapture,disabled}:any)=><button disabled={disabled} onClick={()=>onCapture([{kind:'perspective',dataUrl:'data:image/png;base64,AA=='},{kind:'plan',dataUrl:'data:image/png;base64,AA=='}])}>Capture test views</button>}));
+vi.mock('next/dynamic',()=>({default:(load:()=>unknown)=>String(load).includes('StudioDesignSpecification')?()=> <section aria-label="Selected design specification">Selected design</section>:({onCapture,disabled}:any)=><button disabled={disabled} onClick={()=>onCapture([{kind:'perspective',dataUrl:'data:image/png;base64,AA=='},{kind:'plan',dataUrl:'data:image/png;base64,AA=='}])}>Capture test views</button>}));
 vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({})}));
 vi.mock('@/lib/queries/projectCache',()=>({invalidateProjectReadCaches:mocks.invalidate}));
 vi.mock('@/lib/supabase/browserClient',()=>({supabaseRuntimeUrl:()=>'',supabaseHostFromUrl:()=>''}));
 vi.mock('@/lib/repo/apiClient',()=>({apiJson:mocks.api}));
 vi.mock('@/components/auth/PortalAuthProvider',()=>({usePortalSession:()=>({role:'staff'})}));
 vi.mock('./useStudioEditingSession',()=>({useStudioEditingSession:mocks.session}));
-vi.mock('./useStudioWebsitePrice',()=>({useStudioWebsitePrice:()=>({price:{status:'priced',amount:100,versionNumber:15}})}));
+vi.mock('./useStudioWebsitePrice',()=>({useStudioWebsitePrice:()=>({price:mocks.price,retry:vi.fn()})}));
 vi.mock('./StudioWebsiteRecovery',()=>({default:()=>null}));
 const view:StudioAuthoringView={schemaVersion:'studio_authoring_view.v1',designId:'prepared-design',revision:3,spatial:{houseAssembly:null,pergolas:[],decks:[],openings:[]},site:{},objectOptions:[],pricing:'unpriced'};
 const binding={snapshotId:'10000000-0000-4000-8000-000000000005',contentHash:'a'.repeat(64)};
 const authoring={state:'ready',view,estimate:{updatedAt:'2026-10-20T00:00:00Z',requiresNewRevision:false},nextAction:'edit',preparedQuote:binding};
 const review={estimate:{projectId:'proj-proof',id:'est-proof',versionLabel:'V1'}};
 const mounts:ReturnType<typeof renderIntoDocument>[]=[];
-beforeEach(()=>{vi.resetAllMocks();mocks.session.mockReturnValue({edit:createStudioAuthoringEdit(view),status:'ready',localDurable:true,session:{dirty:false,pending:null},canSave:false,canEdit:true});mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring}:{quoteVersion:{id:'quote-result'}});});
+beforeEach(()=>{vi.resetAllMocks();mocks.price={status:'priced',amount:100,versionNumber:15};mocks.session.mockReturnValue({edit:createStudioAuthoringEdit(view),status:'ready',localDurable:true,session:{dirty:false,pending:null},canSave:false,canEdit:true});mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring}:{quoteVersion:{id:'quote-result'}});});
 afterEach(()=>mounts.splice(0).forEach(m=>m.unmount()));
 async function mount(){const m=renderIntoDocument(<StudioWebsiteReview review={review as any} actorId="actor"/>);mounts.push(m);await act(async()=>{});return m;}
 async function resume(container:HTMLElement){const button=[...container.querySelectorAll('button')].find(b=>b.textContent==='Resume prepared quote')!;expect(button.disabled).toBe(false);await act(async()=>button.click());}
@@ -75,4 +75,17 @@ it('keeps the exact saved Review revision prepared after create fails and retrie
  const attempts=mocks.api.mock.calls.filter(([url])=>url.endsWith('/quotes'));
  expect(attempts).toHaveLength(2);expect(attempts[0][1].body).toBe(attempts[1][1].body);
  expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/studio-quote'))).toHaveLength(1);
+});
+
+it('places the live views and selected specification before commercial fields without changing capture authority',async()=>{
+ const m=await mount(),spec=m.container.querySelector('[aria-label="Selected design specification"]')!,fields=m.container.querySelector('fieldset')!;
+ expect(spec).toBeTruthy();expect(spec.compareDocumentPosition(fields)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(m.container.textContent).toContain('Inherited setting · current price unavailable');
+ expect([...m.container.querySelectorAll('button')].find(b=>b.textContent==='Capture test views')!.disabled).toBe(true);
+ expect(mocks.api.mock.calls.some(([url])=>url.endsWith('/studio-quote'))).toBe(false);
+});
+
+it('shows a current pricing refusal and withholds stale inherited assumptions and capture',async()=>{
+ mocks.price={status:'unavailable',amount:null,reason:'The selected house edge is too short.',siteAssumptions:{access:'Old value'}};
+ const m=await mount();expect(m.container.textContent).toContain('Price unavailable');expect(m.container.textContent).toContain('The selected house edge is too short.');expect(m.container.textContent).not.toContain('Old value');expect([...m.container.querySelectorAll('button')].find(b=>b.textContent==='Capture test views')?.disabled).toBe(true);
 });

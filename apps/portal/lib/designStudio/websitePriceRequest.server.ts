@@ -13,6 +13,7 @@ import { studioIdentifier } from './identifiers';
 import { parseStudioAuthored, isStudioObject } from './contracts';
 import { resolveStudioWebsiteDesign, isEmptyWebsiteStart } from './websiteDesign';
 import { quoteReviewDigest } from './quoteReviewDigest.server';
+import { studioPriceAssumptions } from './studioPriceAssumptions';
 import { studioInternalCostSummary } from './studioInternalCostSummary.server';
 
 export async function studioWebsitePriceRequest(request: Request, ids: { projectId: string; estimateId: string }) {
@@ -78,6 +79,6 @@ export async function studioWebsitePriceRequest(request: Request, ids: { project
     if (calculation.status !== 'priced') return jsonOk({ ...identity, status: 'unavailable', amount: null, reason: calculation.status === 'custom' ? calculation.reason : 'This design cannot currently be priced.' });
     if (calculation.excluded.length) return jsonOk({ ...identity, status: 'unavailable', amount: null, reason: calculation.excluded.join(' ') });
     const internalCosts = commercialCalculation ? studioInternalCostSummary(auth.session.role, commercialCalculation) : undefined;
-    return jsonOk({ ...identity, status: 'priced', amount: calculation.amount, breakdown: calculation.breakdown, basis: calculation.basis, ...(internalCosts ? {internalCosts} : {}) });
+    return jsonOk({ ...identity, status: 'priced', amount: calculation.amount, breakdown: calculation.breakdown, basis: calculation.basis, ...(commercialCalculation ? {siteAssumptions:studioPriceAssumptions(commercialCalculation.siteInputs)} : {}), ...(internalCosts ? {internalCosts} : {}) });
   } catch { return jsonError('Could not calculate this design. Your selections are kept.', 503); }
 }

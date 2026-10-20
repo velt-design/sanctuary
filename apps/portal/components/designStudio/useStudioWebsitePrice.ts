@@ -1,8 +1,9 @@
+import type { StudioPriceAssumptions } from '@/lib/designStudio/studioPriceAssumptions';
 import { useEffect, useState } from 'react';
 import type { StudioWebsiteDesign } from '@/lib/designStudio/websiteDesign';
 import type { StudioAuthoringEdit } from '@/lib/designStudio/authoringView';
 import type { StudioInternalCostSummary } from '@/lib/designStudio/studioInternalCostSummary.server';
-export type WebsitePrice = { status: 'priced' | 'unavailable'; amount: number | null; reason?: string; basis?: string; versionNumber?: number; selectionDigest?: string; publicationId?: string; requestKey: string; breakdown?: { label: string; amount: number; detail: string; provisional: boolean }[]; internalCosts?:StudioInternalCostSummary };
+export type WebsitePrice = { siteAssumptions?: StudioPriceAssumptions; status: 'priced' | 'unavailable'; amount: number | null; reason?: string; basis?: string; versionNumber?: number; selectionDigest?: string; publicationId?: string; requestKey: string; breakdown?: { label: string; amount: number; detail: string; provisional: boolean }[]; internalCosts?:StudioInternalCostSummary };
 export function useStudioWebsitePrice(args: { actorId: string; projectId: string; estimateId: string; designId: string; revision: number; design: StudioWebsiteDesign | null; composition?: StudioAuthoringEdit | null }) {
  const [state, setState] = useState<{ identity: string; price: WebsitePrice | null; error: string | null }>({ identity: '', price: null, error: null });
  const [attempt, retry] = useState(0);
