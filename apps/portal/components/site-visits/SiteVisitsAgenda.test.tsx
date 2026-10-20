@@ -16,7 +16,7 @@ vi.mock('@/components/ui/foundation',()=>({PageLayout:({children}:{children:Reac
 vi.mock('./CalendarFreshness',()=>({default:()=>null}));
 vi.mock('./VisitAgendaRow',()=>({default:({visit}:{visit:CalendarVisit})=><article>{visit.subject}</article>}));
 let mounted:ReturnType<typeof renderIntoDocument>|undefined;
-const base:CalendarVisit={id:'first',revision:1,sourceKey:'synthetic',subject:'Courtyard next day',startsAt:'2026-10-21T00:00:00Z',endsAt:'2026-10-21T01:00:00Z',sourceUrl:null,address:'12 Example Road',staff:[{email:'morgan@example.test',name:'Morgan'}],assignmentHint:null,kind:'visit',sourceKind:'visit',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:'project',projectName:'Courtyard',contactName:null,phone:null,linkMode:'auto',kindOverride:null};
+const base:CalendarVisit={id:'first',revision:1,sourceKey:'synthetic',subject:'Courtyard next day',startsAt:'2026-10-21T00:00:00Z',endsAt:'2026-10-21T01:00:00Z',isAllDay:false,allDayStartDate:null,allDayEndDate:null,sourceUrl:null,address:'12 Example Road',staff:[{email:'morgan@example.test',name:'Morgan'}],assignmentHint:null,kind:'visit',sourceKind:'visit',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:'project',projectName:'Courtyard',contactName:null,phone:null,linkMode:'auto',kindOverride:null};
 const replace=window.history.replaceState.bind(window.history);
 function change(input:HTMLSelectElement|HTMLInputElement,value:string){act(()=>{Object.getOwnPropertyDescriptor(input instanceof HTMLInputElement?HTMLInputElement.prototype:HTMLSelectElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event(input instanceof HTMLInputElement?'input':'change',{bubbles:true}));});}
 function button(text:string){return Array.from(mounted!.container.querySelectorAll('button')).find(b=>b.textContent===text)!;}
@@ -32,6 +32,11 @@ beforeEach(()=>{
 });
 afterEach(()=>{mounted?.unmount();mounted=undefined;vi.restoreAllMocks();vi.useRealTimers();replace(null,'','/');});
 describe('Site visit URL and return state',()=>{
+  it('reevaluates the all-day boundary on a poll render even when saved data is unchanged',()=>{
+    h.read.mockReturnValue({data:{enabled:false,lastSuccess:'2026-10-20T00:00:00Z',events:[{...base,isAllDay:true,allDayStartDate:'2026-10-20',allDayEndDate:'2026-10-21',startsAt:'2026-10-19T11:00:00Z',endsAt:'2026-10-20T11:00:00Z'}]},denied:false,isError:false});
+    vi.setSystemTime(new Date('2026-10-20T10:59:59Z'));mounted=renderIntoDocument(<SiteVisitsAgenda/>);expect(mounted.container.querySelectorAll('article')).toHaveLength(1);
+    vi.setSystemTime(new Date('2026-10-20T11:00:00Z'));mounted.rerender(<SiteVisitsAgenda/>);expect(mounted.container.querySelectorAll('article')).toHaveLength(0);
+  });
   it('restores all controls and matching rows from the return URL after a project round trip',async()=>{
     mounted=renderIntoDocument(<SiteVisitsAgenda/>);
     change(mounted.container.querySelector('select')!,'morgan@example.test');act(()=>button('This week').click());change(mounted.container.querySelector('input')!,'Courtyard');

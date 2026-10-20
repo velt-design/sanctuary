@@ -6,7 +6,7 @@ import type { CalendarVisit } from '@/lib/siteVisits/contract';
 import VisitReview from './VisitReview';
 const h=vi.hoisted(()=>({api:vi.fn()}));vi.mock('@/lib/repo/apiClient',()=>({apiJson:h.api}));
 const project='00000000-0000-4000-8000-000000000002';
-const visit:CalendarVisit={id:'00000000-0000-4000-8000-000000000001',revision:1,sourceKey:'synthetic',subject:'Site visit - Synthetic',startsAt:'2026-10-20T00:00:00Z',endsAt:'2026-10-20T00:30:00Z',sourceUrl:null,address:'12 Example Road',staff:[],assignmentHint:null,kind:'review',sourceKind:'review',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:null,projectName:null,contactName:null,phone:null,linkMode:'manual',kindOverride:null};
+const visit:CalendarVisit={id:'00000000-0000-4000-8000-000000000001',revision:1,sourceKey:'synthetic',subject:'Site visit - Synthetic',startsAt:'2026-10-20T00:00:00Z',endsAt:'2026-10-20T00:30:00Z',isAllDay:false,allDayStartDate:null,allDayEndDate:null,sourceUrl:null,address:'12 Example Road',staff:[],assignmentHint:null,kind:'review',sourceKind:'review',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:null,projectName:null,contactName:null,phone:null,linkMode:'manual',kindOverride:null};
 let mounted:ReturnType<typeof renderIntoDocument>|undefined;let client:QueryClient;
 const settle=()=>act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
 function change(input:HTMLSelectElement|HTMLInputElement,value:string){act(()=>{Object.getOwnPropertyDescriptor(input instanceof HTMLInputElement?HTMLInputElement.prototype:HTMLSelectElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event(input instanceof HTMLInputElement?'input':'change',{bubbles:true}));});}

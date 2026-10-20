@@ -29,12 +29,23 @@ beforeAll(async()=>{await db.exec(`create role anon;create role authenticated;cr
  insert into public.contacts values('${contact}','Synthetic customer','customer@example.invalid','000000000');
  insert into public.projects values('${project}','Synthetic project','${contact}','12 Example Rd, Auckland',null);`);
  await db.exec(readFileSync('supabase/migrations/20261020010001_outlook_site_visits.sql','utf8'));
- await db.exec(readFileSync('supabase/migrations/20261020010002_outlook_site_visits_address_match.sql','utf8'));},30000);
+ await db.exec(readFileSync('supabase/migrations/20261020010002_outlook_site_visits_address_match.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261020010003_outlook_site_visits_all_day.sql','utf8'));},30000);
 afterAll(()=>db.close());
 beforeEach(async()=>{await db.exec(`truncate private.outlook_calendar_reviews,private.outlook_calendar_visits;delete from public.projects where id<>'${project}';
  update public.projects set archived_at=null,site_address='12 Example Rd, Auckland';update auth.users set email_confirmed_at=now(),deleted_at=null,banned_until=null;update public.portal_users set role='staff';
  update private.outlook_calendar_control set enabled=true,binding='${binding}',lease_token=null,lease_until=null,last_attempt=null,last_success=null,last_error=null,range_start=null,range_end=null;`);});
 describe('Outlook calendar durable mirror',()=>{
+ it('projects all-day date ranges, retains them through review and updates the same source back to timed',async()=>{
+   await publish([event()]);expect((await read()).events[0]).toMatchObject({isAllDay:false,allDayStartDate:null,allDayEndDate:null});
+   const date=new Date(now).toISOString().slice(0,10),end=new Date(now+2*86400000).toISOString().slice(0,10);
+   const allDay={isAllDay:true,allDayStartDate:date,allDayEndDate:end,kind:'provisional',cancelled:true,duplicate:true};
+   await publish([event('one',allDay)]);const v=(await read()).events[0];expect(v).toMatchObject(allDay);
+   const reviewed=await rpc('outlook_site_visit_review',[{id:v.id,revision:v.revision,projectId:null,linkMode:'manual',kind:'excluded'}]);
+   expect(reviewed).toMatchObject({...allDay,kind:'excluded'});
+   await publish([event('one',{isAllDay:false,allDayStartDate:null,allDayEndDate:null})]);const timed=(await read()).events[0];
+   expect(timed).toMatchObject({id:v.id,isAllDay:false,allDayStartDate:null,allDayEndDate:null,kind:'excluded',linkMode:'manual',projectId:null});
+ });
  it('atomically imports, links corroborated address/email, and retains unmatched visits',async()=>{
    await publish([event(),event('unlinked',{customerEmails:['unmatched@example.invalid']})]);const snap=await read();
    expect(snap.events).toHaveLength(2);expect(snap.events.find((e:any)=>e.sourceKey==='one')).toMatchObject({projectId:project,phone:'000000000',kind:'visit'});

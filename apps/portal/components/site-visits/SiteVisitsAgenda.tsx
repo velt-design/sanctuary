@@ -1,12 +1,12 @@
 'use client';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMemo,useRef,useState } from 'react';
+import { useRef,useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
 import { PageLayout,Button,DataStatePanel,LoadingSkeleton } from '@/components/ui/foundation';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
-import { visibleVisits,isScheduledVisit,requiresVisitReview,visitDay,visitDate,visitStamp } from '@/lib/siteVisits/calendarModel';
+import { visibleVisits,isScheduledVisit,requiresVisitReview,visitGroupDay,visitDateOnly,visitDate,visitStamp } from '@/lib/siteVisits/calendarModel';
 import { calendarVisitKey,useCalendarVisits } from './useCalendarVisits';
 import VisitAgendaRow from './VisitAgendaRow';
 import CalendarFreshness from './CalendarFreshness';
@@ -18,9 +18,9 @@ export default function SiteVisitsAgenda(){
   const query=useCalendarVisits(projectId),client=useQueryClient(),lock=useRef(false),searchRef=useRef<HTMLInputElement>(null);
   const [refreshing,setRefreshing]=useState(false),[message,setMessage]=useState('');
   const data=query.data;
-  const events=useMemo(()=>visibleVisits(data?.events??[],view,person,search),[data,view,person,search]);
+  const events=visibleVisits(data?.events??[],view,person,search);
   const scheduledCount=events.filter(isScheduledVisit).length;
-  const groups=new Map<string,typeof events>();for(const visit of events){const day=visitDay(visit.startsAt);groups.set(day,[...(groups.get(day)??[]),visit]);}
+  const groups=new Map<string,typeof events>();for(const visit of events){const day=visitGroupDay(visit,view);groups.set(day,[...(groups.get(day)??[]),visit]);}
   function select(next:{view?:string;person?:string;q?:string}){
     // Next's native history bridge keeps controls and cached-route returns on the same URL state.
     const url=new URL(window.location.href);for(const [key,value] of Object.entries(next)){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}window.history.replaceState(null,'',url);
@@ -44,7 +44,7 @@ export default function SiteVisitsAgenda(){
       {query.denied?<DataStatePanel state="unavailable" title="Site visit access unavailable" description="Your Portal session no longer has access." />:!data?query.isPending?<LoadingSkeleton rows={4} label="Loading site visits" />:<DataStatePanel state="error" title="Site visits unavailable" description="The calendar could not be loaded." onRetry={()=>void query.refetch()} />:<>
         <div className={styles.summary}><h2>{view==='today'?visitDate(new Date().toISOString()):view==='review'?'Needs review':view==='changes'?'Calendar changes':view==='week'?'This week':'Upcoming visits'}</h2><p role="status">{view==='review'||view==='changes'?`${events.length} ${events.length===1?'entry':'entries'}`:`${scheduledCount} scheduled ${scheduledCount===1?'visit':'visits'}${events.some(v=>v.kind==='provisional')?` · ${events.filter(v=>v.kind==='provisional').length} provisional`:''}`}</p><small>All times New Zealand</small></div>
         {view==='review'&&<p className={styles.notice}>Review uncertain bookings and project links here. Staff and time changes belong in Outlook.</p>}
-        {events.length===0?<div className={styles.empty}><h3>No visits match this view</h3><p>{data.lastSuccess?'Try another view or clear the filters.':'Visits will appear after the first successful Outlook update.'}</p>{(person||search)&&<Button variant="secondary" onClick={()=>{select({person:'',q:''});searchRef.current?.focus();}}>Clear filters</Button>}</div>:[...groups].map(([day,items])=><section key={day} className={styles.day}><header><h2>{visitDate(items[0].startsAt)}</h2><span>{items.length} {items.length===1?'booking':'bookings'}</span></header>{items.map(visit=><VisitAgendaRow key={visit.id} visit={visit} />)}</section>)}
+        {events.length===0?<div className={styles.empty}><h3>No visits match this view</h3><p>{data.lastSuccess?'Try another view or clear the filters.':'Visits will appear after the first successful Outlook update.'}</p>{(person||search)&&<Button variant="secondary" onClick={()=>{select({person:'',q:''});searchRef.current?.focus();}}>Clear filters</Button>}</div>:[...groups].map(([day,items])=><section key={day} className={styles.day}><header><h2>{visitDateOnly(day)}</h2><span>{items.length} {items.length===1?'booking':'bookings'}</span></header>{items.map(visit=><VisitAgendaRow key={visit.id} visit={visit} />)}</section>)}
         <footer className={styles.footer}>{data.rangeStart&&data.rangeEnd?<span>Calendar range: {visitStamp(data.rangeStart)} to {visitStamp(data.rangeEnd)}.</span>:null}<span>Scheduled visits are not evidence of completion.</span></footer>
       </>}
     </div>

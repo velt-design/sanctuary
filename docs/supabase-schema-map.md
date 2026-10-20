@@ -14,6 +14,10 @@ ownership and `environment-auth-supabase.md` for the default-off activation cont
 Forward migration `20261020010002_outlook_site_visits_address_match.sql` requires
 a source street/unit number before automatic linking, so matching suburb or
 provisional labels cannot masquerade as exact-street corroboration.
+Forward migration `20261020010003_outlook_site_visits_all_day.sql` exposes the
+source payload's all-day flag and exclusive date range in the existing private
+JSON projection. Legacy payloads default to timed until a complete refresh.
+Tables, grants, review choices and the sync command remain unchanged.
 
 `20261015000002_launch_verification_reporting_exclusion.sql` extends only the
 four existing marketing performance, sales hub, commercial performance and

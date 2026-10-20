@@ -9,6 +9,10 @@ The agenda reads current Next search parameters directly, including project scop
 native history replacement updates typing without adding entries. Cached route
 props are not copied into independent filter state. Regression coverage includes
 project round trips, Back/Forward, rapid typing and clearing without losing scope.
+All-day and provisional source entries use an All day label with their actual
+calendar date range in agenda/project detail and an All day dashboard marker.
+Multi-day entries remain visible during the covered dates and leave upcoming
+views at the exclusive Auckland end date; timed visits retain clock labels.
 Ambiguous/provisional/duplicate entries and missing project links have a review
 view, with cancellation/removal/exclusion recovery in Changes. Inline review
 keeps selection during search and preserves drafts on source revision; the revision

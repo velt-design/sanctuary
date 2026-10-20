@@ -6,7 +6,7 @@ const staff=new Set(['rep@example.invalid']);
 const invite=(email:string,name=email)=>({emailAddress:{address:email,name}});
 const graph=(extra:Record<string,unknown>={})=>({id:'immutable-one',iCalUId:'occurrence-one',subject:'Site visit - Example',
   start:{dateTime:'2026-10-19T21:15:00.0000000',timeZone:'UTC'},end:{dateTime:'2026-10-19T21:45:00.0000000',timeZone:'UTC'},
-  sensitivity:'normal',isCancelled:false,body:{contentType:'html',content:'<p>Address: 12 Example Road, Auckland</p>'},
+  sensitivity:'normal',isCancelled:false,isAllDay:false,body:{contentType:'html',content:'<p>Address: 12 Example Road, Auckland</p>'},
   attendees:[invite('rep@example.invalid','Example Rep'),invite('customer@example.invalid')],categories:[],webLink:'https://outlook.office.com/calendar/item/example',...extra});
 const normalize=(e:unknown)=>normalizeCalendarEvent(e,staff,'office@example.invalid');
 describe('Graph calendar interpretation',()=>{

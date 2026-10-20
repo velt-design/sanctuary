@@ -22,6 +22,24 @@ conservative capture decision: it may include ordinary nonvisit appointments for
 local exclusion, never schedules them or adds dashboard alerts. The source window
 bounds the review list. Private/personal/confidential entries remain withheld.
 
+All-day events preserve `isAllDay` and date-only `allDayStartDate`/
+`allDayEndDate` (exclusive), and display **All day** in the agenda, dashboard and
+project summary. Multi-day entries show their inclusive covered-date range, remain
+visible on every occupied day/week, and expire at Auckland midnight on the end
+date. The agenda groups an ongoing range under the visible day/week boundary
+without duplicating its booking count. Timed events keep source clock times.
+The normalizer accepts same-zone literal midnight date boundaries without shifting
+the written calendar day, including non-NZ source zone labels. A narrowly scoped compatibility
+path accepts two converted UTC boundaries only when both are exactly Auckland
+midnight. Mixed, invalid or unresolved boundaries fail the source update and
+retain the last good mirror. Storage instants use the corresponding Auckland
+midnights, including 23/25-hour DST days. Explicit date fields drive all-day
+presentation and expiry. This follows the Graph all-day midnight contract and
+Outlook's exclusive end-date convention; real Graph qualification remains required.
+
+References: [Graph event properties](https://learn.microsoft.com/en-us/graph/api/resources/event?view=graph-rest-1.0)
+and [Outlook all-day appointment boundaries](https://learn.microsoft.com/en-us/office/client-developer/outlook/pia/how-to-create-an-appointment-that-is-an-all-day-event).
+
 The source read expands recurrence through Graph `calendarView`, from 30 days ago
 to 90 days ahead. Every page must succeed before atomic publication and absence
 reconciliation. Paging is mailbox/calendar-bound, capped at 20 pages/2,000 source

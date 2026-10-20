@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { mirrorEventSchema, type MirrorEvent } from './contract';
+import { allDayCalendarBounds } from './allDayCalendar';
 
 const graphEvent = z.object({
   id:z.string().min(1).max(1200),iCalUId:z.string().max(1200).nullish(),subject:z.string().max(500).nullish().transform(value=>value??''),
   start:z.object({dateTime:z.string(),timeZone:z.string()}),end:z.object({dateTime:z.string(),timeZone:z.string()}),
-  sensitivity:z.enum(['normal','personal','private','confidential']),isCancelled:z.boolean(),webLink:z.string().max(3000).nullish(),
+  sensitivity:z.enum(['normal','personal','private','confidential']),isCancelled:z.boolean(),isAllDay:z.boolean(),webLink:z.string().max(3000).nullish(),
   body:z.object({content:z.string().max(200000),contentType:z.string()}).nullish(),
   location:z.object({displayName:z.string().max(500).nullish()}).nullish(),
   attendees:z.array(z.object({emailAddress:z.object({address:z.string().max(254),name:z.string().max(150).nullish()})})).max(100),
@@ -49,7 +50,8 @@ export function normalizeCalendarEvent(raw:unknown,staffEmails:Set<string>,mailb
   const provisional=/\bplaceholder\b|\bprovisional\b/i.test(title);
   const staff=e.attendees.filter(a=>staffEmails.has(a.emailAddress.address.toLowerCase())).map(a=>({email:a.emailAddress.address.toLowerCase(),name:a.emailAddress.name?.trim()||a.emailAddress.address}));
   const customerEmails=[...new Set([...e.attendees.map(a=>a.emailAddress.address.toLowerCase()),...labelledCustomerEmails(text),...(explicit||provisional?leadingCustomerEmail(text):[])].filter(email=>z.email().safeParse(email).success&&!staffEmails.has(email)&&email!==mailbox.toLowerCase()))];
-  const startsAt=instant(e.start),endsAt=instant(e.end);if(endsAt<=startsAt)throw new Error('CALENDAR_INVALID_DURATION');
+  const timing=e.isAllDay?allDayCalendarBounds(e.start,e.end):{isAllDay:false,allDayStartDate:null,allDayEndDate:null,startsAt:instant(e.start),endsAt:instant(e.end)};
+  if(timing.endsAt<=timing.startsAt)throw new Error('CALENDAR_INVALID_DURATION');
   const location=e.location?.displayName?.trim();
   const labelled=text.match(/(?:^|\n)\s*address\s*[:\-]\s*([^\r\n]{1,500})/i)?.[1]?.trim();
   const extracted=labelled||location?.match(addressPattern)?.[1]?.trim()||text.match(addressPattern)?.[1]?.trim();
@@ -61,7 +63,7 @@ export function normalizeCalendarEvent(raw:unknown,staffEmails:Set<string>,mailb
   if(!address)reviewReasons.push('Address not captured. Check Outlook.');
   else if(/^(?:tbc|tbd|to be confirmed|unknown)$/i.test(address))reviewReasons.push('Address is provisional. Check Outlook.');
   if(kind==='review')reviewReasons.push('Check whether this appointment is a site visit.');
-  return mirrorEventSchema.parse({sourceKey:e.iCalUId||e.id,sourceId:e.id,subject:title,startsAt,endsAt,sourceUrl:outlookLink(e.webLink),
+  return mirrorEventSchema.parse({sourceKey:e.iCalUId||e.id,sourceId:e.id,subject:title,...timing,sourceUrl:outlookLink(e.webLink),
     address,staff,assignmentHint:hint,kind,customerEmails,cancelled:e.isCancelled,duplicate:false,reviewReasons});
 }
 export function normalizeCalendar(events:unknown[],staff:Set<string>,mailbox:string) {
@@ -69,7 +71,7 @@ export function normalizeCalendar(events:unknown[],staff:Set<string>,mailbox:str
   const keys=new Set<string>();for(const visit of visits){if(keys.has(visit.sourceKey))throw new Error('CALENDAR_DUPLICATE_ID');keys.add(visit.sourceKey);}
   // Only corroborated duplicate invitations are suppressed. Names alone never identify a booking.
   for(const visit of visits){if(visit.staff.length||visit.cancelled)continue;
-    const duplicate=visits.find(other=>other!==visit&&other.staff.length&&other.startsAt===visit.startsAt&&other.endsAt===visit.endsAt&&
+    const duplicate=visits.find(other=>other!==visit&&other.staff.length&&other.isAllDay===visit.isAllDay&&other.startsAt===visit.startsAt&&other.endsAt===visit.endsAt&&
       other.customerEmails.some(email=>visit.customerEmails.includes(email))&&visit.address&&other.address?.toLowerCase()===visit.address.toLowerCase());
     if(duplicate){visit.duplicate=true;visit.reviewReasons.push('Possible duplicate invitation. Check the staff booking at this time.');}}
   return visits;
