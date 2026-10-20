@@ -5,10 +5,12 @@ import DimensionControl from '../marketing-foundation/DimensionControl';
 import { getRoofFinish, previewProjectionMax } from '../configurator-prototype/roofFinish';
 import type { usePreviewDraft } from '../configurator-prototype/usePreviewDraft';
 import { PRODUCT_MATERIALS } from '../products/productSelectionValues';
-import styles from './funnel.module.css';
+import defaultStyles from './funnel.module.css';
 
 const shapes = [{ value: 'mono', label: 'Pitched', image: 'pitched' }, { value: 'gable', label: 'Gable', image: 'gable' }, { value: 'box', label: 'Box', image: 'box' }] as const;
-export default function FunnelControls({ state, onEdit, children }: { state: Pick<ReturnType<typeof usePreviewDraft>, 'input' | 'roof' | 'ready' | 'setInput' | 'setRoof'>; onEdit: () => void; children?: ReactNode }) {
+type ControlStyles = Partial<Record<'designVisual' | 'controls' | 'notice' | 'choices' | 'dimensions', string>>;
+export default function FunnelControls({ state, onEdit, children, presentation = defaultStyles, projectionLabel = 'Projection', materialLabel = 'Roof material' }: { state: Pick<ReturnType<typeof usePreviewDraft>, 'input' | 'roof' | 'ready' | 'setInput' | 'setRoof'>; onEdit: () => void; children?: ReactNode; presentation?: ControlStyles; projectionLabel?: string; materialLabel?: string }) {
+  const styles = { ...defaultStyles, ...presentation };
   const { input, roof } = state;
   const [sizeNotice, setSizeNotice] = useState('');
   const finish = getRoofFinish(roof);
@@ -24,8 +26,8 @@ export default function FunnelControls({ state, onEdit, children }: { state: Pic
     <div className={styles.controls}>
       {sizeNotice && <p role="status" className={styles.notice}>{sizeNotice}</p>}
       <fieldset disabled={!state.ready}><legend>Roof shape</legend><div className={styles.choices}>{shapes.map(option => <label key={option.value} data-selected={roof.family === option.value}><input type="radio" name="funnel-shape" checked={roof.family === option.value} onChange={() => changeRoof({ ...roof, family: option.value })}/><span>{option.label}</span></label>)}</div></fieldset>
-      <fieldset className={styles.dimensions} disabled={!state.ready}><legend>Your space</legend><DimensionControl axis="width" label="Width" value={input.widthMm} min={1500} max={10000} onChange={widthMm => { onEdit(); state.setInput({ ...input, widthMm }); }}/><DimensionControl axis="projection" label="Projection" value={input.projectionMm} min={1500} max={previewProjectionMax(roof)} onChange={projectionMm => { onEdit(); state.setInput({ ...input, projectionMm }); }}/></fieldset>
-      <fieldset disabled={!state.ready}><legend>Roof material</legend><div className={styles.choices}>{PRODUCT_MATERIALS.map(option => <label key={option.value} data-selected={finish.material === option.value}><input type="radio" name="funnel-material" checked={finish.material === option.value} onChange={() => changeRoof({ ...roof, finish: { ...finish, material: option.value, ...(option.value !== 'acrylic' && !finish.ceiling ? { ceiling: 'thermopine-150' } : {}) } })}/><span>{option.label}</span></label>)}</div><p>{PRODUCT_MATERIALS.find(option => option.value === finish.material)?.detail}</p></fieldset>
+      <fieldset className={styles.dimensions} disabled={!state.ready}><legend>Your space</legend><DimensionControl axis="width" label="Width" value={input.widthMm} min={1500} max={10000} onChange={widthMm => { onEdit(); state.setInput({ ...input, widthMm }); }}/><DimensionControl axis="projection" label={projectionLabel} value={input.projectionMm} min={1500} max={previewProjectionMax(roof)} onChange={projectionMm => { onEdit(); state.setInput({ ...input, projectionMm }); }}/></fieldset>
+      <fieldset disabled={!state.ready}><legend>{materialLabel}</legend><div className={styles.choices}>{PRODUCT_MATERIALS.map(option => <label key={option.value} data-selected={finish.material === option.value}><input type="radio" name="funnel-material" checked={finish.material === option.value} onChange={() => changeRoof({ ...roof, finish: { ...finish, material: option.value, ...(option.value !== 'acrylic' && !finish.ceiling ? { ceiling: 'thermopine-150' } : {}) } })}/><span>{option.label}</span></label>)}</div><p>{PRODUCT_MATERIALS.find(option => option.value === finish.material)?.detail}</p></fieldset>
       {children}
     </div>
   </>;

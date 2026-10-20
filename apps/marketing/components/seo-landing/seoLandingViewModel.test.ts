@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { acrylicVsLouvreConfig } from '../../app/acrylic-pergolas-vs-louvre-roofs/content';
-import { aluminiumPergolasConfig } from '../../app/aluminium-pergolas-auckland/content';
+
 import { gablePergolasConfig } from '../../app/gable-pergolas-auckland/content';
 import { outdoorRoomsConfig } from '../../app/outdoor-rooms-auckland/content';
 import { pergolasWithBlindsConfig } from '../../app/pergolas-with-blinds/content';
@@ -75,7 +75,7 @@ describe('guided project evidence', () => {
 
 const guideConfigs = [
   outdoorRoomsConfig,
-  aluminiumPergolasConfig,
+
   gablePergolasConfig,
   pitchedPergolasConfig,
   pergolasWithBlindsConfig,

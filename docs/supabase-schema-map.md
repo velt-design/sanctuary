@@ -1,5 +1,23 @@
 # Supabase Schema Map
 
+## Aluminium residential contact contract (20 October 2026)
+
+Forward migration 20261020020001_marketing_aluminium_optional_phone.sql
+adds only /aluminium-pergolas-auckland to the existing blank-phone route exception
+in marketing_enquiry_intake(uuid,text,jsonb). Residential audience, nonempty
+email/suburb and rawPayload.requestType=project-discussion remain required.
+The configured-design exception, matching, idempotency, upload binding, atomic
+writes, security definer, empty search path and service-only grants are unchanged.
+The shared client/API/native policy lives in enquiryContactValidation, separately
+from advertising identity. Supplied phones still undergo canonical validation.
+
+The exact function migration and native/API intake are exercised in the existing
+disposable PGlite harness, including negative scope and rollback cases. Production
+release requires the matching reviewed function migration before enabling this
+contact contract. Installation and delivery evidence are recorded separately in
+the release record; local simulated submissions do not establish either.
+
+
 Outlook site visits: `20261020010001_outlook_site_visits.sql` owns private
 `outlook_calendar_control`, `outlook_calendar_visits` and append-only
 `outlook_calendar_reviews`. Control installs disabled and requires the exact
