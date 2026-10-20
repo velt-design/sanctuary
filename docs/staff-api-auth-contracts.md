@@ -12,6 +12,20 @@ visit ID, revision, nullable project ID, manual/auto link mode and nullable loca
 classification. SQL serializes the row, checks the revision and current project,
 and audits the local decision. No source dates/staff/body edits are accepted.
 
+`POST /corrections` and `/history` use the same staff and exact-origin boundary,
+strict JSON (16 KB maximum), optimistic revisions and fixed safe errors. Dedicated
+`site_visit_correct` and `site_visit_history_save` RPCs recheck staff and append
+audit records. Corrections are separate from the immutable source payload; the
+read API applies `reviewedVisit` consistently before returning events. History
+accepts intentionally unknown dates and existing closed projects, and supports
+audited withdrawal/restoration. Neither command invokes legacy booking, lifecycle,
+notification or analytics writes. Current staff roster attribution does not grant
+Microsoft access. The compatibility `/review` route retains its narrower contract.
+The correction HTTP boundary validates attribution against the existing project
+owner roster or exact recognized staff names/emails in saved immutable Outlook
+records. Submitted correction values are never identity authority; no live provider
+read or new access grant is used for attribution.
+
 `POST /refresh` requires an empty same-origin request and rechecks the current
 actor through the authenticated read RPC before invoking the server sync owner.
 `GET /api/integrations/outlook-calendar` requires the existing constant-time cron

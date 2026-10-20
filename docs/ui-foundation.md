@@ -22,6 +22,21 @@ a successful-looking empty list. New source queries and editing state are extrac
 from the existing Dashboard and Overview hotspots. Source/security ownership is
 in `schedule.md`; this does not authorize a shared-theme or install-board redesign.
 
+The correction editor keeps attending staff, address, type/status and known timing
+up front. Its basis and specific remaining questions stay visible, with original
+Outlook details and project-link controls secondary. Reviewed facts drive agenda,
+project and dashboard consistently; source conflicts remain visible. Project visit
+history includes original visits with intentionally unknown dates and separate
+return measurements, with audited edit/withdraw/restore actions. Source bookings
+never silently acquire an attendance outcome. Native date/time inputs retain the
+browser's calendar and keyboard behavior.
+
+`ProjectRecentNotesEvents.module.css` owns the notes/history composition. Columns
+split only when the card itself has 680 px of space, rather than using viewport
+width to infer sidebar capacity. Narrow cards stack notes above system events;
+text, metadata and actions wrap within their column. This is local layout repair,
+not a shared timeline or theme change.
+
 ## Search and commercial continuity (16 October 2026 candidate)
 
 `GlobalPortalSearch.client` only exposes selectable results whose normalized response

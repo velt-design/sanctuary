@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-20: Correct known visit facts without fabricating attendance
+
+An imported booking is evidence of scheduling, not attendance. Keep reviewed facts
+and historical attendance separate from the source, with provenance, revision
+checks and reversible actions. Unknown historical dates are valid facts; an
+unresolved future booking time remains a real question. Compare later source
+changes by field so metadata and matching updates do not recreate false warnings,
+while conflicting facts require reconciliation. Never reattribute a later return
+measurement as the original visit. Narrow sidebar layouts must respond to their
+container width, not the full viewport. See `schedule.md` and `ui-foundation.md`.
+
 ## 2026-10-20: Imported bookings preserve source and local decision boundaries
 
 The Outlook visit mirror publishes only complete source reads and preserves local
