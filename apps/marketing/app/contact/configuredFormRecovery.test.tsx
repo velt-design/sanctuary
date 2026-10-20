@@ -6,6 +6,8 @@ import { buildContactDesignBrief } from './contactDesignBrief';
 import { DEFAULT_PREVIEW_DRAFT } from '../../components/configurator-prototype/previewDraft';
 import { createHash, webcrypto } from 'node:crypto';
 let marketingEnabled=false;
+const storage = vi.hoisted(() => ({ upload: vi.fn() }));
+vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ storage: { from: () => ({ uploadToSignedUrl: storage.upload }) } }) }));
 
 vi.mock('@/components/ConsentProvider', () => ({ useConsent: () => ({
   consent: { analytics: false, marketing: marketingEnabled }, hasTrackingDecision: true,
@@ -17,7 +19,7 @@ const network = vi.fn();
 beforeEach(() => {
   marketingEnabled=false;localStorage.clear();
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  vi.stubGlobal('fetch', network); network.mockReset(); sessionStorage.clear();
+  vi.stubGlobal('fetch', network); network.mockReset(); storage.upload.mockReset(); sessionStorage.clear();
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); sessionStorage.clear(); vi.unstubAllGlobals();vi.unstubAllEnvs(); });
@@ -38,9 +40,54 @@ async function fill() {
 }
 it('blocks invalid fields before any network call',async()=>{
   await render(); await submit();
+  expect(host.querySelector('[name=files]')).toBeNull();
   expect(network).not.toHaveBeenCalled();
   expect(host.textContent).toContain('Enter your suburb');
   expect(host.querySelector('[role=alert]')).toBe(document.activeElement);
+});
+it('keeps optional photos open and clears the validation summary when a valid replacement is selected', async () => {
+  await act(async () => root.render(<ContactEnquiryForm initialEnquiryType="residential"
+    initialContext={{ sourcePath: '/aluminium-pergolas-auckland' }} initialIntent="help" compactConfigured compactAttachments funnel/>));
+  const panel = host.querySelector<HTMLDetailsElement>('[data-enquiry-attachments]')!;
+  panel.open = true;
+  const select = (file: File) => act(async () => {
+    const input = host.querySelector<HTMLInputElement>('[name=files]')!;
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await select(new File(['bad'], 'bad.exe', { type: 'application/x-msdownload' }));
+  expect(host.querySelector('[role=alert]')).not.toBeNull();
+  await select(new File(['synthetic'], 'site.png', { type: 'image/png' }));
+  expect(panel.open).toBe(true);
+  expect(host.querySelector('[role=alert]')).toBeNull();
+  const remove = host.querySelector<HTMLButtonElement>('button[aria-label="Remove site.png"]')!;
+  expect(remove).not.toBeNull();
+  await act(async () => remove.click());
+  expect(panel.open).toBe(true);
+  expect(host.querySelector('[aria-label="Selected files"]')).toBeNull();
+  expect(network).not.toHaveBeenCalled();
+});
+it('carries a selected photo through the canonical signing/upload pipeline into the optional-phone enquiry', async () => {
+  vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://synthetic.invalid');
+  vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'synthetic');
+  storage.upload.mockResolvedValue({ error: null });
+  network.mockResolvedValueOnce({ ok: true, json: async () => ({ uploadSessionToken: 'synthetic-session', uploads: [{ path: 'synthetic-test/site.png', token: 'synthetic-token' }] }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+  await act(async () => root.render(<ContactEnquiryForm initialEnquiryType="residential"
+    initialContext={{ sourcePath: '/aluminium-pergolas-auckland' }} initialIntent="help" compactConfigured compactAttachments funnel/>));
+  const picture = new File(['synthetic'], 'site.png', { type: 'image/png' });
+  await act(async () => {
+    const input = host.querySelector<HTMLInputElement>('[name=files]')!;
+    Object.defineProperty(input, 'files', { configurable: true, value: [picture] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await fill(); await submit();
+  expect(network.mock.calls.map(call => call[0])).toEqual(['/api/enquiry/attachments/sign', '/api/enquiry']);
+  expect(storage.upload).toHaveBeenCalledWith('synthetic-test/site.png', 'synthetic-token', picture, { contentType: 'image/png' });
+  expect(JSON.parse(network.mock.calls[1][1].body)).toMatchObject({
+    phone: '', uploadSessionToken: 'synthetic-session', files: [{ name: 'site.png', size: 9, type: 'image/png', path: 'synthetic-test/site.png' }],
+  });
+  expect(host.textContent).toContain('Your enquiry has been sent.');
 });
 it('retries a failed enquiry with the same submission identity and current design, then clears contact storage',async()=>{
   network.mockResolvedValueOnce({ok:false,status:503,json:async()=>({error:'Please try again.'})})
@@ -89,6 +136,7 @@ it.each([[false,false],[true,false],[true,true]])('shows the v2 Google and Meta 
 });
 
 it.each([
+  ['/aluminium-pergolas-auckland',false],['/aluminium-pergolas-auckland',true],
   ['/ads/outdoor-living',false],['/ads/outdoor-living',true],
   ['/ads/acrylic-pergolas',false],['/ads/acrylic-pergolas',true],
 ] as const)('emits email-only enhanced identity after accepted %s enquiry, configured=%s',async(page,configured)=>{

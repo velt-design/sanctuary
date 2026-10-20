@@ -1,5 +1,16 @@
 # Automation, Email, And Audit
 
+## Aluminium enquiry contract (20 October 2026)
+
+The exact aluminium residential discussion path accepts an omitted phone after
+client/API/native validation and the matching forward intake migration. It uses
+the existing durable or request-bound delivery owners without changing message
+recipients, templates, idempotency or provider dispatch. Direct enquiries carry
+no invented design. Configured ones retain the canonical draft and any verified
+price reference. Local tests use disposable SQL and mock transport; preview
+success fixtures do not prove provider delivery or installed remote schema.
+
+
 
 ## Commercial email presentation (16 October 2026 candidate)
 

@@ -1,5 +1,24 @@
 # Testing And QA
 
+## Aluminium SEO contracts (20 October 2026)
+
+The route's AluminiumJourney test exercises the real compact controls, table
+selection, full-draft extras, source/scope continuity, direct versus attached
+payload, contact recovery and retry with fenced transport. The existing shared
+control, draftScope, channelDesignTracking and configuredFormRecovery suites cover
+unchanged callers and email-only enhanced identity. The existing
+test/marketing-google-funnel-intake.test.ts now also runs the exact aluminium
+forward migration and supabase/tests/marketing_aluminium_optional_phone.sql,
+composing native fallback/API/SQL in disposable PGlite. No remote database,
+provider or conversion call is part of these tests. Single-process SQL does not
+prove multi-session concurrency or shared database installation.
+
+Responsive and 3D/browser review must use the exact candidate and retain any
+fixture qualification. Mockup approval is not rendered-layout evidence.
+Production deployment, installed schema and provider receipt remain separate
+release checks; no local fixture result establishes them.
+
+
 Channel-page verification (20 October): `marketing.channel-pages.spec.ts` covers the
 six channel compositions, responsive containment, deliberate review/CTA events,
 page-scoped SEO designer continuation, and new Facebook mobile direct/configured

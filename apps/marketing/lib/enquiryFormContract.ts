@@ -2,9 +2,9 @@ import { ENQUIRY_ATTACHMENT_LIMITS, validateEnquiryAttachments } from './enquiry
 import {
   isPlausibleEnquiryPhone,
   isValidEnquiryEmail,
+  allowsOptionalEnquiryPhone,
 } from './enquiryContactValidation';
 import type { EnquiryAudience, EnquiryContext } from './enquiryContext';
-import { isInlineFunnelEnquiry } from './googleFunnel';
 import {
   commercialProfessionalPathLabels,
   projectDirectionLabels,
@@ -50,7 +50,7 @@ export function validateEnquiryForm(formData: FormData, files: File[], configure
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim();
-  const funnel = isInlineFunnelEnquiry(enquiryType, String(formData.get('page') ?? ''));
+  const funnel = allowsOptionalEnquiryPhone(enquiryType, String(formData.get('page') ?? ''), String(formData.get('requestType') ?? ''));
   if (formData.get('requestType') === 'site-measure' && !String(formData.get('suburb') ?? '').trim()) {
     errors.suburb = 'Enter the site address for your measure request.';
   }

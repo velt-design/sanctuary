@@ -1,5 +1,22 @@
 # SEO Landing Page Programme
 
+## 20 October 2026 aluminium page
+
+The approved refined aluminium direction is implemented on the existing indexed
+/aluminium-pergolas-auckland route. It retains one H1, ordinary navigation/footer,
+self-canonical metadata and visible WebPage/Service/Breadcrumb parity. The split
+St Heliers opening, three documented roof approaches, optional canonical estimate,
+direct/configured enquiry and readable material FAQs replace the earlier generic
+guide presentation. Research and project links remain crawlable; phone content
+is not hidden behind a whole-page disclosure. No Offer, aggregate review,
+generic span, coastal-performance or project-price claim is added.
+
+Following preview review, Jordan authorised final checks and production release.
+Current pricing, hosted schema, delivery and live attribution still require
+operational evidence in the release record; local fixtures do not establish them.
+Custom Pergolas remains outside this change.
+
+
 The current guide-cluster page roles and rewrite decisions are recorded in [Pergola Guide Cluster Improvement](pergola-guide-cluster-improvement.md). The requirement-by-requirement state is recorded in the [Pergola Guide Cluster Completion Audit](pergola-guide-cluster-completion-audit.md). Public pricing, warranty, timing, performance and product-position statements are governed by the [Marketing Claims Register](../marketing-claims-register.md).
 
 Status: Active implementation checklist.
