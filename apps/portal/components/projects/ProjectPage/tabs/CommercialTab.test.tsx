@@ -13,7 +13,10 @@ vi.mock('next/dynamic', () => ({ default: () => {
 vi.mock('next/navigation', () => ({
   useRouter: () => ({replace:serverReplace}),
   useSearchParams: () => new URLSearchParams(useSyncExternalStore(
-    listener => {window.addEventListener('popstate',listener);return()=>window.removeEventListener('popstate',listener);},
+    listener => {
+      window.addEventListener('popstate',listener);window.addEventListener('next-history-change',listener);
+      return()=>{window.removeEventListener('popstate',listener);window.removeEventListener('next-history-change',listener);};
+    },
     ()=>window.location.search,()=>'',
   )),
 }));
@@ -28,7 +31,7 @@ beforeEach(()=>{
   serverReplace.mockReset();prefetchQuery.mockReset();
   // Model Next's documented native history bridge; real browser QA verifies Next itself.
   for(const [method,original] of [['pushState',push],['replaceState',replace]] as const){
-    vi.spyOn(window.history,method).mockImplementation((...args)=>{original(...args);window.dispatchEvent(new Event('popstate'));});
+    vi.spyOn(window.history,method).mockImplementation((...args)=>{original(...args);window.dispatchEvent(new Event('next-history-change'));});
   }
 });
 afterEach(()=>{rendered?.unmount();vi.restoreAllMocks();replace(null,'','/');});

@@ -8,6 +8,15 @@ ranking. Empty site visits use a compact disclosure; source errors and stale-sou
 notices remain visible. Needs review shows the specific unanswered questions before
 provenance and opens the existing correction form through Resolve questions.
 
+The server domain-action adapter surfaces **Resolve estimate pricing** when the
+authoritative current selection is an available estimate with explicit
+`estimate_price_unavailable` and no complete customer price. This includes New
+enquiries. It links to that exact estimate, creates no task, and changes no price.
+Durable recovery and failed delivery retain precedence. Operational
+closed/archived/waiting suppression remains in the projection repository.
+Absent lightweight queue pricing detail is not evidence of a failure; a quote
+owning the commercial position prevents unrelated/newer estimate recovery.
+
 `ProjectCommercialContext` consumes the same current operational projection as the
 header. Closed/archived and on-hold projects explain their commercial context and
 de-emphasize ordinary send/billing/delivery actions. A staff member can deliberately
@@ -21,8 +30,14 @@ clicks do not start competing server navigations. Browser Back/Forward retains
 exact quote selection. `ProjectSnapshotPageClient` also derives calculator chrome
 from the live query, so history cannot leave stale server-provided workspace mode.
 Calculator creation/save commands and estimate selection policy stay with their
-existing owners. A dirty quote's section change requires the existing-style discard
-confirmation. `useCommercialListState` restores a list's scroll on detail return,
+existing owners. A dirty quote's section change and destructive Back/Forward
+traversal require the existing-style discard confirmation. `portalHistoryGuard`,
+retained by `PortalRouteTransition`, tracks existing browser entries (with
+additive position metadata on older browsers), intercepts popstate before router
+listeners, and returns to the same existing entry on cancellation. It adds no
+sentinel entries and preserves Next state. Same-quote Details/Preview history
+keeps the draft without prompting. Full-document exits retain beforeunload.
+`useCommercialListState` restores a list's scroll on detail return,
 but does not apply another tab's saved scroll after its read finishes.
 
 Outlook site visits (20 October candidate): Overview composes the separate

@@ -29,7 +29,7 @@ function design(overrides: Partial<ProjectCommandCentreCurrentDesign> = {}): Pro
 
 function context(
   stage: string,
-  currentDesign: ProjectCommandCentreCurrentDesign = design(),
+  currentDesign: ProjectWorkDomainActionContext['currentDesign'] = design(),
   siteVisitCompleted = false,
 ): ProjectWorkDomainActionContext {
   return { projectId: PROJECT_ID, stage, siteVisitCompleted, currentDesign };
@@ -108,6 +108,45 @@ describe('project-work domain actions', () => {
       recoveryAction: null,
       specialistAction: null,
     });
+  });
+
+  it('surfaces an authoritative current-estimate pricing failure even at New', () => {
+    const missing = estimateDesign();
+    missing.price = { source: 'estimate', totalIncGstCents: null };
+    missing.warnings = ['estimate_price_unavailable'];
+    expect(projectWorkDomainActions(context('new', missing))).toMatchObject({
+      recoveryAction: {
+        key: 'estimate-pricing:est_1',
+        title: 'Resolve estimate pricing',
+        actionLabel: 'Review estimate pricing',
+        href: `/staff/projects/${PROJECT_ID}?tab=estimates&estimateId=est_1`,
+      },
+      specialistAction: null,
+    });
+    const repair = { kind: 'recovery' as const, key: 'repair', title: 'Repair confirmation', reason: 'Durable recovery', href: '/repair', actionLabel: 'Review' };
+    expect(projectWorkDomainActions(context('new', missing), repair).recoveryAction).toBe(repair);
+  });
+
+  it('does not infer pricing recovery from absent detail, a usable price, or a quote-controlled estimate', () => {
+    const missing = estimateDesign();
+    missing.price = { source: 'estimate', totalIncGstCents: null };
+    missing.warnings = ['estimate_price_unavailable'];
+    for (const current of [
+      design(),
+      { ...missing, price: undefined, warnings: undefined },
+      { ...missing, price: { source: 'estimate' as const, totalIncGstCents: 10000 }, warnings: [] },
+      { ...missing, warnings: [] },
+      { ...missing, designState: 'source_unavailable' as const },
+      ...(['accepted_quote', 'sent_quote', 'draft_quote'] as const).map(source => ({
+        ...missing, source, newerEstimate: { id: 'est_new', versionLabel: 'V2', savedAt: null },
+        price: { source: 'quote' as const, totalIncGstCents: 25000 },
+      })),
+    ]) {
+      expect(projectWorkDomainActions(context('new', current)).recoveryAction).toBeNull();
+    }
+    expect(projectWorkDomainActions(context('quoting', {
+      ...missing, price: { source: 'estimate', totalIncGstCents: 10000 }, warnings: [],
+    })).specialistAction?.title).toBe('Prepare the quote');
   });
 
   it('routes Contacted and incomplete Site Visit stages to the real visit workflow', () => {

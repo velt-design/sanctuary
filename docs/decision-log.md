@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-20: Calm navigation must preserve drafts and useful next actions
+
+Native history removes competing server transitions, but separate clean-history
+and dirty-click tests missed their intersection. Protect dirty Back/Forward
+before the router handles popstate; cancellation must restore the existing entry
+without rewriting destinations or appending sentinels. Test both directions,
+repeat cancellation, quote selection and leaving the project. Separately, moving
+the next-action card higher does not fix a missing action: use authoritative
+current-estimate pricing failure as a bounded server recovery candidate, retaining
+existing ranking and closed-state suppression. See
+`project-command-centre-architecture.md`.
+
 ## 2026-10-20: Current project status must not be historical pipeline progress
 
 A closed project retained its Scheduled pipeline stage correctly, but the shared

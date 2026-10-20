@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { guardPortalHistory } from '@/components/page-state/portalHistoryGuard';
 const BEFORE_VIEW_CHANGE = 'portal:before-project-view-change';
 
 export function useProjectViewDraftGuard(dirty: boolean) {
@@ -10,7 +11,16 @@ export function useProjectViewDraftGuard(dirty: boolean) {
       if (!window.confirm('Discard unsaved quote changes?')) event.preventDefault();
     };
     window.addEventListener(BEFORE_VIEW_CHANGE, guard);
-    return () => window.removeEventListener(BEFORE_VIEW_CHANGE, guard);
+    const releaseHistory = guardPortalHistory((from, to) => {
+      const sameDraft = from.pathname === to.pathname
+        && to.searchParams.get('tab') === 'quotes'
+        && from.searchParams.get('quoteId') === to.searchParams.get('quoteId');
+      return sameDraft || window.confirm('Discard unsaved quote changes?');
+    });
+    return () => {
+      window.removeEventListener(BEFORE_VIEW_CHANGE, guard);
+      releaseHistory();
+    };
   }, [dirty]);
 }
 

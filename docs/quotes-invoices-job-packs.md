@@ -13,7 +13,13 @@ financial values remain unchanged. On-hold and unavailable-state handling use
 the same owner; no lifecycle or money mutation follows from entering a tab.
 
 Commercial section and quote selection changes use `projectViewNavigation` and
-the live URL, with native Back/Forward and a dirty-quote section guard.
+the live URL, with native Back/Forward and a dirty-quote guard for both section
+clicks and destructive history traversal. Cancellation retains the draft, URL and
+existing history position before the router can reset selection; confirmation
+continues to the intended entry. Same-quote Details/Preview retains dirty text.
+The small shared `portalHistoryGuard` tracks entries at the Portal shell, while
+quote-specific loss-of-draft decisions stay in `projectViewNavigation`. Existing
+full-document beforeunload and calculator save protections are unchanged.
 `CommercialTab` keeps its strip stable during module/data reads; list scroll
 restores only on detail return, not when another tab's older read finishes.
 Global search is labelled Jump to a project or contact; the Projects filter is
