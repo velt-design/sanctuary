@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { isNavParentActive as isParentActive } from './navRouteMatch';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
@@ -36,22 +37,6 @@ function itemChildren(item: (typeof NAV_ITEMS)[number]) {
   return 'children' in item ? item.children : undefined;
 }
 
-function isParentActive(pathname: string, href: string) {
-  if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
-  if (pathname === href || pathname.startsWith(`${href}/`)) return true;
-
-  const aliases: Record<string, string[]> = {
-    '/staff/projects': ['/projects'],
-    '/contacts': ['/staff/contacts'],
-    '/schedule': ['/staff/schedule'],
-    '/imports': ['/admin/imports'],
-    '/pricebook': ['/admin/costing', '/admin/costs'],
-  };
-
-  const matches = aliases[href];
-  if (!matches) return false;
-  return matches.some((match) => pathname === match || pathname.startsWith(`${match}/`));
-}
 
 function isChildActive(
   parentKey: string,
@@ -89,6 +74,7 @@ function isChildActive(
       return false;
     }
     case 'schedule': {
+      if (childKey === 'site-visits') return pathname === '/staff/site-visits' || pathname.startsWith('/staff/site-visits/');
       const schedulePath =
         pathname === '/schedule' ||
         pathname.startsWith('/schedule/') ||

@@ -215,15 +215,26 @@ describe('PortalSidebarPanel', () => {
     rendered.unmount();
   });
 
-  it('keeps Site Visits out of Schedule navigation', () => {
+  it('keeps Site Visits available beside Board and Gantt', () => {
     mockPathname = '/staff/schedule';
     mockSearchParams = new URLSearchParams('view=board');
     const rendered = renderSidebar();
 
     expect(linkByText(rendered.container, 'Board')).toBeInstanceOf(HTMLAnchorElement);
     expect(linkByText(rendered.container, 'Gantt')).toBeInstanceOf(HTMLAnchorElement);
-    expect(queryLinkByText(rendered.container, 'Site visits')).toBeNull();
+    expect(linkByText(rendered.container, 'Site Visits').getAttribute('href')).toBe('/staff/site-visits');
 
+    rendered.unmount();
+  });
+
+  it('opens Schedule and marks only Site Visits current on the agenda', () => {
+    mockPathname = '/staff/site-visits';
+    mockSearchParams = new URLSearchParams('view=review&project=proj_test');
+    const rendered = renderSidebar();
+    expect(buttonByLabel(rendered.container, 'Collapse Schedule').getAttribute('aria-expanded')).toBe('true');
+    expect(linkByText(rendered.container, 'Site Visits').getAttribute('aria-current')).toBe('page');
+    expect(linkByText(rendered.container, 'Board').getAttribute('aria-current')).toBeNull();
+    expect(linkByText(rendered.container, 'Gantt').getAttribute('aria-current')).toBeNull();
     rendered.unmount();
   });
 

@@ -61,6 +61,13 @@ function linkByLabel(container: HTMLElement, label: string): HTMLAnchorElement {
 }
 
 describe('SidebarRail', () => {
+  it('marks Schedule current for the site visit agenda in the compact rail', () => {
+    mockPathname = '/staff/site-visits';
+    const rendered = renderIntoDocument(<SidebarRail role="staff" />);
+    expect(linkByLabel(rendered.container, 'Schedule').getAttribute('aria-current')).toBe('page');
+    expect(linkByLabel(rendered.container, 'Projects').getAttribute('aria-current')).toBeNull();
+    rendered.unmount();
+  });
   beforeEach(() => {
     transitionMocks.beginInstantRoute.mockReset();
     transitionMocks.beginRouteTransition.mockReset();
