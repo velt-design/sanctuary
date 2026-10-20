@@ -1,5 +1,18 @@
 # Supabase Schema Map
 
+## Outdoor Rooms residential discussion contract (21 October 2026)
+
+Forward migration 20261021000001_marketing_outdoor_room_optional_phone.sql
+adds exactly `/outdoor-rooms-auckland` to `marketing_enquiry_intake(uuid,text,jsonb)`
+blank-phone eligibility. Residential audience, nonempty email/suburb and explicit
+`project-discussion` remain required. Function signature, security definer, empty
+search path, service-only grants, configured exception, contact matching, upload
+binding, replay and atomic writes remain unchanged. The shared application
+contact policy validates any supplied phone independently of SEO/channel identity.
+Disposable native/API/SQL tests rehearse this exact function. Shared-environment
+reconciliation and installation are separate operational checks, required before
+enabling this contract; fixture results alone do not establish rollout.
+
 ## Custom residential discussion contract (20 October 2026)
 
 Forward migration 20261020030001_marketing_custom_optional_phone.sql

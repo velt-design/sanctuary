@@ -5,7 +5,7 @@ const channels = {
   '/ads/outdoor-living': 'google', '/ads/acrylic-pergolas': 'google',
   '/ads/facebook/outdoor-living': 'facebook', '/ads/facebook/acrylic-pergolas': 'facebook',
   '/pergolas-auckland': 'seo', '/acrylic-roof-pergolas-auckland': 'seo',
-  '/aluminium-pergolas-auckland': 'seo', '/custom-pergolas-auckland': 'seo',
+  '/aluminium-pergolas-auckland': 'seo', '/custom-pergolas-auckland': 'seo', '/outdoor-rooms-auckland': 'seo',
   '/auckland-outdoor-living': 'legacy_facebook',
 } as const;
 type Action = 'design_start' | 'design_edit' | 'design_review' | 'design_enquiry_open' | 'quote';

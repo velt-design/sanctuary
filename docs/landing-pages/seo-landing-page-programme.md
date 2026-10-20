@@ -1,5 +1,23 @@
 # SEO Landing Page Programme
 
+## Outdoor Rooms service revision (21 October 2026)
+
+The existing indexed `/outdoor-rooms-auckland` route now leads with planning the
+complete living space: furniture and circulation, roof/light, edges and services.
+Its original project photographs and use-led examples distinguish it from the
+Custom design conversation and Aluminium material/estimate pages. The existing
+guided use priorities determine the first substantial project and remaining
+order. Finder brief, priorities, project reference links and return are retained.
+One canonical discussion form accepts optional photos; the lower standard-shape
+designer carries a saved starting idea without pricing the whole room.
+
+Normal navigation/footer, metadata, guide discovery and WebPage/Service/Breadcrumb
+schema remain. The old template configuration is replaced by the route-owned
+composition and dedicated journey tests; shared template tests retain their
+unchanged Gable fixture coverage. Phone policy uses an exact-route migration,
+not an advertising classification. Operational rollout is recorded separately;
+local fixtures do not establish hosted pricing, delivery or live attribution.
+
 ## Custom service revision (20 October 2026)
 
 Custom remains at /custom-pergolas-auckland with normal navigation, footer and
