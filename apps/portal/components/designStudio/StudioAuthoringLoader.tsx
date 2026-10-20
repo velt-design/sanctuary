@@ -5,6 +5,7 @@ import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { StudioAuthoringResponse } from '@/lib/designStudio/authoringRequest.server';
 import { loadStudioEditor } from './studioLeafLoading';
+import StudioDesignHeading from './StudioDesignHeading';
 import css from './SavedStudioReview.module.css';
 import StudioRevisionStart from './StudioRevisionStart';
 import StudioCreateAction from './StudioCreateAction';
@@ -33,12 +34,12 @@ export default function StudioAuthoringLoader({ projectId, estimateId, intent = 
   const current = loaded?.identity === identity ? loaded : null, authoring = current?.authoring;
   const scope = useMemo(() => ({ actorId: actorId ?? '', projectId, estimateId, designId: authoring?.view?.designId ?? '' }), [actorId, projectId, estimateId, authoring?.view?.designId]);
   const Editor = current?.Editor;
-  if (Editor && actorId && intent === 'edit' && authoring?.state === 'ready' && authoring.view && !authoring.estimate.requiresNewRevision) return <Editor key={identity} scope={scope} view={authoring.view} updatedAt={authoring.estimate.updatedAt} editable={authoring.nextAction === 'edit'} versionLabel={authoring.estimate.versionLabel} websiteBrief={authoring.websiteBrief} />;
+  if (Editor && actorId && intent === 'edit' && authoring?.state === 'ready' && authoring.view && !authoring.estimate.requiresNewRevision) return <Editor key={identity} scope={scope} view={authoring.view} updatedAt={authoring.estimate.updatedAt} editable={authoring.nextAction === 'edit'} versionLabel={authoring.estimate.versionLabel} websiteBrief={authoring.websiteBrief} identity={authoring.identity} />;
   return <main className={css.review}><Link className={css.back} href={`/staff/design-studio/${encodeURIComponent(projectId)}/${encodeURIComponent(estimateId)}`}>← Review estimate</Link>
-    <header className={css.header}><h1>Design studio</h1></header>
+    <header className={css.header}><StudioDesignHeading identity={authoring?.identity} versionLabel={authoring?.estimate.versionLabel ?? "not loaded"}/></header>
     {!current ? <p role="status">Opening saved design…</p> : current.leafFailed ? <div role="alert"><p>The design editor could not be opened.</p><button className={css.actionLink} onClick={() => setAttempt(value => value + 1)}>Try again</button></div> : !authoring ? <><div role="alert"><p>The saved design could not be loaded.</p><button className={css.actionLink} onClick={() => setAttempt(value => value + 1)}>Try again</button></div>{actorId && <StudioCreateAction scope={{ actorId, projectId }} intent={{ mode: 'recover', sourceEstimateId: estimateId }} />}</>
       : actorId && authoring.state === 'ready' && authoring.view && (intent !== 'edit' || authoring.estimate.requiresNewRevision) && authoring.estimate.updatedAt
-        ? <StudioRevisionStart key={identity} actorId={actorId} projectId={projectId} estimateId={estimateId} revision={authoring.view.revision} updatedAt={authoring.estimate.updatedAt} duplicateName={intent === 'duplicate' ? duplicateName ?? `Copy of Estimate ${authoring.estimate.versionLabel}` : undefined} />
+        ? <StudioRevisionStart key={identity} actorId={actorId} projectId={projectId} estimateId={estimateId} revision={authoring.view.revision} updatedAt={authoring.estimate.updatedAt} duplicateName={intent === 'duplicate' ? duplicateName ?? `Copy of ${authoring.identity?.internalName || `Design ${authoring.estimate.versionLabel}`}` : undefined} />
         : <><p role="status">{authoring.reason ?? 'This version is unavailable for editing.'}</p>{actorId && <StudioCreateAction scope={{ actorId, projectId }} intent={{ mode: 'recover', sourceEstimateId: estimateId }} />}</>}
   </main>;
 }

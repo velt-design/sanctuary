@@ -1,4 +1,6 @@
 'use client';
+import StudioDesignHeading from './StudioDesignHeading';
+import type { StudioDesignIdentity } from '@/lib/designStudio/studioDesignIdentity';
 import { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -28,7 +30,7 @@ import {websiteCompositionPriceEligibility} from '@/lib/designStudio/websiteComp
 const CompositionScene=dynamic(()=>import('./StudioWebsiteCompositionScene'),{ssr:false,loading:()=> <p>Preparing your design...</p>});
 import { studioViewContextKey, readWebsiteViewContext, type WebsiteViewContext } from './studioViewContext';
 const Scene = dynamic(()=>import('./StudioWebsiteScene'),{ssr:false,loading:()=> <p>Preparing your design…</p>});
-export default function StudioWebsiteEditor({ scope, view, updatedAt, editable, versionLabel }: { scope:StudioSaveScope;view:StudioAuthoringView;updatedAt:string|null;editable:boolean;versionLabel:string }) {
+export default function StudioWebsiteEditor({ scope, view, updatedAt, editable, versionLabel, identity }: { scope:StudioSaveScope;view:StudioAuthoringView;updatedAt:string|null;editable:boolean;versionLabel:string;identity?:StudioDesignIdentity }) {
  const controller=useStudioEditingSession({scope,view,updatedAt,editable});
  const [section,choose]=useState<'Shape'|'Roof'|'Sides'|'Lighting'>('Shape');
  const edit=controller.edit;
@@ -78,10 +80,10 @@ export default function StudioWebsiteEditor({ scope, view, updatedAt, editable, 
   controller.change(source);
  }
  const selection=resolved?.ok?resolved.value:value?.selection;
- if(controller.edit)return <StudioHouseWorkspace controller={controller} scope={scope} versionLabel={versionLabel}/>;
+ if(controller.edit)return <StudioHouseWorkspace controller={controller} scope={scope} versionLabel={versionLabel} identity={identity}/>;
  const workspace=(
  <main className={`${css.page} ${css.editorPage}`}>
-  <header className={css.header}><div><Link className={css.back} href={`/staff/projects/${scope.projectId}?tab=estimates`}>← Project</Link><h1>Pergola design</h1><p>{versionLabel} · {controller.session?.dirty?'Changes kept on this device':'Saved design'}</p><StudioWebsiteRecovery controller={controller}/></div>
+  <header className={css.header}><div><Link className={css.back} href={`/staff/projects/${scope.projectId}?tab=estimates`}>← Project</Link><StudioDesignHeading identity={identity} versionLabel={versionLabel} state={controller.session?.dirty?'Unsaved changes kept on this device':'Saved design'}/><StudioWebsiteRecovery controller={controller}/></div>
    <div className={css.price} aria-live="polite"><span>Design subtotal · including GST</span><strong>{pendingHouseId?'Apply house changes':!value?'Not calculated':composition.some(p=>p.error)?'Check design':price.price?.status==='priced'?new Intl.NumberFormat('en-NZ',{style:'currency',currency:'NZD',maximumFractionDigits:0}).format(price.price.amount!):resolved&&!resolved.ok?'Check design':price.error||price.price?.status==='unavailable'?'Unavailable':'Calculating…'}</strong><small>{pendingHouseId?'The model shows the last applied house.':!value?'Add a pergola to calculate the design.':composition.find(p=>p.error)?.error||(resolved&&!resolved.ok?resolved.message:null)||price.error||price.price?.reason|| (price.price?.versionNumber?`Current Pricebook ${price.price.versionNumber}`:' ')}{resolved&&!resolved.ok&&<FixInput issue={resolved} choose={choose}/>}{invalidAttachment&&<button onClick={()=>{pick(invalidAttachment.object.id);setPlacement(true);}}>Check attachment</button>}{pendingHouseId&&<button onClick={()=>pick(pendingHouseId)}>Edit house</button>}<JoinPriceRecovery invalidLabel={invalidJoin?.label} onCheck={()=>{if(invalidJoin){pick(invalidJoin.join.a.objectId);setPlacement(true);setPickHouseEdge(false);setJoinRecovery(true);}}} error={price.error} onRetry={price.retry}/></small></div>
    <div className={css.actions}><button disabled={!controller.canSave||Boolean(pendingHouseId)||composition.some(p=>p.error)} onClick={()=>controller.save()}>Save design</button><Link href={`/staff/design-studio/${scope.projectId}/${scope.estimateId}`}>Review →</Link></div>
 

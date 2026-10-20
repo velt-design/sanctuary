@@ -1,3 +1,4 @@
+import StudioDesignHeading from './StudioDesignHeading';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { SavedEstimateReview, SavedReviewPrice } from '../../lib/designStudio/savedReview';
@@ -47,8 +48,8 @@ export default function SavedStudioReview({ review, projectId, editHref, revisio
     <header className={styles.header}>
       <div>
         <p className={styles.eyebrow}>{estimate.commercialScopeKind === 'add_on' ? 'Add-on scope' : 'Base scope'} · Saved review</p>
-        <h1>{estimateLabel(estimate.versionLabel)}</h1>
-        <p className={styles.subtitle}>{estimate.status === 'archived' ? 'Archived estimate' : 'Saved estimate'}{studio.revision !== null ? ` · Design revision ${studio.revision}` : ''}{estimate.lock.isLocked ? ' · Locked' : ''}</p>
+        <StudioDesignHeading identity={review.identity} versionLabel={estimate.versionLabel}/>
+        <p className={styles.subtitle}>{estimate.status === 'archived' ? 'Archived estimate' : 'Saved estimate'}{estimate.lock.isLocked ? ' · Locked' : ''}</p>
       </div>
       <div className={styles.action}>
         {importHref ? <Link className={styles.actionLink} href={importHref}>Import into Studio</Link> : actionHref ? <Link className={styles.actionLink} href={actionHref}>{nextAction.label}</Link> : <p>{nextAction.kind === 'edit' ? 'Editing is not connected here yet.' : nextAction.kind === 'create-revision' ? 'A new revision is needed to make changes. Revision creation is not connected here yet.' : 'Changes are unavailable for this saved version.'}</p>}

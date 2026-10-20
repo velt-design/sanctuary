@@ -7,6 +7,8 @@ import { parseStudioAuthored, STUDIO_OUTPUT_KEY } from './contracts';
 import { buildSavedEstimateReview } from './savedReview';
 import { studioPriceUuid } from './pricedCandidate';
 import { projectStudioWebsiteBrief } from './websiteBrief.server';
+import { loadStudioProjectName } from '@/lib/queries/studioProject.server';
+import { studioDesignIdentity } from './studioDesignIdentity';
 
 const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -110,6 +112,7 @@ async function readReview(request: Request, ids: { projectId: string; estimateId
   }
   const websiteBrief = !quoteId ? projectStudioWebsiteBrief({ id: estimateId.uuid, project_id: project.uuid, outputs }) : null;
   return jsonOk({ review: { ...buildSavedEstimateReview({ estimate, quote, sourceEstimate, viewerRole: auth.session.role }),
+    identity: studioDesignIdentity(estimate, await loadStudioProjectName(auth.supabase, project.uuid)),
     ...(websiteBrief ? { websiteBrief } : {}) },
     ...(studioDraft ? { studioDraft } : {}) });
 }

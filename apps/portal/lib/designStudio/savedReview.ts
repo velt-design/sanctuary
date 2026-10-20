@@ -6,6 +6,7 @@ import { requiresConfiguredQuoteSnapshot } from '../quotes/configuredQuoteSnapsh
 import type { QuoteVersionDetail } from '../quotes/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '../types/calculator';
 import { parseStudioAuthored, STUDIO_OUTPUT_KEY } from './contracts';
+import { studioDesignIdentity, type StudioDesignIdentity } from './studioDesignIdentity';
 
 export type SavedReviewLine = {
   description: string;
@@ -17,6 +18,7 @@ export type SavedReviewPrice =
   | { state: 'available'; totalIncGstCents: number; lineItems: SavedReviewLine[]; basis: 'saved-estimate-handoff' | 'configured-frozen' | 'saved-quote' }
   | { state: 'unavailable'; totalIncGstCents: null; lineItems: []; reason: string };
 export type SavedEstimateReview = {
+  identity?: StudioDesignIdentity;
   websiteDesign?: StudioWebsiteDesign;
   websiteComposition?: StudioAuthoringView;
   websiteBrief?: import('./websiteBrief').StudioWebsiteBrief;
@@ -151,6 +153,7 @@ export function buildSavedEstimateReview(args: {
       ? { kind: 'create-revision', label: 'Create revision', reason: 'The source estimate is archived or already used by a quote.' }
       : { kind: 'edit', label: 'Return to editing', reason: null };
   const result: SavedEstimateReview = {
+    identity: studioDesignIdentity(estimate),
     estimate: {
       id: estimate.id, projectId: estimate.projectId, versionLabel: estimate.versionLabel, status: estimate.status,
       commercialScopeId: scope(estimate), commercialScopeKind: estimate.commercialScopeKind ?? 'base',

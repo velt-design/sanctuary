@@ -19,13 +19,13 @@ vi.mock('./useStudioWebsitePrice',()=>({useStudioWebsitePrice:()=>({price:mocks.
 vi.mock('./StudioWebsiteRecovery',()=>({default:()=>null}));
 const view:StudioAuthoringView={schemaVersion:'studio_authoring_view.v1',designId:'prepared-design',revision:3,spatial:{houseAssembly:null,pergolas:[],decks:[],openings:[]},site:{},objectOptions:[],pricing:'unpriced'};
 const binding={snapshotId:'10000000-0000-4000-8000-000000000005',contentHash:'a'.repeat(64)};
-const authoring={state:'ready',view,estimate:{updatedAt:'2026-10-20T00:00:00Z',requiresNewRevision:false},nextAction:'edit',preparedQuote:binding};
+const authoring={state:'ready',view,estimate:{id:'est-proof',projectId:'proj-proof',versionLabel:'V1',updatedAt:'2026-10-20T00:00:00Z',requiresNewRevision:false},nextAction:'edit',preparedQuote:binding};
 const review={estimate:{projectId:'proj-proof',id:'est-proof',versionLabel:'V1'}};
 const mounts:ReturnType<typeof renderIntoDocument>[]=[];
 beforeEach(()=>{vi.resetAllMocks();mocks.policyReady=true;mocks.policyState='ACTIVE';mocks.policyVersion=1;mocks.price={status:'priced',amount:100,versionNumber:15};mocks.session.mockReturnValue({edit:createStudioAuthoringEdit(view),status:'ready',localDurable:true,session:{dirty:false,pending:null},canSave:false,canEdit:true});mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring}:{quoteVersion:{id:'quote-result'}});});
 afterEach(()=>mounts.splice(0).forEach(m=>m.unmount()));
 async function mount(){const m=renderIntoDocument(<StudioWebsiteReview review={review as any} actorId="actor"/>);mounts.push(m);await act(async()=>{});return m;}
-async function resume(container:HTMLElement){const button=[...container.querySelectorAll('button')].find(b=>b.textContent==='Resume prepared quote')!;expect(button.disabled).toBe(false);await act(async()=>button.click());}
+async function resume(container:HTMLElement){const button=[...container.querySelectorAll('button')].find(b=>b.textContent==='Finish creating this quote')!;expect(button.disabled).toBe(false);await act(async()=>button.click());}
 it('resumes the saved capture after reload and uses exactly the same intent after an ambiguous create response',async()=>{
  let attempts=0;mocks.api.mockImplementation(async(url:string)=>{if(url.endsWith('/studio'))return {authoring};if(++attempts===1)throw Error('Response interrupted');return {quoteVersion:{id:'quote-result'}};});
  const first=await mount();await resume(first.container);expect(first.container.textContent).toContain('Response interrupted');first.unmount();mounts.pop();
@@ -38,18 +38,18 @@ it('resumes the saved capture after reload and uses exactly the same intent afte
 });
 it('opens the existing quote path after a completed request instead of creating again',async()=>{
  mocks.api.mockResolvedValue({authoring:{...authoring,nextAction:'create-revision',estimate:{...authoring.estimate,requiresNewRevision:true}}});
- const m=await mount();expect(m.container.textContent).toContain('already used by a quote');expect(m.container.textContent).not.toContain('Resume prepared quote');
+ const m=await mount();expect(m.container.textContent).toContain('already used by a quote');expect(m.container.textContent).not.toContain('Finish creating this quote');
  expect(m.container.querySelector('a')?.getAttribute('href')).toBe('/staff/projects/proj-proof?tab=quotes');
 });
 it('does not apply an old preparation to a changed retained local design',async()=>{
  const edit=createStudioAuthoringEdit(view);edit.site.travelExGst='25';mocks.session.mockReturnValue({edit,status:'ready',localDurable:true,session:{dirty:true,pending:null},canSave:true,canEdit:true});
- const m=await mount();expect(m.container.textContent).not.toContain('Resume prepared quote');expect(m.container.textContent).toContain('Save your current changes');
+ const m=await mount();expect(m.container.textContent).not.toContain('Finish creating this quote');expect(m.container.textContent).toContain('Save your current changes');
 });
 it('rechecks the saved source and permits fresh capture after a publication change without replaying the old preparation',async()=>{
  const m=await mount();const replace=[...m.container.querySelectorAll('button')].find(b=>b.textContent==='Prepare updated quote views')!;
  await act(async()=>replace.click());
  expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/studio'))).toHaveLength(2);
- expect(m.container.textContent).not.toContain('Resume prepared quote');
+ expect(m.container.textContent).not.toContain('Finish creating this quote');
  expect([...m.container.querySelectorAll('button')].find(b=>b.textContent==='Create quote from this design')?.disabled).toBe(true);
  expect(mocks.api.mock.calls.some(([url])=>url.endsWith('/studio-quote')||url.endsWith('/quotes'))).toBe(false);
  const nextBinding={snapshotId:'10000000-0000-4000-8000-000000000006',contentHash:'b'.repeat(64)};
@@ -111,18 +111,18 @@ it('retains the prepared identity when project state changes during preparation 
  await act(async()=>button('Capture test views').click());await act(async()=>button('Create quote from this design').click());
  mocks.policyState='WAITING';m.rerender(<StudioWebsiteReview review={review as any} actorId="actor"/>);
  await act(async()=>finish(binding));
- expect(button('Resume prepared quote').disabled).toBe(true);
+ expect(button('Finish creating this quote').disabled).toBe(true);
  expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/quotes'))).toHaveLength(0);
  await act(async()=>button('Review commercial actions').click());
  mocks.policyVersion=2;m.rerender(<StudioWebsiteReview review={review as any} actorId="actor"/>);
- expect(button('Resume prepared quote').disabled).toBe(true);
+ expect(button('Finish creating this quote').disabled).toBe(true);
  await act(async()=>button('Review commercial actions').click());await resume(m.container);
  expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/studio-quote'))).toHaveLength(1);
  expect(JSON.parse(mocks.api.mock.calls.find(([url])=>url.endsWith('/quotes'))![1].body).clientIntentId).toBe(`studio:${binding.snapshotId}`);
 });
 it('withholds resume while the project is unavailable, and does not dispatch an old identity after navigation',async()=>{
  mocks.policyReady=false;const m=await mount();
- expect([...m.container.querySelectorAll('button')].find(b=>b.textContent==='Resume prepared quote')!.disabled).toBe(true);
+ expect([...m.container.querySelectorAll('button')].find(b=>b.textContent==='Finish creating this quote')!.disabled).toBe(true);
  mocks.policyReady=true;m.rerender(<StudioWebsiteReview review={review as any} actorId="actor"/>);
  let finish!: (value:typeof binding)=>void;
  mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring:{...authoring,preparedQuote:undefined}}:new Promise(resolve=>{finish=resolve;}));

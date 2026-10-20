@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-21: Route retained Studio errors to their actual selection owner
+
+A house binding does not prove that every invalid attached product has a
+connection problem. Narrowing a pergola can retain a blind whose old opening no
+longer exists. Keep that blind and the attachment reference, withhold the price,
+and lead back to Sides. Connection repair must use actual connection failures;
+return labels and edge highlights must follow the active repair context and
+clear when another object is deliberately selected.
+
 ## 2026-10-20: Check concurrent migration reservations before release
 
 Published Custom PR #230 uses Studio's proposed `20261020030001` version.

@@ -1,4 +1,5 @@
 'use client';
+import type { StudioDesignIdentity } from '@/lib/designStudio/studioDesignIdentity';
 
 import Link from 'next/link';
 import type { StudioAuthoringView } from '@/lib/designStudio/authoringView';
@@ -12,7 +13,7 @@ import css from './SavedStudioReview.module.css';
 /** The website workspace is the only live Studio editor. Legacy designs remain reviewable. */
 export default function StudioEditor(props: {
   scope: StudioSaveScope; view: StudioAuthoringView; updatedAt: string | null;
-  editable: boolean; versionLabel: string; websiteBrief?: StudioWebsiteBrief;
+  editable: boolean; versionLabel: string; identity?: StudioDesignIdentity; websiteBrief?: StudioWebsiteBrief;
 }) {
   const { view, scope } = props;
   let houseSupported=true;try{studioHouseScene(view.site,view.spatial);}catch{houseSupported=false;}

@@ -43,9 +43,9 @@ describe('SavedStudioReview', () => {
     expect(quote.querySelector('tbody td:last-child')?.textContent).toBe('$12,345.67');
     expect(quote.textContent).not.toContain('$29.97');
     expect(quote.querySelector('tbody td')?.textContent).toBe('Roof\nSaved specification');
-    expect(node.querySelector('h1')?.textContent).toBe('Estimate V3');
+    expect(node.querySelector('h1')?.textContent).toBe('Untitled Studio design');
     expect(node.textContent).toContain('Add-on scope');
-    expect(node.textContent).toContain('Design revision 4 · Locked');
+    expect(node.textContent).toContain('Design V3');
   });
 
   it('does not render internal cost controls or values for a staff projection', () => {

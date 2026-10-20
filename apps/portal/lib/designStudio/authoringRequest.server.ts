@@ -7,6 +7,8 @@ import { STUDIO_OUTPUT_KEY, STUDIO_SPATIAL_OUTPUT_KEY } from './contracts';
 import {projectStudioWebsiteBrief} from './websiteBrief.server';
 import type {StudioWebsiteBrief} from './websiteBrief';
 import {readStudioQuoteHandoff} from './quoteSnapshot';
+import { studioDesignIdentity, type StudioDesignIdentity } from './studioDesignIdentity';
+import { loadStudioProjectName } from '@/lib/queries/studioProject.server';
 
 export type StudioAuthoringResponse = {
   state: 'ready' | 'needs-import' | 'unavailable';
@@ -16,6 +18,7 @@ export type StudioAuthoringResponse = {
   nextAction: 'edit' | 'create-revision' | 'import' | 'website-import' | 'import-required' | 'unavailable';
   websiteBrief?: StudioWebsiteBrief;
   preparedQuote?: {snapshotId:string;contentHash:string};
+  identity?: StudioDesignIdentity;
 };
 
 const record = (value: unknown): Record<string, unknown> | null =>
@@ -63,7 +66,7 @@ async function readAuthoring(request: Request, ids: { projectId: string; estimat
       : { state: 'unavailable', estimate: metadata, view: null, reason: 'This saved studio design cannot be edited by this client.', nextAction: 'unavailable' };
   }
   const handoff=authoring.state==='ready'&&!requiresNewRevision?readStudioQuoteHandoff(outputs):null;
-  return jsonOk({ authoring: {...authoring,...(websiteBrief?{websiteBrief}:{}),...(handoff?{preparedQuote:{snapshotId:handoff.snapshotId,contentHash:handoff.contentHash}}:{})} });
+  return jsonOk({ authoring: {...authoring,identity:studioDesignIdentity(detail,await loadStudioProjectName(auth.supabase,project.uuid)),...(websiteBrief?{websiteBrief}:{}),...(handoff?{preparedQuote:{snapshotId:handoff.snapshotId,contentHash:handoff.contentHash}}:{})} });
 }
 
 /** Caller-bound read only. The DTO owner strips opaque provenance and private

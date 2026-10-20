@@ -2,6 +2,7 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 import StudioAuthoringLoader from './StudioAuthoringLoader';
+import StudioDesignHeading from './StudioDesignHeading';
 
 const mocks = vi.hoisted(() => ({ api: vi.fn(), leaf: vi.fn(), actorId: 'actor' as string | undefined }));
 vi.mock('@/lib/repo/apiClient', () => ({ apiJson: mocks.api }));
@@ -55,6 +56,17 @@ function deferred<T>() {
   return { promise, resolve };
 }
 describe('Studio editor loading boundary', () => {
+  it('passes exact display identity only after the current actor and source read, without changing its scope',async()=>{
+    const identity={internalName:'Courtyard alternative',projectName:'Garden project',createdAt:'2026-10-21T01:00:00Z',history:'working' as const,quoteLabel:null};
+    const leaf=vi.fn((props:any)=><StudioDesignHeading identity={props.identity} versionLabel={props.versionLabel}/>);
+    mocks.leaf.mockResolvedValue(leaf);mocks.api.mockResolvedValue({authoring:{...source(),identity}});
+    const container=await mount();expect(container.textContent).toContain('Courtyard alternative');expect(container.textContent).toContain('Garden project');
+    expect(leaf.mock.calls[0][0].scope).toEqual({actorId:'actor',projectId:'proj_one',estimateId:'est_source',designId:'design'});
+    mocks.actorId='other';const pending=deferred<any>();mocks.api.mockReturnValue(pending.promise);
+    await act(async()=>mounted[0].rerender(<StudioAuthoringLoader projectId="proj_other" estimateId="est_other"/>));
+    expect(container.textContent).not.toContain('Courtyard alternative');expect(container.textContent).not.toContain('Garden project');
+    await act(async()=>pending.resolve({authoring:{...source(),identity}}));expect(container.querySelector('h1')?.textContent).not.toBe('Courtyard alternative');
+  });
   it('starts the leaf with the data request and retains loading until both are ready', async () => {
     const data = deferred<{ authoring: ReturnType<typeof source> }>(), leaf = deferred<typeof Editor>();
     mocks.api.mockReturnValue(data.promise); mocks.leaf.mockReturnValue(leaf.promise);

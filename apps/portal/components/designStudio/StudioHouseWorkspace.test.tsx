@@ -1,4 +1,5 @@
 import {DEFAULT_ROOF_FINISH} from '@sp/geometry';
+import {defaultBlind} from '@sp/configurator/website';
 import {studioHouseContextKey} from './studioHouseContext';
 import {changeStudioProduct} from '@/lib/designStudio/studioHouseCommands';
 import {act} from 'react';
@@ -15,7 +16,7 @@ const observed=vi.hoisted(()=>({scene:null as any,direct:null as any}));
 vi.mock('next/dynamic',()=>({default:()=> (props:any)=>{observed.scene=props;return <div/>;}}));
 vi.mock('@sp/configurator/react/controls',()=>({LightingProvider:({children}:any)=>children,PreviewBlindProvider:({children}:any)=>children}));
 vi.mock('./StudioHouseProductNavigation',()=>({default:()=>null}));
-vi.mock('./StudioWebsiteControls',()=>({default:({section,choose}:any)=><div data-section={section}><button onClick={()=>choose('Roof')}>Roof options</button><input aria-label="Width in millimetres"/></div>}));
+vi.mock('./StudioWebsiteControls',()=>({default:({section,choose}:any)=><div data-section={section}><button onClick={()=>choose('Roof')}>Roof options</button><input aria-label="Width in millimetres"/>{section==='Sides'&&<section tabIndex={-1} aria-label="Retained unavailable blinds"/>}</div>}));
 vi.mock('./StudioWebsiteRecovery',()=>({default:()=>null}));
 vi.mock('./StudioWebsiteJoinControls',()=>({default:()=>null}));
 vi.mock('./StudioAttachmentChoices',()=>({default:({onChange}:any)=><><button onClick={()=>onChange('fascia')}>Choose Fascia</button><button onClick={()=>onChange('soffit')}>Choose Soffit</button></>}));
@@ -78,10 +79,38 @@ it('repairs a default low Wall proposal through the independent eave height and 
  await click('Apply house changes');
  const actual=studioHouseScene(controller.edit.site,controller.edit.spatial)!.houses[0];
  expect(actual.wallHeightMm).toBe(original.wallHeightMm);expect(actual.eaveHeightMm).toBe('3000');
- await click('Return to Pergola 1 · Roof');
+ await click('Return to Pergola 1 · Change connection');
  expect(observed.direct[3].choice).toMatchObject({edge:'rear',method:'facade'});
  expect(observed.scene.preview).toBeTruthy();expect(rendered.container.textContent).not.toContain('2000–5000');
  await click('Apply connection');
  expect(websiteComposition(controller.edit)[0]).toMatchObject({error:null,studioAttachment:{edge:'rear',method:'facade'}});
  expect(controller.save).not.toHaveBeenCalled();rendered.unmount();
+});
+
+it('routes an attached unavailable blind to Sides without deleting it or blaming the valid house span',async()=>{
+ let edit:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:'blind-repair',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};
+ const added=applyStudioHouseEdit(edit.spatial,{kind:'add',id:'house'});if(!added.ok)throw Error(added.message);edit.spatial=added.spatial;
+ const house=studioHouseScene(edit.site,edit.spatial)!.houses[0];edit=updateStudioHouse(edit,{...house,widthMm:'8000'});
+ edit=previewStudioAttachment(addWebsitePergola(edit,'p'),{objectId:'p',houseId:'house',edge:'rear',kind:'eave',method:'soffit'});
+ const value=structuredClone(websiteComposition(edit)[0].value!);value.selection.roof.blinds=[defaultBlind('front-1of2')];edit=changeStudioProduct(edit,value);expect(websiteComposition(edit)[0].error).toBeNull();
+ value.rawDimensions.widthMm='3900';edit=changeStudioProduct(edit,value);expect(websiteComposition(edit)[0].error).toContain('Blind front-1of2 unavailable');
+ const snapshot=structuredClone(edit),scope={actorId:'actor',projectId:'project',estimateId:'blind-estimate',designId:edit.designId};
+ sessionStorage.clear();sessionStorage.setItem(studioHouseContextKey(scope),JSON.stringify({selected:'p',mode:'options',section:'Shape',view:'Plan'}));
+ const controller={edit,change:vi.fn(),canEdit:true,canSave:false,session:{dirty:true,baselinePergolaIds:['p']},save:vi.fn()};
+ const m=renderIntoDocument(<StudioHouseWorkspace controller={controller as any} scope={scope} versionLabel="V7"/>);
+ expect(m.container.textContent).toContain('House connection retained');expect(m.container.textContent).not.toContain('Connection needs repair');expect(m.container.textContent).not.toContain('Check connection');
+ await act(async()=>{[...m.container.querySelectorAll('button')].find(b=>b.textContent==='Check sides')!.click();await new Promise(r=>setTimeout(r,35));});
+ expect(m.container.querySelector('[data-section="Sides"]')).toBeTruthy();expect(document.activeElement?.getAttribute('aria-label')).toBe('Retained unavailable blinds');expect(controller.change).not.toHaveBeenCalled();expect(edit).toEqual(snapshot);expect(observed.scene.view).toBe('Plan');m.unmount();
+});
+
+it('retires unrelated repair context on explicit object selection, retaining the actual destination label',async()=>{
+ let edit:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:'repair-selection',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};
+ const added=applyStudioHouseEdit(edit.spatial,{kind:'add',id:'house'});if(!added.ok)throw Error(added.message);edit.spatial=added.spatial;
+ edit=previewStudioAttachment(addWebsitePergola(edit,'p'),{objectId:'p',houseId:'house',edge:'rear',kind:'eave',method:'soffit'});
+ const value=structuredClone(websiteComposition(edit)[0].value!);value.selection.roof.finish={...DEFAULT_ROOF_FINISH,material:'combination',ceiling:'thermopine-150'};edit=addWebsitePergola(changeStudioProduct(edit,value),'second');
+ const scope={actorId:'actor',projectId:'project',estimateId:'context-estimate',designId:edit.designId};sessionStorage.clear();sessionStorage.setItem(studioHouseContextKey(scope),JSON.stringify({selected:'p',mode:'position',section:'Shape',view:'Plan'}));
+ const controller={edit,change:vi.fn(),canEdit:true,canSave:false,session:{dirty:true,baselinePergolaIds:['p']},save:vi.fn()},m=renderIntoDocument(<StudioHouseWorkspace controller={controller as any} scope={scope} versionLabel="V7"/>);
+ const click=(text:string)=>act(()=>{[...m.container.querySelectorAll('button')].find(b=>b.textContent===text)!.click();});
+ click('Check connection');click('Check house dimensions');expect(m.container.textContent).toContain('Return to Pergola 1 · Position');expect(observed.scene.repairTarget).toBeTruthy();
+ click('Pergola 2');expect(m.container.textContent).not.toContain('Return to Pergola 1');expect(observed.scene.repairTarget).toBeFalsy();expect(observed.scene.view).toBe('Plan');expect(controller.change).not.toHaveBeenCalled();m.unmount();
 });
