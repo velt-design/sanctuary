@@ -11,6 +11,10 @@ describe('marketing route chrome', () => {
   });
 
   it('preserves the standard marketing shell elsewhere', () => {
+    for (const path of ['/pergolas-auckland', '/acrylic-roof-pergolas-auckland']) {
+      expect(shouldHideMarketingHeader(path)).toBe(false);
+      expect(shouldHideMarketingFooter(path)).toBe(false);
+    }
     expect(shouldHideMarketingHeader('/')).toBe(false);
     expect(shouldHideMarketingFooter('/')).toBe(false);
     expect(shouldHideMarketingHeader('/projects')).toBe(false);

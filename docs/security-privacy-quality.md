@@ -1,5 +1,35 @@
 # Security, Privacy, And Quality
 
+## Channel-page measurement (20 October 2026)
+
+`lib/channelDesignTracking.ts` owns the seven exact channel/legacy route codes.
+`ChannelTrackingRegion`, `ChannelDesignReview`, existing inline controls and the
+full-designer tracker consume it. The existing `design_funnel_version: v1`
+remains. Closed `source_channel` and `source_surface` fields distinguish source
+and inline/full-designer actions, without sending design, contact or URL-query
+values. `/configurator-preview` and `/design-enquiry` may carry only one exact
+allowlisted `source_path` for continuation; staff requests remain excluded.
+
+`design_start` means a deliberate control edit or explicit designer open.
+`design_review` means opening "Review your design" or choosing the full designer's
+review control. Default-price rendering, restoration, visibility and rail-state
+synchronisation do not count. `design_enquiry_open` means the configured enquiry
+action and does not invent a prior review. Direct quote links use existing
+`journey_decision_click`, `decision_source: channel_page`, help/enquiry context
+without a `configured_design` claim. The actual form retains any chosen design
+without inventing one on a fresh page. A per-route/tab marker stores only closed codes
+and deduplicates inline/overlay/return actions. Denied or unresolved actions
+consume their markers and are never replayed after consent. No additional
+persistent visitor identifier or conversion event is introduced.
+
+The exact new Facebook paths join the existing Clarity page allowlist. Query
+privacy and vendor consent/loading rules remain unchanged. Forward migration
+`20261020000001_marketing_facebook_channel_optional_phone.sql` extends only the
+existing residential discussion phone exception to those two paths. Its API and
+native-fallback acceptance is covered by disposable SQL. Local verification uses
+labelled sample prices and fenced enquiry/vendor transport; it does not establish
+hosted schema readiness, current pricing, provider delivery or live attribution.
+Operational rollout and those checks are recorded separately in the release record.
 
 ## Google funnel launch verification boundary (15 October 2026)
 

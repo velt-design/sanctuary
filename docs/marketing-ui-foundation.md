@@ -1,5 +1,28 @@
 # Marketing UI Foundation
 
+## Channel-page structure (20 October 2026)
+
+The channel structure separates acquisition pages from indexed research pages.
+`/ads/facebook/outdoor-living` and `/ads/facebook/acrylic-pergolas` reuse the
+existing lifestyle compositions (`OutdoorLivingPage` and `AcrylicPergolaPage`).
+They are noindex/nofollow and absent from the sitemap. `/auckland-outdoor-living`
+remains a working noindex compatibility route, including campaign queries.
+`/acrylic-roof-pergolas-auckland` keeps its indexed canonical URL, rich tint,
+project, research and FAQ content, with normal site chrome and no duplicate hero
+brand. `/pergolas-auckland` retains `DesignWorkspace` and its scoped saved draft.
+Neither indexed route redirects to an advertisement.
+
+The Google outdoor H1 is "Custom pergolas, designed for your Auckland home",
+with "Make room for life outside" beneath. Both Google heroes show free Auckland
+site measures. Advertising and designer metadata rely on the one layout brand
+suffix. Photos, balanced timber/acrylic scope, estimates and direct enquiries
+remain with their established owners. The optional `ChannelDesignReview`
+disclosure shows actual choices and scope caveats without gating the estimate or
+contact action. `googleFunnel.ts` separately owns inline-route eligibility and
+advertising chrome; a page can retain inline enquiry while keeping SEO chrome.
+Local fixture checks cover the composition and journeys. Hosted rollout, current
+pricing and live tracking receipt are verified separately in the release record.
+
 ## Enquiry-path friction corrections (16 October 2026)
 
 `ChallengerPriceExamples` makes each installed-size/price row a link to the

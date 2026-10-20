@@ -6,6 +6,7 @@ import { designEnquiryHref, isConfiguratorEntry, openConfigurator, rememberConfi
 import { initializeLandingPreview } from './usePreviewDraft';
 vi.mock('./usePreviewDraft', () => ({ initializeLandingPreview: vi.fn() }));
 
+vi.mock('../ConsentProvider', () => ({ useConsent: () => ({ consent: { analytics: true }, hasTrackingDecision: true }) }));
 let pathname = '/products';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
 vi.mock('next/dynamic', () => ({ default: () => ({ open, onClose }: { open: boolean; onClose: () => void }) => open ? <dialog open><button onClick={onClose}>Close</button><a href="/design-enquiry">Enquire about this design</a></dialog> : null }));

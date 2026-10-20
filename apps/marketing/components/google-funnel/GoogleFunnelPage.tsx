@@ -1,3 +1,4 @@
+import ChannelTrackingRegion from '@/components/journey/ChannelTrackingRegion';
 import Image from 'next/image';
 import FunnelReview from './FunnelReview';
 import { simpleCoverStandard } from '../../app/simple-pergolas-auckland/content';
@@ -8,11 +9,13 @@ import styles from './funnel.module.css';
 
 export default function GoogleFunnelPage({ acrylic = false }: { acrylic?: boolean }) {
   const path = acrylic ? '/ads/acrylic-pergolas' : '/ads/outdoor-living';
-  return <main className={styles.page} data-google-funnel={acrylic ? 'acrylic' : 'outdoor-living'} data-marketing-foundation-page>
+  return <ChannelTrackingRegion><main className={styles.page} data-google-funnel={acrylic ? 'acrylic' : 'outdoor-living'} data-marketing-foundation-page>
     <section className={styles.hero} aria-labelledby="funnel-title">
       <Image className={styles.heroImage} src={acrylic ? '/images/project-dairy-flat-03.jpg' : '/images/project-riverhead-gable-01.jpg'} alt={acrylic ? 'Daylight through the acrylic gable roof of the completed Sanctuary pergola at Dairy Flat' : 'The timber-lined Sanctuary pavilion beside the pool in Riverhead, Auckland'} fill priority sizes="100vw"/>
       <div className={styles.shade}/><div className={styles.brand}><span>sanctuary<small>PERGOLAS</small></span><p>{acrylic ? 'Acrylic pergolas' : 'Outdoor living'} · Auckland</p></div>
-      <div className={styles.heroContent}><h1 id="funnel-title">{acrylic ? <>Cover the space<br/>without losing light.</> : <>Make room<br/>for life outside.</>}</h1><p className={styles.heroService}>{acrylic ? 'Custom acrylic pergolas, designed and installed in Auckland.' : 'Custom pergolas and covered outdoor spaces, designed and installed in Auckland.'}</p><div className={styles.heroBottom}><div><p>{acrylic ? <>A covered space, with daylight above.<br/>Designed around the home you love.</> : <>A place for slow mornings. Long lunches.<br/>And a little more everyday living.</>}</p><a className={styles.heroAction} href="#project-details">Get a tailored quote <ArrowUpRight/></a></div><span className={styles.caption}>Built by Sanctuary<br/>{' '}{acrylic ? 'Dairy Flat' : 'Riverhead'}, Auckland</span></div></div>
+      <div className={styles.heroContent}><h1 id="funnel-title">{acrylic ? <>Cover the space<br/>without losing light.</> : <>Custom pergolas,<br/>designed for your<br/>Auckland home.</>}</h1>{!acrylic && <p className={styles.lifestyle}>Make room for life outside.</p>}
+        <p className={styles.heroService}>{acrylic ? 'Custom acrylic pergolas, designed and installed in Auckland.' : 'Custom pergolas and covered outdoor spaces, designed and installed in Auckland.'}</p><p className={styles.siteMeasure}>Free Auckland site measures</p>
+        <div className={styles.heroBottom}><div><p>{acrylic ? <>A covered space, with daylight above.<br/>Designed around the home you love.</> : <>A place for slow mornings. Long lunches.<br/>And a little more everyday living.</>}</p><a className={styles.heroAction} href="#project-details" data-channel-action="quote">Get a tailored quote <ArrowUpRight/></a></div><span className={styles.caption}>Built by Sanctuary<br/>{' '}{acrylic ? 'Dairy Flat' : 'Riverhead'}, Auckland</span></div></div>
     </section>
     <div className={styles.proofLine}><span>Designed around your home.</span><span>Auckland based.</span><span>10-year workmanship warranty.</span></div>
     <FunnelReview acrylic={acrylic}/>
@@ -23,5 +26,5 @@ export default function GoogleFunnelPage({ acrylic = false }: { acrylic?: boolea
         <p className={styles.small}>Completed Sanctuary projects. Your proposal confirms your materials and inclusions. Furniture, planting and landscaping are not included.</p>
       </section>
     </FunnelJourney>
-  </main>;
+  </main></ChannelTrackingRegion>;
 }

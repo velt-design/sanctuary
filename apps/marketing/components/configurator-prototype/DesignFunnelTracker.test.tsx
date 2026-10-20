@@ -92,3 +92,24 @@ it('measures public overlay entry pages with bounded route metadata and excludes
     expect(emitDesignEvent('design_start', true)).toBe(false);
   }
 });
+
+it('channel routes never treat mounting, default price or restored review as an action', async () => {
+  sessionStorage.clear(); window.history.replaceState({}, '', '/ads/facebook/acrylic-pergolas');
+  await render('saved', 'review');
+  expect(names()).toEqual([]);
+  await render('saved', 'structure');
+  await render('edited', 'structure');
+  await render('edited', 'review');
+  expect(names()).toEqual([]);
+  const dialog = document.createElement('dialog'); dialog.open = true;
+  const input = document.createElement('input'); dialog.append(input); document.body.append(dialog);
+  input.dispatchEvent(new Event('change', { bubbles: true })); dialog.remove();
+  expect(names()).toEqual(['design_start', 'design_edit']);
+  const button = document.createElement('button'); button.dataset.designReviewAction = 'true'; document.body.append(button);
+  button.click(); button.remove();
+  await render('edited', 'review', false);
+  await render('edited', 'review');
+  expect(names()).toEqual(['design_start', 'design_edit', 'design_review']);
+  expect(emitDesignEvent('design_enquiry_open', true)).toBe(true);
+  expect(emitDesignEvent('design_enquiry_open', true)).toBe(false);
+});

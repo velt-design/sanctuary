@@ -113,7 +113,7 @@ export default function MobileDesignJourney({draft,pricePanel,estimate,selection
     </div>
     <footer hidden={!editMenu&&!details&&step==='review'} className={css.footer} aria-label="Continue your design">
       <button hidden={editMenu} className={css.back} disabled={!details&&index===0&&!returnToReview} onClick={back}>{returnToReview?'All sections':'Back'}</button>
-      <button className={css.next} onClick={next}>{editMenu&&!reviewStarted?'Review your design':editMenu||returnToReview?'Return to review':details?'Done':nextLabels[step]}<span aria-hidden="true"><ArrowUpRight/></span></button>
+      <button className={css.next} data-design-review-action={editMenu || returnToReview || (!details && (step === 'extras' || step === 'finished')) || undefined} onClick={next}>{editMenu&&!reviewStarted?'Review your design':editMenu||returnToReview?'Return to review':details?'Done':nextLabels[step]}<span aria-hidden="true"><ArrowUpRight/></span></button>
     </footer>
   </div></JourneyNightPresentation.Provider>;
 }

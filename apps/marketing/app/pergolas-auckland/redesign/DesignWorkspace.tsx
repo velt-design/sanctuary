@@ -9,10 +9,15 @@ import { PRODUCT_MATERIALS } from '@/components/products/productSelectionValues'
 import { useLandingSelection } from '../useLandingSelection';
 import LandingEstimate from '../LandingEstimate';
 import styles from './workspace.module.css';
+import ChannelDesignReview from '@/components/journey/ChannelDesignReview';
+import { useConsent } from '@/components/ConsentProvider';
+import { trackChannelAction } from '@/lib/channelDesignTracking';
 
 export default function DesignWorkspace({ sourcePath }: { sourcePath: LandingSourcePath }) {
   const state = useLandingSelection(sourcePath);
-  const { type, selection, design, update, resume } = state;
+  const { type, selection, design, resume } = state;
+  const { consent, hasTrackingDecision } = useConsent();
+  const update: typeof state.update = (...args) => { trackChannelAction('design_start', hasTrackingDecision && consent.analytics); trackChannelAction('design_edit', hasTrackingDecision && consent.analytics); state.update(...args); };
   const saved = resume && design?.restored ? design.draft : null;
   const family = saved ? saved.roof.family === 'mono' ? 'pitched' : saved.roof.family : PRODUCT_DESIGNS[type].imageFamily;
   const material = saved ? saved.roof.finish?.material ?? 'acrylic' : selection.material;
@@ -41,14 +46,15 @@ export default function DesignWorkspace({ sourcePath }: { sourcePath: LandingSou
         </>}
         <div className={styles.estimateArea}>
           <LandingEstimate className={styles.estimate} state={state} />
-          <div className={styles.actions}>{design && !design.issue ? <><Link className={styles.primary} href={design.enquiryHref} onClick={state.continueDesign} prefetch={false}>Enquire about this design <ArrowUpRight /></Link><Link className={styles.secondary} href={design.designerHref} onClick={state.continueDesign} prefetch={false}>{resume ? 'Continue your design' : 'Customise in 3D'} <ArrowUpRight /></Link></> : <><a className={styles.primary} href="#project-details">Discuss your project <ArrowUpRight /></a><span className={styles.actionHint}>{design?.issue ? 'For this size, start with a conversation.' : state.failed ? 'Retry options to restore your design links.' : 'Your design links will appear when ready.'}</span></>}</div>
+          {design && !design.issue && <ChannelDesignReview rows={design.summary} className={styles.review}/>}
+          <div className={styles.actions}>{design && !design.issue ? <><Link className={styles.primary} href={design.enquiryHref} data-channel-action="design_enquiry_open" onClick={state.continueDesign} prefetch={false}>Enquire about this design <ArrowUpRight /></Link><Link className={styles.secondary} href={design.designerHref} data-channel-action="design_start" onClick={state.continueDesign} prefetch={false}>{resume ? 'Continue your design' : 'Customise in 3D'} <ArrowUpRight /></Link></> : <><a className={styles.primary} href="#project-details" data-channel-action="quote">Discuss your project <ArrowUpRight /></a><span className={styles.actionHint}>{design?.issue ? 'For this size, start with a conversation.' : state.failed ? 'Retry options to restore your design links.' : 'Your design links will appear when ready.'}</span></>}</div>
           <p className={styles.issue} role="status">{design?.issue ? `${design.issue} This roof supports a projection up to ${design.projectionMax / 1000} m in the designer. Talk to us about a larger roof.` : 'Your choices carry through. No contact details needed to explore.'}</p>
         </div>
         {!state.storageAvailable && <p className={styles.notice} role="status">Your browser cannot save choices for a return visit. The design buttons still carry your current selections.</p>}
       </div>
     </div>
-    <div className={styles.below}><p>Estimate includes the selected structure, roof, any priced designer options, standard installation allowances and GST. <a href="#what-is-included">See what’s included.</a></p><a className={styles.help} href="#project-details">Not sure of your size? Let’s talk <ArrowUpRight /></a></div>
+    <div className={styles.below}><p>Estimate includes the selected structure, roof, any priced designer options, standard installation allowances and GST. <a href="#what-is-included">See what’s included.</a></p><a className={styles.help} href="#project-details" data-channel-action="quote">Not sure of your size? Let’s talk <ArrowUpRight /></a></div>
     {state.otherDraft && <Link className={styles.other} href="/configurator-preview?open=1&design_scope=default" prefetch={false}>Return to your other saved design</Link>}
-    <noscript><p>Explore <a href="/products">our pergola styles</a> or <a href="#project-details">send your project enquiry</a>. The enquiry form works without the designer.</p></noscript>
+    <noscript><p>Explore <a href="/products">our pergola styles</a> or <a href="#project-details" data-channel-action="quote">send your project enquiry</a>. The enquiry form works without the designer.</p></noscript>
   </section>;
 }
