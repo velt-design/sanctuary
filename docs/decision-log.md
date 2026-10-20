@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-20: Current project status must not be historical pipeline progress
+
+A closed project retained its Scheduled pipeline stage correctly, but the shared
+header and search presented that history as its current state. Current-status
+presentation must give archived, closed/outcome and waiting states precedence.
+Keep pipeline correction and history intact; do not repair a display by changing
+business data. Reuse authoritative reads, treat missing state as unknown, and
+invalidate discovery caches when lifecycle changes. Header, Overview and search
+share the presentation owner; see `projects-contacts-estimates-calculator.md`.
+
 ## 2026-10-20: Correct known visit facts without fabricating attendance
 
 An imported booking is evidence of scheduling, not attendance. Keep reviewed facts

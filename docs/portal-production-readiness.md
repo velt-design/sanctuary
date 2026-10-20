@@ -1,8 +1,9 @@
 # Portal Production Readiness
 
-Portal experience release approved (16 October 2026): Jordan requested "push live"
-after independent review of protected candidate `bd0ec70`. Production deployment
-and production read-only verification are still pending. The reviewed scope
+Portal experience release completed through PR222 after Jordan requested "push
+live" on 16 October 2026. Production deployment and read-only verification passed;
+the earlier `bd0ec70` review was a historical candidate, not the final release.
+The delivered scope
 covers visible contact details and keyboard continuity, reliable search, retained
 commercial list context, current-versus-historical quote clarity, estimate
 save/reopen and canonical-ID handoff, clearer invoice next steps and protected PDF
@@ -17,13 +18,19 @@ portal typecheck, lint, docs and architecture checks; its exact hosted build and
 anonymous access-denial checks passed. A subsequent pending-header search ownership
 correction passed 162 shared-shell tests, including deterministic visible-focus,
 panel-anchor and retained-header handoff checks in both DOM orders. The corrected
-hosted preview and production verification remain pending. This evidence does not establish a real
+hosted preview and production verification subsequently passed for the released correction. This evidence does not establish a real
 customer send/accept/payment lifecycle or physical-phone use. A preview-origin
 email logo limitation remains isolated from the separately verified public asset.
 Release metadata disables Git preview builds only for this task branch in both
 Vercel projects; existing default/main deployment behavior and crons are retained.
 Current behavior owners: `projects-contacts-estimates-calculator.md`,
 `quotes-invoices-job-packs.md` and `ui-foundation.md`.
+
+Current status consistency correction (20 October, local candidate): the shared
+project masthead, Overview position and search now prioritize operational state
+over historical pipeline stage, with explicit unknown/loading handling.
+Independent review and release verification for this correction remain separate
+requirements. It changes no lifecycle, commercial data, permissions or schema.
 
 Meta renewal extension (14 October local candidate): dedicated report/sale vault
 identities, finite versus ongoing source approval, default-off maintenance and

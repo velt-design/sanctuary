@@ -167,5 +167,8 @@ describe("projectWorkCache", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: qk.dashboard.dataPrefix(),
     });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: qk.search.portalPrefix(), refetchType: 'active',
+    });
   });
 });

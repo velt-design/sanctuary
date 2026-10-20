@@ -67,6 +67,7 @@ vi.mock("./ProjectHeaderOwnerControl", () => ({
 }));
 
 const snapshot = {
+  workModel: "legacy",
   project: {
     id: "proj_123",
     name: "Test project",
@@ -82,6 +83,41 @@ const snapshot = {
 } as any;
 
 describe("ProjectPageFrame", () => {
+  it.each(['activity', 'estimates', 'quotes', 'invoices'])('shows closure rather than historic Scheduled on %s', (tab) => {
+    const rendered = renderIntoDocument(
+      <ProjectPageFrame snapshot={{
+        ...snapshot, workModel: 'v2', project: { ...snapshot.project, stage: 'scheduled' },
+        projectWork: { projectId: snapshot.project.id, effectiveState: 'CLOSED', closedOutcome: 'CANCELLED' },
+      }} host="host" tab={tab} />,
+    );
+    expect(rendered.container.querySelector('[data-project-current-status]')?.textContent).toBe('Closed · Cancelled');
+    expect(rendered.container.querySelector('[data-stage="scheduled"]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it('never flashes a pipeline stage while operational state is unknown, and retains known closure after a failed refresh', () => {
+    const summary = { ...snapshot, workModel: 'v2', project: { ...snapshot.project, stage: 'scheduled' } };
+    const rendered = renderIntoDocument(<ProjectPageFrame snapshot={summary} host="host" tab="estimates" snapshotState="summary" />);
+    expect(rendered.container.textContent).toContain('Updating status…');
+    expect(rendered.container.textContent).not.toContain('Scheduled');
+    rendered.rerender(<ProjectPageFrame snapshot={summary} host="host" tab="estimates" snapshotState="refresh-failed" />);
+    expect(rendered.container.textContent).toContain('Status unavailable');
+    rendered.rerender(<ProjectPageFrame snapshot={{
+      ...summary, projectWork: { projectId: snapshot.project.id, effectiveState: 'CLOSED', closedOutcome: 'CANCELLED' },
+    }} host="host" tab="estimates" snapshotState="refresh-failed" />);
+    expect(rendered.container.querySelector('[data-project-current-status]')?.textContent).toBe('Closed · Cancelled');
+    expect(rendered.container.querySelector('[data-project-current-status]')?.getAttribute('title')).toContain('Last known');
+    rendered.unmount();
+  });
+  it('does not treat the legacy marker in a list-derived placeholder as verified operational state', () => {
+    const placeholder = { ...snapshot, project: { ...snapshot.project, stage: 'scheduled' } };
+    const rendered = renderIntoDocument(<ProjectPageFrame snapshot={placeholder} host="host" tab="estimates" snapshotContentReady={false} snapshotState="summary" />);
+    expect(rendered.container.textContent).toContain('Updating status…');
+    expect(rendered.container.textContent).not.toContain('Scheduled');
+    rendered.rerender(<ProjectPageFrame snapshot={placeholder} host="host" tab="estimates" snapshotContentReady={false} snapshotState="refresh-failed" />);
+    expect(rendered.container.textContent).toContain('Status unavailable');
+    rendered.unmount();
+  });
   it("keeps summary-only tab availability unresolved", () => {
     const rendered = renderIntoDocument(
       <ProjectPageFrame snapshot={snapshot} host="host" tab="job-packs" snapshotContentReady={false} snapshotState="summary" />,

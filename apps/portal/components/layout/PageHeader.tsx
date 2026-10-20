@@ -154,7 +154,7 @@ export default function PageHeader({
       <div className={cx(styles.row, Boolean(utility) && styles.rowWithUtility)} data-page-header-row="true">
         <div className={styles.identity} data-page-header-identity="true">
           {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
-          <div className={styles.titleLine}>
+          <div className={styles.titleLine} data-page-header-title-line="true">
             {createElement(`h${headingLevel}`, { className: styles.title }, title)}
             {titleAccessory ? <span className={styles.titleAccessory}>{titleAccessory}</span> : null}
             {count ? <span className={styles.count}>{count}</span> : null}

@@ -4,6 +4,7 @@ import type { ProjectPageSnapshotResponse } from "@/lib/projects/types";
 import type { ProjectWorkProjection } from "@/lib/projects/workItems/types";
 import type { ProjectWorkQueueResponse } from "./projectWorkQueue";
 import { qk } from "./keys";
+import { invalidatePortalSearchQueries } from "./portalSearch";
 
 function withProjectWork(
   current: ProjectPageSnapshotResponse | undefined,
@@ -105,6 +106,7 @@ export async function invalidateProjectWorkReads(
 
   await Promise.allSettled([
     ...projectReads,
+    invalidatePortalSearchQueries(queryClient),
     queryClient.invalidateQueries({ queryKey: qk.projectWork.queue(host) }),
     queryClient.invalidateQueries({ queryKey: qk.dashboard.dataPrefix() }),
   ]);

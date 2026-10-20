@@ -1,16 +1,19 @@
-import type { ProjectPageSnapshot } from "@/lib/projects/types";
+import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from "@/lib/projects/types";
 import type { ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
 import ProjectTabNavigation from "./ProjectTabNavigation";
 import ProjectHeaderActions from "./ProjectHeaderActions";
 import ProjectHeaderOwnerControl from "./ProjectHeaderOwnerControl";
 import StaffPageHeader from "@/components/layout/StaffPageHeader";
-import { Card, ProjectStageBadge } from "@/components/ui/foundation";
+import { Card } from "@/components/ui/foundation";
+import ProjectCurrentStatusBadge from "../ProjectCurrentStatusBadge";
 import styles from "./ProjectPage.module.css";
 import { projectLocation } from '@/lib/projects/projectLocation';
 
 export default function ProjectHeader({
   project,
   workModel,
+  projectWork,
+  snapshotState = "fresh",
   host,
   tab,
   ownerControlsPaused,
@@ -20,6 +23,8 @@ export default function ProjectHeader({
 }: {
   project: ProjectPageSnapshot["project"];
   workModel: ProjectPageSnapshot["workModel"];
+  projectWork?: ProjectPageSnapshot["projectWork"];
+  snapshotState?: ProjectSnapshotLoadState;
   host: string;
   tab: string;
   ownerControlsPaused?: boolean;
@@ -40,7 +45,16 @@ export default function ProjectHeader({
           variant="detail"
           title={project.name}
           subtitle={<>{project.contactName || 'Customer not recorded'} · {projectLocation(project)}</>}
-          titleAccessory={<ProjectStageBadge stage={project.stage} compact />}
+          titleAccessory={
+            <ProjectCurrentStatusBadge
+              stage={project.stage}
+              facts={workModel === 'legacy' && tabAvailabilityReady
+                ? { workModel, effectiveState: null, closedOutcome: null }
+                : projectWork ? { workModel, effectiveState: projectWork.effectiveState, closedOutcome: projectWork.closedOutcome } : null}
+              pending={snapshotState === 'summary' || snapshotState === 'pending'}
+              saved={snapshotState === 'refresh-failed'}
+            />
+          }
           meta={
             <ProjectHeaderOwnerControl
               project={project}
