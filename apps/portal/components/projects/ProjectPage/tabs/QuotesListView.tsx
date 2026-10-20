@@ -26,6 +26,7 @@ import CommercialInternalNameDialog from "./CommercialInternalNameDialog";
 import { COMMERCIAL_INTERNAL_NAME_MAX_LENGTH } from "@/lib/commercial/internalName";
 import { selectAuthoritativeAcceptedVersions } from "@/lib/commercial/authoritativeAcceptedVersions";
 import { estimateDisplayName } from './estimateListPresentation';
+import { useProjectCommercialContext } from '../ProjectCommercialContext';
 
 type QuotesListViewProps = {
   projectId: string;
@@ -102,6 +103,7 @@ export default function QuotesListView({
   closeRename,
   saveRename,
 }: QuotesListViewProps) {
+  const commercial = useProjectCommercialContext();
   const createEstimate = estimates.find((estimate) => estimate.id === createEstimateId);
   const sharedCreateName = createMode === 'estimate' && createEstimate
     ? quotes.find((quote) => (quote.commercialScopeId ?? null) === (createEstimate.commercialScopeId ?? null) && quote.internalName)?.internalName
@@ -146,19 +148,20 @@ export default function QuotesListView({
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>Quotes</h3>
-          <p className={styles.subtitle}>Agreed scope first · all amounts NZD inc GST</p>
+          <p className={styles.subtitle}>{commercial.closed ? 'Recorded agreements and quote history' : 'Agreed scope first'} · all amounts NZD inc GST</p>
         </div>
-        <button
+        {commercial.actionsAvailable && <button
           type="button"
           className={styles.primaryButton}
           onClick={openCreate}
         >
           Create quote
-        </button>
+        </button>}
       </div>
 
       {currentAcceptedIds.size > 0 ? (
-        <Card title={quotesError ? "Saved accepted work" : "Current accepted work"} padding="compact" headingLevel={4}>
+        <Card title={commercial.closed ? "Recorded accepted agreement" : quotesError ? "Saved accepted work" : "Current accepted work"} padding="compact" headingLevel={4}>
+          {commercial.closed && <p>The acceptance is part of the project history. Review any remaining commercial obligations before billing or preparing work.</p>}
           {quotes.filter((quote) => currentAcceptedIds.has(quote.id)).map((quote) => (
             <div key={quote.id} className={styles.acceptedSummary}>
               <div>
@@ -189,13 +192,13 @@ export default function QuotesListView({
       {!quotesLoading && !quotesError && !quotes.length ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No quotes yet.</p>
-          <button
+          {commercial.actionsAvailable && <button
             type="button"
             className={styles.primaryButton}
             onClick={openCreate}
           >
             Create quote from design
-          </button>
+          </button>}
         </div>
       ) : null}
 

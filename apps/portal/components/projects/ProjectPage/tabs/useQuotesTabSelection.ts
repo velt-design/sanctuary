@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { updateProjectView } from "../projectViewNavigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import {
@@ -33,7 +34,6 @@ export function useQuotesTabSelection({
   selectedQuoteId,
   onSelectedQuoteChange,
 }: UseQuotesTabSelectionInput) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -130,7 +130,7 @@ export function useQuotesTabSelection({
       quoteId?: string | null;
       createFromEstimateId?: string | null;
     }) => {
-      const query = new URLSearchParams(searchParams.toString());
+      updateProjectView((query) => {
       // A quote can be selected before Commercial's optimistic tab URL settles.
       query.set("tab", "quotes");
       if (Object.prototype.hasOwnProperty.call(next, "quoteId")) {
@@ -145,10 +145,9 @@ export function useQuotesTabSelection({
         if (!next.createFromEstimateId) query.delete("createFromEstimateId");
         else query.set("createFromEstimateId", next.createFromEstimateId);
       }
-      const queryString = query.toString();
-      router.replace(queryString ? `?${queryString}` : "?", { scroll: false });
+      });
     },
-    [router, searchParams],
+    [],
   );
 
   const selectQuote = useCallback(

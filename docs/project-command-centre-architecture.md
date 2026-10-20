@@ -1,7 +1,32 @@
 # Project Operational Command Centre Architecture
 
+## Workflow clarity (20 October 2026 local candidate)
+
+Overview now orders the existing server-owned project work/action before contact
+orientation and commercial context. It does not invent tasks, completion or a new
+ranking. Empty site visits use a compact disclosure; source errors and stale-source
+notices remain visible. Needs review shows the specific unanswered questions before
+provenance and opens the existing correction form through Resolve questions.
+
+`ProjectCommercialContext` consumes the same current operational projection as the
+header. Closed/archived and on-hold projects explain their commercial context and
+de-emphasize ordinary send/billing/delivery actions. A staff member can deliberately
+review those actions for the current project/state revision. This is presentation
+only, never a financial command permission or an automatic refund, void, revision,
+supersession or reopening. Incomplete project reads keep those actions paused.
+
+`projectViewNavigation` owns same-project section/quote-view URL changes using
+Next's native history bridge. The URL drives the selected tab and content; tab
+clicks do not start competing server navigations. Browser Back/Forward retains
+exact quote selection. `ProjectSnapshotPageClient` also derives calculator chrome
+from the live query, so history cannot leave stale server-provided workspace mode.
+Calculator creation/save commands and estimate selection policy stay with their
+existing owners. A dirty quote's section change requires the existing-style discard
+confirmation. `useCommercialListState` restores a list's scroll on detail return,
+but does not apply another tab's saved scroll after its read finishes.
+
 Outlook site visits (20 October candidate): Overview composes the separate
-`components/site-visits/ProjectNextVisit` owner below project orientation. Its
+`components/site-visits/ProjectNextVisit` owner below the commercial summary. Its
 authenticated query reads linked mirrored visits and source freshness; no source
 calls or matching policy lives in the Overview hotspot. The specialist action
 opens `/staff/site-visits?project=...&view=upcoming`. Calendar appointments do not
@@ -16,7 +41,7 @@ These records never reopen projects or write lifecycle/completion/owner facts.
 The notes/system-events card uses its own container width to stack safely inside
 the project sidebar; the existing note actions and system-event owner remain intact.
 
-The 16 October Portal candidate keeps contact details at the top of Overview.
+The 16 October Portal release made contact details visible in Overview.
 Entering contact edit focuses its first field; Done or Reset restores the Edit
 details trigger without scrolling. The existing draft/autosave owner remains
 unchanged. See `projects-contacts-estimates-calculator.md` for the current journey.

@@ -23,9 +23,9 @@ export default function ProjectIndexToolbar({ view, onChange, onReset, disabled 
 }) {
   const [draft, setDraft] = useState<ProjectIndexView | null>(null);
   const applied = fields.filter((field) => view[field.key] !== 'all');
-  return <section className={styles.root} aria-label="Search and filter projects">
+  return <section className={styles.root} aria-label="Filter this project list">
     <div className={styles.toolbar}>
-      <label className={styles.search} htmlFor="projectSearch"><span>Search projects</span>
+      <label className={styles.search} htmlFor="projectSearch"><span>Filter this project list</span>
         <Input disabled={disabled} id="projectSearch" value={view.query} placeholder="Name, client, phone or address…" onChange={(event) => onChange({ query: event.target.value })} />
       </label>
       <label htmlFor="projectSort"><span>Sort</span><Select disabled={disabled} id="projectSort" value={view.sort} onChange={(event) => onChange({ sort: event.target.value as ProjectIndexView['sort'] })}>

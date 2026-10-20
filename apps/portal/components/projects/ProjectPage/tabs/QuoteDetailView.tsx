@@ -19,6 +19,8 @@ import styles from "./QuotesTab.module.css";
 import QuoteLineItemsEditor from "./QuoteLineItemsEditor";
 import QuotePaymentTermsEditor from "./QuotePaymentTermsEditor";
 import QuotePdfInlinePreview from "./QuotePdfInlinePreview";
+import { useProjectCommercialContext } from '../ProjectCommercialContext';
+import { useProjectViewDraftGuard } from '../projectViewNavigation';
 import {
   formatDateShort,
   formatDateTime,
@@ -187,11 +189,14 @@ export default function QuoteDetailView({
   declineBusy,
   dialogs,
 }: QuoteDetailViewProps) {
+  const commercial = useProjectCommercialContext();
+  useProjectViewDraftGuard(draftDirty);
   const expired = detail.status !== "ACCEPTED" && isExpired(detail.expiresAt);
   const hasNewerEstimate = refreshUsesLatestDesign;
   const commercialWorkflowReady = detail.commercialWorkflowReady !== false;
   const unfinishedDelivery = Boolean(detail.unfinishedDelivery);
   const editableDraft =
+    commercial.actionsAvailable &&
     commercialWorkflowReady &&
     detail.status === "DRAFT" &&
     detail.isCurrentDraft &&
@@ -248,7 +253,7 @@ export default function QuoteDetailView({
                 : undefined
         }
       >
-        <div className={styles.detailActions}>
+        {commercial.actionsAvailable ? <div className={styles.detailActions}>
           {!commercialWorkflowReady && detail.status !== "ACCEPTED" ? (
             <button
               type="button"
@@ -274,7 +279,7 @@ export default function QuoteDetailView({
             >
               Review prepared delivery
             </button>
-          ) : detail.status === "SENT" ? (
+          ) : detail.status === "SENT" && !expired ? (
             <button
               type="button"
               className={styles.primaryButton}
@@ -449,7 +454,7 @@ export default function QuoteDetailView({
               </div>
             ) : null}
           </div>
-        </div>
+        </div> : <Link className={styles.secondaryButton} href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}>Review invoices & payments</Link>}
       </StickyActionBar>
 
       {expired ? (
@@ -735,7 +740,7 @@ export default function QuoteDetailView({
             <section className={styles.card}>
               <div className={styles.cardHeader}>
                 <h4 className={styles.cardTitle}>Decision</h4>
-                <div className={styles.cardActionsInline}>
+                {commercial.actionsAvailable && <div className={styles.cardActionsInline}>
                   <button
                     type="button"
                     className={styles.primaryButton}
@@ -754,7 +759,7 @@ export default function QuoteDetailView({
                   >
                     {declineBusy ? "Marking declined..." : "Mark declined"}
                   </button>
-                </div>
+                </div>}
               </div>
               <p className={styles.muted}>
                 {!commercialWorkflowReady

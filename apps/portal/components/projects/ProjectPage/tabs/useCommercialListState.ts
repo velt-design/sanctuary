@@ -23,7 +23,12 @@ export function useCommercialListScroll(projectId: string, section: string, read
     if (!ready || !client) return;
     const key = ['commercialListView', projectId, `${section}-scroll`];
     const saved = client.getQueryData<number>(key);
-    const frame = saved === undefined ? null : requestAnimationFrame(() => window.scrollTo({ top: saved, behavior: 'instant' }));
+    const activeKey = ['commercialListView', projectId, 'active-section'];
+    const returningToList = client.getQueryData<string>(activeKey) === section;
+    client.setQueryData(activeKey, section);
+    // A detail return keeps its list position. A different tab must not yank
+    // the current viewport to that tab's old position after its read completes.
+    const frame = !returningToList || saved === undefined ? null : requestAnimationFrame(() => window.scrollTo({ top: saved, behavior: 'instant' }));
     let position = window.scrollY;
     const remember = () => { position = window.scrollY; };
     window.addEventListener('scroll', remember, { passive: true });

@@ -150,9 +150,9 @@ export default function ProjectOverviewLayout({
         recent !== null && recent !== undefined ? "true" : undefined
       }
     >
-      {orientationRegion}
       {exceptionRegion}
       {projectWorkRegion}
+      {orientationRegion}
       {commercialRegion}
       {recentRegion}
       {adminRegion}
