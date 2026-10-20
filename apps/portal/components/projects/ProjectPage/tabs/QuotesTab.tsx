@@ -1,5 +1,7 @@
 "use client";
 
+import { buildOptimisticQuoteDetail } from '@/lib/localFirst/quotePreparation';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/toast/ToastProvider";
@@ -53,7 +55,6 @@ import { qk } from "@/lib/queries/keys";
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   applyDraftPatchToQuoteDetail,
-  buildOptimisticQuoteDetail,
   buildQuoteEntityKey,
   createLocalQuoteId,
   type PortalQuoteCreateMutationPayload,

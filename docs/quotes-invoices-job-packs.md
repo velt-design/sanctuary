@@ -1,5 +1,14 @@
 # Quotes, Invoices, And Job Packs
 
+## Studio design snapshots (20 October 2026 local candidate)
+
+The Studio path uses the current create/refresh/revise commercial owners through `lib/quotes/studioCommit.server.ts`. A prepared immutable source, publication, selling lines and actual captured Plan/3D image bytes bind to the quote in the same transaction. Generic commercial edits retain that binding; the deferred invariant prevents source/project/scope or compact identity drift. Revisions inherit the original quote's snapshot rather than reading the latest estimate. Refresh explicitly prepares the current saved design. Payment terms, commercial revisions, draft uniqueness, frozen delivery intents and invoice totals retain their existing owners.
+
+`readStudioQuoteHandoff` supplies the same validated lines to quote creation and the local-first Project preview. Missing or stale Studio evidence cannot fall back to the calculator. `buildQuoteRenderHash` includes snapshot and image identities. Customer PDF and token-authorised public quote view consume only the safe immutable projection, never private authored/costing evidence. Public lookup follows token validation and uses the binding RPC without reading raw pricing metadata. Historic `studioQuoteDraft` prototypes remain review-only. Full acceptance status and scope are in [Staff Design Studio](staff-design-studio-prototype.md).
+
+The server workflow and PDF hotspots grow only by thin calls to dedicated binding and design-page owners. Staff frozen-design presentation is a separate component. Broad existing workflow decomposition is intentionally outside this integration; the next safe extraction is the existing quote lifecycle command family, not a replacement of current transaction logic.
+
+
 ## Connected commercial presentation (16 October 2026 candidate)
 
 `CommercialTab` shows Details/Preview only for a selected quote. `QuotesListView`

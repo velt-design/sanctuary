@@ -14,6 +14,9 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/commercial/emailIntent.ts',
   'apps/portal/lib/dashboard/getDashboardData.ts',
   'apps/portal/lib/dashboard/getDashboardSnapshotCached.ts',
+  'apps/portal/lib/designStudio/createCommand.server.ts', // Caller-visible source, actor-bound idempotent authored creation RPC only.
+  'apps/portal/lib/designStudio/saveCommand.server.ts', // Caller-visible source, exact revision/CAS guarded authored save RPC only.
+  'apps/portal/lib/designStudio/quotePrepare.server.ts', // Caller-visible saved source, trusted publication/image validation, immutable snapshot preparation RPC.
   'apps/portal/lib/estimates/server.ts',
   'apps/portal/lib/integrations/portalActions/server.ts', // Default-dark bearer adapter; exact stored grants and actions rechecked by private SQL owners.
   'apps/portal/lib/invoices/adminPayments.ts',
@@ -44,6 +47,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/quotes/serverCore.ts',
   'apps/portal/lib/quotes/serverEmail.ts',
   'apps/portal/lib/quotes/serverLoaders.ts',
+  'apps/portal/lib/quotes/studioCommit.server.ts', // Existing commercial owners plus same-transaction snapshot binding and safe immutable view RPC.
   'apps/portal/lib/scheduling/scheduleCommands.ts',
   'apps/portal/lib/scheduling/scheduleReadiness.ts',
   'apps/portal/lib/scheduling/scheduleV2Server.ts',

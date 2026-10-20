@@ -7,6 +7,7 @@ export default defineConfig({
     alias: [
       { find: /^@sp\/geometry\/(.*)$/, replacement: path.resolve(__dirname, 'packages/geometry/src') + '/$1.ts' },
       { find: '@sp/geometry', replacement: path.resolve(__dirname, 'packages/geometry/src/index.ts') },
+      { find: '@sp/geometry-viewer/react/canvas', replacement: path.resolve(__dirname, 'packages/geometry-viewer/src/react/canvas/index.ts') },
       { find: '@sp/geometry-viewer/react', replacement: path.resolve(__dirname, 'packages/geometry-viewer/src/react/index.ts') },
       { find: '@sp/geometry-viewer/svg', replacement: path.resolve(__dirname, 'packages/geometry-viewer/src/svg/index.ts') },
       { find: '@sp/geometry-viewer/three', replacement: path.resolve(__dirname, 'packages/geometry-viewer/src/three/index.ts') },

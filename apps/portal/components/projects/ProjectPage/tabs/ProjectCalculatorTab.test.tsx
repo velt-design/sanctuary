@@ -63,6 +63,7 @@ vi.mock('@/app/staff/calculator/CalculatorGridClient', () => ({
 const activeDraft = {
   id: 'est_draft',
   projectId: 'proj_1',
+  designKind: 'calculator',
   createdAt: '2026-07-20T00:00:00Z',
   status: 'draft',
   summary: {},
@@ -305,6 +306,54 @@ describe('ProjectCalculatorTab', () => {
     const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
     expect(rendered.container.querySelector('[data-calculator-invalid-source="true"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it.each(['button', 'row', 'Enter', ' '] as const)('opens Studio review from the %s action without assuming draft editability', (action) => {
+    const studio = { ...activeDraft, designKind: 'studio', hasSentQuote: true };
+    useQueryMock.mockImplementation(options => ({ data: options.queryKey?.[0] === 'quote-links' ? [] : [studio, historical], isPending: false, isError: false }));
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const row = rendered.container.querySelector<HTMLElement>('[data-estimate-id="est_draft"]')!;
+    expect(row.getAttribute('aria-label')).toContain('Open in Studio');
+    act(() => {
+      if (action === 'button') Array.from(row.querySelectorAll('button')).find(button => button.textContent === 'Open in Studio')!.click();
+      else if (action === 'row') row.click();
+      else row.dispatchEvent(new KeyboardEvent('keydown', { key: action, bubbles: true }));
+    });
+    expect(push).toHaveBeenLastCalledWith('/staff/design-studio/proj_1/est_draft');
+    expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it.each([
+    ['estimateId=est_history', '/staff/design-studio/proj_1/est_history'],
+    ['fromEstimateId=est_history', '/staff/design-studio/proj_1/est_history/edit?intent=revision'],
+  ])('recovers saved and quote-source bookmarks through Studio authority: %s', (params, href) => {
+    search = `tab=estimates&${params}`;
+    useQueryMock.mockReturnValue({ data: [activeDraft, { ...historical, designKind: 'studio' }], isPending: false, isError: false });
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    expect(replace).toHaveBeenCalledWith(href);
+    expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-calculator-locked-source]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it('sends Studio duplicate to the existing explicit new-revision confirmation', () => {
+    useQueryMock.mockImplementation(options => ({ data: options.queryKey?.[0] === 'quote-links' ? [] : [{ ...historical, designKind: 'studio' }], isPending: false, isError: false }));
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    act(() => rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Actions for Estimate V1"]')!.click());
+    act(() => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(button => button.textContent === 'Duplicate in Studio')!.click());
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit?intent=duplicate');
+    rendered.unmount();
+  });
+
+  it('opens a historical Studio version from the calculator selector without converting the source', () => {
+    search = 'tab=estimates&newDesign=1';
+    useQueryMock.mockReturnValue({ data: [activeDraft, { ...historical, designKind: 'studio' }], isPending: false, isError: false });
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const select = rendered.container.querySelector<HTMLSelectElement>('[aria-label="Design version"]')!;
+    act(() => { select.value = 'history:est_history'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');
     rendered.unmount();
   });
 });

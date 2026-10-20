@@ -2,6 +2,7 @@
 
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import Link from "next/link";
+import QuoteStudioDesign from "./QuoteStudioDesign";
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
 import { StickyActionBar } from "@/components/ui/foundation/FoundationSurfaces";
 import type { EstimateMeta } from "@/lib/estimates/types";
@@ -480,6 +481,7 @@ export default function QuoteDetailView({
         </div>
       ) : null}
 
+      {detail.studioDesign && <QuoteStudioDesign design={detail.studioDesign} className={styles.card}/> }
       {pagePreviewFromUrl ? (
         <section className={styles.card}>
           <div className={styles.cardHeader}>
@@ -634,6 +636,7 @@ export default function QuoteDetailView({
           </section>
 
           <QuoteLineItemsEditor
+            structuredPergolas={!detail.studioDesign}
             editable={editableDraft}
             draftItems={draftItems}
             setDraftItems={setDraftItems}

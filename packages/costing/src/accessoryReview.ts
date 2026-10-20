@@ -8,6 +8,33 @@ export { ACCESSORY_REVIEW_RATES } from './accessoryRates';
 
 export type AccessoryReviewLine = { label: string; amount: number; provisional: boolean; detail: string };
 
+/** One whole-site incremental takeoff; callers provide already validated physical infill intents. */
+export function priceCompositionInfillDelta(site: SiteInputsV1, bindings: {
+  objectId: string; moduleIndex: number; infills: InfillInputV1[];
+}[], config: CostingConfigV1): AccessoryReviewLine | null {
+  const ids = new Set(site.pergolas.map(p => p.id));
+  if (ids.has(undefined) || ids.size !== site.pergolas.length) throw new Error('Invalid infill object membership');
+  if (site.pergolas.some(p => p.modules.some(m => m.infills?.length))) throw new Error('Composition base must exclude infills');
+  if (!bindings.length) return null;
+  const keys = new Set<string>(), next = structuredClone(site);
+  for (const binding of bindings) {
+    const key = JSON.stringify([binding.objectId, binding.moduleIndex]);
+    const pergola = next.pergolas.find(p => p.id === binding.objectId);
+    if (keys.has(key) || !pergola || !Number.isSafeInteger(binding.moduleIndex) || binding.moduleIndex < 0
+      || !pergola.modules[binding.moduleIndex] || !binding.infills.length
+      || binding.infills.some(i => !i.id) || new Set(binding.infills.map(i => i.id)).size !== binding.infills.length) throw new Error('Invalid infill module binding');
+    keys.add(key);
+    pergola.modules[binding.moduleIndex].infills = structuredClone(binding.infills);
+  }
+  const base = calculateSiteCostV1(site, config), result = calculateSiteCostV1(next, config);
+  const cost = result.totals.cost_ex_gst - base.totals.cost_ex_gst - (result.overhead.sales_ex_gst - base.overhead.sales_ex_gst);
+  if (!Number.isFinite(cost) || cost <= 0 || result.infill_takeoff?.status === 'blocked') throw new Error('Infill costing unavailable');
+  const price = calculateCustomerPriceFromCostEx(cost, 0, base.pricing_policy?.customer_price_uplift_pct, base.pricing_policy?.customer_price_multiplier);
+  if (!price) throw new Error('Infill selling price unavailable');
+  return { label: 'Acrylic panels & infills · whole design', amount: Math.round(price.incGst), provisional: true,
+    detail: 'All selected panels and infills, including one shared site setup and the published installation allowances. Confirm representative opening dimensions and framing.' };
+}
+
 export function accessoryReviewPricer(site: SiteInputsV1, config: CostingConfigV1) {
   const base = calculateSiteCostV1(site, config);
   const sell = (cost: number) => {

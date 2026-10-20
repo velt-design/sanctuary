@@ -4,19 +4,21 @@ import {expect,it,vi} from 'vitest';
 import PreviewScene from './PreviewScene';
 
 const fixture=vi.hoisted(()=>({canvas:null as HTMLCanvasElement|null,fail:false}));
+vi.mock('@sp/geometry-viewer/react/canvas',()=>({
+  SceneCanvas:({children,fallback}:{children:React.ReactNode;fallback:React.ReactNode})=>{if(fixture.fail)throw new Error('renderer unavailable');return <div data-scene>{children}<canvas>{fallback}</canvas></div>;},
+}));
 vi.mock('@react-three/fiber',()=>({
-  Canvas:({children,fallback}:{children:React.ReactNode;fallback:React.ReactNode})=>{if(fixture.fail)throw new Error('renderer unavailable');return <div data-scene>{children}<canvas>{fallback}</canvas></div>;},
   useThree:()=>({gl:{domElement:fixture.canvas}}),
   useFrame:()=>{},
 }));
-vi.mock('./LightingProvider',()=>({useLighting:()=>null}));
+vi.mock('../../../../packages/configurator/src/react/website/LightingProvider',()=>({useLighting:()=>null}));
 vi.mock('./useMobileConfigurator',()=>({useMobileConfigurator:()=>false}));
-vi.mock('./PreviewBlindProvider',()=>({usePreviewBlinds:()=>null}));
-vi.mock('./PreviewCamera',()=>({default:()=>null}));
-vi.mock('./DayNightTransition',()=>({default:({children}:{children:React.ReactNode})=><>{children}</>}));
-vi.mock('./PreviewLighting',()=>({default:()=>null}));
+vi.mock('../../../../packages/configurator/src/react/website/PreviewBlindProvider',()=>({usePreviewBlinds:()=>null}));
+vi.mock('../../../../packages/configurator/src/react/website/PreviewCamera',()=>({default:()=>null}));
+vi.mock('../../../../packages/configurator/src/react/website/DayNightTransition',()=>({default:({children}:{children:React.ReactNode})=><>{children}</>}));
+vi.mock('../../../../packages/configurator/src/react/website/PreviewLighting',()=>({default:()=>null}));
 // WebGL quality effects require a real renderer; this suite isolates recovery.
-vi.mock('./StudioTreatment',()=>({StudioTreatment:React.createContext(false),StudioQuality:()=>null}));
+vi.mock('../../../../packages/configurator/src/react/website/StudioTreatment',()=>({StudioTreatment:React.createContext(false),StudioQuality:()=>null}));
 vi.mock('@sp/geometry-viewer',()=>({computeSceneBoundsFromPoints:()=>({min:{x:0,y:0,z:0},max:{x:1,y:1,z:1},center:{x:.5,y:.5,z:.5},size:1})}));
 vi.mock('@sp/geometry-viewer/react',()=>({SceneObjectNode:()=>null}));
 

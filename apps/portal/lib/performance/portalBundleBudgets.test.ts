@@ -63,6 +63,49 @@ describe('portal route bundle budgets', () => {
     expect(budgetAtFivePercent(2_048)).toBe(3_072);
   });
 
+  it('measures Webpack ID/file pairs once and retains the configured budget failure', () => {
+    const { nextDir, config } = fixture();
+    write(path.join(nextDir, config.clientReferenceManifest), `globalThis.__RSC_MANIFEST = {
+      "/staff/example/page": { clientModules: {
+        a: { async: false, chunks: ["1505", "static/a.js", "app/staff/example/page", "static/chunks/page.js"] },
+        b: { async: false, chunks: ["1505", "/_next/static/a.js"] },
+        lazy: { async: true, chunks: ["42", "static/not-initial.js"] }
+      } }
+    };`);
+    write(path.join(nextDir, 'static/chunks/page.js'), Buffer.alloc(95, 3));
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.initial.files.map((file) => file.file)).toEqual(['static/a.js', 'static/chunks/page.js']);
+    expect(report.initial.rawBytes).toBe(105);
+    expect(report.lazy.rawBytes).toBe(20);
+    expect(report.failures).toEqual([{ budget: 'initialRawBytes', actual: 105, limit: 100 }]);
+  });
+
+  it('still rejects a missing file referenced by a Webpack chunk pair', () => {
+    const { nextDir, config } = fixture();
+    write(path.join(nextDir, config.clientReferenceManifest), `globalThis.__RSC_MANIFEST = {
+      "/staff/example/page": { clientModules: { a: { async: false, chunks: ["1505", "static/chunks/missing.js"] } } }
+    };`);
+
+    expect(() => analyzePortalBundleRoute({ nextDir, config }))
+      .toThrow(/missing\.js.*fresh portal build.*portal:bundle-budget/i);
+  });
+
+  it.each([
+    ['1505', 'static/a.js', '42'],
+    ['1505', 'static/a.js', 'static/a.js', 'static/lazy.js'],
+    ['1505', 'not-a-chunk-file'],
+  ])('rejects incomplete or mixed chunk metadata: %j', (...chunks) => {
+    const { nextDir, config } = fixture();
+    write(path.join(nextDir, config.clientReferenceManifest), `globalThis.__RSC_MANIFEST = ${JSON.stringify({
+      '/staff/example/page': { clientModules: { a: { async: false, chunks } } },
+    })};`);
+
+    expect(() => analyzePortalBundleRoute({ nextDir, config }))
+      .toThrow(/complete chunk ID\/file pairs.*fresh portal build/i);
+  });
+
   it('finds Turbopack lazy loader groups when the loadable manifest is empty', () => {
     const { nextDir, config } = fixture();
     config.budgets = {

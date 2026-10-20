@@ -28,6 +28,15 @@ function createQueryClient() {
   });
 }
 
+it('retains typed Studio navigation through detail-to-list cache updates', () => {
+  const client = createQueryClient();
+  const detail = makeEstimateDetail({ designKind: 'studio' });
+  upsertEstimateDetailCache(client, 'host', detail.projectId, detail, { prepend: true });
+  expect(client.getQueryData<any[]>(qk.estimates.metaByProject('host', detail.projectId))?.[0].designKind).toBe('studio');
+  replaceEstimateDetailCache(client, 'host', detail.projectId, detail.id, { ...detail, id: 'est_canonical' });
+  expect(client.getQueryData<any[]>(qk.estimates.metaByProject('host', detail.projectId))?.[0]).toMatchObject({ id: 'est_canonical', designKind: 'studio' });
+});
+
 function makeEstimateDetail(overrides?: Partial<EstimateDetail>): EstimateDetail {
   return {
     id: 'est_local_1',

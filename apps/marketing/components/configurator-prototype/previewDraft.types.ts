@@ -1,4 +1,2 @@
-import type { SimpleCoverInput } from '../../lib/simpleCoverCalculator';
-import type { PreviewRoofChoices } from './GableChoices';
-
-export type PreviewDraft = { version: 1; input: SimpleCoverInput; roof: PreviewRoofChoices };
+/** Shared submitted intent shape; preview applicability remains in previewDraft. */
+export type { WebsiteSubmittedDesignV1 as PreviewDraft } from '@sp/configurator/website';

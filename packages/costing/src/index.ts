@@ -19,3 +19,6 @@ export * from './installedSellingRates';
 export * from './installerPayout';
 export * from './configuredCustomerPrice';
 export * from './accessoryReview';
+
+export { calculateConfiguredCompositionPriceV1 } from "./configuredCustomerPrice";
+export { priceCompositionInfillDelta } from "./accessoryReview";

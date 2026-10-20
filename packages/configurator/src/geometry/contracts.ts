@@ -141,6 +141,9 @@ export type CustomerGeometryLayoutV1 = {
 };
 
 export type SolveCustomerConfigurationOptionsV1 = {
+  /** Exact optional staff support datum; public intent normalization remains unchanged. */
+  supportDatumMm?: number;
+  roofDatumBasis?: 'attached';
   layout?: CustomerGeometryLayoutV1;
   /** Caller-owned fallback only. The configurator package stores no solve state. */
   lastReadyArtifact?: ConfiguratorRenderableArtifactV1;

@@ -8,7 +8,11 @@ type PdfDocumentProxy = import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentPro
 type PdfLoadingTask = ReturnType<PdfJsModule['getDocument']>;
 type PdfRenderTask = import('pdfjs-dist/legacy/build/pdf.mjs').RenderTask;
 
-const PDF_WORKER_SRC = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+// Keep PDF.js's prebuilt module outside Next's eval wrapper: its own Webpack
+// exports variable otherwise shadows the wrapper before module initialization.
+// Both version-matched assets come from the installed package, including its licence.
+const PDF_MODULE_SRC = new URL('pdfjs-dist/legacy/build/pdf.mjs', import.meta.url).toString();
+const PDF_WORKER_SRC = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
 
 type PromiseWithResolversCtor = PromiseConstructor & {
   withResolvers?: unknown;
@@ -101,7 +105,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
       }
 
       try {
-        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const pdfjs = await import(/* webpackIgnore: true */ /* @vite-ignore */ PDF_MODULE_SRC) as PdfJsModule;
 
         const loadPdf = async (mode: 'auto' | 'fake'): Promise<PdfDocumentProxy> => {
           if (pdfjs.GlobalWorkerOptions.workerSrc !== PDF_WORKER_SRC) {

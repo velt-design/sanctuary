@@ -505,7 +505,7 @@ function buildBoundingBoxCompositionFromLegacyPolygon(input: {
  * IDs) → geometry `RectangleRoofIntent` (number pitch, per-end
  * cap choices). Pure conversion; no domain decisions.
  */
-function deriveRectangleRoofIntent(input: {
+export function deriveRectangleRoofIntent(input: {
   roofIntent: HouseFormRoofIntentModel;
   widthMm: number;
   depthMm: number;

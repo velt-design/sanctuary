@@ -1,5 +1,12 @@
 # Supabase Schema Map
 
+## Studio authored and quote boundaries (20 October 2026 integration candidate)
+
+The ordered `20261020030001` through `20261020030004` migrations install authored save/create receipts, immutable private website quote snapshots/bindings, and the deferred binding identity invariant. They are a forward chain from current main. Isolated historical-clone rehearsals preserve the existing authored function/guard ownership and apply only the new snapshot and invariant migrations. No historical guards are removed. The four SQL bodies retain their verified hashes. The already-installed staging versions `20261020020001` through `20261020020004` need a separately guarded ledger-only identity mapping after publication filenames moved beyond main's Aluminium migration; never replay these foundations merely because filenames changed.
+
+Authenticated APIs first verify caller-visible project/estimate state. Privileged create/save/prepare/commit calls are server-only guarded commands, not browser table writes. The snapshot wrapper delegates to existing commercial RPCs, preserves their row-lock order and revision/payment contracts, then validates and binds before commit. The private snapshot contains exact authored/spatial/publication/cost evidence. The service-only view RPC returns only immutable customer selections and image bytes. Generic quote edits cannot discard or change a bound identity, project or commercial scope. See [Staff Design Studio](staff-design-studio-prototype.md) for current verification and installation limits.
+
+
 ## Aluminium residential contact contract (20 October 2026)
 
 Forward migration 20261020020001_marketing_aluminium_optional_phone.sql

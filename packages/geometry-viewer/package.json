@@ -9,12 +9,15 @@
     ".": "./src/index.ts",
     "./react": "./src/react/index.ts",
     "./svg": "./src/svg/index.ts",
-    "./three": "./src/three/index.ts"
+    "./three": "./src/three/index.ts",
+    "./react/canvas": "./src/react/canvas/index.ts"
   },
   "dependencies": {
     "@react-three/fiber": "^9.5.0",
     "@sp/geometry": "0.0.0",
     "react": "19.1.0",
-    "three": "^0.183.2"
+    "three": "^0.183.2",
+    "its-fine": "2.0.0",
+    "react-use-measure": "2.1.7"
   }
 }

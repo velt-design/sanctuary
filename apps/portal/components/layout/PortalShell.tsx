@@ -77,7 +77,8 @@ function isDesignWorkbenchRoutePath(pathname: string | null): boolean {
 function isAuthenticatedStandaloneRoutePath(pathname: string | null): boolean {
   return Boolean(
     pathname &&
-      (pathname === '/staff/design-booklets' ||
+      (/^\/staff\/design-studio\/[^/]+\/[^/]+\/edit$/.test(pathname) ||
+        pathname === '/staff/design-booklets' ||
         pathname.startsWith('/staff/design-booklets/')),
   );
 }

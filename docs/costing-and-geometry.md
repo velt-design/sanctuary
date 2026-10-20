@@ -1,5 +1,12 @@
 # Costing And Geometry
 
+## Studio composition reuse (20 October 2026 local candidate)
+
+Studio reuses the website geometry/renderer and existing published configured pricing. Each pergola retains its independent stock; the approved aggregate policy applies shared job operations once without shared-member savings. Optional staff site inputs flow through the existing costing owners. Black/White frame and current acrylic tint are durable selections; tint changes the shared material appearance without claiming physical colour matching. Specialist variants remain in the established calculator following Jordan's explicit 20 October first-release choice. The complete map is in [Staff Design Studio](staff-design-studio-prototype.md).
+
+The current canonical single-rectangle house composition now applies its authored eave overhang to the actual Flat/Mono/Hipped roof and eave polygon, leaving walls, origin and roof intent unchanged. Zero/absent overhang and fused/multiple rectangles retain their previous paths. Studio derives actual attachment surfaces from that owner, retains unequal wall/eave height and arbitrary exact pose, and reports failed physical contact instead of using a stale reference for pricing. Existing Workbench transform writers are unchanged.
+
+
 ## Accessory evidence review
 
 `/admin/costing/accessory-review` is an admin-only, read-only review linked from the costing control centre. It pairs the shared `ACCESSORY_REVIEW_RATES` with supplier evidence and outstanding checks. Worked examples use canonical costing helpers and explicitly assume a 1.30 selling multiplier; they are not resolved published prices. Remaining amounts exclude GST and are not net profit. Ziptrak and rafter-light installed schedules are not reverse-engineered into supplier costs. The screen does not create approvals, persist edited rates, or publish configuration versions. Invoice evidence is transcribed without customer identifiers; unverified profiles remain provisional.

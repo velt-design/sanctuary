@@ -1,10 +1,11 @@
 import { parseAssemblyMemberProfile } from './profiles';
 
 /** Dimensions for the owner-approved marketing concept, not an engineering solve. */
-export function representativeBoxRules(widthMm: number, projectionMm: number) {
+export function representativeBoxRules(widthMm: number, projectionMm: number, supportDatumMm = 2400) {
   if (![widthMm, projectionMm].every(v => Number.isFinite(v) && v >= 1500)
     || widthMm > 10000 || projectionMm > 6000) throw new Error('Invalid box dimensions');
-  const bottomZ = 2400, perimeterDepth = 300, gutterDepth = 100;
+  if (!Number.isFinite(supportDatumMm) || supportDatumMm <= 0) throw new Error('Invalid box support datum');
+  const bottomZ = supportDatumMm, perimeterDepth = 300, gutterDepth = 100;
   const joinerDepth = parseAssemblyMemberProfile('sp_joiners')!.depthMm;
   // Reserve joiner height and clearance below the level perimeter top.
   const peakZ = bottomZ + perimeterDepth - joinerDepth - 8;

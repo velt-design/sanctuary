@@ -215,8 +215,21 @@ function uniqueMetrics(nextDir: string, files: Iterable<string>): PortalBundleFi
 const sumRaw = (files: PortalBundleFileMetric[]) => files.reduce((sum, file) => sum + file.rawBytes, 0);
 const sumGzip = (files: PortalBundleFileMetric[]) => files.reduce((sum, file) => sum + file.gzipBytes, 0);
 
+function clientChunkFiles(chunks: string[]): string[] {
+  const isFile = (value: string) => /^static\/.*\.js$/.test(normalizeChunkPath(value));
+  // Turbopack lists files; Next's Webpack flight manifest alternates chunk IDs
+  // and files. Decode complete pairs only, never discard arbitrary non-files.
+  if (chunks.every(isFile)) return chunks;
+  if (chunks.length % 2 === 0 && chunks.every((value, index) =>
+    index % 2 === 0 ? value.length > 0 && !isFile(value) : isFile(value),
+  )) return chunks.filter((_, index) => index % 2 === 1);
+  throw new PortalBundleBudgetError(
+    'Portal client chunk manifest must contain JavaScript files or complete chunk ID/file pairs. Run npm run build:portal first to create a fresh portal build, then rerun npm run portal:bundle-budget.',
+  );
+}
+
 function initialFiles(manifest: ClientReferenceManifest): string[] {
-  return Object.values(manifest.clientModules ?? {}).flatMap((entry) => entry.async === false ? entry.chunks ?? [] : []);
+  return Object.values(manifest.clientModules ?? {}).flatMap((entry) => entry.async === false ? clientChunkFiles(entry.chunks ?? []) : []);
 }
 
 function initialCssFiles(manifest: ClientReferenceManifest): string[] {

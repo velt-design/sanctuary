@@ -307,6 +307,33 @@ describe('useCalculatorWorkspaceSession', () => {
     rendered.unmount();
   });
 
+  it('keeps a failed duplication unavailable until the same source retries successfully', async () => {
+    const duplicated = makeDefaultCalculatorInputs();
+    duplicated.modules[0].lengthM = '9';
+    const estimateDuplicator = vi.fn()
+      .mockRejectedValueOnce(new Error('Calculator migration failed'))
+      .mockResolvedValueOnce(duplicated);
+    const options = makeOptions({
+      route: { projectId: '', editEstimateId: '', fromEstimateId: 'estimate-duplicate-retry', shouldOpenActiveDraft: false },
+      estimateDuplicator,
+    });
+    const rendered = renderIntoDocument(<Probe options={options} />);
+    await waitUntil(() => expect(session().draftLoadError).toBe('Calculator migration failed'));
+    expect(session().draftReady).toBe(false);
+    expect(document.querySelector('input[aria-label="Length"]')).toBeNull();
+    expect(options.toast.error).toHaveBeenCalledWith('Calculator migration failed');
+    const retry = Array.from(document.querySelectorAll('button')).find((button) => /retry/i.test(button.textContent ?? ''));
+    expect(retry).toBeTruthy();
+    await act(async () => retry!.click());
+    await waitUntil(() => {
+      expect(session().draftReady).toBe(true);
+      expect(session().values.modules[0].lengthM).toBe('9');
+    });
+    expect(estimateDuplicator.mock.calls).toEqual([['estimate-duplicate-retry'], ['estimate-duplicate-retry']]);
+    expect(session().draftLoadError).toBeNull();
+    rendered.unmount();
+  });
+
   it('blocks a locked estimate and routes standalone users back to its project', async () => {
     const estimate = makeEstimate({
       id: 'estimate-workspace-test-locked',

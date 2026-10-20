@@ -5,9 +5,24 @@
   "type": "module",
   "exports": {
     "./core": "./src/core/index.ts",
-    "./geometry": "./src/geometry/index.ts"
+    "./geometry": "./src/geometry/index.ts",
+    "./website": "./src/website/index.ts",
+    "./website/contract": "./src/website/contract/index.ts",
+    "./react": "./src/react/index.ts",
+    "./react/controls": "./src/react/controls/index.ts",
+    "./server": "./src/server/index.ts",
+    "./react/attachment": "./src/react/AttachmentSection.tsx"
   },
   "dependencies": {
-    "@sp/geometry": "0.0.0"
+    "@sp/geometry": "0.0.0",
+    "@sp/costing": "0.0.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "three": "^0.183.2",
+    "three-stdlib": "^2.36.1",
+    "@sp/geometry-viewer": "0.0.0"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
   }
 }

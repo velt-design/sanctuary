@@ -24,6 +24,7 @@ import type {
 import { normalizeGeometryConfig, type NormalizeGeometryConfigErrorCode } from './normalize';
 import { buildPlanViewModel } from './plan';
 import { buildSectionViewModel } from './section';
+import { retainAttachedMonoRoofDatum } from './monoRoofDatumBasis';
 import { solveAssembly3D } from './solve';
 import type { SolveAssembly3DErrorCode } from './solve.types';
 import { buildAssemblyQuantityTakeoff } from './takeoff';
@@ -341,7 +342,7 @@ function rawPergolaInputFromGeometryInput(input: PergolaGeometryInput): RawGeome
   };
 }
 
-export function solvePergolaGeometry(input: PergolaGeometryInput): PergolaGeometrySolveResult {
+export function solvePergolaGeometry(input: PergolaGeometryInput, options?: {supportDatumMm?: number; roofDatumBasis?: 'attached'}): PergolaGeometrySolveResult {
   const rawInput = rawPergolaInputFromGeometryInput(input);
   if (!rawInput) {
     return {
@@ -360,7 +361,41 @@ export function solvePergolaGeometry(input: PergolaGeometryInput): PergolaGeomet
     };
   }
 
-  const solve = solveAssembly3D(normalize.value);
+  let config = normalize.value;
+  if (options?.supportDatumMm !== undefined) {
+    const requested = options.supportDatumMm, nominal = normalize.value.supports.postCutHeightMm;
+    if (!Number.isFinite(requested) || requested <= 0 || nominal == null || !Number.isFinite(nominal)) {
+      return {ok:false,code:'insufficient_input',error:'An exact support datum requires a positive finite value and a resolved nominal post datum.'};
+    }
+    const delta = requested - nominal;
+    if (delta !== 0) {
+      const shift = (value: number | null) => value === null ? null : value + delta;
+      config = {...config, supports:{...config.supports,postCutHeightMm:config.supports.postCutHeightMm==null?config.supports.postCutHeightMm:config.supports.postCutHeightMm+delta},
+        structural:{...config.structural,heights:{
+          houseUndersideMm:shift(config.structural.heights.houseUndersideMm),
+          outerUndersideMm:shift(config.structural.heights.outerUndersideMm),
+          referenceUndersideMm:shift(config.structural.heights.referenceUndersideMm),
+        }}};
+    }
+  }
+  if(options?.roofDatumBasis!==undefined){
+    if(options.roofDatumBasis!=='attached')return {ok:false,code:'insufficient_input',error:'Unknown roof datum basis.'};
+    const retained=retainAttachedMonoRoofDatum(config);
+    if(!retained.ok)return retained;
+    config=retained.config;
+  }
+  const solve = solveAssembly3D(config);
+  // Exact concept datums can leave sub-millimetre post lengths. Reconcile the
+  // aggregate hook from actual centreline lengths, as validation already does;
+  // summing individually rounded posts accumulates an artificial discrepancy.
+  if (solve.ok && options?.supportDatumMm !== undefined && !Number.isInteger(options.supportDatumMm)) {
+    const total = Math.round(solve.value.members.filter(member => member.role === 'post').reduce((sum, member) => sum + Math.hypot(
+      member.centerline.end.x-member.centerline.start.x,
+      member.centerline.end.y-member.centerline.start.y,
+      member.centerline.end.z-member.centerline.start.z), 0));
+    solve.value.quantityHooks = solve.value.quantityHooks.map(hook => hook.key === 'posts.total_length_mm' ? {...hook, quantity:total} : hook);
+  }
+
   const validation = validateGeometrySolve({
     config: normalize.value,
     solveResult: solve,

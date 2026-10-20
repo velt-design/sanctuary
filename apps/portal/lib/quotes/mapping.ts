@@ -1,3 +1,4 @@
+import {readStudioQuoteHandoff} from '@/lib/designStudio/quoteSnapshot';
 import type { CalculatorInputs } from '@/lib/types/calculator';
 import {
   isCalculatorInputsV2,
@@ -112,7 +113,7 @@ function withQuoteDiscountDescription(description: string, quoteDiscountPct: num
 }
 
 type QuoteMappingBlockingIssue = {
-  code: 'INVALID_BLIND' | 'INVALID_LIGHTING' | 'NO_PRICED_ITEMS' | 'CONFIGURED_COSTING_REVIEW_REQUIRED';
+  code: 'STUDIO_REVIEW_REQUIRED' | 'INVALID_BLIND' | 'INVALID_LIGHTING' | 'NO_PRICED_ITEMS' | 'CONFIGURED_COSTING_REVIEW_REQUIRED';
   message: string;
 };
 
@@ -146,6 +147,11 @@ export function assertQuoteEstimateMappingReady(mapping: QuoteEstimateMapping): 
 }
 
 export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstimateMapping {
+  if (estimate.outputs && Object.hasOwn(estimate.outputs, 'studio_authored')) {
+    const handoff=readStudioQuoteHandoff(estimate.outputs);
+    return handoff ? {items:handoff.lines,coreTotalIncCents:handoff.totalIncGstCents-handoff.approvalIncGstCents,blockingIssues:[],approvalRequirement:handoff.approvalRequirement,approvalIncGstCents:handoff.approvalIncGstCents}
+      : {items:[],coreTotalIncCents:0,approvalRequirement:null,approvalIncGstCents:0,blockingIssues:[{code:'STUDIO_REVIEW_REQUIRED',message:'Open Studio Review and prepare the saved design and views before creating a quote.'}]};
+  }
   if (requiresConfiguredQuoteSnapshot(estimate)) {
     const items = configuredQuoteSnapshotItems(estimate);
     if (items) return { items, coreTotalIncCents: items.reduce((sum, item) => sum + item.lineTotalIncGstCents, 0),

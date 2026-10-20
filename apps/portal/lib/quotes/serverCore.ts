@@ -1,3 +1,4 @@
+import {commitQuoteWithStudioBinding,loadStudioQuoteView} from './studioCommit.server';
 import 'server-only';
 
 import { randomUUID } from 'crypto';
@@ -361,6 +362,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
 
   return {
     ...version,
+    studioDesign: await loadStudioQuoteView(quoteVersionUuid,row.pricing_source_metadata),
     lineItems,
     sendLogs,
     contact: {
@@ -385,6 +387,7 @@ export async function createQuoteFromEstimate(
   actor: string | null,
   clientIntentId = randomUUID(),
   internalName: string | null = null,
+  studioSnapshot?: { snapshotId: string; contentHash: string },
 ): Promise<QuoteVersionDetail> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
   const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
@@ -392,6 +395,9 @@ export async function createQuoteFromEstimate(
   const estimate = await loadEstimate(estimateUuid);
   if (!estimate) throw new Error('Estimate not found');
   if (estimate.projectId !== projectId) throw new Error('Estimate does not belong to this project');
+
+  const studioMetadata = estimate.pricingSourceMetadata as Record<string, unknown> | undefined;
+  if (studioSnapshot && (studioMetadata?.studioSnapshotId !== studioSnapshot.snapshotId || studioMetadata?.studioSnapshotHash !== studioSnapshot.contentHash)) throw new Error('The prepared design changed. Return to Studio Review before creating the quote.');
 
   const quote = await ensureQuote(projectUuid, actor, internalName, estimate.commercialScopeId);
 
@@ -428,7 +434,7 @@ export async function createQuoteFromEstimate(
   });
 
   const pricingColumns = quotePricingSourceDbColumns(pricingSourceCopy);
-  const createRes = await supabaseServiceRole.rpc('commercial_quote_create_draft', {
+  const createRes = await commitQuoteWithStudioBinding('create', {
     p_quote_id: quote.id,
     p_source_estimate_version_id: estimateUuid,
     p_revised_from_quote_version_id: null,
@@ -774,8 +780,7 @@ export async function refreshDraftQuoteVersionFromEstimate(
     totals.totalIncGstCents,
   );
   const proposedDepositPercent = paymentScheduleCompatibilityDepositPercent(proposedPaymentTerms, totals.totalIncGstCents);
-  const updateRes = await supabaseServiceRole.rpc(
-    'commercial_quote_update_draft',
+  const updateRes = await commitQuoteWithStudioBinding('refresh',
     {
       p_quote_version_id: quoteVersionUuid,
       p_expected_commercial_revision: currentDetail.commercialRevision,
@@ -1025,8 +1030,7 @@ export async function reviseQuoteVersion(
       unitPriceIncGstCents: item.unitPriceIncGstCents,
     })),
   );
-  const insertRes = await supabaseServiceRole.rpc(
-    'commercial_quote_create_draft',
+  const insertRes = await commitQuoteWithStudioBinding('revise',
     {
       p_quote_id: quoteUuid,
       p_source_estimate_version_id: versionRes.data.source_estimate_version_id,

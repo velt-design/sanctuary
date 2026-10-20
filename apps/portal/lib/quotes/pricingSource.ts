@@ -18,6 +18,8 @@ type SourceRecord = Record<string, unknown>;
 const DEFAULT_PRICING_SOURCE: QuotePricingSource = 'calculator_live';
 
 const ALLOWED_SOURCE_METADATA_KEYS = [
+  'studioSnapshotId',
+  'studioSnapshotHash',
   'gateVersion',
   'requestedSource',
   'requestedSourceRaw',

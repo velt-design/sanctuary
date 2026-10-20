@@ -1,5 +1,7 @@
 'use client';
 
+import { buildQuoteHandoffPreviewFromEstimateDetail } from '@/lib/localFirst/quotePreparation';
+
 import type { CostOutputV1, SiteOutputV1 } from '@sp/costing';
 import type { QueryClient } from '@tanstack/react-query';
 import { getCostingMeta } from '@/lib/costing/costEngine';
@@ -17,7 +19,6 @@ import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildEstimateEntityKey,
   buildEstimatePayloadFromDetail,
-  buildQuoteHandoffPreviewFromEstimateDetail,
   buildNextEstimateVersionLabel,
   buildOptimisticEstimateDetail,
   createLocalEstimateId,

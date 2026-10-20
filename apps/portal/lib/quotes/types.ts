@@ -78,6 +78,7 @@ export type QuoteSendLog = {
 };
 
 export type QuoteVersionDetail = QuoteVersion & {
+  studioDesign?: import('@/lib/designStudio/quoteSnapshot').StudioQuoteView;
   lineItems: QuoteLineItem[];
   sendLogs: QuoteSendLog[];
   commercialWorkflowReady?: boolean;

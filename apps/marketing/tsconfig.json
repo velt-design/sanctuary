@@ -39,6 +39,12 @@
       ],
       "@sp/theme/*": [
         "../../packages/theme/src/*"
+      ],
+      "@sp/configurator/*": [
+        "../../packages/configurator/src/*/index.ts"
+      ],
+      "@sp/configurator/react/attachment": [
+        "../../packages/configurator/src/react/AttachmentSection.tsx"
       ]
     },
     "plugins": [

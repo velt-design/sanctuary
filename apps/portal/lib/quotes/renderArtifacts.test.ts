@@ -286,3 +286,16 @@ describe('quote render artifacts', () => {
     expect(buildQuoteRenderHash(initial)).not.toBe(buildQuoteRenderHash(changed));
   });
 });
+
+
+it('invalidates the PDF cache for a same-price Studio geometry/view change',()=>{
+ const detail=makeDetail();
+ detail.studioDesign={schemaVersion:'studio_quote_snapshot.v1',snapshotId:'snapshot-one',contentHash:'a'.repeat(64),designId:'design',revision:1,publicationVersion:15,selections:[],images:[{kind:'plan',sha256:'b'.repeat(64),dataUrl:'data:image/png;base64,AA==',width:1400,height:900}]};
+ const original=buildQuoteRenderHash(detail),changed=structuredClone(detail);
+ changed.studioDesign!.contentHash='c'.repeat(64);
+ expect(buildQuoteRenderHash(changed)).not.toBe(original);
+ const changedImage=structuredClone(detail);changedImage.studioDesign!.images[0].sha256='d'.repeat(64);
+ expect(buildQuoteRenderHash(changedImage)).not.toBe(original);
+ expect(changedImage.totals).toEqual(detail.totals);
+ expect(changedImage.lineItems).toEqual(detail.lineItems);
+});

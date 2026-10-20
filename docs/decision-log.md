@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-10-20: Preserve pending interaction authority when integrating Studio
+
+The saved Studio adaptation retained gesture math but initially omitted the
+approved pending-proposal cache and canonical scene argument for departure.
+Reviewing only ordinary committed drags missed both seams. Keep the original
+authored edit as commit/Undo authority and the visible proposal as pointer basis;
+verify pending grab, cancel, attached/free commit and refused-method recovery
+through the mounted controller and normal UI. Method changes retain the same
+physical side and world anchor. See `staff-design-studio-prototype.md`.
+
+The same delivery review reproduced a generic PDF Preview failure before document
+loading: the prebuilt PDF.js exports variable collided with Next's development
+eval wrapper. Emit the installed, licensed module and matching worker as local
+assets and verify the actual production preview, including the invoice consumer.
+Valid downloadable PDF bytes alone do not establish an operational inline preview.
+
 ## 2026-10-20: Current project status must not be historical pipeline progress
 
 A closed project retained its Scheduled pipeline stage correctly, but the shared
