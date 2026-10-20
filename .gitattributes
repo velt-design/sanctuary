@@ -36,7 +36,7 @@ supabase/migrations/20260914062003_marketing_enquiry_delivery_status.sql -text
 supabase/migrations/20260914173001_configurator_estimate_revisions.sql -text
 
 # Preserve reviewed bytes of Studio migrations already applied to staging.
-supabase/migrations/20261020030001_studio_authored_save.sql -text
-supabase/migrations/20261020030002_studio_authored_create.sql -text
-supabase/migrations/20261020030003_studio_website_quote_snapshot.sql -text
-supabase/migrations/20261020030004_studio_quote_binding_metadata.sql -text
+supabase/migrations/20261020080001_studio_authored_save.sql -text
+supabase/migrations/20261020080002_studio_authored_create.sql -text
+supabase/migrations/20261020080003_studio_website_quote_snapshot.sql -text
+supabase/migrations/20261020080004_studio_quote_binding_metadata.sql -text

@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-20: Check concurrent migration reservations before release
+
+Published Custom PR #230 uses Studio's proposed `20261020030001` version.
+Move only the four unmerged Studio filenames to verified-free
+`20261020080001..004`, preserving SQL bytes and exact `-text` attributes.
+Keep prior staging receipts under their actual identities. Any installed-ledger
+identity change is a separately guarded version-only operation, never a reason
+to replay SQL or alter another release. Recheck published main and open PR
+migration paths before final assembly.
+
 ## 2026-10-20: Verify retirement against the committed PR comparison
 
 Studio's first CI run found three orphan helpers after their historical importers
