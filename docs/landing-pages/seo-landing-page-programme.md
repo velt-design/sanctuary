@@ -1,5 +1,21 @@
 # SEO Landing Page Programme
 
+## Custom service revision (20 October 2026)
+
+Custom remains at /custom-pergolas-auckland with normal navigation, footer and
+self-canonical metadata. Its role is the home, brief and design conversation.
+Tindalls Bay and Warkworth tell complete project stories using the approved public
+records and original photographs, followed by design considerations, a reassuring
+process, one enquiry and individually accessible questions. The standard-shape
+3D designer is an optional lower-page starting point, not bespoke pricing.
+
+Guided and project-finder starting briefs remain visible and accompany enquiries
+and designer entry. The prior constraint-card/disclosure composition and its
+selector tests are superseded by the route's project-led journey checks. Following
+preview review, final checks and production release are authorised. Hosted
+rollout, current pricing, schema installation and delivery evidence are recorded
+separately; local fixtures do not establish these outcomes.
+
 ## 20 October 2026 aluminium page
 
 The approved refined aluminium direction is implemented on the existing indexed

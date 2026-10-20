@@ -63,7 +63,7 @@ for (const entry of pages) test(`${entry.audience} upload failure and retry pres
 });
 
 test('default SEO renderer keeps its hero, content and embedded form', async ({ page }) => {
-  await page.goto('/custom-pergolas-auckland');
+  await page.goto('/pitched-pergolas-auckland');
   await expect(page.locator('[data-editorial-landing-hero] h1')).toBeVisible();
   expect(await page.locator('main section').count()).toBeGreaterThan(3);
   await expect(page.locator('#project-details form')).toHaveCount(1);

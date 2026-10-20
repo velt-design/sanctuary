@@ -1,5 +1,18 @@
 # Security, Privacy, And Quality
 
+## Custom SEO measurement and contact policy (20 October 2026)
+
+Custom joins only the exact SEO action/continuation allowlist, not advertising
+chrome or Google/Meta classification. Explicit designer opening, review and
+configured enquiry retain the established consent and deduplication owners.
+Generic enquiry intent makes no claim that a design exists. Guided/project-finder
+context remains in its closed contract and no form or free-text values enter
+these action events. The exact residential discussion phone exception is in the
+existing contact owner and exact-route forward migration. Browser tests fence
+submissions, uploads and vendors before input; they do not establish live
+conversions. Release approval does not replace the separate installed-schema,
+provider and attribution checks recorded for operational rollout.
+
 ## Aluminium SEO measurement and contact scope (20 October 2026)
 
 /aluminium-pergolas-auckland is an exact SEO source for existing consent-gated
