@@ -4,7 +4,7 @@ import { useRef,useState } from 'react';
 import { Button,Badge } from '@/components/ui/foundation';
 import type { CalendarVisit } from '@/lib/siteVisits/contract';
 import { visitTime,visitDay,visitDate,visitDateRange,visitClockLabel } from '@/lib/siteVisits/calendarModel';
-import { visitPurposeLabel,visitStatusLabel } from '@/lib/siteVisits/reviewedVisit';
+import { visitPurposeLabel,visitStatusLabel,visitStaffLabel } from '@/lib/siteVisits/reviewedVisit';
 import VisitReview from './VisitReview';
 import VisitProvenance from './VisitProvenance';
 import styles from './siteVisits.module.css';
@@ -17,7 +17,7 @@ export default function VisitAgendaRow({visit:v}:{visit:CalendarVisit}){
       {v.phone&&<a className={styles.phone} href={`tel:${v.phone.replace(/[^+\d]/g,'')}`}>{v.phone}</a>}
       <div className={styles.badges}>{v.purpose&&<Badge>{visitPurposeLabel(v.purpose)}</Badge>}{v.status&&<Badge>{visitStatusLabel(v.status)}</Badge>}{v.correction?.sourceChanged&&<Badge tone="warning">Source changed · review needed</Badge>}{v.cancelled&&!v.status&&<Badge tone="warning">Cancelled in Outlook</Badge>}{v.removed&&<Badge tone="warning">No longer present in Outlook read</Badge>}{v.kind==='provisional'&&!v.status&&<Badge tone="warning">Provisional</Badge>}{v.kind==='review'&&<Badge tone="warning">Check visit type</Badge>}{v.kind==='excluded'&&<Badge>{v.withdrawn?'Withdrawn record':'Excluded from visits'}</Badge>}{v.duplicate&&<Badge tone="warning">Possible duplicate</Badge>}{!v.projectId&&<Badge>Unlinked project</Badge>}</div>
     </div>
-    <div className={styles.person}><strong>{v.staff.length?v.staff.map(p=>p.name).join(', '):'Unassigned'}</strong><small>{v.correction?.details.staff?'Reviewed in Portal':v.staff.length?'Invited in Outlook':v.assignmentHint?`${v.assignmentHint} named in title. Needs checking.`:'No recognised staff invitation.'}</small></div>
+    <div className={styles.person}><strong>{visitStaffLabel(v.staff)||'Unassigned'}</strong><small>{v.correction?.details.staff?'Reviewed in Portal':v.staff.length?'Invited in Outlook':v.assignmentHint?`${v.assignmentHint} named in title. Needs checking.`:'No recognised staff invitation.'}</small></div>
     <div className={styles.rowLinks}>{v.projectId&&<Link href={`/staff/projects/proj_${v.projectId}`}>Open project</Link>}{v.sourceUrl&&<a href={v.sourceUrl} target="_blank" rel="noopener noreferrer">Open in Outlook ↗</a>}<Button ref={trigger} variant="quiet" size="small" disabled={review} onClick={()=>setReview(true)} aria-expanded={review}>Correct details</Button></div>
     <div className={`${styles.rowDetail} ${review?styles.editing:''}`}>{v.reviewReasons.length>0&&<details open={v.correction?.sourceChanged||undefined}><summary>Details to check ({v.reviewReasons.length})</summary><ul>{v.reviewReasons.map(reason=><li key={reason}>{reason}</li>)}</ul><p>Original title: {v.subject}</p></details>}
       {!review&&v.correction&&<VisitProvenance visit={v} />}

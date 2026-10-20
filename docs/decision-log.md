@@ -11,6 +11,12 @@ while conflicting facts require reconciliation. Never reattribute a later return
 measurement as the original visit. Narrow sidebar layouts must respond to their
 container width, not the full viewport. See `schedule.md` and `ui-foundation.md`.
 
+Independent delivery review exposed that matching a staff short name to an Outlook
+full name by display text splits filters and reopens settled questions. Use one
+explicit, source-bound identity map to the existing roster for presentation and
+source comparison; preserve the original name and never infer identities from
+customer names or email spelling. Cover both filtering and actual SQL catch-up.
+
 ## 2026-10-20: Imported bookings preserve source and local decision boundaries
 
 The Outlook visit mirror publishes only complete source reads and preserves local

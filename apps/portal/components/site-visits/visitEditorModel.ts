@@ -4,9 +4,9 @@ import type { VisitDetails,VisitPerson,VisitTiming } from '@/lib/siteVisits/corr
 import { personKey } from '@/lib/siteVisits/reviewedVisit';
 
 export function visitPeople(visit?:CalendarVisit){
-  const people=[...(visit?.staff??[]),...(visit?.source?.staff??[])];
-  for(const owner of PROJECT_OWNER_OPTIONS)if(!people.some(p=>p.name.toLowerCase()===owner.displayName.toLowerCase()))people.push({name:owner.displayName,email:'',staffId:owner.key});
-  return [...new Map(people.map(p=>[personKey(p),p])).values()];
+  const people:VisitPerson[]=PROJECT_OWNER_OPTIONS.map(owner=>({name:owner.displayName,email:'',staffId:owner.key}));
+  for(const person of [...(visit?.staff??[]),...(visit?.source?.staff??[])])if(!people.some(p=>personKey(p)===personKey(person)))people.push(person);
+  return people;
 }
 export function visitEditorDraft(v?:CalendarVisit){
   return {staff:v?.staff??[] as VisitPerson[],address:v?.address??'',purpose:v?.purpose??(v?'site_visit':'initial') as NonNullable<VisitDetails['purpose']>,

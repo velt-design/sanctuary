@@ -30,6 +30,14 @@ manual records without imposing a source timestamp on unknown historical dates.
 Existing enabled control, sync publication and business-domain tables are preserved.
 Direct table/helper access remains revoked and RLS enabled.
 
+Forward `20261020010005_site_visit_staff_identity.sql` adds private
+`site_visit_staff_identities(source_binding,email,staff_id)`, with RLS and all
+public/anon/authenticated/service-role access revoked. Root-controlled verified
+configuration is scoped to the exact existing source binding. Projection wrappers
+add canonical identity keys to source and correction staff while preserving raw
+payloads and stored details. The private equality helper compares mapped identities
+for freshness, never names. No provider, sync, review, lifecycle or data reset occurs.
+
 ## Facebook channel-path intake contract (20 October 2026)
 
 Forward `20261020000001_marketing_facebook_channel_optional_phone.sql` retains

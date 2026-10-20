@@ -1,5 +1,5 @@
 import type { CalendarVisit } from './contract';
-import { personKey } from './reviewedVisit';
+import { personKey,resolveVisitPersonKey } from './reviewedVisit';
 const VISIT_TIME_ZONE = 'Pacific/Auckland';
 export const visitDay = (iso: string) => new Intl.DateTimeFormat('en-CA',{timeZone:VISIT_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
 export const visitTime = (iso: string) => new Intl.DateTimeFormat('en-NZ',{timeZone:VISIT_TIME_ZONE,hour:'numeric',minute:'2-digit'}).format(new Date(iso));
@@ -47,6 +47,7 @@ export function requiresVisitReview(v:CalendarVisit) {
   return !v.cancelled&&!v.removed&&v.kind!=='excluded'&&(v.kind==='review'||v.kind==='provisional'||v.duplicate||v.reviewReasons.length>0||!v.projectId);
 }
 export function visibleVisits(events:CalendarVisit[],view:string,person:string,query:string,now=new Date()) {
+  person=resolveVisitPersonKey(events,person);
   const today=visitDay(now.toISOString());
   const utc=new Date(`${today}T00:00:00Z`);const weekday=(utc.getUTCDay()+6)%7;
   const monday=new Date(utc.getTime()-weekday*86400000).toISOString().slice(0,10);

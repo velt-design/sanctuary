@@ -1,7 +1,14 @@
 import type { CalendarVisit } from './contract';
 import type { VisitDetails,VisitPerson } from './correctionContract';
+import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
 
 export const personKey=(person:VisitPerson)=>person.staffId?`staff:${person.staffId}`:person.email||`name:${person.name.toLowerCase()}`;
+export const personLabel=(person:VisitPerson)=>projectOwnerOption(person.staffId)?.displayName??person.name;
+export const visitStaffLabel=(staff:VisitPerson[])=>[...new Map(staff.map(person=>[personKey(person),personLabel(person)])).values()].join(', ');
+export function resolveVisitPersonKey(events:CalendarVisit[],selected:string){
+ const known=events.flatMap(v=>[...v.staff,...(v.source?.staff??[])]).find(p=>p.email&&p.email===selected);
+ return known?personKey(known):selected;
+}
 export const visitPurposeLabel=(purpose:VisitDetails['purpose'])=>({initial:'Original site visit',measurement:'Return measurement',follow_up:'Follow-up visit',site_visit:'Site visit'}[purpose??'site_visit']);
 export const visitStatusLabel=(status:VisitDetails['status'])=>status?({booked:'Booked',provisional:'Provisional',cancelled:'Cancelled',attended:'Attendance recorded',not_attended:'Did not take place'}[status]):null;
 

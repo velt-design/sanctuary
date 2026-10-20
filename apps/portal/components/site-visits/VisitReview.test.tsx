@@ -4,7 +4,7 @@ import { beforeEach,afterEach,describe,it,expect,vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 import type { CalendarVisit } from '@/lib/siteVisits/contract';
 import VisitReview from './VisitReview';
-import { visitEditorDraft,visitEditorDetails } from './visitEditorModel';
+import { visitEditorDraft,visitEditorDetails,visitPeople } from './visitEditorModel';
 const h=vi.hoisted(()=>({api:vi.fn()}));vi.mock('@/lib/repo/apiClient',()=>({apiJson:h.api}));
 const project='00000000-0000-4000-8000-000000000002';
 const visit:CalendarVisit={id:'00000000-0000-4000-8000-000000000001',revision:1,sourceKey:'synthetic',subject:'Site visit - Synthetic',startsAt:'2026-10-20T00:00:00Z',endsAt:'2026-10-20T00:30:00Z',isAllDay:false,allDayStartDate:null,allDayEndDate:null,sourceUrl:null,address:'12 Example Road',staff:[],assignmentHint:null,kind:'review',sourceKind:'review',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:null,projectName:null,contactName:null,phone:null,linkMode:'manual',kindOverride:null};
@@ -18,6 +18,12 @@ const button=(container:HTMLElement,text:string)=>Array.from(container.querySele
 beforeEach(()=>{h.api.mockReset();client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});h.api.mockResolvedValue({projects:[{id:project,name:'Synthetic project',address:'12 Example Road'}],truncated:false});});
 afterEach(()=>{mounted?.unmount();client.clear();});
 describe('Visit review recovery',()=>{
+ it('offers one canonical roster choice for a mapped source full name without guessing other identities',()=>{
+  const mapped={name:'Jordan Synthetic Fullname',email:'original-rep@example.test',staffId:'jordan'};
+  const choices=visitPeople({...visit,staff:[mapped,{name:'Unmapped visitor',email:'another@example.test'}]});
+  expect(choices.filter(p=>p.staffId==='jordan')).toEqual([{name:'Jordan',email:'',staffId:'jordan'}]);
+  expect(choices.some(p=>p.email==='another@example.test')).toBe(true);
+ });
  it('keeps unchanged historical staff and facts when editing only its basis',()=>{
    const details={staff:[{name:'Jordan',staffId:'jordan',email:''}],purpose:'initial' as const,status:'attended' as const,address:null,timing:{mode:'unknown' as const,date:null,time:null,endTime:null}};
    const historical:CalendarVisit={...visit,origin:'history',projectId:project,...details,correction:{details,questions:[],basis:'Staff confirms original visit.',referenceUrl:null,sourceChanged:false,updatedAt:'2026-10-20T00:00:00Z'}};

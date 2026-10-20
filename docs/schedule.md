@@ -87,6 +87,16 @@ from upcoming summaries until reconciled; metadata changes, equivalent formattin
 and Outlook catching up to the verified value do not reopen settled questions.
 Source restoration, revision conflicts and failed saves preserve recovery paths.
 
+Private `site_visit_staff_identities` binds verified recognized Outlook addresses
+to the existing roster keys for the configured source binding. Operators seed only
+corroborated allowlisted staff identities; customer names and guessed addresses
+never establish a mapping. Forward005 enriches saved projections without editing
+the original payload, so imported full names and manual short names share one
+chooser/filter identity. Source catch-up compares these identities rather than
+display labels. Unmapped addresses remain distinct, and the mapping has no staff
+or service-role write surface. Canonical labels come from the existing roster;
+source comparison preserves Outlook's supplied name.
+
 `ProjectVisitHistory` keeps past linked bookings and separately recorded historical
 visits accessible, including on closed projects. Recording an original visit does
 not reattribute a later measurement booking. Historical records support edits and

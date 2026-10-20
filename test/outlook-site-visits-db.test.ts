@@ -33,9 +33,10 @@ beforeAll(async()=>{await db.exec(`create role anon;create role authenticated;cr
  await db.exec(readFileSync('supabase/migrations/20261020010001_outlook_site_visits.sql','utf8'));
  await db.exec(readFileSync('supabase/migrations/20261020010002_outlook_site_visits_address_match.sql','utf8'));
  await db.exec(readFileSync('supabase/migrations/20261020010003_outlook_site_visits_all_day.sql','utf8'));
- await db.exec(readFileSync('supabase/migrations/20261020010004_site_visit_corrections.sql','utf8'));},30000);
+ await db.exec(readFileSync('supabase/migrations/20261020010004_site_visit_corrections.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261020010005_site_visit_staff_identity.sql','utf8'));},30000);
 afterAll(()=>db.close());
-beforeEach(async()=>{await db.exec(`truncate private.site_visit_detail_history,private.site_visit_details,private.outlook_calendar_reviews,private.outlook_calendar_visits;delete from public.projects where id<>'${project}';
+beforeEach(async()=>{await db.exec(`truncate private.site_visit_staff_identities,private.site_visit_detail_history,private.site_visit_details,private.outlook_calendar_reviews,private.outlook_calendar_visits;delete from public.projects where id<>'${project}';
  update public.projects set archived_at=null,site_address='12 Example Rd, Auckland';update auth.users set email_confirmed_at=now(),deleted_at=null,banned_until=null;update public.portal_users set role='staff';
  update private.outlook_calendar_control set enabled=true,binding='${binding}',lease_token=null,lease_until=null,last_attempt=null,last_success=null,last_error=null,range_start=null,range_end=null;`);});
 describe('Outlook calendar durable mirror',()=>{
@@ -116,6 +117,23 @@ describe('Outlook calendar durable mirror',()=>{
 
 const correction=(v:any,extra:Record<string,unknown>={})=>({action:'save',id:v.id,revision:v.revision,projectId:project,linkMode:'manual',kind:'visit',details:{staff:[{name:'Known owner',email:'',staffId:'known-owner'}],address:'14 Verified Road, Auckland'},questions:[],basis:'Verified in a staff statement and linked project.',referenceUrl:null,...extra});
 describe('Portal reviewed details and historical attendance',()=>{
+ it('resolves verified imported and manual staff identities without name guessing or source rewrites',async()=>{
+  const email='original-rep@example.invalid',sourcePerson={name:'Jordan Synthetic Fullname',email},manual={name:'Jordan',email:'',staffId:'jordan'};
+  await db.query('insert into private.site_visit_staff_identities values($1,$2,$3),($4,$5,$6)',[binding,email,'jordan','b'.repeat(64),'unrelated@example.invalid','jordan']);
+  const equal=async(a:unknown[],b:unknown[])=>(await db.query('select private.site_visit_people_equal($1::jsonb,$2::jsonb) ok',[JSON.stringify(a),JSON.stringify(b)])).rows[0].ok;
+  expect(await equal([manual],[sourcePerson])).toBe(true);
+  expect(await equal([manual],[{name:'Jordan',email:'customer@example.invalid'}])).toBe(false);
+  expect(await equal([manual],[{name:'Jordan',email:'unrelated@example.invalid'}])).toBe(false);
+  expect(await equal([sourcePerson],[{...sourcePerson,name:'Updated display label'}])).toBe(true);
+  expect(await equal([manual,sourcePerson],[sourcePerson])).toBe(true);
+  await publish([event('one',{staff:[],address:null})]);const before=(await read()).events[0];
+  await rpc('site_visit_correct',[correction(before,{details:{staff:[manual],address:'14 Verified Road, Auckland'}})]);
+  const caughtUp=event('one',{staff:[sourcePerson],address:'14 Verified Road, Auckland'});await publish([caughtUp]);
+  const current=(await read()).events[0];expect(current.staff).toEqual([{...sourcePerson,staffId:'jordan'}]);expect(current.correction.sourceChanged).toBe(false);
+  expect((await db.query('select payload from private.outlook_calendar_visits')).rows[0].payload).toEqual(caughtUp);
+  await publish([event('one',{staff:[{name:'Different rep',email:'different@example.invalid'}],address:'14 Verified Road, Auckland'})]);expect((await read()).events[0].correction.sourceChanged).toBe(true);
+  for(const role of ['authenticated','service_role']){await db.exec(`set role ${role}`);await expect(db.exec('select * from private.site_visit_staff_identities')).rejects.toMatchObject({code:'42501'});await db.exec('reset role');}
+ });
  it('retains a correction through imports and restores source without editing the source payload',async()=>{
   await publish([event('one',{staff:[],address:null,reviewReasons:['Check Outlook for address.']})]);const v=(await read()).events[0];
   const original=(await db.query('select payload from private.outlook_calendar_visits')).rows[0].payload;
@@ -128,6 +146,7 @@ describe('Portal reviewed details and historical attendance',()=>{
   expect((await db.query('select count(*)::int n from private.site_visit_detail_history')).rows[0].n).toBe(2);
  });
  it('reopens actual conflicts, not metadata changes or Outlook catching up to already verified facts',async()=>{
+  await db.query('insert into private.site_visit_staff_identities values($1,$2,$3)',[binding,'owner@example.invalid','known-owner']);
   await publish([event()]);const v=(await read()).events[0];await rpc('site_visit_correct',[correction(v)]);
   await publish([event('one',{sourceUrl:'https://outlook.office.com/calendar/item/new-link',subject:'Site Visit - title spelling fixed'})]);expect((await read()).events[0].correction.sourceChanged).toBe(false);
   await publish([event('one',{staff:[{name:'Known owner',email:'owner@example.invalid'}],address:'14 Verified Road, Auckland'})]);expect((await read()).events[0].correction.sourceChanged).toBe(false);

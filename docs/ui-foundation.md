@@ -30,6 +30,10 @@ history includes original visits with intentionally unknown dates and separate
 return measurements, with audited edit/withdraw/restore actions. Source bookings
 never silently acquire an attendance outcome. Native date/time inputs retain the
 browser's calendar and keyboard behavior.
+Recognized full Outlook names and manual roster names use one configured identity
+and canonical roster label in the chooser, filter and visit summaries. Legacy
+email-filter URLs resolve to that same identity without losing project/return
+context. The original Outlook display name remains in source comparison.
 
 `ProjectRecentNotesEvents.module.css` owns the notes/history composition. Columns
 split only when the card itself has 680 px of space, rather than using viewport

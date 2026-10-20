@@ -15,13 +15,14 @@ describe('Staff correction boundary',()=>{
   for(const person of [{name:'Unknown',email:'',staffId:'unknown'},{name:'Someone else',email:'',staffId:'jordan'},{name:'Jordan',email:'invented@example.test',staffId:'jordan'},{name:'Jordan',email:''}]){
    expect((await POST(request({...input,details:{staff:[person]}}))).status).toBe(400);
   }
-  expect(h.rpc).not.toHaveBeenCalled();
+  expect(h.rpc.mock.calls.filter(c=>c[0]==='site_visit_correct')).toHaveLength(0);
  });
  it('accepts only saved recognised Outlook identities, never correction-supplied identities',async()=>{
-  const person={name:'Morgan QA',email:'morgan@example.test'};
+  const person={name:'Jordan Synthetic Fullname',email:'original-rep@example.test',staffId:'jordan'};
   h.rpc.mockImplementation(async(name)=>name==='outlook_site_visits_read'?{data:{events:[{origin:'outlook',staff:[person],correction:{details:{staff:[{name:'Forged',email:'forged@example.test'}]}}}]},error:null}:{data:{id,staff:[],reviewReasons:[]},error:null});
   expect((await POST(request({...input,details:{staff:[person]}}))).status).toBe(200);
   expect((await POST(request({...input,details:{staff:[{...person,name:'Forged label'}]}}))).status).toBe(400);
+  expect((await POST(request({...input,details:{staff:[{...person,staffId:'joe'}]}}))).status).toBe(400);
   expect((await POST(request({...input,details:{staff:[{name:'Forged',email:'forged@example.test'}]}}))).status).toBe(400);
   expect(h.rpc.mock.calls.filter(c=>c[0]==='site_visit_correct')).toHaveLength(1);
  });
