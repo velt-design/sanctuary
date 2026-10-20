@@ -1,5 +1,25 @@
 # Marketing UI Foundation
 
+## Outdoor Rooms composition (21 October 2026)
+
+The exact `/outdoor-rooms-auckland` route owns a complete-space narrative: layout
+and circulation, roof/light, adjustable edges and coordinated services. Its
+centred 1440px canvas uses the original Warkworth room photograph and substantial
+Warkworth, Riverhead and Tindalls evidence. Guided use priorities reorder the
+actual photographic examples through the existing helper. Finder links retain
+the saved priorities and project reference; ordinary visits retain authored order.
+Individual FAQs and related guides remain directly available on phones.
+
+`OutdoorRoomJourney` is a presentation adapter over the existing planning draft,
+canonical pricing, design summary and contact form owners. Direct enquiries need
+no design; optional standard-shape exploration preserves the complete draft and
+returns to the same form. Its estimate does not represent a complete room.
+Attachments reuse the existing compact disclosure and upload contract. The
+route remains SEO with normal chrome and consent-gated deliberate actions.
+Local sample prices and intercepted receipts establish neither current approved
+pricing nor shared intake, delivery or live attribution. Publication and exact
+phone-migration rollout require separate verification and an operational record.
+
 ## Custom SEO composition (20 October 2026)
 
 The exact Custom route now leads with the Tindalls Bay dining patio and two

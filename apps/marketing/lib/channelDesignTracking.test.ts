@@ -7,7 +7,7 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/ads/outdoor-living');
 });
 
-it.each(['/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/pergolas-auckland', '/acrylic-roof-pergolas-auckland', '/auckland-outdoor-living'])('shares deliberate actions between surfaces on %s without leaking values', path => {
+it.each(['/custom-pergolas-auckland', '/outdoor-rooms-auckland', '/aluminium-pergolas-auckland', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/pergolas-auckland', '/acrylic-roof-pergolas-auckland', '/auckland-outdoor-living'])('shares deliberate actions between surfaces on %s without leaking values', path => {
   window.history.replaceState({}, '', `${path}?utm_campaign=private-text`);
   expect(isChannelDesignPath(path)).toBe(true);
   expect(trackChannelAction('design_start', true)).toBe(true);
@@ -54,7 +54,7 @@ it('generic quote intent makes no claim about attached design state', () => {
   expect(send.mock.calls[0][2]).not.toHaveProperty('configured_design');
 });
 
-it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland'])('keeps %s an SEO source through the full designer without classifying it as an advertisement', path => {
+it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'])('keeps %s an SEO source through the full designer without classifying it as an advertisement', path => {
   expect(isAdLandingPath(path)).toBe(false);
   expect(isGoogleFunnelPath(path)).toBe(false);
   expect(isMetaFunnelPath(path)).toBe(false);
