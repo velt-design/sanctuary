@@ -26,11 +26,18 @@ Vercel projects; existing default/main deployment behavior and crons are retaine
 Current behavior owners: `projects-contacts-estimates-calculator.md`,
 `quotes-invoices-job-packs.md` and `ui-foundation.md`.
 
-Current status consistency correction (20 October, local candidate): the shared
+Current status consistency correction (20 October, released through PR226): the shared
 project masthead, Overview position and search now prioritize operational state
 over historical pipeline stage, with explicit unknown/loading handling.
-Independent review and release verification for this correction remain separate
-requirements. It changes no lifecycle, commercial data, permissions or schema.
+Independent local/hosted and production verification passed. It changes no
+lifecycle, commercial data, permissions or schema.
+
+The subsequent bounded workflow increment is a local candidate, not yet released:
+current-state commercial context, task-first Overview, URL-owned calm commercial
+navigation/question-first visit review, and fresh mapped customer-output proof.
+It preserves server task ranking, quote/estimate pricing, saved artifacts,
+authentication and all financial command contracts. See the current implementation
+maps in `project-command-centre-architecture.md` and `quotes-invoices-job-packs.md`.
 
 Meta renewal extension (14 October local candidate): dedicated report/sale vault
 identities, finite versus ongoing source approval, default-off maintenance and

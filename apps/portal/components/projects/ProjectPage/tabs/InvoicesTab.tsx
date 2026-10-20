@@ -61,6 +61,7 @@ import { apiJson } from '@/lib/repo/apiClient';
 import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
 import { invalidateProjectsIndexCaches } from '@/lib/queries/projectCache';
 import PaymentReconciliationDialogs from './PaymentReconciliationDialogs';
+import { useProjectCommercialContext } from '../ProjectCommercialContext';
 
 const InvoiceArtifactPreviewDialog = dynamic(() => import('./InvoiceArtifactPreviewDialog'));
 
@@ -105,6 +106,7 @@ function deliveryTone(status: DepositInvoiceDeliveryStatus): BadgeTone {
 }
 
 export default function InvoicesTab({ projectId }: { projectId: string }) {
+  const commercial = useProjectCommercialContext();
   const [invoiceSearch, setInvoiceSearch] = useCommercialListState(projectId, 'invoices-search', '');
   const { isAdmin } = usePortalSession();
   const toast = useToast();
@@ -393,7 +395,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     || voidingInvoiceId !== null
     || restoringInvoice
     || paymentPending;
-  const financialActionsLocked = financialActionPending || recoveryNotice !== null;
+  const financialActionsLocked = financialActionPending || recoveryNotice !== null || !commercial.actionsAvailable;
 
   if (invoicesQuery.isError && !invoices.length) {
     return (
@@ -437,7 +439,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
 
       {!schedule && scheduleQuery.isPending ? <LoadingSkeleton rows={2} columns={4} label="Loading payment position" /> : null}
 
-      {schedule && !schedule.acceptedQuoteVersionId && !schedule.standaloneTotalIncGstCents && !invoices.length ? (
+      {commercial.actionsAvailable && schedule && !schedule.acceptedQuoteVersionId && !schedule.standaloneTotalIncGstCents && !invoices.length ? (
         <Card title="Prepare the first invoice" headingLevel={4} padding="compact">
           <p>Accept the customer's quote to create the first scheduled invoice. For work without a quote, use a standalone invoice draft.</p>
           <ButtonLink href={`/staff/projects/${encodeURIComponent(projectId)}?tab=quotes`} variant="secondary">Open quotes</ButtonLink>
@@ -446,7 +448,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
 
       {schedule && (schedule.acceptedQuoteVersionId || (schedule.standaloneTotalIncGstCents ?? 0) > 0) ? (
         <Card
-          title="Job payment schedule"
+          title={commercial.closed ? 'Recorded payment schedule' : 'Job payment schedule'}
           eyebrow={(schedule.acceptedQuotes?.length ?? 0) > 1
             ? `${schedule.acceptedQuotes?.length} accepted quote scopes`
             : schedule.acceptedQuoteVersionId ? `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}` : 'Standalone project billing'}
@@ -476,7 +478,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                   </div>
                   {term.invoice ? (
                     <Badge tone={invoiceStatusTone(term.invoice.status)}>{term.invoice.invoiceRef} - {term.invoice.status}</Badge>
-                  ) : isAdmin && term.remainingAmountIncGstCents > 0 ? (
+                  ) : isAdmin && commercial.actionsAvailable && term.remainingAmountIncGstCents > 0 ? (
                     <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(term); }}>
                       Invoice {term.label.toLowerCase()}
                     </Button>
@@ -484,7 +486,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 </div>
               );
             })}
-            {isAdmin && schedule.acceptedQuoteVersionId && schedule.remainingToInvoiceIncGstCents > 0 ? (
+            {isAdmin && commercial.actionsAvailable && schedule.acceptedQuoteVersionId && schedule.remainingToInvoiceIncGstCents > 0 ? (
               <div className={styles.scheduleFooter}>
                 <Button type="button" variant="secondary" size="small" disabled={financialActionsLocked} onClick={() => { setCreateResult(null); setCreateTarget(null); }}>Choose invoice amount</Button>
               </div>
@@ -509,7 +511,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         </Card>
       ) : null}
 
-      {isAdmin && draftsEnabled ? <Card title="Invoice drafts"><p>Editable drafts have no balance impact until issued.</p>
+      {isAdmin && draftsEnabled && commercial.actionsAvailable ? <Card title="Invoice drafts"><p>Editable drafts have no balance impact until issued.</p>
         <Button onClick={newStandaloneDraft} disabled={financialActionsLocked}>New standalone invoice</Button>
         {(draftsQuery.data?.drafts ?? []).map((draft) => <Button key={draft.id} variant="secondary" onClick={() => setEditingDraft(draft)}>
           Edit draft — {draft.options.label} · {draft.quoteVersionId ? 'Quote-linked' : 'Standalone'}
@@ -519,11 +521,11 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       {isAdmin && schedule?.paymentEntries ? (
         <Card title="Payments & credits" eyebrow={`${schedule.paymentEntries.length} ledger ${schedule.paymentEntries.length === 1 ? 'entry' : 'entries'}`} padding="none" headingLevel={4} aria-label="Payments and credits">
           <div className={styles.paymentToolbar}>
-            <p>Record money received, then allocate it to the payment schedule.</p>
-            <div className={styles.actions}>
+            <p>{commercial.closed ? 'Payment entries and reversals are retained below. Review any unresolved balance against the closure agreement.' : 'Record money received, then allocate it to the payment schedule.'}</p>
+            {commercial.actionsAvailable && <div className={styles.actions}>
               <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('PAYMENT')}>Record payment</Button>
               <Button type="button" size="small" variant="secondary" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('ADJUSTMENT')}>Add adjustment</Button>
-            </div>
+            </div>}
           </div>
           {schedule.paymentEntries.length ? (
             <div className={styles.paymentRows}>
@@ -557,7 +559,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       ) : null}
 
       {!invoices.length ? (
-        <DataStatePanel state="empty" title="No invoices yet" description="The first invoice is created when a quote is accepted. Admins can create later scheduled, custom, remaining-balance, or split invoices here." />
+        <DataStatePanel state="empty" title={commercial.closed ? "No invoices recorded" : "No invoices yet"} description={commercial.closed ? "This closed project has no recorded invoices. Review the closure agreement before creating any further billing." : "The first invoice is created when a quote is accepted. Admins can create later scheduled, custom, remaining-balance, or split invoices here."} />
       ) : (
       <Card title="Invoice history" eyebrow={`${invoices.length} ${invoices.length === 1 ? 'invoice' : 'invoices'}`} padding="none" headingLevel={4}>
       <SearchFilterBar query={invoiceSearch} onQueryChange={setInvoiceSearch} queryPlaceholder="Search invoice, quote or status" searchId="invoice-search" filters={[]} onClearAll={() => setInvoiceSearch('')} />
@@ -638,11 +640,11 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 </TableCell>
                 <TableCell>
                   <div className={styles.actions}>
-                    {canSend ? (
+                    {canSend && commercial.actionsAvailable ? (
                       <Button type="button" size="small" onClick={() => handleSendNow(invoice.id)} loading={isSending} disabled={financialActionsLocked && !isSending}>
                         {invoice.lastDeliveryStatus === 'FAILED' ? 'Retry delivery' : 'Send now'}
                       </Button>
-                    ) : showMarkPaidPrimary ? (
+                    ) : showMarkPaidPrimary && commercial.actionsAvailable ? (
                       <Button type="button" size="small" onClick={() => setPaidTarget(invoice)} disabled={financialActionsLocked}>
                         Mark paid
                       </Button>

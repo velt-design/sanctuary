@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   coerceProjectTab,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/projects/projectTabs';
 import { preloadProjectTab } from './projectTabModules';
 import { TabNavigation } from '@/components/ui/foundation';
+import { selectProjectView, updateProjectView } from './projectViewNavigation';
 
 export default function ProjectTabNavigation({
   hasJobPacks,
@@ -30,8 +31,6 @@ export default function ProjectTabNavigation({
   optimisticTab?: ProjectNavigationTabKey | null;
   onTabSelect?: (tab: ProjectNavigationTabKey) => void;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const requestedTab = searchParams.get('tab') ?? initialTab;
@@ -44,21 +43,14 @@ export default function ProjectTabNavigation({
   const selectedNavigationKey = tabs.find((item) => isProjectNavigationTabSelected(item.navigationKey, selectedTab))?.navigationKey
     ?? 'activity';
 
-  const replaceTab = useCallback((nextTab: ProjectTabKey, resetNestedSelection = false) => {
-    const query = new URLSearchParams(searchParams.toString());
+  const replaceTab = useCallback((nextTab: ProjectTabKey) => {
+    updateProjectView((query) => {
     query.set('tab', nextTab);
     if (nextTab !== 'quotes') query.delete('quotePreview');
     if (nextTab !== 'job-packs') query.delete('sheet');
-    if (resetNestedSelection) {
-      query.delete('quoteId');
-      query.delete('quotePreview');
-      query.delete('estimateId');
-      query.delete('fromEstimateId');
-      query.delete('newDesign');
-    }
     query.delete('mode');
-    router.replace(`${pathname}?${query.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    }, 'replace');
+  }, []);
 
   useEffect(() => {
     if (requestedTab === activeTab) return;
@@ -70,8 +62,7 @@ export default function ProjectTabNavigation({
   };
 
   const selectTab = (tab: ProjectNavigationTabKey) => {
-    onTabSelect?.(tab);
-    replaceTab(tab, true);
+    if (selectProjectView(tab)) onTabSelect?.(tab);
   };
 
   return (

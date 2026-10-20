@@ -1,7 +1,54 @@
 # Project Operational Command Centre Architecture
 
+## Workflow clarity (20 October 2026 local candidate)
+
+Overview starts with the existing server-owned project work/action. Two stable
+desktop columns group work with commercial facts, and contact details with
+correspondence. They stack in that same reading and keyboard order on narrow
+screens. Independent column height prevents long correspondence from creating
+blank space between work and price, and keeps ordinary desktop customer messages
+within the first screen. Editors remain mounted through resizing. It does not
+invent tasks, completion or a new ranking. Empty site visits use a compact
+disclosure; source errors and stale-source
+notices remain visible. Needs review shows the specific unanswered questions before
+provenance and opens the existing correction form through Resolve questions.
+
+The server domain-action adapter surfaces **Resolve estimate pricing** when the
+authoritative current selection is an available estimate with explicit
+`estimate_price_unavailable` and no complete customer price. This includes New
+enquiries. It links to that exact estimate, creates no task, and changes no price.
+Durable recovery and failed delivery retain precedence. Operational
+closed/archived/waiting suppression remains in the projection repository.
+Absent lightweight queue pricing detail is not evidence of a failure; a quote
+owning the commercial position prevents unrelated/newer estimate recovery.
+
+`ProjectCommercialContext` consumes the same current operational projection as the
+header. Closed/archived and on-hold projects explain their commercial context and
+de-emphasize ordinary send/billing/delivery actions. A staff member can deliberately
+review those actions for the current project/state revision. This is presentation
+only, never a financial command permission or an automatic refund, void, revision,
+supersession or reopening. Incomplete project reads keep those actions paused.
+
+`projectViewNavigation` owns same-project section/quote-view URL changes using
+Next's native history bridge. The URL drives the selected tab and content; tab
+clicks do not start competing server navigations. Browser Back/Forward retains
+exact quote selection. `ProjectSnapshotPageClient` also derives calculator chrome
+from the live query, so history cannot leave stale server-provided workspace mode.
+Its debug-export active tab follows that same live query, including Back/Forward,
+without requiring new server props or a refreshed project snapshot.
+Calculator creation/save commands and estimate selection policy stay with their
+existing owners. A dirty quote's section change and destructive Back/Forward
+traversal require the existing-style discard confirmation. `portalHistoryGuard`,
+retained by `PortalRouteTransition`, tracks existing browser entries (with
+additive position metadata on older browsers), intercepts popstate before router
+listeners, and returns to the same existing entry on cancellation. It adds no
+sentinel entries and preserves Next state. Same-quote Details/Preview history
+keeps the draft without prompting. Full-document exits retain beforeunload.
+`useCommercialListState` restores a list's scroll on detail return,
+but does not apply another tab's saved scroll after its read finishes.
+
 Outlook site visits (20 October candidate): Overview composes the separate
-`components/site-visits/ProjectNextVisit` owner below project orientation. Its
+`components/site-visits/ProjectNextVisit` owner below the commercial summary. Its
 authenticated query reads linked mirrored visits and source freshness; no source
 calls or matching policy lives in the Overview hotspot. The specialist action
 opens `/staff/site-visits?project=...&view=upcoming`. Calendar appointments do not
@@ -16,7 +63,7 @@ These records never reopen projects or write lifecycle/completion/owner facts.
 The notes/system-events card uses its own container width to stack safely inside
 the project sidebar; the existing note actions and system-event owner remain intact.
 
-The 16 October Portal candidate keeps contact details at the top of Overview.
+The 16 October Portal release made contact details visible in Overview.
 Entering contact edit focuses its first field; Done or Reset restores the Edit
 details trigger without scrolling. The existing draft/autosave owner remains
 unchanged. See `projects-contacts-estimates-calculator.md` for the current journey.
@@ -953,7 +1000,16 @@ The `activity` module loader now resolves to `OverviewTab`; the old Activity com
 
 The current Project Work presentation consumes a required server-owned ranking reason for ordinary work items. It uses categorical due badges (`Critical`, `Overdue`, `Due today`, or `Upcoming`) while leaving the exact timestamp to the Due field, omits active-state counts already visible elsewhere, and does not render an empty secondary-work slot. Its action title is the strongest route-owned heading, one orange or critical rail marks the server-ranked obligation, and command labels distinguish doing external work from recording its outcome. Waiting/Closed/Archived details appear only when they add state-specific truth.
 
-The route body shares the 1440px portal content ceiling and uses an approximately 62/38 Project Work/commercial split on wide screens. The context band is deliberately quiet, does not repeat the detailed stage owned by the project header, and groups journey/state separately from customer/site facts. Commercial exceptions render before customer-price/quote metrics; design/source facts and recent history are subordinate. At 800 CSS pixels or less the grid stacks from the component's available width, while at and below 768 CSS pixels the DOM and visual order is Project Work, commercial, context, then recent history. Empty exception rows do not reserve grid space.
+The route body shares the 1440px portal content ceiling. Its independent desktop
+columns place Project Work followed immediately by commercial facts on the left,
+and visible contact details followed by correspondence/history on the right.
+The context band remains quiet and groups journey/state separately from
+customer/site facts. Commercial exceptions remain visible before price metrics.
+At 800 CSS pixels or less available width, or at and below a 768 CSS-pixel viewport,
+the same mounted columns stack in DOM/keyboard order: Project Work, commercial,
+contact, then correspondence/history. Empty exception rows reserve no space.
+The fixture contracts retain a maximum 24px work/commercial gap even with expanded
+long correspondence, and the ordinary desktop message excerpt ends above 900px.
 
 ## 18. Test and fixture strategy
 

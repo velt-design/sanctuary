@@ -224,15 +224,24 @@ describe("project work projection", () => {
     });
   });
 
-  it("never presents closed or archived work as actionable", async () => {
+  it.each(["CANCELLED", "COMPLETE", "LOST_NO_RESPONSE"])("never promotes pricing recovery for closed %s or archived work", async closedOutcome => {
+    const recoveryAction = {
+      kind: "recovery" as const,
+      key: "estimate-pricing:est_1",
+      title: "Resolve estimate pricing",
+      reason: "The current estimate cannot produce a complete customer price.",
+      href: "/staff/projects/proj_1?tab=estimates&estimateId=est_1",
+      actionLabel: "Review estimate pricing",
+    };
     const closed = await getProjectWorkProjection({
       supabase: client({
         state: "CLOSED",
-        closedOutcome: "LOST_NO_RESPONSE",
+        closedOutcome,
         items: [item()],
       }),
       projectUuid: PROJECT_ID,
       now,
+      recoveryAction,
     });
     expect(closed?.primaryAction).toMatchObject({
       kind: "none",
@@ -246,6 +255,7 @@ describe("project work projection", () => {
       }),
       projectUuid: PROJECT_ID,
       now,
+      recoveryAction,
     });
     expect(archived?.primaryAction).toMatchObject({
       kind: "none",

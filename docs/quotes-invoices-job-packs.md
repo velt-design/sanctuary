@@ -1,6 +1,47 @@
 # Quotes, Invoices, And Job Packs
 
-## Connected commercial presentation (16 October 2026 candidate)
+## Current workflow clarity (20 October 2026 local candidate)
+
+The project commercial context distinguishes saved commercial facts from the
+project's current operating state. Closed records retain accepted agreements,
+invoice history, net payment ledger, open invoice balances and exact totals.
+The uncovered contract amount is described as a recorded difference requiring
+review, not an instruction to bill. Ordinary creation/send/payment/delivery
+controls recede until staff choose Review commercial actions for that state
+revision. Existing deliberate correction access, command authorization and all
+financial values remain unchanged. On-hold and unavailable-state handling use
+the same owner; no lifecycle or money mutation follows from entering a tab.
+
+Commercial section and quote selection changes use `projectViewNavigation` and
+the live URL, with native Back/Forward and a dirty-quote guard for both section
+clicks and destructive history traversal. Cancellation retains the draft, URL and
+existing history position before the router can reset selection; confirmation
+continues to the intended entry. Same-quote Details/Preview retains dirty text.
+The small shared `portalHistoryGuard` tracks entries at the Portal shell, while
+quote-specific loss-of-draft decisions stay in `projectViewNavigation`. Existing
+full-document beforeunload and calculator save protections are unchanged.
+`CommercialTab` keeps its strip stable during module/data reads; list scroll
+restores only on detail return, not when another tab's older read finishes.
+Global search is labelled Jump to a project or contact; the Projects filter is
+labelled Filter this project list.
+
+Fresh customer-output verification is composed in `mappedCustomerArtifacts.test`:
+a synthetic estimate passes through actual mapping, defaults, resolved payment
+schedule, PDF and email renderers. It verifies exact discounted aluminium cents
+fold into the priced pergola, a genuine blind stays separate, no internal stock/
+margin prose or em dash enters generated copy, and email has no bold markup.
+The offline PDF/HTML/text proof does not send, accept, issue or overwrite any saved
+quote. Existing authored introductions and frozen artifacts remain authoritative.
+Separate mapping tests retain supply-only and other genuine add-on contracts.
+`pdf.ts` reduces header/summary whitespace and aligns the subtotal with the
+summary label so a normal two-item quote retains its three short terms on one
+page. Body sizes and footer clearance are unchanged; long scope and terms still
+paginate, with trailing row spacing bounded above the footer.
+
+This increment's integration/visual evidence and independent release acceptance
+remain in the owning task record; local tests alone are not live verification.
+
+## Connected commercial presentation (16 October 2026 release)
 
 `CommercialTab` shows Details/Preview only for a selected quote. `QuotesListView`
 keeps current drafts, prepared deliveries, accepted agreements and still-sent versions

@@ -2,6 +2,8 @@
   display: grid;
   gap: var(--ui-density-section-gap);
   min-width: 0;
+  align-content: start;
+  min-height: calc(100svh - var(--project-page-masthead-height, 180px) - 64px);
   color: var(--ui-text);
   font-family: var(--ui-font-body);
 }
@@ -17,6 +19,10 @@
 }
 
 .toolbar {
+  position: sticky;
+  top: var(--project-page-sticky-masthead-height, 0px);
+  z-index: 11;
+  background: var(--ui-canvas);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;

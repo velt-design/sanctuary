@@ -178,9 +178,9 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   const projectAId = projectIdFromHref(projectAHref!);
   const projectBId = projectIdFromHref(projectBHref!);
 
-  const projectsGlobalSearch = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const projectsGlobalSearch = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await expect(projectsGlobalSearch).toBeVisible();
-  await expect(page.getByRole('search', { name: 'Search and filter' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Filter this project list' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'New project', exact: true })).toBeVisible();
   await expectSharedHeaderGeometry(page, 'index', 'inline');
   await expectNoDocumentOverflow(page);
@@ -232,7 +232,7 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   // At this width the project command row becomes horizontally scrollable.
   // The search overlay must live at the viewport level so that row cannot clip it.
   await page.setViewportSize({ width: 1280, height: 800 });
-  const projectASearch = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const projectASearch = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await projectASearch.fill('switch');
   const projectSearchPanel = page.locator('[data-global-search-panel="true"]');
   await expect(projectSearchPanel).toBeVisible();
@@ -244,9 +244,9 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   await expect(page).toHaveURL(escapedPathPattern(projectBHref!));
   await expect(page.locator(`[data-project-id="${projectBId}"]:visible`)).toHaveCount(1);
   await expectSearchRouteSettled(page, projectBHref!);
-  await expect(page.getByRole('combobox', { name: 'Search projects and contacts' })).toHaveValue('');
+  await expect(page.getByRole('combobox', { name: 'Jump to a project or contact' })).toHaveValue('');
 
-  const projectBSearch = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const projectBSearch = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await projectBSearch.fill('return');
   const returnResults = page.getByRole('listbox', { name: 'Portal search results' });
   await expect(returnResults.getByRole('option', { name: /Return to project A/ })).toBeVisible();
@@ -257,7 +257,7 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   await expect(page.locator(`[data-project-id="${projectAId}"]:visible`)).toHaveCount(1);
   await expectSearchRouteSettled(page, projectAHref!);
 
-  const currentSearch = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const currentSearch = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await currentSearch.fill('current');
   const currentOption = page.getByRole('listbox', { name: 'Portal search results' })
     .getByRole('option', { name: /Current project A/ });
@@ -276,7 +276,7 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   );
   await expectSharedHeaderGeometry(page, 'dashboard', 'inline');
   await page.keyboard.press('Control+k');
-  const dashboardSearch = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const dashboardSearch = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await expect(dashboardSearch).toBeFocused();
   await dashboardSearch.fill('rem');
   const results = page.getByRole('listbox', { name: 'Portal search results' });
@@ -293,7 +293,7 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const mobileSearch = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const mobileSearch = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await expect(mobileSearch).toBeVisible();
   await mobileSearch.fill('mobile');
   const mobileResults = page.getByRole('listbox', { name: 'Portal search results' });
@@ -413,7 +413,7 @@ test('shared search header is present across adopted staff and admin routes', as
     } else {
       await expect(page.locator('[data-page-header-identity="true"] h1:visible')).toBeVisible();
     }
-    await expect(page.getByRole('combobox', { name: 'Search projects and contacts' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Jump to a project or contact' })).toBeVisible();
     await expect(page.locator('[data-page-header-utility="true"]:visible')).toHaveCount(1);
     await expectNoDocumentOverflow(page);
 
@@ -441,7 +441,7 @@ test('shared search header is present across adopted staff and admin routes', as
     { id: 'access', href: '/admin/access' },
   ]) {
     await page.goto(route.href);
-    await expect(page.getByRole('combobox', { name: 'Search projects and contacts' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Jump to a project or contact' })).toBeVisible();
     await expectNoDocumentOverflow(page);
     await capturePortalEvidenceScreenshot(page, {
       path: path.join(evidenceDir, `${route.id}-shared-search-390x844.png`),

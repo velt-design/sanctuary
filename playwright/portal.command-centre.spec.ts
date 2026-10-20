@@ -481,14 +481,14 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
     expect(layoutWidth).toBeLessThanOrEqual(1440);
 
     const regionOrder = await layout
-      .locator(":scope > [data-project-overview-region]")
+      .locator("[data-project-overview-region]")
       .evaluateAll((regions) =>
         regions.map((region) =>
           region.getAttribute("data-project-overview-region"),
         ),
       );
     expect(regionOrder).toEqual([
-      "orientation", "project-work", "commercial", "recent",
+      "project-work", "commercial", "orientation", "recent",
     ]);
     await expectNoDocumentOverflow(page);
     await expectNoCroppedOverviewControls(page);
@@ -563,14 +563,14 @@ test("recomposes from available Overview width instead of viewport width", async
   });
   await expect(layout).toHaveAttribute("data-overview-composition", "stacked");
   const regionOrder = await layout
-    .locator(":scope > [data-project-overview-region]")
+    .locator("[data-project-overview-region]")
     .evaluateAll((regions) =>
       regions.map((region) =>
         region.getAttribute("data-project-overview-region"),
       ),
     );
   expect(regionOrder).toEqual([
-    "orientation", "project-work", "commercial", "recent",
+    "project-work", "commercial", "orientation", "recent",
   ]);
   await expectNoDocumentOverflow(page);
 });
@@ -658,7 +658,7 @@ test("keeps semantic structure, mobile keyboard order, visible focus and reduced
     tabStopRegions.filter(
       (region, index) => region && region !== tabStopRegions[index - 1],
     ),
-  ).toEqual(["orientation", "project-work", "commercial", "recent"]);
+  ).toEqual(["project-work", "commercial", "orientation", "recent"]);
 
   await page.locator('[data-overview-tab-stop="0"]').focus();
   for (let index = 1; index < tabStopCount; index += 1) {
@@ -836,7 +836,7 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     await expect(commandRow.locator('[data-stage="sent"]')).toHaveText("Sent");
     await expect(
       commandRow.getByRole("combobox", {
-        name: "Search projects and contacts",
+        name: "Jump to a project or contact",
       }),
     ).toBeVisible();
     await expect(commandRow.getByText("Owner", { exact: true })).toBeVisible();

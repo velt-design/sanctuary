@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderIntoDocument } from '../../../../../test/reactHarness';
+import { renderIntoDocument as renderDocument } from '../../../../../test/reactHarness';
 import ProjectTabNavigation from './ProjectTabNavigation';
 
 const replaceMock = vi.fn();
@@ -26,15 +26,28 @@ vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseRuntimeUrl: () => 'https://example.supabase.co',
 }));
 
+const historyPush = window.history.pushState.bind(window.history);
+const historyReplace = window.history.replaceState.bind(window.history);
+function renderIntoDocument(element: Parameters<typeof renderDocument>[0]) {
+  historyReplace(null, '', `/staff/projects/proj_1?${mockSearchParams}`);
+  return renderDocument(element);
+}
 describe('ProjectTabNavigation', () => {
   beforeEach(() => {
     mockSearchParams = 'tab=activity';
     replaceMock.mockReset();
     preloadMock.mockReset();
+    for (const [method, original] of [['pushState', historyPush], ['replaceState', historyReplace]] as const) {
+      vi.spyOn(window.history, method).mockImplementation((...args) => {
+        original(...args);
+        replaceMock(`${window.location.pathname}${window.location.search}`, { scroll: false });
+      });
+    }
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
+    vi.restoreAllMocks();
   });
 
   it('shows the three navigation owners with conditional Job Packs', () => {

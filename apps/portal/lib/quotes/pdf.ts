@@ -33,7 +33,7 @@ const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const MARGIN_LEFT = 49;
 const MARGIN_RIGHT = 50;
-const MARGIN_TOP = 48;
+const MARGIN_TOP = 40;
 const MARGIN_BOTTOM = 38;
 const CONTENT_X0 = MARGIN_LEFT;
 const CONTENT_X1 = PAGE_WIDTH - MARGIN_RIGHT;
@@ -356,7 +356,7 @@ function drawFirstPageHeader(params: {
 
   drawText(page, 'Quote', {
     x: CONTENT_X0,
-    y: topY - 58,
+    y: topY - 50,
     size: FONT_SIZES.title,
     font: fonts.semibold,
     color: brandColors.ink,
@@ -365,13 +365,13 @@ function drawFirstPageHeader(params: {
     page,
     `${vm.header.quoteNumber} / V${vm.header.versionNumber}`,
     CONTENT_X1,
-    topY - 49,
+    topY - 41,
     FONT_SIZES.quoteRef,
     fonts.medium,
     brandColors.ink,
   );
 
-  const titleRuleY = topY - 73;
+  const titleRuleY = topY - 65;
   page.drawLine({
     start: { x: CONTENT_X0, y: titleRuleY },
     end: { x: CONTENT_X1, y: titleRuleY },
@@ -386,7 +386,7 @@ function drawFirstPageHeader(params: {
   const leftX = CONTENT_X0;
   const middleX = leftX + leftW + colGap;
   const rightX = middleX + middleW + colGap;
-  const metaTopY = titleRuleY - 28;
+  const metaTopY = titleRuleY - 20;
 
   const drawMetaLabel = (label: string, x: number, y: number) => {
     drawText(page, label.toUpperCase(), {
@@ -489,7 +489,7 @@ function drawFirstPageHeader(params: {
   }
 
   const metaBottomY = Math.min(leftY, middleY, rightY);
-  let cursorY = metaBottomY - 18;
+  let cursorY = metaBottomY - 8;
 
   if (vm.intro) {
     const introLines = wrapText(fonts.regular, vm.intro, FONT_SIZES.body, CONTENT_W);
@@ -503,7 +503,7 @@ function drawFirstPageHeader(params: {
       });
       cursorY -= LINE_HEIGHTS.body;
     }
-    cursorY -= 10;
+    cursorY -= 6;
   }
 
   return cursorY;
@@ -822,7 +822,9 @@ async function generateQuotePdf(
       if (tableBounds) tableBounds.bottomY = cursorY;
     }
 
-    const separatorY = cursorY - 5;
+    // Trailing row whitespace must not intrude into the reserved footer area.
+    // The next section's normal space check handles continuation.
+    const separatorY = Math.max(CONTENT_BOTTOM_Y, cursorY - 5);
     recordRule('itemsRowSeparator', {
       x0: CONTENT_X0,
       x1: CONTENT_X1,
@@ -833,7 +835,7 @@ async function generateQuotePdf(
       tableBounds.rowRuleYs.push(separatorY);
       tableBounds.bottomY = separatorY;
     }
-    cursorY = separatorY - 13;
+    cursorY = Math.max(CONTENT_BOTTOM_Y, separatorY - 13);
     recordBottom(cursorY);
   }
 
@@ -857,7 +859,8 @@ async function generateQuotePdf(
   const totalsX0 = CONTENT_X1 - 238;
   const totalsX1 = CONTENT_X1;
   const totalsHeaderY = cursorY;
-  cursorY -= 18;
+  // The label occupies the left column; subtotal starts alongside it.
+  // Avoid spending a full extra row before the right-hand totals.
   const subtotalY = cursorY;
   drawText(page, 'Subtotal excl. GST', {
     x: totalsX0,
@@ -922,7 +925,7 @@ async function generateQuotePdf(
     x1: totalsX1,
     y: belowTotalRuleY,
   });
-  cursorY = belowTotalRuleY - 24;
+  cursorY = belowTotalRuleY - 18;
 
   const totalsBounds: TotalsBounds = {
     x0: totalsX0,

@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 import type { ProjectCommandCentreCurrentDesign } from '@/lib/projects/commandCentre/types';
 import styles from './ProjectCommercialDetails.module.css';
+import { useProjectCommercialContext } from '../../ProjectCommercialContext';
 
 export default function ProjectCommercialDetails({ data, children }: { data: ProjectCommandCentreCurrentDesign; children: ReactNode }) {
+  const { closed } = useProjectCommercialContext();
   // Simplify ordinary facts, never conceal a commercial exception behind a total.
   if (data.warnings.length || data.quote?.deliveryState === 'failed' || data.latestDeclinedQuote || data.estimate?.costingState === 'may_be_stale') return <>{children}</>;
   const cents = data.price.totalIncGstCents;
-  const label = data.source === 'accepted_quote' ? 'Agreed price' : data.source === 'sent_quote' ? 'Proposed price' : data.source === 'draft_quote' ? 'Draft quote' : 'Current estimate';
+  const label = closed ? 'Recorded price' : data.source === 'accepted_quote' ? 'Agreed price' : data.source === 'sent_quote' ? 'Proposed price' : data.source === 'draft_quote' ? 'Draft quote' : 'Current estimate';
   return <details className={styles.details}>
     <summary>
       <span className={styles.label}>{label}</span>

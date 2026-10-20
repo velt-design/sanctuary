@@ -2,13 +2,15 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { Button, LoadingSkeleton, TabNavigation } from '@/components/ui/foundation';
 import styles from './CommercialTab.module.css';
+import { selectProjectView, updateProjectView } from '../projectViewNavigation';
+import { CommercialProjectNotice } from '../ProjectCommercialContext';
 
 type CommercialView = 'estimates' | 'quotes' | 'invoices';
 type QuoteView = 'edit' | 'preview';
@@ -45,8 +47,6 @@ export default function CommercialTab({
   view: CommercialView;
   calculatorWorkspace?: boolean;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const quoteView: QuoteView = searchParams.get('quotePreview') === '1' ? 'preview' : 'edit';
@@ -58,48 +58,19 @@ export default function CommercialTab({
     : view;
   const quoteIdFromUrl = useMemo(() => searchParams.get('quoteId')?.trim() || null, [searchParams]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quoteIdFromUrl);
-  const [optimisticView, setOptimisticView] = useState<CommercialView | null>(null);
-  const [pendingView, setPendingView] = useState<{
-    from: CommercialView;
-    target: CommercialView;
-  } | null>(null);
-  const activeView = optimisticView ?? canonicalView;
+  const activeView = canonicalView;
 
   useEffect(() => {
     setSelectedQuoteId(quoteIdFromUrl);
   }, [quoteIdFromUrl]);
 
-  useEffect(() => {
-    if (pendingView) {
-      if (canonicalView === pendingView.from) return;
-      setPendingView(null);
-    }
-    setOptimisticView(null);
-  }, [canonicalView, pendingView]);
-
-  const replaceParams = (update: (query: URLSearchParams) => void) => {
-    const query = new URLSearchParams(searchParams.toString());
-    update(query);
-    router.replace(`${pathname}?${query.toString()}`, { scroll: false });
-  };
-
   const setView = (nextView: CommercialView) => {
-    setPendingView({ from: canonicalView, target: nextView });
-    setOptimisticView(nextView);
+    if (!selectProjectView(nextView)) return;
     setSelectedQuoteId(null);
-    replaceParams((query) => {
-      query.set('tab', nextView);
-      query.delete('quoteId');
-      query.delete('quotePreview');
-      query.delete('estimateId');
-      query.delete('fromEstimateId');
-      query.delete('newDesign');
-      query.delete('mode');
-    });
   };
 
   const setQuotePreview = (preview: boolean) => {
-    replaceParams((query) => {
+    updateProjectView((query) => {
       query.set('tab', 'quotes');
       if (preview) query.set('quotePreview', '1');
       else query.delete('quotePreview');
@@ -165,6 +136,7 @@ export default function CommercialTab({
         ) : null}
       </div> : null}
 
+      <CommercialProjectNotice projectId={projectId} view={activeView} />
       {activeView === 'estimates' ? (
         <EstimatesTab key={projectId} host={host} projectId={projectId} projectName={projectName} />
       ) : activeView === 'quotes' ? (

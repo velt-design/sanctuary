@@ -11,6 +11,7 @@ import {
   type BadgeTone,
 } from "@/components/ui/foundation";
 import styles from "./ProjectCurrentDesignCommercialCard.module.css";
+import { useProjectCommercialContext } from '../../ProjectCommercialContext';
 
 const MONEY = new Intl.NumberFormat("en-NZ", {
   style: "currency",
@@ -80,11 +81,12 @@ export default function ProjectCurrentDesignCommercialCard({
   projectId?: string;
   previewOnly?: boolean;
 }) {
+  const { closed } = useProjectCommercialContext();
   return (
     <Card
       className={styles.card}
       aria-label="Current design and commercial summary"
-      title={data.source === "accepted_quote" ? "Agreed design & price" : "Current design & price"}
+      title={closed ? "Recorded design & price" : data.source === "accepted_quote" ? "Agreed design & price" : "Current design & price"}
       eyebrow="Commercial position"
       padding="compact"
       action={
