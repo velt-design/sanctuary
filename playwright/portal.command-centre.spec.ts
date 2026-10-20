@@ -836,7 +836,7 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     await expect(commandRow.locator('[data-stage="sent"]')).toHaveText("Sent");
     await expect(
       commandRow.getByRole("combobox", {
-        name: "Search projects and contacts",
+        name: "Jump to a project or contact",
       }),
     ).toBeVisible();
     await expect(commandRow.getByText("Owner", { exact: true })).toBeVisible();

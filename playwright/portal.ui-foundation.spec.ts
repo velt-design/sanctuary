@@ -276,7 +276,7 @@ test("Projects Index and Project Detail prove the foundation on real workflows",
     page.locator('[data-page-header-variant="index"]:visible'),
   ).toHaveCount(1);
   await expect(
-    page.getByRole("search", { name: "Search and filter" }),
+    page.getByRole("region", { name: "Filter this project list" }),
   ).toBeVisible();
   await expect(page.locator("[data-portal-sidebar-panel] > div")).toHaveCSS(
     "background-color",

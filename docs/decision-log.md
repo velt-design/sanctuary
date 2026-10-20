@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-20: Accessible wording changes include browser and pending-shell contracts
+
+Renaming the global project jump and local list filter left older Playwright
+locators and the project loading-shell assertion behind. Scan all consumers of
+the previous accessible names, including performance journeys, when changing
+these controls. Keep their roles and names aligned with the actual rendered
+owners; preserve timing budgets, assertions and unrelated Contacts/Schedule
+search semantics. Passing component checks alone does not establish that the
+existing authenticated performance gate can still find its controls.
+
 ## 2026-10-20: Calm navigation must preserve drafts and useful next actions
 
 Native history removes competing server transitions, but separate clean-history
