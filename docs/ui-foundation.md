@@ -1,6 +1,6 @@
 # Staff Portal UI System
 
-## Outlook site-visit agenda (20 October 2026 candidate)
+## Outlook site-visit agenda (current)
 
 `components/site-visits` composes the existing Portal Foundation and cream/ink/
 orange tokens. Day groups prioritize time, customer/place, attending staff and
@@ -9,6 +9,10 @@ The agenda reads current Next search parameters directly, including project scop
 native history replacement updates typing without adding entries. Cached route
 props are not copied into independent filter state. Regression coverage includes
 project round trips, Back/Forward, rapid typing and clearing without losing scope.
+In the 21 October local/preview candidate, `siteVisitNavigation.ts` also owns scope changes, so clearing project scope cannot
+race a subsequent view choice. Scope changes add one returnable history entry;
+typing and view filters replace that entry. The sidebar and compact rail share
+`navRouteMatch.ts`, including the separate agenda under Schedule.
 All-day and provisional source entries use an All day label with their actual
 calendar date range in agenda/project detail and an All day dashboard marker.
 Multi-day entries remain visible during the covered dates and leave upcoming
@@ -45,7 +49,7 @@ width to infer sidebar capacity. Narrow cards stack notes above system events;
 text, metadata and actions wrap within their column. This is local layout repair,
 not a shared timeline or theme change.
 
-## Search and commercial continuity (16 October 2026 candidate)
+## Search and commercial continuity (current)
 
 `GlobalPortalSearch.client` only exposes selectable results whose normalized response
 query exactly matches the current input. Same-query cached results remain useful;

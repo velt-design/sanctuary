@@ -67,6 +67,16 @@ Creates can start with local IDs. When the server returns a durable ID, register
 
 Use alias helpers from `apps/portal/lib/localFirst/store.ts`.
 
+Quote detail selection resolves the alias before choosing its query key. A
+provisional `local-quote:` detail is cache-owned and never enables a server GET
+or hover prefetch. This remains true when cache promotion removes the old entry,
+or a refetch invalidates it while creation is pending. After promotion the URL
+and selection use the durable quote version; a late create cannot reopen a
+detail the user has already left. `useQuotesTabSelection.ts` owns this boundary,
+while the existing mutation handler retains the stable create intent and source
+estimate for retries. Do not suppress the underlying error while leaving a
+browser-only ID on the server read path.
+
 ## Server Authority
 
 Local-first does not make the browser the only truth.

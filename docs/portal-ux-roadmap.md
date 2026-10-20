@@ -2,7 +2,7 @@
 
 Status: Active evolving roadmap.
 
-Last updated: 2026-07-30.
+Last updated: 2026-10-21.
 
 Purpose: keep the highest-leverage usability work visible as the portal matures from a capable internal tool into a fast, trusted operating system for staff. This doc is intentionally product-facing: it tracks workflow clarity, visual hierarchy, user confidence, and the next UX passes worth doing.
 
@@ -27,6 +27,13 @@ The main UX standard:
 - Technical migration states should become plain user states: ready, needs review, unsupported, saved, unsaved, stale, locked, or failed.
 
 ## Highest-Leverage UX Work
+
+Current baseline: the October releases provide task-first Overview, truthful
+operational status across project/search/commercial, deliberate closed-project
+commercial access, calm same-project commercial navigation with draft guards,
+visible contact details, plain generated quote scope, and Outlook-backed site
+visits with reviewed corrections and project history. The July milestone notes
+below are historical evidence, not a description of missing October capability.
 
 1. **Project Pages Speed**
    - Goal: make finding, opening, navigating, and revisiting a project feel immediate on the current UI foundation.
@@ -64,7 +71,8 @@ The main UX standard:
    - Goal: reduce visual competition in the most operationally dense surface.
    - Current Board pass: larger screens wrap up to four crews per row without horizontal lane scrolling, cards prioritise timing over routine state, and a browser-saved view filter can hide empty or selected crews without changing access or Schedule truth.
    - Current Gantt pass: Board and Gantt share the saved crew preference; planning controls are grouped apart from view options; the visual scale defaults to eight weeks without changing the 12-week data range; current week/today, row timing, crew counts, and existing attention facts are easier to scan.
-   - Remaining gap: make unassigned work more prominent. Site Visits remains dormant unless its reactivation is separately approved.
+   - Site Visits is active at `/staff/site-visits`, with Outlook imports every 15 minutes, attending staff, linked projects, question-first review, durable corrections, and intentionally unknown historical dates. See `schedule.md` for source authority and recovery. Board/Gantt remain separate installation planning surfaces.
+   - Remaining gap: make unassigned installation work more prominent. Measure the current agenda independently from the retired legacy Site Visit grid.
 
 7. **Workbench User Confidence**
    - Goal: keep the design workbench powerful without exposing migration complexity.
@@ -73,8 +81,8 @@ The main UX standard:
 
 8. **Global Search / Quick Open**
    - Goal: reduce navigation friction across projects and contacts.
-   - Add a fast project/contact jump by name, phone, address, or quote reference.
-   - This is likely high-impact for daily staff use once core project-page clarity improves.
+   - The shared project/contact jump is shipped. Its label, "Jump to a project or contact", is distinct from "Filter this project list". Project list filters, sort, pagination and return position are retained.
+   - Keep search result authority and accessible loading/error states aligned with the opened project. Reproduce missed results or lost context before changing this owner.
 
 9. **Consistent Empty, Loading, Error, And Recovery States**
    - Goal: every surface should answer what is happening, why it matters, and what to do next.
@@ -92,13 +100,13 @@ The main UX standard:
 
 11. **Workflow-Based QA**
     - Goal: judge usability by complete staff journeys, not only by pages.
-    - Track core workflows: new lead to personal email, email follow-up to quote, quote to invoice, accepted quote to scheduled job, and design package to running job. Site Visits remains outside normal workflow QA until reactivation is approved.
+    - Track core workflows: new lead to personal email, email follow-up to quote, quote to invoice, accepted quote to scheduled job, design package to running job, and site-visit review/correction back to project work.
     - Score each workflow by clicks, confusion points, failure recovery, and confidence that saved data is current.
 
 ## Current Sequence
 
-1. Project Pages Speed revalidation and measured bottleneck fixes against the current checked-in portal UI.
-2. Current project-tab intent, useful-shell, and bundle-boundary performance.
+1. Repair demonstrated handoff failures: a successful estimate-to-quote create must promote the provisional selection to its durable ID without a temporary-ID server read; retain idempotent retry and the chosen estimate/version.
+2. Keep agenda scope and view under one immediate URL owner. Rapid "Show all visits" then view selection must keep the final intent; the sidebar must identify Site Visits within Schedule.
 3. Keep the unchanged Contacts/Calculator bundle ceilings and current green route-optimization evidence; retain the earlier Overview exception as historical truth rather than authority to raise budgets.
 4. Bounded full-journey summary contracts for deposit, Schedule/Running Jobs readiness, and meaningful activity where evidence exists.
 5. Activity category expansion and timeline clarity.
@@ -106,6 +114,15 @@ The main UX standard:
 7. Quote/estimate state summary standardisation.
 8. Remaining Schedule priority-view simplification for unassigned work.
 9. Workbench state and diagnostics simplification.
+
+The 21 October bounded pass measures three real authenticated staging journeys:
+filtered/sorted/scrolled list return, estimate save/revise and quote preparation,
+and visit correction/project return. The first journey passed baseline; warm
+commercial switching was already fast. Preserve those paths rather than adding
+speculative optimisation. Fresh-document timings with warm browser storage are
+not empty-cache or live-production latency; report endpoint timings separately
+from browser automation readiness bounds. Synthetic invoice/payment fixture
+coverage is separate from the genuinely empty ledger on a newly created project.
 
 ## Update Notes
 

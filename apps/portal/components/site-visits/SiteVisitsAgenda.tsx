@@ -11,6 +11,8 @@ import { personKey,personLabel,resolveVisitPersonKey } from '@/lib/siteVisits/re
 import { calendarVisitKey,useCalendarVisits } from './useCalendarVisits';
 import VisitAgendaRow from './VisitAgendaRow';
 import CalendarFreshness from './CalendarFreshness';
+import { allVisitsHref,selectSiteVisitView as select } from './siteVisitNavigation';
+import { shouldHandleRouteTransitionClick } from '@/components/page-state/PortalRouteTransition';
 import styles from './siteVisits.module.css';
 const views=[['today','Today'],['week','This week'],['upcoming','Upcoming'],['review','Needs review'],['history','History'],['changes','Changes']] as const;
 export default function SiteVisitsAgenda(){
@@ -23,10 +25,6 @@ export default function SiteVisitsAgenda(){
   const events=visibleVisits(data?.events??[],view,person,search);
   const scheduledCount=events.filter(isScheduledVisit).length;
   const groups=new Map<string,typeof events>();for(const visit of events){const day=visitGroupDay(visit,view);groups.set(day,[...(groups.get(day)??[]),visit]);}
-  function select(next:{view?:string;person?:string;q?:string}){
-    // Next's native history bridge keeps controls and cached-route returns on the same URL state.
-    const url=new URL(window.location.href);for(const [key,value] of Object.entries(next)){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}window.history.replaceState(null,'',url);
-  }
   async function refresh(){if(lock.current)return;lock.current=true;setRefreshing(true);setMessage('');try{
     const result=await apiJson<{updated:boolean;reason?:string}>('/api/staff/v1/outlook-site-visits/refresh',{method:'POST'});
     setMessage(result.updated?'Outlook calendar updated.':result.reason==='recent'?'A refresh was attempted within the last five minutes. Please try again shortly.':'A calendar update is already running.');
@@ -39,7 +37,7 @@ export default function SiteVisitsAgenda(){
       {data&&<CalendarFreshness data={data} readFailed={query.isError} />}
       {data&&query.isError&&<Button variant="quiet" onClick={()=>void query.refetch()}>Retry loading saved visits</Button>}
       {message&&<p className={styles.notice} role="status">{message}</p>}
-      {projectId&&<p className={styles.projectScope}>Visits linked to this project. <Link href="/staff/site-visits">Show all visits</Link></p>}
+      {projectId&&<p className={styles.projectScope}>Visits linked to this project. <Link href={allVisitsHref(params)} onClick={event=>{if(!shouldHandleRouteTransitionClick(event))return;event.preventDefault();select({project:''},'push');}}>Show all visits</Link></p>}
       <div className={styles.controls}><div className={styles.views} role="group" aria-label="Show visits">{views.map(([key,label])=><button key={key} type="button" aria-pressed={view===key} onClick={()=>select({view:key})}>{label}{key==='review'&&data?<span>{data.events.filter(requiresVisitReview).length}</span>:null}</button>)}</div>
         <div className={styles.filters}><label>Attending<select value={person} onChange={e=>select({person:e.target.value})}><option value="">Everyone</option>{staff.map(p=><option key={personKey(p)} value={personKey(p)}>{personLabel(p)}</option>)}<option value="unassigned">Unassigned</option></select></label>
           <label>Find a visit<div className={styles.searchBox}><input ref={searchRef} value={search} type="search" onChange={e=>select({q:e.target.value})} onKeyDown={e=>{if(e.key==='Escape')select({q:''});}} placeholder="Customer, place or address" /><button type="button" disabled={!search} aria-label="Clear search" onClick={()=>{select({q:''});searchRef.current?.focus();}}>Clear</button></div></label></div></div>

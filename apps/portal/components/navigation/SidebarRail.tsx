@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { isNavParentActive as isActive } from './navRouteMatch';
 import { usePathname, useRouter } from 'next/navigation';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
@@ -26,22 +27,6 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
-function isActive(pathname: string, href: string) {
-  if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
-  if (pathname === href || pathname.startsWith(`${href}/`)) return true;
-
-  const aliases: Record<string, string[]> = {
-    '/staff/projects': ['/projects'],
-    '/contacts': ['/staff/contacts'],
-    '/schedule': ['/staff/schedule'],
-    '/imports': ['/admin/imports'],
-    '/pricebook': ['/admin/costing', '/admin/costs'],
-  };
-
-  const matches = aliases[href];
-  if (!matches) return false;
-  return matches.some((match) => pathname === match || pathname.startsWith(`${match}/`));
-}
 
 export default function SidebarRail({
   email,
