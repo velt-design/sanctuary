@@ -1,5 +1,24 @@
 # Testing And QA
 
+## First-load project read contracts (21 October 2026 candidate)
+
+`projectReadConcurrency.integration.test.ts` runs the actual snapshot, Command
+Centre and work projection against deferred synthetic query results. It verifies
+independent reads overlap only after visible project/model checks, snapshot model
+reuse, explicit failure, pricing recovery, closed state, current subsequent data
+and isolation between clients/projects/read contexts. Run it with
+`npx vitest run apps/portal/lib/projects/commandCentre/projectReadConcurrency.integration.test.ts`
+and the existing `npm run test:portal:project-work` regression lane.
+
+Performance evidence must compare the same optimized build mode, staging data,
+visible useful-content markers and five repetitions per route/cache condition.
+Retained app storage with HTTP cache bypass is not an empty application cache.
+Keep CUA observation upper bounds, exact per-tab network events and server phases
+separate; timestamp-window server joins can contain another tab's background reads.
+Use a separate fresh origin for initial app-data correctness without clearing
+staff sessions/drafts. It is a smoke check, not a matched performance sample.
+No fixture result establishes production latency or external provider coverage.
+
 ## Custom SEO contracts (20 October 2026)
 
 marketing.custom.spec.ts covers the project-led page at phone, tablet, desktop and

@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-21: Overlap project facts after the access boundary, not around it
+
+Matched first-load traces showed selected-estimate, repair and operational reads
+waiting on one another inside the authoritative project composer. They may load
+together after the authenticated project and model marker are known. Preserve the
+full commercial/recovery composition and every failure; raw work rows are not an
+equivalent shortcut. Reuse model detection only inside a client/project-bound
+reader invocation, never a global cache or an injected claim of current access.
+Prove concurrency with held promises, plus invisible/model-missing and changing
+data cases. Duplicate-looking document/auth reads require causal evidence before
+changing their security/freshness owner.
+
 ## 2026-10-21: Measure identity and navigation handoffs before adding speed work
 
 An authenticated synthetic estimate-to-quote journey saved a valid quote, then
