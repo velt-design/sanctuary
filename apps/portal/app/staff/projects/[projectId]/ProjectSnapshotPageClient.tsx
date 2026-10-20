@@ -175,7 +175,7 @@ export default function ProjectSnapshotPageClient({
         noteCount: snapshot.notes.length,
       },
       clientState: {
-        activeTab: tab,
+        activeTab: currentTab ?? tab,
         queryHost: host,
       },
       diagnostics: {
@@ -185,6 +185,7 @@ export default function ProjectSnapshotPageClient({
       scenario: inferPortalScenarioFromLabel(snapshot.project.name),
     });
   }, [
+    currentTab,
     debugExportEnabled,
     estimateId,
     host,

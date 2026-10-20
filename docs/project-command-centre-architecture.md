@@ -34,6 +34,8 @@ Next's native history bridge. The URL drives the selected tab and content; tab
 clicks do not start competing server navigations. Browser Back/Forward retains
 exact quote selection. `ProjectSnapshotPageClient` also derives calculator chrome
 from the live query, so history cannot leave stale server-provided workspace mode.
+Its debug-export active tab follows that same live query, including Back/Forward,
+without requiring new server props or a refreshed project snapshot.
 Calculator creation/save commands and estimate selection policy stay with their
 existing owners. A dirty quote's section change and destructive Back/Forward
 traversal require the existing-style discard confirmation. `portalHistoryGuard`,
