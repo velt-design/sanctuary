@@ -1,5 +1,37 @@
 # Marketing UI Foundation
 
+## Aluminium SEO composition (20 October 2026)
+
+The aluminium route keeps its canonical URL and normal site chrome. Its route
+owner composes the approved St Heliers split hero, three untouched completed
+project photographs, optional compact estimator, one enquiry and individually
+accessible FAQs. Riverhead and Warkworth captions identify aluminium and steel.
+The material story stays distinct from the selected-design estimate; photographs
+are not priced packages. Phone stacks the illustration above usable controls.
+Above the phone breakpoint, a centred 1440px canvas keeps the hero and subsequent
+sections on common content edges. The hero photograph retains its aspect ratio
+on wide screens so the gable stays visible instead of becoming a shallow crop.
+
+AluminiumJourney reuses the canonical draft, compact control and price owners.
+Aluminium shares the existing Auckland/cost exploration key, isolated from the
+Facebook/default and Google drafts. The exact inline-design route returns a 3D
+enquiry to its mounted form without changing ad chrome or channel classification.
+Fresh direct enquiries have no design; edited/restored or explicitly confirmed
+choices, including extras, remain attached. Shared controls accept presentation
+and field-label overrides; other consumers retain their defaults. The former
+aluminium guide-only disclosure model is replaced, not duplicated.
+
+The aluminium form opts into a quiet optional photos/plans disclosure. Its file
+field is shared with the full contact form; selected-file state, limits, removal,
+signed-upload transport and failure recovery remain in the existing enquiry
+owners. Other compact forms keep their existing default without the disclosure.
+
+Its exact route joins consent-aware SEO design measurement. Only deliberate edits,
+review disclosure and configured enquiry actions count. The optional-phone contact
+policy and required migration are mapped in the schema owner. Local synthetic
+pricing/enquiry checks do not establish live pricing, receipt or attribution.
+
+
 ## Channel-page structure (20 October 2026)
 
 The channel structure separates acquisition pages from indexed research pages.

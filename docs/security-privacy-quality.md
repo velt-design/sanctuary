@@ -1,5 +1,21 @@
 # Security, Privacy, And Quality
 
+## Aluminium SEO measurement and contact scope (20 October 2026)
+
+/aluminium-pergolas-auckland is an exact SEO source for existing consent-gated
+design_start, design_edit, design_review and design_enquiry_open. Default-price
+rendering, saved-state restoration and repeated actions do not create new events.
+Direct quote intent remains journey_decision_click without inventing a configured
+design claim. The exact inline-design continuation is independent of ad chrome,
+Google/Meta identity and the contact-requirement policy.
+
+The accepted optional-phone experience uses the existing contact validation owner
+and a narrow forward SQL route exception. Email/name/suburb and truthful direct
+versus configured payloads remain required. Existing consent, disclosure, enhanced
+identity and accepted-enquiry conversion owners are reused. Local tests fence
+intake/provider traffic and do not prove hosted receipt or live attribution.
+
+
 ## Channel-page measurement (20 October 2026)
 
 `lib/channelDesignTracking.ts` owns the seven exact channel/legacy route codes.

@@ -1,3 +1,4 @@
+import { isInlineFunnelPath } from './googleFunnel';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_CHARACTERS_PATTERN = /^\+?[\d\s().-]+$/;
 
@@ -11,4 +12,9 @@ export function isPlausibleEnquiryPhone(value: string): boolean {
 
   const digitCount = trimmed.replace(/\D/g, '').length;
   return digitCount >= 7 && digitCount <= 15;
+}
+/** Contact requirements are independent of a page's acquisition channel or chrome. */
+export function allowsOptionalEnquiryPhone(audience: string, page: string, requestType: string): boolean {
+  return audience === 'residential' && isInlineFunnelPath(page)
+    && (page !== '/aluminium-pergolas-auckland' || requestType === 'project-discussion');
 }

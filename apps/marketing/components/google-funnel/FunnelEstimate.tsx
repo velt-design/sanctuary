@@ -36,6 +36,6 @@ export function useFunnelEstimate(draft: PreviewDraft, ready: boolean, attached:
   const canonical = useConfiguratorPrice(draft, ready && attached);
   return { state: funnelPriceState(draft, ready), canonical: canonical.price };
 }
-export default function FunnelEstimate({ state }: { state: ReturnType<typeof useFunnelEstimate> }) {
-  return <LandingEstimate state={state.state} className={styles.estimate}/>;
+export default function FunnelEstimate({ state, className = styles.estimate }: { state: ReturnType<typeof useFunnelEstimate>; className?: string }) {
+  return <LandingEstimate state={state.state} className={className}/>;
 }

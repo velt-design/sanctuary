@@ -1,5 +1,5 @@
 import type { EnquiryAudience } from './enquiryContext';
-import { isInlineFunnelEnquiry } from './googleFunnel';
+import { allowsOptionalEnquiryPhone } from './enquiryContactValidation';
 
 const MAX_FIELD_LENGTH = 400;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -129,7 +129,7 @@ export function buildEnquiryFallbackPayload(
   return {
     submissionId,
     enquiryType,
-    ...(isInlineFunnelEnquiry(enquiryType, page)
+    ...(allowsOptionalEnquiryPhone(enquiryType, page, readText(formData, 'requestType'))
       ? { requestType: readText(formData, 'requestType') }
       : {}),
     name: readText(formData, 'name'),

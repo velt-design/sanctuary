@@ -1,5 +1,6 @@
 'use client';
 import ContactProjectPreferences from './ContactProjectPreferences';
+import ContactAttachmentFields from './ContactAttachmentFields';
 import ConfiguredEnquiryFields from './ConfiguredEnquiryFields';
 
 import {
@@ -20,12 +21,10 @@ import { emitSubmittedLead } from '../../lib/googleEnhancedLead';
 import AdvertisingMeasurementNotice from '../../components/enquiry/AdvertisingMeasurementNotice';
 import {
   createEnquirySubmissionId,
-  ENQUIRY_ATTACHMENT_ACCEPT,
   uploadEnquiryAttachments,
   validateEnquiryAttachments,
 } from '@/lib/enquiryAttachments';
 import {
-  ENQUIRY_ATTACHMENT_HELP_TEXT,
   ENQUIRY_FORM_FIELD_ORDER,
   getEnquiryContextDisplay,
 } from '@/lib/enquiryFormContract';
@@ -64,6 +63,7 @@ import {
 
 export type ContactEnquiryFormProps = {
   compactConfigured?: boolean;
+  compactAttachments?: boolean;
   funnel?: boolean;
   mobileFinish?: boolean;
   configuredDesign?: ContactDesignBrief;
@@ -86,11 +86,6 @@ const contactFieldOrder: readonly ContactField[] = ENQUIRY_FORM_FIELD_ORDER;
 
 function errorId(field: ContactField): string {
   return `contact-${field}-error`;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function submitLabel(
@@ -119,6 +114,7 @@ export default function ContactEnquiryForm({
   sourceProductLabel,
   configuredDesign,
   compactConfigured = false,
+  compactAttachments = false,
   funnel = false,
   mobileFinish = false,
 }: ContactEnquiryFormProps) {
@@ -496,7 +492,9 @@ export default function ContactEnquiryForm({
     }
   };
 
-  if(funnel || (compactConfigured && configuredDesign))return <ConfiguredEnquiryFields sourcePath={initialContext.sourcePath} sourceContext={JSON.stringify(contextProperties)} funnel={funnel} hasDesign={!!configuredDesign} mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
+  const attachmentFields = <ContactAttachmentFields files={files} error={fieldErrors.files} enhanced={isEnhanced} onChange={handleFiles} onRemove={removeFile}/>;
+
+  if(funnel || (compactConfigured && configuredDesign))return <ConfiguredEnquiryFields attachments={compactAttachments ? attachmentFields : undefined} sourcePath={initialContext.sourcePath} sourceContext={JSON.stringify(contextProperties)} funnel={funnel} hasDesign={!!configuredDesign} mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'
@@ -628,43 +626,7 @@ export default function ContactEnquiryForm({
 
               <ContactProjectPreferences showBudget={pathway === 'help' || pathway === 'custom'} />
 
-              <div className="contact-form__field contact-form__field--wide">
-                <label htmlFor="contact-files">
-                  Photos, plans or sketches <span>Optional</span>
-                </label>
-                <p className="contact-form__help" id="contact-files-help">{ENQUIRY_ATTACHMENT_HELP_TEXT}</p>
-                <input
-                  id="contact-files"
-                  name="files"
-                  type="file"
-                  accept={ENQUIRY_ATTACHMENT_ACCEPT}
-                  multiple
-                  disabled={!isEnhanced}
-                  aria-invalid={Boolean(fieldErrors.files)}
-                  aria-describedby={`contact-files-help${fieldErrors.files ? ` ${errorId('files')}` : ''}`}
-                  onChange={handleFiles}
-                />
-                <p className="contact-form__help" hidden={isEnhanced}>
-                  File upload needs JavaScript. You can email files to{' '}
-                  <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a>.
-                </p>
-                {files.length ? (
-                  <ul className="contact-form__files" aria-label="Selected files">
-                    {files.map((file, index) => (
-                      <li key={`${file.name}-${file.lastModified}-${index}`}>
-                        <span>
-                          <strong>{file.name}</strong>
-                          <small>{formatFileSize(file.size)}</small>
-                        </span>
-                        <button type="button" onClick={() => removeFile(index)} aria-label={`Remove ${file.name}`}>
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {fieldErrors.files ? <p className="contact-form__error" id={errorId('files')}>{fieldErrors.files}</p> : null}
-              </div>
+              {attachmentFields}
             </div>
           </section>
 
