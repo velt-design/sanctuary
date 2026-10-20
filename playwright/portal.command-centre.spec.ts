@@ -1051,6 +1051,7 @@ test("shows historical project designs as locked Calculator revision sources", a
             {
               id: "est_history",
               projectId: "proj_fixture_shell",
+              designKind: "calculator",
               createdAt: "2026-07-20T00:00:00.000Z",
               status: "draft",
               summary: {},
