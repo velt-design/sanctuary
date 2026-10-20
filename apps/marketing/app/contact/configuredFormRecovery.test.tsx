@@ -136,6 +136,7 @@ it.each([[false,false],[true,false],[true,true]])('shows the v2 Google and Meta 
 });
 
 it.each([
+  ['/custom-pergolas-auckland',false],['/custom-pergolas-auckland',true],
   ['/aluminium-pergolas-auckland',false],['/aluminium-pergolas-auckland',true],
   ['/ads/outdoor-living',false],['/ads/outdoor-living',true],
   ['/ads/acrylic-pergolas',false],['/ads/acrylic-pergolas',true],

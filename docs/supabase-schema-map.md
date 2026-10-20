@@ -7,6 +7,22 @@ The ordered `20261020080001` through `20261020080004` migrations install authore
 Authenticated APIs first verify caller-visible project/estimate state. Privileged create/save/prepare/commit calls are server-only guarded commands, not browser table writes. The snapshot wrapper delegates to existing commercial RPCs, preserves their row-lock order and revision/payment contracts, then validates and binds before commit. The private snapshot contains exact authored/spatial/publication/cost evidence. The service-only view RPC returns only immutable customer selections and image bytes. Generic quote edits cannot discard or change a bound identity, project or commercial scope. See [Staff Design Studio](staff-design-studio-prototype.md) for current verification and installation limits.
 
 
+## Custom residential discussion contract (20 October 2026)
+
+Forward migration 20261020030001_marketing_custom_optional_phone.sql
+adds exactly /custom-pergolas-auckland to the existing marketing_enquiry_intake
+(uuid,text,jsonb) blank-phone route predicate. Residential audience, nonempty
+email/suburb and rawPayload.requestType=project-discussion remain required. The
+function signature, security definer, empty search path, service-only grants,
+configured exception, matching, upload binding, replay and atomic writes are
+unchanged. Supplied phones retain canonical application validation.
+
+The existing disposable PGlite API/native harness rehearses the exact forward
+function, rollback, denials and persistence contracts. Production rollout requires
+the reviewed migration to be installed before enabling this form. Shared-schema
+rehearsal, installation and postflight evidence are recorded separately in the
+release record; disposable local fixtures do not establish installation or delivery.
+
 ## Aluminium residential contact contract (20 October 2026)
 
 Forward migration 20261020020001_marketing_aluminium_optional_phone.sql

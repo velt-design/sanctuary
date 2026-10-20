@@ -406,7 +406,7 @@ test("capture reproducible Phase 3 route measurements and screenshots", async ({
               const evidence = page.locator(
                 route === "/pergolas-auckland"
                   ? "#project-evidence"
-                  : "#custom-project-evidence",
+                  : "#custom-projects",
               );
               await evidence.scrollIntoViewIfNeeded();
               await page.screenshot({

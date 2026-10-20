@@ -66,3 +66,18 @@ it('shares the complete Auckland exploration with cost planning without losing i
   window.history.replaceState({}, '', '/configurator-preview?open=1&source_path=%2Fpergola-cost-auckland&design_scope=pergolas-auckland');
   expect(new URL(designEnquiryHref(), window.location.origin).searchParams.get('source_path')).toBe('/pergola-cost-auckland');
 });
+
+it('keeps Custom SEO in the shared planning draft and returns the full design to its own enquiry', async () => {
+  window.history.replaceState({}, '', withLandingDesignScope('/configurator-preview?open=1&source_path=%2Fcustom-pergolas-auckland#design=1.gable.5700.3100.ground.fascia.parallel.1'));
+  await act(async () => root.render(<Probe key="custom-designer"/>));
+  await act(async () => current!.setRoof({ ...current!.roof, infills: true }));
+  const expected = sessionStorage.getItem(LANDING_DRAFT_KEY);
+  window.history.replaceState({}, '', '/custom-pergolas-auckland');
+  await act(async () => root.render(<Probe key="custom-return"/>));
+  expect(current!.input).toMatchObject({ widthMm: 5700, projectionMm: 3100 });
+  expect(current!.roof.infills).toBe(true);
+  expect(current!.hasChosenDraft).toBe(true);
+  expect(sessionStorage.getItem(LANDING_DRAFT_KEY)).toBe(expected);
+  expect(designEnquiryHref()).toBe('/custom-pergolas-auckland#project-details');
+  expect(isLandingDesign('/custom-pergolas-auckland-extra', '')).toBe(false);
+});

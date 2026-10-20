@@ -117,39 +117,12 @@ const routeCases: readonly RouteCase[] = [
     id: 'custom service',
     path: '/custom-pergolas-auckland',
     canonicalPath: '/custom-pergolas-auckland',
-    maximumVisibleWords: 650,
+    maximumVisibleWords: 1000,
     maximumVisibleHeadingRegions: 8,
-    mobileSignals: [
-      'Custom pergolas for difficult sites.',
-      'Three site-specific responses.',
-      'Where custom work matters.',
-      'Send site details',
-    ],
-    primaryAction: {
-      name: 'Send site details',
-      href: '#project-details',
-    },
-    disclosures: {
-      selector: 'details[data-seo-landing-disclosure]',
-      count: 1,
-      idAttribute: 'data-seo-landing-disclosure',
-      ids: ['custom-planning-support'],
-    },
-    supporting: {
-      selector:
-        'details[data-seo-landing-disclosure="custom-planning-support"]',
-      phrase: 'Project checks, related guides and questions',
-    },
-    stableSections: [
-      '#custom-project-evidence',
-      '#custom-process',
-      '#project-details',
-    ],
-    meaningfulLinks: [
-      '/projects',
-      '/pergola-cost-auckland',
-      '/products',
-    ],
+    mobileSignals: ['Custom pergolas.', 'Designed around your home.', 'Different homes.', 'Talk about your space'],
+    primaryAction: { name: 'Talk about your space', href: '#project-details' },
+    stableSections: ['#custom-projects', '#custom-process', '#project-details'],
+    meaningfulLinks: ['/projects/tindalls-bay-pavilion', '/projects/warkworth-outdoor-room', '/aluminium-pergolas-auckland'],
     schemaTypes: ['WebPage', 'Service', 'BreadcrumbList'],
   },
   {

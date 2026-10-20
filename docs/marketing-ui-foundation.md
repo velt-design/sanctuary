@@ -1,5 +1,32 @@
 # Marketing UI Foundation
 
+## Custom SEO composition (20 October 2026)
+
+The exact Custom route now leads with the Tindalls Bay dining patio and two
+substantial brief/design-response/finished-space stories. Warkworth is explicitly
+an aluminium and steel project. A centred 1440px canvas, full-width phone imagery,
+photographic design details and an open process lead to one simple enquiry.
+Individual FAQs remain accessible without a parent disclosure. The page keeps its
+indexed URL, normal site chrome, public project evidence and guided/project-finder
+context. It does not duplicate Aluminium's material selector or inline estimator.
+Guided visitors also receive a compact project-link list in the existing
+preferred-project order, including Ardmore first for restricted posts, spans or
+levels. It uses the canonical project records and ordering helper; ordinary and
+finder-only visits keep the two-story page without this contextual list.
+
+CustomJourney composes the existing contact form, optional attachment field,
+shared planning draft and price-reference owner. A lower optional 3D entry explains
+that standard configurations are not a bespoke quote. Fresh enquiries invent no
+design; chosen or explicitly confirmed designs and their source/starting brief
+remain attached through return, retry and reload. The exact route is SEO for
+existing consent-gated action measurement. No new pricing or intake owner is added.
+
+The accepted optional-phone experience uses the canonical contact policy and
+exact-route SQL migration described in the schema map. Other routes keep their
+requirements. Following preview review, final checks and production release are
+authorised. Operational rollout is recorded separately; local fenced fixtures do
+not establish shared-schema installation, delivery or live attribution.
+
 ## Aluminium SEO composition (20 October 2026)
 
 The aluminium route keeps its canonical URL and normal site chrome. Its route

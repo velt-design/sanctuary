@@ -8,11 +8,11 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe('enquiry form contract', () => {
-  it('allows direct aluminium discussion without phone while preserving every other required field and scope', () => {
-    const base = { enquiryType: 'residential', page: '/aluminium-pergolas-auckland', requestType: 'project-discussion', name: 'Synthetic', email: 'fixture@example.invalid', suburb: 'Albany', phone: '' };
+  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland'])('allows direct %s discussion without phone while preserving every other required field and scope', page => {
+    const base = { enquiryType: 'residential', page, requestType: 'project-discussion', name: 'Synthetic', email: 'fixture@example.invalid', suburb: 'Albany', phone: '' };
     expect(validateEnquiryForm(formData(base), [])).toEqual({});
     for (const patch of [{ requestType: '' }, { requestType: 'site-measure' }, { enquiryType: 'commercial' },
-      { enquiryType: 'professional' }, { page: '/aluminium-pergolas-auckland/' }, { page: '/contact' }, { phone: 'bad' }]) {
+      { enquiryType: 'professional' }, { page: `${page}/` }, { page: '/contact' }, { phone: 'bad' }]) {
       expect(validateEnquiryForm(formData({ ...base, ...patch }), []).phone).toBeTruthy();
     }
     for (const field of ['name', 'email', 'suburb'] as const) {
