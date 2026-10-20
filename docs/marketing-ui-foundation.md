@@ -20,6 +20,8 @@ remain with their established owners. The optional `ChannelDesignReview`
 disclosure shows actual choices and scope caveats without gating the estimate or
 contact action. `googleFunnel.ts` separately owns inline-route eligibility and
 advertising chrome; a page can retain inline enquiry while keeping SEO chrome.
+The editorial inline forms retain their `acrylic-form` compatibility hook on
+both new Facebook and historical URLs, independently of channel attribution.
 Local fixture checks cover the composition and journeys. Hosted rollout, current
 pricing and live tracking receipt are verified separately in the release record.
 
