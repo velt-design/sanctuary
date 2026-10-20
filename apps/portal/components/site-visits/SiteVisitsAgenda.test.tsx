@@ -18,6 +18,7 @@ vi.mock('./VisitAgendaRow',()=>({default:({visit}:{visit:CalendarVisit})=><artic
 let mounted:ReturnType<typeof renderIntoDocument>|undefined;
 const base:CalendarVisit={id:'first',revision:1,sourceKey:'synthetic',subject:'Courtyard next day',startsAt:'2026-10-21T00:00:00Z',endsAt:'2026-10-21T01:00:00Z',isAllDay:false,allDayStartDate:null,allDayEndDate:null,sourceUrl:null,address:'12 Example Road',staff:[{email:'morgan@example.test',name:'Morgan'}],assignmentHint:null,kind:'visit',sourceKind:'visit',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:'project',projectName:'Courtyard',contactName:null,phone:null,linkMode:'auto',kindOverride:null};
 const replace=window.history.replaceState.bind(window.history);
+const push=window.history.pushState.bind(window.history);
 function change(input:HTMLSelectElement|HTMLInputElement,value:string){act(()=>{Object.getOwnPropertyDescriptor(input instanceof HTMLInputElement?HTMLInputElement.prototype:HTMLSelectElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event(input instanceof HTMLInputElement?'input':'change',{bubbles:true}));});}
 function button(text:string){return Array.from(mounted!.container.querySelectorAll('button')).find(b=>b.textContent===text)!;}
 async function historyGo(direction:'back'|'forward'){
@@ -26,12 +27,33 @@ async function historyGo(direction:'back'|'forward'){
 beforeEach(()=>{
   vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-20T00:00:00Z'));
   replace(null,'','/staff/site-visits');
-  // Model Next's documented native history bridge. Browser QA separately verifies the real router.
-  vi.spyOn(window.history,'replaceState').mockImplementation((...args)=>{replace(...args);window.dispatchEvent(new Event('popstate'));});
+  // Next copies router metadata for external native writes. Passing its internal
+  // marker back explicitly bypasses the bridge (and must not be done by controls).
+  function bridge(native:typeof replace,data:unknown,unused:string,url?:string|URL|null){
+    const internal=Boolean((data as {__NA?:boolean}|null)?.__NA);
+    native({...window.history.state,...(data as object|null)},unused,url);
+    if(!internal)window.dispatchEvent(new Event('popstate'));
+  }
+  vi.spyOn(window.history,'replaceState').mockImplementation((...args)=>bridge(replace,...args));
+  vi.spyOn(window.history,'pushState').mockImplementation((...args)=>bridge(push,...args));
   h.read.mockReset();h.read.mockReturnValue({data:{enabled:false,events:[base,{...base,id:'second',subject:'Harbour today',projectName:'Harbour',startsAt:'2026-10-20T01:00:00Z',endsAt:'2026-10-20T02:00:00Z',staff:[{email:'alex@example.test',name:'Alex'}]}],lastSuccess:'2026-10-20T00:00:00Z'},denied:false,isError:false});
 });
 afterEach(()=>{mounted?.unmount();mounted=undefined;vi.restoreAllMocks();vi.useRealTimers();replace(null,'','/');});
 describe('Site visit URL and return state',()=>{
+  it('changes scope immediately so a rapid next view cannot restore the previous project',async()=>{
+    replace({__NA:true,tree:['existing-router-state']},'','/staff/site-visits?project=project&view=upcoming&q=Courtyard');
+    mounted=renderIntoDocument(<SiteVisitsAgenda/>);
+    const all=mounted.container.querySelector<HTMLAnchorElement>('a')!;
+    expect(all.getAttribute('href')).toBe('/staff/site-visits?view=upcoming&q=Courtyard');
+    act(()=>all.click());act(()=>button('This week').click());
+    expect(new URL(window.location.href).searchParams.has('project')).toBe(false);
+    expect(button('This week').getAttribute('aria-pressed')).toBe('true');
+    expect(h.read).toHaveBeenLastCalledWith(undefined);
+    expect(window.history.state).toEqual({__NA:true,tree:['existing-router-state']});
+    await historyGo('back');expect(h.read).toHaveBeenLastCalledWith('project');expect(button('Upcoming').getAttribute('aria-pressed')).toBe('true');
+    await historyGo('forward');expect(h.read).toHaveBeenLastCalledWith(undefined);expect(button('This week').getAttribute('aria-pressed')).toBe('true');
+    expect(mounted.container.querySelector('input')!.value).toBe('Courtyard');
+  });
   it('shows one attending filter for mapped Outlook and manual versions of the same staff member',()=>{
     h.read.mockReturnValue({data:{enabled:false,lastSuccess:'2026-10-20T00:00:00Z',events:[{...base,staff:[{name:'Jordan Synthetic Fullname',email:'original-rep@example.test',staffId:'jordan'}]},{...base,id:'manual',staff:[{name:'Jordan',email:'',staffId:'jordan'}]}]},denied:false,isError:false});
     replace(null,'','/staff/site-visits?view=week&person=original-rep%40example.test');mounted=renderIntoDocument(<SiteVisitsAgenda/>);

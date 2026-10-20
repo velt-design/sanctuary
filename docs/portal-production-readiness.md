@@ -32,12 +32,21 @@ over historical pipeline stage, with explicit unknown/loading handling.
 Independent local/hosted and production verification passed. It changes no
 lifecycle, commercial data, permissions or schema.
 
-The subsequent bounded workflow increment is a local candidate, not yet released:
+The subsequent bounded workflow increment was released through PR229, merge
+`e2cb6a244fbf73e0e5fe846d196ba2bfe31be746`, after owner approval:
 current-state commercial context, task-first Overview, URL-owned calm commercial
 navigation/question-first visit review, and fresh mapped customer-output proof.
 It preserves server task ranking, quote/estimate pricing, saved artifacts,
 authentication and all financial command contracts. See the current implementation
 maps in `project-command-centre-architecture.md` and `quotes-invoices-job-packs.md`.
+
+The 21 October usability pass is a separate local/preview candidate. Its measured
+priorities are the provisional-to-durable quote selection failure and the agenda
+scope/view race, plus accurate Schedule navigation. It preserves the passing
+filtered-list return and warm commercial transitions. Local staging persistence,
+optimized browser measurements and synthetic tests do not constitute production
+release or real customer/provider lifecycle proof. See `portal-ux-roadmap.md`
+for the current bounded sequence.
 
 Meta renewal extension (14 October local candidate): dedicated report/sale vault
 identities, finite versus ongoing source approval, default-off maintenance and

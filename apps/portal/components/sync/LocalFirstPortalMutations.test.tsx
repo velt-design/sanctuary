@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   upsertContactCaches: vi.fn(),
 }));
 
-type RegisteredHandler = (item: { payload: unknown }) => Promise<unknown>;
+type RegisteredHandler = (item: { id?: string; payload: unknown }) => Promise<unknown>;
 
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => mocks.queryClient,
@@ -516,6 +516,22 @@ describe('LocalFirstPortalMutations', () => {
     expect(result).toMatchObject({ kind: 'success', clearWorkingCopy: true });
     expect(mocks.apiJson).toHaveBeenCalledWith('/api/projects/project-1/quotes', expect.objectContaining({ method: 'POST' }));
     expect(mocks.registerLocalFirstIdAlias).toHaveBeenCalledWith('local-quote:9', 'quote-9');
+    unmount();
+  });
+
+  it('retries an uncertain quote create with the same intent and estimate before promoting its identity', async () => {
+    const { handler, unmount } = renderAndGetHandler('portal.quote.createFromEstimate');
+    const item = { id: 'synthetic-stable-intent', payload: { localQuoteId: 'local-quote:retry', projectId: 'project-1', estimateId: 'estimate-v2' } };
+    mocks.apiJson.mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce({ quoteVersion: minimalQuoteDetail({ id: 'quote-recovered' }) });
+    await expect(handler(item)).rejects.toThrow('Response lost');
+    expect(mocks.registerLocalFirstIdAlias).not.toHaveBeenCalled();
+    expect(await handler(item)).toMatchObject({ kind: 'success', clearWorkingCopy: true });
+    const bodies = mocks.apiJson.mock.calls.map(([, options]) => JSON.parse(options.body));
+    expect(bodies).toEqual([
+      { estimateVersionId: 'estimate-v2', clientIntentId: 'synthetic-stable-intent' },
+      { estimateVersionId: 'estimate-v2', clientIntentId: 'synthetic-stable-intent' },
+    ]);
+    expect(mocks.registerLocalFirstIdAlias).toHaveBeenCalledExactlyOnceWith('local-quote:retry', 'quote-recovered');
     unmount();
   });
 
