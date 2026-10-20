@@ -28,14 +28,14 @@ describe("ProjectOverviewLayout", () => {
       "refreshing",
     );
     expect(
-      Array.from(layout?.children ?? []).map((node) =>
+      Array.from(layout?.querySelectorAll('[data-project-overview-region]') ?? []).map((node) =>
         node.getAttribute("data-project-overview-region"),
       ),
     ).toEqual([
       "exception",
       "project-work",
-      "orientation",
       "commercial",
+      "orientation",
       "recent",
       "admin",
     ]);
@@ -122,10 +122,10 @@ describe("ProjectOverviewLayout", () => {
       '[data-project-overview-layout="true"]',
     )!;
     expect(
-      Array.from(layout.children).map((node) =>
+      Array.from(layout.querySelectorAll('[data-project-overview-region]')).map((node) =>
         node.getAttribute("data-project-overview-region"),
       ),
-    ).toEqual(["project-work", "orientation", "commercial"]);
+    ).toEqual(["project-work", "commercial", "orientation"]);
     expect(rendered.container.querySelector("button")?.textContent).toBe(
       "Orientation edits 1",
     );

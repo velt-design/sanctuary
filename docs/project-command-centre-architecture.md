@@ -2,9 +2,14 @@
 
 ## Workflow clarity (20 October 2026 local candidate)
 
-Overview now orders the existing server-owned project work/action before contact
-orientation and commercial context. It does not invent tasks, completion or a new
-ranking. Empty site visits use a compact disclosure; source errors and stale-source
+Overview starts with the existing server-owned project work/action. Two stable
+desktop columns group work with commercial facts, and contact details with
+correspondence. They stack in that same reading and keyboard order on narrow
+screens. Independent column height prevents long correspondence from creating
+blank space between work and price, and keeps ordinary desktop customer messages
+within the first screen. Editors remain mounted through resizing. It does not
+invent tasks, completion or a new ranking. Empty site visits use a compact
+disclosure; source errors and stale-source
 notices remain visible. Needs review shows the specific unanswered questions before
 provenance and opens the existing correction form through Resolve questions.
 
@@ -993,7 +998,16 @@ The `activity` module loader now resolves to `OverviewTab`; the old Activity com
 
 The current Project Work presentation consumes a required server-owned ranking reason for ordinary work items. It uses categorical due badges (`Critical`, `Overdue`, `Due today`, or `Upcoming`) while leaving the exact timestamp to the Due field, omits active-state counts already visible elsewhere, and does not render an empty secondary-work slot. Its action title is the strongest route-owned heading, one orange or critical rail marks the server-ranked obligation, and command labels distinguish doing external work from recording its outcome. Waiting/Closed/Archived details appear only when they add state-specific truth.
 
-The route body shares the 1440px portal content ceiling and uses an approximately 62/38 Project Work/commercial split on wide screens. The context band is deliberately quiet, does not repeat the detailed stage owned by the project header, and groups journey/state separately from customer/site facts. Commercial exceptions render before customer-price/quote metrics; design/source facts and recent history are subordinate. At 800 CSS pixels or less the grid stacks from the component's available width, while at and below 768 CSS pixels the DOM and visual order is Project Work, commercial, context, then recent history. Empty exception rows do not reserve grid space.
+The route body shares the 1440px portal content ceiling. Its independent desktop
+columns place Project Work followed immediately by commercial facts on the left,
+and visible contact details followed by correspondence/history on the right.
+The context band remains quiet and groups journey/state separately from
+customer/site facts. Commercial exceptions remain visible before price metrics.
+At 800 CSS pixels or less available width, or at and below a 768 CSS-pixel viewport,
+the same mounted columns stack in DOM/keyboard order: Project Work, commercial,
+contact, then correspondence/history. Empty exception rows reserve no space.
+The fixture contracts retain a maximum 24px work/commercial gap even with expanded
+long correspondence, and the ordinary desktop message excerpt ends above 900px.
 
 ## 18. Test and fixture strategy
 

@@ -3,31 +3,34 @@
   width: 100%;
   max-width: var(--ui-content-max);
   margin-inline: auto;
-  grid-template-areas: "exception exception" "project-work project-work" "orientation orientation" "commercial recent" "admin admin";
+  grid-template-areas: "exception exception" "primary context" "admin admin";
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 1fr);
   align-items: start;
   gap: var(--ui-grid-gutter);
   min-width: 0;
 }
-.layout:not([data-has-exception]) { grid-template-areas: "project-work project-work" "orientation orientation" "commercial recent" "admin admin"; }
-.layout > * { min-width: 0; }
-.orientation { grid-area: orientation; }
+.layout:not([data-has-exception]) { grid-template-areas: "primary context" "admin admin"; }
+.layout > *, .primary > *, .context > * { min-width: 0; }
+/* Independent columns keep long correspondence from spacing out work. */
+.primary, .context { display: grid; gap: var(--ui-grid-gutter); min-width: 0; }
+.primary { grid-area: primary; }
+.context { grid-area: context; }
+.orientation { min-width: 0; }
 .exception { grid-area: exception; }
-.projectWork { grid-area: project-work; display: grid; gap: var(--ui-space-3); }
-.commercial { grid-area: commercial; display: grid; gap: var(--ui-grid-gutter); }
-.recent { grid-area: recent; display: grid; gap: var(--ui-grid-gutter); }
+.projectWork { display: grid; gap: var(--ui-space-3); }
+.commercial { display: grid; gap: var(--ui-grid-gutter); }
+.recent { display: grid; gap: var(--ui-grid-gutter); }
 .admin { grid-area: admin; }
-.layout:not([data-has-recent]) .commercial { grid-column: 1 / -1; }
 .layout[data-overview-composition="stacked"],
 .layout[data-overview-composition="mobile"] {
-  grid-template-areas: "exception" "project-work" "orientation" "commercial" "recent" "admin";
+  grid-template-areas: "exception" "primary" "context" "admin";
   grid-template-columns: minmax(0, 1fr);
 }
 .layout[data-overview-composition="stacked"]:not([data-has-exception]),
 .layout[data-overview-composition="mobile"]:not([data-has-exception]) {
-  grid-template-areas: "project-work" "orientation" "commercial" "recent" "admin";
+  grid-template-areas: "primary" "context" "admin";
 }
 @media (max-width: 768px) {
-  .layout { grid-template-areas: "exception" "project-work" "orientation" "commercial" "recent" "admin"; grid-template-columns: minmax(0, 1fr); }
-  .layout:not([data-has-exception]) { grid-template-areas: "project-work" "orientation" "commercial" "recent" "admin"; }
+  .layout { grid-template-areas: "exception" "primary" "context" "admin"; grid-template-columns: minmax(0, 1fr); }
+  .layout:not([data-has-exception]) { grid-template-areas: "primary" "context" "admin"; }
 }

@@ -10,6 +10,13 @@ owners; preserve timing budgets, assertions and unrelated Contacts/Schedule
 search semantics. Passing component checks alone does not establish that the
 existing authenticated performance gate can still find its controls.
 
+The full fixture lane also distinguishes old order assertions from real layout
+regressions. Task-first work supersedes orientation-first ordering, but does not
+justify pushing useful correspondence below the first screen or inserting a tall
+contact band between work and commercial facts. Stable independent columns retain
+adjacency and message visibility without resize-driven reparenting or weakened
+geometry limits; their narrow reading and keyboard order must agree.
+
 ## 2026-10-20: Calm navigation must preserve drafts and useful next actions
 
 Native history removes competing server transitions, but separate clean-history

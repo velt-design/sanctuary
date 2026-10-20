@@ -6,7 +6,7 @@ const examples = [
   { key: 'installation', position: 'Quote accepted', action: 'Confirm the installation week with Aroha', source: 'Please confirm the expected installation week' },
 ];
 
-test('long correspondence does not separate work from commercial facts', async ({ page }) => {
+test('long correspondence does not separate work from commercial facts', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/qa/project-command-centre-fixture?story=accepted-review');
   const work = page.locator('[data-project-overview-region="project-work"]');
@@ -27,6 +27,7 @@ test('long correspondence does not separate work from commercial facts', async (
   await commercial.locator('summary', { hasText: 'Quote history' }).click();
   await expect(emails.locator('article').first()).toContainText('From aroha@example.invalid');
   await checkGap();
+  await page.screenshot({ path: testInfo.outputPath('accepted-review-1440.png'), fullPage: true });
   await emails.locator('article').first().getByText('Read message', { exact: true }).click();
   const history = emails.locator('article').first().locator('summary', { hasText: 'Earlier messages in this email' });
   await expect(history).toBeVisible();
@@ -38,10 +39,16 @@ test('long correspondence does not separate work from commercial facts', async (
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(emails.locator('article').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  const phone = page.getByRole('link', { name: '021 555 0100', exact: true });
+  await expect(phone).toHaveAttribute('href', 'tel:0215550100');
+  await phone.focus();
+  await expect(phone).toBeFocused();
+  await expect(phone).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('accepted-review-contact-390.png'), fullPage: true });
 });
 
 for (const width of [1440, 390]) for (const example of examples) {
-  test(`${example.key} tells one coherent story at ${width}px`, async ({ page }) => {
+  test(`${example.key} tells one coherent story at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     const writes: string[] = [];
     page.on('request', request => { if (!['GET', 'HEAD'].includes(request.method()) && request.url().includes('/api/')) writes.push(request.url()); });
@@ -68,6 +75,7 @@ for (const width of [1440, 390]) for (const example of examples) {
       const message = await incoming.boundingBox();
       expect(message!.y + message!.height).toBeLessThan(900);
     }
+    await page.screenshot({ path: testInfo.outputPath(`${example.key}-${width}.png`), fullPage: true });
     await conversations.locator('summary', { hasText: 'AI interpretation and suggestions' }).click();
     const job = conversations.getByRole('region', { name: 'Job position', exact: true });
     await job.locator('summary').first().click();

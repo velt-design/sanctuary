@@ -151,10 +151,14 @@ export default function ProjectOverviewLayout({
       }
     >
       {exceptionRegion}
-      {projectWorkRegion}
-      {orientationRegion}
-      {commercialRegion}
-      {recentRegion}
+      <div className={styles.primary}>
+        {projectWorkRegion}
+        {commercialRegion}
+      </div>
+      <div className={styles.context}>
+        {orientationRegion}
+        {recentRegion}
+      </div>
       {adminRegion}
     </div>
   );
