@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildEnquiryFallbackPayload } from './enquiryFallback';
 
 describe('buildEnquiryFallbackPayload', () => {
-  it.each(['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'])('preserves the submitted discussion intent for %s without inventing one', page => {
+  it.each(['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'])('preserves the submitted discussion intent for %s without inventing one', page => {
     const form = new FormData();
     form.set('enquiryType', 'residential'); form.set('page', page);
     expect(buildEnquiryFallbackPayload(form, 'fixture')).toMatchObject({ requestType: '' });

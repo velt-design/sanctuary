@@ -1,5 +1,19 @@
 # Sanctuary "Your Pergola" Customer Configurator
 
+## Channel-page continuation (20 October 2026)
+
+New Facebook URLs reuse the existing shared Meta draft key through
+`inlineFunnelDraftKey`. Google URLs retain their two isolated draft keys. The
+indexed acrylic page retains inline draft/enquiry continuation with normal site
+chrome. General Auckland SEO retains its existing `LANDING_DRAFT_KEY`, serialized
+handoff and browser Back/return owner. No geometry, pricing, seed or calculation
+contract changes. Optional review uses the canonical `enquiryDesignSummary` (or
+existing SEO prepared summary). Channel event ownership and consent/deduplication
+are documented in `security-privacy-quality.md`; restoring a review step never
+constitutes a fresh deliberate review action. Local fixture tests prove these
+continuation contracts, not hosted rollout or current-price/provider behavior;
+the release record owns that operational evidence.
+
 Mobile side-summary entry (16 October 2026): `MobileSideSummary` delegates the
 tapped Left, Front or Right face through `MobileSideLooks` to the existing
 `useMobileSides.start` selection. Opening the editor changes only the editing

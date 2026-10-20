@@ -1,5 +1,18 @@
 # Testing And QA
 
+Channel-page verification (20 October): `marketing.channel-pages.spec.ts` covers the
+six channel compositions, responsive containment, deliberate review/CTA events,
+page-scoped SEO designer continuation, and new Facebook mobile direct/configured
+retry. `channelDesignTracking.test.ts`, `ChannelDesignReview.test.tsx` and the
+existing designer tracker tests cover exact routes, closed metadata, denial,
+restoration and cross-surface deduplication. `marketing-google-funnel-intake.test.ts`
+executes the exact forward Facebook-path migration in PGlite, with API/native
+payloads and existing denial, atomic rollback, idempotency and grants contracts.
+Browser intake/native and vendor requests are intercepted before input. The
+isolated fixture's sample pricing is not approved customer pricing or evidence
+of hosted readiness, provider delivery or live attribution. Operational migration,
+deployment and production verification are recorded separately in the release record.
+
 The homepage price-link and mobile side-summary regressions live in
 `playwright/marketing.homepage-challenger.spec.ts` and
 `playwright/marketing.configurator-mobile.spec.ts`. They cover full-row/keyboard

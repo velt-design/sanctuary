@@ -1,8 +1,9 @@
 /** Exact inline-design routes. Page content and SEO stay with each page owner. */
 export const GOOGLE_FUNNEL_PATHS = ['/ads/outdoor-living', '/ads/acrylic-pergolas'] as const;
-export const META_FUNNEL_PATHS = ['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'] as const;
+export const META_FUNNEL_PATHS = ['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas'] as const;
+const LEGACY_INLINE_FUNNEL_PATHS = ['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'] as const;
 export type GoogleFunnelPath = typeof GOOGLE_FUNNEL_PATHS[number];
-export type InlineFunnelPath = GoogleFunnelPath | typeof META_FUNNEL_PATHS[number];
+export type InlineFunnelPath = GoogleFunnelPath | typeof META_FUNNEL_PATHS[number] | typeof LEGACY_INLINE_FUNNEL_PATHS[number];
 export function isGoogleFunnelPath(path: string | null): path is GoogleFunnelPath {
   return GOOGLE_FUNNEL_PATHS.some(value => value === path);
 }
@@ -10,7 +11,11 @@ export function isMetaFunnelPath(path: string | null): path is typeof META_FUNNE
   return META_FUNNEL_PATHS.some(value => value === path);
 }
 export function isInlineFunnelPath(path: string | null): path is InlineFunnelPath {
-  return isGoogleFunnelPath(path) || isMetaFunnelPath(path);
+  return isGoogleFunnelPath(path) || isMetaFunnelPath(path) || LEGACY_INLINE_FUNNEL_PATHS.some(value => value === path);
+}
+/** Ads and the legacy noindex campaign page have reduced chrome; indexed SEO keeps it. */
+export function isAdLandingPath(path: string | null) {
+  return isGoogleFunnelPath(path) || isMetaFunnelPath(path) || path === '/auckland-outdoor-living';
 }
 /** Shared client/API scope for the reduced residential enquiry requirements. */
 export function isInlineFunnelEnquiry(audience: string, page: string): boolean {

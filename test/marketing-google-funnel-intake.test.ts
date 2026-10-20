@@ -9,6 +9,7 @@ import { DEFAULT_PREVIEW_DRAFT } from '../apps/marketing/components/configurator
 const previousPath = 'supabase/migrations/20260915080001_marketing_enquiry_optional_phone.sql';
 const migrationPath = 'supabase/migrations/20261015000001_marketing_google_funnel_optional_phone.sql';
 const metaMigrationPath = 'supabase/migrations/20261016000001_marketing_meta_funnel_optional_phone.sql';
+const channelMigrationPath = 'supabase/migrations/20261020000001_marketing_facebook_channel_optional_phone.sql';
 const source = (path: string) => readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
 const h = vi.hoisted(() => ({ getClient: vi.fn(), send: vi.fn(), recordConversion: vi.fn() }));
 
@@ -87,12 +88,34 @@ it('extends only the two Meta route literals and preserves rollback and the guar
   } finally { await db.close(); }
 }, 30_000);
 
+it('extends only the two Facebook channel routes and preserves exact SQL rollback/contracts', async () => {
+  const oldSql = source(metaMigrationPath).slice(source(metaMigrationPath).indexOf('create or replace function'));
+  const newSql = source(channelMigrationPath).slice(source(channelMigrationPath).indexOf('create or replace function'));
+  expect(newSql.replace(", '/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas'", '').trimEnd()).toBe(oldSql.trimEnd());
+  const db = await createDatabase();
+  try {
+    await db.exec(source(metaMigrationPath));
+    const definition = async () => (await db.query("select pg_get_functiondef('public.marketing_enquiry_intake(uuid,text,jsonb)'::regprocedure) body")).rows[0].body;
+    const previous = await definition();
+    await db.exec(`begin;\n${source(channelMigrationPath)}\nrollback;`);
+    expect(await definition()).toBe(previous);
+    await db.exec(source(channelMigrationPath));
+    await db.exec(source('supabase/tests/marketing_meta_funnel_optional_phone.sql').replace(
+      "array['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']",
+      "array['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas']"));
+    for (const table of ['contacts', 'projects', 'enquiry_requests', 'email_outbox']) {
+      expect((await db.query(`select count(*)::int n from public.${table}`)).rows).toEqual([{ n: 0 }]);
+    }
+  } finally { await db.close(); }
+}, 30_000);
+
 describe('actual inline funnel API/native payload through the real intake function', () => {
   let db: PGlite;
   beforeAll(async () => {
     db = await createDatabase();
     await db.exec(source(migrationPath));
     await db.exec(source(metaMigrationPath));
+    await db.exec(source(channelMigrationPath));
   }, 30_000);
   afterAll(async () => { await db.close(); });
   beforeEach(async () => {
@@ -125,7 +148,7 @@ describe('actual inline funnel API/native payload through the real intake functi
   });
   afterEach(async () => { await db.exec('rollback'); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-  for (const page of ['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']) {
+  for (const page of ['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']) {
     it.each([false, true])(`${page} accepts blank-phone JSON, configured=%s, preserving truthful receipt and retry`, async configured => {
       const { POST } = await import('../apps/marketing/app/api/enquiry/route');
       const payload = {
