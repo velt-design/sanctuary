@@ -23,6 +23,7 @@ import ProjectOverviewLayout from "./overview/ProjectOverviewLayout";
 import { projectPositionLabel } from './overview/projectPositionLabel';
 import { currentProjectWork } from '@/lib/projects/projectCurrentStatus';
 import type { ProjectOrientationFreshness } from "./overview/ProjectOrientationBand";
+import { CommercialProjectNotice } from '../ProjectCommercialContext';
 
 const overviewModules = {
   commercial: () => import("./overview/ProjectCurrentDesignCommercialCard"),
@@ -391,12 +392,11 @@ export default function OverviewTab({
                 commandQuery.data?.generatedAt,
               )}
             />
-            {accessEndingStatus === null && <ProjectNextVisit projectId={snapshot.project.id} host={host} onAccessEnding={onAccessEnding} />}
           </Suspense>
         }
         exception={exception}
-        projectWork={projectWork}
-        commercial={commercial}
+        projectWork={<>{projectWork}{accessEndingStatus === null && <CommercialProjectNotice projectId={snapshot.project.id} view="activity" />}</>}
+        commercial={<>{commercial}{accessEndingStatus === null && <ProjectNextVisit projectId={snapshot.project.id} host={host} onAccessEnding={onAccessEnding} />}</>}
         recent={
           <>
             {accessEndingStatus === null && (

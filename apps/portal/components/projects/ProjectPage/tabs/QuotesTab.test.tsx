@@ -4,6 +4,8 @@ import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
 import { buildOptimisticQuoteDetail } from '@/lib/localFirst/quotePreparation';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
+import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCommercialContext';
+import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
 
 const replace = vi.fn();
 const push = vi.fn();
@@ -307,6 +309,25 @@ describe('QuotesTab draft ownership UI', () => {
     rendered.unmount();
   });
 
+  it('preserves closed accepted history without promoting delivery, resend or revision until deliberately reviewed', () => {
+    activeQuoteDetail = { ...quoteDetail, status: 'ACCEPTED', expiresAt: '2020-01-01', acceptedAt: '2019-12-01T00:00:00Z' };
+    activeQuoteList = [{ ...activeQuoteList[0], ...activeQuoteDetail }];
+    const work = { effectiveState: 'CLOSED', closedOutcome: 'CANCELLED', stateRowVersion: 1 } as ProjectWorkProjection;
+    const rendered = renderIntoDocument(<ProjectCommercialProvider projectId="proj_1" work={work} ready>
+      <CommercialProjectNotice projectId="proj_1" view="quotes" /><QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />
+    </ProjectCommercialProvider>);
+    expect(rendered.container.textContent).toContain('Accepted');
+    expect(rendered.container.textContent).toContain('Review invoices & payments');
+    expect(rendered.container.textContent).not.toContain('More actions');
+    expect(rendered.container.textContent).not.toContain('Review & Send');
+    expect(rendered.container.textContent).not.toContain('Expired on');
+    act(() => [...rendered.container.querySelectorAll('button')].find((button) => button.textContent === 'Review commercial actions')!.click());
+    expect(rendered.container.textContent).toContain('More actions');
+    expect(markQuoteVersionSuperseded).not.toHaveBeenCalled();
+    expect(enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
   it('retains the expiry warning for an unaccepted sent quote', () => {
     activeQuoteDetail = { ...quoteDetail, status: 'SENT', expiresAt: '2020-01-01' };
     activeQuoteList = [{ ...activeQuoteList[0], ...activeQuoteDetail }];
@@ -356,15 +377,18 @@ describe('QuotesTab draft ownership UI', () => {
 
   it('opens a quote in Quotes when the previous commercial tab URL has not settled', () => {
     searchParamsValue = 'tab=invoices&campaign=winter';
+    window.history.replaceState(null, '', `/staff/projects/proj_1?${searchParamsValue}`);
     const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId={null} />);
     const row = rendered.container.querySelector<HTMLTableRowElement>('tr[aria-label="Open Q-1001, Q-1001 version 1"]');
     expect(row).not.toBeNull();
     act(() => row?.click());
-    expect(replace).toHaveBeenLastCalledWith('?tab=quotes&campaign=winter&quoteId=qv_1', { scroll: false });
+    expect(window.location.search).toBe('?tab=quotes&campaign=winter&quoteId=qv_1');
+    expect(replace).not.toHaveBeenCalled();
     rendered.unmount();
   });
 
   it('returns to the quote list on the first Back to quotes click while the URL commit is pending', () => {
+    window.history.replaceState(null, '', '/staff/projects/proj_1?tab=quotes&quoteId=qv_1');
     const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
     const back = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
       .find((button) => button.textContent?.includes('Back to quotes'));
@@ -373,8 +397,8 @@ describe('QuotesTab draft ownership UI', () => {
 
     expect(rendered.container.querySelector('[data-quotes-view="list"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-quotes-view="detail"]')).toBeNull();
-    expect(replace).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith('?tab=quotes', { scroll: false });
+    expect(window.location.search).toBe('?tab=quotes');
+    expect(replace).not.toHaveBeenCalled();
     rendered.unmount();
   });
 

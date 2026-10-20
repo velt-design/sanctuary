@@ -150,11 +150,15 @@ export default function ProjectOverviewLayout({
         recent !== null && recent !== undefined ? "true" : undefined
       }
     >
-      {orientationRegion}
       {exceptionRegion}
-      {projectWorkRegion}
-      {commercialRegion}
-      {recentRegion}
+      <div className={styles.primary}>
+        {projectWorkRegion}
+        {commercialRegion}
+      </div>
+      <div className={styles.context}>
+        {orientationRegion}
+        {recentRegion}
+      </div>
       {adminRegion}
     </div>
   );

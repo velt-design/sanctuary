@@ -2,6 +2,8 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../test/reactHarness";
 import { ApiError } from "@/lib/repo/apiClient";
+import { selectProjectView } from "@/components/projects/ProjectPage/projectViewNavigation";
+import type { PortalPageDebugExport } from "@/lib/debug/portalPageDebugExport";
 import ProjectSnapshotPageClient from "./ProjectSnapshotPageClient";
 
 const useQueryMock = vi.fn();
@@ -9,7 +11,7 @@ const placeholderMock = vi.fn();
 const refetchMock = vi.fn();
 const removeQueriesMock = vi.fn();
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/components/projects/ProjectPage/projectTabModules", () => ({ preloadProjectOverviewModule: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock("@/components/navigation/ProjectsIndexLink", () => ({
@@ -70,7 +72,9 @@ vi.mock("@/components/projects/ProjectPage/ProjectPageFrame", () => ({
 }));
 
 vi.mock("@/components/debug/PortalDebugExportButton", () => ({
-  default: () => <button data-testid="debug-export">Debug export</button>,
+  default: ({ payload }: { payload: PortalPageDebugExport }) => (
+    <button data-testid="debug-export" data-payload={JSON.stringify(payload)}>Debug export</button>
+  ),
 }));
 
 const fullSnapshot = {
@@ -130,6 +134,7 @@ function renderClient(projectId = "proj_1") {
 
 describe("ProjectSnapshotPageClient", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/staff/projects/proj_1");
     useQueryMock.mockReset();
     placeholderMock.mockReset();
     refetchMock.mockReset();
@@ -234,6 +239,58 @@ describe("ProjectSnapshotPageClient", () => {
     expect(refetchMock).toHaveBeenCalledTimes(1);
 
     rendered.unmount();
+  });
+
+  it("exports the live tab after native query navigation and Back/Forward without new server props or data", async () => {
+    mockProjectQueries({
+      snapshot: {
+        data: { snapshot: fullSnapshot, generatedAt: "2026-07-19T00:00:01.000Z" },
+        error: null,
+        isPlaceholderData: false,
+        refetch: refetchMock,
+      },
+    });
+    const element = () => <ProjectSnapshotPageClient projectId="proj_1" tab="estimates" estimateId={null} debugExportEnabled />;
+    const rendered = renderIntoDocument(element());
+    const payload = () => JSON.parse(rendered.container.querySelector("[data-payload]")!.getAttribute("data-payload")!) as PortalPageDebugExport;
+    const assertTab = (tab: string) => {
+      expect(payload().clientState.activeTab).toBe(tab);
+      expect(payload().selectedIds.projectId).toBe("proj_1");
+      expect(payload().serverState.project).toMatchObject({ name: "Fresh Project" });
+    };
+    // Rerender supplies the query update delivered by Next's native history bridge,
+    // while the original server props and query result object stay unchanged.
+    const select = (tab: string) => act(() => {
+      selectProjectView(tab);
+      rendered.rerender(element());
+    });
+    const traverse = async (direction: "back" | "forward") => {
+      await act(async () => {
+        await new Promise<void>((resolve) => {
+          window.addEventListener("popstate", () => resolve(), { once: true });
+          window.history[direction]();
+        });
+        rendered.rerender(element());
+      });
+    };
+    try {
+      assertTab("estimates");
+      select("quotes");
+      assertTab("quotes");
+      select("invoices");
+      assertTab("invoices");
+      await traverse("back");
+      assertTab("quotes");
+      await traverse("forward");
+      assertTab("invoices");
+      await traverse("back");
+      await traverse("back");
+      expect(window.location.search).toBe("");
+      assertTab("estimates");
+      expect(refetchMock).not.toHaveBeenCalled();
+    } finally {
+      rendered.unmount();
+    }
   });
 
   it("keeps the cached summary visible when the browser is offline", () => {

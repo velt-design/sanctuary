@@ -14,6 +14,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import PortalNavigationProgress from './PortalNavigationProgress';
 import ProjectsIndexPendingFrame from './ProjectsIndexPendingFrame';
 import ContactsIndexPendingFrame from './ContactsIndexPendingFrame';
+import { retainPortalHistory } from './portalHistoryGuard';
 import {
   PORTAL_INSTANT_ROUTE_DEFINITIONS,
   portalInstantRouteReleasesOnCommit,
@@ -115,6 +116,7 @@ export function usePortalRouteTransition(): PortalRouteTransitionContextValue {
 }
 
 export function PortalRouteTransitionProvider({ children }: { children: ReactNode }) {
+  useEffect(retainPortalHistory, []);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const routeKey = useMemo(() => routeKeyFor(pathname, searchParams), [pathname, searchParams]);

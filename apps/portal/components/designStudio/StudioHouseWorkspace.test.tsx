@@ -57,3 +57,31 @@ it('guides the measured failed roof connection into the relevant house input and
  await click('Return to Pergola 1 · Roof');expect(m.container.querySelector('[data-section="Roof"]')).toBeTruthy();
  expect(observed.scene.view).toBe('Plan');expect(change).not.toHaveBeenCalled();expect(controller.save).not.toHaveBeenCalled();m.unmount();
 });
+
+it('repairs a default low Wall proposal through the independent eave height and returns to its exact proposal',async()=>{
+ let edit:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:'wall-repair-workspace',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};
+ const added=applyStudioHouseEdit(edit.spatial,{kind:'add',id:'house'});if(!added.ok)throw Error(added.message);edit.spatial=added.spatial;edit=addWebsitePergola(edit,'p');
+ const original=studioHouseScene(edit.site,edit.spatial)!.houses[0];expect(original.eaveHeightMm).toBe('');
+ const scope={actorId:'actor',projectId:'project',estimateId:'wall-repair-estimate',designId:edit.designId};
+ sessionStorage.clear();sessionStorage.setItem(studioHouseContextKey(scope),JSON.stringify({selected:'p',mode:'position',section:'Roof',view:'Plan'}));
+ const controller={edit,change:vi.fn((next:StudioAuthoringEdit)=>{controller.edit=next;rendered.rerender(<StudioHouseWorkspace controller={controller as any} scope={scope} versionLabel="V1"/>);}),canEdit:true,canSave:false,session:{dirty:true,baselinePergolaIds:['p']},save:vi.fn()};
+ const rendered=renderIntoDocument(<StudioHouseWorkspace controller={controller as any} scope={scope} versionLabel="V1"/>);
+ const click=async(text:string)=>{await act(async()=>{const b=[...rendered.container.querySelectorAll('button')].find(b=>b.textContent===text);expect(b).toBeTruthy();b!.click();});};
+ await click('Attach to house');
+ await act(async()=>observed.scene.onTarget(observed.scene.targets.find((t:any)=>t.side==='rear'&&t.kind==='wall')));
+ expect(rendered.container.textContent).toContain('2000–5000');expect(observed.scene.preview).toBeNull();
+ await click('Check house dimensions');await act(async()=>{await new Promise(resolve=>setTimeout(resolve,35));});
+ expect(document.activeElement?.getAttribute('aria-label')).toBe('Eave height (mm)');
+ expect(rendered.container.textContent).toContain('wall height remains independent');
+ const field=rendered.container.querySelector<HTMLInputElement>('input[aria-label="Eave height (mm)"]')!;
+ act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,'3000');field.dispatchEvent(new Event('input',{bubbles:true}));});
+ await click('Apply house changes');
+ const actual=studioHouseScene(controller.edit.site,controller.edit.spatial)!.houses[0];
+ expect(actual.wallHeightMm).toBe(original.wallHeightMm);expect(actual.eaveHeightMm).toBe('3000');
+ await click('Return to Pergola 1 · Roof');
+ expect(observed.direct[3].choice).toMatchObject({edge:'rear',method:'facade'});
+ expect(observed.scene.preview).toBeTruthy();expect(rendered.container.textContent).not.toContain('2000–5000');
+ await click('Apply connection');
+ expect(websiteComposition(controller.edit)[0]).toMatchObject({error:null,studioAttachment:{edge:'rear',method:'facade'}});
+ expect(controller.save).not.toHaveBeenCalled();rendered.unmount();
+});

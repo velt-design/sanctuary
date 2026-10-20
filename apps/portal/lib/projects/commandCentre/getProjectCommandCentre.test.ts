@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectWorkProjection } from '../workItems/types';
+import { projectWorkDomainActions } from '../workItems/domainActionAdapters';
+import { resolveProjectWorkPrimaryAction } from '../workItems/primaryAction';
 
 const commandCentreDependencies = vi.hoisted(() => ({
   getProjectWorkProjection: vi.fn(),
@@ -379,6 +381,13 @@ describe('getProjectCommandCentre', () => {
   });
 
   it('marks a zero-value estimate price unavailable instead of showing a partial total', async () => {
+    commandCentreDependencies.isProjectWorkModelV2.mockResolvedValueOnce(true);
+    commandCentreDependencies.getProjectWorkDomainActions.mockImplementationOnce(context => projectWorkDomainActions({
+      ...context, siteVisitCompleted: false,
+    }));
+    commandCentreDependencies.getProjectWorkProjection.mockImplementationOnce(actions => ({
+      ...PROJECT_WORK, primaryAction: resolveProjectWorkPrimaryAction({ ...actions, workItems: [] }),
+    }));
     const result = await getProjectCommandCentre(
       `proj_${UUID.project}`,
       createClient(projectRow([estimateRow()]), {
@@ -394,6 +403,11 @@ describe('getProjectCommandCentre', () => {
       totalIncGstCents: null,
     });
     expect(result?.currentDesign.warnings).toContain('estimate_price_unavailable');
+    expect(result?.projectWork?.primaryAction).toMatchObject({
+      kind: 'recovery',
+      title: 'Resolve estimate pricing',
+      href: `/staff/projects/proj_${UUID.project}?tab=estimates&estimateId=est_${UUID.estimate}`,
+    });
   });
 
   it('fails the complete read when selected estimate detail cannot be loaded', async () => {

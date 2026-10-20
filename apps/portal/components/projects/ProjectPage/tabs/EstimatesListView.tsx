@@ -25,6 +25,7 @@ import type { QuoteVersion } from '@/lib/quotes/types';
 import { acceptedEstimateQuoteIds, estimateDisplayName, quotesForEstimate } from './estimateListPresentation';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import styles from './EstimatesListView.module.css';
+import { useProjectCommercialContext } from '../ProjectCommercialContext';
 
 function estimateStatus(estimate: EstimateMeta): { label: string; tone: BadgeTone } {
   if (estimate.status === 'archived') return { label: 'Archived', tone: 'neutral' };
@@ -60,6 +61,7 @@ export default function EstimatesListView({
   onDuplicate: (estimateId: string) => void;
   onRename: (estimate: EstimateMeta) => void;
 }) {
+  const commercial = useProjectCommercialContext();
   const [query, setQuery] = useCommercialListState(projectId, 'estimates', '');
   useCommercialListScroll(projectId, 'estimates', !loading);
   const accepted = useMemo(() => acceptedEstimateQuoteIds(quotes ?? []), [quotes]);
@@ -80,10 +82,10 @@ export default function EstimatesListView({
           <h3 className={styles.title}>Estimates</h3>
           <p className={styles.subtitle}>Working designs · accepted quotes remain the agreement.</p>
         </div>
-        <div className={styles.headerActions}>
+        {commercial.actionsAvailable && <div className={styles.headerActions}>
           <Button variant="secondary" onClick={onCreateAddOn}>Create add-on estimate</Button>
           <Button onClick={onCreate}>Create estimate</Button>
-        </div>
+        </div>}
       </div>
 
       {loading ? <LoadingSkeleton rows={4} columns={5} label="Loading estimates" /> : null}
@@ -99,8 +101,8 @@ export default function EstimatesListView({
       {!loading && !error && !estimates.length ? (
         <EmptyState
           title="No estimates yet"
-          description="Create the first estimate to start pricing this project."
-          action={<Button onClick={onCreate}>Create estimate</Button>}
+          description={commercial.closed ? 'No estimates were saved for this closed project.' : 'Create the first estimate to start pricing this project.'}
+          action={commercial.actionsAvailable ? <Button onClick={onCreate}>Create estimate</Button> : undefined}
         />
       ) : null}
 
@@ -173,7 +175,7 @@ export default function EstimatesListView({
                           <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(estimate.projectId)}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}`}>
                             {quote.quoteRef} v{quote.versionNumber}
                           </ButtonLink>
-                          <span>{accepted.has(quote.id) ? ' Current accepted agreement' : quote.status === 'ACCEPTED' ? ' Historical acceptance' : ` ${quote.status.toLowerCase()}`}</span>
+                          <span>{accepted.has(quote.id) ? commercial.closed ? ' Recorded accepted agreement' : ' Current accepted agreement' : quote.status === 'ACCEPTED' ? ' Historical acceptance' : ` ${quote.status.toLowerCase()}`}</span>
                         </div>
                       )) : <span>No linked quote</span>}
                     </div>
@@ -186,7 +188,7 @@ export default function EstimatesListView({
                       <Button size="small" variant="secondary" onClick={open}>{openLabel}</Button>
                       <OverflowMenu label={`Actions for ${name}`} menuLabel={name} items={[
                         { label: 'Rename', onSelect: () => onRename(estimate) },
-                        { label: estimate.designKind === 'studio' ? 'Duplicate in Studio' : 'Duplicate', onSelect: () => onDuplicate(estimate.id) },
+                        { label: estimate.designKind === 'studio' ? 'Duplicate in Studio' : 'Duplicate', disabled: !commercial.actionsAvailable, onSelect: () => onDuplicate(estimate.id) },
                       ]} />
                     </div>
                   </TableCell>

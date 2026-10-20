@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
 import InvoicesTab from './InvoicesTab';
+import { act } from 'react';
+import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCommercialContext';
+import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
 
 let admin = false;
 const schedule: ProjectInvoiceSchedule = {
@@ -34,6 +37,24 @@ vi.mock('@/lib/repo/invoicesRepo', () => ({
 afterEach(() => { document.body.innerHTML = ''; admin = false; activeSchedule = schedule; });
 
 describe('InvoicesTab reconciliation visibility', () => {
+  it('keeps a closed accepted agreement and payment ledger visible while making billing a deliberate review', () => {
+    admin = true;
+    const before = JSON.stringify(activeSchedule);
+    const work = { effectiveState: 'CLOSED', closedOutcome: 'CANCELLED', stateRowVersion: 1 } as ProjectWorkProjection;
+    const rendered = renderIntoDocument(<ProjectCommercialProvider projectId="proj-1" work={work} ready>
+      <CommercialProjectNotice projectId="proj-1" view="invoices" /><InvoicesTab projectId="proj-1" />
+    </ProjectCommercialProvider>);
+    expect(rendered.container.textContent).toContain('Recorded payment schedule');
+    expect(rendered.container.textContent).toContain('Uncovered contract value');
+    expect(rendered.container.textContent).toContain('$800.00');
+    expect(rendered.container.textContent).toContain('Payments & credits');
+    expect(rendered.container.textContent).not.toContain('Invoice final payment');
+    expect(rendered.container.textContent).not.toContain('Record payment');
+    act(() => [...rendered.container.querySelectorAll('button')].find((node) => node.textContent === 'Review commercial actions')!.click());
+    expect(rendered.container.textContent).toContain('Record payment');
+    expect(JSON.stringify(activeSchedule)).toBe(before);
+    rendered.unmount();
+  });
   it('shows accurate job totals to ordinary staff without admin ledger controls', () => {
     const rendered = renderIntoDocument(<InvoicesTab projectId="proj-1" />);
     expect(rendered.container.textContent).toContain('Job payment schedule');

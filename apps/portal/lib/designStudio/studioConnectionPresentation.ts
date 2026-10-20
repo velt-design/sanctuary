@@ -1,3 +1,4 @@
+import { previewSupportDatum } from '@sp/configurator/geometry';
 import type { websiteComposition } from './websiteComposition';
 
 const studioConnectionMethods = { facade: 'Wall', fascia: 'Fascia', soffit: 'Soffit brackets' } as const;
@@ -16,10 +17,12 @@ export function studioConnectionPresentation(row: ReturnType<typeof websiteCompo
     };
   }
   const intent = row.value?.selection.roof.attachmentIntent;
+  let support: number | null = null;
+  if (!row.error && row.design) { try { support = previewSupportDatum(row.geometryOptions); } catch { /* Invalid references remain unavailable. */ } }
   return {
     state: intent === 'freestanding' ? 'Freestanding' : intent === 'unsure' ? 'Support undecided' : 'House connection planned',
     detail: 'No house edge is connected.',
-    height: row.value?.supportDatumMm && Number.isFinite(Number(row.value.supportDatumMm)) ? `Support underside: ${studioMillimetres(Number(row.value.supportDatumMm))}` : null,
+    height: support === null ? null : `Resolved support reference underside: ${studioMillimetres(support)}. This is not a post cut length.`,
     next: intent === 'freestanding' ? 'Independent placement. Use Connect to house to change the support.' : 'Choose a house edge and apply a connection. Visual alignment alone does not connect it.',
   };
 }

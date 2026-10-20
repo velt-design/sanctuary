@@ -138,7 +138,7 @@ test('serves a cached repeat without a request and keeps results during refresh'
     /^(fresh|refresh-failed)$/,
   );
   const root = page.locator('[data-global-portal-search="true"]:visible');
-  const input = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const input = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await expect(root).toBeVisible();
   await installRenderedResultTimer(page);
 
@@ -192,7 +192,7 @@ test('keeps uncached search under 400 ms and cached repeats near-instant', async
     /^(fresh|refresh-failed)$/,
   );
   const root = page.locator('[data-global-portal-search="true"]:visible');
-  const input = page.getByRole('combobox', { name: 'Search projects and contacts' });
+  const input = page.getByRole('combobox', { name: 'Jump to a project or contact' });
   await expect(root).toBeVisible();
   await expect(input).toBeVisible();
   await installRenderedResultTimer(page);

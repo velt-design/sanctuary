@@ -437,8 +437,8 @@ function ActiveGlobalPortalSearch({
           type="search"
           value={query}
           maxLength={PORTAL_SEARCH_MAX_LENGTH}
-          placeholder="Search projects and contacts…"
-          aria-label="Search projects and contacts"
+          placeholder="Jump to a project or contact…"
+          aria-label="Jump to a project or contact"
           aria-autocomplete="list"
           aria-controls={showPanel ? listboxId : undefined}
           aria-activedescendant={showPanel ? activeOptionId : undefined}
@@ -572,8 +572,8 @@ function StaticGlobalPortalSearch() {
         <input
           type="search"
           maxLength={PORTAL_SEARCH_MAX_LENGTH}
-          placeholder="Search projects and contacts…"
-          aria-label="Search projects and contacts"
+          placeholder="Jump to a project or contact…"
+          aria-label="Jump to a project or contact"
           aria-expanded="false"
           aria-haspopup="listbox"
           role="combobox"

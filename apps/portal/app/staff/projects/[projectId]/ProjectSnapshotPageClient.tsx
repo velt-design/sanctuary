@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import ProjectPageFrame from "@/components/projects/ProjectPage/ProjectPageFrame";
@@ -39,8 +40,8 @@ import {
 export default function ProjectSnapshotPageClient({
   projectId,
   tab,
-  estimateId,
-  calculatorWorkspace = false,
+  estimateId: initialEstimateId,
+  calculatorWorkspace: initialCalculatorWorkspace = false,
   debugExportEnabled,
 }: {
   projectId: string;
@@ -49,6 +50,13 @@ export default function ProjectSnapshotPageClient({
   calculatorWorkspace?: boolean;
   debugExportEnabled: boolean;
 }) {
+  // Native tab/history navigation updates the live query without a server render.
+  // Workspace chrome and debug identity must follow that query too.
+  const currentSearchParams = useSearchParams();
+  const currentTab = currentSearchParams.get('tab');
+  const estimateId = currentTab === null ? initialEstimateId : currentSearchParams.get('estimateId');
+  const calculatorWorkspace = currentTab === null ? initialCalculatorWorkspace : currentTab === 'estimates'
+    && Boolean(estimateId || currentSearchParams.get('fromEstimateId') || currentSearchParams.get('newDesign') === '1');
   const queryClient = useQueryClient();
   const [projectAccess, setProjectAccess] = useState<{
     projectId: string;
@@ -167,7 +175,7 @@ export default function ProjectSnapshotPageClient({
         noteCount: snapshot.notes.length,
       },
       clientState: {
-        activeTab: tab,
+        activeTab: currentTab ?? tab,
         queryHost: host,
       },
       diagnostics: {
@@ -177,6 +185,7 @@ export default function ProjectSnapshotPageClient({
       scenario: inferPortalScenarioFromLabel(snapshot.project.name),
     });
   }, [
+    currentTab,
     debugExportEnabled,
     estimateId,
     host,

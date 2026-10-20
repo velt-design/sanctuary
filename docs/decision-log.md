@@ -44,6 +44,35 @@ eval wrapper. Emit the installed, licensed module and matching worker as local
 assets and verify the actual production preview, including the invoice consumer.
 Valid downloadable PDF bytes alone do not establish an operational inline preview.
 
+## 2026-10-20: Accessible wording changes include browser and pending-shell contracts
+
+Renaming the global project jump and local list filter left older Playwright
+locators and the project loading-shell assertion behind. Scan all consumers of
+the previous accessible names, including performance journeys, when changing
+these controls. Keep their roles and names aligned with the actual rendered
+owners; preserve timing budgets, assertions and unrelated Contacts/Schedule
+search semantics. Passing component checks alone does not establish that the
+existing authenticated performance gate can still find its controls.
+
+The full fixture lane also distinguishes old order assertions from real layout
+regressions. Task-first work supersedes orientation-first ordering, but does not
+justify pushing useful correspondence below the first screen or inserting a tall
+contact band between work and commercial facts. Stable independent columns retain
+adjacency and message visibility without resize-driven reparenting or weakened
+geometry limits; their narrow reading and keyboard order must agree.
+
+## 2026-10-20: Calm navigation must preserve drafts and useful next actions
+
+Native history removes competing server transitions, but separate clean-history
+and dirty-click tests missed their intersection. Protect dirty Back/Forward
+before the router handles popstate; cancellation must restore the existing entry
+without rewriting destinations or appending sentinels. Test both directions,
+repeat cancellation, quote selection and leaving the project. Separately, moving
+the next-action card higher does not fix a missing action: use authoritative
+current-estimate pricing failure as a bounded server recovery candidate, retaining
+existing ranking and closed-state suppression. See
+`project-command-centre-architecture.md`.
+
 ## 2026-10-20: Current project status must not be historical pipeline progress
 
 A closed project retained its Scheduled pipeline stage correctly, but the shared

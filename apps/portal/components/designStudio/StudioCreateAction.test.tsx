@@ -1,4 +1,5 @@
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
+import { ProjectCommercialProvider } from '@/components/projects/ProjectPage/ProjectCommercialContext';
 import { makeWebsiteFacadeCommand } from '@/lib/designStudio/websiteFacadeCommandTestFixture';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
@@ -10,7 +11,8 @@ import { makeStudioWebsiteImportTestFixture } from '../../lib/designStudio/websi
 import { parseStudioWebsiteEnrichment } from '../../lib/designStudio/websiteEnrichment';
 import { parseStudioWebsiteGableEnrichment } from '../../lib/designStudio/websiteGableEnrichment';
 import { invalidateStudioLifecycle, prepareStudioSignOut } from '../../lib/designStudio/studioLifecycle';
-const mocks = vi.hoisted(() => ({ list: vi.fn(), send: vi.fn(), stage: vi.fn(), ack: vi.fn(), owner: vi.fn(), lock: vi.fn(), invalidate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ policyReady: true, list: vi.fn(), send: vi.fn(), stage: vi.fn(), ack: vi.fn(), owner: vi.fn(), lock: vi.fn(), invalidate: vi.fn() }));
+vi.mock('./StudioCommercialPolicy', () => ({ default: ({children}: {children: ReactNode}) => <ProjectCommercialProvider projectId="proj-one" ready={mocks.policyReady}>{children}</ProjectCommercialProvider> }));
 vi.mock('next/navigation', () => ({useRouter: () => ({refresh: vi.fn()})}));
 const queryClient = { invalidateQueries: mocks.invalidate };
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => queryClient }));
@@ -30,6 +32,7 @@ const flush = async () => { await act(async () => {}); };
 const button = (label: string) => [...document.querySelectorAll('button')].find(item => item.textContent === label)!;
 const click = async (label: string) => { await act(async () => { button(label).click(); }); };
 beforeEach(() => {
+  mocks.policyReady = true;
   invalidateStudioLifecycle();
   vi.resetAllMocks(); mocks.owner.mockReturnValue('actor'); mocks.list.mockResolvedValue({ state: 'available', entries: [] });
   mocks.send.mockResolvedValue({ state: 'confirmed', receipt, receiptStored: true });
@@ -39,6 +42,33 @@ beforeEach(() => {
 });
 afterEach(() => { mounted.splice(0).forEach(value => value.unmount()); });
 describe('studio creation action', () => {
+  it('retains confirmed discovery and Open while project commands are paused', async () => {
+    mocks.policyReady = false;
+    mocks.list.mockResolvedValue({ state: 'available', entries: [retained({ receipt })] });
+    mount(); await flush();
+    expect(document.querySelector('a')?.getAttribute('href')).toContain(receipt.estimateId);
+    expect(button('Start another revision').disabled).toBe(true);
+    await click('Start another revision');
+    expect(mocks.ack).not.toHaveBeenCalled(); expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it('retains a staged request if current project readiness changes before dispatch', async () => {
+    let resolve!: () => void;
+    mocks.stage.mockImplementationOnce(async (_scope, staged) => {
+      await new Promise<void>(done => { resolve = done; });
+      mocks.list.mockResolvedValue({ state: 'available', entries: [retained({ command: staged })] });
+      return { state: 'valid' };
+    });
+    const result = mount(); await flush(); await click('Create new revision');
+    mocks.policyReady = false;
+    result.rerender(<StudioCreateAction scope={scope} intent={intent} />);
+    await act(async () => resolve());
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(button('Retry creation').disabled).toBe(true);
+    mocks.policyReady = true; result.rerender(<StudioCreateAction scope={scope} intent={intent} />);
+    await click('Retry creation');
+    expect(mocks.send.mock.calls[0][1]).toEqual(mocks.stage.mock.calls[0][1]);
+  });
+
   it('captures the facade host and shows its retained connection details', async () => {
     const command=makeWebsiteFacadeCommand();
     const {schemaVersion: _version,requestId: _request,...facadeIntent}=command;

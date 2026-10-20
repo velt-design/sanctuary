@@ -44,3 +44,17 @@ it('never presents commercial intent or alignment as an applied house connection
   expect(studioConnectionPresentation(attached)).toMatchObject({state:'Connected to house',detail:'Soffit brackets · House · rear roof edge'});
   expect(studioConnectionPresentation(attached).height).toContain('Resolved support underside');
 });
+
+it('shows the resolved freestanding reference for omitted and explicit heights, never an invalid reference', () => {
+  const edit=fixture(), value=structuredClone(websiteComposition(edit)[0].value!);
+  value.selection.roof.attachmentIntent='freestanding';
+  const defaultRow=websiteComposition(changeStudioProduct(edit,value))[0];
+  expect(defaultRow.value!.supportDatumMm).toBeUndefined();
+  expect(studioConnectionPresentation(defaultRow).height).toBe('Resolved support reference underside: 2,400 mm. This is not a post cut length.');
+  value.supportDatumMm='2875';
+  expect(studioConnectionPresentation(websiteComposition(changeStudioProduct(edit,value))[0]).height).toContain('2,875 mm');
+  value.supportDatumMm='not a height';
+  const invalid=websiteComposition(changeStudioProduct(edit,value))[0];
+  expect(invalid.error).toBeTruthy();expect(invalid.value!.supportDatumMm).toBe('not a height');
+  expect(studioConnectionPresentation(invalid).height).toBeNull();
+});

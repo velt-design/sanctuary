@@ -11,6 +11,7 @@ import ProjectPageShell from "./ProjectPageShell";
 import styles from "./ProjectPage.module.css";
 import { currentProjectWork } from "@/lib/projects/projectCurrentStatus";
 import { useOptionalProjectOverviewReads } from "./ProjectOverviewReads";
+import { ProjectCommercialProvider } from './ProjectCommercialContext';
 
 export default function ProjectPageFrame({
   snapshot,
@@ -83,6 +84,7 @@ export default function ProjectPageFrame({
       ) : null}
 
       <div className={styles.pageFrameBody}>
+        <ProjectCommercialProvider projectId={snapshot.project.id} work={projectWork} ready={snapshotState === 'fresh' && snapshotContentReady && (snapshot.workModel === 'legacy' || Boolean(projectWork))}>
         <ProjectPageShell
           snapshot={snapshot}
           host={host}
@@ -93,6 +95,7 @@ export default function ProjectPageFrame({
           optimisticTab={optimisticTab}
           onProjectAccessEnding={onProjectAccessEnding}
         />
+        </ProjectCommercialProvider>
       </div>
     </div>
   );

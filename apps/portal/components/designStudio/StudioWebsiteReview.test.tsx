@@ -1,9 +1,12 @@
-import {act} from 'react';
+import {act,type ReactNode} from 'react';
+import {CommercialProjectNotice,ProjectCommercialProvider} from '@/components/projects/ProjectPage/ProjectCommercialContext';
+import type {ProjectWorkProjection} from '@/lib/projects/workItems/types';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {renderIntoDocument} from '../../../../test/reactHarness';
 import {createStudioAuthoringEdit,type StudioAuthoringView} from '@/lib/designStudio/authoringView';
 import StudioWebsiteReview from './StudioWebsiteReview';
-const mocks=vi.hoisted(()=>({api:vi.fn(),push:vi.fn(),session:vi.fn(),invalidate:vi.fn(),price:{status:'priced',amount:100,versionNumber:15} as any}));
+const mocks=vi.hoisted(()=>({policyReady:true,policyState:'ACTIVE',policyVersion:1,api:vi.fn(),push:vi.fn(),session:vi.fn(),invalidate:vi.fn(),price:{status:'priced',amount:100,versionNumber:15} as any}));
+vi.mock('./StudioCommercialPolicy',()=>({default:({children,projectId}: {children:ReactNode;projectId:string})=><ProjectCommercialProvider projectId={projectId} ready={mocks.policyReady} work={{effectiveState:mocks.policyState,stateRowVersion:mocks.policyVersion} as ProjectWorkProjection}><CommercialProjectNotice projectId={projectId} view="studio"/>{children}</ProjectCommercialProvider>}));
 vi.mock('next/navigation',()=>({useRouter:()=>({push:mocks.push})}));
 vi.mock('next/dynamic',()=>({default:(load:()=>unknown)=>String(load).includes('StudioDesignSpecification')?()=> <section aria-label="Selected design specification">Selected design</section>:({onCapture,disabled}:any)=><button disabled={disabled} onClick={()=>onCapture([{kind:'perspective',dataUrl:'data:image/png;base64,AA=='},{kind:'plan',dataUrl:'data:image/png;base64,AA=='}])}>Capture test views</button>}));
 vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({})}));
@@ -19,7 +22,7 @@ const binding={snapshotId:'10000000-0000-4000-8000-000000000005',contentHash:'a'
 const authoring={state:'ready',view,estimate:{updatedAt:'2026-10-20T00:00:00Z',requiresNewRevision:false},nextAction:'edit',preparedQuote:binding};
 const review={estimate:{projectId:'proj-proof',id:'est-proof',versionLabel:'V1'}};
 const mounts:ReturnType<typeof renderIntoDocument>[]=[];
-beforeEach(()=>{vi.resetAllMocks();mocks.price={status:'priced',amount:100,versionNumber:15};mocks.session.mockReturnValue({edit:createStudioAuthoringEdit(view),status:'ready',localDurable:true,session:{dirty:false,pending:null},canSave:false,canEdit:true});mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring}:{quoteVersion:{id:'quote-result'}});});
+beforeEach(()=>{vi.resetAllMocks();mocks.policyReady=true;mocks.policyState='ACTIVE';mocks.policyVersion=1;mocks.price={status:'priced',amount:100,versionNumber:15};mocks.session.mockReturnValue({edit:createStudioAuthoringEdit(view),status:'ready',localDurable:true,session:{dirty:false,pending:null},canSave:false,canEdit:true});mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring}:{quoteVersion:{id:'quote-result'}});});
 afterEach(()=>mounts.splice(0).forEach(m=>m.unmount()));
 async function mount(){const m=renderIntoDocument(<StudioWebsiteReview review={review as any} actorId="actor"/>);mounts.push(m);await act(async()=>{});return m;}
 async function resume(container:HTMLElement){const button=[...container.querySelectorAll('button')].find(b=>b.textContent==='Resume prepared quote')!;expect(button.disabled).toBe(false);await act(async()=>button.click());}
@@ -88,4 +91,45 @@ it('places the live views and selected specification before commercial fields wi
 it('shows a current pricing refusal and withholds stale inherited assumptions and capture',async()=>{
  mocks.price={status:'unavailable',amount:null,reason:'The selected house edge is too short.',siteAssumptions:{access:'Old value'}};
  const m=await mount();expect(m.container.textContent).toContain('Price unavailable');expect(m.container.textContent).toContain('The selected house edge is too short.');expect(m.container.textContent).not.toContain('Old value');expect([...m.container.querySelectorAll('button')].find(b=>b.textContent==='Capture test views')?.disabled).toBe(true);
+});
+it.each(['WAITING','CLOSED'])('keeps read and capture available but pauses %s quote preparation until acknowledgement',async state=>{
+ mocks.policyState=state;mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring:{...authoring,preparedQuote:undefined}}:url.endsWith('/studio-quote')?binding:{quoteVersion:{id:'quote-result'}});
+ const m=await mount();const button=(label:string)=>[...m.container.querySelectorAll('button')].find(b=>b.textContent===label)!;
+ expect(button('Capture test views').disabled).toBe(false);
+ await act(async()=>button('Capture test views').click());expect(button('Create quote from this design').disabled).toBe(true);
+ expect(m.container.querySelector('a[href$="/edit"]')).toBeTruthy();
+ await act(async()=>button('Review commercial actions').click());
+ expect(button('Create quote from this design').disabled).toBe(false);
+ await act(async()=>button('Create quote from this design').click());
+ expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/studio-quote'))).toHaveLength(1);
+ expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/quotes'))).toHaveLength(1);
+});
+it('retains the prepared identity when project state changes during preparation and resumes only after current acknowledgement',async()=>{
+ let finish!: (value:typeof binding)=>void;
+ mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring:{...authoring,preparedQuote:undefined}}:url.endsWith('/studio-quote')?new Promise(resolve=>{finish=resolve;}):{quoteVersion:{id:'quote-result'}});
+ const m=await mount(),button=(label:string)=>[...m.container.querySelectorAll('button')].find(b=>b.textContent===label)!;
+ await act(async()=>button('Capture test views').click());await act(async()=>button('Create quote from this design').click());
+ mocks.policyState='WAITING';m.rerender(<StudioWebsiteReview review={review as any} actorId="actor"/>);
+ await act(async()=>finish(binding));
+ expect(button('Resume prepared quote').disabled).toBe(true);
+ expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/quotes'))).toHaveLength(0);
+ await act(async()=>button('Review commercial actions').click());
+ mocks.policyVersion=2;m.rerender(<StudioWebsiteReview review={review as any} actorId="actor"/>);
+ expect(button('Resume prepared quote').disabled).toBe(true);
+ await act(async()=>button('Review commercial actions').click());await resume(m.container);
+ expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/studio-quote'))).toHaveLength(1);
+ expect(JSON.parse(mocks.api.mock.calls.find(([url])=>url.endsWith('/quotes'))![1].body).clientIntentId).toBe(`studio:${binding.snapshotId}`);
+});
+it('withholds resume while the project is unavailable, and does not dispatch an old identity after navigation',async()=>{
+ mocks.policyReady=false;const m=await mount();
+ expect([...m.container.querySelectorAll('button')].find(b=>b.textContent==='Resume prepared quote')!.disabled).toBe(true);
+ mocks.policyReady=true;m.rerender(<StudioWebsiteReview review={review as any} actorId="actor"/>);
+ let finish!: (value:typeof binding)=>void;
+ mocks.api.mockImplementation(async(url:string)=>url.endsWith('/studio')?{authoring:{...authoring,preparedQuote:undefined}}:new Promise(resolve=>{finish=resolve;}));
+ await act(async()=>[...m.container.querySelectorAll('button')].find(b=>b.textContent==='Prepare updated quote views')!.click());
+ await act(async()=>[...m.container.querySelectorAll('button')].find(b=>b.textContent==='Capture test views')!.click());
+ await act(async()=>[...m.container.querySelectorAll('button')].find(b=>b.textContent==='Create quote from this design')!.click());
+ m.rerender(<StudioWebsiteReview review={{estimate:{...review.estimate,id:'est-other'}} as any} actorId="another-actor"/>);
+ await act(async()=>finish(binding));
+ expect(mocks.api.mock.calls.filter(([url])=>url.endsWith('/quotes'))).toHaveLength(0);expect(mocks.push).not.toHaveBeenCalled();
 });

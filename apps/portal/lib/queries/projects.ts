@@ -60,9 +60,9 @@ export const projectPageSummaryQueryOptions = (host: string, projectId: string) 
     gcTime: ONE_DAY,
   });
 
-export const projectCommandCentreQueryOptions = (host: string, projectId: string) =>
+export const projectCommandCentreQueryOptions = (host: string, projectId: string, actorId?: string) =>
   queryOptions({
-    queryKey: qk.projects.commandCentre(host, projectId),
+    queryKey: actorId ? [...qk.projects.commandCentre(host, projectId), 'studio-commercial', actorId] as const : qk.projects.commandCentre(host, projectId),
     queryFn: () => fetchProjectCommandCentre(projectId),
     staleTime: 0,
     gcTime: ONE_DAY,

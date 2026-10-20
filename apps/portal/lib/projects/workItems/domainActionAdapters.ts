@@ -20,6 +20,10 @@ type ProjectWorkCommercialActionContext = {
     deliveryState: CommandCentreDeliveryState;
   } | null;
   links: ProjectCommandCentreCurrentDesign['links'];
+  // The detailed Command Centre owns these facts. Lightweight queue reads must
+  // not infer a pricing failure from their intentionally absent price detail.
+  price?: ProjectCommandCentreCurrentDesign['price'];
+  warnings?: ProjectCommandCentreCurrentDesign['warnings'];
 };
 
 export type ProjectWorkDomainActionContext = {
@@ -100,6 +104,26 @@ export function projectWorkDomainActions(
         reason: 'The authoritative quote delivery record is failed.',
         href: currentDesign.links.quote ?? currentDesign.links.quotes,
         actionLabel: 'Review quote delivery',
+      },
+      specialistAction: null,
+    };
+  }
+
+  if (currentDesign.source === 'estimate'
+    && currentDesign.estimate
+    && !currentDesign.quote
+    && currentDesign.designState === 'available'
+    && currentDesign.price?.source === 'estimate'
+    && currentDesign.price.totalIncGstCents === null
+    && currentDesign.warnings?.includes('estimate_price_unavailable')) {
+    return {
+      recoveryAction: {
+        kind: 'recovery',
+        key: `estimate-pricing:${currentDesign.estimate.id}`,
+        title: 'Resolve estimate pricing',
+        reason: 'The current estimate cannot produce a complete customer price. Review its pricing issues before preparing a quote.',
+        href: currentDesign.links.estimate ?? currentDesign.links.designs,
+        actionLabel: 'Review estimate pricing',
       },
       specialistAction: null,
     };

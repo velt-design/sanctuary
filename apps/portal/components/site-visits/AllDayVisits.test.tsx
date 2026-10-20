@@ -13,6 +13,13 @@ const text=(html:string)=>{const node=document.createElement('div');node.innerHT
 beforeEach(()=>{vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-20T00:00:00Z'));h.read.mockReturnValue({data:{enabled:false,lastSuccess:'2026-10-20T00:00:00Z',events:[allDay]},denied:false,isError:false});});
 afterEach(()=>vi.useRealTimers());
 describe('All-day visit presentation',()=>{
+ it('makes actual unanswered questions visible in review without making provenance the primary message',()=>{
+   const html=renderToStaticMarkup(<VisitAgendaRow visit={{...timed,reviewReasons:['Confirm the replacement date','Confirm the site address']}} questionFirst/>);
+   expect(text(html)).toContain('Answer neededConfirm the replacement dateConfirm the site address');
+   expect(text(html)).toContain('Resolve questions');
+   expect(html).not.toContain('<summary>Details to check');
+   expect(text(html).indexOf('Confirm the replacement date')).toBeLessThan(text(html).indexOf('Invited in Outlook'));
+ });
  it('renders All day and the inclusive date range in agenda and project, with staff/provisional context on the dashboard',()=>{
    const row=text(renderToStaticMarkup(<VisitAgendaRow visit={allDay}/>));
    const project=text(renderToStaticMarkup(<ProjectNextVisit projectId="project" host="test"/>));

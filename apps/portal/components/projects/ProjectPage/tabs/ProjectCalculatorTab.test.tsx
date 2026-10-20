@@ -2,6 +2,8 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import ProjectCalculatorTab from './ProjectCalculatorTab';
+import {CommercialProjectNotice,ProjectCommercialProvider} from '../ProjectCommercialContext';
+import type {ProjectWorkProjection} from '@/lib/projects/workItems/types';
 import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, ensureLocalFirstStoreReady, registerLocalFirstIdAlias, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 import { buildEstimateEntityKey } from '@/lib/localFirst/portalEntities';
 
@@ -335,6 +337,24 @@ describe('ProjectCalculatorTab', () => {
     expect(replace).toHaveBeenCalledWith(href);
     expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
     expect(rendered.container.querySelector('[data-calculator-locked-source]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it('keeps Studio open navigation available on a closed project while duplicate requires current acknowledgement', () => {
+    useQueryMock.mockImplementation(options => ({ data: options.queryKey?.[0] === 'quote-links' ? [] : [{ ...historical, designKind: 'studio' }], isPending: false, isError: false }));
+    const rendered = renderIntoDocument(<ProjectCommercialProvider projectId="proj_1" ready work={{effectiveState:'CLOSED',stateRowVersion:1} as ProjectWorkProjection}><CommercialProjectNotice projectId="proj_1" view="estimates"/><ProjectCalculatorTab host="host" projectId="proj_1" /></ProjectCommercialProvider>);
+    const actions=()=>act(()=>rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Actions for Estimate V1"]')!.click());
+    actions();
+    const duplicate=()=>Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(button=>button.textContent==='Duplicate in Studio')!;
+    expect(duplicate().disabled).toBe(true);
+    act(()=>duplicate().click());expect(push).not.toHaveBeenCalled();
+    act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+    const open=[...rendered.container.querySelectorAll('button')].find(b=>b.textContent==='Open in Studio')!;
+    expect(open.disabled).toBe(false);act(()=>open.click());
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');push.mockClear();
+    act(()=>[...rendered.container.querySelectorAll('button')].find(b=>b.textContent==='Review commercial actions')!.click());
+    actions();expect(duplicate().disabled).toBe(false);
+    act(()=>duplicate().click());expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit?intent=duplicate');
     rendered.unmount();
   });
 

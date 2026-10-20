@@ -11,6 +11,8 @@ import { registerStudioLifecycle, type StudioLifecycleRegistration } from '@/lib
 import styles from './SavedStudioReview.module.css';
 import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { useProjectCommercialContext } from '@/components/projects/ProjectPage/ProjectCommercialContext';
+import StudioCommercialPolicy from './StudioCommercialPolicy';
 
 type CreationIntent<Command> = Command extends StudioCreateCommand ? Omit<Command, 'schemaVersion' | 'requestId'> : never;
 export type StudioCreateIntent = CreationIntent<StudioCreateCommand> | { mode: 'recover'; sourceEstimateId: string; internalName?: never };
@@ -19,6 +21,13 @@ type View = { identity: string; state: 'loading' | 'ready' | 'sending' | 'retry'
 const matches = (command: StudioCreateCommand, intent: StudioCreateIntent) => command.mode === 'blank' ? intent.mode === 'blank' && command.scope === intent.scope : intent.mode !== 'blank' && command.sourceEstimateId === intent.sourceEstimateId;
 
 export default function StudioCreateAction({ scope, intent }: { scope: StudioCreateScope; intent: StudioCreateIntent }) {
+  return <StudioCommercialPolicy actorId={scope.actorId} projectId={scope.projectId}><StudioCreationCommand scope={scope} intent={intent} /></StudioCommercialPolicy>;
+}
+
+function StudioCreationCommand({ scope, intent }: { scope: StudioCreateScope; intent: StudioCreateIntent }) {
+  const commercial = useProjectCommercialContext();
+  const actionsAvailable = useRef(commercial.actionsAvailable);
+  actionsAvailable.current = commercial.actionsAvailable;
   const router=useRouter(),refreshed=useRef<string|null>(null);
   const queryClient = useQueryClient();
   const identity = JSON.stringify({ scope, intent });
@@ -55,7 +64,7 @@ export default function StudioCreateAction({ scope, intent }: { scope: StudioCre
 
   async function run() {
     const current = lifecycle.current;
-    if (!current.live || !current.participant?.allowed() || current.identity !== identity || current.busy || getLocalFirstStoreOwner() !== scope.actorId || !['ready', 'retry'].includes(view.state) || (intent.mode === 'recover' && view.state !== 'retry')) return;
+    if (!actionsAvailable.current || !current.live || !current.participant?.allowed() || current.identity !== identity || current.busy || getLocalFirstStoreOwner() !== scope.actorId || !['ready', 'retry'].includes(view.state) || (intent.mode === 'recover' && view.state !== 'retry')) return;
     const boundScope = structuredClone(scope), boundIntent = structuredClone(intent);
     const valid = () => current.live && lifecycle.current === current && Boolean(current.participant?.allowed()) && getLocalFirstStoreOwner() === boundScope.actorId;
     current.busy = true; setView(previous => ({ ...previous, state: 'sending' }));
@@ -68,6 +77,7 @@ export default function StudioCreateAction({ scope, intent }: { scope: StudioCre
         // second request for the same intent after an initially empty discovery.
         const found = await discover(boundScope, boundIntent);
         if (!valid()) return;
+        if (!actionsAvailable.current) { setView({ identity, ...found }); return; }
         if (found.state !== 'ready' && found.state !== 'retry') { setView({ identity, ...found }); return; }
         if (found.state === 'retry' && (view.state !== 'retry' || view.command?.requestId !== found.command?.requestId)) { setView({ identity, ...found }); return; }
         if (found.state === 'ready' && view.state === 'retry') { setView({ identity, state: 'blocked', message: 'The retained request changed. Reload to reconcile it before creating anything else.' }); return; }
@@ -92,6 +102,10 @@ export default function StudioCreateAction({ scope, intent }: { scope: StudioCre
           if (current.live && current.participant?.valid()) setView({ identity, state: 'retry', command, message: 'The request is retained. Retry explicitly to check its result.' });
           return;
         }
+        if (!actionsAvailable.current) {
+          setView({ identity, state: 'retry', command, message: 'The request is retained. Review the current project state before retrying.' });
+          return;
+        }
         const result = await sendStudioCreation(boundScope, command);
         if (!valid()) return;
         if (result.state === 'confirmed') setView({ identity, state: 'confirmed', command, receipt: result.receipt, body: result.body, receiptStored: result.receiptStored,
@@ -107,7 +121,7 @@ export default function StudioCreateAction({ scope, intent }: { scope: StudioCre
   }
   async function startAnother() {
     const current = lifecycle.current;
-    if (intent.mode === 'recover' || !current.live || !current.participant?.allowed() || current.identity !== identity || current.busy || view.state !== 'confirmed' || !view.receiptStored || !view.command || !view.receipt || !view.body || getLocalFirstStoreOwner() !== scope.actorId) return;
+    if (!actionsAvailable.current || intent.mode === 'recover' || !current.live || !current.participant?.allowed() || current.identity !== identity || current.busy || view.state !== 'confirmed' || !view.receiptStored || !view.command || !view.receipt || !view.body || getLocalFirstStoreOwner() !== scope.actorId) return;
     const confirmation = { command: structuredClone(view.command), receipt: structuredClone(view.receipt), body: view.body };
     const boundScope = structuredClone(scope), boundIntent = structuredClone(intent);
     const valid = () => current.live && lifecycle.current === current && Boolean(current.participant?.allowed()) && getLocalFirstStoreOwner() === boundScope.actorId;
@@ -116,7 +130,7 @@ export default function StudioCreateAction({ scope, intent }: { scope: StudioCre
       if (!navigator.locks?.request) throw Error();
       const intentKey = boundIntent.mode === 'blank' ? `blank:${boundIntent.scope}` : `clone:${boundIntent.sourceEstimateId}`;
       await navigator.locks.request(`sanctuary-studio-create:${boundScope.actorId}:${boundScope.projectId}:${intentKey}`, async () => {
-        if (!valid()) return;
+        if (!valid() || !actionsAvailable.current) return;
         const acknowledged = await acknowledgeStudioCreation(boundScope, confirmation.command, { body: confirmation.body, receipt: confirmation.receipt });
         if (!valid()) return;
         if (!acknowledged) throw Error();
@@ -176,7 +190,7 @@ export default function StudioCreateAction({ scope, intent }: { scope: StudioCre
     {current.message && <p role={current.state === 'blocked' ? 'alert' : 'status'}>{current.message}</p>}
     {current.state === 'loading' ? <p role="status">Checking retained requests…</p>
       : current.state === 'confirmed' && current.receipt ? <><Link className={styles.actionLink} href={`/staff/design-studio/${encodeURIComponent(scope.projectId)}/${encodeURIComponent(current.receipt.estimateId)}/edit`}>Open design</Link>
-        {current.receiptStored && intent.mode !== 'recover' && <button type="button" disabled={!lifecycleAllowed} style={{ display: 'block', marginTop: 16 }} onClick={() => { void startAnother(); }}>{intent.mode === 'blank' ? 'Create another design' : 'Start another revision'}</button>}</>
-        : current.state !== 'blocked' && <button className={styles.actionLink} type="button" disabled={!lifecycleAllowed || current.state === 'sending'} onClick={() => { void run(); }}>{current.state === 'sending' ? 'Creating…' : current.state === 'retry' ? 'Retry creation' : intent.mode === 'import' || intent.mode === 'website' ? 'Import as new design' : intent.mode === 'clone' ? 'Create new revision' : 'Create design'}</button>}
+        {current.receiptStored && intent.mode !== 'recover' && <button type="button" disabled={!lifecycleAllowed || !commercial.actionsAvailable} style={{ display: 'block', marginTop: 16 }} onClick={() => { void startAnother(); }}>{intent.mode === 'blank' ? 'Create another design' : 'Start another revision'}</button>}</>
+        : current.state !== 'blocked' && <button className={styles.actionLink} type="button" disabled={!lifecycleAllowed || !commercial.actionsAvailable || current.state === 'sending'} onClick={() => { void run(); }}>{current.state === 'sending' ? 'Creating…' : current.state === 'retry' ? 'Retry creation' : intent.mode === 'import' || intent.mode === 'website' ? 'Import as new design' : intent.mode === 'clone' ? 'Create new revision' : 'Create design'}</button>}
   </div>;
 }
