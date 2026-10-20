@@ -53,6 +53,20 @@ eval wrapper. Emit the installed, licensed module and matching worker as local
 assets and verify the actual production preview, including the invoice consumer.
 Valid downloadable PDF bytes alone do not establish an operational inline preview.
 
+## 2026-10-21: Measure identity and navigation handoffs before adding speed work
+
+An authenticated synthetic estimate-to-quote journey saved a valid quote, then
+requested its provisional browser ID from the server. Quote selection must use
+the resolved ID for its query and leave provisional details cache-only, including
+the gap between cache replacement and alias persistence. Regression coverage uses
+the real query client/store and keeps pending, late-success and retry cases.
+
+The agenda also mixed a server Link scope transition with native-history filter
+updates. One URL owner now handles both so the last action wins. Warm commercial
+switching and filtered list return already passed the measured baseline and were
+preserved. File size or duplicate requests alone are not permission to weaken
+authenticated read checks or expand the work into a broad refactor.
+
 ## 2026-10-20: Accessible wording changes include browser and pending-shell contracts
 
 Renaming the global project jump and local list filter left older Playwright

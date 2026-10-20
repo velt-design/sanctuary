@@ -2,8 +2,18 @@
 
 Schedule V2 owns install planning. The Outlook site-visit agenda is a separate
 source-backed workflow at `/staff/site-visits`, available under Schedule navigation.
-Its implementation is a candidate until the environment and source qualification
-steps below are complete. The older Portal booking editor remains a compatibility
+
+The 21 October local/preview navigation candidate makes agenda scope and filters
+share `siteVisitNavigation.ts`. Plain "Show all visits"
+navigation clears only project scope through native history, preserving the
+selected view/search/person and avoiding a late server transition that can
+overwrite a newer click. Back restores the scoped URL; modified clicks retain
+normal link behavior. `navRouteMatch.ts` keeps Schedule active in both sidebar
+sizes, with Site Visits selected only on the agenda route.
+The Outlook integration and reviewed corrections were qualified and released on
+20 October, including the 15-minute source update. The qualification steps below
+remain the activation/recovery contract, not unfinished initial setup.
+The older Portal booking editor remains a compatibility
 surface; imported Outlook visits never enter its booking/confirmation commands.
 
 ## Outlook site visits (20 October 2026)

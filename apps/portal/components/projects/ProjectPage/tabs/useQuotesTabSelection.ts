@@ -77,8 +77,10 @@ export function useQuotesTabSelection({
     generatedJobPacksByProjectQueryOptions(hostKey, projectId),
   );
   const quoteDetailQuery = useQuery({
-    ...quoteVersionDetailQueryOptions(hostKey, selectedId || ""),
-    enabled: Boolean(selectedId),
+    ...quoteVersionDetailQueryOptions(hostKey, resolvedSelectedId || ""),
+    // Provisional details belong to the optimistic cache. Removing that cache
+    // during promotion must never start a server read with a browser-only ID.
+    enabled: Boolean(resolvedSelectedId && !isLocalQuoteId(resolvedSelectedId)),
   });
 
   const quotes = quotesQuery.data ?? [];
@@ -115,6 +117,7 @@ export function useQuotesTabSelection({
 
   const prefetchQuoteDetail = useCallback(
     (quoteVersionId: string) => {
+      if (isLocalQuoteId(quoteVersionId)) return;
       const token = `${hostKey}:${quoteVersionId}`;
       if (prefetchedQuoteDetailsRef.current.has(token)) return;
       prefetchedQuoteDetailsRef.current.add(token);

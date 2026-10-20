@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { acrylicVsLouvreConfig } from '../../app/acrylic-pergolas-vs-louvre-roofs/content';
 
 import { gablePergolasConfig } from '../../app/gable-pergolas-auckland/content';
-import { outdoorRoomsConfig } from '../../app/outdoor-rooms-auckland/content';
 import { pergolasWithBlindsConfig } from '../../app/pergolas-with-blinds/content';
 import { pitchedPergolasConfig } from '../../app/pitched-pergolas-auckland/content';
 import type { SeoLandingBlock } from './types';
@@ -46,36 +45,34 @@ describe('orderSeoLandingBlocks', () => {
 describe('guided project evidence', () => {
   it('prioritizes matching governed projects without changing the authored set', () => {
     const prioritized = prioritizeSeoLandingProjectEvidence(
-      outdoorRoomsConfig.blocks,
+      gablePergolasConfig.blocks,
       ['riverhead-gable-pavilion', 'warkworth-outdoor-room'],
     );
     const projects = prioritized.find(
-      ({ id }) => id === 'outdoor-room-projects',
+      ({ id }) => id === 'gable-projects',
     );
     expect(projects?.kind).toBe('projects');
     if (projects?.kind !== 'projects') return;
     expect(projects.items.map(({ slug }) => slug)).toEqual([
       'riverhead-gable-pavilion',
       'warkworth-outdoor-room',
-      'tindalls-bay-pavilion',
+      'dairy-flat-estate',
     ]);
-    expect(outdoorRoomsConfig.blocks.find(
-      ({ id }) => id === 'outdoor-room-projects',
+    expect(gablePergolasConfig.blocks.find(
+      ({ id }) => id === 'gable-projects',
     )).not.toBe(projects);
   });
 
   it('uses the first available preference for a guide first layer', () => {
     expect(prioritizeSeoLandingGuideFirstLayer(
-      outdoorRoomsConfig.blocks,
-      outdoorRoomsConfig.guideFirstLayer,
+      gablePergolasConfig.blocks,
+      gablePergolasConfig.guideFirstLayer,
       ['unknown', 'riverhead-gable-pavilion'],
     ).projectSlug).toBe('riverhead-gable-pavilion');
   });
 });
 
 const guideConfigs = [
-  outdoorRoomsConfig,
-
   gablePergolasConfig,
   pitchedPergolasConfig,
   pergolasWithBlindsConfig,
@@ -134,21 +131,21 @@ describe('buildGuideFirstLayer', () => {
   );
 
   it('fails safely when answer, project block or project metadata is unknown', () => {
-    const config = outdoorRoomsConfig.guideFirstLayer;
+    const config = gablePergolasConfig.guideFirstLayer;
     expect(() =>
-      buildGuideFirstLayer(outdoorRoomsConfig.blocks, {
+      buildGuideFirstLayer(gablePergolasConfig.blocks, {
         ...config,
         answerBlockId: 'unknown',
       }),
     ).toThrow('must be a split-intro block');
     expect(() =>
-      buildGuideFirstLayer(outdoorRoomsConfig.blocks, {
+      buildGuideFirstLayer(gablePergolasConfig.blocks, {
         ...config,
         projectBlockId: 'unknown',
       }),
     ).toThrow('must be a projects block');
     expect(() =>
-      buildGuideFirstLayer(outdoorRoomsConfig.blocks, {
+      buildGuideFirstLayer(gablePergolasConfig.blocks, {
         ...config,
         projectSlug: 'unknown',
       }),

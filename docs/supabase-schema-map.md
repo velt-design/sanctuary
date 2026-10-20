@@ -7,6 +7,19 @@ The ordered `20261020080001` through `20261020080004` migrations install authore
 Authenticated APIs first verify caller-visible project/estimate state. Privileged create/save/prepare/commit calls are server-only guarded commands, not browser table writes. The snapshot wrapper delegates to existing commercial RPCs, preserves their row-lock order and revision/payment contracts, then validates and binds before commit. The private snapshot contains exact authored/spatial/publication/cost evidence. The service-only view RPC returns only immutable customer selections and image bytes. Generic quote edits cannot discard or change a bound identity, project or commercial scope. See [Staff Design Studio](staff-design-studio-prototype.md) for current verification and installation limits.
 
 
+## Outdoor Rooms residential discussion contract (21 October 2026)
+
+Forward migration 20261021000001_marketing_outdoor_room_optional_phone.sql
+adds exactly `/outdoor-rooms-auckland` to `marketing_enquiry_intake(uuid,text,jsonb)`
+blank-phone eligibility. Residential audience, nonempty email/suburb and explicit
+`project-discussion` remain required. Function signature, security definer, empty
+search path, service-only grants, configured exception, contact matching, upload
+binding, replay and atomic writes remain unchanged. The shared application
+contact policy validates any supplied phone independently of SEO/channel identity.
+Disposable native/API/SQL tests rehearse this exact function. Shared-environment
+reconciliation and installation are separate operational checks, required before
+enabling this contract; fixture results alone do not establish rollout.
+
 ## Custom residential discussion contract (20 October 2026)
 
 Forward migration 20261020030001_marketing_custom_optional_phone.sql
