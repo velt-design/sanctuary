@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { LANDING_PRICE_CELLS, landingPriceIndex } from '../apps/marketing/lib/landingPriceTable';
-const routes = ['/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'];
+const routes = ['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'];
 test.beforeEach(async ({ page, baseURL }) => {
   await page.route('**/*', r => new URL(r.request().url()).origin === new URL(baseURL!).origin ? r.continue() : r.abort());
   await page.route('**/api/*price*', r => r.fulfill({ json: { status: 'unavailable' } }));
@@ -21,9 +21,9 @@ for (const route of routes) for (const width of [390, 1440]) test(`${route}: dir
   await page.goto(route);
   const essential = page.getByRole('button', { name: 'Essential only', exact: true });
   await essential.click();
-  await expect(page.locator('header.site')).toHaveCount(0);
-  await expect(page.locator('[data-site-footer]')).toHaveCount(0);
-  await expect(page.locator('h1')).toHaveText(route.endsWith('outdoor-living') ? 'Make roomfor life outside.' : route.startsWith('/ads/') ? 'Cover the spacewithout losing light.' : 'Keep the light.Make room outside.');
+  await expect(page.locator('header.site')).toHaveCount(route === '/acrylic-roof-pergolas-auckland' ? 1 : 0);
+  await expect(page.locator('[data-site-footer]')).toHaveCount(route === '/acrylic-roof-pergolas-auckland' ? 1 : 0);
+  await expect(page.locator('h1')).toHaveText(route === '/ads/outdoor-living' ? 'Custom pergolas,designed for yourAuckland home.' : route.endsWith('outdoor-living') ? 'Make roomfor life outside.' : route === '/ads/acrylic-pergolas' ? 'Cover the spacewithout losing light.' : 'Keep the light.Make room outside.');
   expect(await page.locator('html').evaluate(el => el.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await expect(page.getByRole('radio', { name: 'Acrylic', exact: true })).toBeEnabled();
   const form = page.locator('form[data-clarity-mask]');
@@ -46,7 +46,7 @@ for (const route of routes) for (const width of [390, 1440]) test(`${route}: dir
   await page.getByRole('radio', { name: 'Acrylic', exact: true }).check();
   await page.getByRole('textbox', { name: 'Width in metres' }).fill('5.4');
   await page.getByRole('textbox', { name: 'Width in metres' }).press('Tab');
-  if (route.startsWith('/ads/')) { await page.getByText('Blinds, screens, lighting and more', { exact: false }).click(); await page.getByRole('link', { name: 'Open the full designer' }).click(); }
+  if (['/ads/outdoor-living', '/ads/acrylic-pergolas'].includes(route)) { await page.getByText('Blinds, screens, lighting and more', { exact: false }).click(); await page.getByRole('link', { name: 'Open the full designer' }).click(); }
   else await page.getByRole('link', { name: 'Explore your design in 3D' }).click();
   const dialog = page.getByRole('dialog', { name: 'Design your pergola' });
   await expect(dialog).toBeVisible();
@@ -205,8 +205,8 @@ for (const route of ['/auckland-outdoor-living', '/acrylic-roof-pergolas-aucklan
   await page.goto(route);
   await page.getByRole('button', { name: 'Essential only', exact: true }).click();
   await expect(page.getByRole('radio', { name: 'Acrylic', exact: true })).toBeEnabled();
-  await expect(page.locator('header.site')).toHaveCount(0);
-  await expect(page.locator('[data-site-footer]')).toHaveCount(0);
+  await expect(page.locator('header.site')).toHaveCount(route === '/acrylic-roof-pergolas-auckland' ? 1 : 0);
+  await expect(page.locator('[data-site-footer]')).toHaveCount(route === '/acrylic-roof-pergolas-auckland' ? 1 : 0);
   expect(await page.locator('html').evaluate(el => el.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await page.screenshot({ path: info.outputPath('hero.png') });
   await page.locator('#your-design').scrollIntoViewIfNeeded();

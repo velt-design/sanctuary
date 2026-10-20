@@ -33,7 +33,7 @@ const emit = () => listeners.forEach(listener => listener());
 function restore(fallback = DEFAULT_PREVIEW_DRAFT) {
   const key = storageKey();
   if (isInlineFunnelPath(window.location.pathname)) {
-    const material = ['/ads/outdoor-living', '/auckland-outdoor-living'].includes(window.location.pathname) ? 'solid' : 'acrylic';
+    const material = ['/ads/outdoor-living', '/ads/facebook/outdoor-living', '/auckland-outdoor-living'].includes(window.location.pathname) ? 'solid' : 'acrylic';
     fallback = { ...DEFAULT_PREVIEW_DRAFT, input: { ...DEFAULT_PREVIEW_DRAFT.input, connection: 'fascia' }, roof: { ...DEFAULT_PREVIEW_DRAFT.roof, family: 'gable',
       finish: { ...DEFAULT_ROOF_FINISH, material, ...(material === 'solid' ? { ceiling: 'thermopine-150' } : {}) } } };
   }

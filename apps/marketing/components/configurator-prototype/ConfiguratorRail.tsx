@@ -18,5 +18,5 @@ export default function ConfiguratorRail(){
  },[rail.section]);
  const stages=[['structure','Your pergola'],['personalise','Personalise'],['review','Review']] as const;
  const active=rail.section==='structure'?'structure':rail.section==='review'?'review':'personalise';
- return <nav ref={nav} className={css.nav} aria-label="Design stages"><div className={css.tabs}>{stages.map(([section,title],i)=><button key={section} aria-current={active===section?'step':undefined} onClick={()=>rail.choose(section)}><small>{i+1}</small>{title}</button>)}</div></nav>;
+ return <nav ref={nav} className={css.nav} aria-label="Design stages"><div className={css.tabs}>{stages.map(([section,title],i)=><button key={section} data-design-review-action={section === 'review' || undefined} aria-current={active===section?'step':undefined} onClick={()=>rail.choose(section)}><small>{i+1}</small>{title}</button>)}</div></nav>;
 }

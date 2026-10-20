@@ -1,3 +1,4 @@
+import ChannelTrackingRegion from '@/components/journey/ChannelTrackingRegion';
 import type { LandingSourcePath } from '@/components/configurator-prototype/draftScope';
 import GuidedJourneyContext from '@/components/guided-journey/GuidedJourneyContext';
 import ProjectFinderJourneyContext from '@/components/project-finder/ProjectFinderJourneyContext';
@@ -17,13 +18,13 @@ import styles from './redesign.module.css';
 export default function PergolaLandingPage({ sourcePath, comparison = false, searchParams = {} }: { sourcePath: LandingSourcePath; comparison?: boolean; searchParams?: GuidedJourneySearchParams }) {
   const guidedContext = resolveGuidedJourneyContext('residential-cover', searchParams);
   const projectFinderContext = guidedContext ? null : resolveProjectFinderJourneyContext('cover', searchParams);
-  return <main className={`${foundation.marketingPage} ${styles.page}`} data-marketing-foundation-page data-pergola-redesign data-seo-landing="pergolas-auckland">
+  return <ChannelTrackingRegion><main className={`${foundation.marketingPage} ${styles.page}`} data-marketing-foundation-page data-pergola-redesign data-seo-landing="pergolas-auckland">
     {comparison && <ComparisonLink redesign />}
     <section className={styles.hero} aria-labelledby="redesign-title">
       <Image className={styles.heroImage} src="/images/project-riverhead-gable-01.jpg" alt="A Sanctuary gable pavilion with timber lining beside a pool in Riverhead, Auckland" fill priority sizes="100vw" />
       <div className={styles.heroShade} />
       <div className={styles.heroTop}><span>Pergolas Auckland</span><span>Designed. Built. Lived in.</span></div>
-      <div className={styles.heroContent}><h1 id="redesign-title">Room to live.<br />Outside.</h1><div className={styles.heroBottom}><div><p>A pergola that belongs with your home.<br />A place to make more of every day.</p><div className={styles.heroActions}><a className={styles.lightButton} href="#explore-options">Explore your pergola <ArrowUpRight /></a><a className={styles.heroTextLink} href="#project-details">Talk about your project <ArrowUpRight /></a></div></div><Link className={styles.heroCaption} href="/projects/riverhead-gable-pavilion"><span>Built by Sanctuary</span>Riverhead, Auckland <ArrowUpRight /></Link></div></div>
+      <div className={styles.heroContent}><h1 id="redesign-title">Room to live.<br />Outside.</h1><div className={styles.heroBottom}><div><p>A pergola that belongs with your home.<br />A place to make more of every day.</p><div className={styles.heroActions}><a className={styles.lightButton} href="#explore-options">Explore your pergola <ArrowUpRight /></a><a className={styles.heroTextLink} href="#project-details" data-channel-action="quote">Talk about your project <ArrowUpRight /></a></div></div><Link className={styles.heroCaption} href="/projects/riverhead-gable-pavilion"><span>Built by Sanctuary</span>Riverhead, Auckland <ArrowUpRight /></Link></div></div>
     </section>
     <div className={styles.introduction}><p>Made for the house.<br />And the people in it.</p><div>Breakfast in the fresh air. Long lunches with friends. A sheltered place to unwind. Designed around the way you live.</div><a href="#explore-options" aria-label="Explore your pergola below">↓</a></div>
     <GuidedJourneyContext context={guidedContext} />
@@ -53,5 +54,5 @@ export default function PergolaLandingPage({ sourcePath, comparison = false, sea
       roofPreference={generalRoofPreference}
     /></section>
     <section className={styles.faq} aria-labelledby="faq-title"><div><p className={styles.eyebrow}>A few useful answers</p><h2 id="faq-title">Before you begin.</h2><Link className={styles.textLink} href="/custom-pergolas-auckland">Have something more complex in mind? <ArrowUpRight /></Link></div><div>{faqItems.map(item => <details key={item.question}><summary>{item.question}<span aria-hidden="true">+</span></summary><div>{item.answer.map(answer => <p key={answer}>{answer}</p>)}</div></details>)}</div></section>
-  </main>;
+  </main></ChannelTrackingRegion>;
 }

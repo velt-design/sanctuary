@@ -2,6 +2,28 @@ import * as React from 'react';
 import {createRoot} from 'react-dom/client';
 import {expect,it,vi} from 'vitest';
 import ConfiguredEnquiryFields from './ConfiguredEnquiryFields';
+it.each([
+ ['/auckland-outdoor-living',true,true],
+ ['/acrylic-roof-pergolas-auckland',true,true],
+ ['/ads/facebook/outdoor-living',true,true],
+ ['/ads/facebook/acrylic-pergolas',true,true],
+ ['/ads/outdoor-living',true,false],
+ ['/ads/acrylic-pergolas',true,false],
+ ['/contact',true,false],
+ ['/acrylic-roof-pergolas-auckland',false,false],
+] as const)('preserves editorial form compatibility for %s (inline=%s)',async(sourcePath,funnel,editorial)=>{
+ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
+ const host=document.createElement('div');const root=createRoot(host);
+ try{
+ await React.act(async()=>root.render(<ConfiguredEnquiryFields funnel={funnel} hasDesign={false} sourcePath={sourcePath} onSubmit={event=>event.preventDefault()} errors={{}} state="idle" error={null}/>));
+ const form=host.querySelector('form')!;
+ expect(form.classList.contains('acrylic-form')).toBe(editorial);
+ expect(form.getAttribute('data-inline-enquiry')).toBe(funnel?'true':null);
+ expect(form.getAttribute('action')).toBe('/api/enquiry/fallback');
+ expect(form.querySelector<HTMLInputElement>('[name=page]')?.value).toBe(sourcePath);
+ expect(form.textContent).not.toContain('Your design is included');
+ }finally{await React.act(async()=>root.unmount());vi.unstubAllGlobals();}
+});
 it('describes a direct funnel honestly and retains the native intake fallback',async()=>{
  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
  const host=document.createElement('div');const root=createRoot(host);

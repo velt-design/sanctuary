@@ -141,6 +141,8 @@ const serviceAudienceByPath = new Map<string, EnquiryAudience>([
   ['/auckland-outdoor-living', 'residential'],
   ['/ads/outdoor-living', 'residential'],
   ['/ads/acrylic-pergolas', 'residential'],
+  ['/ads/facebook/outdoor-living', 'residential'],
+  ['/ads/facebook/acrylic-pergolas', 'residential'],
   ['/pergolas-auckland/redesign', 'residential'],
   ['/custom-pergolas-auckland', 'residential'],
   ['/aluminium-pergolas-auckland', 'residential'],

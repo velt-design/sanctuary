@@ -19,6 +19,20 @@ source payload's all-day flag and exclusive date range in the existing private
 JSON projection. Legacy payloads default to timed until a complete refresh.
 Tables, grants, review choices and the sync command remain unchanged.
 
+## Facebook channel-path intake contract (20 October 2026)
+
+Forward `20261020000001_marketing_facebook_channel_optional_phone.sql` retains
+`marketing_enquiry_intake(uuid,text,jsonb)` and all existing validation, matching,
+idempotency, upload binding, atomic writes, grants and empty search path. Its only
+function delta adds `/ads/facebook/outdoor-living` and
+`/ads/facebook/acrylic-pergolas` to the existing residential/project-discussion
+blank-phone branch, still requiring email and suburb. Historical paths and the
+configured-design exception remain. The exact migration is exercised by the
+existing disposable API/native/PGlite contract, including rollback. Shared-database
+application and installed-function/grant checks are tracked separately in the
+release record. Route rollout must confirm this contract is installed; passing
+local fixtures alone does not establish hosted intake or provider delivery.
+
 `20261015000002_launch_verification_reporting_exclusion.sql` extends only the
 four existing marketing performance, sales hub, commercial performance and
 campaign-outcome read functions with exact confirmed launch-verification IDs.
