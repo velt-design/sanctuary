@@ -16,11 +16,13 @@ export async function loadStudioProject(supabase: StaffClient, projectUuid: stri
   const visible = await supabase.from('projects').select('id,name').eq('id', projectUuid).maybeSingle();
   if (!visible.data) return null;
   const result = await supabase.from('estimates')
-    .select('id,version,internal_name,status,outputs,created_at,commercial_scope_id')
+    .select('id,internal_name,status,outputs,created_at,commercial_scope_id')
     .eq('project_id', projectUuid)
     .order('created_at', { ascending: false });
   if (result.error) return { project: visible.data, designs: [], loadError: true };
   const rows = result.data ?? [];
+  // Match Project metadata and detail-label queries: legacy row.version is not
+  // part of their version projection. Include every project row before filtering.
   const labels = buildVersionLabelMap(rows);
   const flow = await loadProjectEstimateFlowMaps(projectUuid, rows, supabase).catch(() => null);
   const designs = rows.filter(row => row.outputs?.studio_authored).map(row => {
