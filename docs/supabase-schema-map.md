@@ -1,5 +1,21 @@
 # Supabase Schema Map
 
+## Custom residential discussion contract (20 October 2026)
+
+Forward migration 20261020030001_marketing_custom_optional_phone.sql
+adds exactly /custom-pergolas-auckland to the existing marketing_enquiry_intake
+(uuid,text,jsonb) blank-phone route predicate. Residential audience, nonempty
+email/suburb and rawPayload.requestType=project-discussion remain required. The
+function signature, security definer, empty search path, service-only grants,
+configured exception, matching, upload binding, replay and atomic writes are
+unchanged. Supplied phones retain canonical application validation.
+
+The existing disposable PGlite API/native harness rehearses the exact forward
+function, rollback, denials and persistence contracts. Production rollout requires
+the reviewed migration to be installed before enabling this form. Shared-schema
+rehearsal, installation and postflight evidence are recorded separately in the
+release record; disposable local fixtures do not establish installation or delivery.
+
 ## Aluminium residential contact contract (20 October 2026)
 
 Forward migration 20261020020001_marketing_aluminium_optional_phone.sql

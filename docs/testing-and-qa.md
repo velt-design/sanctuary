@@ -1,5 +1,25 @@
 # Testing And QA
 
+## Custom SEO contracts (20 October 2026)
+
+marketing.custom.spec.ts covers the project-led page at phone, tablet, desktop and
+wide widths, individual FAQs, image bounds, direct enquiry and full-designer
+return/reload/retry, starting briefs, optional attachments and native fallback.
+Intake, signing/storage and vendors are intercepted before input. CustomJourney
+unit tests cover truthful direct/configured payloads and retained guided/finder
+context. Existing draft/consent/form regressions include the exact route.
+The guided-destination browser cases assert each current enquiry entry: Simple's
+visible help link continues to Contact, while the other destinations expose
+their embedded form. Both paths must retain the same governed source and focus
+fields. Custom's contextual project list preserves the established priorities
+and is absent from ordinary and finder-only visits.
+
+marketing-google-funnel-intake.test.ts executes the canonical API/native adapter
+and new Custom migration in disposable PostgreSQL, including exact scope, required
+fields, supplied-phone validation, replay, atomic rollback and security grants.
+The local sample price and simulated receipt are not approved customer pricing,
+shared schema installation, delivery or live attribution evidence.
+
 ## Aluminium SEO contracts (20 October 2026)
 
 The route's AluminiumJourney test exercises the real compact controls, table
