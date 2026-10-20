@@ -17,6 +17,14 @@ explicit, source-bound identity map to the existing roster for presentation and
 source comparison; preserve the original name and never infer identities from
 customer names or email spelling. Cover both filtering and actual SQL catch-up.
 
+The independent staged journey also encountered a request that took more than
+two minutes to fail, trapping the form's Cancel action. Bound this editor's POST
+and refresh waits separately, preserve the draft and client record ID, and treat
+an interrupted wait as an unknown outcome until a fresh read is acknowledged.
+A successful command followed by refresh failure remains a known save. Cover
+late completion, failed reconciliation, and the original-ID create retry fence;
+do not broaden this local correction into a shared-client retry policy.
+
 ## 2026-10-20: Imported bookings preserve source and local decision boundaries
 
 The Outlook visit mirror publishes only complete source reads and preserves local

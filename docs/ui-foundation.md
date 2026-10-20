@@ -16,7 +16,11 @@ views at the exclusive Auckland end date; timed visits retain clock labels.
 Ambiguous/provisional/duplicate entries and missing project links have a review
 view, with cancellation/removal/exclusion recovery in Changes. Inline review
 keeps selection during search and preserves drafts on source revision; the revision
-must be acknowledged before resubmission. Pending saves lock the form and its exit.
+must be acknowledged before resubmission. Pending saves lock the form and its exit
+for at most 20 seconds per command/read. A timeout releases Cancel and preserves
+the draft, with an honest unknown-outcome notice and a fresh-read/revision
+acknowledgement before another write. A confirmed save with a failed refresh is
+labelled saved. Historical retry keeps the original record ID.
 Freshness, stale/error and read retry stay near the agenda rather than relying on
 a successful-looking empty list. New source queries and editing state are extracted
 from the existing Dashboard and Overview hotspots. Source/security ownership is

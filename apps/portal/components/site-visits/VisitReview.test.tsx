@@ -15,8 +15,8 @@ const field=(container:HTMLElement,label:string)=>Array.from(container.querySele
 const evidence=(container:HTMLElement)=>change(field(container,'Basis for these details'),'Verified against the linked synthetic project.');
 function render(v=visit){const done=vi.fn();const ui=(current:CalendarVisit)=><QueryClientProvider client={client}><VisitReview visit={current} onDone={done}/></QueryClientProvider>;mounted=renderIntoDocument(ui(v));return {done,container:mounted.container,rerender:(next:CalendarVisit)=>mounted!.rerender(ui(next))};}
 const button=(container:HTMLElement,text:string)=>Array.from(container.querySelectorAll('button')).find(b=>b.textContent===text)!;
-beforeEach(()=>{h.api.mockReset();client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});h.api.mockResolvedValue({projects:[{id:project,name:'Synthetic project',address:'12 Example Road'}],truncated:false});});
-afterEach(()=>{mounted?.unmount();client.clear();});
+beforeEach(()=>{h.api.mockReset();client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});h.api.mockImplementation((path,options)=>Promise.resolve(options?.method==='POST'?{visit:{...visit,revision:2}}:path.includes('/projects?')?{projects:[{id:project,name:'Synthetic project',address:'12 Example Road'}],truncated:false}:{events:[{...visit,revision:2}]}));});
+afterEach(()=>{mounted?.unmount();client.clear();vi.useRealTimers();});
 describe('Visit review recovery',()=>{
  it('offers one canonical roster choice for a mapped source full name without guessing other identities',()=>{
   const mapped={name:'Jordan Synthetic Fullname',email:'original-rep@example.test',staffId:'jordan'};
@@ -42,6 +42,19 @@ describe('Visit review recovery',()=>{
    expect(container.querySelector('fieldset')!.disabled).toBe(true);expect(button(container,'Cancel').disabled).toBe(true);
    act(()=>container.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(h.api.mock.calls.filter(c=>c[1]?.method==='POST')).toHaveLength(1);
    await act(async()=>reject(new Error('Save failed')));expect(container.textContent).toContain('Save failed');expect(field(container,'Booking status').value).toBe('provisional');expect(button(container,'Cancel').disabled).toBe(false);expect(done).not.toHaveBeenCalled();
+ });
+ it('keeps the full draft and releases Cancel after a stalled save, requiring latest-state recovery',async()=>{
+   vi.useFakeTimers();h.api.mockImplementation(()=>new Promise(()=>{}));
+   const {container,done}=render();change(field(container,'Booking status'),'provisional');evidence(container);
+   act(()=>button(container,'Save details').click());await act(async()=>{await vi.advanceTimersByTimeAsync(20_000);});
+   expect(button(container,'Cancel').disabled).toBe(false);expect(button(container,'Save details').disabled).toBe(true);
+   expect(container.textContent).toContain('They may already be saved');
+   expect(field(container,'Booking status').value).toBe('provisional');
+   expect(field(container,'Basis for these details').value).toBe('Verified against the linked synthetic project.');
+   act(()=>button(container,'Reload latest visit').click());await act(async()=>{await vi.advanceTimersByTimeAsync(20_000);});
+   expect(button(container,'Cancel').disabled).toBe(false);expect(button(container,'Save details').disabled).toBe(true);
+   expect(container.textContent).toContain('latest visit could not be checked');
+   act(()=>button(container,'Cancel').click());expect(done).toHaveBeenCalledOnce();
  });
  it('keeps drafts on a source revision and requires acknowledgement before saving that revision',async()=>{
    const {container,rerender}=render();change(field(container,'Include in site visits'),'excluded');evidence(container);rerender({...visit,revision:2,subject:'Updated source title'});

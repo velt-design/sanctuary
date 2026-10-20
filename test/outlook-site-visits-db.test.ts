@@ -158,6 +158,10 @@ describe('Portal reviewed details and historical attendance',()=>{
   await publish([event()]);await db.exec('update public.projects set archived_at=now()');
   const input={action:'save',id:id(999),revision:0,projectId:project,details:{staff:[{name:'Original rep',email:'',staffId:'original-rep'}],purpose:'initial',status:'attended',timing:{mode:'unknown',date:null,time:null,endTime:null}},questions:[],basis:'Original attendee confirmed the visit; exact date is unknown.',referenceUrl:null};
   const first=await rpc('site_visit_history_save',[input]);const repeated=await rpc('site_visit_history_save',[input]);expect(repeated.id).toBe(first.id);expect(repeated.revision).toBe(1);
+  // A timed-out create may commit after an absence read. Retrying its held ID
+  // with a newer draft cannot overwrite that committed original or duplicate it.
+  await expect(rpc('site_visit_history_save',[{...input,basis:'A different retained draft after uncertain completion.'}])).rejects.toMatchObject({code:'40001'});
+  expect((await db.query(`select count(*)::int n from private.site_visit_details where id='${input.id}'`)).rows[0].n).toBe(1);
   const history=reviewedVisit(first);expect(history.startsAt).toBeNull();expect(requiresVisitReview(history)).toBe(false);expect(visibleVisits([history],'today','','')).toEqual([]);
   await publish([]);const both=(await rpc('outlook_site_visits_read',[project])).events;expect(both).toHaveLength(2);expect(both.find((e:any)=>e.origin==='history').staff).toEqual([]);
   expect((await db.query('select archived_at from public.projects')).rows[0].archived_at).not.toBeNull();

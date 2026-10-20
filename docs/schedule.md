@@ -86,6 +86,16 @@ Material source conflicts reopen a specific review warning and withhold the entr
 from upcoming summaries until reconciled; metadata changes, equivalent formatting
 and Outlook catching up to the verified value do not reopen settled questions.
 Source restoration, revision conflicts and failed saves preserve recovery paths.
+`useVisitSave` owns the editor's bounded command and recovery state. POST waits
+stop after 20 seconds; aborting that wait does not prove the server rolled back.
+The draft and historical record UUID remain stable, Cancel becomes available,
+and another write requires a successful fresh read plus explicit revision
+acknowledgement. Global and project reads reconcile project moves and retained
+history. An absent historical create retries only its original UUID/revision0;
+the database's idempotency/revision fence also covers a later first commit.
+A confirmed save followed by a failed, separately bounded refresh is labelled
+saved, not failed or unknown. Late responses never silently close or rebase a
+retained draft. No automatic command retry or shared API-client policy changes.
 
 Private `site_visit_staff_identities` binds verified recognized Outlook addresses
 to the existing roster keys for the configured source binding. Operators seed only
