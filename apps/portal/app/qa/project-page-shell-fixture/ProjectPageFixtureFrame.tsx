@@ -9,7 +9,8 @@ import { ProjectOverviewReadsProvider, useProjectOverviewReads } from '@/compone
 
 export default function ProjectPageFixtureFrame(props: Omit<ComponentProps<typeof ProjectPageFrame>, 'optimisticTab' | 'onTabSelect'>) {
   const stateParam = useSearchParams().get('snapshotState');
-  const snapshotState = stateParam === 'summary' || stateParam === 'refresh-failed' || stateParam === 'fresh' ? stateParam : props.snapshotState;
+  const stateOverride = stateParam === 'summary' || stateParam === 'refresh-failed' || stateParam === 'fresh' ? stateParam : undefined;
+  const snapshotState = stateOverride ?? props.snapshotState;
   const navigation = useProjectTabSelection(props.snapshot.project.id, props.tab, props.snapshot.project.hasJobPacks);
   const reads = useProjectOverviewReads(props.host, props.snapshot.project.id, navigation.activeTab === 'activity');
   const retry = () => {
@@ -19,7 +20,7 @@ export default function ProjectPageFixtureFrame(props: Omit<ComponentProps<typeo
   };
   return <ProjectOverviewReadsProvider value={reads}>
     <ProjectPageFrame {...props} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab}
-      snapshotState={snapshotState} snapshotContentReady={snapshotState === 'fresh'}
-      statusPanel={stateParam ? <ProjectSnapshotNotice state={snapshotState ?? 'fresh'} onRetry={retry} /> : props.statusPanel} />
+      snapshotState={snapshotState} snapshotContentReady={stateOverride ? stateOverride === 'fresh' : props.snapshotContentReady}
+      statusPanel={stateOverride ? <ProjectSnapshotNotice state={stateOverride} onRetry={retry} /> : props.statusPanel} />
   </ProjectOverviewReadsProvider>;
 }
