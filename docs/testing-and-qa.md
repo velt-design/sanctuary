@@ -20,6 +20,26 @@ Source tests, authored browser contracts and actual permitted-browser journeys
 are separate evidence. Local populated tests need persistent intake, upload and
 vendor fences; fixture success does not establish production delivery.
 
+## Designer accepted-sales correction (21 October 2026)
+
+Run the marketingPerformance model/component suite, actual source projection
+`test/designer-performance-read.test.ts`, and the sales-outcome route tests.
+They cover accepted jobs without retained visits, selected Auckland dates versus
+all recorded dates, add-on deduplication, missing attribution, unknown dates,
+withdrawn scopes, whole-job refund exclusion and current cancelled-source priority.
+Ordinary UI proof inspects exact accepted scopes, records an outcome, retains gross
+history and removes positive visit credit. Editor tests retain immutable retries
+and require conflict reload. `node scripts/test-sales-designer-concurrency.mjs
+--outcomes` uses disposable native PostgreSQL 17 to prove concurrent revisions,
+simultaneous replay and revoked authority; it requires the existing
+`PRAXIS_DISPOSABLE_POSTGRES_BIN` runtime and sends no provider requests.
+
+The protected `designerScenario=accepted` fixture uses consistent synthetic
+commercial/accepted scope values and in-memory assignment/outcome clients.
+`acceptedDates=all` is URL-backed for reload and project return. Local proof is not
+a hosted save/readback or production migration result; those remain separate
+release evidence. No synthetic business record may be installed in production.
+
 ## Pitched form guide (21 October 2026)
 
 `marketing.pitched-guide.spec.ts` covers 320/390/820/1440/2560 layouts, actual
