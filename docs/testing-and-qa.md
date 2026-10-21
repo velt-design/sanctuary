@@ -3,7 +3,11 @@
 ## Meta landing experiment candidate (21 October)
 
 `test/marketing-experiment-runtime-dependencies.test.ts` guards the direct Zod
-runtime declaration in Marketing and its frozen workspace lock entry. Release
+runtime declaration in Marketing and its frozen workspace lock entry, plus the
+existing PGlite version as a build/test-only devDependency. Tracked co-located
+integration tests participate in Next typechecking; the normal Git deployment
+ignore rules do not omit them. Do not add PGlite to the runtime graph or omit
+those tests to make the packaging check pass. Release
 verification must also install/build the Marketing workspace without Portal's
 dependencies or an ancestor hoisted node_modules. A full local monorepo install
 alone can mask a missing deployable-workspace dependency. This dependency repair
