@@ -9,6 +9,7 @@ import { ga4Google } from './providers';
 import { ga4Delegation } from './delegation';
 import { readGa4Report, reportHash, reportIntent, REPORT_VERSION } from './report/ga4';
 import { DIAGNOSTIC_VERSION } from './report/diagnostics';
+import { reportFailureLog } from './report/failure';
 import { parseReportResponse } from './report/response';
 import { businessOutcomes, type BusinessEvidence } from './report/outcomes';
 
@@ -90,18 +91,25 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
       const report = await refreshGa4Report({ config, vault: dependencies.vault(config), google: dependencies.google(dependencies.fetcher, signal),
         store: guarded, signal, intent,
         read: async token => {
-          const ga4 = await dependencies.read(token, control.property, query, signal, dependencies.fetcher,
-            { version, beforeRequest: async () => { current(); await delegation!(); current(); } });
-          if ((version === DIAGNOSTIC_VERSION) !== Boolean(ga4.diagnostics)) throw new Error('Report version differs.');
-          let business: BusinessEvidence;
+          let failureStage: 'collection' | 'normalization' = 'collection';
           try {
-            current(); await delegation!();
-            const evidence = await dependencies.business(query, source, requestId);
-            if (evidence.timezone !== ga4.timezone) throw new Error('Business timezone differs.');
-            business = { status: 'available', binding: reportHash({ sourceKey: source.sourceKey, connectionId: source.connectionId,
-              environment: source.environment, propertyId: control.property }), operations: [claim.operation], report: businessOutcomes(evidence) };
-          } catch { business = { status: 'unavailable', reason: 'complete_snapshot_unavailable' }; }
-          return parseReportResponse({ ...ga4, business }, query);
+            const ga4 = await dependencies.read(token, control.property, query, signal, dependencies.fetcher,
+              { version, beforeRequest: async () => { current(); await delegation!(); current(); } });
+            failureStage = 'normalization';
+            if ((version === DIAGNOSTIC_VERSION) !== Boolean(ga4.diagnostics)) throw new Error('Report version differs.');
+            let business: BusinessEvidence;
+            try {
+              current(); await delegation!();
+              const evidence = await dependencies.business(query, source, requestId);
+              if (evidence.timezone !== ga4.timezone) throw new Error('Business timezone differs.');
+              business = { status: 'available', binding: reportHash({ sourceKey: source.sourceKey, connectionId: source.connectionId,
+                environment: source.environment, propertyId: control.property }), operations: [claim.operation], report: businessOutcomes(evidence) };
+            } catch { business = { status: 'unavailable', reason: 'complete_snapshot_unavailable' }; }
+            return parseReportResponse({ ...ga4, business }, query);
+          } catch (error) {
+            console.warn('sanctuary_ga4_report_failure', reportFailureLog(error, failureStage));
+            throw error;
+          }
         },
         evidence: value => ({ ...intent, resultHash: reportHash(value), rowCount: value.traffic.length + value.channels.length + value.landing.length + value.events.length
           + (value.diagnostics ? 3 + (value.diagnostics.acquisition.status === 'unavailable' ? 0 : value.diagnostics.acquisition.rows.length) : 0),
