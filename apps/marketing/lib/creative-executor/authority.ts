@@ -29,8 +29,9 @@ export function verifyCreativeCommand(raw: unknown, signature: string | null, no
   }
   return { ...row, payload };
 }
-export function validateCreativeIntent(payload: unknown, snapshot: unknown) {
+export function validateCreativeIntent(payload: unknown, snapshot: unknown, compiledTemplate: string) {
   const intent = payloads.admit.parse(payload), state = stateSchema.parse(snapshot);
+  if(!intent.cleanup && (state.template!==compiledTemplate || state.plan?.landingTemplate!==compiledTemplate))throw new Error('Creative template changed');
   if(state.plan?.purpose==='formal_experiment'&&!intent.cleanup)throw new Error('Formal creative execution unavailable');
   if (!state.plan || state.generation !== intent.generation || state.stopped || (intent.cleanup ? !state.cleanupEnabled : !state.enabled)) throw new Error('Source authority changed');
   if (intent.intent.at > Date.now() + 1000 || Date.now() - intent.intent.at > 90000) throw new Error('Stale intent');

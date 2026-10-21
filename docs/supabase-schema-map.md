@@ -1122,7 +1122,7 @@ are the sole value source. No backfill or writes. See the metric/coverage contra
 
 ### Local creative ledger candidate (21 October 2026)
 
-`20261021020004_creative_effect_ledger.sql` adds service-only/RLS cross-lane
+`20261021050001_creative_effect_ledger.sql` adds service-only/RLS cross-lane
 reservation, default-off creative control, immutable plan/object/receipt tables
 and bounded effect journal. Prepared admission is not dispatch permission; the
 one-use dispatch fence becomes uncertain, while exact never-claimed evidence can
@@ -1132,3 +1132,12 @@ global Stop, with generation fencing. `meta_creative_command` is the service RPC
 landing reservation uses the existing advisory lock and a trigger. No sequence,
 public grant, provider call or installed production capability. See
 `meta-offline-sales.md` for remaining writer/reporting/cleanup requirements.
+
+## Creative capability candidate, 21 October 2026
+
+`20261021050001` through `20261021050003` add the private creative effect ledger,
+executor/registered-ad/outcome projection and consented visit/intake joins. Native
+fixtures exercise shared landing reservation, uncertain/no-effect fencing, one
+paused ad and reused creative reference cleanup. Service-only definer commands,
+empty search paths, explicit table/function revokes and immutable receipts remain
+mandatory. No production migration or capability is implied by fixture passes.

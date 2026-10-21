@@ -15,7 +15,7 @@ try{
  run('initdb',['-D',directory,'-U','cluster_admin','-A','trust','--no-locale','-E','UTF8']);run('pg_ctl',['-D',directory,'-l',join(directory,'postgres.log'),'-o',`-p ${port} -h 127.0.0.1`,'-w','start'],undefined,true);started=true;
  sql(landingExperimentTestBootstrap(process.cwd()));
  sql(readFileSync('supabase/migrations/20261021020002_landing_experiments.sql','utf8'));
- sql(readFileSync('supabase/migrations/20261021020004_creative_effect_ledger.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050001_creative_effect_ledger.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_layout.sql','utf8'));
@@ -25,7 +25,7 @@ try{
  sql(readFileSync('supabase/tests/campaign_intake_evidence_assertions.sql','utf8'));
  if(sql('select count(*) from public.landing_experiments').trim()!=='0')throw new Error('Synthetic fixture did not roll back');
  sql(readFileSync('supabase/tests/meta_creative_ledger.sql','utf8'));
- sql(readFileSync('supabase/migrations/20261021020005_creative_executor.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050002_creative_executor.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050003_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8'));

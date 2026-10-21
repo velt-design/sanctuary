@@ -217,7 +217,7 @@ Runtime execution is still false; no live credential, provider call or SQL insta
 is part of local verification. Separate Velt enrollment stores the dedicated writer
 without changing reports/sales and itself cannot publish.
 
-1. Source ownership: additive `20261021020004_creative_effect_ledger.sql` introduces
+1. Source ownership: additive `20261021050001_creative_effect_ledger.sql` introduces
    one cross-lane reservation. Existing landing and new creative commands share
    advisory lock819421,1. A landing trigger preserves existing active work and
    maintains reservation through existing states. Creative reservations survive
@@ -495,3 +495,30 @@ Provider sources (reviewed 14 October 2026):
 [event endpoint](https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ads-pixel/events),
 [Google prehashed Code setup](https://support.google.com/google-ads/answer/13262500?hl=en),
 [Enhanced conversions for leads](https://support.google.com/google-ads/answer/11347292?hl=en).
+
+## Dedicated paused creative capability candidate (21 October 2026)
+
+This source boundary is separate from report and offline-sale credentials. Velt
+keeps the only dedicated writer credential; Source receives a signed fixed-scope
+plan, never the token. `creative-executor/{contract,intent,authority}` and the
+private `/api/landing-experiment/creative` route own exact media/tracking intent,
+the shared acquisition reservation and immutable effect receipts. Formal
+preparation/non-cleanup execution is refused; only an unchanged creative plus one
+owned PAUSED ad can be proved in this milestone. Cleanup retains the ad PAUSED.
+A provider-reused donor creative remains a reference and is never deleted.
+
+Migrations `20261021050001` (effect ledger), `20261021050002` (executor/registry)
+and `20261021050003` (consented measurement joins) follow accepted existing history.
+Register each in the normal migration ledger; controls default off. Install only
+after compatible Velt/Portal/Marketing contracts. Preserve current canonical
+intake, original ads, consent/idempotency and offline switches. Unknown writes
+retain the lock; known no-effect transitions require exact evidence. Compiled
+template mismatch refuses new effects and emits bounded authenticated hashes and
+release provenance. Exact owned cleanup remains available across template changes,
+under current credential/Stop/lease authority.
+
+Paused capability is not an experiment: no study, activation or genuine exposure.
+Formal registry measurement is staged, consented and explicitly incomplete for
+all-saved-enquiry CPE. Full author/reviewer/activation, provider window proof, formal
+cohort freeze/evaluation and retained-creative adoption remain required before
+unattended commercial creative tests can be claimed complete.

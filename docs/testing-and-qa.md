@@ -1,5 +1,20 @@
 # Testing And QA
 
+## Paused creative capability candidate, 21 October 2026
+
+Run `node scripts/test-meta-creative-ledger-db.mjs` with the existing disposable
+PostgreSQL path, creative authority/intent/contract tests, campaign report/registry
+contracts and affected intake tests. Verify old canonical intake preservation,
+consent and retry joins, uncertain dispatch locking, reused creative reference
+and retained-PAUSED cleanup. Signed formal preparation is refused; compiled
+template mismatch blocks new effects while exact owned cleanup remains available.
+Run current app types/lint, architecture/docs guards and Marketing optimized build.
+Replay `probe.integration.test.ts` against that compiled local build and the actual
+Velt renderer for seven catalogue combinations at three widths plus short/tall
+mobile/banner/focus/designer-return cases. Local fixtures intercept provider and
+submission effects; they never prove live Meta capability or real delivery.
+
+
 ## Pitched form guide (21 October 2026)
 
 `marketing.pitched-guide.spec.ts` covers 320/390/820/1440/2560 layouts, actual
