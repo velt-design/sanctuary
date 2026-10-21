@@ -4,6 +4,7 @@ import type { Filters } from '@/lib/marketingPerformance/contract';
 import type { HubReport } from '@/lib/marketingPerformance/hub';
 import type { CommercialLoader } from '@/components/marketingPerformance/useCommercial';
 import { hubFixture } from './hubFixtures';
+import { designerFixture } from './designerFixtures';
 import { representativeFixture } from './representativeFixture';
 
 const id = (n: number) => `33333333-3333-4333-8333-${String(n).padStart(12, '0')}`;
@@ -37,6 +38,14 @@ export const commercialLoader: CommercialLoader = async (filters, signal) => {
   const shouldFail = failure === '1' || (failure === 'once' && !failedOnce.has(failureKey));
   if (failure === 'once') failedOnce.add(failureKey);
   if (shouldFail) throw new Error('Synthetic commercial source failure. No business system was contacted.');
+  if(query.get('designerScenario')==='accepted'){
+    const source=designerFixture('accepted'),prior=previousPeriod(filters.start,filters.end);
+    return commercialSchema.parse({schemaVersion:2,asOf:source.asOf,...filters,priorStart:prior.start,priorEnd:prior.end,currency:'NZD',taxBasis:'including_gst',earliestSentAt:'2026-09-07T00:00:00Z',rows:source.scopes.map(scope=>({
+      quoteId:scope.id,projectId:scope.projectId,quoteRef:scope.reference,scopeKind:scope.addOn?'add_on':'base',undatedSendCount:0,originAt:null,firstSentAt:scope.firstSentAt,
+      currentSent:inPeriod(scope.firstSentAt,filters.start,filters.end)?{versionId:scope.id,versionNumber:1,sentAt:scope.firstSentAt,amountCents:scope.lastAcceptedValueCents??1850000}:null,priorSent:null,
+      accepted:scope.accepted?{versionId:scope.id,versionNumber:1,acceptedAt:scope.acceptedAt,amountCents:scope.valueCents}:null
+    }))});
+  }
   const hub = query.get('representative') === '1' ? representativeFixture : hubFixture;
   return query.get('commercialCoverage') === '1' ? commercialCoverageScenario(hub, filters).commercial : commercialFixture(hub, filters);
 };

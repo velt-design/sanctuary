@@ -26,6 +26,7 @@ import theme from './MarketingTheme.module.css';
 import Financials from '@/components/financials/Financials';
 import type { FinancialsLoader } from '@/components/financials/useFinancials';
 import useDesigner, { type DesignerLoader } from './useDesigner';
+import type { OutcomeClient } from './ProjectSalesOutcome';
 import type { AssignmentClient } from './SalesDesignerAssignment';
 import useCommercial, { type CommercialLoader } from './useCommercial';
 import useVisibleSelection from '@/components/financials/useVisibleSelection';
@@ -42,8 +43,8 @@ const EnquiryCharts=dynamic(loadEnquiryCharts,{loading:()=> <p role="status">Pre
 const loadPortfolioChart=()=>import('./PortfolioChart');
 const PortfolioChart=dynamic(loadPortfolioChart,{loading:()=> <p role="status">Preparing report view…</p>});
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient}: {
-  financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;assignmentClient?:AssignmentClient;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient,outcomeClient}: {
+  financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;assignmentClient?:AssignmentClient;outcomeClient?:OutcomeClient;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
   const [draft,setDraft]=useState<FiltersState>(()=>({...hubDefaults(initialFilters??defaultFilters()),view:'overview' as const}));
@@ -86,7 +87,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
     <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy} data-comparison-pending={comparisonBusy||undefined}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>
         {applied.view!=='overview'&&<div className={styles.contextLine}><span>{applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>}
-        {applied.view==='overview'?<BusinessOverview commercialEvidence={commercialEvidence} designerEvidence={designerEvidence} retryCommercial={()=>setCommercialRetry(n=>n+1)} retryDesigner={()=>setDesignerRetry(n=>n+1)} hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} assignmentClient={assignmentClient} synthetic={synthetic} revision={revision}/>:<>
+        {applied.view==='overview'?<BusinessOverview commercialEvidence={commercialEvidence} designerEvidence={designerEvidence} retryCommercial={()=>setCommercialRetry(n=>n+1)} retryDesigner={()=>setDesignerRetry(n=>n+1)} hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} assignmentClient={assignmentClient} outcomeClient={outcomeClient} synthetic={synthetic} revision={revision}/>:<>
         <HubMetrics hub={hub} filters={applied} apply={apply} inspectEvents={inspectEvents}/>
         {applied.view==='enquiries'&&<div className={styles.contextLine}><div className={styles.coverageTrack}><span style={{width:rate(totals.attributed,totals.enquiries)}}/></div><span>{rate(totals.attributed,totals.enquiries)} source known · {totals.enquiries-totals.attributed} unknown</span><Button variant="quiet" onClick={()=>setInfo(true)}>How it’s counted</Button></div>}
         {applied.view==='enquiries'&&<EnquiryCharts rows={selected.enquiries} filters={applied} apply={apply}/>}
