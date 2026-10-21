@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/foundation/FoundationControls';
 import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 import { loadMetaEvidence, metaCoverage, type MetaEvidence, type MetaEvidenceLoader } from '@/lib/marketingPerformance/dataSources';
 import type { HubReport } from '@/lib/marketingPerformance/hub';
+import { analyticsReportLink } from '@/lib/marketingPerformance/analyticsLink';
 import styles from './MarketingPerformance.module.css';
 import GoogleAdvertising from './GoogleAdvertising';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
@@ -61,7 +62,7 @@ export default function DataSources({ hub, loader = loadMetaEvidence, synthetic 
     {(!synthetic || metaSaleLoader) && <MetaSaleDelivery loader={metaSaleLoader} />}
     <Card title="Sources not yet connected to this hub" padding="compact">
       <dl className={styles.sourceDefinitions}>
-        <dt>GA4</dt><dd>Acquisition, landing pages and website events are available in the <a href="https://velt.systems/analytics" target="_blank" rel="noreferrer">existing analytics report</a>. Not yet connected here or matched to individual enquiries.</dd>
+        <dt>GA4</dt><dd>Open the <a href={analyticsReportLink(hub.start, hub.end)} target="_blank" rel="noreferrer">existing analytics report</a> with {hub.start} to {hub.end} prepared as draft dates. Review completed days and Load there. Access is limited to Velt’s configured owner. Website occurrences are separate from these business records and are not matched to individual enquiries.</dd>
         <dt>Customer-reported discovery</dt><dd>No verified referral or discovery dataset. Unknown source stays unknown.</dd>
       </dl>
     </Card>
