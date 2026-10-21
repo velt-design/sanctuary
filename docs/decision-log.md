@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-21: Keep designer attendance and sales attribution separate
+
+An appointment, current project owner or earliest retained booking does not prove
+an attended original sales visit. Designer reporting reuses explicit attendance,
+purpose, verified identities and canonical paid-scope evidence. Unknown original
+dates stay inspectable outside dated totals; incomplete attribution must not hide
+valid measurement/follow-up workload. Joint participation is non-additive across
+people and deduplicated for the team. Empty conversion cohorts remain unavailable.
+The read-only projection and exact correction links are owned by
+[Marketing Performance](marketing-performance.md#designer-visits-and-conversion-candidate-21-october-2026).
+
 ## 2026-10-21: qualify framework configuration against hosted validation
 
 Vercel's Next adapter resolves `proxy.ts`, but its earlier function-key validator

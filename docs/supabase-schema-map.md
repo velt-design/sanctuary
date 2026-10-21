@@ -1,5 +1,23 @@
 # Supabase Schema Map
 
+## Designer performance read candidate (21 October 2026)
+
+`20261021030001_designer_performance.sql` adds no business tables or writes.
+`marketing_designer_performance_read(date,date)` is authenticated, confirmed
+owner-only, bounded at 5,000 retained visits / 5,000 quote families, and returns
+slim visit, current initial-scope and first-deposit facts. It reuses the installed
+Outlook correction/identity projection and canonical advertising accounting
+source; private contact bodies, email, address and calendar subjects do not leave
+the reporting RPC. `private.designer_visit_fact(jsonb)` owns only the projection.
+`outlook_site_visit_detail_read(uuid,uuid)` uses the existing staff actor boundary
+for an exact correction entry outside the rolling calendar window. Hidden or
+wrong-project records are withheld. All helpers revoke public/anon/service-role
+execution; the two public reads grant authenticated execution with internal
+identity checks. Local PGlite executes the actual migration and prior source
+functions. Shared-database rehearsal, install and PostgREST proof remain separate
+release checks. Metric definitions and implementation map live in
+[Marketing Performance](marketing-performance.md#designer-visits-and-conversion-candidate-21-october-2026).
+
 ## Blinds residential discussion contract (21 October 2026)
 
 Forward migration 20261021020001_marketing_blinds_optional_phone.sql
