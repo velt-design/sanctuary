@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-21: prepare selected report components before their first visible mount
+
+A raw dynamic import can finish while React.lazy still has an uninitialized
+payload. First mounting the wrapper after data arrives then suspends again,
+even though no download remains. Resolve only the selected report component into
+stable typed state during its data wait, and render that component directly.
+Keep honest loading/error/retry states, selection and unmount guards, and stable
+component identity. Test both completion orders and superseded failures; verify
+the final data-to-chart interval in an optimized browser with complete content.
+Owner: `marketing-performance.md` and `usePreparedReportViews`.
+
 ## 2026-10-21: Attribute accepted jobs independently of visits
 
 Owner instruction: "Go ahead and update the report so all accepted jobs are
