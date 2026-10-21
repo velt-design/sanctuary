@@ -16,5 +16,5 @@ export function isPlausibleEnquiryPhone(value: string): boolean {
 /** Contact requirements are independent of a page's acquisition channel or chrome. */
 export function allowsOptionalEnquiryPhone(audience: string, page: string, requestType: string): boolean {
   return audience === 'residential' && isInlineFunnelPath(page)
-    && (!['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'].includes(page) || requestType === 'project-discussion');
+    && (!['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds'].includes(page) || requestType === 'project-discussion');
 }

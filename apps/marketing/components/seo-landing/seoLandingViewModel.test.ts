@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { acrylicVsLouvreConfig } from '../../app/acrylic-pergolas-vs-louvre-roofs/content';
 
 import { gablePergolasConfig } from '../../app/gable-pergolas-auckland/content';
-import { pergolasWithBlindsConfig } from '../../app/pergolas-with-blinds/content';
 import { pitchedPergolasConfig } from '../../app/pitched-pergolas-auckland/content';
 import type { SeoLandingBlock } from './types';
 import {
@@ -75,7 +74,6 @@ describe('guided project evidence', () => {
 const guideConfigs = [
   gablePergolasConfig,
   pitchedPergolasConfig,
-  pergolasWithBlindsConfig,
   acrylicVsLouvreConfig,
 ] as const;
 

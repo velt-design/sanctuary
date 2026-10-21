@@ -1,5 +1,39 @@
 # Marketing UI Foundation
 
+## Pergolas With Blinds composition (21 October 2026)
+
+The exact /pergolas-with-blinds guide uses a centred 1440px photographic canvas
+and an early direct enquiry. Its corrected opening makes a lowered mesh blind
+the subject, retaining the full original frame on phone and desktop.
+On phones, the single enquiry action and photograph precede supporting copy so
+the whole blind remains visible above the normal first-visit consent banner.
+Desktop keeps the heading and supporting action block beside one another.
+Six original
+installation derivatives show dark mesh, pale mesh, clear PVC and roller/post
+detail. No photo is generated or retouched; metadata is removed from publication
+assets. The actual right-hand opening in the state gallery is shown raised and
+lowered in two different photographs. The lower floor is cropped out, retaining
+the sill and bottom rail. There is no aligned wipe, fabric simulator or inferred
+brand. The initial background-heavy photo selection was rejected and superseded.
+
+The route's content/page/CSS own the editorial presentation; BlindStateGallery
+only switches photographs with native buttons, stable geometry and truthful
+captions. It does not touch design state or emit design events. blindsContext carries
+validated incoming guided/finder/project/product context without inventing a
+Blinds recommendation. BlindsJourney composes the existing planning draft,
+canonical price reference, design summary, compact contact form and attachment
+owners. Direct enquiry requires no design; chosen designs retain their full
+options through the optional standard 3D return. The estimate does not represent
+a bespoke blind specification or retrofit. ContactEnquiryForm's optional pagePath
+keeps the actual native form route separate from an earlier attribution source;
+other callers retain their existing default.
+
+Only this SEO route is added to the existing scoped draft, deliberate-action and
+contact-policy lists. No pricing, geometry, provider or ad-classification owner
+changes. Fenced local receipts and sample prices are fixture evidence, not shared
+intake, delivery or live attribution. Publication and exact phone-migration rollout
+require separate verification and an operational record.
+
 ## Outdoor Rooms composition (21 October 2026)
 
 The exact `/outdoor-rooms-auckland` route owns a complete-space narrative: layout

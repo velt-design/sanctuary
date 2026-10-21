@@ -1,5 +1,20 @@
 # Supabase Schema Map
 
+## Blinds residential discussion contract (21 October 2026)
+
+Forward migration 20261021020001_marketing_blinds_optional_phone.sql
+adds exactly /pergolas-with-blinds to marketing_enquiry_intake(uuid,text,jsonb)
+blank-phone route eligibility. Residential audience, nonempty email/suburb and
+explicit project-discussion remain required. The prior Outdoor Rooms function is
+otherwise unchanged: signature, security definer, empty search path, service-only
+grants, configured exception, contact matching, upload binding, replay and atomic
+writes. Supplied phones retain the existing application validation.
+
+The disposable API/native/SQL harness exercises the exact source function and
+rollback. Shared-environment reconciliation, reviewed rehearsal, installation and
+postflight are separate operational checks, required before enabling this form's
+contract. Fixture results alone do not establish rollout or customer delivery.
+
 ## Outdoor Rooms residential discussion contract (21 October 2026)
 
 Forward migration 20261021000001_marketing_outdoor_room_optional_phone.sql

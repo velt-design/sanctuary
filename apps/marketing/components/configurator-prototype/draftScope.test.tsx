@@ -82,17 +82,17 @@ it('keeps Custom SEO in the shared planning draft and returns the full design to
   expect(isLandingDesign('/custom-pergolas-auckland-extra', '')).toBe(false);
 });
 
-it('keeps Outdoor Rooms SEO in the shared planning draft and returns the full design to its own enquiry', async () => {
-  window.history.replaceState({}, '', withLandingDesignScope('/configurator-preview?open=1&source_path=%2Foutdoor-rooms-auckland#design=1.gable.5700.3100.ground.fascia.parallel.1'));
+it.each(['/outdoor-rooms-auckland', '/pergolas-with-blinds'])('keeps %s in the shared planning draft and returns the full design to its own enquiry', async path => {
+  window.history.replaceState({}, '', withLandingDesignScope(`/configurator-preview?open=1&source_path=${encodeURIComponent(path)}#design=1.gable.5700.3100.ground.fascia.parallel.1`));
   await act(async () => root.render(<Probe key="outdoor-designer"/>));
   await act(async () => current!.setRoof({ ...current!.roof, infills: true }));
   const expected = sessionStorage.getItem(LANDING_DRAFT_KEY);
-  window.history.replaceState({}, '', '/outdoor-rooms-auckland');
+  window.history.replaceState({}, '', path);
   await act(async () => root.render(<Probe key="outdoor-return"/>));
   expect(current!.input).toMatchObject({ widthMm: 5700, projectionMm: 3100 });
   expect(current!.roof.infills).toBe(true);
   expect(current!.hasChosenDraft).toBe(true);
   expect(sessionStorage.getItem(LANDING_DRAFT_KEY)).toBe(expected);
-  expect(designEnquiryHref()).toBe('/outdoor-rooms-auckland#project-details');
-  expect(isLandingDesign('/outdoor-rooms-auckland-extra', '')).toBe(false);
+  expect(designEnquiryHref()).toBe(`${path}#project-details`);
+  expect(isLandingDesign(`${path}-extra`, '')).toBe(false);
 });

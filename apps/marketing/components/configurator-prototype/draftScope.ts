@@ -5,14 +5,15 @@ export const LANDING_COST_PATH = '/pergola-cost-auckland';
 export const LANDING_ALUMINIUM_PATH = '/aluminium-pergolas-auckland';
 const LANDING_CUSTOM_PATH = '/custom-pergolas-auckland';
 const LANDING_OUTDOOR_ROOM_PATH = '/outdoor-rooms-auckland';
-export type LandingSourcePath = '/pergolas-auckland' | typeof LANDING_REDESIGN_PATH | typeof LANDING_COST_PATH | typeof LANDING_ALUMINIUM_PATH | typeof LANDING_CUSTOM_PATH | typeof LANDING_OUTDOOR_ROOM_PATH;
+const LANDING_BLINDS_PATH = '/pergolas-with-blinds';
+export type LandingSourcePath = '/pergolas-auckland' | typeof LANDING_REDESIGN_PATH | typeof LANDING_COST_PATH | typeof LANDING_ALUMINIUM_PATH | typeof LANDING_CUSTOM_PATH | typeof LANDING_OUTDOOR_ROOM_PATH | typeof LANDING_BLINDS_PATH;
 export function landingSourcePath(value: unknown): LandingSourcePath {
-  return value === LANDING_REDESIGN_PATH || value === LANDING_COST_PATH || value === LANDING_ALUMINIUM_PATH || value === LANDING_CUSTOM_PATH || value === LANDING_OUTDOOR_ROOM_PATH ? value : '/pergolas-auckland';
+  return value === LANDING_REDESIGN_PATH || value === LANDING_COST_PATH || value === LANDING_ALUMINIUM_PATH || value === LANDING_CUSTOM_PATH || value === LANDING_OUTDOOR_ROOM_PATH || value === LANDING_BLINDS_PATH ? value : '/pergolas-auckland';
 }
 const LANDING_DESIGN_SCOPE = 'pergolas-auckland';
 export function isLandingDesign(pathname: string, search: string) {
   if (new URLSearchParams(search).get('design_scope') === 'default') return false;
-  return pathname === '/pergolas-auckland' || pathname === LANDING_REDESIGN_PATH || pathname === LANDING_COST_PATH || pathname === LANDING_ALUMINIUM_PATH || pathname === LANDING_CUSTOM_PATH || pathname === LANDING_OUTDOOR_ROOM_PATH
+  return pathname === '/pergolas-auckland' || pathname === LANDING_REDESIGN_PATH || pathname === LANDING_COST_PATH || pathname === LANDING_ALUMINIUM_PATH || pathname === LANDING_CUSTOM_PATH || pathname === LANDING_OUTDOOR_ROOM_PATH || pathname === LANDING_BLINDS_PATH
     || new URLSearchParams(search).get('design_scope') === LANDING_DESIGN_SCOPE;
 }
 export function withLandingDesignScope(href: string) {
