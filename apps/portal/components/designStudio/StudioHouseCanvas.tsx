@@ -97,7 +97,12 @@ export default function StudioHouseCanvas({repairTarget,cameraStorageKey,persist
   if(p?.geometry&&p.position){const outline=p.geometry.plan.outline.map(v=>transformWebsitePoint(v,{x,y,rotation:p.position!.rotation}));const targetLines=[...products.filter(p=>p.object.id!==d.id&&p.geometry&&p.position).flatMap(p=>{const pts=p.geometry!.plan.outline.map(v=>transformWebsitePoint(v,p.position!));return pts.map((a,i)=>({id:p.object.id,label:`${p.object.label} edge ${i+1}`,start:a,end:pts[(i+1)%pts.length]}));}),...houses.flatMap(h=>h.footprint.map((a,i)=>({id:h.house.id,label:`${h.house.label} edge ${i+1}`,start:a,end:h.footprint[(i+1)%h.footprint.length]})))];const snap=snapWebsiteEdges(outline,targetLines);if(snap){x+=snap.dx;y+=snap.dy;setSnapLabel(snap.label);setSnapTarget(targetLines.find(t=>t.id===snap.targetId&&t.label===snap.label)??null);}}
   d.proposed={x,y};setMoving({id:d.id,x,y});
  }
- function startDrag(e:React.PointerEvent<SVGElement>,id:string,x:number,y:number){if(e.button!==0)return;if(directDrag?.canDrag&&!directDrag.canDrag(id))return;if(readOnly&&!directDrag||movementLocked||targets.length&&!directDrag||joinDraft)return;const c=coords(e.clientX,e.clientY);if(c){e.currentTarget.setPointerCapture(e.pointerId);drag.current={id,pointerId:e.pointerId,pose:{x,y},start:{x:c.x,y:c.y},screen:{x:e.clientX,y:e.clientY},proposed:null};
+ function startDrag(e:React.PointerEvent<SVGElement>,id:string,x:number,y:number){if(e.button!==0)return;
+  // A denied/preparing grab must not seed native text dragging for the next move.
+  e.preventDefault();
+  if(directDrag?.canDrag&&!directDrag.canDrag(id))return;if(readOnly&&!directDrag||movementLocked||targets.length&&!directDrag||joinDraft)return;const c=coords(e.clientX,e.clientY),node=svg.current;if(c&&node){
+   // Selection can replace a product's context-wrapped descendant. The Plan owns capture.
+   node.setPointerCapture(e.pointerId);drag.current={id,pointerId:e.pointerId,pose:{x,y},start:{x:c.x,y:c.y},screen:{x:e.clientX,y:e.clientY},proposed:null};
    if(directDrag){svg.current?.setAttribute('data-drag-capture',JSON.stringify({pointerId:e.pointerId,objectId:id,pose:{x,y},world:c,screen:{x:e.clientX,y:e.clientY}}));const at=performance.now();grabTiming.current=at;const node=svg.current;node?.removeAttribute('data-grab-dom-ms');node?.setAttribute('data-grab-visibility',document.visibilityState);node?.setAttribute('data-grab-queue-ms',String(at-e.timeStamp));node?.setAttribute('data-grab-long-tasks','[]');node?.setAttribute('data-grab-start',String(at));directDrag.begin?.(id);node?.setAttribute('data-grab-handler-ms',String(performance.now()-at));
     requestAnimationFrame(()=>{const node=svg.current;if(node){node.setAttribute('data-grab-first-frame-ms',String(performance.now()-at));node.setAttribute('data-grab-footprint-visible',String(!!node.querySelector('[data-direct-footprint]')));}});}
   }}
@@ -111,6 +116,7 @@ export default function StudioHouseCanvas({repairTarget,cameraStorageKey,persist
  </StudioTreatment.Provider></DayNightTransition></Canvas></div>
  {view==='Plan'&&<div className={css.housePlanViewport}><svg ref={svg} className={css.housePlan} viewBox={planFrame} aria-label="Studio design Plan" onPointerDownCapture={e=>{if(e.button!==2||!persistentViewport||!planCamera)return;e.preventDefault();e.stopPropagation();suppressContext.current=true;directDrag?.pan?.(true);pan.current={pointerId:e.pointerId,client:{x:e.clientX,y:e.clientY},camera:planCamera};e.currentTarget.setPointerCapture(e.pointerId);}}
  onContextMenu={e=>{if(suppressContext.current){e.preventDefault();suppressContext.current=false;}}}
+ onDragStart={e=>e.preventDefault()}
  onPointerMove={e=>{const p=pan.current;if(p){if(p.pointerId!==e.pointerId)return;setPlanCamera({...p.camera,x:p.camera.x-(e.clientX-p.client.x)*p.camera.units,y:p.camera.y-(e.clientY-p.client.y)*p.camera.units});return;}if(drag.current?.pointerId===e.pointerId)dragMove(e.clientX,e.clientY);}}
  onPointerUp={e=>{if(pan.current){if(pan.current.pointerId===e.pointerId){pan.current=null;directDrag?.pan?.(false);}return;}if(drag.current?.pointerId===e.pointerId){dragMove(e.clientX,e.clientY);finishDrag(true);}}}
  onPointerCancel={e=>{if(pan.current){if(pan.current.pointerId===e.pointerId){setPlanCamera(pan.current.camera);pan.current=null;directDrag?.pan?.(false);}return;}finishDrag(false);}}

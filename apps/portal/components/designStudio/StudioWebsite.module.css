@@ -51,7 +51,7 @@
 
 /* The Plan has its own actual drawable rectangle; generic direct-SVG sizing must not extend it below the canvas. */
 .housePlanViewport{position:absolute;inset:120px 16px 24px;min-height:0;overflow:hidden}
-.housePlan{display:block;width:100%;height:100%;touch-action:none}
+.housePlan{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
 .houseJoinTask{flex:1;min-height:0;overflow:hidden}
 .objectTasks{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--ui-border);flex:none}
 .objectTasks button{padding:12px;border-bottom:2px solid transparent;background:var(--ui-surface-primary);color:var(--ui-text-muted);font-size:13px}

@@ -4,6 +4,14 @@ Status: the six authorised designer-improvement priorities are implemented for o
 
 ## Current improvement batch: priorities 4–6
 
+### Plan mouse follow-up, 21 October
+
+Jordan reported "The drag and drop dont seem to be working" and clarified "in plan using a mouse". A held Chrome gesture on the protected F checkpoint reproduced native dragging of selected "Roof fall" text, followed by `pointercancel`; the same gesture committed after clearing the text selection. A separate first-grab trace confirmed that selecting an inactive product removes its captured descendant, although that within-Plan move still committed. These findings qualify the earlier quick-drag checks rather than changing the approved movement contract.
+
+The bounded correction stays in `StudioHouseCanvas` and its Plan CSS: primary object grabs suppress default selection even while preparation refuses the start; native text dragging is cancelled only within the Plan SVG; and the stable SVG owns pointer capture across product selection. Text and numeric selection outside the model remain available. Grab offset, four-pixel threshold, finite snapping, pending proposals, release/Cancel/Undo, model rendering, providers and both manual cameras are unchanged. Mounted regression checks exercise the actual Plan handlers and product-context transition with browser measurement/capture primitives substituted; held native-browser verification remains a separate exact-preview checkpoint in the WORK-RECORD. No production approval or overall readiness is implied.
+
+Gate 0: (a) N/A, no legacy audit row; (b) no legacy removal or build-on; (c) no Phase 2 dependency; (d) no function/type consolidation or field loss. The existing large canvas retains ownership of its pointer lifecycle; extracting unrelated geometry or presentation during this repair would widen the change.
+
 Candidate A (495c1e512ddeb8ed6c1c9c08a39ca5945a608bf2, source manifest 843ef4f) is the retained priorities 1–3 checkpoint. The orchestrator verified real eave-height repair, measured short-span repair, effective freestanding height, Review captures and return to the saved editor context; the builder inspected eight captured screens. Candidate C (`6d9fef39`) subsequently exercised the combined improvements on the same protected preview. Candidate D corrects C's sole new material browser finding: the saved Studio list used a different legacy-version input projection from Project and the editor. It now uses the established Project projection and helper over all project rows before filtering Studio designs. No stored version, shared numbering rule or quoted-design authority changes.
 
 | Priority | Current implementation owner and bounded change | Verification boundary |
