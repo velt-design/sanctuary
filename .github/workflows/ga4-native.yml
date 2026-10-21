@@ -31,7 +31,7 @@ jobs:
     env:
       PRAXIS_DISPOSABLE_POSTGRES_BIN: ''
       # Official 17.6.1.167 linux/amd64 manifest, verified from public ECR metadata.
-      GA4_NATIVE_IMAGE: public.ecr.aws/supabase/postgres@sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4
+      GA4_NATIVE_IMAGE: ghcr.io/supabase/postgres@sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4
       GA4_NATIVE_TAG: public.ecr.aws/supabase/postgres:17.6.1.167
     steps:
       - name: Checkout exact event revision

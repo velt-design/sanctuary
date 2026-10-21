@@ -427,11 +427,15 @@ safeupdate substrate on the standard Ubuntu runner with Node22 and read-only
 repository permissions. Its PR/main triggers cover only that workflow, the
 committed native harness and the two exact GA4 migration bodies; manual dispatch
 has no inputs. A separate single-attempt180-second provisioning step pulls the
-official17.6.1.167 linux/amd64 image by immutable manifest digest
+official GHCR 17.6.1.167 linux/amd64 image by immutable manifest digest
 `sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4`,
-then associates the harness's fixed local tag with that exact image and prints
-its resolved ID/registry digests. The digest was verified from public ECR tag
-index and child-manifest bytes on21October2026; no image was pulled locally.
+then associates the harness's fixed local ECR tag with that exact image and prints
+its resolved ID/registry digests. ECR and official GHCR tag indexes and child
+manifests were verified byte-identical on21October2026. The first published ECR
+provisioning attempt failed with Data limit exceeded before image/SQL execution;
+GHCR is the prepared transport correction. The ECR tag is only a local alias,
+not a second pull or fallback. No image was pulled locally, and the correction
+is not an executed native proof.
 The unchanged harness still never pulls, runs its disposable container with
 network none and no host mounts/ports, loads real safeupdate in every SQL
 session and requires the unsafe-delete negative assertion. Job maximum15minutes;
