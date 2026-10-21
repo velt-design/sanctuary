@@ -43,6 +43,15 @@ canonical URL, guide navigation, sitemap discovery and governed schema remain.
 Release build, review and rollout are separately recorded evidence. Local simulated
 submissions do not prove delivery or current production advertising attribution.
 
+The two guide enquiry anchors use route-local `EnquiryLink`, backed by Next Link,
+so visiting a project and using Back restores the guide's router state as well as
+its fragment URL. An already-current enquiry fragment repeats the native target
+scroll without creating another history entry or triggering a same-URL refresh.
+First and repeat entry focus the enquiry target without an additional scroll,
+so the next Tab reaches its first control rather than returning to a hero link.
+The rendered anchor, query context, modified clicks and no-JavaScript fallback
+remain intact. This is not a global history patch or a new enquiry-state owner.
+
 ## Meta landing experiment candidate (21 October 2026)
 
 The existing two Meta pages retain their photographs, headlines, tint comparison,
