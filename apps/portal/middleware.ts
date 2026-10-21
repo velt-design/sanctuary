@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createProxySupabase } from '@/lib/supabase/proxyClient';
+import { isRegionalDocumentPath, prepareRegionalDocumentAccess } from '@/lib/regionalDocumentAccess';
 import { DOCUMENT_ID_HEADER, prepareProxyDocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
 import type { PortalAccessTimingObserver } from '@/lib/portalAccess';
 import {
@@ -28,22 +29,10 @@ const PROJECT_WORK_QUEUE_FIXTURE_PATH = '/qa/project-work-queue-fixture';
 const SCHEDULE_OPS_FIXTURE_PATH = '/qa/schedule-ops-fixture';
 const AI_ACTIVITY_FIXTURE_PATH = '/qa/ai-activity-fixture';
 
-type CookieToSet = {
-  name: string;
-  value: string;
-  options?: Record<string, unknown>;
-};
-
 type NormalizedRoute =
   | { action: 'next'; pathname: string }
   | { action: 'rewrite'; pathname: string }
   | { action: 'redirect'; pathname: string; permanent?: boolean };
-
-function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_ANON_KEY'): string {
-  const value = process.env[name];
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  return '';
-}
 
 function isPortalPublicPath(path: string): boolean {
   return path === '/login' || path.startsWith('/login/') || path === '/access-status' || path.startsWith('/access-status/');
@@ -177,49 +166,23 @@ function buildNormalizedResponse(req: NextRequest, route: NormalizedRoute, reque
   return NextResponse.next(init);
 }
 
-function createProxySupabase(req: NextRequest) {
-  const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
-  const anonKey = requiredEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  const cookiesToSet: CookieToSet[] = [];
-
-  if (!url || !anonKey) {
-    return {
-      supabase: null,
-      apply(response: NextResponse) {
-        return response;
-      },
-    };
-  }
-
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return req.cookies.getAll();
-      },
-      setAll(nextCookies) {
-        for (const cookie of nextCookies) {
-          cookiesToSet.push(cookie);
-        }
-      },
-    },
-  });
-
-  return {
-    supabase: supabase as unknown as PortalAccessLookup,
-    apply(response: NextResponse) {
-      for (const cookie of cookiesToSet) {
-        response.cookies.set(cookie.name, cookie.value, cookie.options);
-      }
-      return response;
-    },
-  };
-}
-
 export async function middleware(req: NextRequest) {
   const startedAt = performance.now();
   const { requestHeaders, diagnostics } = prepareProxyDocumentDiagnostics(req);
   try {
-    const response = await runProxy(req, requestHeaders, diagnostics?.accessObserver('proxy'));
+    const document = prepareRegionalDocumentAccess(req, requestHeaders);
+    let response: NextResponse;
+    if (document.eligible) {
+      const transport = createProxySupabase(req);
+      // Session contents are untrusted. This only renews cookie transport;
+      // root/staff/page helpers still verify getUser + current role regionally.
+      await transport.supabase?.auth.getSession();
+      response = transport.apply(NextResponse.next({ request: { headers: transport.forwardRefreshedCookies(document.headers) } }));
+    } else {
+      response = await runProxy(req, document.headers, diagnostics?.accessObserver('proxy'));
+    }
+    // Denials and non-document variants of these private pages must not be cached.
+    if (isRegionalDocumentPath(req.nextUrl.pathname)) response.headers.set('Cache-Control', 'private, no-store');
     diagnostics?.record('proxy.complete', startedAt, response.status >= 300 && response.status < 400 ? 'redirect' : 'complete');
     if (diagnostics) response.headers.set(DOCUMENT_ID_HEADER, diagnostics.id);
     return response;
@@ -271,7 +234,7 @@ async function runProxy(req: NextRequest, requestHeaders?: Headers, observer?: P
     return buildNormalizedResponse(req, normalized, requestHeaders);
   }
 
-  const accessState = await resolvePortalAccessState(proxySupabase.supabase, observer);
+  const accessState = await resolvePortalAccessState(proxySupabase.supabase as unknown as PortalAccessLookup, observer);
 
   if (isLoginPath) {
     if (accessState.kind === 'authenticated') {

@@ -1,15 +1,22 @@
 # Portal Production Readiness
 
-## First-load measurement preparation (21 October 2026, unreleased)
+## First-load continuation (21 October 2026)
 
-The request-local project read optimization reduces measured server work, but the
-matched protected-preview useful-load observations have not improved overall.
-Production first-response cost remains unproven. A default-disabled, automatically
-expiring document phase diagnostic and minimal existing telemetry restoration are
-being prepared to identify the next evidenced bottleneck. They preserve auth and
-query semantics. Protected measurement verification and explicit live measurement/
-schema approval remain distinct from code tests and earlier functional acceptance.
-See the security, environment and testing owners for contracts and qualification.
+PR233 released the request-local read optimization, expiring phase diagnostics
+and selected aggregate telemetry restoration. Approved live measurement found
+the global middleware identity/role round trips dominate the document access
+path; regional render checks were shorter. PR234 delivered stable project controls.
+PR237's build-output guard passed in production, but deployed middleware placement
+remained global despite correct generated single-region configuration. Earlier
+preview placement is not proof of production placement or a useful-load gain.
+The approved measurement windows are complete; no ongoing logging is implied.
+
+The next unreleased candidate under qualification moves session transport, not authority, for three
+canonical document routes. Root and explicit page gates retain fresh regional
+identity/current-role checks before private work. Compiled synthetic denial,
+refresh, streaming and concurrency proof must pass before protected qualification.
+See `staff-api-auth-contracts.md` and `testing-and-qa.md`. The original faster useful
+first-load outcome remains open; this candidate has not been released.
 
 
 Portal experience release completed through PR222 after Jordan requested "push
