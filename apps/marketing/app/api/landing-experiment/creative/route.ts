@@ -1,3 +1,4 @@
+import {z} from 'zod';
 import {EXPERIMENT_TEMPLATE} from '../../../../lib/landingExperiment.server';
 import {landingCompatibility} from '../../../../lib/landingCompatibility.server';
 import { getServiceSupabase } from '@/lib/supabaseService';
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
     const raw = await readBoundedJson(request, 16000);
     if (!raw) throw new Error('Body unavailable');
     const command = verifyCreativeCommand(raw, request.headers.get('x-creative-signature'));
-    if(command.stage==='prepare' && executionPlanSchema.parse((command.payload as {plan:unknown}).plan).landingTemplate!==EXPERIMENT_TEMPLATE)throw new Error('Creative template changed');
+    if(command.stage==='prepare' && z.object({plan:executionPlanSchema}).parse(command.payload).plan.landingTemplate!==EXPERIMENT_TEMPLATE)throw new Error('Creative template changed');
     const db = getServiceSupabase(), signal = AbortSignal.any([request.signal, AbortSignal.timeout(10000)]);
     const args = { p_binding: process.env.SANCTUARY_LANDING_EXPERIMENT_BINDING, p_command: command.command, p_experiment: command.experiment };
     if (command.stage === 'admit'||command.stage==='check') {

@@ -28,6 +28,17 @@ streaming, denial and request-isolation proof is required before this candidate
 can be treated as verified; hosted/provider behavior and useful-load improvement
 remain separate gates. No production release is implied.
 
+The local Marketing hub scheduling candidate starts a report only after the
+page's existing staff, confirmed-developer and preview gates. The overwritten
+document callback selects its date window, never its actor. RSC/prefetch,
+Financials and invalid windows do not start this read. The API and seed share
+`marketingPerformance/readHub.server`, retaining the same auth-bound RPC,
+snapshot, complete schema/date checks and safe public errors. Only a safe result
+promise and date identity cross Flight, without suspending the client shell.
+Mismatched or later requests and explicit retries retain the guarded API path;
+there is no session/client serialization or shared evidence cache. See
+`marketing-performance.md` for the per-mount lifecycle and verification limits.
+
 ## Outlook site visits
 
 `GET /api/staff/v1/outlook-site-visits` accepts optional project and exact visit UUIDs

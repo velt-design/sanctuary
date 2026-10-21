@@ -43,3 +43,14 @@ it('separate default-off preparation flag admits future reviewed PAUSED mechanic
 it('formal preparation does not extend an old or future-dated review',()=>{
  vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','true');for(const age of [-60000,31*3600000]){const plan=planFixture();plan.approvedAt=new Date(Date.now()-age).toISOString();const signed=request(plan);expect(()=>verifyCreativeCommand(signed.raw,signed.signature)).toThrow();}
 });
+
+it('validates signed unchanged video-story preparation and exact source-media intent without widening effects',()=>{
+ const old=planFixture(),now=Math.floor(Date.now()/1000),payload={object_story_spec:{page_id:old.scope.page,video_data:{video_id:'91001',message:old.control.primary,title:'Approved title',image_hash:'a'.repeat(32),call_to_action:{type:'GET_DETAILS' as const,value:{link:`https://www.sanctuarypergolas.co.nz${old.control.path}`}}}},media_sourcing_spec:{videos:[{video_id:'91001'},{video_id:'91002'}],bodies:[{text:old.control.primary}]},creative_sourcing_spec:{selected_video_id:'91001'},contextual_multi_ads:{enroll_status:'OPT_OUT'}};
+ const control={id:old.control.id,page:old.scope.page,primary:old.control.primary,path:old.control.path,urlTags:old.control.urlTags+'&utm_id={{campaign.id}}',format:'video_story' as const,payload};
+ const plan=executionPlanSchema.parse({...old,control,purpose:'paused_capability',generator:null,reviewer:null,start:now,end:now+3600,challengerPrimary:control.primary,approvedCopyHash:canonicalHash({control:control.primary,challenger:control.primary}),approvedAssetHash:creativeAssetHash(control)});
+ const signed=request(plan);expect(verifyCreativeCommand(signed.raw,signed.signature).stage).toBe('prepare');
+ const state:ExecutorState={template:plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};
+ const intent=serializeEffect(plan,state,'create_creative',Date.now());validateCreativeIntent({generation:1,cleanup:false,intent},state,plan.landingTemplate);
+ for(const [key,value] of Object.entries(payload))expect(JSON.parse(intent.body[key]!)).toEqual(value);expect(intent.body.url_tags).toBe(control.urlTags);
+ const altered=structuredClone(intent);altered.body.media_sourcing_spec=JSON.stringify({videos:[{video_id:'91001'}]});expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent:altered},state,plan.landingTemplate)).toThrow();
+});

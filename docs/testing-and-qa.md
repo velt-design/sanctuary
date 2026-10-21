@@ -68,6 +68,32 @@ remain unconfirmed and do not trigger a repeated create. The capability path
 still creates an unchanged PAUSED ad without delivery dates. Synthetic composed
 readback is not proof of actual Meta scheduling support or enforcement. ACTIVE
 publication and formal continuation remain disabled pending their connected gates.
+
+## Video donor compatibility verification (22 October 2026)
+
+Exercise signed preparation and exact intent validation with a synthetic two-media
+video_story and six-key tracking; changed media intent must fail. Run the existing
+native ledger harness with representative/full-size synthetic plan and intent
+round trips and oversize denial. Source fixtures and local renderer closure hashes
+are not real Meta preservation or provider proof. The paired Velt v2 diagnostic
+must precede any remaining actual PAUSED attempt.
+
+## Initial Marketing hub scheduling (21 October 2026)
+
+Run `hubDocumentSelection`, `readHub.server`, the hub API/page tests,
+`useHub.initial`, and `MarketingPerformance.initialHub` with the existing hub,
+regional authority and report suites. Cover deferred page return, staff/developer
+and preview denial, exact/default Auckland dates, RSC/prefetch/Financial exclusions,
+one initial read, StrictMode, date/loader races, unmount, unavailable evidence,
+API retry, filters and record return. Use Flight-shaped thenables in hook/host
+tests, including a void-returning
+`then` and synchronous fulfillment; native promises alone miss that boundary.
+The neutral optimized scheduling experiment
+uses identical full fictional reports, assets and availability delays for client
+and streamed starts. It adds no simulated auth advantage. Verify actual Flight
+streaming, complete panel content, final data-to-content delay and retained
+recovery; unit promise tests do not establish hosted speed or access behavior.
+
 ## PG17 CI registry recovery (21 October 2026)
 
 The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR

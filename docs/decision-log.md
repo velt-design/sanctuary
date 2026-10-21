@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-10-21: select an initial report read without moving its authority boundary
+
+A server-started report can overlap document delivery and hydration, but the
+document callback only selects work. Keep current staff/developer and preview
+checks before creating the auth-bound read; share the API's complete reader and
+safe errors. Stream a result promise without suspending the client shell. Match
+only the first restored client request, retire mismatches and departures, and
+retain API retries. Independent client defaults must remain correct across an
+Auckland midnight. Measure complete content and transport separately from local
+promise plumbing. Owner: `marketing-performance.md` and its initial hub helpers.
+
+Flight thenables can inherit `Promise.prototype` while their own `then` returns
+void. Normalize through native `Promise.resolve` before chaining; `instanceof`
+is insufficient. Use that shape in pending, synchronous fulfillment, rejection,
+StrictMode and host recovery tests, then verify the compiled stream itself.
+
 ## 2026-10-21: prepare selected report components before their first visible mount
 
 A raw dynamic import can finish while React.lazy still has an uninitialized

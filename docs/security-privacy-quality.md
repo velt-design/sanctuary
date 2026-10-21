@@ -24,6 +24,15 @@ intent or alter credential scope, budget, targeting, original ads or consent.
 Absent flag preserves the released capability-only boundary. Cleanup remains
 available under its existing narrowly scoped authority.
 
+## Video donor compatibility boundary (22 October 2026)
+
+The Source contract accepts an unchanged PAUSED video_story only with the strict
+Page/destination/CTA, two distinct media-source IDs and literal approved tracking
+macros. Preserve all supported nested settings and exact thumbnail identity.
+Formal source-media copy authoring remains denied pending displayed-text mapping.
+Unknown representation abstains; Source plan/intent limits and migrations are
+unchanged. This does not establish actual donor parity or write capability.
+
 Creative template drift denies new preparation and non-cleanup effects. The
 authenticated machine read retains strictly validated registered state plus finite
 compatibility metadata so existing owned effects can reconcile and pause. This
