@@ -4,6 +4,8 @@ import { boundedGoogleJson, during } from "./transport";
 import { websiteJourney } from "./journey";
 import { periodDays, shiftDate, validateQuery, validDate, type AnalyticsReport, type Measure, type PaneId, type ReportQuery } from "./report";
 import { acquisitionPlan, coreDiagnostics, DIAGNOSTIC_VERSION, parseAcquisition } from './diagnostics';
+import { Ga4ReportFailure, validationReasons, type ReportFailureContext } from './failure';
+export { Ga4ReportFailure } from './failure';
 
 export const REPORT_VERSION = "sanctuary-ga4-v2";
 export type ReportVersion = typeof REPORT_VERSION | typeof DIAGNOSTIC_VERSION;
@@ -167,9 +169,6 @@ export function parseGa4Report(raw: unknown, property: string, query: ReportQuer
   return output;
 }
 
-export class Ga4ReportFailure extends Error {
-  constructor(readonly diagnostic: { reason: string; status?: number; schemaIssues?: { report: number | null; field: string; code: string }[]; structure?: ReturnType<typeof reportStructure> }) { super("GA4 report unavailable."); }
-}
 function reportStructure(batch: z.infer<typeof batchSchema>, query: ReportQuery) {
   return batch.reports.map((report, reportIndex) => {
     const rangeIndex = report.dimensionHeaders.findIndex(header => header.name === "dateRange");
@@ -192,48 +191,53 @@ function reportStructure(batch: z.infer<typeof batchSchema>, query: ReportQuery)
       ranges: ranges.size, duplicatePair, outsideOwnRangeNonzero };
   });
 }
-const validationReasons: Record<string, string> = {
-  "Invalid report value.": "invalid_metric", "Choose completed days in the property timezone.": "incomplete_dates",
-  "Report headers mismatch.": "report_headers", "Report metric mismatch.": "report_metric",
-  "Report rows truncated.": "report_rows_truncated", "Report row count inconsistent.": "report_row_count_inconsistent",
-  "Report timezone mismatch.": "report_timezone",
-  "Report metrics are restricted.": "restricted_metrics",
-  "Report dimensions mismatch.": "dimension_count", "Unknown date range.": "unknown_range",
-  "Invalid dimension label.": "invalid_label", "Invalid daily date.": "invalid_date",
-  "Daily date outside request.": "date_outside_range", "Landing page contains query data.": "query_bearing_path",
-  "Duplicate report row.": "duplicate_row", "Sessions must be integers.": "fractional_sessions",
-  "Provider response exceeded limit.": "response_limit", "Provider response missing.": "response_missing",
-};
 export async function readGa4Report(accessToken: string, property: string, query: ReportQuery, signal?: AbortSignal, fetcher: typeof fetch = fetch,
   options: { version?: ReportVersion; beforeRequest?: () => Promise<void> } = {}): Promise<AnalyticsReport> {
   if (!/^[1-9]\d{0,19}$/.test(property)) throw new Error("Invalid property.");
-  let status: number | undefined;
+  let context: ReportFailureContext = { stage: 'core_authority' };
   let raw: unknown;
   try {
-    const observedFetch: typeof fetch = async (url, init) => { const response = await fetcher(url, init); status = response.status; return response; };
+    const observedFetch = (owner: ReportFailureContext): typeof fetch => async (url, init) => {
+      const response = await fetcher(url, init); owner.status = response.status; return response;
+    };
     const endpoint = `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports`;
     if (options.version === DIAGNOSTIC_VERSION) {
       const abort = new AbortController(), phase = AbortSignal.any([...(signal ? [signal] : []), abort.signal, AbortSignal.timeout(45000)]), budget = { remaining: 262144 };
-      const dispatch = async (plan: unknown) => {
-        await during(options.beforeRequest?.() ?? Promise.resolve(), phase); phase.throwIfAborted();
-        return boundedGoogleJson(observedFetch, endpoint, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(plan), signal: phase }, 262144, 45000, budget);
+      const dispatch = async (plan: unknown, batch: 'core' | 'acquisition') => {
+        const owner: ReportFailureContext = { stage: `${batch}_authority` };
+        try {
+          await during(options.beforeRequest?.() ?? Promise.resolve(), phase); phase.throwIfAborted();
+          owner.stage = `${batch}_request`;
+          const value = await boundedGoogleJson(observedFetch(owner), endpoint, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(plan), signal: phase }, 262144, 45000, budget);
+          return { value, owner };
+        } catch (error) { throw reportFailure(error, owner, undefined, query); }
       };
       try {
-        const [core, acquisition] = await Promise.all([dispatch(reportPlan(query)), dispatch(acquisitionPlan(query))]);
-        phase.throwIfAborted(); raw = core;
-        const now = new Date(), report = parseGa4Report(core, property, query, now, true);
-        report.diagnostics!.acquisition = parseAcquisition(acquisition, query, report.timezone, now);
+        const [core, acquisition] = await Promise.all([dispatch(reportPlan(query), 'core'), dispatch(acquisitionPlan(query), 'acquisition')]);
+        raw = core.value; context = { ...core.owner, stage: 'core_response' }; phase.throwIfAborted();
+        const now = new Date(), report = parseGa4Report(core.value, property, query, now, true);
+        raw = acquisition.value; context = { ...acquisition.owner, stage: 'acquisition_response' };
+        report.diagnostics!.acquisition = parseAcquisition(acquisition.value, query, report.timezone, now);
+        context = { stage: 'normalization' };
         if (Buffer.byteLength(JSON.stringify(report)) > 245760) throw new Error('Report exceeds bound.');
         phase.throwIfAborted(); return report;
       } catch (error) { abort.abort(); throw error; }
     }
     await options.beforeRequest?.();
-    raw = await boundedGoogleJson(observedFetch, endpoint, {
+    context.stage = 'core_request';
+    raw = await boundedGoogleJson(observedFetch(context), endpoint, {
       method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(reportPlan(query)), signal,
     }, 262144, 45000);
+    context.stage = 'core_response';
     return parseGa4Report(raw, property, query);
   } catch (error) {
+    throw reportFailure(error, context, raw, query);
+  }
+}
+function reportFailure(error: unknown, context: ReportFailureContext, raw: unknown, query: ReportQuery): Ga4ReportFailure {
+    if (error instanceof Ga4ReportFailure) return error;
+    const { status } = context;
     // Only fixed classifications, HTTP status and structural counts/booleans;
     // private operational diagnostics never contain provider messages,
     // response values, URLs, credentials or Zod's verbose error serialization.
@@ -243,9 +247,8 @@ export async function readGa4Report(accessToken: string, property: string, query
       field: ["rows", "rowCount", "metricHeaders", "dimensionHeaders", "metadata", "metricValues", "dimensionValues", "value", "type", "timeZone"].filter(field => issue.path.includes(field)).join(".") || "envelope",
       code: issue.code,
     })) : undefined;
-    throw new Ga4ReportFailure({ reason: status !== undefined && (status < 200 || status >= 300) ? "provider_http"
+    return new Ga4ReportFailure({ stage: context.stage, reason: status !== undefined && (status < 200 || status >= 300) ? "provider_http"
       : error instanceof z.ZodError ? "response_schema" : error instanceof Error && error.name === "TimeoutError" ? "provider_timeout"
       : error instanceof Error ? validationReasons[error.message] ?? "transport_or_response" : "transport_or_response",
       ...(status !== undefined ? { status } : {}), ...(schemaIssues ? { schemaIssues } : {}), ...(structural.success ? { structure: reportStructure(structural.data, query) } : {}) });
-  }
 }

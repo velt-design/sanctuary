@@ -9,6 +9,18 @@ do not represent test data as cancelled/refunded business or delete its history.
 Test inventory is inspectable and reversible, outside business sales/visit-conversion
 counts. Original financial/operational/provider facts and access boundaries stay intact.
 
+## 2026-10-21: Preserve safe collector diagnostics before lifecycle redaction
+
+The GA4 collector classified failures, but the lifecycle replaced that diagnostic
+with a generic unavailable error before runtime logging. Parallel report batches
+also shared one last-response status. Keep batch-local stage/status ownership and
+project only fixed reason/stage codes and a bounded HTTP status into the private
+runtime log before redaction. Do not log raw errors or provider data, relax parser
+privacy rules, alter the durable ledger or infer a historical cause from a later
+diagnostic. Synthetic collector-to-HTTP/lifecycle tests cover both completion
+orders, unavailable recording and log redaction. Owner: the Sanctuary-owned GA4
+section in `environment-auth-supabase.md`.
+
 ## 2026-10-21: select an initial report read without moving its authority boundary
 
 A server-started report can overlap document delivery and hydration, but the
