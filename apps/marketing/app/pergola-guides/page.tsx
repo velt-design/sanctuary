@@ -1,164 +1,67 @@
-import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
-import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
-import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
-import JsonLd from '@/components/JsonLd';
-import {
-  Container,
-  Eyebrow,
-  Heading,
-  Section,
-  Text,
-} from '@/components/marketing-foundation';
-import { pergolaGuideChapters, pergolaGuideEditorialReview, pergolaGuides } from '@/data/pergolaGuides';
-import { absoluteUrl } from '@/lib/seo';
-import { WARKWORTH_EXTERIOR_IMAGE, WARKWORTH_EXTERIOR_OBJECT_POSITION } from '@/lib/projectImageFraming';
+import JsonLd from '../../components/JsonLd';
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
+import { buildAssistedEnquiryHref } from '../../lib/configuratorEntry';
+import { absoluteUrl } from '../../lib/seo';
+import { formTopics, guideHubItems, planningTopics, servicePaths, type GuideHubTopic } from './content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
-import './pergola-guides.css';
+import styles from './guides.module.css';
 
 const route = '/pergola-guides';
-const heroImage = WARKWORTH_EXTERIOR_IMAGE;
+const description = 'Practical pergola guides to cost, outdoor rooms, blinds, roof choices and framing. Explore real Auckland projects and find the right starting point for your space.';
+const shareImage = '/images/project-warkworth-outdoor-room-04.jpg';
 export const metadata: Metadata = {
-  title: { absolute: 'Pergola Design Guides | Sanctuary Pergolas' },
-  description:
-    'Explore Sanctuary Pergolas guides to planning, forms, materials, cost, blinds, outdoor rooms and commercial pergola projects in Auckland.',
+  title: { absolute: 'Pergola Design Guides | Sanctuary Pergolas' }, description,
   alternates: { canonical: route },
-  openGraph: {
-    type: 'website',
-    url: route,
-    title: 'The Sanctuary Pergola Design Library',
-    description:
-      'Ten practical guides, organised around the decisions that shape a considered pergola or outdoor room.',
-    images: [{
-      url: heroImage,
-      alt: 'Architectural gable outdoor room designed by Sanctuary Pergolas',
-    }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'The Sanctuary Pergola Design Library',
-    description:
-      'Ten practical guides to planning a pergola, choosing its form and comparing the decisions that shape its scope.',
-    images: [heroImage],
-  },
+  openGraph: { type: 'website', url: route, title: 'Pergola guides | Sanctuary Pergolas', description, images: [{ url: shareImage, alt: 'Warkworth outdoor room with a timber-lined roof and clear acrylic zones' }] },
+  twitter: { card: 'summary_large_image', title: 'Pergola guides | Sanctuary Pergolas', description, images: [shareImage] },
 };
 
+function GuideCard({ topic, compact = false, first = false }: { topic: GuideHubTopic; compact?: boolean; first?: boolean }) {
+  const titleId = `guide-topic-${topic.href.slice(1)}`;
+  return <article className={styles.card} data-guide-card>
+    <Link href={topic.href} className={styles.cardLink} aria-labelledby={titleId} data-guide-link>
+      <div className={styles.cardHeading}><h3 id={titleId}>{topic.question}</h3><ArrowIcon direction="up-right" /></div>
+      <div className={styles.photo}>
+        <Image src={topic.image} alt={topic.alt} fill sizes={compact ? '(max-width: 640px) 100vw, (max-width: 960px) 50vw, 420px' : '(max-width: 640px) 100vw, (max-width: 1440px) 50vw, 640px'} style={{ objectPosition: topic.position ?? '50% 50%' }} preload={first} />
+      </div>
+      <p className={styles.summary}>{topic.summary}</p>
+    </Link>
+  </article>;
+}
+
 export default function PergolaGuidesPage() {
-  return (
-    <main
-      className="acrylic-landing pergola-guide-hub"
-      data-marketing-foundation-page
-      data-pergola-guide-hub
-    >
-      <JsonLd
-        data={[
-          {
-            '@context': 'https://schema.org',
-            '@type': 'CollectionPage',
-            name: 'Sanctuary Pergola Design Library',
-            description: metadata.description,
-            url: absoluteUrl(route),
-            primaryImageOfPage: absoluteUrl(heroImage),
-            dateModified: pergolaGuideEditorialReview.date,
-            reviewedBy: {
-              '@type': 'Organization',
-              name: pergolaGuideEditorialReview.reviewer,
-              url: absoluteUrl('/'),
-            },
-          },
-          {
-            '@context': 'https://schema.org',
-            '@type': 'ItemList',
-            name: 'Sanctuary pergola design guides',
-            numberOfItems: pergolaGuides.length,
-            itemListElement: pergolaGuides.map((guide, index) => ({
-              '@type': 'ListItem',
-              position: index + 1,
-              name: guide.title,
-              url: absoluteUrl(guide.href),
-            })),
-          },
-          {
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              {
-                '@type': 'ListItem',
-                position: 1,
-                name: 'Home',
-                item: absoluteUrl('/'),
-              },
-              {
-                '@type': 'ListItem',
-                position: 2,
-                name: 'Pergola Guides',
-                item: absoluteUrl(route),
-              },
-            ],
-          },
-        ]}
-      />
-
-      <EditorialLandingHero id="guide-hub-title" eyebrow="Sanctuary pergola design library" title="Pergola guides." intro="Start with the decision you need to make." image={heroImage} alt="Gable outdoor room with timber-lined ceiling and open garden edges" objectPosition={WARKWORTH_EXTERIOR_OBJECT_POSITION} caption="Warkworth outdoor room">
-        <Link className="editorial-guide-jump" href="#guide-library">Choose a guide <ArrowIcon direction="down" /></Link>
-        <Text size="small">Editorial review: {pergolaGuideEditorialReview.reviewer} · <time dateTime={pergolaGuideEditorialReview.date}>{pergolaGuideEditorialReview.dateLabel}</time></Text>
-      </EditorialLandingHero>
-
-      <Section id="guide-library" className="guide-hub-index" aria-labelledby="guide-library-title">
-        <Container width="wide">
-          <div className="guide-hub-index__intro">
-            <Heading id="guide-library-title">Choose a guide.</Heading>
-          </div>
-        </Container>
-      </Section>
-
-      {pergolaGuideChapters.map((chapter) => (
-        <Section
-          key={chapter.id}
-          id={chapter.id}
-          tone={chapter.number === '02' ? 'warm' : 'canvas'}
-          className="guide-hub-group"
-          aria-labelledby={`${chapter.id}-title`}
-        >
-          <Container width="wide" className="guide-hub-group__layout">
-            <header className="guide-hub-group__header">
-              <Eyebrow>{chapter.eyebrow}</Eyebrow>
-              <Heading id={`${chapter.id}-title`}>{chapter.title}</Heading>
-            </header>
-
-            <div className="guide-hub-list">
-              {chapter.guides.map((guide) => (
-                <article
-                  aria-labelledby={`guide-${guide.number}-title`}
-                  key={guide.href}
-                  className={`guide-hub-card ${cardLinks.surface}`}
-                  data-guide-card
-                >
-                  <span className="guide-hub-card__number">{guide.number}</span>
-                  <div className="guide-hub-card__heading">
-                    <h3 id={`guide-${guide.number}-title`}>
-                      <Link
-                        href={guide.href}
-                        className={`guide-hub-card__link ${cardLinks.hitLink}`}
-                        data-guide-link
-                      >
-                        {guide.title}
-                      </Link>
-                    </h3>
-                  </div>
-                  <p className="guide-hub-card__summary">{guide.summary}</p>
-                  <span className="guide-hub-card__arrow" aria-hidden="true"><ArrowIcon direction="right" /></span>
-                </article>
-              ))}
-            </div>
-          </Container>
-        </Section>
-      ))}
-
-    </main>
-  );
+  return <main className={`acrylic-landing ${styles.page}`} data-marketing-foundation-page data-pergola-guide-hub>
+    <JsonLd data={[
+      { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Sanctuary Pergola Design Library', description, url: absoluteUrl(route), primaryImageOfPage: absoluteUrl(shareImage) },
+      { '@context': 'https://schema.org', '@type': 'ItemList', name: 'Sanctuary pergola design guides', numberOfItems: guideHubItems.length, itemListElement: guideHubItems.map((guide, index) => ({ '@type': 'ListItem', position: index + 1, name: guide.title, url: absoluteUrl(guide.href) })) },
+      { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
+        { '@type': 'ListItem', position: 2, name: 'Pergola Guides', item: absoluteUrl(route) },
+      ] },
+    ]} />
+    <div className={styles.container}>
+      <header className={styles.intro}>
+        <div><p className={styles.eyebrow}>Ideas for your outdoor space</p><h1>Pergola guides.</h1></div>
+        <div className={styles.introCopy}><p>Start with the question on your mind. Real projects and practical advice to help you plan the space.</p><Link className={styles.textLink} href={buildAssistedEnquiryHref({ sourcePath: route, sourceComponent: 'hero' }, 'help')} data-hub-enquiry>Talk to us about your space <ArrowIcon direction="up-right" /></Link></div>
+      </header>
+      <section className={styles.planning} aria-labelledby="planning-title" id="plan-your-space">
+        <h2 id="planning-title">What would you like to know?</h2>
+        <div className={styles.planningGrid}>{planningTopics.map((topic, index) => <GuideCard key={topic.href} topic={topic} first={index === 0} />)}</div>
+      </section>
+      <section className={styles.forms} aria-labelledby="form-title" id="roof-and-frame">
+        <header className={styles.sectionHeading}><h2 id="form-title">Choose the frame and roof shape.</h2><p>See how the structure changes the space beneath it.</p></header>
+        <div className={styles.formGrid}>{formTopics.map((topic) => <GuideCard key={topic.href} topic={topic} compact />)}</div>
+      </section>
+      <section className={styles.services} aria-labelledby="services-title" id="design-and-build">
+        <header className={styles.sectionHeading}><p className={styles.eyebrow}>Design and build services</p><h2 id="services-title">Ready to make it your own?</h2><p>Explore how we can help with your home, a particular site or a commercial space.</p></header>
+        <div className={styles.serviceGrid}>{servicePaths.map((service) => <Link href={service.href} key={service.href} className={styles.serviceLink} data-service-link><h3>{service.title}<ArrowIcon direction="up-right" /></h3><p>{service.summary}</p></Link>)}</div>
+        <div className={styles.contact}><p>You do not need a finished design to get in touch.</p><Link className={styles.primary} href={buildAssistedEnquiryHref({ sourcePath: route, sourceComponent: 'final_cta' }, 'help')}>Tell us about your space <ArrowIcon direction="up-right" /></Link></div>
+      </section>
+    </div>
+  </main>;
 }

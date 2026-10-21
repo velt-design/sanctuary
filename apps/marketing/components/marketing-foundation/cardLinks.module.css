@@ -9,8 +9,3 @@
 @media (hover: hover) and (pointer: fine) {
   .surface:has(.hitLink:hover), .fullLink:hover { background-color: var(--color-surface-neutral); transform: none; }
 }
-/* The guide's former title-only hover shifted its grid and inverted all copy. */
-.surface:global(.guide-hub-card):hover { padding-inline: 0; background: var(--color-surface-neutral); color: var(--color-text-primary); }
-.surface:global(.guide-hub-card):hover :global(.guide-hub-card__summary) { color: var(--color-text-secondary); }
-.surface:global(.guide-hub-card):hover :global(.guide-hub-card__number) { color: var(--color-text-subtle); }
-.surface:global(.guide-hub-card):hover :global(.guide-hub-card__arrow) { color: var(--color-accent-olive); }

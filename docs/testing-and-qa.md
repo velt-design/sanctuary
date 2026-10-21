@@ -1,5 +1,19 @@
 # Testing And QA
 
+## Photographic guide hub (22 October 2026)
+
+The hub server-render unit proves all ten existing destinations remain reachable,
+the seven-guide ItemList matches its visual cards, topic photographs exist, and
+both enquiry links retain source context while selecting the canonical help brief.
+`marketing.guide-hub.spec.ts` covers 320/390/820/1265/1440/2560 layouts, the real
+shared header clearing the opening copy, an early first decision, loaded photos,
+overflow, keyboard/reduced-motion navigation, cost/blinds/form Back returns and
+repeated help-brief entry. Canonical/indexation, sitemap, footer discovery and
+the retained brochure redirect are included. Existing density, phase-four and
+preload assertions follow this route's new composition. The old overlay-hero
+contract no longer includes the hub. Authored browser contracts are separate
+from actual supported-browser evidence and do not establish production delivery.
+
 
 ## Video donor compatibility verification (22 October 2026)
 

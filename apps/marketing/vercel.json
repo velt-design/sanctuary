@@ -48,7 +48,8 @@
       "codex/portal-marketing-fresh-load-20261021": false,
       "codex/pitched-guide-20261021": false,
       "codex/commercial-guide-20261021": false,
-      "codex/portal-marketing-panel-ready-20261021": false
+      "codex/portal-marketing-panel-ready-20261021": false,
+      "codex/guide-hub-20261021": false
     }
   },
   "crons": [

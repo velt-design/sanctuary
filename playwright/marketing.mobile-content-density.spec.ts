@@ -240,19 +240,19 @@ const routeCases: readonly RouteCase[] = [
     maximumVisibleHeadingRegions: 5,
     mobileSignals: [
       'Pergola guides.',
-      'Warkworth outdoor room',
-      'Choose a guide.',
-      'Pergolas Auckland',
+      'What would you like to know?',
+      'Would blinds make it more useful?',
+      'Design and build services',
     ],
     primaryAction: {
-      name: 'Pergolas Auckland',
-      href: '/pergolas-auckland',
+      name: 'How much will a pergola cost?',
+      href: '/pergola-cost-auckland',
       initialViewport: false,
     },
     stableSections: [
-      '#guide-library',
-      '#plan-the-project',
-      '#compare-scope-and-components',
+      '#plan-your-space',
+      '#roof-and-frame',
+      '#design-and-build',
     ],
     meaningfulLinks: [
       '/pergolas-auckland',

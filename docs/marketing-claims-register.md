@@ -1,5 +1,17 @@
 # Marketing Claims Register
 
+## Guide hub (22 October 2026)
+
+The hub summarises existing cost, outdoor-room, blind, material and roof-form
+guides using already published installation photographs. The cost photograph
+illustrates a built scope, not a priced package. The blinds card uses the visibly
+lowered coastal mesh blind. The comparison card immediately states that Sanctuary
+does not supply louvre roofs and describes the louvre proposal as external.
+No price, numeric performance, technical specification, consent or warranty claim
+is introduced. General, Custom and current Commercial design/build pages are
+separate service pathways. This is a route-level presentation choice, not a
+reclassification of shared guide records or individual-route schema.
+
 ## Commercial photographic refresh (21 October 2026)
 
 The Commercial page retains the approved 30 September hospitality-first

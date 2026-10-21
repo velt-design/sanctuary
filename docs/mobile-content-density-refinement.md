@@ -160,7 +160,7 @@ distributed.
 | Residential | `app/pergolas-auckland/page.tsx`, route `content.ts` and CSS, shared acrylic/SEO styles | Public section anchors, guide links, project evidence, embedded enquiry attribution |
 | Custom, commercial, guide detail | Thin route config plus `components/seo-landing/SeoLandingPage.tsx`, `SeoLandingBlocks.tsx`, `types.ts`, and `seo-landing.css` | Nine shared-renderer consumers, route-specific metadata/schema, claims, section IDs, related links, enquiry audience |
 | Products | `data/products.ts`, `ProductsHub.tsx`, `ProductDetailPage.tsx`, `ProductCard.tsx`, `MobileProductDisclosure.tsx`, `product-pages.module.css` | Catalogue as claim/metadata/schema/sitemap truth, product slugs, project references, product enquiry context |
-| Guide hub | `app/pergola-guides/page.tsx`, `pergola-guides.css`, `data/pergolaGuides.ts` | CollectionPage/ItemList/Breadcrumb schema, ten guide routes and summaries |
+| Guide hub | `app/pergola-guides/page.tsx`, `guides.module.css`, `content.ts` | CollectionPage/ItemList/Breadcrumb schema, seven photo guides and three service paths; all ten destinations retained |
 | Contact | `app/contact/page.tsx`, `ContactEnquiryForm.tsx`, `contactFormModel.ts`, `enquiryRoute.ts`, `contact.css` | `enquiry_type`, `source_path`, `source_component`, project/product values, `embedded_form`, attachments, attribution and consent analytics |
 | Route shell | `app/template.tsx`, `components/AnimatedRouteTemplate.tsx`, `components/ScrollReset.tsx`, global route styles | One meaningful main landmark, server/no-JavaScript visibility, fragment navigation, reduced motion |
 
