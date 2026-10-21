@@ -89,4 +89,26 @@ describe('disabled creative policy', () => {
     expect(validateCreativePolicy(intent, policy, now)).toMatchObject({ status: 'validated_local_only', executionEnabled: false });
     intent.effect = { kind: 'pause_owned_ad', ad: policy.controlAd }; seal(); expect(validateCreativePolicy(intent, policy, now)).toMatchObject({ code: 'ownership' });
   });
+  it.each(['exact', 'hash_conflict', 'scope_conflict', 'experiment_conflict', 'multiple'] as const)('reconciles a registered create with a not-dispatched receipt: %s', conflict => {
+    const { intent, policy } = fixture();
+    const row = { ad: '11010', experiment: intent.experiment, createdBy: intent.command, requestHash: policy.receipt.requestHash, status: 'PAUSED' as const, scope: { ...policy.scope } };
+    if (conflict === 'hash_conflict') row.requestHash = hash('f');
+    if (conflict === 'scope_conflict') row.scope.account = '99999';
+    if (conflict === 'experiment_conflict') row.experiment = uuid(9);
+    policy.ownedAds = conflict === 'multiple' ? [row, { ...row, ad: '11011' }] : [row];
+    expect(validateCreativePolicy(intent, policy, now)).toMatchObject({ status: 'denied', code: 'reconcile_required', executionEnabled: false });
+    policy.receipt.state = 'confirmed'; policy.receipt.objectId = row.ad;
+    expect(validateCreativePolicy(intent, policy, now)).toMatchObject(conflict === 'exact'
+      ? { status: 'validated_local_only', disposition: 'already_confirmed', executionEnabled: false }
+      : { status: 'denied', code: 'reconcile_required', executionEnabled: false });
+  });
+  it('requires a confirmed receipt for the same unique object, without blocking an unrelated command', () => {
+    const { intent, policy } = fixture();
+    policy.ownedAds = [{ ad: '11010', experiment: intent.experiment, createdBy: intent.command, requestHash: policy.receipt.requestHash, status: 'PAUSED', scope: policy.scope }];
+    policy.receipt.state = 'confirmed'; policy.receipt.objectId = '11011';
+    expect(validateCreativePolicy(intent, policy, now)).toMatchObject({ status: 'denied', code: 'reconcile_required' });
+    policy.ownedAds[0]!.createdBy = uuid(8); policy.ownedAds[0]!.requestHash = hash('e');
+    policy.receipt.state = 'not_dispatched'; policy.receipt.objectId = null;
+    expect(validateCreativePolicy(intent, policy, now)).toMatchObject({ status: 'validated_local_only', disposition: 'not_dispatched', executionEnabled: false });
+  });
 });

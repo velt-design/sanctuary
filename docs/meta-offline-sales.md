@@ -233,7 +233,10 @@ A matching held creative reservation, generation and unchanged pre-state are
 required. This is a pure check, not an implemented atomic cross-lane lock. A
 command/hash conflict fails; uncertain creation requires reconciliation, never
 another create. A confirmed response needs the matching source-owned object
-registry before it can be treated as already completed. Name matching is not
+registry before it can be treated as already completed. An existing create-command
+registry entry also prevents a stale `not_dispatched` receipt from authorizing a
+new create. Conflicting or multiple entries require reconciliation; only one exact
+object plus its matching confirmed receipt resolves completion. Name matching is not
 provider idempotency. Status effects cannot target the original control ad.
 
 Remaining implementation prerequisites are deliberately explicit: authoritative

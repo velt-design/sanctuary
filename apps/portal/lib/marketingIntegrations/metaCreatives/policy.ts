@@ -39,6 +39,12 @@ export function validateCreativePolicy(intentInput: unknown, policyInput: unknow
   if ((policy.receipt.state === 'not_dispatched') !== (policy.receipt.objectId === null)) return deny('command_conflict');
   if (new Set(policy.ownedAds.map(row => row.ad)).size !== policy.ownedAds.length) return deny('ownership');
   if (effect.kind === 'create_paused_variant') {
+    // Registry evidence of this command cannot be overridden by a missing or
+    // stale dispatch receipt. Ambiguous identities require reconciliation.
+    const created = policy.ownedAds.filter(row => row.createdBy === intent.command);
+    if (created.length && (created.length !== 1 || policy.receipt.state !== 'confirmed'
+      || created[0]!.ad !== policy.receipt.objectId || created[0]!.experiment !== intent.experiment
+      || created[0]!.requestHash !== requestHash || !same(created[0]!.scope, policy.scope))) return deny('reconcile_required');
     if (effect.controlAd !== policy.controlAd) return deny('control_changed');
     const asset = policy.assets.find(row => row.key === effect.assetKey), copy = policy.copies.find(row => row.key === effect.copyKey);
     if (!asset || asset.page !== policy.scope.page || asset.path !== effect.path || Date.parse(asset.validUntil) <= time) return deny('asset');
