@@ -1,0 +1,96 @@
+.page { --container-wide: 1312px; --roof-gutter: clamp(22px, 4.4vw, 64px); background: #f5f5f0; }
+.hero, .content { box-sizing: border-box; width: 100%; max-width: 1440px; margin: 0 auto; padding-inline: var(--roof-gutter); }
+.hero { display: grid; grid-template-columns: .85fr 1.2fr; grid-template-areas: 'copy photo' 'action photo'; column-gap: 64px; row-gap: 26px; padding-block: 40px 64px; }
+.heroCopy { grid-area: copy; align-self: end; }
+.heroAction { grid-area: action; align-self: start; }
+.heroPhoto { grid-area: photo; margin: 0; }
+.heroPhoto img { display: block; width: 100%; height: 570px; object-fit: cover; object-position: 50% 18%; }
+.heroPhoto figcaption { max-width: 60ch; margin-top: 12px; font-size: 12px; line-height: 1.6; color: #5a6054; }
+.eyebrow { margin: 0 0 15px; font: 500 11px/1.5 'Inter Variable', sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.hero h1 { max-width: 12ch; margin: 0; font: 450 clamp(46px, 4.6vw, 66px)/1.03 'Instrument Sans Variable', sans-serif; letter-spacing: -.055em; }
+.intro { max-width: 34ch; margin: 24px 0 0; font-size: 19px; line-height: 1.6; }
+.primary { display: flex; justify-content: space-between; align-items: center; gap: 24px; width: fit-content; min-height: 52px; padding: 15px 20px; background: #53604b; color: white; font-size: 14px; text-decoration: none; }
+.primary:hover { background: #3e4938; }
+.page a:focus-visible, .page button:focus-visible, .page summary:focus-visible { outline: 2px solid #53604b; outline-offset: 4px; }
+.diagram { max-width: 880px; background: #e9ece4; padding: 26px 28px 18px; margin: 30px 0; }
+.diagramPair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.roofExample { min-width: 0; }
+.roofExample h3 { margin: 0; font: 450 22px/1.25 'Instrument Sans Variable', sans-serif; letter-spacing: -.03em; }
+.roofExample svg { display: block; width: 100%; height: auto; margin-block: 14px 0; }
+.diagram .roofExample p { min-height: 3.4em; margin: 0 0 12px; font-size: 13px; line-height: 1.7; }
+.diagram .roofExample .diagramOwner { min-height: 0; margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.fixedState, .stateControls { min-height: 44px; display: flex; align-items: center; font-size: 12px; }
+.stateControls { gap: 3px; }
+.stateControls button { min-height: 44px; flex: 1; border: 1px solid #bbc1b4; background: transparent; padding: 8px 10px; font: inherit; cursor: pointer; }
+.stateControls button[aria-pressed='true'] { background: #53604b; color: white; border-color: #53604b; }
+.diagram .diagramNote { margin: 19px 0 0; max-width: 65ch; font-size: 11px; line-height: 1.5; color: #535a4e; }
+.content h2 { margin: 0 0 20px; font: 450 clamp(31px, 3.4vw, 46px)/1.1 'Instrument Sans Variable', sans-serif; letter-spacing: -.045em; }
+.content p { font-size: 16px; line-height: 1.75; }
+.content .eyebrow { font-size: 11px; line-height: 1.5; }
+.comparison { border-top: 1px solid #d5d8cf; padding-block: 58px 64px; scroll-margin-top: 100px; }
+.comparison > p:not(.eyebrow) { max-width: 64ch; margin-bottom: 30px; }
+.comparison table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 15px; line-height: 1.65; }
+.comparison th, .comparison td { padding: 20px 24px; border-bottom: 1px solid #d5d8cf; text-align: left; vertical-align: top; }
+.comparison thead th { font-size: 18px; font-weight: 500; }
+.comparison th:first-child { width: 20%; padding-left: 0; font-weight: 500; }
+.comparison td { width: 40%; }
+.comparison th:last-child, .comparison td:last-child { background: #e9ece4; }
+.photoStory { display: grid; grid-template-columns: .85fr 1.2fr; gap: 64px; align-items: center; padding-block: 24px 72px; }
+.photoStory figure { margin: 0; }
+.photoStory img { display: block; width: 100%; height: auto; }
+.photoStory figcaption { margin-top: 12px; font-size: 12px; line-height: 1.6; color: #5a6054; }
+.materialCopy { max-width: 43ch; }
+.materialCopy p:not(.eyebrow) { margin: 0 0 18px; }
+.textLink { display: inline-flex; gap: 18px; align-items: center; min-height: 44px; font-size: 14px; text-decoration: underline; text-underline-offset: 5px; }
+.brief { border-top: 1px solid #d5d8cf; padding-block: 58px; display: grid; grid-template-columns: 1fr 1fr; gap: 8%; }
+.brief ol { margin: 0; padding-left: 24px; }
+.brief li { padding-left: 12px; margin-bottom: 28px; }
+.brief li:last-child { margin-bottom: 0; }
+.brief h3 { margin: 0 0 8px; font-size: 20px; font-weight: 500; letter-spacing: -.025em; }
+.brief li p { margin: 0; }
+.faq { max-width: 920px; padding-block: 48px 60px; }
+.faq details { border-bottom: 1px solid #d5d8cf; }
+.faq summary { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 68px; padding-block: 18px; font-size: 17px; cursor: pointer; list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq details[open] summary span { transform: rotate(45deg); }
+.faq details p { margin: 0 0 24px; max-width: 70ch; }
+.page :global(#project-details) { padding-block: 64px; scroll-margin-top: 85px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media (min-width: 801px) and (max-width: 1100px) {
+  .hero { column-gap: 32px; grid-template-columns: 1fr 1.15fr; }
+  .heroPhoto img { height: 520px; }
+  .hero h1 { font-size: 47px; }
+  .diagram { padding-inline: 14px; }
+  .diagramPair { gap: 12px; }
+  .photoStory { gap: 32px; }
+}
+@media (max-width: 800px) {
+  .hero { grid-template-columns: 1fr; grid-template-areas: 'copy' 'action' 'photo'; padding-block: 24px 32px; gap: 20px; }
+  .hero h1 { max-width: 12ch; font-size: clamp(38px, 8.2vw, 49px); }
+  .heroPhoto img { height: auto; aspect-ratio: 6/5; object-position: 50% 15%; }
+  .heroPhoto figcaption { font-size: 11px; }
+  .eyebrow { margin-bottom: 12px; }
+  .intro { font-size: 16px; margin: 16px 0 0; max-width: 40ch; }
+  .primary { width: 100%; }
+  .diagram { padding: 20px 12px 16px; }
+  .diagramPair { gap: 10px; }
+  .roofExample h3 { font-size: 18px; }
+  .diagram .roofExample p { font-size: 12px; }
+  .fixedState { font-size: 11px; }
+  .stateControls button { padding-inline: 6px; }
+  .comparison { padding-block: 32px 36px; }
+  .comparison table, .comparison tbody { display: block; }
+  .comparison thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .comparison tr { display: grid; grid-template-columns: 1fr 1fr; }
+  .comparison tbody th:first-child { width: auto; grid-column: 1/-1; border-bottom: 0; padding: 22px 0 10px; font-size: 19px; }
+  .comparison td { width: auto; padding: 14px 12px; font-size: 13px; }
+  .comparison td:first-of-type { padding-left: 0; padding-right: 16px; }
+  .comparison td::before { content: attr(data-roof-label); display: block; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+  .photoStory { grid-template-columns: 1fr; gap: 32px; padding-block: 20px 40px; }
+  .materialCopy { padding: 0; }
+  .brief { grid-template-columns: 1fr; gap: 28px; padding-block: 36px; }
+  .faq { padding-block: 28px 40px; }
+  .faq summary { font-size: 16px; }
+  .page :global(#project-details) { padding-block: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { .page { scroll-behavior: auto; } }

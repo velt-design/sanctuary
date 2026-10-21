@@ -1,3 +1,4 @@
+import ArrowIcon from '../components/marketing-foundation/ArrowIcon';
 import Link from 'next/link';
 
 export default function NotFound() {
@@ -24,7 +25,7 @@ export default function NotFound() {
           >
             Home page
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-black text-white" aria-hidden>
-              →
+              <ArrowIcon direction="right" />
             </span>
           </Link>
         </div>

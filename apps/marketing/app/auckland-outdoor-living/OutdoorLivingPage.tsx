@@ -1,3 +1,4 @@
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 import type { LandingCopies } from '@/lib/landingExperiment';
 import { LandingExperiment, LandingCopy, OriginalLandingCopy } from '@/components/landing-experiment/LandingExperiment';
 import ChannelTrackingRegion from '@/components/journey/ChannelTrackingRegion';
@@ -42,7 +43,7 @@ export default function OutdoorLivingPage({ path, control }: { control?: Landing
       <section className={styles.introduction} aria-labelledby="your-home-title">
         <p className={styles.eyebrow}>Your home, with room to breathe</p>
         <h2 id="your-home-title">Not just a roof.<br />Your favourite place.</h2>
-        <div><p>From a light-filled deck to a timber-lined outdoor lounge, the right pergola starts with your house and how you want to live.</p><p>We work through the roofline, materials and details with you, so the finished space feels like it belongs.</p><a className={styles.textLink} href="#built-in-auckland">See two different approaches <span aria-hidden="true">↓</span></a></div>
+        <div><p>From a light-filled deck to a timber-lined outdoor lounge, the right pergola starts with your house and how you want to live.</p><p>We work through the roofline, materials and details with you, so the finished space feels like it belongs.</p><a className={styles.textLink} href="#built-in-auckland">See two different approaches <span aria-hidden="true"><ArrowIcon direction="down" /></span></a></div>
       </section>
 
 

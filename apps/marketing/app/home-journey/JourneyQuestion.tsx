@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 
 import Image from 'next/image';
 import type { RefObject } from 'react';
@@ -81,7 +82,7 @@ export default function JourneyQuestion({
                 <span className={styles.choiceDetail}>{option.detail}</span>
               </span>
               <span className={styles.choiceArrow} aria-hidden="true">
-                &rarr;
+                <ArrowIcon direction="right" />
               </span>
             </button>
           ))}

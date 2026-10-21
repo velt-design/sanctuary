@@ -1,5 +1,17 @@
 # Security, Privacy, And Quality
 
+## Roof comparison guide boundary (21 October 2026)
+
+The roof illustration is local presentation state only. It does not emit design
+or conversion events, persist customer choices, change consent or calculate an
+estimate. The guide uses the existing enquiry form and its consent-aware accepted
+lead owner, with validated optional source/audience context. Existing contact
+requirements and API/native/SQL policy are unchanged. Only the exact preview branch
+is added to each app's deployment-suppression map. Installation asset provenance
+and review evidence remain private; the single new public WebP has no EXIF/XMP.
+Populated preview tests must intercept intake/native/uploads before input even
+when provider delivery is disabled. Fixture acceptance is not a live lead.
+
 ## Bounded landing experiment candidate (21 October)
 
 Default-off environment: `SANCTUARY_LANDING_EXPERIMENT_ENABLED=false` and

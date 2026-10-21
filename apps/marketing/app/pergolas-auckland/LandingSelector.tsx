@@ -25,7 +25,7 @@ export default function LandingSelector() {
         <fieldset className={styles.rooflines} disabled={!state.ready}><legend>Roofline</legend>{PRODUCT_FORM_CHOICES.map(option => <label key={option.type} data-selected={type === option.type}>
           <input type="radio" name="landing-roofline" checked={type === option.type} onChange={() => update(option.type)}/>
           <Image src={`/images/homepage-challenger-rooflines/${PRODUCT_DESIGNS[option.type].imageFamily}-daylight.webp`} alt="" width={1120} height={1400} sizes="(max-width:720px) 31vw, 30vw" />
-          <span className={styles.rooflineName}>{option.title}<span aria-hidden="true">↗</span></span><span className={styles.rooflineDetail}>{option.description}</span>
+          <span className={styles.rooflineName}>{option.title}<span aria-hidden="true"><ArrowUpRight /></span></span><span className={styles.rooflineDetail}>{option.description}</span>
         </label>)}</fieldset>
         <p className={styles.illustration}>Roofline illustrations. These show the style, not your selected dimensions. Furniture and landscaping are excluded.</p>
       </>}

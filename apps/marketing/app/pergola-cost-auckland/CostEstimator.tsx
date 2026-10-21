@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,12 +34,12 @@ export default function CostEstimator() {
       </div>
       <div className={styles.choices}>
         {resume ? <div className={styles.saved}><div className={styles.savedHeading}><h2>Your saved exploration</h2><button type="button" onClick={state.explore}>Start another idea <ArrowUpRight /></button></div>{saved ? <><p className={styles.savedSize}>{title} / {(width / 1000).toFixed(1)} × {(projection / 1000).toFixed(1)} m</p><dl>{design!.summary.filter(row => !['Size', 'Roofline'].includes(row.label)).map(row => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl><p>These complete choices are included in your estimate. Continue in the designer to change them.</p></> : <p>Restoring your design…</p>}</div> : <>
-          <fieldset className={styles.rooflines} disabled={!state.ready}><legend><span>01</span> Choose a roofline</legend><div>{PRODUCT_FORM_CHOICES.map(option => <label key={option.type} data-selected={type === option.type}><input type="radio" name="cost-roofline" checked={type === option.type} onChange={() => update(option.type)} /><span>{option.title}</span><span aria-hidden="true">↗</span></label>)}</div></fieldset>
+          <fieldset className={styles.rooflines} disabled={!state.ready}><legend><span>01</span> Choose a roofline</legend><div>{PRODUCT_FORM_CHOICES.map(option => <label key={option.type} data-selected={type === option.type}><input type="radio" name="cost-roofline" checked={type === option.type} onChange={() => update(option.type)} /><span>{option.title}</span><span aria-hidden="true"><ArrowUpRight /></span></label>)}</div></fieldset>
           <fieldset className={styles.dimensions} disabled={!state.ready}><legend><span>02</span> Add a rough size</legend><div><DimensionControl axis="width" label="Width" value={selection.widthMm} min={1500} max={10000} onChange={widthMm => update(type, { widthMm })} /><DimensionControl axis="projection" label="Projection" value={selection.projectionMm} min={1500} max={6000} onChange={projectionMm => update(type, { projectionMm })} /></div></fieldset>
           <fieldset className={styles.materials} disabled={!state.ready}><legend><span>03</span> Find your balance of light and shade</legend><div>{PRODUCT_MATERIALS.map(option => <label key={option.value} data-selected={selection.material === option.value}><input type="radio" name="cost-material" checked={selection.material === option.value} onChange={() => update(type, { material: option.value })} /><span>{option.label}</span></label>)}</div><p className={styles.materialDetail}>{PRODUCT_MATERIALS.map(option => <span key={option.value} aria-hidden={selection.material !== option.value} data-active={selection.material === option.value}>{option.detail}</span>)}</p></fieldset>
           <p className={styles.assumptions}>Open sides · Ground level · {PRODUCT_DESIGNS[type].attachment}{type === 'gable' ? ' · Parallel ridge, open ends' : ''}</p>
         </>}
-        <p className={styles.inclusions}>Selected structure and roof, priced designer options, standard installation allowances and GST. <a href="#what-is-included">Understand the scope ↓</a></p>
+        <p className={styles.inclusions}>Selected structure and roof, priced designer options, standard installation allowances and GST. <a href="#what-is-included">Understand the scope <ArrowIcon direction="down" /></a></p>
         {!state.storageAvailable && <p className={styles.notice} role="status">Your browser cannot save choices for a return visit. The design buttons still carry your current selections.</p>}
       </div>
       <figure className={styles.illustration}>

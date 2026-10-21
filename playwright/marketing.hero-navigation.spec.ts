@@ -9,7 +9,6 @@ const routes = [
   '/gable-pergolas-auckland',
   '/pitched-pergolas-auckland',
   '/outdoor-rooms-auckland',
-  '/acrylic-pergolas-vs-louvre-roofs',
   '/commercial-pergolas-auckland',
   '/pergola-guides',
 ] as const;

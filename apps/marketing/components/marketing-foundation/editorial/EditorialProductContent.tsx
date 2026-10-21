@@ -1,3 +1,4 @@
+import ArrowIcon from '../ArrowIcon';
 import ProductDesignDetails from '../../products/ProductDesignDetails';
 import ArrowUpRight from '../ArrowUpRight';
 import Link from 'next/link';
@@ -29,7 +30,7 @@ export default function EditorialProductContent({ product, enquiryHref, gallery,
           <Heading as="h1" variant="display" id="product-title">{product.name}</Heading>
           <p className={styles.lead}>{product.proposition}</p>
           <Text>{product.outcome.copy}</Text>
-          <Link className={styles.jump} href={exploreTarget}>{selection ? 'Choose your size & see an estimate' : gable ? 'Explore roof approaches' : 'Explore the details'} <span aria-hidden="true">↓</span></Link>
+          <Link className={styles.jump} href={exploreTarget}>{selection ? 'Choose your size & see an estimate' : gable ? 'Explore roof approaches' : 'Explore the details'} <span aria-hidden="true"><ArrowIcon direction="down" /></span></Link>
         </div>
         <Figure image={product.hero.src} alt={product.hero.alt} objectPosition={product.hero.objectPosition} ratio="portrait" priority caption={product.hero.caption} detail={product.evidence.status === 'governed' ? 'A built example' : 'Context reference'} sizes="(max-width: 760px) 100vw, 60vw" />
       </section>

@@ -24,6 +24,47 @@ Synthetic renewal proves application/SDK transport, not the real provider's toke
 rotation policy. Local HTTP proof is not browser usability or production latency
 evidence. Do not use real auth credentials or relax guards to prepare this fixture.
 
+## Public Marketing arrow rendering (21 October 2026)
+
+`test/marketing-arrow-policy.test.ts` rejects rendered Unicode, entity and escaped
+arrow glyphs in Marketing runtime source and public text assets, while permitting
+comments and vector paths. `ArrowIcon.test.tsx` checks each direction, decorative
+accessibility and the retained diagonal wrapper contract. Existing foundation
+interaction tests exercise gallery navigation after the shared-icon change.
+`marketing.arrows.spec.ts` checks the actual sitemap and retained public journeys,
+including generated CSS content, then verifies product/pergola/guide actions at
+320/390/1440/2560 and gallery keyboard/focus behaviour. The roofline jump navigation
+is deliberately phone-only; desktop uses the existing product-card action.
+Run with persistent enquiry/native/upload/vendor fences. This browser contract
+supplements actual visual review; it does not establish live provider delivery.
+
+## Roof comparison guide contracts (21 October 2026)
+
+marketing.roof-comparison.spec.ts replaces only this route's former generic
+hero/first-layer/programme assumptions. It covers 320/390/820/1440/2560 layouts,
+normal chrome, canonical/schema/sitemap, responsive real photographs, useful
+comparison, keyboard/reduced-motion diagram states, unchanged fixed roof and
+retained blades, stable geometry, reachable FAQs/enquiry, all-audience context,
+required contact validation, optional brief, retry/idempotency, attachment
+rejection/removal and native fallback. Fresh phone contexts keep normal consent
+controls untouched and verify the early fixed-roof offer, explicit no-louvre
+supply statement, reachable primary enquiry before the photo and recognisable
+acrylic roof photograph. Primary-to-secondary keyboard order follows the page's
+priority. The hero contains no
+parallel product controls; the labelled other-supplier diagram is lower in the
+page. The fixed-roof enquiry heading and responsive hero preload are checked too.
+No whole-photo criterion from the Blinds guide is imposed here. Phrase presence
+alone does not establish the correct offer impression; actual hierarchy still
+requires visual review.
+
+Run its focused diagram unit test with the existing seoLandingViewModel,
+AcrylicPergolaEnquiryForm, enquiryContext, enquiryAttachments and enquiryFallback
+suites. Run the exact route's seo-copy-hygiene case for responsive image/schema
+regression. All populated browser actions require persistent intake, native,
+upload and external-vendor fences installed before input. A simulated accepted
+response verifies the UI only; no new policy or remote migration is involved and
+it does not establish intake, email delivery or live advertising attribution.
+
 ## Middleware build-output guard (21 October 2026 local candidate)
 
 Portal `postbuild` runs `scripts/check-portal-middleware-placement.mjs` after
