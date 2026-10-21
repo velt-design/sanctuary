@@ -19,15 +19,12 @@ const footprintCentre=(points:Point[])=>({x:(Math.min(...points.map(p=>p.x))+Mat
 export function prepareGesture(edit: StudioAuthoringEdit, id: string, method: DemoMethod, candidateSide?:string|false) {
   const rows = websiteComposition(edit), row = rows.find(r => r.object.id === id)!;
   if (!row.design || !row.position || row.error) throw Error(row.error ?? 'Select a valid product.');
-  const geometry = solvePergolaPreview(row.design.input, row.design.roof, row.geometryOptions).geometry!;
   const scene = studioHouseScene(edit.site,edit.spatial)!, bound = scene.attachments.some(a => a.objectId === id);
   const freeEdit = bound ? detachStudioPergola(edit, id) : edit;
   const free = websiteComposition(freeEdit).find(r => r.object.id === id)!;
 
   const original = physicalFootprint(websiteProductPhysical(row).points.map(p=>transformWebsitePoint(p,row.position!)));
   const freeOutline = physicalFootprint(websiteProductPhysical(free).points.map(p=>transformWebsitePoint(p,free.position!)));
-  const connection = websiteConnectionEdge(geometry.assembly);
-  const face = [connection.start, connection.end].map(p => transformWebsitePoint(p, row.position!));
   const targets=scene.houses.flatMap(h=>studioHouseTargets(h,method).filter(t=>t.kind===(method==='facade'?'wall':'eave')).map(t=>{if(method!=='soffit')return t;try{return websiteSoffitTarget(h,t.side);}catch(e){return {...t,error:(e as Error).message};}}));
   const unavailable = attachmentUnavailable(row.design.input, row.design.roof, method);
   const candidates = targets.flatMap(target => {
@@ -53,7 +50,7 @@ export function prepareGesture(edit: StudioAuthoringEdit, id: string, method: De
     const points = solved.plan.outline.map(p => transformWebsitePoint(p, r.position!));
     return points.map((start, i) => ({ id: `align:${r.object.id}:${i}`, sourceObjectId: r.object.id, edgeKind: 'pergola_outline', label: r.object.label, start, end: points[(i + 1) % points.length] }));
   });
-  return { edit, id, method, row, bound, freeEdit, original, freeOutline, face, targets, candidates, lines, unavailable };
+  return { edit, id, method, row, bound, freeEdit, original, freeOutline, targets, candidates, lines, unavailable };
 }
 export type GestureCache = ReturnType<typeof prepareGesture>;
 export type GesturePreview = {

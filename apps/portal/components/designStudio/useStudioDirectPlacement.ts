@@ -6,7 +6,7 @@ import {studioHouseScene,type StudioHouse} from '@/lib/designStudio/studioHouseS
 import type {StudioAttachmentChoice} from '@/lib/designStudio/studioAttachmentPreview';
 import {solveStudioHouse} from '@/lib/designStudio/studioHouseGeometry';
 import {updateStudioHouse,previewStudioAttachment,detachStudioPergola} from '@/lib/designStudio/studioHouseCommands';
-import {templateFingerprint,rebaseGestureTemplates,type GestureTemplatePack} from './directDemo/gestureTemplates';
+import {preparationFingerprint,rebaseGestureTemplates,type GestureTemplatePack} from './directDemo/gestureTemplates';
 import {connectionDeparture,updateConnectionDeparture,initialGesturePreview,previewGesture,type GestureCache,type GesturePreview} from './directDemo/gesturePreview';
 import type {StudioDirectDrag} from './StudioHouseCanvas';
 
@@ -14,13 +14,13 @@ export type StudioPendingAttachment={edit:StudioAuthoringEdit;choice:StudioAttac
 /** Approved gesture mechanics, controlled by the saved editing session. Pending
  * geometry is a gesture basis only; the original authored edit owns commit/Undo. */
 export function useStudioDirectPlacement(edit:StudioAuthoringEdit,change:(next:StudioAuthoringEdit)=>void,locked:boolean,pending:StudioPendingAttachment|null=null,onApplied?:()=>void){
- const [prepared,setPrepared]=useState<{pack:GestureTemplatePack;fingerprint:string}|null>(null),[message,setMessage]=useState<string|null>(null),[proposal,setProposal]=useState<GesturePreview|null>(null);
+ const [prepared,setPrepared]=useState<{pack:GestureTemplatePack;fingerprint:string}|null>(null),[message,setMessage]=useState<string|null>(null),[preparationError,setPreparationError]=useState<string|null>(null),[proposal,setProposal]=useState<GesturePreview|null>(null);
  const [workerReady,setWorkerReady]=useState(0),worker=useRef<Worker|null>(null),request=useRef(0);
- let fingerprint='';try{fingerprint=templateFingerprint(edit);}catch{}
+ let fingerprint='';try{fingerprint=preparationFingerprint(edit);}catch{}
  useEffect(()=>{const w=new Worker(new URL('./studioPlacement.worker.ts',import.meta.url));worker.current=w;
-  w.onmessage=(e:MessageEvent<{requestId:number;pack?:GestureTemplatePack;error?:string}>)=>{if(e.data.requestId!==request.current)return;if(e.data.pack){setPrepared({pack:e.data.pack,fingerprint:e.data.pack.fingerprint});setMessage(null);}else setMessage(e.data.error??'Placement unavailable.');};
-  w.onerror=()=>setMessage('Placement could not be prepared. Your saved design is kept.');setWorkerReady(n=>n+1);return()=>{request.current++;w.terminate();worker.current=null;};},[]);
- useEffect(()=>{if(!worker.current||!fingerprint)return;const requestId=++request.current;setPrepared(null);worker.current.postMessage({requestId,edit});},[fingerprint,workerReady]);
+  w.onmessage=(e:MessageEvent<{requestId:number;pack?:GestureTemplatePack;error?:string}>)=>{if(e.data.requestId!==request.current)return;if(e.data.pack){setPrepared({pack:e.data.pack,fingerprint:e.data.pack.requestFingerprint});setPreparationError(null);setMessage(null);}else setPreparationError(e.data.error??'Placement unavailable.');};
+  w.onerror=()=>setPreparationError('Placement could not be prepared. Your saved design is kept.');setWorkerReady(n=>n+1);return()=>{request.current++;w.terminate();worker.current=null;};},[]);
+ useEffect(()=>{if(!worker.current||!fingerprint)return;const requestId=++request.current;setPrepared(null);setPreparationError(null);worker.current.postMessage({requestId,edit});},[fingerprint,workerReady]);
  const banks=useMemo(()=>{
   if(!prepared||prepared.fingerprint!==fingerprint)return null;
   try{return {committed:rebaseGestureTemplates(edit,prepared.pack),pending:pending?rebaseGestureTemplates(pending.edit,prepared.pack):null,error:null};}
@@ -67,5 +67,5 @@ export function useStudioDirectPlacement(edit:StudioAuthoringEdit,change:(next:S
    catch(e){setMessage((e as Error).message);}clear();
   }
  };
- return {directDrag,proposal,footprint:proposal&&houseMove.current?{points:proposal.points,original:houseMove.current.original}:proposal&&active.current?{points:proposal.points,original:active.current.original,target:proposal.target,guides:proposal.guides}:undefined,message:message??banks?.error??(!prepared?'Preparing placement…':null),busy:!!proposal};
+ return {directDrag,proposal,footprint:proposal&&houseMove.current?{points:proposal.points,original:houseMove.current.original}:proposal&&active.current?{points:proposal.points,original:active.current.original,target:proposal.target,guides:proposal.guides}:undefined,message:preparationError??banks?.error??(!banks?'Preparing placement…':message),busy:!!proposal};
 }
