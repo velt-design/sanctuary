@@ -1,5 +1,12 @@
 # Projects, Contacts, Estimates, And Calculator
 
+Project sales-designer responsibility is separate from current phase ownership,
+drafting requests and actual visit attendance. The Marketing record drawer edits
+it through the owner-only `/api/staff/v1/projects/[projectId]/sales-designer`
+revision command. It does not change project lifecycle or booking facts. See
+[designer reporting](marketing-performance.md#designer-visits-and-conversion-candidate-21-october-2026)
+for attribution, audit and recovery semantics.
+
 The released 20 October Outlook site-visit integration adds an extracted next-visit summary
 to Overview and changes site-visit specialist links to the project-filtered
 `/staff/site-visits` agenda. Its source dates/staff, linking decisions and freshness
