@@ -16,6 +16,7 @@ const coreFieldNames = new Set([
   'page',
   'source',
   'enquiryContext',
+  'experimentReceipt',
   'widthM',
   'depthM',
   'heightM',
@@ -125,9 +126,16 @@ export function buildEnquiryFallbackPayload(
   ).toLowerCase() as EnquiryAudience;
   const style = readText(formData, 'style');
   const page = readText(formData, 'page');
+  // Optional transport only. Ambiguous, truncated or malformed receipts must
+  // never become customer project details or an inferred consent decision.
+  const receipts = formData.getAll('experimentReceipt');
+  const receipt = receipts.length === 1 && typeof receipts[0] === 'string'
+    && receipts[0].length <= 1500 && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(receipts[0])
+    ? receipts[0] : null;
 
   return {
     submissionId,
+    ...(receipt ? { experimentReceipt: receipt } : {}),
     enquiryType,
     ...(allowsOptionalEnquiryPhone(enquiryType, page, readText(formData, 'requestType'))
       ? { requestType: readText(formData, 'requestType') }

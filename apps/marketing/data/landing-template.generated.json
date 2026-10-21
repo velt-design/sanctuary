@@ -1,5 +1,5 @@
 {
-  "hash": "8a857d40e4f1dbadfdacccdc43263938ec41ea7cb5176e89fce73e89f7a8152b",
+  "hash": "237eda03ccaa533781949086e6464d03548fca7b2d9ac29eec9952fe38f7eaf3",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -851,7 +851,7 @@
     ],
     [
       "apps/marketing/components/landing-experiment/LandingExperiment.tsx",
-      "e78305bd332595d5972b3a6f6671d4695f01cc6bcb7925e46f12e82558d15666"
+      "4ac5fc260af45b247cfde243fce9420ae803adf091efec53d6b9c66f9a7849cf"
     ],
     [
       "apps/marketing/components/marketing-foundation/ArrowUpRight.tsx",
@@ -1051,7 +1051,7 @@
     ],
     [
       "apps/marketing/lib/landingExperiment.server.ts",
-      "60b9a4e672f92fb962ecea5a26f7023f8ccd3bffd0b8398dbf4c9aab4e53f0d2"
+      "adb212bb9ecb2f8ecc1b8389b69cc16ca44e57e7cc85bd51fec1e8c0ce8d8e36"
     ],
     [
       "apps/marketing/lib/landingExperiment.ts",

@@ -12,19 +12,21 @@ const operation = z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/);
 const common = { generation: z.number().int().positive(), candidateHash: hash };
 export const experimentPayloads = {
   read: z.object({}).strict(),
+  receipt: z.object({command:z.string().uuid(),stage:z.enum(['prepare','review','visual','publish','verify','evaluate','rollback']),payload:z.record(z.string(),z.unknown())}).strict(),
   prepare: z.object({ generation: common.generation, candidateHash: hash, evidenceHash: hash, template: z.literal(EXPERIMENT_TEMPLATE),
     path: z.enum(LANDING_EXPERIMENT_PATHS), copy: z.enum(['explore','project','estimate']), generator: operation,
     minimumExposures: z.literal(100), durationDays: z.literal(14) }).strict(),
   review: z.object({ ...common, reviewer: operation, verdict: z.enum(['pass','reject']) }).strict(),
   visual: z.object({ ...common, visualHash: hash, template: z.literal(EXPERIMENT_TEMPLATE) }).strict(),
   publish: z.object(common).strict(),
-  verify: z.object({ ...common, servedHash: hash }).strict(),
-  renew: z.object({ ...common, servedHash: hash }).strict(),
+  probe: z.object({...common,template:z.literal(EXPERIMENT_TEMPLATE),mode:z.enum(['prepare','live']),probe:z.string().uuid()}).strict(),
+  verify: z.object({ ...common, servedHash: hash,probe:z.string().uuid() }).strict(),
+  renew: z.object({ ...common, servedHash: hash,probe:z.string().uuid() }).strict(),
   evaluate: z.object({ ...common, decision: z.enum(['retain','revert','inconclusive']), qualityGuard: z.enum(['pass','concern','unknown']), qualityHash: hash }).strict(),
   rollback: z.object({ ...common, reason: z.enum(['form','served_mismatch','unavailable','guard','owner_stop']) }).strict(),
 };
 export const experimentCommandSchema = z.object({ version: z.literal(1), command: z.string().uuid(), experiment: z.string().uuid().nullable(),
-  stage: z.enum(['read','prepare','review','visual','publish','verify','renew','evaluate','rollback']), payload: z.unknown(),
+  stage: z.enum(['read','receipt','prepare','review','visual','publish','probe','verify','renew','evaluate','rollback']), payload: z.unknown(),
   at: z.number().int().positive() }).strict().superRefine((row, ctx) => {
   if (!experimentPayloads[row.stage].safeParse(row.payload).success || (row.stage !== 'read' && row.experiment === null)) ctx.addIssue({ code: 'custom', message: 'Invalid command payload' });
 });
@@ -35,6 +37,20 @@ function key() {
 }
 const mac = (purpose: string, value: string) => createHmac('sha256', key()).update(`${purpose}\n${value}`).digest('base64url');
 function equal(a: string, b: string) { return a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b)); }
+const probeSchema=z.object({probe:z.string().uuid(),experiment:z.string().uuid(),candidateHash:hash,template:z.literal(EXPERIMENT_TEMPLATE),generation:z.number().int().positive(),mode:z.enum(['prepare','live']),path:z.enum(LANDING_EXPERIMENT_PATHS),expires:z.number().int()}).strict();
+export function signProbe(input:z.infer<typeof probeSchema>){const body=Buffer.from(JSON.stringify(probeSchema.parse(input))).toString('base64url');return `${body}.${mac('serving-probe',body)}`;}
+export function readProbe(value:string|null){
+  try{if(!value||value.length>2000)return null;const [body,signature,...rest]=value.split('.');if(rest.length||!signature||!equal(signature,mac('serving-probe',body)))return null;
+    const parsed=probeSchema.parse(JSON.parse(Buffer.from(body,'base64url').toString()));return parsed.expires>Date.now()&&parsed.expires<=Date.now()+120000?parsed:null;
+  }catch{return null;}
+}
+export const PROBE_COOKIE='sp_landing_diagnostic';
+export function signProbeReceipt(probe:string){const body=Buffer.from(JSON.stringify({probe,expires:Date.now()+120000})).toString('base64url');return `${body}.${mac('diagnostic-assignment',body)}`;}
+export function readProbeReceipt(value:string|undefined|null,probe:string){
+  try{if(!value||value.length>1500)return false;const [body,signature,...rest]=value.split('.');if(rest.length||!signature||!equal(signature,mac('diagnostic-assignment',body)))return false;
+    const parsed=z.object({probe:z.string().uuid(),expires:z.number().int()}).strict().parse(JSON.parse(Buffer.from(body,'base64url').toString()));return parsed.probe===probe&&parsed.expires>Date.now();
+  }catch{return false;}
+}
 export function verifyExperimentCommand(body: string, signature: string | null) {
   if (Buffer.byteLength(body) > 16000 || !signature || !equal(signature, mac('command', body))) throw new Error('Invalid experiment authority');
   const command = experimentCommandSchema.parse(JSON.parse(body));

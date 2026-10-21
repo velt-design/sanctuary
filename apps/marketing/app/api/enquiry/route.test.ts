@@ -181,7 +181,7 @@ function makeDb(options: { downloadBytes?: Uint8Array } = {}) {
       if (name === 'marketing_public_rate_limit_take') {
         return { data: [{ allowed: true, retry_after_seconds: 0 }], error: null };
       }
-      if (name === 'marketing_enquiry_intake' || name === 'marketing_enquiry_intake_with_delivery') {
+      if (name === 'marketing_enquiry_intake' || name === 'marketing_enquiry_intake_with_delivery' || name === 'marketing_experiment_intake') {
         const existing = intakeBySubmission.get(args.p_submission_id);
         if (existing) return { data: [{ ...existing, already_existed: true }], error: null };
         const input = args.p_payload;
@@ -431,6 +431,36 @@ describe('POST /api/enquiry attribution', () => {
     expect(db.contacts[0].phone).toBe('');
     expect(db.enquiry_requests).toHaveLength(1);
     expect(db.enquiry_requests[0].raw_payload.customerBrief?.design).toBeUndefined();
+  });
+
+  it.each(['valid','tampered','expired','duplicate','oversize','absent'])('keeps the %s native experiment receipt out of customer details through actual normalization', async kind => {
+    const previousKey=process.env.SANCTUARY_LANDING_EXPERIMENT_KEY;
+    process.env.SANCTUARY_LANDING_EXPERIMENT_KEY='synthetic-fallback-key-'.repeat(3);
+    try {
+      const {signAssignment}=await import('../../../lib/landingExperiment.server');
+      const {POST}=await import('./fallback/route');
+      const {client,db}=makeDb();h.createClient.mockReturnValue(client);
+      const stamp=Date.now();
+      if(kind==='expired')vi.spyOn(Date,'now').mockReturnValue(stamp-29*86400_000);
+      let receipt=signAssignment({assignment:'a2000000-0000-4000-8000-000000000001',experiment:'a1000000-0000-4000-8000-000000000001',path:'/auckland-outdoor-living'});
+      vi.restoreAllMocks();
+      if(kind==='tampered')receipt+='x';if(kind==='oversize')receipt='x'.repeat(1501)+'.x';
+      const body=new URLSearchParams({enquiryType:'residential',name:'Alex',email:'alex@example.test',phone:'',suburb:'Albany',page:'/auckland-outdoor-living',message:'A project discussion.'});
+      if(kind!=='absent')body.append('experimentReceipt',receipt);
+      if(kind==='duplicate')body.append('experimentReceipt',receipt);
+      const response=await POST(new Request('http://localhost/api/enquiry/fallback',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded',Origin:'http://localhost'},body}));
+      expect(response.status).toBe(303);
+      const intake=client.rpc.mock.calls.find(([name])=>name.startsWith('marketing_')&&name.includes('intake'))!;
+      expect(intake[0]).toBe(kind==='valid'?'marketing_experiment_intake':'marketing_enquiry_intake');
+      expect(JSON.stringify(intake[1].p_payload)).not.toContain('experimentReceipt');
+      expect(JSON.stringify(db.enquiry_requests[0].raw_payload)).not.toContain(receipt);
+      // Native fallback has not supplied an explicit tracking choice. A valid
+      // transport receipt does not invent consent; SQL still rejects its join.
+      expect(intake[1].p_payload.rawPayload.attribution.consent).toBeNull();
+    } finally {
+      vi.restoreAllMocks();
+      if(previousKey===undefined)delete process.env.SANCTUARY_LANDING_EXPERIMENT_KEY;else process.env.SANCTUARY_LANDING_EXPERIMENT_KEY=previousKey;
+    }
   });
 
   it('rejects an invalid design before any database writes', async () => {

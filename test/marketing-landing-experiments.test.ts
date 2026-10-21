@@ -18,6 +18,7 @@ it('runs the source SQL authority, publication, exposure, maturation, withdrawal
  await db.exec(landingExperimentTestBootstrap(process.cwd()));
  await db.exec(readFileSync('supabase/migrations/20261021010002_landing_experiments.sql','utf8'));
  await db.exec(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
+ await db.exec(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
  expect((await db.query('select count(*)::int n from landing_experiments')).rows).toEqual([{n:0}]);
  }finally{await db.close();}
 },30000);

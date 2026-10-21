@@ -1,5 +1,5 @@
 import { getServiceSupabase } from '@/lib/supabaseService';
-import { EXPERIMENT_TEMPLATE, experimentHash, verifyExperimentCommand } from '../../../../lib/landingExperiment.server';
+import { EXPERIMENT_TEMPLATE, experimentHash, verifyExperimentCommand,signProbe } from '../../../../lib/landingExperiment.server';
 import template from '../../../../data/landing-template.generated.json';
 import { readBoundedJson } from '@/lib/marketingPublicRequest';
 import { LANDING_EXPERIMENT_PATHS,landingControlText,parseLandingCopies } from '../../../../lib/landingExperiment';
@@ -21,6 +21,10 @@ export async function POST(request: Request) {
     const result = await getServiceSupabase().rpc('landing_experiment_command', { p_binding: process.env.SANCTUARY_LANDING_EXPERIMENT_BINDING,
       p_command: command.command, p_stage: command.stage, p_experiment: command.experiment, p_payload: command.payload }).abortSignal(AbortSignal.any([request.signal, AbortSignal.timeout(10_000)]));
     if (result.error) throw new Error('Command unavailable');
+    if(command.stage==='probe'){
+      const row=result.data;
+      return Response.json({...row,capability:signProbe({probe:row.probe,experiment:command.experiment!,...(command.payload as {candidateHash:string;template:typeof EXPERIMENT_TEMPLATE;generation:number;mode:'prepare'|'live'}),path:row.path,expires:Date.parse(row.expires)})},{headers});
+    }
     if (command.stage === 'read' && result.data?.template !== EXPERIMENT_TEMPLATE) throw new Error('Release changed');
     return Response.json(command.stage === 'read' ? { ...result.data, renderer: template.hash,
       texts:Object.fromEntries(LANDING_EXPERIMENT_PATHS.map(path=>[path,landingControlText(path,parseLandingCopies(result.data.controls[path])??{})])) } : result.data, { headers });

@@ -31,9 +31,14 @@ export function LandingExperiment({ path, children, control = ORIGINAL_CONTROL }
       // Count an exposed assignment only after the selected text has painted.
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       if (!controller.signal.aborted) {
-        rememberLandingExperience(path,assignment.receipt);
-        window.dispatchEvent(new CustomEvent(EXPERIMENT_SEEN_EVENT,{detail:{path,receipt:assignment.receipt}}));
-        await post({ stage: 'expose', path, consent: true, receipt: assignment.receipt });
+        const exposed=await post({ stage: 'expose', path, consent: true, receipt: assignment.receipt });
+        if(!exposed.ok)throw new Error('Exposure unavailable');
+        // A signed server diagnostic may paint the same candidate, but is never
+        // saved as a visitor's experienced version or attached to an enquiry.
+        if(value.diagnostic!==true){
+          rememberLandingExperience(path,assignment.receipt);
+          window.dispatchEvent(new CustomEvent(EXPERIMENT_SEEN_EVENT,{detail:{path,receipt:assignment.receipt}}));
+        }
       }
     })().catch(() => { if (!controller.signal.aborted) setCopies(control); });
     return () => controller.abort();

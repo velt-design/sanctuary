@@ -12,8 +12,15 @@ canonical intake transaction, statistical/maturation/rollback and scoped intake
 provenance assertions. All synthetic records roll back; no live schema or delivered
 enquiry is proven. Run marketing/Portal types, relevant lint/tests, optimized build,
 docs/architecture guards and `node scripts/marketing/generate-landing-template.mjs
---check`. The paired Velt repository owns the actual intercepted-candidate renderer
-test and private screenshot artifacts, with all vendor and submission traffic denied.
+--check`. `api/landing-experiment/probe.integration.test.ts` composes the actual
+visitor/command handlers and SQL. Its opt-in local browser fixture invokes the
+paired Velt compiled renderer against both local pages and every finite copy,
+accepting actual Set-Cookie/reload/exposure responses. No assignment response is
+fabricated. Set the loopback `IMPROVEMENT_RENDER_FIXTURE_ORIGIN`, local compiled
+`IMPROVEMENT_RENDER_MODULE` and `IMPROVEMENT_RENDER_EXECUTABLE` only for this fixture.
+Private screenshot artifacts prove local served-code behavior; all vendor and
+submission traffic is denied. Native probe tests cover scope, gates, maturation,
+separate denominators and immutable effect receipt recovery.
 Independent catalogue review and hosted execution remain separate acceptance.
 
 ## Document measurement preparation checks (21 October 2026 candidate)

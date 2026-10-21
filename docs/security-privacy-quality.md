@@ -20,6 +20,20 @@ strips the receipt from raw customer payload and uses a service-only transaction
 wrapper to join the original exposed assignment without duplicating delivery.
 Delayed valid enquiries retain experienced variant after rollback but are excluded
 from a closed formal comparison. Existing privacy/consent/UTM rules remain intact.
+Native fallback treats this receipt as optional transport data, never a customer
+brief field. Duplicate, malformed or oversized values are not truncated into valid
+receipts; current consent still governs the eventual join.
+
+Serving diagnostics use the same fixed visitor endpoint, ordinary client and
+eligibility predicate with a registered short-lived HMAC header, separate cookie,
+signing purpose and private probe table. Preparation cannot renew a live test.
+Live renewal requires the actual cookie/reload/exposure chain, current generation,
+template, publishing and lease, then atomically consumes that fresh proof. Genuine
+intake rejects diagnostic receipts. Diagnostic rows expire and are pruned after
+two days; at most one preparation and six live proofs are admitted per Auckland
+day. Closed enrolment reuses only an earlier verified diagnostic enrollment.
+Immutable source-effect receipt reads permit recovery after response loss without
+repeating publication or formal evaluation.
 
 `sanctuary_campaign_outcomes` adds optional bounded intake provenance only after
 the original source authority/cohort function succeeds. Exact original raw/canonical
