@@ -43,7 +43,8 @@ for (const width of [390, 1440, 1920]) {
   await page.setViewportSize({width,height:900}); await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto(initialRoute); await dismissConsent(page); await expectProjectReady(page,initialProject.slug);
   await expect(page.locator('.editorial-project-browser,.project-navigator__panel')).toHaveCount(0);
-  await expect(page.locator('[data-all-projects]')).toHaveText('← All projects');
+  await expect(page.locator('[data-all-projects]')).toHaveText('All projects');
+  await expect(page.locator('[data-all-projects] svg[data-arrow-icon=left]')).toBeVisible();
   await expect(projectLink(page,targetProject.slug)).toContainText(targetProject.title);
   await projectLink(page,targetProject.slug).press('Enter'); await expectProjectReady(page,targetProject.slug);
   await expect(page).toHaveTitle(targetProject.title+' Pergola Project | Sanctuary Pergolas');

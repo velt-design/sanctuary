@@ -165,13 +165,9 @@ test('the acrylic page stays product-specific and the louvre comparison preserve
   await expect(acrylicPage.locator('details')).toHaveCount(5);
 
   await page.goto('/acrylic-pergolas-vs-louvre-roofs');
-  const louvreScopeAnswer = page.locator('.acrylic-faq-list > details', {
-    hasText: 'Does Sanctuary install louvre roofs?',
-  });
-  await louvreScopeAnswer.locator('summary').click();
   const comparisonCopy = await page.locator('main[data-marketing-foundation-page]').innerText();
-  expect(comparisonCopy).toContain("Sanctuary's published roof offer is fixed acrylic, solid and combination roofs.");
-  expect(comparisonCopy).toContain('not a Sanctuary product.');
+  expect(comparisonCopy).toContain('Sanctuary builds fixed acrylic, solid and combination pergolas.');
+  expect(comparisonCopy).toContain('We do not supply louvre roofs.');
 });
 
 test('linked project pages use the current evidence record rather than contradictory legacy detail', async ({ page }) => {

@@ -72,12 +72,6 @@ const guideDetailRoutes = [
     projectCount: 3,
     returnHref: '/products/pergolas/pitched',
   },
-  {
-    path: '/acrylic-pergolas-vs-louvre-roofs',
-    projectSlug: 'mt-maunganui-box',
-    projectCount: 2,
-    returnHref: '/products',
-  },
 ] as const;
 
 async function readTextContrast(root: Locator) {

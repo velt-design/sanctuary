@@ -41,13 +41,15 @@ async function openDesign(page: Page, width: number, solid: boolean) {
     }
   }else await page.getByRole('radio',{name:'Freestanding',exact:true}).check();
   if(solid&&width>=720){
-    await page.getByRole('button',{name:/^Personalise(?: your pergola)? →$/}).click();
+    await page.getByRole('button',{name:/^Personalise(?: your pergola)?$/}).click();
     await page.getByRole('button',{name:/^Roof & ceiling/}).click();
     await page.getByRole('radio',{name:/^Solid \+ timber ceiling/}).check();
     await page.getByRole('radio',{name:'Tray',exact:true}).check();
     await page.getByRole('radio',{name:'500 mm',exact:true}).check();
     await page.getByRole('radio',{name:'ThermoPine',exact:true}).check();
-    await page.getByRole('button',{name:'← Back to Personalise',exact:true}).click();
+    const back = page.getByLabel('Your pergola choices').getByRole('button',{name:'Back to Personalise',exact:true});
+    await expect(back.locator('svg[data-arrow-icon=left]')).toBeVisible();
+    await back.click();
     await page.getByRole('button',{name:/^Lighting /}).click();
     await page.getByRole('button',{name:/^Ceiling downlights/}).click();
     await page.getByRole('button',{name:/^4 lights/}).click();
@@ -180,7 +182,7 @@ test('standard 6x3 pitched acrylic keeps orbit responsive during repeated toggle
  await page.getByRole('textbox',{name:'Projection in metres'}).fill('3.0');await page.getByRole('textbox',{name:'Projection in metres'}).press('Tab');
  await page.getByRole('radio',{name:'Attached to house',exact:true}).check();
  await page.getByRole('radio',{name:'Facade',exact:true}).check();
- await page.getByRole('button',{name:/^Personalise(?: your pergola)? →$/}).click();
+ await page.getByRole('button',{name:/^Personalise(?: your pergola)?$/}).click();
  await page.getByRole('button',{name:/^Lighting /}).click();
  await page.getByRole('button',{name:/^Rafter lights/}).click();await page.getByRole('button',{name:/^Medium/}).click();
  await page.getByRole('button',{name:/^LED strips/}).click();await page.getByRole('button',{name:'Outer perimeter',exact:true}).click();

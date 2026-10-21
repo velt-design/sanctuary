@@ -1,3 +1,4 @@
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 import type { ContactDesignBrief } from './contactDesignBrief';
 
 export default function ContactDesignSummary({ design }: { design: ContactDesignBrief }) {
@@ -6,7 +7,7 @@ export default function ContactDesignSummary({ design }: { design: ContactDesign
       <summary>{design.label.replace(' pergola', '')} · {design.dimensions.widthM.toFixed(1)} × {design.dimensions.depthM.toFixed(1)} m <span>Details</span></summary>
       <p>{design.description}</p>
       {design.configuredPrice && <p>Installed estimate: {new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD', maximumFractionDigits: 0 }).format(design.configuredPrice.amountIncGst)} including GST, subject to site confirmation.</p>}
-      <a href="#project-design">Edit your design ↑</a>
+      <a href="#project-design">Edit your design <ArrowIcon direction="up" /></a>
     </details>
     <input type="hidden" name="widthM" value={design.dimensions.widthM} readOnly />
     <input type="hidden" name="depthM" value={design.dimensions.depthM} readOnly />

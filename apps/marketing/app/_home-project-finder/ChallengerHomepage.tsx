@@ -1,3 +1,4 @@
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 import Image from 'next/image';
 import JsonLd from '../../components/JsonLd';
 import { absoluteUrl } from '../../lib/seo';
@@ -59,7 +60,7 @@ export default async function ChallengerHomepage({ initialState }: { initialStat
     </section>
     <section className={styles.close} aria-labelledby="challenger-close-heading">
       <Container width="wide" className={styles.closeLayout}>
-        <div><p className={styles.kicker}>Design → Build → Install</p><h2 id="challenger-close-heading">Your space.<br />Let’s start there.</h2><Button href={closingEnquiryHref} data-project-finder-event="project_finder_direct_enquiry_click" data-source-component="final_cta" data-enquiry-type="residential">Discuss your project <ArrowUpRight /></Button></div>
+        <div><p className={styles.kicker}>Design <ArrowIcon direction="right" /> Build <ArrowIcon direction="right" /> Install</p><h2 id="challenger-close-heading">Your space.<br />Let’s start there.</h2><Button href={closingEnquiryHref} data-project-finder-event="project_finder_direct_enquiry_click" data-source-component="final_cta" data-enquiry-type="residential">Discuss your project <ArrowUpRight /></Button></div>
         <div className={styles.closeProof}><p>One team, from design to installation.</p><a href={GOOGLE_PLACE.reviewsUrl}><strong>{review.rating.toFixed(1)}<span>/ 5</span></strong><span>{review.count} Google reviews <ArrowUpRight /></span></a><Link href="/pergolas-auckland">Our design &amp; build service <ArrowUpRight /></Link></div>
       </Container>
     </section>
