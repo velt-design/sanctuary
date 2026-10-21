@@ -27,13 +27,19 @@ export interface CreativeCredentialLease {
   close(): Promise<void>;
 }
 export interface CreativeEffectJournal {
-  read(command: string): Promise<{ state: 'uncertain' | 'confirmed'; requestHash: string; objectId: string | null } | null>;
-  admit(effect: CreativeLedgerEffect): Promise<{ dispatch: true } | { dispatch: false; reconcile: true }>;
+  read(command: string): Promise<{ state: 'prepared' | 'uncertain' | 'confirmed' | 'no_effect'; requestHash: string; objectId: string | null } | null>;
+  admit(effect: CreativeLedgerEffect, terminalCleanup: boolean): Promise<{ dispatch: false; prepared: boolean }>;
+  /** After SDK preparation and current external credential/global authority check,
+   * consume this fence exactly once immediately before dispatch. Lost response
+   * means reconciliation, not a repeated check or provider request. */
+  claimDispatch(command: string, requestHash: string): Promise<{ dispatch: true }>;
+  resolveNoEffect(command: string, requestHash: string, evidenceHash: string, reason: 'dispatch_not_started'): Promise<void>;
   confirm(command: string, requestHash: string, objectId: string, evidenceHash: string): Promise<void>;
 }
 /** No automatic retry is implied by a lost response or an expired worker. */
 export function nextCreativeEffect(receipt: Awaited<ReturnType<CreativeEffectJournal['read']>>, requestHash: string) {
   if (!receipt) return 'requires_source_admission' as const;
   if (receipt.requestHash !== requestHash) return 'conflict' as const;
+  if (receipt.state === 'no_effect') return 'read_no_effect' as const;
   return receipt.state === 'confirmed' ? 'read_confirmed' as const : 'reconcile_only' as const;
 }

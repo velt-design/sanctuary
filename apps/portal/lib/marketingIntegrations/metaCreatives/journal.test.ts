@@ -5,6 +5,9 @@ describe('separate creative durable contracts', () => {
   it('never treats uncertainty or a changed request as permission to dispatch again', () => {
     expect(nextCreativeEffect(null, hash)).toBe('requires_source_admission');
     expect(nextCreativeEffect({ state: 'uncertain', requestHash: hash, objectId: null }, hash)).toBe('reconcile_only');
+    expect(nextCreativeEffect({ state: 'prepared', requestHash: hash, objectId: null }, hash)).toBe('reconcile_only');
+    expect(nextCreativeEffect({ state: 'no_effect', requestHash: hash, objectId: null }, hash)).toBe('read_no_effect');
+    expect(nextCreativeEffect({ state: 'no_effect', requestHash: hash, objectId: null }, 'b'.repeat(64))).toBe('conflict');
     expect(nextCreativeEffect({ state: 'confirmed', requestHash: hash, objectId: '1001' }, hash)).toBe('read_confirmed');
     expect(nextCreativeEffect({ state: 'confirmed', requestHash: hash, objectId: '1001' }, 'b'.repeat(64))).toBe('conflict');
   });

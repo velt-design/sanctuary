@@ -7,6 +7,8 @@ create table public.acquisition_experiment_reservation (
 );
 create table public.meta_creative_control (
  singleton boolean primary key default true check(singleton), enabled boolean not null default false,
+ cleanup_enabled boolean not null default false, authority_current boolean not null default false,
+ global_stop boolean not null default true,
  binding text not null check(binding ~ '^[a-f0-9]{64}$'), generation bigint not null default 1,
  scope jsonb not null, original_ads jsonb not null, budget_hash text not null, control_hash text not null,
  native_contract_hash text check(native_contract_hash ~ '^[a-f0-9]{64}$')
@@ -20,7 +22,9 @@ create table public.meta_creative_effects (
  command_hash text not null, request_hash text not null check(request_hash ~ '^[a-f0-9]{64}$'), kind text not null
  check(kind in('create_paused_ad','create_study','activate_ad','pause_ad','end_study')),
  target text, generation bigint not null, pre_state_hash text not null,
- state text not null default 'uncertain' check(state in('uncertain','confirmed')),
+ terminal_cleanup boolean not null default false,
+ state text not null default 'prepared' check(state in('prepared','uncertain','confirmed','no_effect')),
+ dispatch_claimed_at timestamptz,
  object_id text, evidence_hash text, admitted_at timestamptz not null default clock_timestamp(), confirmed_at timestamptz
 );
 create table public.meta_creative_objects (
@@ -62,7 +66,7 @@ end$$;
 insert into public.acquisition_experiment_reservation(lane,experiment) select 'landing',id from public.landing_experiments where state in('candidate','reviewed','ready','live');
 create trigger acquisition_landing_reservation before insert or update or delete on public.landing_experiments for each row execute function public.acquisition_landing_reservation();
 create function public.meta_creative_generation() returns trigger language plpgsql set search_path='' as $$
-begin if row(new.enabled,new.binding,new.native_contract_hash,new.scope,new.original_ads,new.budget_hash,new.control_hash) is distinct from row(old.enabled,old.binding,old.native_contract_hash,old.scope,old.original_ads,old.budget_hash,old.control_hash) then new.generation:=old.generation+1;else new.generation:=old.generation;end if;return new;end$$;
+begin if row(new.enabled,new.cleanup_enabled,new.authority_current,new.global_stop,new.binding,new.native_contract_hash,new.scope,new.original_ads,new.budget_hash,new.control_hash) is distinct from row(old.enabled,old.cleanup_enabled,old.authority_current,old.global_stop,old.binding,old.native_contract_hash,old.scope,old.original_ads,old.budget_hash,old.control_hash) then new.generation:=old.generation+1;else new.generation:=old.generation;end if;return new;end$$;
 create trigger meta_creative_generation before update on public.meta_creative_control for each row execute function public.meta_creative_generation();
 create function public.meta_creative_command(p_binding text,p_command uuid,p_experiment uuid,p_stage text,p_payload jsonb default '{}')
 returns jsonb language plpgsql security definer set search_path='' as $$
@@ -75,11 +79,11 @@ begin
  h:=encode(sha256(convert_to(jsonb_build_array(p_experiment,p_stage,p_payload)::text,'UTF8')),'hex');
  select * into p from public.meta_creative_plans where id=p_experiment;
  select * into r from public.acquisition_experiment_reservation where singleton for update;
- if p_stage='read' then return jsonb_build_object('enabled',c.enabled,'generation',c.generation,'nativeContractHash',c.native_contract_hash,'plan',p.plan,'reservation',to_jsonb(r),'effects',(select coalesce(jsonb_agg(x),'[]') from public.meta_creative_effects x where experiment=p_experiment),'objects',(select coalesce(jsonb_agg(x),'[]') from public.meta_creative_objects x where experiment=p_experiment),'receipts',(select coalesce(jsonb_agg(x),'[]') from public.meta_creative_receipts x where experiment=p_experiment));end if;
+ if p_stage='read' then return jsonb_build_object('enabled',c.enabled,'cleanupEnabled',c.cleanup_enabled,'authorityCurrent',c.authority_current,'globalStop',c.global_stop,'generation',c.generation,'nativeContractHash',c.native_contract_hash,'plan',p.plan,'reservation',to_jsonb(r),'effects',(select coalesce(jsonb_agg(x),'[]') from public.meta_creative_effects x where experiment=p_experiment),'objects',(select coalesce(jsonb_agg(x),'[]') from public.meta_creative_objects x where experiment=p_experiment),'receipts',(select coalesce(jsonb_agg(x),'[]') from public.meta_creative_receipts x where experiment=p_experiment));end if;
  select * into receipt from public.meta_creative_receipts where command=p_command;
  if found then if receipt.request_hash<>h then raise exception 'Command conflict';end if;return jsonb_build_object('confirmed',true);end if;
  if p_stage='reserve' then
-  if not c.enabled or c.native_contract_hash is null or p_payload->>'nativeContractHash' is distinct from c.native_contract_hash then raise exception 'Creative contract not admitted';end if;
+  if not c.enabled or not c.authority_current or c.global_stop or c.native_contract_hash is null or p_payload->>'nativeContractHash' is distinct from c.native_contract_hash then raise exception 'Creative contract not admitted';end if;
   if p_payload->'scope' is distinct from c.scope or p_payload->'originalAds' is distinct from c.original_ads or p_payload->>'budgetHash' is distinct from c.budget_hash or p_payload->>'controlHash' is distinct from c.control_hash then raise exception 'Plan differs from source scope';end if;
   if r.experiment is not null then raise exception 'Acquisition test already reserved';end if;
   if p.id is not null then raise exception 'Existing plan cannot restart';end if;
@@ -94,36 +98,58 @@ begin
   return jsonb_build_object('reserved',true);
  end if;
  if p.id is null then raise exception 'Unknown plan';end if;
- if p_stage='admit' then
+ if p_stage in('admit','admit_cleanup') then
   -- No externally-dispatched effect is retried, even after expiry or Stop.
   select * into e from public.meta_creative_effects where command=p_command;
   if found then if e.command_hash<>h or e.request_hash is distinct from p_payload->>'requestHash' or e.experiment<>p_experiment then raise exception 'Effect conflict';end if;return jsonb_build_object('dispatch',false,'state',e.state);end if;
-  if not c.enabled or c.native_contract_hash is distinct from p.plan->>'nativeContractHash' or c.scope is distinct from p.plan->'scope' or c.original_ads is distinct from p.plan->'originalAds' or c.budget_hash is distinct from p.plan->>'budgetHash' or c.control_hash is distinct from p.plan->>'controlHash' or (p_payload->>'generation')::bigint is distinct from c.generation or r.lane<>'creative' or r.experiment is distinct from p_experiment then raise exception 'Creative admission revoked';end if;
+  if not c.authority_current or c.global_stop or (case when p_stage='admit_cleanup' then not c.cleanup_enabled else not c.enabled end) or c.native_contract_hash is distinct from p.plan->>'nativeContractHash' or c.scope is distinct from p.plan->'scope' or c.original_ads is distinct from p.plan->'originalAds' or c.budget_hash is distinct from p.plan->>'budgetHash' or c.control_hash is distinct from p.plan->>'controlHash' or (p_payload->>'generation')::bigint is distinct from c.generation or r.lane<>'creative' or r.experiment is distinct from p_experiment then raise exception 'Creative admission revoked';end if;
   select count(*) into key_count from jsonb_object_keys(p_payload);
   if key_count<>6 or not(p_payload ?& array['kind','objectId','requestHash','generation','preStateHash','observedAt']) or coalesce(p_payload->>'requestHash','') !~ '^[a-f0-9]{64}$' or coalesce(p_payload->>'preStateHash','') !~ '^[a-f0-9]{64}$' or p_payload->>'observedAt' is null or (p_payload->>'observedAt')::timestamptz not between clock_timestamp()-interval '5 minutes' and clock_timestamp() then raise exception 'Invalid effect proof';end if;
   v_kind:=p_payload->>'kind';obj:=p_payload->>'objectId';
   if v_kind not in('create_paused_ad','create_study','activate_ad','pause_ad','end_study') then raise exception 'Unapproved effect';end if;
-  if exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state='uncertain') then raise exception 'Uncertain effect requires reconciliation';end if;
+  if exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state in('prepared','uncertain')) then raise exception 'Unresolved effect requires reconciliation';end if;
+  if p_stage='admit_cleanup' and v_kind not in('pause_ad','end_study') then raise exception 'Cleanup effect not allowed';end if;
+  if p_stage='admit' and exists(select 1 from public.meta_creative_effects where experiment=p_experiment and terminal_cleanup) then raise exception 'Terminal cleanup has started';end if;
   if v_kind in('create_paused_ad','create_study') then
    if obj is not null then raise exception 'Create cannot name an object';end if;
    if (select count(*) from public.meta_creative_objects o where o.experiment=p_experiment and o.kind=case when v_kind='create_paused_ad' then 'ad' else 'study' end)>=(case when v_kind='create_paused_ad' then 2 else 1 end) then raise exception 'Registry bound';end if;
   else
    if obj is null or not exists(select 1 from public.meta_creative_objects o where o.experiment=p_experiment and o.object_id=obj and o.kind=case when v_kind='end_study' then 'study' else 'ad' end) then raise exception 'Unowned target';end if;
   end if;
-  if (select count(*) from public.meta_creative_effects where experiment=p_experiment)>=24 then raise exception 'Effect bound';end if;
-  insert into public.meta_creative_effects(command,experiment,command_hash,request_hash,kind,target,generation,pre_state_hash) values(p_command,p_experiment,h,p_payload->>'requestHash',v_kind,obj,c.generation,p_payload->>'preStateHash');
-  return jsonb_build_object('dispatch',true,'state','uncertain');
+  -- Normal work cannot consume the three reserved terminal slots (two ads + study).
+  -- Cleanup cannot resume normal work or repeatedly dispatch against a stopped target.
+  if p_stage='admit_cleanup' then
+   if (select count(*) from public.meta_creative_effects where experiment=p_experiment and terminal_cleanup)>=3 or exists(select 1 from public.meta_creative_effects where experiment=p_experiment and terminal_cleanup and target=obj and state<>'no_effect') then raise exception 'Cleanup effect bound';end if;
+  elsif (select count(*) from public.meta_creative_effects where experiment=p_experiment and not terminal_cleanup)>=24 then raise exception 'Effect bound';end if;
+  insert into public.meta_creative_effects(command,experiment,command_hash,request_hash,kind,target,generation,pre_state_hash,terminal_cleanup) values(p_command,p_experiment,h,p_payload->>'requestHash',v_kind,obj,c.generation,p_payload->>'preStateHash',p_stage='admit_cleanup');
+  return jsonb_build_object('dispatch',false,'prepared',true,'state','prepared');
  end if;
  if p_stage='check' then
   select * into e from public.meta_creative_effects where command=p_command;
-  if (select count(*) from jsonb_object_keys(p_payload))<>1 or not(p_payload?'requestHash') or e.admitted_at<clock_timestamp()-interval '90 seconds' or e.experiment is distinct from p_experiment or e.request_hash is distinct from p_payload->>'requestHash' or e.state<>'uncertain' or not c.enabled or e.generation<>c.generation or c.native_contract_hash is distinct from p.plan->>'nativeContractHash' or c.scope is distinct from p.plan->'scope' or c.original_ads is distinct from p.plan->'originalAds' or c.budget_hash is distinct from p.plan->>'budgetHash' or c.control_hash is distinct from p.plan->>'controlHash' or r.lane is distinct from 'creative' or r.experiment is distinct from p_experiment then raise exception 'Creative dispatch authority revoked';end if;
-  return jsonb_build_object('current',true);
+  if (select count(*) from jsonb_object_keys(p_payload))<>1 or not(p_payload?'requestHash') or e.admitted_at<clock_timestamp()-interval '90 seconds' or e.experiment is distinct from p_experiment or e.request_hash is distinct from p_payload->>'requestHash' or e.state<>'prepared' or not c.authority_current or c.global_stop or (case when e.terminal_cleanup then not c.cleanup_enabled else not c.enabled end) or e.generation<>c.generation or c.native_contract_hash is distinct from p.plan->>'nativeContractHash' or c.scope is distinct from p.plan->'scope' or c.original_ads is distinct from p.plan->'originalAds' or c.budget_hash is distinct from p.plan->>'budgetHash' or c.control_hash is distinct from p.plan->>'controlHash' or r.lane is distinct from 'creative' or r.experiment is distinct from p_experiment then raise exception 'Creative dispatch authority revoked';end if;
+  -- One-use dispatch fence. A lost check response is uncertain, never permission to retry.
+  update public.meta_creative_effects set state='uncertain',dispatch_claimed_at=clock_timestamp() where command=p_command;
+  return jsonb_build_object('current',true,'dispatch',true);
+ end if;
+ if p_stage='no_effect' then
+  select * into e from public.meta_creative_effects where command=p_command for update;
+  if (select count(*) from jsonb_object_keys(p_payload))<>3 or not(p_payload ?& array['requestHash','evidenceHash','reason']) or p_payload->>'reason' is distinct from 'dispatch_not_started' or coalesce(p_payload->>'evidenceHash','') !~ '^[a-f0-9]{64}$' or e.experiment is distinct from p_experiment or e.request_hash is distinct from p_payload->>'requestHash' or e.dispatch_claimed_at is not null then raise exception 'No-effect proof rejected';end if;
+  if e.state='no_effect' then
+   if e.evidence_hash is distinct from p_payload->>'evidenceHash' then raise exception 'Conflicting no-effect proof';end if;
+   return jsonb_build_object('noEffect',true);
+  end if;
+  if e.state<>'prepared' then raise exception 'No-effect proof rejected';end if;
+  -- Stored absence of the one-use dispatch claim plus the exact authority-bound
+  -- executor receipt, not expiry or an empty provider search, proves no dispatch.
+  update public.meta_creative_effects set state='no_effect',evidence_hash=p_payload->>'evidenceHash',confirmed_at=clock_timestamp() where command=p_command;
+  return jsonb_build_object('noEffect',true);
  end if;
  if p_stage='confirm' then
   select * into e from public.meta_creative_effects where command=p_command for update;
   obj:=p_payload->>'objectId';
   if e.experiment is distinct from p_experiment or e.request_hash is distinct from p_payload->>'requestHash' or (select count(*) from jsonb_object_keys(p_payload))<>3 or not(p_payload ?& array['requestHash','objectId','evidenceHash']) or obj is null or obj !~ '^[1-9][0-9]{0,19}$' or coalesce(p_payload->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Unmatched effect confirmation';end if;
   if e.state='confirmed' then if e.object_id<>obj or e.evidence_hash<>p_payload->>'evidenceHash' then raise exception 'Conflicting confirmation';end if;return jsonb_build_object('confirmed',true);end if;
+  if e.state<>'uncertain' or e.dispatch_claimed_at is null then raise exception 'Effect was not dispatched';end if;
   if p.plan->'originalAds' ? obj then raise exception 'Original ad is not owned';end if;
   if e.kind in('create_paused_ad','create_study') then
    insert into public.meta_creative_objects(object_id,experiment,kind,created_by,request_hash,evidence_hash) values(obj,p_experiment,case when e.kind='create_study' then 'study' else 'ad' end,p_command,e.request_hash,p_payload->>'evidenceHash');
@@ -133,7 +159,7 @@ begin
  end if;
  if p_stage='cleanup' then
   if (select count(*) from jsonb_object_keys(p_payload))<>1 or coalesce(p_payload->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Invalid cleanup proof';end if;
-  if r.lane is distinct from 'creative' or r.experiment is distinct from p_experiment or exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state='uncertain') then raise exception 'Cleanup unresolved';end if;
+  if r.lane is distinct from 'creative' or r.experiment is distinct from p_experiment or exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state in('prepared','uncertain')) then raise exception 'Cleanup unresolved';end if;
   if exists(select 1 from public.meta_creative_objects o where o.experiment=p_experiment and not exists(select 1 from public.meta_creative_effects x where x.command=(select command from public.meta_creative_effects where experiment=p_experiment and object_id=o.object_id and state='confirmed' order by admitted_at desc limit 1) and x.kind=case when o.kind='ad' then 'pause_ad' else 'end_study' end)) then raise exception 'Owned objects not stopped';end if;
   insert into public.meta_creative_receipts(command,experiment,stage,request_hash,evidence_hash) values(p_command,p_experiment,p_stage,h,p_payload->>'evidenceHash');
   delete from public.acquisition_experiment_reservation where singleton;

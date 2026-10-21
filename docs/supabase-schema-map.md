@@ -1110,7 +1110,11 @@ are the sole value source. No backfill or writes. See the metric/coverage contra
 
 `20261021020004_creative_effect_ledger.sql` adds service-only/RLS cross-lane
 reservation, default-off creative control, immutable plan/object/receipt tables
-and bounded effect journal. `meta_creative_command` is the service RPC;
+and bounded effect journal. Prepared admission is not dispatch permission; the
+one-use dispatch fence becomes uncertain, while exact never-claimed evidence can
+resolve no effect. Three terminal cleanup admissions are separate from 24 normal
+admissions. Cleanup/publication flags remain subordinate to current authority and
+global Stop, with generation fencing. `meta_creative_command` is the service RPC;
 landing reservation uses the existing advisory lock and a trigger. No sequence,
 public grant, provider call or installed production capability. See
 `meta-offline-sales.md` for remaining writer/reporting/cleanup requirements.

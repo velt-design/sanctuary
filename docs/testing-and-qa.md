@@ -2054,5 +2054,7 @@ focused lint and docs/architecture guards. Set local
 loads actual landing SQL plus additive creative ledger and reuses landing/probe/
 layout/learning/intake tests. Creative cases cover default-off, RLS/ACL, shared
 reservation, immutable registry, no-repeat uncertainty, original-ad denial,
-post-Stop reconciliation and cleanup. Disposable synthetic SQL is not a live
+post-Stop reconciliation, 24 normal plus three reserved terminal admissions,
+scoped-stop versus credential/global-Stop denial, exact never-dispatched proof,
+stale-fence denial and concurrent dispatch/no-effect exclusion. Disposable synthetic SQL is not a live
 schema/provider test. No Graph dispatcher or credential loader exists.

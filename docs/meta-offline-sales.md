@@ -221,19 +221,33 @@ without changing reports/sales and itself cannot publish.
    one cross-lane reservation. Existing landing and new creative commands share
    advisory lock819421,1. A landing trigger preserves existing active work and
    maintains reservation through existing states. Creative reservations survive
-   uncertain effects and worker expiry; release requires confirmed effects and a
+   uncertain effects and worker expiry; release requires resolved effects and a
    last confirmed pause/end for every registered ad/study.
 2. Immutable plan: exact scope, four original ads, budget/control/native-contract
    hashes, independent review and asset/copy/claim catalogue. Source config pins
    scope/originals/budget/control. Original ads cannot enter the owned registry.
    Each created ID binds one exact command/request/readback evidence receipt.
    Title matching is never idempotency or proof of identity.
-3. Recovery: admission persists uncertainty before any future dispatch. Repeated
-   command/context requires reconciliation; changed context fails. Uncertainty
-   blocks new effects. Exact confirmation can record already sent effects after
-   Stop, but revoked generation denies new admission/current checks. Future adapter
-   must check immediately before dispatch after preparatory awaits. SQL confirms
-   supplied readback evidence; it does not independently query Meta.
+3. Recovery: admission persists `prepared` without dispatch permission. The one-use
+   `check` atomically records `uncertain` immediately before dispatch; a lost check
+   response cannot be retried. Only an untouched prepared fence plus an exact
+   command/request-bound `dispatch_not_started` evidence receipt can become
+   `no_effect`. Expiry or an empty provider search alone is never evidence. This
+   terminal state cannot dispatch or acquire a fabricated object. Unresolved
+   prepared/uncertain effects block release. Confirmation can record already sent
+   effects after Stop. Future adapters must check external credential/global
+   authority after preparatory awaits and consume the source fence immediately
+   before dispatch; SQL does not independently query Meta.
+   Normal work has 24 admissions, with three additional terminal cleanup
+   admissions reserved for the two owned ads and study. `admit_cleanup` admits only
+   exact registered pause/end, disallows duplicate dispatched target cleanup and
+   prevents any later normal work. This finite allowance is not unlimited failure
+   recovery; exhausted cleanup admissions require operator reconciliation.
+   `enabled=false` stops publication. Separately default-off `cleanup_enabled`
+   permits terminal cleanup only while `authority_current=true` and
+   `global_stop=false`; both default fail closed. Any control change fences old
+   generations. These source flags do not replace the future live credential and
+   global-Stop checks. No cleanup path bypasses credential revocation.
 4. Writer seam: `metaCreatives/journal.ts` declares only creative lease/journal types.
    No token loader or Graph dispatcher exists. The future hosted broker must use
    only dedicated Velt enrollment and its exact principal/asset proof, with source
