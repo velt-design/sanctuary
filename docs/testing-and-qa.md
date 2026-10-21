@@ -2071,7 +2071,7 @@ verification or numeric published-pricing approval.
 
 Configured proposal regression (2026-09-14): 44 of the 45 historical proposal
 cases still match exactly. The 6 × 3 m pitched combination case originally used
-`area_override` (3.5760679331494534 mÂ²), which explicitly omitted acrylic/joiner
+`area_override` (3.5760679331494534 m²), which explicitly omitted acrylic/joiner
 installation labour. Replaying that input reproduces $17,900.50 including GST.
 The current two-acrylic-bay takeoff produces $18,128 rounded including GST and no
 costing warnings; material quantities, installation and operational overhead all
