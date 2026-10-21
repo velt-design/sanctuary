@@ -1,5 +1,18 @@
 # Testing And QA
 
+## PG17 CI registry recovery (21 October 2026)
+
+The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR
+mirror of the same 17.6.1.107 linux/amd64 manifest, pinned to
+`sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`.
+Public ECR throttled before contract execution. Both registry manifests were
+read and matched byte-for-byte, including config and all layers; Supabase's own
+[mirror workflow](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml)
+publishes to both. This changes distribution only: PG17, PGMQ1.5.1, all contract
+assertions and the separate PG18 matrix remain unchanged. Local Docker was not
+running during verification, so metadata equality is not a container-test pass;
+the normal required CI jobs still execute the exact contracts.
+
 ## Paused creative capability candidate, 21 October 2026
 
 The native outcome regression retains both existing launch-verification enquiry
