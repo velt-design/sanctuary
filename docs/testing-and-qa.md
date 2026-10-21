@@ -65,6 +65,15 @@ upload and external-vendor fences installed before input. A simulated accepted
 response verifies the UI only; no new policy or remote migration is involved and
 it does not establish intake, email delivery or live advertising attribution.
 
+The guide's history regression uses both enquiry actions at390/1440, then the
+actual Dairy Flat project link, Back, Forward and Back again. URL, title, H1,
+canonical, blank contact fields and source/audience context must agree. Repeating
+the enquiry action must reach the form even when its fragment is already current.
+The same native anchor/project/Back route is exercised without JavaScript.
+First and repeat keyboard activation must leave the next Tab at the enquiry's
+Project type control, preserving the sticky-header clearance and history length.
+Checking only the URL would miss the previously observed project DOM left behind.
+
 ## Middleware build-output guard (21 October 2026 local candidate)
 
 Portal `postbuild` runs `scripts/check-portal-middleware-placement.mjs` after
