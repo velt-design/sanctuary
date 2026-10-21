@@ -1105,3 +1105,12 @@ acceptance, first send and earliest enquiry dates, plus all-dates known send evi
 without timestamps. The forward reader requires the exact 000002 baseline. Stored GST-inclusive quote amounts
 are the sole value source. No backfill or writes. See the metric/coverage contract in
 [Marketing Performance](marketing-performance.md#owner-commercial-overview-candidate-8-october-2026).
+
+### Local creative ledger candidate (21 October 2026)
+
+`20261021020004_creative_effect_ledger.sql` adds service-only/RLS cross-lane
+reservation, default-off creative control, immutable plan/object/receipt tables
+and bounded effect journal. `meta_creative_command` is the service RPC;
+landing reservation uses the existing advisory lock and a trigger. No sequence,
+public grant, provider call or installed production capability. See
+`meta-offline-sales.md` for remaining writer/reporting/cleanup requirements.

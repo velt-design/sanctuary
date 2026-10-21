@@ -208,7 +208,66 @@ after transmission remains a review state because its endpoint has no deletion.
 
 ## Durable Meta credential renewal (default off)
 
-### Separate creative policy preparation (21 October 2026)
+### Creative execution implementation map (21 October 2026, local candidate)
+
+The owner outcome remains cloud evidence -> independently reviewed creative test ->
+measured keep/revert/stop, with one acquisition test across both pages and ads.
+This tranche supplies durable source ownership, not a working Meta executor.
+Runtime execution is still false; no live credential, provider call or SQL install
+is part of local verification. Separate Velt enrollment stores the dedicated writer
+without changing reports/sales and itself cannot publish.
+
+1. Source ownership: additive `20261021020004_creative_effect_ledger.sql` introduces
+   one cross-lane reservation. Existing landing and new creative commands share
+   advisory lock819421,1. A landing trigger preserves existing active work and
+   maintains reservation through existing states. Creative reservations survive
+   uncertain effects and worker expiry; release requires confirmed effects and a
+   last confirmed pause/end for every registered ad/study.
+2. Immutable plan: exact scope, four original ads, budget/control/native-contract
+   hashes, independent review and asset/copy/claim catalogue. Source config pins
+   scope/originals/budget/control. Original ads cannot enter the owned registry.
+   Each created ID binds one exact command/request/readback evidence receipt.
+   Title matching is never idempotency or proof of identity.
+3. Recovery: admission persists uncertainty before any future dispatch. Repeated
+   command/context requires reconciliation; changed context fails. Uncertainty
+   blocks new effects. Exact confirmation can record already sent effects after
+   Stop, but revoked generation denies new admission/current checks. Future adapter
+   must check immediately before dispatch after preparatory awaits. SQL confirms
+   supplied readback evidence; it does not independently query Meta.
+4. Writer seam: `metaCreatives/journal.ts` declares only creative lease/journal types.
+   No token loader or Graph dispatcher exists. The future hosted broker must use
+   only dedicated Velt enrollment and its exact principal/asset proof, with source
+   admission and existing Stop. Reporting/sales leases cannot satisfy this type.
+   No secret crosses browser, model, source ledger or customer data paths.
+5. Native contract: official CreativeTests documentation describes same-campaign
+   creative cells. Actual account eligibility, exact create/read/stop fields,
+   allocation and original-delivery/budget interaction must be proven before wire
+   implementation. Internal effect labels do not assert Meta endpoint semantics.
+   Missing verified contract hash denies reservation. Preserve NZ400 average and
+   NZ2800 weekly total; no budget, audience, offer or Page-post writes.
+6. Before activation, extend fixed-four-ad reporting/Clarity/intake validators to
+   immutable registered study/ad cohorts. Keep original reporting separate, bind
+   campaign/adset/Page/path, effective dates and arm, and preserve late enquiries'
+   experienced ad. Unjoined or denied-consent outcomes stay unknown. Current
+   consumers remain unchanged and cannot yet report a creative test.
+7. Before publishing: actual previews/independent review, scheduled start/end,
+   emergency owned-ad pause plus native-study stop, exact readback and no-repeat
+   recovery. Cleanup must precede reservation release. Expired access retains the
+   lock and alerts; it cannot silently erase uncertainty or permit another test.
+8. Bind formal rules only after native allocation/measurement semantics are known.
+   Genuine saved enquiries are primary; provider high-performer IDs alone are not
+   a business winner. Predeclare window/maturation, uncertainty and separate dated
+   suitability guard. Missing denominators/joins/quality mean inconclusive/control.
+   Do not transplant landing Wilson intervals onto ad clicks or retry an
+   inconclusive study until significant. Persist result and exclusions for next
+   selection. No model/provider request is introduced by this tranche.
+
+Bounds:24 admitted effects, at most2 owned ads and1 study per plan; no raw provider
+payload, secrets or customer text. Native tests compose actual landing SQL with
+reservation/recovery/ACL checks. This is incomplete until remaining hosted paths
+and actual budget/permission/measurement semantics pass independent acceptance.
+
+### Earlier pure-policy stage (21 October 2026)
 
 `metaCreatives/contract.ts` and `policy.ts` are pure, local-only policy owners.
 The declared credential capability vocabulary includes `creatives`, while
@@ -230,7 +289,7 @@ understand whether arbitrary prose is commercially true; a later source-owned
 approval/catalogue reader must establish that provenance.
 
 A matching held creative reservation, generation and unchanged pre-state are
-required. This is a pure check, not an implemented atomic cross-lane lock. A
+required. This policy check alone is not the atomic cross-lane lock added above. A
 command/hash conflict fails; uncertain creation requires reconciliation, never
 another create. A confirmed response needs the matching source-owned object
 registry before it can be treated as already completed. An existing create-command

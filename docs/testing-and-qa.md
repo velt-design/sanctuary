@@ -2044,3 +2044,15 @@ recovers through the Retry button. Verify period/source filters, weekly/monthly 
 keyboard record inspection, previous-period missingness, responsive layout and
 return context. Production project inspection opens a labelled new tab; fixture
 navigation uses its existing synthetic return journey.
+
+### Creative source ledger candidate (21 October 2026)
+
+Run `metaCreatives/*.test.ts` with existing credential renewal tests, Portal types,
+focused lint and docs/architecture guards. Set local
+`SANCTUARY_DISPOSABLE_POSTGRES_BIN` and run
+`node scripts/test-meta-creative-ledger-db.mjs` for native PostgreSQL proof. It
+loads actual landing SQL plus additive creative ledger and reuses landing/probe/
+layout/learning/intake tests. Creative cases cover default-off, RLS/ACL, shared
+reservation, immutable registry, no-repeat uncertainty, original-ad denial,
+post-Stop reconciliation and cleanup. Disposable synthetic SQL is not a live
+schema/provider test. No Graph dispatcher or credential loader exists.
