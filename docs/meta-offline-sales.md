@@ -208,6 +208,119 @@ after transmission remains a review state because its endpoint has no deletion.
 
 ## Durable Meta credential renewal (default off)
 
+### Creative execution implementation map (21 October 2026, local candidate)
+
+The owner outcome remains cloud evidence -> independently reviewed creative test ->
+measured keep/revert/stop, with one acquisition test across both pages and ads.
+This tranche supplies durable source ownership, not a working Meta executor.
+Runtime execution is still false; no live credential, provider call or SQL install
+is part of local verification. Separate Velt enrollment stores the dedicated writer
+without changing reports/sales and itself cannot publish.
+
+1. Source ownership: additive `20261021050001_creative_effect_ledger.sql` introduces
+   one cross-lane reservation. Existing landing and new creative commands share
+   advisory lock819421,1. A landing trigger preserves existing active work and
+   maintains reservation through existing states. Creative reservations survive
+   uncertain effects and worker expiry; release requires resolved effects and a
+   last confirmed pause/end for every registered ad/study.
+2. Immutable plan: exact scope, four original ads, budget/control/native-contract
+   hashes, independent review and asset/copy/claim catalogue. Source config pins
+   scope/originals/budget/control. Original ads cannot enter the owned registry.
+   Each created ID binds one exact command/request/readback evidence receipt.
+   Title matching is never idempotency or proof of identity.
+3. Recovery: admission persists `prepared` without dispatch permission. The one-use
+   `check` atomically records `uncertain` immediately before dispatch; a lost check
+   response cannot be retried. Only an untouched prepared fence plus an exact
+   command/request-bound `dispatch_not_started` evidence receipt can become
+   `no_effect`. Expiry or an empty provider search alone is never evidence. This
+   terminal state cannot dispatch or acquire a fabricated object. Unresolved
+   prepared/uncertain effects block release. Confirmation can record already sent
+   effects after Stop. Future adapters must check external credential/global
+   authority after preparatory awaits and consume the source fence immediately
+   before dispatch; SQL does not independently query Meta.
+   Normal work has 24 admissions, with three additional terminal cleanup
+   admissions reserved for the two owned ads and study. `admit_cleanup` admits only
+   exact registered pause/end, disallows duplicate dispatched target cleanup and
+   prevents any later normal work. This finite allowance is not unlimited failure
+   recovery; exhausted cleanup admissions require operator reconciliation.
+   `enabled=false` stops publication. Separately default-off `cleanup_enabled`
+   permits terminal cleanup only while `authority_current=true` and
+   `global_stop=false`; both default fail closed. Any control change fences old
+   generations. These source flags do not replace the future live credential and
+   global-Stop checks. No cleanup path bypasses credential revocation.
+4. Writer seam: `metaCreatives/journal.ts` declares only creative lease/journal types.
+   No token loader or Graph dispatcher exists. The future hosted broker must use
+   only dedicated Velt enrollment and its exact principal/asset proof, with source
+   admission and existing Stop. Reporting/sales leases cannot satisfy this type.
+   No secret crosses browser, model, source ledger or customer data paths.
+5. Native contract: official CreativeTests documentation describes same-campaign
+   creative cells. Actual account eligibility, exact create/read/stop fields,
+   allocation and original-delivery/budget interaction must be proven before wire
+   implementation. Internal effect labels do not assert Meta endpoint semantics.
+   Missing verified contract hash denies reservation. Preserve NZ400 average and
+   NZ2800 weekly total; no budget, audience, offer or Page-post writes.
+6. Before activation, extend fixed-four-ad reporting/Clarity/intake validators to
+   immutable registered study/ad cohorts. Keep original reporting separate, bind
+   campaign/adset/Page/path, effective dates and arm, and preserve late enquiries'
+   experienced ad. Unjoined or denied-consent outcomes stay unknown. Current
+   consumers remain unchanged and cannot yet report a creative test.
+7. Before publishing: actual previews/independent review, scheduled start/end,
+   emergency owned-ad pause plus native-study stop, exact readback and no-repeat
+   recovery. Cleanup must precede reservation release. Expired access retains the
+   lock and alerts; it cannot silently erase uncertainty or permit another test.
+8. Bind formal rules only after native allocation/measurement semantics are known.
+   Genuine saved enquiries are primary; provider high-performer IDs alone are not
+   a business winner. Predeclare window/maturation, uncertainty and separate dated
+   suitability guard. Missing denominators/joins/quality mean inconclusive/control.
+   Do not transplant landing Wilson intervals onto ad clicks or retry an
+   inconclusive study until significant. Persist result and exclusions for next
+   selection. No model/provider request is introduced by this tranche.
+
+Bounds:24 admitted effects, at most2 owned ads and1 study per plan; no raw provider
+payload, secrets or customer text. Native tests compose actual landing SQL with
+reservation/recovery/ACL checks. This is incomplete until remaining hosted paths
+and actual budget/permission/measurement semantics pass independent acceptance.
+
+### Earlier pure-policy stage (21 October 2026)
+
+`metaCreatives/contract.ts` and `policy.ts` are pure, local-only policy owners.
+The declared credential capability vocabulary includes `creatives`, while
+`RuntimeMetaCredentialCapability`, existing credential configuration, loaders,
+vault sessions and renewal still admit only `reports` and `sales`. No creative
+secret, token scope, environment flag, route, provider request or migration is
+introduced. `CREATIVE_RUNTIME_ENABLED` is permanently false in this stage, and
+every validation result exposes `executionEnabled:false`.
+
+The internal intent allowlist is a paused variant using exact catalogue keys,
+activation of an owned ad, or pausing an owned ad. It contains no Meta wire schema.
+Strict parsing refuses extra offer, budget, targeting, destination, Page-post or
+provider control fields. Scope binds app/principal/business/account/Page/campaign/
+ad set; approved budget and immutable control fingerprint must match fresh source
+pre-state. Independent approval binds the exact intent and asset/copy/claim
+catalogue. Assets need bounded paid-use evidence and expiry, and claims must be
+explicitly approved. The validator does not authenticate supplied evidence or
+understand whether arbitrary prose is commercially true; a later source-owned
+approval/catalogue reader must establish that provenance.
+
+A matching held creative reservation, generation and unchanged pre-state are
+required. This policy check alone is not the atomic cross-lane lock added above. A
+command/hash conflict fails; uncertain creation requires reconciliation, never
+another create. A confirmed response needs the matching source-owned object
+registry before it can be treated as already completed. An existing create-command
+registry entry also prevents a stale `not_dispatched` receipt from authorizing a
+new create. Conflicting or multiple entries require reconciliation; only one exact
+object plus its matching confirmed receipt resolves completion. Name matching is not
+provider idempotency. Status effects cannot target the original control ad.
+
+Remaining implementation prerequisites are deliberately explicit: authoritative
+native CreativeTests and permission contracts, independent Page/ad-account/app
+assignment and a separate vault capability, durable global landing/creative
+reservation, study/ad registry and compatible reporting/Clarity/intake consumers,
+actual ad previews, delivery/cleanup recovery and a reviewed end-decision rule.
+The current four-ad report schemas cannot accept extra ads unchanged. No native
+study fields, eligibility, budget allocation or automatic end-stop are assumed.
+No provider effects or credential operations are possible through this policy.
+
 `metaCredentials` owns separate report and sale vault sessions, provider checks,
 renewal and reconciliation. It does not modify Google access or the Velt legacy
 Meta item. Use dedicated Sanctuary items with one concealed `meta_credential`
@@ -382,3 +495,30 @@ Provider sources (reviewed 14 October 2026):
 [event endpoint](https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ads-pixel/events),
 [Google prehashed Code setup](https://support.google.com/google-ads/answer/13262500?hl=en),
 [Enhanced conversions for leads](https://support.google.com/google-ads/answer/11347292?hl=en).
+
+## Dedicated paused creative capability candidate (21 October 2026)
+
+This source boundary is separate from report and offline-sale credentials. Velt
+keeps the only dedicated writer credential; Source receives a signed fixed-scope
+plan, never the token. `creative-executor/{contract,intent,authority}` and the
+private `/api/landing-experiment/creative` route own exact media/tracking intent,
+the shared acquisition reservation and immutable effect receipts. Formal
+preparation/non-cleanup execution is refused; only an unchanged creative plus one
+owned PAUSED ad can be proved in this milestone. Cleanup retains the ad PAUSED.
+A provider-reused donor creative remains a reference and is never deleted.
+
+Migrations `20261021050001` (effect ledger), `20261021050002` (executor/registry)
+and `20261021050003` (consented measurement joins) follow accepted existing history.
+Register each in the normal migration ledger; controls default off. Install only
+after compatible Velt/Portal/Marketing contracts. Preserve current canonical
+intake, original ads, consent/idempotency and offline switches. Unknown writes
+retain the lock; known no-effect transitions require exact evidence. Compiled
+template mismatch refuses new effects and emits bounded authenticated hashes and
+release provenance. Exact owned cleanup remains available across template changes,
+under current credential/Stop/lease authority.
+
+Paused capability is not an experiment: no study, activation or genuine exposure.
+Formal registry measurement is staged, consented and explicitly incomplete for
+all-saved-enquiry CPE. Full author/reviewer/activation, provider window proof, formal
+cohort freeze/evaluation and retained-creative adoption remain required before
+unattended commercial creative tests can be claimed complete.

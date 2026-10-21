@@ -1,5 +1,70 @@
 # Testing And QA
 
+
+## Video donor compatibility verification (22 October 2026)
+
+Exercise signed preparation and exact intent validation with a synthetic two-media
+video_story and six-key tracking; changed media intent must fail. Run the existing
+native ledger harness with representative/full-size synthetic plan and intent
+round trips and oversize denial. Source fixtures and local renderer closure hashes
+are not real Meta preservation or provider proof. The paired Velt v2 diagnostic
+must precede any remaining actual PAUSED attempt.
+
+## Initial Marketing hub scheduling (21 October 2026)
+
+Run `hubDocumentSelection`, `readHub.server`, the hub API/page tests,
+`useHub.initial`, and `MarketingPerformance.initialHub` with the existing hub,
+regional authority and report suites. Cover deferred page return, staff/developer
+and preview denial, exact/default Auckland dates, RSC/prefetch/Financial exclusions,
+one initial read, StrictMode, date/loader races, unmount, unavailable evidence,
+API retry, filters and record return. Use Flight-shaped thenables in hook/host
+tests, including a void-returning
+`then` and synchronous fulfillment; native promises alone miss that boundary.
+The neutral optimized scheduling experiment
+uses identical full fictional reports, assets and availability delays for client
+and streamed starts. It adds no simulated auth advantage. Verify actual Flight
+streaming, complete panel content, final data-to-content delay and retained
+recovery; unit promise tests do not establish hosted speed or access behavior.
+
+## PG17 CI registry recovery (21 October 2026)
+
+The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR
+mirror of the same 17.6.1.107 linux/amd64 manifest, pinned to
+`sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`.
+Public ECR throttled before contract execution. Both registry manifests were
+read and matched byte-for-byte, including config and all layers; Supabase's own
+[mirror workflow](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml)
+publishes to both. This changes distribution only: PG17, PGMQ1.5.1, all contract
+assertions and the separate PG18 matrix remain unchanged. Local Docker was not
+running during verification, so metadata equality is not a container-test pass;
+the normal required CI jobs still execute the exact contracts.
+
+## Paused creative capability candidate, 21 October 2026
+
+The native outcome regression retains both existing launch-verification enquiry
+and project exclusions. A genuine later enquiry on an ordinary project still
+owns its confirmed visit/quote when an excluded test was first. Counts, sampled
+correspondence and opaque references exclude both tests; null-project records
+remain visible as unlinked. This is synthetic preservation proof, not live data.
+
+Template-drift recovery keeps authenticated exact registry state readable with
+finite compatibility metadata. Exercise pending readback, owned pause and final
+cleanup through the actual Velt adapter and signed Source handler; new preparation
+and non-cleanup effects still require the current compiled template. No rebind or
+provider proof is implied by these synthetic cases.
+
+Run `node scripts/test-meta-creative-ledger-db.mjs` with the existing disposable
+PostgreSQL path, creative authority/intent/contract tests, campaign report/registry
+contracts and affected intake tests. Verify old canonical intake preservation,
+consent and retry joins, uncertain dispatch locking, reused creative reference
+and retained-PAUSED cleanup. Signed formal preparation is refused; compiled
+template mismatch blocks new effects while exact owned cleanup remains available.
+Run current app types/lint, architecture/docs guards and Marketing optimized build.
+Replay `probe.integration.test.ts` against that compiled local build and the actual
+Velt renderer for seven catalogue combinations at three widths plus short/tall
+mobile/banner/focus/designer-return cases. Local fixtures intercept provider and
+submission effects; they never prove live Meta capability or real delivery.
+
 ## Commercial photographic presentation (21 October 2026)
 
 `marketing.commercial-guide.spec.ts` is registered in the Marketing browser lane.
@@ -194,6 +259,16 @@ an API request triggered a Git checkout or GitHub delivered a webhook: these are
 distinct triggers, and an API-triggered Git build does not prove webhook parity.
 Even passing generated output does not prove the provider deployed it unchanged.
 Production regional acceptance remains failed.
+## Creative policy preparation (21 October 2026, local only)
+
+`metaCreatives/policy.test.ts` validates exact intent/approval/catalogue/pre-state
+bindings, forbidden control fields, wrong assets/scopes/claims, budgets, exclusive
+reservation evidence, uncertain creation and registered-object status effects.
+Run it with `metaCredentials/renewal.test.ts` to preserve reporting/sales isolation.
+These pure fixtures exercise no provider, credential, SQL, ad or customer effect.
+They prove neither API eligibility nor durable reservation/idempotency, and every
+accepted plan still reports execution disabled. See the bounded implementation
+map in `meta-offline-sales.md` before any later credential or executor work.
 
 ## Meta landing experiment candidate (21 October)
 
@@ -2223,3 +2298,17 @@ recovers through the Retry button. Verify period/source filters, weekly/monthly 
 keyboard record inspection, previous-period missingness, responsive layout and
 return context. Production project inspection opens a labelled new tab; fixture
 navigation uses its existing synthetic return journey.
+
+### Creative source ledger candidate (21 October 2026)
+
+Run `metaCreatives/*.test.ts` with existing credential renewal tests, Portal types,
+focused lint and docs/architecture guards. Set local
+`SANCTUARY_DISPOSABLE_POSTGRES_BIN` and run
+`node scripts/test-meta-creative-ledger-db.mjs` for native PostgreSQL proof. It
+loads actual landing SQL plus additive creative ledger and reuses landing/probe/
+layout/learning/intake tests. Creative cases cover default-off, RLS/ACL, shared
+reservation, immutable registry, no-repeat uncertainty, original-ad denial,
+post-Stop reconciliation, 24 normal plus three reserved terminal admissions,
+scoped-stop versus credential/global-Stop denial, exact never-dispatched proof,
+stale-fence denial and concurrent dispatch/no-effect exclusion. Disposable synthetic SQL is not a live
+schema/provider test. No Graph dispatcher or credential loader exists.

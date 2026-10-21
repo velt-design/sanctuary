@@ -1,3 +1,4 @@
+import {landingCompatibility} from '../../../../lib/landingCompatibility.server';
 import { getServiceSupabase } from '@/lib/supabaseService';
 import { EXPERIMENT_TEMPLATE, experimentHash, verifyExperimentCommand,signProbe } from '../../../../lib/landingExperiment.server';
 import template from '../../../../data/landing-template.generated.json';
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
       const row=result.data;
       return Response.json({...row,capability:signProbe({probe:row.probe,experiment:command.experiment!,...(command.payload as {candidateHash:string;template:typeof EXPERIMENT_TEMPLATE;generation:number;mode:'prepare'|'live'}),path:row.path,expires:Date.parse(row.expires)})},{headers});
     }
-    if (command.stage === 'read' && result.data?.template !== EXPERIMENT_TEMPLATE) throw new Error('Release changed');
+    if (command.stage === 'read' && result.data?.template !== EXPERIMENT_TEMPLATE) return Response.json(landingCompatibility(result.data?.template),{status:503,headers});
     return Response.json(command.stage === 'read' ? { ...result.data, renderer: template.hash,
       texts:Object.fromEntries(LANDING_EXPERIMENT_PATHS.map(path=>[path,landingControlText(path,parseLandingCopies(result.data.controls[path])??{})])) } : result.data, { headers });
   } catch { return Response.json({ status: 'unavailable' }, { status: 503, headers }); }

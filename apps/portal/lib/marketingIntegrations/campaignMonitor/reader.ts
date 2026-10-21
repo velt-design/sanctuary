@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { metaRead } from '../meta/transport';
 import type { Boundary } from '../meta/boundary';
 import type { MetaConfig } from '../meta/config';
-import { entityId, campaignScope, TIMEZONE, campaignPeriods, campaignHealthSchema, type CampaignHealth } from './contract';
+import { entityId, campaignScope, TIMEZONE, campaignPeriods, campaignHealthSchema, type CampaignHealth, registeredCreativeAdSchema, type RegisteredCreativeAd } from './contract';
 
 const numeric = z.string().regex(/^\d+(\.\d+)?$/).transform(Number).refine(Number.isSafeInteger);
 const money = z.string().regex(/^\d+(\.\d{1,2})?$/).transform(Number).refine(Number.isFinite);
@@ -17,19 +17,21 @@ const insight = z.object({ account_id: entityId, campaign_id: entityId, adset_id
   date_start: z.string(), date_stop: z.string(), spend: money.optional(), impressions: numeric.optional(), inline_link_clicks: numeric.optional(),
   actions: z.array(z.object({ action_type: z.string(), value: metric })).max(100).optional() });
 function page<T>(schema: z.ZodType<T>, value: unknown): T[] {
-  const result = z.object({ data: z.array(schema).max(4), paging: z.object({ next: z.unknown().optional() }).optional() }).parse(value);
+  const result = z.object({ data: z.array(schema).max(44), paging: z.object({ next: z.unknown().optional() }).optional() }).parse(value);
   if (result.paging?.next) throw new Error('Campaign read is incomplete.');
   return result.data;
 }
-export async function readCampaignHealth(config: Omit<MetaConfig, 'expiresAt'>, account: { timezone: string; currency: string }, boundary: Boundary, fetcher: typeof fetch, now = new Date()): Promise<CampaignHealth> {
-  const scope = campaignScope(), { account: ACCOUNT, campaign: CAMPAIGN, adset: ADSET } = scope, ADS = scope.ads.map(row => row.id);
+export async function readCampaignHealth(config: Omit<MetaConfig, 'expiresAt'>, account: { timezone: string; currency: string }, boundary: Boundary, fetcher: typeof fetch, now = new Date(), registered: RegisteredCreativeAd[] = []): Promise<CampaignHealth> {
+  const scope = campaignScope(), { account: ACCOUNT, campaign: CAMPAIGN, adset: ADSET } = scope, ADS = [...scope.ads.map(row => row.id), ...registered.map(row => row.id)];
+  z.array(registeredCreativeAdSchema).max(40).parse(registered);
+  if (new Set(ADS).size !== ADS.length || registered.some(row => row.campaign !== CAMPAIGN || row.adset !== ADSET)) throw new Error('Creative registry differs.');
   if (config.account !== ACCOUNT || account.timezone !== TIMEZONE || account.currency !== 'NZD') throw new Error('Campaign account differs.');
   const periods = campaignPeriods(now), proof = createHmac('sha256', config.appSecret).update(config.token).digest('hex');
   const filtering = JSON.stringify([{ field: 'campaign.id', operator: 'IN', value: [CAMPAIGN] }]);
   const read = (edge: 'ads' | 'insights', fields: string, extra: Record<string, string> = {}) => boundary('report_read', async () =>
     (await metaRead(fetcher, `act_${ACCOUNT}/${edge}`, new URLSearchParams({ fields, filtering, limit: '100', appsecret_proof: proof, ...extra }), config.token)).body);
   const states = page(statusRow, await read('ads', 'id,account_id,campaign_id,adset_id,effective_status,campaign{id,effective_status,daily_budget},adset{id,effective_status,daily_budget}'));
-  if (states.length !== 4 || new Set(states.map(row => row.id)).size !== 4) throw new Error('Campaign ad coverage differs.');
+  if (states.length !== ADS.length || new Set(states.map(row => row.id)).size !== ADS.length) throw new Error('Campaign ad coverage differs.');
   if (states.some(row => !ADS.includes(row.id) || row.account_id !== ACCOUNT || row.campaign_id !== CAMPAIGN || row.adset_id !== ADSET || row.campaign.id !== CAMPAIGN || row.adset.id !== ADSET)) throw new Error('Campaign scope differs.');
   const first = states[0]!;
   if (states.some(row => JSON.stringify(row.campaign) !== JSON.stringify(first.campaign) || JSON.stringify(row.adset) !== JSON.stringify(first.adset))) throw new Error('Campaign state is inconsistent.');
@@ -56,5 +58,6 @@ export async function readCampaignHealth(config: Omit<MetaConfig, 'expiresAt'>, 
     observedAt: now.toISOString(), currency: 'NZD', timezone: TIMEZONE, periods, campaignStatus: first.campaign.effective_status,
     adsetStatus: first.adset.effective_status, dailyBudget: (first.campaign.daily_budget ?? first.adset.daily_budget) === undefined ? null : (first.campaign.daily_budget ?? first.adset.daily_budget)! / 100,
     ads: scope.ads.map(({ id, label }) => ({ id, label, status: states.find(row => row.id === id)!.effective_status, today: metrics('today', id), week: metrics('week', id) })),
+    creativeAds: registered.map(row => ({ ...row, status: states.find(state => state.id === row.id)!.effective_status, today: metrics('today', row.id), week: metrics('week', row.id) })),
     attribution: 'Ad-set attribution settings; impression-time reporting' });
 }

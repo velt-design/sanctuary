@@ -12,6 +12,33 @@ diagnostic. Synthetic collector-to-HTTP/lifecycle tests cover both completion
 orders, unavailable recording and log redaction. Owner: the Sanctuary-owned GA4
 section in `environment-auth-supabase.md`.
 
+## 2026-10-21: select an initial report read without moving its authority boundary
+
+A server-started report can overlap document delivery and hydration, but the
+document callback only selects work. Keep current staff/developer and preview
+checks before creating the auth-bound read; share the API's complete reader and
+safe errors. Stream a result promise without suspending the client shell. Match
+only the first restored client request, retire mismatches and departures, and
+retain API retries. Independent client defaults must remain correct across an
+Auckland midnight. Measure complete content and transport separately from local
+promise plumbing. Owner: `marketing-performance.md` and its initial hub helpers.
+
+Flight thenables can inherit `Promise.prototype` while their own `then` returns
+void. Normalize through native `Promise.resolve` before chaining; `instanceof`
+is insufficient. Use that shape in pending, synchronous fulfillment, rejection,
+StrictMode and host recovery tests, then verify the compiled stream itself.
+
+## 2026-10-21: prepare selected report components before their first visible mount
+
+A raw dynamic import can finish while React.lazy still has an uninitialized
+payload. First mounting the wrapper after data arrives then suspends again,
+even though no download remains. Resolve only the selected report component into
+stable typed state during its data wait, and render that component directly.
+Keep honest loading/error/retry states, selection and unmount guards, and stable
+component identity. Test both completion orders and superseded failures; verify
+the final data-to-chart interval in an optimized browser with complete content.
+Owner: `marketing-performance.md` and `usePreparedReportViews`.
+
 ## 2026-10-21: Attribute accepted jobs independently of visits
 
 Owner instruction: "Go ahead and update the report so all accepted jobs are

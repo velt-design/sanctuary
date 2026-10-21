@@ -178,7 +178,8 @@ jobs:
             postgres_major: "18"
             pgmq_version: "1.10.0"
           - database: supabase-postgres-pg17
-            image: "public.ecr.aws/supabase/postgres:17.6.1.107"
+            # Official 17.6.1.107 linux/amd64 image, byte-identical to public ECR.
+            image: "ghcr.io/supabase/postgres@sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721"
             postgres_major: "17"
             pgmq_version: "1.5.1"
     env:

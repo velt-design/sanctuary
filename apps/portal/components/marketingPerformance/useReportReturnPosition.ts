@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 
 // Only viewport geometry is retained, never report records or attribution data.
-export default function useReportReturnPosition(busy: boolean) {
+export default function useReportReturnPosition(busy: boolean, captureBusy = busy) {
   const region = useRef<HTMLDivElement>(null);
   const pending = useRef<number | null>(null);
   const [height, setHeight] = useState<number>();
@@ -24,7 +24,7 @@ export default function useReportReturnPosition(busy: boolean) {
     window.scrollTo({ top: y, behavior: 'instant' });
   }, [busy, height]);
   const remember = (event: MouseEvent<HTMLDivElement>) => {
-    if (!(event.target instanceof Element) || !event.target.closest('a[href]') || busy) return;
+    if (!(event.target instanceof Element) || !event.target.closest('a[href]') || captureBusy) return;
     try {
       sessionStorage.setItem(key(), JSON.stringify({ height: region.current?.getBoundingClientRect().height ?? 780, y: window.scrollY }));
     } catch { /* Browser Back still works without storage. */ }

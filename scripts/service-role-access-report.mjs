@@ -116,6 +116,10 @@ function isApprovedServerFlow(file) {
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
   if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) return true;
+  // Fixed, time-bound HMAC machine command; no staff cookie exists. The sole
+  // service RPC rechecks shared reservation, scope/generation and dispatch intent.
+  // See docs/meta-offline-sales.md; no generic tables or credential access.
+  if (file === 'apps/marketing/app/api/landing-experiment/creative/route.ts') return true;
   if (file.startsWith('apps/marketing/app/api/enquiry/')) return true;
   // Authenticated staff preparation rechecks membership/project ownership and
   // freezes the price before the service-only atomic revision RPC is called.

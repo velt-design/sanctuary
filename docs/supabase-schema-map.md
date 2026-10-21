@@ -1144,3 +1144,25 @@ acceptance, first send and earliest enquiry dates, plus all-dates known send evi
 without timestamps. The forward reader requires the exact 000002 baseline. Stored GST-inclusive quote amounts
 are the sole value source. No backfill or writes. See the metric/coverage contract in
 [Marketing Performance](marketing-performance.md#owner-commercial-overview-candidate-8-october-2026).
+
+### Local creative ledger candidate (21 October 2026)
+
+`20261021050001_creative_effect_ledger.sql` adds service-only/RLS cross-lane
+reservation, default-off creative control, immutable plan/object/receipt tables
+and bounded effect journal. Prepared admission is not dispatch permission; the
+one-use dispatch fence becomes uncertain, while exact never-claimed evidence can
+resolve no effect. Three terminal cleanup admissions are separate from 24 normal
+admissions. Cleanup/publication flags remain subordinate to current authority and
+global Stop, with generation fencing. `meta_creative_command` is the service RPC;
+landing reservation uses the existing advisory lock and a trigger. No sequence,
+public grant, provider call or installed production capability. See
+`meta-offline-sales.md` for remaining writer/reporting/cleanup requirements.
+
+## Creative capability candidate, 21 October 2026
+
+`20261021050001` through `20261021050003` add the private creative effect ledger,
+executor/registered-ad/outcome projection and consented visit/intake joins. Native
+fixtures exercise shared landing reservation, uncertain/no-effect fencing, one
+paused ad and reused creative reference cleanup. Service-only definer commands,
+empty search paths, explicit table/function revokes and immutable receipts remain
+mandatory. No production migration or capability is implied by fixture passes.
