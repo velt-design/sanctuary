@@ -407,6 +407,15 @@ controlled.
 
 ## Portal Financials candidate
 
+Fresh-entry performance regressions additionally cover
+`marketingPerformance/MarketingPerformance.loading.test.tsx`, independently
+settled current/comparison hooks, and `xero/financials/panel.test.ts` selected-family
+read counts, full-reader equivalence and authority changes. Financial section
+switch/race tests exercise explicit requested-family identity. Compare optimized
+baseline/candidate artifacts using identical fictional data/delays and distinguish
+primary content from all requested evidence settled. Local simulated provider
+latency is not production page timing; real source reconciliation remains needed.
+
 Focused checks: `npx vitest run apps/portal/lib/xero/financials
 apps/portal/lib/xero/financePositionRuntime.test.ts apps/portal/components/financials
 apps/portal/app/api/staff/v1/marketing-performance/financials

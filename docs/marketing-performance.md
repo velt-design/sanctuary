@@ -1,5 +1,51 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Fresh-entry performance candidate (21 October 2026)
+
+Independent Overview reads start with the selected hub dates. Commercial and
+Designer state retain their own failures, retry and request identity; the hub
+still supplies exact project/source filtering before values are displayed.
+The current hub no longer waits for the enquiry comparison. That comparison is
+requested only in Enquiries and has its own pending/error state. A settled primary
+report is distinct from all requested panels being settled.
+
+Selected chart modules preload during the data wait; unused views and provider
+drawers load on demand. Closed Overview supporting charts mount when opened.
+`contract.aucklandDay` reuses its fixed Auckland formatter, `overview` assigns age
+bands in one pass, and underlying-record dates format only the displayed page.
+The complete bounded hub inventory, source aliases, filters and inspection remain
+unchanged. No SQL population, private shared cache or browser report storage is
+introduced. Refresh still requests current evidence.
+
+Financials now requests an explicit `section` with exact from/to/basis.
+`financials/panel` reads Organisation and only that section's family. P&L retains
+all exact current, previous, year-ago and six monthly reports, deduplicated by
+period/basis with at most two comparison reads running together. Bank, money owed
+and bills do not request P&L or other invoice families. The strict panel wire
+identifies its section and uses `not_requested` for omitted families, never a
+provider failure or zero. Dates, basis, currency and selected-family identity are
+validated. Section changes cancel superseded reads; denial clears private
+evidence. Existing dated fallback retains original checked times and basis.
+Already-open clients without `section` retain the original full Financials wire
+through the same authorization and deadline; unknown/repeated fields stay denied.
+
+`financePositionReader` extracts the existing source read context; the full
+`readFinancePosition` machine API and its complete wire remain compatible.
+Authority checks before each provider read and final publication, pagination,
+source limits and provider deadlines remain. There is no token/authority cache.
+Focused tests cover delayed and superseded reads, section/family mismatch,
+denial, exact accounting equivalence and provider read counts. Local CPU and
+simulated-provider timing are distinct from live page speed; matched optimized
+browser evidence and independent review belong in the private owning record.
+
+The exact `/staff/marketing-performance` HTML-document path joins the existing
+regional authority allowlist. The earlier regional release covered Projects and
+Site Visits only. Marketing already has a server staff gate and confirmed
+developer gate, which remain unchanged. Eligible document requests refresh cookie
+transport in middleware and verify authority freshly in the regional render;
+RSC, prefetch, actions, POST, child paths and API reads keep their existing checks.
+The transport callback supplies redirect context, never identity or authorization.
+
 ## Marketing visual direction (21 October 2026)
 
 Jordan selected the second developed visual concept for all five Marketing tabs:

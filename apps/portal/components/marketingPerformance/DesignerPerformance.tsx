@@ -23,9 +23,10 @@ export function designerMetricValue(row:DesignerSummary,key:DesignerMetric):stri
   if(key==='quoted'||key==='accepted'||key==='paid'){if(!row.outcomes.length)return 'Unavailable';const unknown=key==='quoted'?row.outcomes.some(o=>o.undatedQuotes.length):key==='accepted'?row.outcomes.some(o=>o.undatedAcceptances.length):false;return `${row.outcomes.filter(o=>o[key].length).length}${unknown?' · Date coverage incomplete':''}`;}
   return '';
 }
-export default function DesignerPerformance({hub,filters,apply,loader,synthetic=false,revision=0}:{hub:HubReport;filters:HubFilters;apply:(f:HubFilters)=>void;loader?:DesignerLoader;synthetic?:boolean;revision?:number}){
+export default function DesignerPerformance({hub,filters,apply,loader,synthetic=false,revision=0,evidence,retryEvidence}:{hub:HubReport;filters:HubFilters;apply:(f:HubFilters)=>void;loader?:DesignerLoader;synthetic?:boolean;revision?:number;evidence?:ReturnType<typeof useDesigner>;retryEvidence?:()=>void}){
   const [retry,setRetry]=useState(0),[inspect,setInspect]=useState<{key:DesignerMetric;staffId:string;report:DesignerReport;filters:string}|null>(null);
-  const {report,busy,error}=useDesigner(filters,revision+retry,loader);
+  const local=useDesigner(evidence?null:filters,revision+retry,loader);
+  const {report,busy,error}=evidence??local;
   const filtered=Boolean(filters.source||filters.campaign||filters.owner||filters.stage||filters.state||filters.evidence!=='all');
   const ids=filtered?new Set(selectHub(hub,{...filters,inspect:'all'}).projects.map(p=>p.id)):null;
   const result=report?designerPerformance(report,ids,filters.designer):null;
@@ -38,7 +39,7 @@ export default function DesignerPerformance({hub,filters,apply,loader,synthetic=
   return <section className={styles.section} aria-label="Designer visits and conversion" aria-busy={busy}>
     <div className={styles.heading}><div><h2>Designer visits and conversion</h2><p>Recorded visits in selected dates · Outcomes to the report date</p></div>
       <Select label="Attending designer" value={filters.designer??''} onChange={e=>{setInspect(null);apply({...filters,designer:e.target.value});}}><option value="">Everyone recorded</option>{roster.map(id=><option key={id} value={id}>{designerName(id)}</option>)}<option value="unassigned">Unassigned / unresolved</option></Select></div>
-    {busy?<p role="status">Loading recorded visits and sale evidence…</p>:error?<AlertBanner tone="error" title="Designer evidence unavailable" action={<Button onClick={()=>setRetry(n=>n+1)} variant="secondary">Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:report&&result?<>
+    {busy?<p role="status">Loading recorded visits and sale evidence…</p>:error?<AlertBanner tone="error" title="Designer evidence unavailable" action={<Button onClick={()=>retryEvidence?retryEvidence():setRetry(n=>n+1)} variant="secondary">Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:report&&result?<>
       {stale&&<p className={styles.notice} role="status">{!report.source.enabled?'Outlook records are withheld because the calendar source is disabled. Activity below includes manual history only; conversion is unavailable.':report.source.failed?'The latest calendar update failed. Figures below use saved records.':'Calendar source needs a fresh update. Figures below use saved records.'} <a href="/staff/site-visits" target="_blank" rel="noreferrer">Review calendar source</a></p>}
       <div className={styles.metrics}>{(['attended','originals','paid'] as const).map(key=><button key={key} onClick={()=>open(key,result.total)}><span>{designerMetrics.find(m=>m[0]===key)![1]}</span><strong>{designerMetricValue(result.total,key)}</strong><small>{key==='paid'?result.total.outcomes.length?`${result.total.outcomes.filter(o=>o.paid.length).length} of ${result.total.outcomes.length} recorded original-visit projects`:'No verified dated original-visit cohort':key==='attended'?'Every recorded purpose · Team total':'First recorded original per project'}</small></button>)}</div>
       {undatedAttended>0&&<button className={styles.undated} onClick={()=>open('coverage',result.total)}>{undatedAttended} further attended {undatedAttended===1?'visit has':'visits have'} no date and cannot enter the selected period. Review dates.</button>}

@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import PageHeader from '@/components/layout/PageHeader';
 import { Button, Select } from '@/components/ui/foundation/FoundationControls';
@@ -8,17 +9,12 @@ import { AlertBanner } from '@/components/ui/foundation/FoundationAlert';
 import { TabNavigation } from '@/components/ui/foundation/FoundationOperational';
 import { defaultFilters, validPeriod, summarize, rate, type Filters } from '@/lib/marketingPerformance/contract';
 import { hubDefaults, hubQuery, parseHubFilters, selectHub, views, eventLabels, evidenceForView, type HubFilters as FiltersState } from '@/lib/marketingPerformance/hub';
-import BusinessOverview from './BusinessOverview';
-import SalesActivity from './SalesActivity';
 import HubToolbar from './HubToolbar';
 import { Drawer } from './MarketingDrawer';
 import HubMetrics from './HubMetrics';
 import HubRecords from './HubRecords';
 import HubCompleteness from './HubCompleteness';
-import DataSources from './DataSources';
 import type { MetaEvidenceLoader } from '@/lib/marketingPerformance/dataSources';
-import EnquiryCharts from './EnquiryCharts';
-import PortfolioChart from './PortfolioChart';
 import PerformanceComparison from './PerformanceComparison';
 import PerformanceDefinitions from './PerformanceDefinitions';
 import PerformanceTrends from './PerformanceTrends';
@@ -29,11 +25,21 @@ import styles from './MarketingPerformance.module.css';
 import theme from './MarketingTheme.module.css';
 import Financials from '@/components/financials/Financials';
 import type { FinancialsLoader } from '@/components/financials/useFinancials';
-import type { DesignerLoader } from './useDesigner';
-import type { CommercialLoader } from './useCommercial';
+import useDesigner, { type DesignerLoader } from './useDesigner';
+import useCommercial, { type CommercialLoader } from './useCommercial';
 import useVisibleSelection from '@/components/financials/useVisibleSelection';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
 import type { loadMetaSaleStatus } from '@/lib/marketingIntegrations/metaSales/contract';
+
+const loadBusinessOverview=()=>import('./BusinessOverview');
+const BusinessOverview=dynamic(loadBusinessOverview,{loading:()=> <p role="status">Preparing report view…</p>});
+const loadSalesActivity=()=>import('./SalesActivity');
+const SalesActivity=dynamic(loadSalesActivity,{loading:()=> <p role="status">Preparing report view…</p>});
+const DataSources=dynamic(()=>import('./DataSources'),{loading:()=> <p role="status">Preparing report view…</p>});
+const loadEnquiryCharts=()=>import('./EnquiryCharts');
+const EnquiryCharts=dynamic(loadEnquiryCharts,{loading:()=> <p role="status">Preparing report view…</p>});
+const loadPortfolioChart=()=>import('./PortfolioChart');
+const PortfolioChart=dynamic(loadPortfolioChart,{loading:()=> <p role="status">Preparing report view…</p>});
 
 export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader}: {
   financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
@@ -42,7 +48,15 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   const [draft,setDraft]=useState<FiltersState>(()=>({...hubDefaults(initialFilters??defaultFilters()),view:'overview' as const}));
   const [applied,setApplied]=useState<FiltersState|null>(null), [validation,setValidation]=useState(''), [revision,setRevision]=useState(0);
   const [eventKind,setEventKind]=useState(''),[info,setInfo]=useState(false),[sources,setSources]=useState(false);
-  const {hub,previous,busy,error,comparisonError}=useHub(applied?.view==='financials'?null:applied,revision,loader,priorLoader);
+  const [commercialRetry,setCommercialRetry]=useState(0),[designerRetry,setDesignerRetry]=useState(0);
+  const commercialEvidence=useCommercial(applied?.view==='overview'?applied:null,revision+commercialRetry,commercialLoader);
+  const designerEvidence=useDesigner(applied?.view==='overview'?applied:null,revision+designerRetry,designerLoader);
+  const {hub,previous,busy,error,comparisonError,comparisonBusy}=useHub(applied?.view==='financials'?null:applied,revision,loader,priorLoader,applied?.view==='enquiries');
+  useEffect(()=>{
+    const load=applied?.view==='overview'?loadBusinessOverview:applied?.view==='enquiries'?loadEnquiryCharts:applied?.view==='sales'?loadSalesActivity:applied?.view==='portfolio'?loadPortfolioChart:null;
+    // Fetch selected code during the independent data wait, not after its response.
+    if(load)void load().catch(()=>{});
+  },[applied?.view]);
   const position=useReportReturnPosition(busy);
   const tabs=useVisibleSelection(draft.view);
   useEffect(()=>{
@@ -60,7 +74,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   };
   const inspectEvents=(kind:string)=>{if(applied)apply({...applied,kind});};
   const Header=synthetic?PageHeader:StaffPageHeader;
-  const selected=hub&&applied?selectHub(hub,{...applied,inspect:'all'}):null;
+  const selected=useMemo(()=>hub&&applied?selectHub(hub,{...applied,inspect:'all'}):null,[hub,applied]);
   const totals=selected?summarize(selected.enquiries):null;
   const priorFiltered=hub&&previous&&applied?{...previous,rows:selectHub({...hub,enquiries:previous},{...applied,inspect:'all'}).enquiries}:null;
   return <PageLayout width="full" className={`${theme.theme} ${styles.page}`} data-marketing-report>
@@ -68,10 +82,10 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
     <div ref={tabs} style={{minWidth:0}}><TabNavigation items={views.map(v=>({...v,controls:'hub-results'}))} selectedKey={draft.view} onSelect={view=>apply({...draft,view,inspect:'all'})} ariaLabel="Marketing and sales views"/></div>
     {draft.view==='financials'?<div id="hub-results"><Financials loader={financialsLoader} synthetic={synthetic}/></div>:<>
     {validation&&<p role="alert">{validation}</p>}
-    <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy}>
+    <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy} data-comparison-pending={comparisonBusy||undefined}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>
         {applied.view!=='overview'&&<div className={styles.contextLine}><span>{applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>}
-        {applied.view==='overview'?<BusinessOverview hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} synthetic={synthetic} revision={revision}/>:<>
+        {applied.view==='overview'?<BusinessOverview commercialEvidence={commercialEvidence} designerEvidence={designerEvidence} retryCommercial={()=>setCommercialRetry(n=>n+1)} retryDesigner={()=>setDesignerRetry(n=>n+1)} hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} synthetic={synthetic} revision={revision}/>:<>
         <HubMetrics hub={hub} filters={applied} apply={apply} inspectEvents={inspectEvents}/>
         {applied.view==='enquiries'&&<div className={styles.contextLine}><div className={styles.coverageTrack}><span style={{width:rate(totals.attributed,totals.enquiries)}}/></div><span>{rate(totals.attributed,totals.enquiries)} source known · {totals.enquiries-totals.attributed} unknown</span><Button variant="quiet" onClick={()=>setInfo(true)}>How it’s counted</Button></div>}
         {applied.view==='enquiries'&&<EnquiryCharts rows={selected.enquiries} filters={applied} apply={apply}/>}
@@ -83,7 +97,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
 
         {applied.view==='enquiries'&&<>
           <details><summary>Compare sources & campaigns</summary><PerformanceComparison rows={selected.enquiries} onInspect={(source,campaign)=>apply({...applied,source,campaign,inspect:'all'})}/></details>
-          <details><summary>Enquiry trends and previous-period comparison</summary><PerformanceTrends rows={selected.enquiries} filters={applied} previous={priorFiltered} earliestReceipt={hub.earliestReceipt} comparisonError={comparisonError} onRetry={()=>setRevision(n=>n+1)}/></details>
+          <details><summary>Enquiry trends and previous-period comparison</summary><PerformanceTrends rows={selected.enquiries} filters={applied} previous={priorFiltered} earliestReceipt={hub.earliestReceipt} comparisonError={comparisonError} comparisonBusy={comparisonBusy} onRetry={()=>setRevision(n=>n+1)}/></details>
 
         </>}
         <footer className={styles.reportFooter}><span>Acquisition cost: unavailable <Button variant="quiet" onClick={()=>setSources(true)}>Data sources</Button></span><span>{new Date(hub.asOf).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium',timeStyle:'short'})} NZ <Button variant="quiet" onClick={()=>setRevision(n=>n+1)}>Refresh</Button><Button variant="quiet" onClick={()=>setInfo(true)}>Data & definitions</Button></span></footer>

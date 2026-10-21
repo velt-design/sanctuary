@@ -16,7 +16,13 @@ export function matchesAge(p:HubProject,asOf:string,key:string) {
   return Boolean(band && ['ACTIVE','WAITING'].includes(p.state) && days>=band.min && days<=band.max);
 }
 export function ageDistribution(projects:HubProject[],asOf:string) {
-  return ageBands.map(b=>({...b,count:projects.filter(p=>matchesAge(p,asOf,b.key)).length}));
+  const bands=ageBands.map(b=>({...b,count:0})),today=Date.parse(aucklandDay(new Date(asOf)));
+  for(const project of projects){
+    if(!['ACTIVE','WAITING'].includes(project.state))continue;
+    const days=Math.round((today-Date.parse(aucklandDay(new Date(project.createdAt))))/86400000);
+    const band=bands.find(b=>days>=b.min&&days<=b.max);if(band)band.count++;
+  }
+  return bands;
 }
 export type ActivityBucket = 'week' | 'month';
 export function salesActivity(events:HubEvent[],start:string,end:string,bucket:ActivityBucket) {

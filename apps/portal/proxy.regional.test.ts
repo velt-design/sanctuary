@@ -26,7 +26,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
-it.each(['/staff/projects', '/staff/site-visits', '/staff/projects/proj_00000000-0000-4000-8000-000000000001', '/staff/projects/00000000-0000-4000-8000-000000000001'])('defers only %s document authority to regional checks', async path => {
+it.each(['/staff/projects', '/staff/site-visits', '/staff/marketing-performance', '/staff/projects/proj_00000000-0000-4000-8000-000000000001', '/staff/projects/00000000-0000-4000-8000-000000000001'])('defers only %s document authority to regional checks', async path => {
   const callback = `${path}?q=one&q=two&tab=activity`;
   const response = await middleware(new NextRequest(`https://portal.example${callback}`, { headers: { ...documentHeaders, [DOCUMENT_CALLBACK_HEADER]: '/staff/projects?spoof=1' } }));
   expect(h.session).toHaveBeenCalledOnce();
@@ -36,7 +36,7 @@ it.each(['/staff/projects', '/staff/site-visits', '/staff/projects/proj_00000000
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });
 
-it.each(['/staff/projects/new', '/staff/projects/work-queue', '/staff/projects/proj_1', '/staff/projects/proj_00000000-0000-4000-8000-000000000001/estimate/a', '/projects', '/admin', '/dashboard'])('keeps full global authority for %s', async path => {
+it.each(['/staff/marketing-performance/child', '/staff/marketing-performance-extra', '/staff/projects/new', '/staff/projects/work-queue', '/staff/projects/proj_1', '/staff/projects/proj_00000000-0000-4000-8000-000000000001/estimate/a', '/projects', '/admin', '/dashboard'])('keeps full global authority for %s', async path => {
   const response = await middleware(new NextRequest(`https://portal.example${path}`, { headers: { ...documentHeaders, [DOCUMENT_CALLBACK_HEADER]: '/staff/projects' } }));
   expect(h.session).not.toHaveBeenCalled();
   expect(h.user).toHaveBeenCalledOnce();
@@ -44,21 +44,21 @@ it.each(['/staff/projects/new', '/staff/projects/work-queue', '/staff/projects/p
   expect(response.headers.get(`x-middleware-request-${DOCUMENT_CALLBACK_HEADER}`)).toBeNull();
 });
 
-it.each([{ rsc: '1' }, { 'next-router-prefetch': '1' }, { 'next-router-segment-prefetch': '/_tree' }, { 'next-action': 'synthetic' }, { purpose: 'prefetch' }, { 'sec-purpose': 'prefetch;prerender' }, { 'sec-fetch-dest': 'empty' }, { accept: 'text/x-component' }])('retains full checks for request variant %j', async extra => {
+it.each(['/staff/projects','/staff/marketing-performance'].flatMap(path=>[{ rsc: '1' }, { 'next-router-prefetch': '1' }, { 'next-router-segment-prefetch': '/_tree' }, { 'next-action': 'synthetic' }, { purpose: 'prefetch' }, { 'sec-purpose': 'prefetch;prerender' }, { 'sec-fetch-dest': 'empty' }, { accept: 'text/x-component' }].map(extra=>({path,extra}))))('retains full checks for request variant %j', async ({path,extra}) => {
   const headers = new Headers(documentHeaders);
   for (const [name, value] of Object.entries(extra)) if (value !== undefined) headers.set(name, value);
-  const response = await middleware(new NextRequest('https://portal.example/staff/projects', { headers }));
+  const response = await middleware(new NextRequest(`https://portal.example${path}`, { headers }));
   expect(h.session).not.toHaveBeenCalled();
   expect(h.user).toHaveBeenCalledOnce();
   expect(response.status).toBe(307);
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });
 
-it('retains full checks for POST and strips spoofed context from API pass-through', async () => {
-  await middleware(new NextRequest('https://portal.example/staff/projects', { method: 'POST', headers: documentHeaders }));
+it.each(['/staff/projects','/staff/marketing-performance'])('retains full checks for POST %s and strips spoofed context from API pass-through', async path => {
+  await middleware(new NextRequest(`https://portal.example${path}`, { method: 'POST', headers: documentHeaders }));
   expect(h.session).not.toHaveBeenCalled();
   expect(h.user).toHaveBeenCalledOnce();
-  const response = await middleware(new NextRequest('https://portal.example/api/anything', { headers: { [DOCUMENT_CALLBACK_HEADER]: '/staff/projects' } }));
+  const response = await middleware(new NextRequest('https://portal.example/api/staff/v1/marketing-performance/hub', { headers: { [DOCUMENT_CALLBACK_HEADER]: path } }));
   expect(response.headers.get(`x-middleware-request-${DOCUMENT_CALLBACK_HEADER}`)).toBeNull();
 });
 
