@@ -5,7 +5,10 @@
 `test/marketing-landing-experiments.test.ts` and the actual
 `components/landing-experiment/LandingExperiment.test.tsx` cover fixed copy/receipt
 validation, consent, retained control without tracking, delayed tab/designer return,
-withdrawal and source authority/exposure/intake replay. Set only
+withdrawal and source authority/exposure/intake replay.
+The component suite also covers cookie-less tab withdrawal, distinct/identical
+cookie receipts and delayed outdoor copy while a keyboard-focused link is held.
+Set only
 `SANCTUARY_DISPOSABLE_POSTGRES_BIN` to local PostgreSQL17 and run
 `node scripts/test-landing-experiments-db.mjs` for the actual source migration,
 canonical intake transaction, statistical/maturation/rollback and scoped intake

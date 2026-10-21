@@ -3,7 +3,8 @@
 export function landingPaintGate(signal:AbortSignal) {
   const pointers=new Set<number>();let release:(()=>void)|undefined;
   const down=(event:PointerEvent)=>pointers.add(event.pointerId);
-  const ready=()=>pointers.size===0&&!document.activeElement?.closest('[data-landing-copy="layout"] a');
+  const ready=()=>pointers.size===0&&!document.activeElement?.closest('[data-landing-copy="layout"] a')
+    &&!document.activeElement?.closest('a')?.querySelector('[data-landing-copy]');
   const check=()=>{if(ready())release?.();};
   const up=(event:PointerEvent)=>{pointers.delete(event.pointerId);requestAnimationFrame(check);};
   const blur=()=>requestAnimationFrame(check);

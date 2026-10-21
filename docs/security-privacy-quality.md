@@ -23,6 +23,10 @@ from a closed formal comparison. Existing privacy/consent/UTM rules remain intac
 Native fallback treats this receipt as optional transport data, never a customer
 brief field. Duplicate, malformed or oversized values are not truncated into valid
 receipts; current consent still governs the eventual join.
+Withdrawal revokes both the experienced tab receipt and current cookie receipt
+when they differ, and always clears mounted fields even when the cookie is absent.
+Asynchronous copy painting waits for focused hero links on both Meta routes,
+including links without the acrylic layout wrapper.
 The optional `p_display jsonb` exposure argument contains only two booleans:
 mobile viewport and applied action-first layout. SQL validates the treatment
 against the selected arm/copy and records it only on first exposure. These are
