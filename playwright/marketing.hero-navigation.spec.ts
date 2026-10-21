@@ -2,14 +2,13 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-// The normal-chrome Pitched presentation is covered by marketing.pitched-guide.spec.ts.
+// Normal-chrome Pitched and Commercial presentations have dedicated guide suites.
 const routes = [
   '/pergolas-auckland',
   '/custom-pergolas-auckland',
   '/aluminium-pergolas-auckland',
   '/gable-pergolas-auckland',
   '/outdoor-rooms-auckland',
-  '/commercial-pergolas-auckland',
   '/pergola-guides',
 ] as const;
 

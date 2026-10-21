@@ -15,10 +15,10 @@ export const commercialPergolasConfig = {
     imageAlt: 'Interior of The Good Home Takanini hospitality courtyard beneath twin acrylic gables',
     objectPosition: '50% 48%',
     eyebrow: 'Commercial pergolas in Auckland',
-    title: 'Make more of your outdoor space.',
+    title: 'Commercial pergolas. Built around your business.',
     intro:
-      'Covered courtyards for hospitality. Pergola design, roofing, suitable screens and installation, with the coordination your venue needs.',
-    primaryCta: 'Discuss your venue',
+      'Covered courtyards for hospitality, with the design, installation and project coordination your venue needs.',
+    primaryCta: 'Discuss your project',
     secondaryCta: 'See completed work',
     secondaryHref: '#commercial-projects',
     proof: [],
@@ -27,7 +27,7 @@ export const commercialPergolasConfig = {
   form: {
     ariaLabel: 'Commercial pergola project enquiry form',
     eyebrow: 'Commercial brief',
-    heading: 'Tell us about your venue.',
+    heading: 'Tell us about your site.',
     intro: 'Share the site, intended use and known constraints.',
     submitLabel: 'Send project brief',
     messageLabel: 'What should the space achieve?',
