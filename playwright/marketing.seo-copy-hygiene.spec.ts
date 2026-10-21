@@ -87,9 +87,9 @@ for (const route of routes) test(`guide routes resolve directly with global busi
   const main = page.locator('main[data-marketing-foundation-page]').last();
   const heroImage = route === '/pergola-guides'
     ? main.locator('.guide-hub-hero__image')
-    : route === '/pergolas-with-blinds' ? main.locator('figure img').first() : main.locator('.acrylic-hero__image');
+    : route === '/pergolas-with-blinds' || route === '/gable-pergolas-auckland' ? main.locator('figure img').first() : main.locator('.acrylic-hero__image');
 
-  if (route === '/pergolas-with-blinds') {
+  if (route === '/pergolas-with-blinds' || route === '/gable-pergolas-auckland') {
     const heroHints = await heroImage.evaluate((image) => ({
       srcset: image.getAttribute('srcset'),
       sizes: image.getAttribute('sizes'),
@@ -98,11 +98,11 @@ for (const route of routes) test(`guide routes resolve directly with global busi
     expect(heroHints.sizes).toBeTruthy();
     await expect.poll(() => page.locator('head link[rel="preload"][as="image"]').evaluateAll((links, hints) => links.some((link) => (
       link.getAttribute('imagesrcset') === hints.srcset && link.getAttribute('imagesizes') === hints.sizes
-    )), heroHints), { message: 'Blinds should preload the same responsive hero the browser displays' }).toBe(true);
+    )), heroHints), { message: `${route} should preload the same responsive hero the browser displays` }).toBe(true);
     await expect.poll(() => heroImage.evaluate((image) => {
       const hero = image as HTMLImageElement;
       return hero.complete && hero.naturalWidth > 0;
-    }), { message: 'Blinds hero should finish loading successfully' }).toBe(true);
+    }), { message: `${route} hero should finish loading successfully` }).toBe(true);
   } else if (route === '/acrylic-pergolas-vs-louvre-roofs') {
     const roofHero = main.getByRole('region', { name: 'An acrylic alternative.', exact: true }).locator('img');
     const hints = await roofHero.evaluate(image => ({ srcset: image.getAttribute('srcset'), sizes: image.getAttribute('sizes') }));
