@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildEnquiryFallbackPayload } from './enquiryFallback';
 
 describe('buildEnquiryFallbackPayload', () => {
-  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'])('preserves explicit %s discussion but never supplies missing intent', page => {
+  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds'])('preserves explicit %s discussion but never supplies missing intent', page => {
     const form = new FormData();
     form.set('enquiryType', 'residential'); form.set('page', page);
     expect(buildEnquiryFallbackPayload(form, 'fixture')).not.toHaveProperty('requestType');

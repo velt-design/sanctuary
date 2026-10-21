@@ -70,6 +70,8 @@ export type ContactEnquiryFormProps = {
   configuredDesign?: ContactDesignBrief;
   initialEnquiryType: EnquiryAudience | null;
   initialContext: EnquiryContext;
+  /** The rendered form route, when the attribution source is an earlier page. */
+  pagePath?: string;
   initialIntent?: 'help' | 'bespoke';
   sourceProjectLabel?: string;
   sourceProductLabel?: string;
@@ -110,6 +112,7 @@ function submitLabel(
 export default function ContactEnquiryForm({
   initialEnquiryType,
   initialContext,
+  pagePath,
   initialIntent,
   sourceProjectLabel,
   sourceProductLabel,
@@ -496,7 +499,7 @@ export default function ContactEnquiryForm({
 
   const attachmentFields = <ContactAttachmentFields files={files} error={fieldErrors.files} enhanced={isEnhanced} onChange={handleFiles} onRemove={removeFile}/>;
 
-  if(funnel || (compactConfigured && configuredDesign))return <ConfiguredEnquiryFields attachments={compactAttachments ? attachmentFields : undefined} sourcePath={initialContext.sourcePath} sourceContext={JSON.stringify(contextProperties)} funnel={funnel} hasDesign={!!configuredDesign} mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
+  if(funnel || (compactConfigured && configuredDesign))return <ConfiguredEnquiryFields attachments={compactAttachments ? attachmentFields : undefined} sourcePath={pagePath ?? initialContext.sourcePath} sourceContext={JSON.stringify(contextProperties)} funnel={funnel} hasDesign={!!configuredDesign} mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'

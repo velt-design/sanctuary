@@ -18,7 +18,7 @@ let snapshot: Snapshot | null = null;
 let activeKey = PREVIEW_DRAFT_KEY;
 const snapshots = new Map<string, Snapshot | null>();
 function storageKey() {
-  const key = ['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'].includes(window.location.pathname) ? LANDING_DRAFT_KEY
+  const key = ['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds'].includes(window.location.pathname) ? LANDING_DRAFT_KEY
     : isInlineFunnelPath(window.location.pathname) ? inlineFunnelDraftKey(window.location.pathname, PREVIEW_DRAFT_KEY)
     : isLandingDesign(window.location.pathname, window.location.search) ? LANDING_DRAFT_KEY : PREVIEW_DRAFT_KEY;
   if (key !== activeKey) {
