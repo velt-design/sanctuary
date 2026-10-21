@@ -1,4 +1,4 @@
-import { financialsSchema, previousQuery, yearAgoQuery, trendQueries, type FinancialsQuery, type FinancialReport } from '@/lib/xero/financials/contract';
+import { financialPanelSchema, financialsSchema, type FinancialPanelQuery, previousQuery, yearAgoQuery, trendQueries, type FinancialsQuery, type FinancialReport } from '@/lib/xero/financials/contract';
 import type { FinanceReportRow } from '@/lib/xero/financePositionContract';
 import type { FinancialsLoader } from '@/components/financials/useFinancials';
 
@@ -46,6 +46,7 @@ function sampleBank(query:FinancialsQuery):FinancialReport {
   ]};
 }
 export function sampleFinancials(query:FinancialsQuery,mode='complete') {
+  query={from:query.from,to:query.to,basis:query.basis};
   const available=<T,>(data:T)=>({status:'available' as const,complete:true as const,checkedAt,data});
   const invoice=(n:number,payable:boolean)=>{
     const total=220000+n*63000,paid=50000+n*5000,credited=n===3?10000:0,tax=Math.round(total*15/115);
@@ -61,9 +62,16 @@ export function sampleFinancials(query:FinancialsQuery,mode='complete') {
   if(mode==='bank-failure')result.position.bankSummary={status:'unavailable',reason:'provider_unavailable',requiredScopes:[]};
   return result;
 }
+export function sampleFinancialPanel(query:FinancialPanelQuery,mode='complete') {
+  const full=sampleFinancials(query,mode),notRequested={status:'not_requested' as const};
+  const field=query.section==='profit'?'profitAndLoss':query.section==='bank'?'bankSummary':query.section;
+  return financialPanelSchema.parse({...full,schemaVersion:'sanctuary.financial-panel.v1',requestedSection:query.section,
+    position:{...full.position,...Object.fromEntries(['profitAndLoss','bankSummary','receivables','payables'].filter(f=>f!==field).map(f=>[f,notRequested]))},
+    ...(query.section==='profit'?{}:{previous:{...full.previous,report:notRequested},yearAgo:{...full.yearAgo,report:notRequested},months:full.months.map(month=>({...month,report:notRequested}))})});
+}
 export const financialsLoader:FinancialsLoader=async(query,signal)=>{
   await new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,500);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new Error('Cancelled'));},{once:true});});
   const mode=new URLSearchParams(window.location.search).get('financeScenario')??'complete';
   if(mode==='failure')throw new Error('Synthetic source failure. Retry after choosing a working scenario.');
-  return sampleFinancials(query,mode);
+  return sampleFinancialPanel(query,mode);
 };

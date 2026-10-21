@@ -51,3 +51,13 @@ it('never trusts a transport header to pass admin authorization', async () => {
   const auth = await import('./auth');
   await expect(auth.requireAdminPageAccess('/admin')).rejects.toThrow('redirect:/staff/calculator');
 });
+it.each(['missing','revoked','lookup_failed'] as const)('verifies Marketing document authority freshly and rejects %s',async state=>{
+ h.headers.set(DOCUMENT_CALLBACK_HEADER,'/staff/marketing-performance?view=financials&financeSection=bank');
+ if(state==='missing')h.user.mockResolvedValue({data:{user:null},error:null});
+ if(state==='revoked')h.role.mockResolvedValue({data:null,error:null});
+ if(state==='lookup_failed')h.role.mockResolvedValue({data:null,error:{message:'private failure'}});
+ const auth=await import('./auth');
+ await expect(auth.requireRegionalDocumentAccess()).rejects.toThrow('redirect:');
+ await expect(auth.requireStaffPageAccess('/staff/marketing-performance')).rejects.toThrow('callbackUrl=%2Fstaff%2Fmarketing-performance%3Fview%3Dfinancials%26financeSection%3Dbank');
+ expect(h.user).toHaveBeenCalledOnce();
+});
