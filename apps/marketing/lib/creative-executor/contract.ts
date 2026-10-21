@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { nativeWindowValid } from './window';
 import { createHash } from 'node:crypto';
 export const id = z.string().regex(/^[1-9]\d{0,19}$/);
 export const hash = z.string().regex(/^[a-f0-9]{64}$/);
@@ -49,13 +50,13 @@ export function creativeAssetHash(creative: Creative) {
   }
   return canonicalHash(copy);
 }
-export const executionPlanSchema = z.object({ version: z.literal(1), purpose: z.enum(['paused_capability', 'formal_experiment']), experiment: z.uuid(),
+export const executionPlanSchema = z.object({ version: z.literal(1), landingTemplate: hash, purpose: z.enum(['paused_capability', 'formal_experiment']), experiment: z.uuid(),
   scope: z.object({ app: id, principal: id, business: id, account: id, page: id, campaign: id, adset: id }).strict(),
   originalAds: z.array(id).length(4).refine(v => new Set(v).size === 4), controlAd: id,
   control: creativeSchema, adTracking: boundedJson, nativeObjective: z.object({ type: z.literal('CONVERSIONS'), is_primary: z.literal(true), name: z.literal('Website Lead'),
     adspixels: z.array(z.object({ id, event_names: z.tuple([z.literal('Lead')]) }).strict()).length(1) }).strict(), challengerPrimary: text, approvedAssetHash: hash, approvedCopyHash: hash,
-  approvalHash: hash, evidenceHash: hash, generator: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/),
-  reviewer: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/), approvedAt: stamp, approvalUntil: stamp,
+  approvalHash: hash, evidenceHash: hash, generator: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/).nullable(),
+  reviewer: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/).nullable(), approvedAt: stamp, approvalUntil: stamp,
   start: z.number().int().positive().safe(), end: z.number().int().positive().safe(),
   dailyMinor: z.literal(40000), weeklyMinor: z.literal(280000), studyDailyMinor: z.literal(8000),
   currency: z.literal('NZD'), timezone: z.literal('Pacific/Auckland'),
@@ -63,8 +64,10 @@ export const executionPlanSchema = z.object({ version: z.literal(1), purpose: z.
   evaluation: z.object({ primary: z.literal('genuine_saved_enquiries_per_actual_NZD'), interval: z.literal('exact_conditional_poisson_rate_ratio_95'), providerEvent: z.literal('website_lead'), durationDays: z.literal(14), maturationHours: z.literal(72),
     formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.literal('inconclusive') }).strict(),
 }).strict().superRefine((p, ctx) => {
-  if (p.generator === p.reviewer || !p.originalAds.includes(p.controlAd) || p.control.page !== p.scope.page
-    || p.challengerPrimary === p.control.primary || p.end <= p.start || p.end - p.start !== 14 * 86400
+  const validReview = p.purpose === 'formal_experiment' ? !!p.generator && !!p.reviewer && p.generator !== p.reviewer && p.challengerPrimary !== p.control.primary && nativeWindowValid(p.start,p.end) && Date.parse(p.approvalUntil)>=(p.end+72*3600)*1000
+    : p.generator === null && p.reviewer === null && p.challengerPrimary === p.control.primary && p.end>p.start && p.end-p.start<=3600;
+  if (!validReview || !p.originalAds.includes(p.controlAd) || p.control.page !== p.scope.page
+    || p.end <= p.start
     || Date.parse(p.approvalUntil) <= Date.parse(p.approvedAt)
     || p.approvedCopyHash !== canonicalHash({ control: p.control.primary, challenger: p.challengerPrimary })
     || p.approvedAssetHash !== creativeAssetHash(p.control)) {
@@ -79,10 +82,10 @@ export const wireSchema = z.object({ kind: z.enum(effectKinds), path: z.string()
 export const effectSchema = z.object({ command: z.uuid(), kind: z.enum(effectKinds), requestHash: hash,
   state: z.enum(['prepared', 'uncertain', 'confirmed', 'no_effect']), object: id.nullable(), evidenceHash: hash.nullable(), intent: wireSchema }).strict();
 export const stateSchema = z.object({ enabled: z.boolean(), cleanupEnabled: z.boolean(), stopped: z.boolean(), generation: z.number().int().positive(),
-  plan: executionPlanSchema.nullable(), objects: z.array(objectSchema).max(4), effects: z.array(effectSchema).max(32),
+  creativeReference:id.nullable().optional(),reserved:z.boolean().optional(),template:hash.nullable().optional(),nativeContractHash:hash.nullable().optional(),plan: executionPlanSchema.nullable(), objects: z.array(objectSchema).max(4), effects: z.array(effectSchema).max(32),
   state: z.enum(['empty', 'prepared', 'canary_ready', 'cleanup', 'closed', 'uncertain']),
   measurementReady: z.boolean(), activationReady: z.literal(false),
 }).strict();
 export type ExecutorState = z.infer<typeof stateSchema>;
-export type SourceCommand = (stage: 'read' | 'authority' | 'admit' | 'check' | 'confirm' | 'no_effect' | 'measurement' | 'canary' | 'cleanup' | 'receipt',
+export type SourceCommand = (stage: 'read' | 'prepare' | 'authority' | 'admit' | 'check' | 'confirm' | 'no_effect' | 'measurement' | 'canary' | 'cleanup' | 'receipt',
   experiment: string | null, command: string, payload: unknown) => Promise<unknown>;

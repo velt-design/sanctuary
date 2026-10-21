@@ -4,7 +4,7 @@ export class ExecutorFailure extends Error {
 }
 export interface WireEffect { kind: EffectKind; path: string; body: Record<string, string>; target: string | null; requestHash: string; at: number }
 const site = 'https://www.sanctuarypergolas.co.nz';
-const object = (state: ExecutorState, kind: 'creative' | 'control' | 'challenger' | 'study') => state.objects.find(row => row.kind === kind)?.id;
+const object = (state: ExecutorState, kind: 'creative' | 'control' | 'challenger' | 'study') => kind==='creative' ? state.creativeReference??state.objects.find(row=>row.kind===kind)?.id : state.objects.find(row => row.kind === kind)?.id;
 export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind: EffectKind, now = Date.now()): WireEffect {
   let path: string, body: Record<string, string>, target: string | null = null;
   const name = `velt-${plan.experiment}-${kind}`;
@@ -29,7 +29,7 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
     }
   } else if (kind === 'create_control' || kind === 'create_challenger') {
     const arm = kind === 'create_control' ? 'control' : 'challenger';
-    const creative = arm === 'control' ? plan.control.id : object(state, 'creative');
+    const creative = arm === 'control' && plan.purpose==='formal_experiment' ? plan.control.id : object(state, 'creative');
     if (!creative || object(state, arm)) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/ads`;
     body = { name, adset_id: plan.scope.adset, creative: JSON.stringify({ creative_id: creative }), tracking_specs: JSON.stringify(plan.adTracking), status: 'PAUSED' };

@@ -1,3 +1,5 @@
+import {EXPERIMENT_TEMPLATE} from '../../../../lib/landingExperiment.server';
+import {landingCompatibility} from '../../../../lib/landingCompatibility.server';
 import { getServiceSupabase } from '@/lib/supabaseService';
 import { readBoundedJson } from '@/lib/marketingPublicRequest';
 import { verifyCreativeCommand, validateCreativeIntent } from '../../../../lib/creative-executor/authority';
@@ -18,6 +20,7 @@ export async function POST(request: Request) {
     }
     const result = await db.rpc('meta_creative_executor_command', { ...args, p_stage: command.stage, p_payload: command.payload }).abortSignal(signal);
     if (result.error) throw new Error('Command unavailable');
+    if(command.stage==='read'&&result.data?.template!==EXPERIMENT_TEMPLATE)return Response.json(landingCompatibility(result.data?.template),{status:503,headers});
     return Response.json(result.data, { headers });
   } catch { return Response.json({ status: 'unavailable' }, { status: 503, headers }); }
 }

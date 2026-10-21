@@ -88,10 +88,10 @@ begin
   if r.experiment is not null then raise exception 'Acquisition test already reserved';end if;
   if p.id is not null then raise exception 'Existing plan cannot restart';end if;
   select count(*) into key_count from jsonb_object_keys(p_payload);
-  if key_count<>9 or not(p_payload ?& array['scope','originalAds','approvalHash','catalogueHash','controlHash','budgetHash','nativeContractHash','generator','reviewer']) then raise exception 'Invalid plan fields';end if;
+  if (key_count<>9 and not(key_count=10 and p_payload->>'purpose' in('paused_capability','formal_experiment'))) or not(p_payload ?& array['scope','originalAds','approvalHash','catalogueHash','controlHash','budgetHash','nativeContractHash','generator','reviewer']) then raise exception 'Invalid plan fields';end if;
   if jsonb_typeof(p_payload->'originalAds')<>'array' or jsonb_array_length(p_payload->'originalAds')<>4 or (select count(distinct value) from jsonb_array_elements_text(p_payload->'originalAds'))<>4 or exists(select 1 from jsonb_array_elements_text(p_payload->'originalAds') where value !~ '^[1-9][0-9]{0,19}$') then raise exception 'Invalid original ads';end if;
   if jsonb_typeof(p_payload->'scope')<>'object' or (select count(*) from jsonb_object_keys(p_payload->'scope'))<>7 or not((p_payload->'scope') ?& array['app','principal','business','account','page','campaign','adset']) or exists(select 1 from jsonb_each_text(p_payload->'scope') where value !~ '^[1-9][0-9]{0,19}$') then raise exception 'Invalid scope';end if;
-  if exists(select 1 from jsonb_each_text(p_payload) where key in('approvalHash','catalogueHash','controlHash','budgetHash','nativeContractHash') and coalesce(value,'') !~ '^[a-f0-9]{64}$') or coalesce(length(p_payload->>'generator'),0) not between 1 and 150 or coalesce(length(p_payload->>'reviewer'),0) not between 1 and 150 or p_payload->>'generator'=p_payload->>'reviewer' then raise exception 'Invalid approval';end if;
+  if exists(select 1 from jsonb_each_text(p_payload) where key in('approvalHash','catalogueHash','controlHash','budgetHash','nativeContractHash') and coalesce(value,'') !~ '^[a-f0-9]{64}$') or (case when p_payload->>'purpose'='paused_capability' then p_payload->'generator' is distinct from 'null'::jsonb or p_payload->'reviewer' is distinct from 'null'::jsonb else coalesce(length(p_payload->>'generator'),0) not between 1 and 150 or coalesce(length(p_payload->>'reviewer'),0) not between 1 and 150 or p_payload->>'generator'=p_payload->>'reviewer' end) then raise exception 'Invalid approval';end if;
   insert into public.meta_creative_plans(id,plan,plan_hash) values(p_experiment,p_payload,h);
   insert into public.acquisition_experiment_reservation(lane,experiment) values('creative',p_experiment);
   insert into public.meta_creative_receipts(command,experiment,stage,request_hash) values(p_command,p_experiment,p_stage,h);
@@ -99,6 +99,7 @@ begin
  end if;
  if p.id is null then raise exception 'Unknown plan';end if;
  if p_stage in('admit','admit_cleanup') then
+  if p.plan->>'purpose'='paused_capability' and (p_payload->>'kind' not in('create_creative','create_paused_ad','pause_ad') or (p_payload->>'kind' in('create_paused_ad','create_creative') and exists(select 1 from public.meta_creative_effects where experiment=p_experiment and kind=p_payload->>'kind'))) then raise exception 'Paused proof effect bound';end if;
   -- No externally-dispatched effect is retried, even after expiry or Stop.
   select * into e from public.meta_creative_effects where command=p_command;
   if found then if e.command_hash<>h or e.request_hash is distinct from p_payload->>'requestHash' or e.experiment<>p_experiment then raise exception 'Effect conflict';end if;return jsonb_build_object('dispatch',false,'state',e.state);end if;
@@ -151,7 +152,10 @@ begin
   if e.state='confirmed' then if e.object_id<>obj or e.evidence_hash<>p_payload->>'evidenceHash' then raise exception 'Conflicting confirmation';end if;return jsonb_build_object('confirmed',true);end if;
   if e.state<>'uncertain' or e.dispatch_claimed_at is null then raise exception 'Effect was not dispatched';end if;
   if p.plan->'originalAds' ? obj then raise exception 'Original ad is not owned';end if;
-  if e.kind in('create_creative','create_paused_ad','create_study') then
+  -- Creative IDs are provider references; Meta may reuse an existing creative.
+  -- Never reclassify or delete a donor/provider creative as an owned object.
+  if e.kind='create_creative' then null;
+  elsif e.kind in('create_paused_ad','create_study') then
    insert into public.meta_creative_objects(object_id,experiment,kind,created_by,request_hash,evidence_hash) values(obj,p_experiment,case when e.kind='create_study' then 'study' when e.kind='create_creative' then 'creative' else 'ad' end,p_command,e.request_hash,p_payload->>'evidenceHash');
   elsif e.target<>obj then raise exception 'Target changed';end if;
   update public.meta_creative_effects set state='confirmed',object_id=obj,evidence_hash=p_payload->>'evidenceHash',confirmed_at=clock_timestamp() where command=p_command;
@@ -167,6 +171,7 @@ begin
     or coalesce(p_payload->'terminalStudy'->>'end','') !~ '^[0-9]{1,11}$'
     or p_payload->'terminalStudy'->>'end' is distinct from p_payload->'terminalStudy'->>'observationEnd'
     or to_timestamp((p_payload->'terminalStudy'->>'end')::double precision)>clock_timestamp()
+    or coalesce(p_payload->'terminalStudy'->>'observedAt','')=''
     or (p_payload->'terminalStudy'->>'observedAt')::timestamptz not between clock_timestamp()-interval '60 seconds' and clock_timestamp()+interval '5 seconds'
     or coalesce(p_payload->'terminalStudy'->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Study terminal readback required';end if;
   elsif p_payload ? 'terminalStudy' and p_payload->'terminalStudy'<>'null'::jsonb then raise exception 'Unowned study proof';end if;

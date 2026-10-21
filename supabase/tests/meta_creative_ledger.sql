@@ -1,5 +1,10 @@
 create function pg_temp.assert(ok boolean) returns void language plpgsql as $$begin if ok is distinct from true then raise exception 'Creative assertion failed';end if;end$$;
 create function pg_temp.reject(statement text) returns void language plpgsql as $$begin begin execute statement;exception when others then return;end;raise exception 'Expected rejection';end$$;
+create function pg_temp.cleanup_proof(e uuid) returns jsonb language sql as $$
+ select jsonb_build_object('evidenceHash',repeat('f',64),'terminalStudy',
+  (select jsonb_build_object('id',object_id,'end',floor(extract(epoch from clock_timestamp()))-1,'observationEnd',floor(extract(epoch from clock_timestamp()))-1,
+    'observedAt',clock_timestamp(),'evidenceHash',repeat('e',64),'ended',true) from public.meta_creative_objects where experiment=e and kind='study'))
+$$;
 insert into public.meta_creative_control(binding,scope,original_ads,budget_hash,control_hash) values(repeat('b',64),'{"app":"11","principal":"12","business":"13","account":"14","page":"15","campaign":"16","adset":"17"}','["21","22","23","24"]',repeat('c',64),repeat('d',64));
 create function pg_temp.plan() returns jsonb language sql as $$select jsonb_build_object('scope',scope,'originalAds',original_ads,'budgetHash',budget_hash,'controlHash',control_hash,'nativeContractHash',repeat('e',64),'approvalHash',repeat('f',64),'catalogueHash',repeat('a',64),'generator','author','reviewer','reviewer') from public.meta_creative_control$$;
 select pg_temp.assert(not(select enabled from public.meta_creative_control));
@@ -51,7 +56,7 @@ begin
  cmd:=gen_random_uuid();perform public.meta_creative_command(repeat('b',64),cmd,e,'admit',pg_temp.effect('end_study','41'));
  perform public.meta_creative_command(repeat('b',64),cmd,e,'check',jsonb_build_object('requestHash',repeat('a',64)));
  perform public.meta_creative_command(repeat('b',64),cmd,e,'confirm',jsonb_build_object('requestHash',repeat('a',64),'objectId','41','evidenceHash',repeat('f',64)));
- perform public.meta_creative_command(repeat('b',64),gen_random_uuid(),e,'cleanup',jsonb_build_object('evidenceHash',repeat('f',64)));
+ perform public.meta_creative_command(repeat('b',64),gen_random_uuid(),e,'cleanup',pg_temp.cleanup_proof(e));
  perform pg_temp.assert(not exists(select 1 from public.acquisition_experiment_reservation));
  perform pg_temp.reject(format('select public.meta_creative_command(repeat(''b'',64),gen_random_uuid(),%L,''reserve'',%L)',e,pg_temp.plan()));
 end$$;
@@ -118,7 +123,15 @@ do $$declare e uuid:='c2000000-0000-4000-8000-000000000001';begin
  perform pg_temp.finish_effect(e,'pause_ad','52','52',true);
  perform pg_temp.finish_effect(e,'end_study','61','61',true);
  perform pg_temp.assert((select count(*) from public.meta_creative_effects where experiment=e)=27);
- perform public.meta_creative_command(repeat('b',64),gen_random_uuid(),e,'cleanup',jsonb_build_object('evidenceHash',repeat('f',64)));
+ perform pg_temp.reject(format('select public.meta_creative_command(repeat(''b'',64),gen_random_uuid(),%L,''cleanup'',%L)',e,jsonb_build_object('evidenceHash',repeat('f',64))));
+ perform pg_temp.reject(format('select public.meta_creative_command(repeat(''b'',64),gen_random_uuid(),%L,''cleanup'',%L)',e,
+   jsonb_set(pg_temp.cleanup_proof(e),'{terminalStudy,observedAt}','null'::jsonb)));
+ perform pg_temp.reject(format('select public.meta_creative_command(repeat(''b'',64),gen_random_uuid(),%L,''cleanup'',%L)',e,
+   jsonb_set(pg_temp.cleanup_proof(e),'{terminalStudy,observedAt}',to_jsonb(clock_timestamp()-interval '2 minutes'))));
+ perform pg_temp.reject(format('select public.meta_creative_command(repeat(''b'',64),gen_random_uuid(),%L,''cleanup'',%L)',e,
+   jsonb_set(pg_temp.cleanup_proof(e),'{terminalStudy,id}','"999"'::jsonb)));
+
+ perform public.meta_creative_command(repeat('b',64),gen_random_uuid(),e,'cleanup',pg_temp.cleanup_proof(e));
  perform pg_temp.assert(not exists(select 1 from public.acquisition_experiment_reservation));
 end$$;
 rollback;
@@ -141,7 +154,7 @@ do $$declare e uuid:='d1000000-0000-4000-8000-000000000001';cmd uuid:=gen_random
  perform pg_temp.reject(format('select public.meta_creative_command(repeat(''b'',64),%L,%L,''check'',%L)',cmd,e,jsonb_build_object('requestHash',repeat('a',64))));
  perform pg_temp.reject(format('select public.meta_creative_command(repeat(''b'',64),%L,%L,''confirm'',%L)',cmd,e,jsonb_build_object('requestHash',repeat('a',64),'objectId','71','evidenceHash',repeat('f',64))));
  perform pg_temp.assert(not exists(select 1 from public.meta_creative_objects where experiment=e));
- perform public.meta_creative_command(repeat('b',64),gen_random_uuid(),e,'cleanup',jsonb_build_object('evidenceHash',repeat('f',64)));
+ perform public.meta_creative_command(repeat('b',64),gen_random_uuid(),e,'cleanup',pg_temp.cleanup_proof(e));
  perform pg_temp.assert(not exists(select 1 from public.acquisition_experiment_reservation));
 end$$;
 rollback;
