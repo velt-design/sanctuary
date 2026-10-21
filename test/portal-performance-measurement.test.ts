@@ -9,12 +9,15 @@ let db: PGlite;
 // contract; actual extension/job existence is separately checked before rollout.
 const prerequisites = `
   create role authenticated; create role anon;
+  alter default privileges in schema public grant all on tables to anon, authenticated;
+  alter default privileges in schema public grant all on sequences to anon, authenticated;
+  alter default privileges in schema public grant execute on functions to anon;
   create function public.has_portal_access() returns boolean language sql stable as
     $$select current_setting('test.access',true) in ('staff','admin')$$;
   create function public.is_portal_admin() returns boolean language sql stable as
     $$select current_setting('test.access',true) = 'admin'$$;
   create schema cron;
-  create table cron.job(jobid bigint generated always as identity,jobname text,schedule text,command text,active boolean default true);
+  create table cron.job(jobid bigint generated always as identity,jobname text,schedule text,command text,active boolean default true,database text default current_database(),username text default current_user);
   create function cron.schedule(text,text,text) returns bigint language sql as
     $$insert into cron.job(jobname,schedule,command) values($1,$2,$3) returning jobid$$;
 `;
@@ -32,6 +35,7 @@ afterAll(async () => { await db.close(); });
 it('installs only the canonical objects, repeats without loss and keeps one exact retention job', async () => {
   await db.exec(insert('/staff/projects'));
   const jobs = await rows('select * from cron.job');
+  await db.exec('grant all on public.portal_performance_metrics to anon, authenticated; grant all on sequence public.portal_performance_metrics_id_seq to anon, authenticated;');
   await db.exec(migration);
   expect(await rows('select * from cron.job')).toEqual(jobs);
   expect(jobs).toEqual([expect.objectContaining({ jobname: 'portal-performance-retention-daily', schedule: '17 3 * * *', command: 'select public.purge_portal_performance_metrics();', active: true })]);
@@ -60,13 +64,19 @@ it('retains staff insert, admin-only aggregate read and denies anonymous/no-acce
   expect(await rows('select * from public.portal_performance_metrics')).toEqual([]);
   await expect(db.query('select * from public.portal_performance_summary(7)')).rejects.toMatchObject({ code: '42501' });
   await expect(db.query('select public.purge_portal_performance_metrics()')).rejects.toMatchObject({ code: '42501' });
+  await expect(db.exec('truncate public.portal_performance_metrics')).rejects.toMatchObject({ code: '42501' });
+  await expect(db.exec('delete from public.portal_performance_metrics')).rejects.toMatchObject({ code: '42501' });
+  await expect(db.exec('update public.portal_performance_metrics set metric_value=1')).rejects.toMatchObject({ code: '42501' });
   await db.exec("set test.access='admin';");
+  await expect(db.exec('truncate public.portal_performance_metrics')).rejects.toMatchObject({ code: '42501' });
   expect(await rows('select * from public.portal_performance_summary(7)')).toEqual([expect.objectContaining({ route_template: '/staff/site-visits', metric_name: 'TTFB', sample_count: 1, p75: 123 })]);
   await expect(db.query('select * from public.portal_performance_summary(3)')).rejects.toMatchObject({ code: '22023' });
   await db.exec("set test.access='none';");
   await expect(db.exec(insert())).rejects.toMatchObject({ code: '42501' });
   await db.exec('reset role; set role anon;');
   await expect(db.exec(insert())).rejects.toMatchObject({ code: '42501' });
+  await expect(db.exec('truncate public.portal_performance_metrics')).rejects.toMatchObject({ code: '42501' });
+  await expect(db.query("select nextval('public.portal_performance_metrics_id_seq')")).rejects.toMatchObject({ code: '42501' });
   await expect(db.query('select * from public.portal_performance_summary(7)')).rejects.toMatchObject({ code: '42501' });
 });
 
@@ -99,4 +109,11 @@ it('refuses missing prerequisites or a conflicting retention owner transactional
   await expect(db.exec(migration)).rejects.toThrow('Existing Portal performance retention job requires review');
   await db.exec('rollback');
   expect((await rows('select schedule from cron.job'))[0]).toEqual({ schedule: '17 3 * * *' });
+});
+
+it.each(['database', 'username'] as const)('refuses a same-text retention job in another %s', async (column) => {
+  await db.exec(`begin; update cron.job set ${column}='different-owner';`);
+  await expect(db.exec(migration)).rejects.toThrow('Existing Portal performance retention job requires review');
+  await db.exec('rollback');
+  expect(await rows('select (database=current_database() and username=current_user) as correct from cron.job')).toEqual([{ correct: true }]);
 });

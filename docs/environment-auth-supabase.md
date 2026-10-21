@@ -15,7 +15,10 @@ the RPC boundary. Both already have the staff/admin helpers and pg_cron 1.6.4.
 Forward `20261021000001_portal_performance_measurement.sql` is a narrowly selected
 restoration/route update, not authority to apply historical migrations. It requires
 those existing prerequisites, preserves rows and an exact matching retention job,
-and refuses a conflicting job. Production installation requires an explicit
+and refuses a conflicting job/database/execution owner. Fresh catalogue reads
+verify the approved installer and existing job both use postgres in the postgres
+database. Browser ACL normalization removes broad table/sequence defaults while
+retaining only staff insert and admin read via RLS. Production installation requires an explicit
 release decision covering the table/functions/grants and daily 03:17 UTC retention
 job that removes only data older than thirty days. Preparation tests do not mean
 this SQL is installed. Private environment-bound receipts remain in the task record.

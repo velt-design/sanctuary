@@ -55,6 +55,10 @@ create index if not exists portal_performance_metrics_captured_idx
 
 alter table public.portal_performance_metrics enable row level security;
 
+-- Normalize only these telemetry browser ACLs, including installation defaults.
+-- RLS does not protect TRUNCATE; no browser role may update/delete/truncate rows.
+revoke all on table public.portal_performance_metrics from public, anon, authenticated;
+revoke all on sequence public.portal_performance_metrics_id_seq from public, anon, authenticated;
 grant insert, select on table public.portal_performance_metrics to authenticated;
 grant usage, select on sequence public.portal_performance_metrics_id_seq to authenticated;
 
@@ -107,7 +111,7 @@ begin
 end;
 $$;
 
-revoke all on function public.portal_performance_summary(integer) from public;
+revoke all on function public.portal_performance_summary(integer) from public, anon, authenticated;
 grant execute on function public.portal_performance_summary(integer) to authenticated;
 
 create or replace function public.purge_portal_performance_metrics()
@@ -134,7 +138,8 @@ do $$
 declare jobs integer; matching integer;
 begin
   select count(*), count(*) filter (where active and schedule = '17 3 * * *'
-    and command = 'select public.purge_portal_performance_metrics();')
+    and command = 'select public.purge_portal_performance_metrics();'
+    and database = current_database() and username = current_user)
     into jobs, matching from cron.job where jobname = 'portal-performance-retention-daily';
   if jobs = 0 then
     perform cron.schedule('portal-performance-retention-daily', '17 3 * * *',
