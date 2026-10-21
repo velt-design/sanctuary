@@ -1058,7 +1058,7 @@ The install-only 20260914062002 migration adds marketing_enquiry_staff_receipts(
 
 ### Local GA4 v3 forward candidate
 
-Migration 20261021040001_ga4_v3_diagnostics.sql extends only the private GA4
+Migration 20261021082853_ga4_v3_diagnostics.sql extends only the private GA4
 operation requested_report_version (default v2), private strict diagnostic
 validators and existing service-only sanctuary_ga4_command. Completion and saved
 read associate v3 shape/version/hash with the frozen operation, including three

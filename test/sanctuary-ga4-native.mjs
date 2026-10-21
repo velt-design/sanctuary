@@ -23,7 +23,7 @@ function native(name, args, input) {
   return result.stdout?.trim() ?? '';
 }
 const base = readFileSync(new URL('../supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql', import.meta.url), 'utf8');
-const migration = readFileSync(new URL('../supabase/migrations/20261021040001_ga4_v3_diagnostics.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/migrations/20261021082853_ga4_v3_diagnostics.sql', import.meta.url), 'utf8');
 const actor = '10000000-0000-4000-8000-000000000001', connection = '20000000-0000-4000-8000-000000000001', binding = 'a'.repeat(64), vaultId = 'a'.repeat(26), itemId = 'b'.repeat(26);
 const query = { period: { start: '2026-10-01', end: '2026-10-02' }, comparison: { start: '2026-09-29', end: '2026-09-30' } };
 const literal = value => value === null ? 'null' : `'${String(typeof value === 'object' ? JSON.stringify(value) : value).replaceAll("'", "''")}'`;

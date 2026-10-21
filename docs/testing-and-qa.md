@@ -455,7 +455,7 @@ comparative retrieval or protected staff-route access; verify both separately.
 ## Sanctuary-owned GA4 candidate
 
 The v3 tests apply the exact existing 20260923070001 body plus forward candidate
-20261021040001. Fixed provider fixtures compose actual HTTP, parser, SQL
+20261021082853. Fixed provider fixtures compose actual HTTP, parser, SQL
 completion and retained read for available, limited and validated row-limit
 outcomes. Tests retain first edit when keyEvents is zero, suppress comparisons,
 reject unavailable-with-metrics and unexpected failures, enforce shared byte and
@@ -490,9 +490,9 @@ The subsequent GHCR transport correction passed in
 [native run 39552027487](https://github.com/velt-design/sanctuary/actions/runs/39552027487)
 at Source revision `357f8a057204bb989ecd430952bff46251297ffe`: official PG17.6,
 real safeupdate and 11 disposable synthetic databases. The run verified the
-exact committed 20260923070001 and 20261021040001 SQL-body hashes, v2/v3 lifecycle,
+exact committed 20260923070001 and 20261021082853 SQL-body hashes, v2/v3 lifecycle,
 roles, strict shapes, association/hash, retention, deletion and control fences.
-This closes the new 20261021040001 real-safeupdate gate. The ECR tag is only a local alias,
+This closes the new 20261021082853 real-safeupdate gate. The ECR tag is only a local alias,
 not a second pull or fallback. No image was pulled locally.
 The unchanged harness still never pulls, runs its disposable container with
 network none and no host mounts/ports, loads real safeupdate in every SQL

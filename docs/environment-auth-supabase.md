@@ -95,7 +95,7 @@ automatic retries.
 The local v3 candidate accepts only an explicit refresh reportVersion of
 sanctuary-ga4-v3; omission preserves v2. The requested version is frozen at SQL
 claim and bound through signed delegation, fixed-plan hash, report-read intent,
-completion and retained read. Install forward migration 20261021040001 before
+completion and retained read. Install forward migration 20261021082853 before
 the matching source application and before enabling Velt's
 VELT_GA4_DIAGNOSTICS_ENABLED switch. Existing credentials, roles, Stop, leases,
 generation/deletion fences and six/twelve provider claim caps are preserved.
