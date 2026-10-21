@@ -1,5 +1,32 @@
 # Testing And QA
 
+## Middleware build-output guard (21 October 2026 local candidate)
+
+Portal `postbuild` runs `scripts/check-portal-middleware-placement.mjs` after
+`next build`. Next 16 awaits Vercel's adapter completion, which writes
+`<distDir>/output/functions/_middleware.func/.vc-config.json` before npm runs
+this hook. Hosted or explicit adapter builds must emit exactly the one region
+configured for `middleware.ts`, Node 24 and Node middleware `useWebApi` semantics.
+Missing, unreadable, malformed or mismatched output fails the build without
+rewriting it. Ordinary non-Vercel local builds do not require adapter output.
+The existing `PORTAL_PLAYWRIGHT_DIST_DIR` override is respected without fallback.
+
+Run `npx vitest run test/portal-middleware-build-output.test.ts`. Synthetic files
+and real npm lifecycle subprocesses cover output rejection, hook ordering and
+failure propagation without a Next/Vercel build or network access. Normal builds
+must retain npm lifecycle scripts; a custom command or `--ignore-scripts` would
+bypass `postbuild` and must not be substituted during qualification.
+
+This is diagnostic hardening, not a placement or latency fix. PR234's normal Git
+production deployment retained all-region middleware despite correct source
+configuration and a successful CLI preview. A protected **Git-backed** preview
+must show `[portal-middleware-placement] verified`, then independently qualify
+built and deployed function placement, runtime and access guards. Record whether
+an API request triggered a Git checkout or GitHub delivered a webhook: these are
+distinct triggers, and an API-triggered Git build does not prove webhook parity.
+Even passing generated output does not prove the provider deployed it unchanged.
+Production regional acceptance remains failed.
+
 ## Meta landing experiment candidate (21 October)
 
 `test/marketing-experiment-runtime-dependencies.test.ts` guards the direct Zod
