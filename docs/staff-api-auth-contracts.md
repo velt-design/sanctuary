@@ -1,5 +1,33 @@
 # Staff API And Auth Contracts
 
+## Initial document access candidate (21 October 2026, unreleased under qualification)
+
+For canonical HTML document GETs at `/staff/projects`, `/staff/site-visits` and
+`/staff/projects/(proj_)?<uuid>`, middleware renews session transport without using
+session contents as authority. `regionalDocumentAccess.ts` owns the exact request
+eligibility and sanitized callback context. `supabase/proxyClient.ts` forwards the
+same cookie rotation and chunk removals attached to the response. The root layout,
+staff layout and each selected page await the existing request-cached `getUser`
+and current `portal_users.role` check. The root gate runs before identity-bearing
+props, theme or finance reads; a descendant redirect is not sufficient protection
+against parallel rendering. Removed staff access fails closed; an administrator
+changed to staff retains staff access but not administrator access.
+
+The middleware overwrites the callback header from the actual path and full query,
+or strips it outside this lane. It is redirect context, never identity or role
+authority. Ordinary browser RSC/prefetch use non-document fetch destinations and
+retain the full global path, as do action/POST, specialist and other routes. Next
+normalizes Flight headers before middleware, so a deliberately forged document-
+shaped Flight request can enter the regional lane. It still requires fresh
+identity/current-role verification before private HTML or Flight output. Request
+shape chooses the location of verification, never whether verification occurs.
+APIs retain their own authoritative checks before private reads.
+There is no cross-request cache, service-role fallback or manual JWT parsing.
+Selected document responses remain private/no-store. Compiled local refresh,
+streaming, denial and request-isolation proof is required before this candidate
+can be treated as verified; hosted/provider behavior and useful-load improvement
+remain separate gates. No production release is implied.
+
 ## Outlook site visits
 
 `GET /api/staff/v1/outlook-site-visits` accepts optional project and exact visit UUIDs
@@ -54,6 +82,17 @@ accepted, for up to 366 Auckland days through today. The auth-bound
 fails on an oversized full history, and returns only validated slim facts.
 Denied, malformed, unavailable and complete responses all remain private/no-store.
 No service credential or preview identity bypass is introduced.
+
+`GET` / `PUT /api/staff/v1/projects/[projectId]/sales-designer` use the same
+confirmed owner and auth-bound client. PUT requires the exact Portal origin and
+strict JSON containing only commandId, expectedRevision, designerKey (nullable
+existing roster key) and a 3–500 character reason. The body is bounded at 3,000
+characters. The database independently locks current owner/staff authority and
+the project, serializes command identities, compares the revision, and appends an
+audit receipt. These POST RPCs are VOLATILE because authority guards use row locks.
+No direct private table or service-role execution is granted. A stale/reused
+command is 409, revoked authority 403, missing project 404 and uncertain persistence
+503; raw database errors are not returned. All responses are private/no-store.
 
 ## Google advertising candidate
 

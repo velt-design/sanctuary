@@ -44,16 +44,22 @@ local styling and tests alone do not establish production or owner acceptance.
 
 ## Designer visits and conversion candidate (21 October 2026)
 
-Business Overview adds a recorded-attendee comparison immediately after the
+Business Overview shows sales-design responsibility and actual attendance after the
 commercial overview. The selected Auckland dates apply to visits; quote and
 payment outcomes run to the read timestamp. The current project-owner filter
-narrows projects and never supplies visit attribution. The separate attending
-designer selection is retained in the URL. Staff appear from visit evidence,
-including activity without a valid conversion cohort; this is not a ranking.
+narrows projects and never supplies sales attribution. The Designer selection,
+retained in the URL, shows that person's assigned sales and their actual attended
+workload independently. These can involve different projects. Staff appear from
+recorded attendance or explicit assignments; the selected designer remains visible
+after their last assignment is cleared and after refresh. This is not a ranking.
 
 Explicit attendance counts workload across original, measurement, follow-up and
-unconfirmed purposes. Bookings, provisional appointments, recorded non-attendance
-and past bookings without attendance are separate. Undated attendance is visible
+unconfirmed purposes. Stable explicit attendance still counts when generic review
+questions remain; those questions stay visible and continue to prevent acquisition
+qualification. Changed, duplicate, review-classified, future or withdrawn records
+do not gain workload credit from this distinction. Bookings, provisional
+appointments, recorded non-attendance and past bookings without attendance are
+separate. Undated attendance is visible
 in an all-dates review inventory and does not enter dated totals. Retained calendar
 history is incomplete: a recent import cannot prove the first ever visit. The
 30-minute source freshness boundary matches Site Visits, and failed/disabled
@@ -67,8 +73,10 @@ Conversion uses the first recorded qualifying `initial` attended visit per
 project. Generic `site_visit` is not inferred to be original. Unverified people,
 unresolved review/source changes, conflicting originals, unknown dates and
 pre-visit or ambiguous payment chronology prevent attribution. Each verified
-joint attendee receives participation credit; team totals deduplicate projects
-and visits. Repeat measurements do not create additional sales credit. A dated
+joint attendee receives workload credit; sales conversion belongs to one explicit
+project sales designer. Missing assignments remain in the Unassigned row and team
+cohort, never fall back to a project owner or attendee. Team totals deduplicate
+projects and visits. Repeat measurements do not create additional sales credit. A dated
 original with no sale remains in the denominator, while an empty eligible cohort
 has an unavailable rate, never zero percent.
 
@@ -102,11 +110,29 @@ The function body, grants and authentication checks are unchanged; the RPC still
 does not alter business records. A normal writable SQL check cannot substitute
 for this transaction-mode regression or actual hosted RPC verification.
 
+The forward `20261021040001_project_sales_designer.sql` adds independent audited
+project sales responsibility. `salesDesigner` owns the command/DTO contract;
+`SalesDesignerAssignment` is the existing record-drawer editor and recovery owner.
+`GET` / `PUT /api/staff/v1/projects/[projectId]/sales-designer` use owner-authenticated
+RPCs, exact-origin writes, command UUIDs and optimistic revisions. A command replay
+returns its immutable receipt; the editor then reads current state, so a later
+assignment is not overwritten by an old acknowledgement. Conflicting revisions
+require a reload and deliberate save. Uncertain responses retain the same command.
+Clearing retains a revision and audit record. No project phase, visit staff, purpose,
+date, booking or commercial evidence is changed. Assignment alone never qualifies
+a visit. Designer projects in details include relevant undated records even when
+conversion is unavailable. Original-project counts open only their exact qualifying
+cohort; the separate details entry retains all relevant assignment-management records.
+Empty personal workload never implies that assigned sales evidence is absent.
+Assignments update the open report only after readback;
+ordinary refresh replaces both source and assignment snapshots.
+
 Local verification covers actual migration/source helpers in disposable PGlite,
 model attribution, API denial/caps, hook races, drilldown invalidation and exact
 visit navigation. The existing protected fixture accepts `designerScenario`
 values `complete`, `incomplete`, `conflict`, `empty`, `stale`, `disabled`,
-`source-failed`, `failure`, `denied` and `slow`. Every fixture identity is synthetic.
+`source-failed`, `failure`, `denied`, `unassigned` and `slow`. Its injected assignment
+client is in-memory only and cannot write a database. Every fixture identity is synthetic.
 Local checks and fixtures are not production migration, hosted access or real
 record coverage proof. Both exact task-branch auto-deploy entries are disabled;
 release remains subject to the owning task's review and production approval.

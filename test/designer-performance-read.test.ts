@@ -42,6 +42,7 @@ beforeAll(async()=>{
   await db.exec(file('20261014000001_advertising_scope_source'));
   await db.exec(file('20261021030001_designer_performance'));
   await db.exec(file('20261021030002_designer_visit_detail_transaction'));
+  await db.exec(file('20261021040001_project_sales_designer'));
   await db.exec(`update private.outlook_calendar_control set enabled=true,binding='${binding}',last_success=now(),range_start='2026-10-01',range_end='2026-12-31' where singleton;
     insert into private.site_visit_staff_identities values('${binding}','designer@example.test','jordan');`);
   const payload={subject:'Private title',startsAt:'2026-09-03T00:00:00Z',endsAt:'2026-09-03T01:00:00Z',kind:'visit',staff:[{name:'Private staff alias',email:'designer@example.test'}],customerEmails:['private@example.test'],address:'Private address',cancelled:false,duplicate:false,reviewReasons:[],isAllDay:false};
@@ -80,6 +81,15 @@ it('agrees with the effective correction for unknown timing, identity and source
   const changed=await read();expect(changed.visits.find(v=>v.id===id(11))!.changed).toBe(true);expect(designerPerformance(changed).total.outcomes).toEqual([]);
  }finally{await db.exec('rollback');}
 });
+it('retains an explicitly attended stable source with a generic saved question as workload, not acquisition',async()=>{
+ await db.exec('begin');try{
+  await db.exec(`update private.site_visit_details set questions='["Address confirmation remains open"]' where id='${id(11)}'`);
+  const report=await read(),visit=report.visits.find(v=>v.id===id(11))!;
+  expect(visit).toMatchObject({status:'attended',kind:'visit',changed:false,duplicate:false,questions:1});
+  const result=designerPerformance(report);expect(result.total.attended.map(v=>v.id)).toContain(id(11));
+  expect(result.coverage.find(c=>c.visit.id===id(11))?.reasons).toContain('source');expect(result.total.outcomes).toEqual([]);
+ }finally{await db.exec('rollback');}
+});
 it('uses current accepted-family value, partial first deposit, reversals and missing payment dates honestly',async()=>{
  await db.exec('begin');try{
   await db.exec(`insert into quote_versions values('${id(20)}','${id(3)}',2,'ACCEPTED','2026-09-12','2026-09-12','2026-09-12',2100000)`);
@@ -112,4 +122,45 @@ it('uses the PostgREST POST transaction mode needed by the unchanged actor row l
 it('rejects oversized evidence rather than publishing a partial cohort and never mutates source records',async()=>{
  const before=(await db.query('select * from private.site_visit_details')).rows;await read();expect((await db.query('select * from private.site_visit_details')).rows).toEqual(before);
  await db.exec('begin');try{await db.exec(`insert into quotes select gen_random_uuid(),'${id(1)}','BOUND',null from generate_series(1,5000)`);await expect(read()).rejects.toThrow('limit reached');}finally{await db.exec('rollback');}
+});
+const assignment=async(command=91,expected=0,key:string|null='jordan',basis='Confirmed sales responsibility')=>(await db.query<{v:any}>('select public.project_sales_designer_assign($1,$2,$3,$4,$5) v',[id(1),id(command),expected,key,basis])).rows[0].v;
+async function denied(command:()=>Promise<unknown>,code:string){await db.exec('savepoint rejected');try{await expect(command()).rejects.toMatchObject({code});}finally{await db.exec('rollback to savepoint rejected');}}
+it('audits sales attribution separately, replays once and rejects a competing stale revision',async()=>{
+ await db.exec('begin');try{
+  await db.exec(`update private.site_visit_details set details=details||'{"staff":[{"name":"Joe","email":null,"staffId":"joe"}]}' where id='${id(11)}'`);
+  const before=await read();expect(before.assignments).toEqual([]);expect(designerPerformance(before).rows.find(r=>r.staffId==='unassigned')!.outcomes).toHaveLength(1);
+  await db.exec('set local role authenticated');const first=await assignment();expect(first).toMatchObject({designerKey:'jordan',revision:1});expect(await assignment()).toEqual(first);
+  await denied(()=>assignment(92,0,'joe'),'40001');await denied(()=>assignment(91,0,'joe'),'40001');
+  const report=await read(),model=designerPerformance(report);expect(report.visits).toEqual(before.visits);expect(report.scopes).toEqual(before.scopes);
+  expect(model.rows.find(r=>r.staffId==='joe')!.attended).toHaveLength(1);expect(model.rows.find(r=>r.staffId==='joe')!.outcomes).toHaveLength(0);
+  expect(model.rows.find(r=>r.staffId==='jordan')!.outcomes).toHaveLength(1);expect(model.total.outcomes).toHaveLength(1);
+  const cleared=await assignment(93,1,null);expect(cleared).toMatchObject({designerKey:null,revision:2});
+  expect(await assignment()).toEqual(first); // Original command receipt stays immutable after a later assignment.
+  const current=(await db.query<{v:any}>('select public.project_sales_designer_read($1) v',[id(1)])).rows[0].v;expect(current).toEqual(cleared);
+  await db.exec('reset role');expect((await db.query('select * from private.project_sales_designer_commands')).rows).toHaveLength(2);
+ }finally{await db.exec('rollback');}
+});
+it('keeps assigned undated/unknown-attendance projects inspectable without creating sales eligibility',async()=>{
+ await db.exec('begin');try{
+  await assignment();await db.exec(`update private.site_visit_details set details=details||'{"timing":{"mode":"unknown","date":null,"time":null,"endTime":null}}' where id='${id(11)}'`);
+  let m=designerPerformance(await read(),null,'jordan');expect(m.total.outcomes).toEqual([]);expect(m.total.assignedVisits).toHaveLength(2);
+  await db.exec(`update private.site_visit_details set details=details-'timing'-'status' where id='${id(11)}'`);
+  m=designerPerformance(await read());expect(m.total.outcomes).toEqual([]);
+  await db.exec(`update private.outlook_calendar_visits set kind_override='excluded' where id='${id(11)}'`);
+  expect(designerPerformance(await read()).total.assignedVisits.map(v=>v.id)).not.toContain(id(11));
+ }finally{await db.exec('rollback');}
+});
+it('enforces assignment owner access, write transaction mode, validation and direct-table denial',async()=>{
+ await db.exec('begin');try{
+  await db.exec('set local role authenticated');await denied(()=>db.query('select * from private.project_sales_designers'),'42501');
+  await denied(()=>assignment(91,0,'unknown'),'22023');await denied(()=>assignment(91,0,'joe',''),'22023');
+  await db.exec('reset role');await db.exec(`update auth.users set banned_until=now()+interval '1 hour' where id='${staff}';set local role authenticated`);
+  await denied(()=>assignment(),'42501');await db.exec('reset role');await db.exec(`update auth.users set banned_until=null,email='someone@example.test' where id='${staff}';set local role authenticated`);
+  await denied(()=>assignment(),'42501');await db.exec('reset role');await db.exec(`update auth.users set email='jordan@sanctuarypergolas.co.nz' where id='${staff}';delete from portal_users where user_id='${staff}';set local role authenticated`);
+  await denied(()=>assignment(),'42501');await db.exec('reset role;set local role anon');await denied(()=>assignment(),'42501');
+  await db.exec('reset role;set local role service_role');await denied(()=>assignment(),'42501');
+ }finally{await db.exec('rollback');}
+ const modes=(await db.query<{provolatile:string}>("select provolatile from pg_proc where oid in ('public.project_sales_designer_read(uuid)'::regprocedure,'public.project_sales_designer_assign(uuid,uuid,integer,text,text)'::regprocedure)")).rows;
+ expect(modes.map(r=>r.provolatile)).toEqual(['v','v']);
+ await db.exec('begin read only;set local role authenticated');try{await expect(assignment()).rejects.toMatchObject({code:'25006'});}finally{await db.exec('rollback');}
 });

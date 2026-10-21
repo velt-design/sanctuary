@@ -9,7 +9,7 @@ import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import PortalShell from '@/components/layout/PortalShell';
 import type { CSSProperties } from 'react';
 import { Providers } from './providers';
-import { getPortalAccessState } from '@/lib/auth';
+import { getPortalAccessState, requireRegionalDocumentAccess } from '@/lib/auth';
 import { initialPortalAuthStateFromAccess } from '@/lib/portalAccess';
 import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
 import PortalVitalsReporter from '@/components/performance/PortalVitalsReporter';
@@ -36,6 +36,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const startedAt = performance.now();
   const diagnostics = await getDocumentRenderDiagnostics();
   try {
+    // A selected document must be denied before identity props, finance or theme
+    // can enter the root shell. Descendant layout redirects can run in parallel.
+    await requireRegionalDocumentAccess();
     // Navigation is advisory; finance routes and commands recheck the current grant.
     const financeSession = await getPaymentPilotSession().catch(() => null);
     let cssVars: CSSProperties = {} as CSSProperties;

@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-21: prove access boundaries through the compiled framework
+
+Next normalizes Flight headers before middleware, so header mocks alone cannot
+prove which access boundary receives a request. Keep ordinary browser RSC and
+prefetch checks distinct from forged document-shaped Flight input. Both must
+verify fresh identity and current role before private reads or root serialization,
+including a streamed HTTP 200 redirect. Calibrate boundary evidence on a known
+global route; preserve framework-hop and fixture failures rather than weakening
+denial assertions. Owners: `staff-api-auth-contracts.md` and `testing-and-qa.md`.
+
 ## 2026-10-21: preserve independent report sections during recovery
 
 A composition slot placed hub-backed source outcomes inside the commercial
@@ -8,6 +18,24 @@ records. Render independently loaded children in every report state, and scope
 busy semantics to the pending read. Cover the actual parent, source rows and
 inspection through failure and retry, rather than checking only a child marker.
 Owner and regression: `marketing-performance.md`, `CommercialOverview.test.tsx`.
+
+## 2026-10-21: Assign sales responsibility without rewriting attendance
+
+The owner clarified that conversion belongs to the sales designer, who may differ
+from the person attending a visit. Store that project responsibility separately
+with an audited revision command. Never repurpose current phase ownership,
+drafting responsibility or the visit's actual staff. Missing assignments remain
+visible and cannot remove eligible projects from team conversion. A replayed write
+receipt describes its original command, so the editor reads current assignment
+before displaying a reconciled save. Assignment does not supply missing attendance,
+purpose or dates, and a service inspection can remain in history while excluded
+from sales metrics through the existing correction workflow.
+
+Keep workload and acquisition qualification separate: a generic unresolved question
+does not negate stable explicit attendance, but still prevents sales attribution.
+Count drilldowns must use their exact cohort rather than the wider assignment
+management list. Preserve the selected designer after a last-assignment clear so
+the visible control, URL and model cannot disagree through refresh.
 
 ## 2026-10-21: Match RPC transaction mode to authentication locks
 

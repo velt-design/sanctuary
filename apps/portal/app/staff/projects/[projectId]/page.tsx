@@ -4,6 +4,7 @@ import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 import { isProjectTabKey } from '@/lib/projects/projectTabs';
 import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
+import { requireStaffPageAccess } from '@/lib/auth';
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -27,6 +28,7 @@ export default async function ProjectDetailPage({
   searchParams?: Promise<SearchParams>;
 }) {
   const { projectId } = await params;
+  await requireStaffPageAccess(`/staff/projects/${encodeURIComponent(projectId)}`);
   const resolvedSearchParams = await searchParams;
   const tab = parseTab(resolvedSearchParams?.tab);
   const estimateId = parseSingleSearchParam(resolvedSearchParams?.estimateId);
