@@ -158,9 +158,20 @@ begin
   return jsonb_build_object('confirmed',true);
  end if;
  if p_stage='cleanup' then
-  if (select count(*) from jsonb_object_keys(p_payload))<>1 or coalesce(p_payload->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Invalid cleanup proof';end if;
+  if (select count(*) from jsonb_object_keys(p_payload)) not in(1,2) or exists(select 1 from jsonb_object_keys(p_payload) k where k not in('evidenceHash','terminalStudy')) or coalesce(p_payload->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Invalid cleanup proof';end if;
+  if exists(select 1 from public.meta_creative_objects where experiment=p_experiment and kind='study') then
+   if jsonb_typeof(p_payload->'terminalStudy') is distinct from 'object' or (select count(*) from jsonb_object_keys(p_payload->'terminalStudy'))<>6
+    or not(p_payload->'terminalStudy' ?& array['id','end','observationEnd','observedAt','evidenceHash','ended'])
+    or p_payload->'terminalStudy'->'ended' is distinct from 'true'::jsonb
+    or not exists(select 1 from public.meta_creative_objects where experiment=p_experiment and kind='study' and object_id=p_payload->'terminalStudy'->>'id')
+    or coalesce(p_payload->'terminalStudy'->>'end','') !~ '^[0-9]{1,11}$'
+    or p_payload->'terminalStudy'->>'end' is distinct from p_payload->'terminalStudy'->>'observationEnd'
+    or to_timestamp((p_payload->'terminalStudy'->>'end')::double precision)>clock_timestamp()
+    or (p_payload->'terminalStudy'->>'observedAt')::timestamptz not between clock_timestamp()-interval '60 seconds' and clock_timestamp()+interval '5 seconds'
+    or coalesce(p_payload->'terminalStudy'->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Study terminal readback required';end if;
+  elsif p_payload ? 'terminalStudy' and p_payload->'terminalStudy'<>'null'::jsonb then raise exception 'Unowned study proof';end if;
   if r.lane is distinct from 'creative' or r.experiment is distinct from p_experiment or exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state in('prepared','uncertain')) then raise exception 'Cleanup unresolved';end if;
-  if exists(select 1 from public.meta_creative_objects o where o.experiment=p_experiment and o.kind<>'creative' and not exists(select 1 from public.meta_creative_effects x where x.command=(select command from public.meta_creative_effects where experiment=p_experiment and object_id=o.object_id and state='confirmed' order by admitted_at desc limit 1) and x.kind=case when o.kind='ad' then 'pause_ad' else 'end_study' end)) then raise exception 'Owned objects not stopped';end if;
+  if exists(select 1 from public.meta_creative_objects o where o.experiment=p_experiment and o.kind='ad' and not exists(select 1 from public.meta_creative_effects x where x.command=(select command from public.meta_creative_effects where experiment=p_experiment and object_id=o.object_id and state='confirmed' order by admitted_at desc limit 1) and x.kind=case when o.kind='ad' then 'pause_ad' else 'end_study' end)) then raise exception 'Owned objects not stopped';end if;
   insert into public.meta_creative_receipts(command,experiment,stage,request_hash,evidence_hash) values(p_command,p_experiment,p_stage,h,p_payload->>'evidenceHash');
   delete from public.acquisition_experiment_reservation where singleton;
   return jsonb_build_object('released',true);

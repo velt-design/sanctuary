@@ -60,6 +60,7 @@ begin
    or payload->>'experiment' is distinct from p_experiment::text or payload->'scope' is distinct from c.scope or payload->'originalAds' is distinct from c.original_ads
    or payload->>'preStateHash' is distinct from c.control_hash or payload->>'nativeContractHash' is distinct from c.native_contract_hash
    or payload->>'dailyMinor' is distinct from '40000' or payload->>'weeklyMinor' is distinct from '280000' or payload->>'studyDailyMinor' is distinct from '8000'
+   or coalesce(payload->>'purpose','') not in('paused_capability','formal_experiment')
    or payload->>'currency' is distinct from 'NZD' or payload->>'timezone' is distinct from 'Pacific/Auckland'
    or coalesce(payload->>'generator','')='' or payload->>'generator' is not distinct from payload->>'reviewer'
    or (payload->>'approvalUntil')::timestamptz<=clock_timestamp() then raise exception 'Unapproved execution plan';end if;
@@ -102,7 +103,7 @@ begin
   if coalesce(p_payload->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Missing confirmation';end if;
   if p_stage='cleanup' then result:=public.meta_creative_command(p_binding,p_command,p_experiment,'cleanup',p_payload);
   else
-   if (select count(*) from public.meta_creative_objects where experiment=p_experiment and kind in('ad','study'))<>3
+   if (select count(*) from public.meta_creative_objects where experiment=p_experiment and kind in('ad','study'))<>case when x.plan->>'purpose'='paused_capability' then 2 else 3 end
     or exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state in('prepared','uncertain')) then raise exception 'Canary unconfirmed';end if;
    result:=jsonb_build_object('paused',true,'activationReady',false);
   end if;

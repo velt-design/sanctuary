@@ -1,6 +1,6 @@
 import { canonicalHash, type EffectKind, type ExecutionPlan, type ExecutorState } from './contract';
 export class ExecutorFailure extends Error {
-  constructor(readonly code: 'http' | 'shape' | 'timeout' | 'scope' | 'unconfirmed') { super('Creative operation unconfirmed.'); }
+  constructor(readonly code: 'http' | 'shape' | 'timeout' | 'scope' | 'unconfirmed', readonly httpStatus: number | null = null, readonly metaError: { code: number | null; subcode: number | null } = { code: null, subcode: null }) { super('Creative operation unconfirmed.'); }
 }
 export interface WireEffect { kind: EffectKind; path: string; body: Record<string, string>; target: string | null; requestHash: string; at: number }
 const site = 'https://www.sanctuarypergolas.co.nz';
@@ -11,22 +11,33 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
   if (kind === 'create_creative') {
     if (object(state, 'creative')) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/adcreatives`;
-    body = { name, object_story_spec: JSON.stringify({ page_id: plan.scope.page, link_data: {
-      image_hash: plan.control.imageHash, link: site + plan.control.path, message: plan.challengerPrimary,
-      name: plan.control.headline, description: plan.control.description,
-      call_to_action: { type: plan.control.action, value: { link: site + plan.control.path } },
-    } }), url_tags: plan.control.urlTags };
+    if (plan.control.format === 'video_assets') {
+      const payload = structuredClone(plan.control.payload);
+      const feed = payload.asset_feed_spec as { bodies?: { text?: string }[] };
+      const story = payload.object_story_spec as { video_data?: { message?: string } };
+      if (feed.bodies?.length !== 1 || feed.bodies[0]!.text !== plan.control.primary
+        || (story.video_data?.message !== undefined && story.video_data.message !== plan.control.primary)) throw new ExecutorFailure('scope');
+      feed.bodies[0]!.text = plan.challengerPrimary;
+      if (story.video_data?.message !== undefined) story.video_data.message = plan.challengerPrimary;
+      body = { name, ...Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, typeof value === 'string' ? value : JSON.stringify(value)])), url_tags: plan.control.urlTags };
+    } else {
+      body = { name, object_story_spec: JSON.stringify({ page_id: plan.scope.page, link_data: {
+        image_hash: plan.control.imageHash, link: site + plan.control.path, message: plan.challengerPrimary,
+        name: plan.control.headline, description: plan.control.description,
+        call_to_action: { type: plan.control.action, value: { link: site + plan.control.path } },
+      } }), url_tags: plan.control.urlTags };
+    }
   } else if (kind === 'create_control' || kind === 'create_challenger') {
     const arm = kind === 'create_control' ? 'control' : 'challenger';
     const creative = arm === 'control' ? plan.control.id : object(state, 'creative');
     if (!creative || object(state, arm)) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/ads`;
-    body = { name, adset_id: plan.scope.adset, creative: JSON.stringify({ creative_id: creative }), status: 'PAUSED' };
+    body = { name, adset_id: plan.scope.adset, creative: JSON.stringify({ creative_id: creative }), tracking_specs: JSON.stringify(plan.adTracking), status: 'PAUSED' };
   } else if (kind === 'create_study') {
     const control = object(state, 'control'), challenger = object(state, 'challenger');
-    if (!control || !challenger || object(state, 'study') || plan.start * 1000 <= now || plan.end <= plan.start) throw new ExecutorFailure('scope');
+    if (plan.purpose !== 'formal_experiment' || !control || !challenger || object(state, 'study') || plan.start * 1000 <= now || plan.end <= plan.start) throw new ExecutorFailure('scope');
     path = `${plan.scope.business}/ad_studies`;
-    body = { name, type: 'SPLIT_TEST_V2', creative_test_config: JSON.stringify({ daily_budget: plan.studyDailyMinor }),
+    body = { name, type: 'SPLIT_TEST_V2', objectives: JSON.stringify([plan.nativeObjective]), creative_test_config: JSON.stringify({ daily_budget: plan.studyDailyMinor }),
       cells: JSON.stringify([{ name: 'control', treatment_percentage: 50, ads: [control] }, { name: 'challenger', treatment_percentage: 50, ads: [challenger] }]),
       start_time: String(plan.start), cooldown_start_time: String(plan.start), end_time: String(plan.end), observation_end_time: String(plan.end) };
   } else if (kind === 'end_study') {
