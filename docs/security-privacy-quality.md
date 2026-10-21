@@ -1,5 +1,35 @@
 # Security, Privacy, And Quality
 
+## Bounded landing experiment candidate (21 October)
+
+Default-off environment: `SANCTUARY_LANDING_EXPERIMENT_ENABLED=false` and
+`NEXT_PUBLIC_LANDING_EXPERIMENT_ENABLED=false`. The server-only shared HMAC
+`SANCTUARY_LANDING_EXPERIMENT_KEY` and64hex
+`SANCTUARY_LANDING_EXPERIMENT_BINDING` are privately provisioned. Exact source
+control scope/template/admission and publishing flags remain separate. The command
+route requires a signed30-second bounded body, no Origin/query, strict fixed stage
+schemas and service-only RPCs. Visitor JSON cannot select an arm, template or copy.
+Same-origin public assign/expose/revoke has a streaming4KB body limit and one1.5s
+deadline shared by the existing30/minute/IP-hash limiter and visit RPC; host maximum
+is5seconds. Errors fall back to authored control, withdrawal is best effort. These
+are per-request/rate bounds, not an aggregate arbitrary-traffic spending guarantee.
+
+Only exact two Meta paths participate. Signed per-path receipts are transient
+cookies/tab state, consent-gated and cleared on withdrawal. The canonical intake
+strips the receipt from raw customer payload and uses a service-only transactional
+wrapper to join the original exposed assignment without duplicating delivery.
+Delayed valid enquiries retain experienced variant after rollback but are excluded
+from a closed formal comparison. Existing privacy/consent/UTM rules remain intact.
+
+`sanctuary_campaign_outcomes` adds optional bounded intake provenance only after
+the original source authority/cohort function succeeds. Exact original raw/canonical
+suburb/message agreement and supported Meta source route are required. Hidden
+residential defaults, seeded design and targeting are not evidence of suitability.
+No source text or contact identity is copied into general experiment reports.
+Deploy compatible Velt and Portal consumers before this additive SQL extension;
+old strict consumers must not receive the new field prematurely. Experiment SQL
+and app deployment do not themselves enable publishing or prove customer delivery.
+
 ## Bounded document timing preparation (21 October 2026 candidate)
 
 `documentDiagnostics.ts` owns a default-disabled, server-only fixed event contract.

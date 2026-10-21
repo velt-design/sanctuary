@@ -1,5 +1,6 @@
 'use client';
 import ContactProjectPreferences from './ContactProjectPreferences';
+import {ExperimentReceiptField} from '../../components/landing-experiment/ExperimentReceiptField';
 import ContactAttachmentFields from './ContactAttachmentFields';
 import ConfiguredEnquiryFields from './ConfiguredEnquiryFields';
 
@@ -405,6 +406,7 @@ export default function ContactEnquiryForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           submissionId,
+          experimentReceipt:String(formData.get('experimentReceipt')??''),
           uploadSessionToken: attachmentUpload.uploadSessionToken,
           enquiryType: enquiryType ?? '',
           enquiryIntent: pathway === 'help' ? 'help' : pathway === 'custom' ? 'bespoke' : undefined,
@@ -523,6 +525,7 @@ export default function ContactEnquiryForm({
       data-contact-pathway={pathway ?? 'chooser'}
     >
       <input type="hidden" name="page" value="/contact" readOnly />
+      <ExperimentReceiptField sourcePath={initialContext.sourcePath}/>
       <input type="hidden" name="source" value="website" readOnly />
       <input type="hidden" name="enquiryContext" value={JSON.stringify(contextProperties)} readOnly />
       <input type="hidden" name="enquiryType" value={enquiryType ?? ''} disabled={!isEnhanced && !configuredDesign} readOnly />

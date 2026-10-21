@@ -1,5 +1,28 @@
 # Marketing UI Foundation
 
+## Meta landing experiment candidate (21 October 2026)
+
+The existing two Meta pages retain their photographs, headlines, tint comparison,
+compact/full designer, estimate and canonical enquiry journey. The default-disabled
+`LandingExperiment` wrapper can replace exactly one hero support/design/help string
+from the finite `landingExperiment` catalogue. It accepts no arbitrary HTML, CSS,
+price, offer or form variation. This is infrastructure for a bounded wording test,
+not evidence of uplift or a complete layout/creative optimisation capability.
+
+Approved retained copy is server-rendered for all visitors without requiring
+tracking consent. Experimental assignment/exposure requires existing analytics and
+marketing consent plus exact configured campaign/ad/adset scope. Canonical receipt
+fields preserve the experienced variant through designer return, delayed enquiry,
+retry and rollback. Tab-local experienced receipts prevent a different tab's newer
+cookie from changing an already experienced design; withdrawal clears both.
+
+The relevant source/style/import/dependency and referenced public-image fingerprint
+is generated before build. It fences serving and exposure against the compiled
+template, rather than treating unrelated Portal commits as visual changes. A retained
+winner is merged into the complete previous control map, so another slot's improvement
+is not erased. The first catalogue needs independent visual acceptance, including
+narrow/mobile and desktop. Runtime renderer checks are not model pixel inspection.
+
 ## Outdoor Rooms composition (21 October 2026)
 
 The exact `/outdoor-rooms-auckland` route owns a complete-space narrative: layout

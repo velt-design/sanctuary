@@ -34,7 +34,8 @@ export const campaignHealthSchema = z.object({
 }).strict();
 export type CampaignHealth = z.infer<typeof campaignHealthSchema>;
 export const campaignContactSchema = z.object({ key: z.string().regex(/^[a-f0-9]{64}$/), ad: entityId, enquiryId: z.uuid(), projectId: z.uuid(), contactId: z.uuid(),
-  email: z.email().max(254), multipleProjects: z.boolean(), createdAt: z.iso.datetime({ offset: true }), changedAt: z.iso.datetime({ offset: true }) }).strict();
+  email: z.email().max(254), multipleProjects: z.boolean(), createdAt: z.iso.datetime({ offset: true }), changedAt: z.iso.datetime({ offset: true }),
+  intake: z.object({ provenance:z.literal('meta_form_user_text'),suburb:z.string().max(100),message:z.string().max(400),shortened:z.boolean() }).strict().nullable().optional() }).strict();
 export const cohortContextSchema = z.object({ total: z.number().int().nonnegative(), eligible: z.number().int().nonnegative(), unlinked: z.number().int().nonnegative(), omitted: z.number().int().nonnegative(), contacts: z.array(campaignContactSchema).max(200) }).strict();
 export const outcomesSchema = z.object({ observedAt: z.iso.datetime(), cohortStart: z.iso.date(),
   ads: z.array(z.object({ id: entityId, enquiries: z.number().int().nonnegative(), qualified: z.number().int().nonnegative(),

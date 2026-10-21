@@ -1,5 +1,21 @@
 # Testing And QA
 
+## Meta landing experiment candidate (21 October)
+
+`test/marketing-landing-experiments.test.ts` and the actual
+`components/landing-experiment/LandingExperiment.test.tsx` cover fixed copy/receipt
+validation, consent, retained control without tracking, delayed tab/designer return,
+withdrawal and source authority/exposure/intake replay. Set only
+`SANCTUARY_DISPOSABLE_POSTGRES_BIN` to local PostgreSQL17 and run
+`node scripts/test-landing-experiments-db.mjs` for the actual source migration,
+canonical intake transaction, statistical/maturation/rollback and scoped intake
+provenance assertions. All synthetic records roll back; no live schema or delivered
+enquiry is proven. Run marketing/Portal types, relevant lint/tests, optimized build,
+docs/architecture guards and `node scripts/marketing/generate-landing-template.mjs
+--check`. The paired Velt repository owns the actual intercepted-candidate renderer
+test and private screenshot artifacts, with all vendor and submission traffic denied.
+Independent catalogue review and hosted execution remain separate acceptance.
+
 ## Document measurement preparation checks (21 October 2026 candidate)
 
 Run the focused `documentDiagnostics`, `documentRenderDiagnostics`,

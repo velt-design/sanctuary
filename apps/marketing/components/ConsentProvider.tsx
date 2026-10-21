@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { clearLandingAssignment } from '../lib/landingExperimentConsent';
 import {
   CONSENT_STORAGE_KEY,
   CONSENT_UPDATED_EVENT,
@@ -163,6 +164,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!initialized) return;
+    if(!consent.analytics||!consent.marketing)clearLandingAssignment();
 
     applyConsentModeUpdate(consent);
     dispatchConsentEvent({
