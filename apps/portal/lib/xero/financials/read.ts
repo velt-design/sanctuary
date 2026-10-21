@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { readFinancePosition, parseFinanceReport, type PositionDependencies } from '../financePosition';
+import type { FinancePosition } from '../financePositionContract';
 import { PositionReadError, POSITION_SCOPES } from '../financePositionProvider';
 import { financialsSchema, previousQuery, yearAgoQuery, trendQueries, type FinancialsQuery, type ReportEvidence } from './contract';
 
@@ -18,6 +19,14 @@ export async function readFinancials(query: FinancialsQuery, deps: PositionDepen
     }
     return values;
   } }, signal);
+  const comparisons = await readProfitComparisons(query, position, deps, signal);
+  const result = financialsSchema.parse({ schemaVersion: 'sanctuary.financials.v1', position, financialYearEnd, checkedAt: deps.now().toISOString(),
+    ...comparisons });
+  if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024) throw new PositionReadError('limit_exceeded');
+  return result;
+}
+
+export async function readProfitComparisons(query: FinancialsQuery, position: Pick<FinancePosition,'identity'|'organisation'|'profitAndLoss'>, deps: PositionDependencies, signal: AbortSignal) {
   const previous = previousQuery(query), yearAgo = yearAgoQuery(query), months = trendQueries(query);
   const key = (q: FinancialsQuery) => `${q.from}/${q.to}/${q.basis}`;
   const reports = new Map<string, ReportEvidence>([[key(query), position.profitAndLoss]]);
@@ -47,8 +56,6 @@ export async function readFinancials(query: FinancialsQuery, deps: PositionDepen
   }
   await binding();
   const dated = (query: FinancialsQuery) => ({ query, report: reports.get(key(query))! });
-  const result = financialsSchema.parse({ schemaVersion: 'sanctuary.financials.v1', position, financialYearEnd, checkedAt: deps.now().toISOString(),
-    previous: dated(previous), yearAgo: dated(yearAgo), months: months.map(dated) });
-  if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024) throw new PositionReadError('limit_exceeded');
-  return result;
+  return {previous:dated(previous),yearAgo:dated(yearAgo),months:months.map(dated)};
+
 }

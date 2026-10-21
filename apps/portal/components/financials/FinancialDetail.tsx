@@ -1,9 +1,9 @@
 import { Drawer } from '@/components/marketingPerformance/MarketingDrawer';
 import { cents, invoiceLink, money, matchingLine, reportLines, type Invoice, type ReportLine } from '@/lib/xero/financials/model';
-import type { FinancialReport, Financials } from '@/lib/xero/financials/contract';
+import type { FinancialReport, FinancialEvidence } from '@/lib/xero/financials/contract';
 import styles from './Financials.module.css';
 
-export default function FinancialDetail({ detail, report, evidence, invoice, close, synthetic }: { detail: ReportLine | null; report: FinancialReport | null; evidence: Financials; invoice: Invoice | null; close: () => void; synthetic: boolean }) {
+export default function FinancialDetail({ detail, report, evidence, invoice, close, synthetic }: { detail: ReportLine | null; report: FinancialReport | null; evidence: FinancialEvidence; invoice: Invoice | null; close: () => void; synthetic: boolean }) {
   const title = invoice ? `${invoice.number || (invoice.type === 'ACCREC' ? 'Invoice' : 'Bill')} · ${invoice.contactName}` : detail?.label ?? 'Source detail';
   return <Drawer title={title} open={Boolean(detail || invoice)} onClose={close}>
     {invoice ? <div className={styles.detail}><p className={styles.context}>Current Xero document balance · {invoice.currency}. Face and outstanding amounts include GST where charged.</p><dl>

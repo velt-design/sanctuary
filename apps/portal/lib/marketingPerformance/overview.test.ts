@@ -1,4 +1,5 @@
-import { expect,it } from 'vitest';
+import { expect,it,vi } from 'vitest';
+import * as dates from './contract';
 import { representativeFixture as hub, representativeFilters } from '@/app/qa/marketing-performance-fixture/representativeFixture';
 import { ageDistribution, monthlyActivity, salesActivity, projectAge } from './overview';
 import { hubDefaults, selectHub, hubQuery, parseHubFilters, type HubEvent } from './hub';
@@ -20,6 +21,13 @@ it('age uses Auckland calendar days across DST, boundaries and future creation d
   const asOf='2026-09-22T06:48:00Z';
   const projects=[0,7,8,30,31,90,91,-1].map(n=>({...p,state:'ACTIVE',createdAt:new Date(Date.parse(asOf)-n*86400000).toISOString()}));
   expect(ageDistribution(projects,asOf).map(b=>b.count)).toEqual([2,2,2,1,1]);
+});
+it('formats the report day once and each active/waiting project once, skipping closed history',()=>{
+ const format=vi.spyOn(dates,'aucklandDay');
+ const projects=hub.projects;
+ ageDistribution(projects,hub.asOf);
+ expect(format).toHaveBeenCalledTimes(1+projects.filter(p=>['ACTIVE','WAITING'].includes(p.state)).length);
+ format.mockRestore();
 });
 it('months reconcile event IDs and signed cash, excluding invoice statuses and adjustments',()=>{
   const months=monthlyActivity(hub.events,hub.start,hub.end);

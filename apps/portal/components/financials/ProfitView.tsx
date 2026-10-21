@@ -1,10 +1,10 @@
 import { Button, Select } from '@/components/ui/foundation/FoundationControls';
-import type { Financials, FinancialReport, FinancialSelection } from '@/lib/xero/financials/contract';
+import type { FinancialEvidence, FinancialReport, FinancialSelection } from '@/lib/xero/financials/contract';
 import { findTotal, money, profitMetrics, variance, type ReportLine } from '@/lib/xero/financials/model';
 import ReportTable from './ReportTable';
 import styles from './Financials.module.css';
 
-export default function ProfitView({ report, evidence, selection, apply, onDetail, retry }: { report: FinancialReport; evidence: Financials; selection: FinancialSelection; apply: (next: FinancialSelection) => void; onDetail: (row: ReportLine) => void; retry: () => void }) {
+export default function ProfitView({ report, evidence, selection, apply, onDetail, retry }: { report: FinancialReport; evidence: FinancialEvidence; selection: FinancialSelection; apply: (next: FinancialSelection) => void; onDetail: (row: ReportLine) => void; retry: () => void }) {
   const current = profitMetrics(report), compare = evidence[selection.comparison];
   const priorReport = compare.report.status === 'available' && compare.report.data.currency === report.currency && compare.report.data.basis === report.basis ? compare.report.data : null;
   const prior = priorReport ? profitMetrics(priorReport) : null;

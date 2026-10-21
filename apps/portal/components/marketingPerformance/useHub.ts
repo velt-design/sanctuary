@@ -11,23 +11,34 @@ export const loadHub: HubLoader = async (filters, signal) => {
   if (!response.ok) throw new Error(body.error ?? 'Hub unavailable');
   return hubSchema.parse(body.report);
 };
-export default function useHub(filters: Filters | null, revision: number, loader = loadHub, priorLoader: ReportLoader = loadReport) {
+export default function useHub(filters: Filters | null, revision: number, loader = loadHub, priorLoader: ReportLoader = loadReport, comparison = true) {
   const [hub,setHub] = useState<HubReport | null>(null), [previous,setPrevious] = useState<MarketingReport | null>(null);
   const [busy,setBusy] = useState(true), [error,setError] = useState(''), [comparisonError,setComparisonError] = useState('');
+  const [comparisonBusy,setComparisonBusy]=useState(false);
   const sequence = useRef(0);
   useEffect(() => {
     if (!filters) return;
     const seq = ++sequence.current, controller = new AbortController();
-    setBusy(true); setHub(null); setPrevious(null); setError(''); setComparisonError('');
+    setBusy(true); setHub(null); setError('');
     if (!validPeriod(filters.start,filters.end)) { setBusy(false); setError('Choose valid dates, up to 366 days ending today or earlier.'); return; }
-    const dates = previousPeriod(filters.start,filters.end);
-    Promise.allSettled([loader(filters,controller.signal), priorLoader({...filters,...dates},controller.signal)]).then(([current,prior]) => {
+    loader(filters,controller.signal).then(current => {
       if (controller.signal.aborted || seq !== sequence.current) return;
-      if (current.status === 'fulfilled') setHub(current.value); else setError(current.reason instanceof Error ? current.reason.message : 'Hub unavailable. Retry.');
-      if (prior.status === 'fulfilled') setPrevious(prior.value); else setComparisonError('Previous-period evidence unavailable.');
+      setHub(current);
       setBusy(false);
+    },reason=>{
+      if(controller.signal.aborted||seq!==sequence.current)return;
+      setError(reason instanceof Error?reason.message:'Hub unavailable. Retry.');setBusy(false);
     });
     return () => controller.abort();
-  },[filters?.start,filters?.end,revision,loader,priorLoader]);
-  return {hub,previous,busy,error,comparisonError};
+  },[filters?.start,filters?.end,revision,loader]);
+  useEffect(()=>{
+    setPrevious(null);setComparisonError('');setComparisonBusy(false);
+    if(!filters||!comparison)return;
+    const controller=new AbortController(),dates=previousPeriod(filters.start,filters.end);
+    if(!validPeriod(filters.start,filters.end)||!validPeriod(dates.start,dates.end)){setComparisonError('Previous-period evidence unavailable.');return;}
+    setComparisonBusy(true);
+    priorLoader({...filters,...dates},controller.signal).then(prior=>{if(!controller.signal.aborted)setPrevious(prior);},()=>{if(!controller.signal.aborted)setComparisonError('Previous-period evidence unavailable.');}).finally(()=>{if(!controller.signal.aborted)setComparisonBusy(false);});
+    return()=>controller.abort();
+  },[filters?.start,filters?.end,revision,comparison,priorLoader]);
+  return {hub,previous,busy,error,comparisonError,comparisonBusy};
 }
