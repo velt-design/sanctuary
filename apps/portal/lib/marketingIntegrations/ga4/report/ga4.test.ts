@@ -146,8 +146,8 @@ describe("GA4 fixed report consumer", () => {
   });
   it("classifies failures without retaining provider bodies, metric values or credentials", async () => {
     const raw = fixture(); raw.reports[0]!.metricHeaders[0]!.type = "PRIVATE_VALUE";
-    for (const [response, expected] of [[new Response("PRIVATE_VALUE", { status: 403 }), { reason: "provider_http", status: 403 }],
-      [Response.json(raw), { reason: "response_schema", status: 200, schemaIssues: [{ report: 0, field: "metricHeaders.type", code: "invalid_value" }] }]] as const) {
+    for (const [response, expected] of [[new Response("PRIVATE_VALUE", { status: 403 }), { stage: 'core_request', reason: "provider_http", status: 403 }],
+      [Response.json(raw), { stage: 'core_response', reason: "response_schema", status: 200, schemaIssues: [{ report: 0, field: "metricHeaders.type", code: "invalid_value" }] }]] as const) {
       try { await readGa4Report("PRIVATE_TOKEN", "123", query, undefined, vi.fn(async () => response)); throw new Error("Expected failure"); }
       catch (error) { expect(error).toBeInstanceOf(Ga4ReportFailure); expect((error as Ga4ReportFailure).diagnostic).toEqual(expected); expect(JSON.stringify(error)).not.toMatch(/PRIVATE_VALUE|PRIVATE_TOKEN/); }
     }
