@@ -21,6 +21,11 @@ fabricated. Set the loopback `IMPROVEMENT_RENDER_FIXTURE_ORIGIN`, local compiled
 Private screenshot artifacts prove local served-code behavior; all vendor and
 submission traffic is denied. Native probe tests cover scope, gates, maturation,
 separate denominators and immutable effect receipt recovery.
+Native learning assertions use160 historical experiments across all non-retained
+terminal states, prove bounded unique exclusions and prepare denial, and allow a
+changed control baseline or template. Velt separately proves the bounded result
+tail can evict a formal result after160 ordinary continuations while these source
+exclusions still prevent a paid generation request.
 Independent catalogue review and hosted execution remain separate acceptance.
 The compiled-page matrix covers both pages' three wording choices plus acrylic
 `action-first`. Local layout checks include320×568,390×740,390×844 and1440×960,

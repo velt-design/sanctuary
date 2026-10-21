@@ -18,6 +18,7 @@ try{
  sql(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_layout.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_experiment_learning.sql','utf8'));
  sql(readFileSync('supabase/tests/campaign_intake_evidence.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021020003_campaign_intake_evidence.sql','utf8'));
  sql(readFileSync('supabase/tests/campaign_intake_evidence_assertions.sql','utf8'));

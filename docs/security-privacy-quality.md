@@ -39,6 +39,11 @@ two days; at most one preparation and six live proofs are admitted per Auckland
 day. Closed enrolment reuses only an earlier verified diagnostic enrollment.
 Immutable source-effect receipt reads permit recovery after response loss without
 repeating publication or formal evaluation.
+The source read derives at most four excluded catalogue keys per exact page from
+all rejected, reverted or inconclusive experiments on the current template and
+whole control baseline. Prepare enforces the same exclusion atomically, even if
+Velt's display history has expired. Fresh evidence alone cannot repeat a failed
+comparison; a changed baseline or relevant template can permit a new candidate.
 
 `sanctuary_campaign_outcomes` adds optional bounded intake provenance only after
 the original source authority/cohort function succeeds. Exact original raw/canonical

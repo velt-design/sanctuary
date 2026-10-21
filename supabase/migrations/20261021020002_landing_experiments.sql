@@ -92,6 +92,9 @@ begin
  if p_stage='read' then
    return jsonb_build_object('enabled',c.enabled and c.admitted_until>stamp,'publishing',c.publishing,'template',c.template,'generation',c.generation,
      'controls',jsonb_build_object('/auckland-outdoor-living',c.control_outdoor,'/acrylic-roof-pergolas-auckland',c.control_acrylic),
+     'excluded',jsonb_build_object(
+       '/auckland-outdoor-living',(select coalesce(jsonb_agg(copy order by copy),'[]') from(select distinct copy from public.landing_experiments where path='/auckland-outdoor-living' and template=c.template and control_copy=c.control_outdoor and state in('rejected','reverted','inconclusive'))history),
+       '/acrylic-roof-pergolas-auckland',(select coalesce(jsonb_agg(copy order by copy),'[]') from(select distinct copy from public.landing_experiments where path='/acrylic-roof-pergolas-auckland' and template=c.template and control_copy=c.control_acrylic and state in('rejected','reverted','inconclusive'))history)),
      'experiment',(select to_jsonb(x) from (select * from public.landing_experiments order by created_at desc limit 1)x),
      'counts',public.landing_experiment_counts((select id from public.landing_experiments order by created_at desc limit 1)),
      'decision',public.landing_experiment_decision((select id from public.landing_experiments order by created_at desc limit 1)))
@@ -104,6 +107,10 @@ begin
    previous_copy:=case when p_payload->>'path'='/auckland-outdoor-living' then c.control_outdoor else c.control_acrylic end;
    selected_slot:=case p_payload->>'copy' when 'explore' then 'design' when 'project' then 'help' when 'estimate' then 'support' when 'action-first' then 'layout' end;
    if selected_slot is null or previous_copy->>selected_slot=p_payload->>'copy' then raise exception 'Unchanged candidate';end if;
+   -- The finite exclusion belongs to the durable source, not a bounded display
+   -- tail. A new evidence date is not permission to repeat until significant.
+   if exists(select 1 from public.landing_experiments prior where prior.path=p_payload->>'path' and prior.template=c.template and prior.control_copy=previous_copy
+     and prior.copy=p_payload->>'copy' and prior.state in('rejected','reverted','inconclusive')) then raise exception 'Previously evaluated candidate';end if;
    insert into public.landing_experiments(id,path,template,copy,control_copy,state,candidate_hash,evidence_hash,generator,minimum_exposures,duration_days)
     values(p_experiment,p_payload->>'path',c.template,p_payload->>'copy',previous_copy,'candidate',p_payload->>'candidateHash',p_payload->>'evidenceHash',p_payload->>'generator',
       (p_payload->>'minimumExposures')::integer,(p_payload->>'durationDays')::integer);
