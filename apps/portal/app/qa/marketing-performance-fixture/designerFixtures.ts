@@ -1,6 +1,8 @@
 import { AssignmentError,type AssignmentClient } from '@/components/marketingPerformance/SalesDesignerAssignment';
 import { unassignedDesigner,type SalesDesigner,type SalesDesignerCommand } from '@/lib/marketingPerformance/salesDesigner';
 import type { DesignerLoader } from '@/components/marketingPerformance/useDesigner';
+import { unrecordedSalesOutcome,type SalesOutcome } from '@/lib/marketingPerformance/salesOutcome';
+import { OutcomeError,type OutcomeClient } from '@/components/marketingPerformance/ProjectSalesOutcome';
 import type { DesignerReport,DesignerVisit,DesignerScope } from '@/lib/marketingPerformance/designerContract';
 import { hubFixture } from './hubFixtures';
 const id=(n:number)=>`55555555-5555-4555-8555-${String(n).padStart(12,'0')}`;
@@ -8,15 +10,24 @@ export function designerFixture(mode='complete'):DesignerReport {
   const project=(n:number)=>hubFixture.projects[n%hubFixture.projects.length].id;
   const visit=(n:number,extra:Partial<DesignerVisit>={}):DesignerVisit=>({id:id(n),projectId:project(n),contactId:id(n+100),origin:'outlook',day:'2026-09-04',at:'2026-09-04T00:00:00Z',purpose:'initial',status:'attended',kind:'visit',staff:['jordan'],unmappedStaff:0,removed:false,withdrawn:false,cancelled:false,duplicate:false,changed:false,questions:0,...extra});
   const visits=[visit(1,{staff:['jordan','jp']}),visit(2,{staff:['jp']}),visit(3,{staff:['joe'],purpose:'measurement'}),visit(4,{staff:['joe'],purpose:null,status:null}),visit(5,{staff:['bruce'],purpose:'site_visit',status:'booked'}),visit(6,{staff:['bruce'],origin:'history',day:null,at:null}),visit(7,{projectId:project(1),purpose:'measurement',day:'2026-09-20',at:'2026-09-20T00:00:00Z'})];
-  const scope=(n:number,extra:Partial<DesignerScope>={}):DesignerScope=>({id:id(n+200),projectId:project(n),reference:`DEMO-SCOPE-${n}`,addOn:false,firstSentAt:'2026-09-07T00:00:00Z',undatedSend:false,accepted:true,acceptedAt:'2026-09-11T00:00:00Z',valueCents:1850000,paymentEvidence:true,paidAt:'2026-09-13T00:00:00Z',...extra});
-  const scopes=[scope(1),scope(2,{accepted:false,acceptedAt:null,paidAt:null,valueCents:null,paymentEvidence:false}),scope(3),scope(9,{projectId:project(1),addOn:true,valueCents:250000})];
+  const scope=(n:number,extra:Partial<DesignerScope>={}):DesignerScope=>({id:id(n+200),projectId:project(n),reference:`DEMO-SCOPE-${n}`,addOn:false,firstSentAt:'2026-09-07T00:00:00Z',undatedSend:false,accepted:true,acceptedAt:'2026-09-11T00:00:00Z',valueCents:1850000,everAccepted:true,lastAcceptedAt:'2026-09-11T00:00:00Z',lastAcceptedValueCents:1850000,paymentEvidence:true,paidAt:'2026-09-13T00:00:00Z',...extra});
+  const scopes=[scope(1),scope(2,{accepted:false,acceptedAt:null,everAccepted:false,lastAcceptedAt:null,lastAcceptedValueCents:null,paidAt:null,valueCents:null,paymentEvidence:false}),scope(3),scope(9,{projectId:project(1),addOn:true,valueCents:250000,lastAcceptedValueCents:250000})];
+  if(mode==='accepted'){scopes.push(scope(6,{acceptedAt:'2026-09-01T00:00:00Z',lastAcceptedAt:'2026-09-01T00:00:00Z'}),scope(5,{acceptedAt:null,lastAcceptedAt:null}),scope(4,{acceptedAt:'2026-09-25T00:00:00Z',lastAcceptedAt:'2026-09-25T00:00:00Z'}));}
   if(mode==='incomplete'){for(const v of visits)if(v.purpose==='initial'&&v.day)v.purpose='site_visit';}
   if(mode==='conflict')visits.push(visit(10,{projectId:project(1),staff:['joe']}));
-  return {schemaVersion:1,asOf:'2026-09-22T08:00:00Z',start:'2026-09-01',end:'2026-09-22',
+  return {schemaVersion:1,asOf:mode==='accepted'?'2026-10-21T08:00:00Z':'2026-09-22T08:00:00Z',start:'2026-09-01',end:'2026-09-22',
     source:{enabled:mode!=='disabled',lastSuccess:mode==='stale'?'2026-09-21T00:00:00Z':'2026-09-22T07:50:00Z',failed:mode==='source-failed',rangeStart:'2026-08-23T00:00:00Z',rangeEnd:'2026-12-21T00:00:00Z',firstImportedAt:'2026-09-21T00:00:00Z'},
     assignments:mode==='unassigned'?[]:[{projectId:project(1),designerKey:'jordan',revision:1,updatedAt:'2026-09-21T00:00:00Z',basis:'Synthetic assignment'},{projectId:project(2),designerKey:'jp',revision:1,updatedAt:'2026-09-21T00:00:00Z',basis:'Synthetic assignment'}],
+    salesOutcomes:mode==='accepted'?[{projectId:project(6),outcome:'refunded',revision:1,updatedAt:'2026-10-20T00:00:00Z',basis:'Synthetic owner-confirmed whole-job refund'}]:[],salesProjects:[...new Set(scopes.map(s=>s.projectId))].map(projectId=>({projectId,state:'ACTIVE',closedOutcome:null})),
     visits:mode==='empty'?[]:mode==='disabled'?visits.filter(v=>v.origin==='history'):visits,scopes:mode==='empty'?[]:scopes};
 }
+const savedOutcomes=new Map<string,SalesOutcome>(),outcomeCommands=new Map<string,SalesOutcome>();
+export const designerOutcomeClient:OutcomeClient={read:async id=>savedOutcomes.get(id)??unrecordedSalesOutcome(id),record:async(id,command)=>{
+  if(outcomeCommands.has(command.commandId))return outcomeCommands.get(command.commandId)!;
+  const current=savedOutcomes.get(id)??unrecordedSalesOutcome(id);if(current.revision!==command.expectedRevision)throw new OutcomeError(409);
+  const next={projectId:id,outcome:command.outcome,revision:current.revision+1,updatedAt:new Date().toISOString(),basis:command.basis};
+  savedOutcomes.set(id,next);outcomeCommands.set(command.commandId,next);return next;
+}};
 const savedAssignments=new Map<string,SalesDesigner>();
 const commands=new Map<string,SalesDesigner>();
 export const designerAssignmentClient:AssignmentClient={
@@ -33,6 +44,6 @@ export const designerLoader:DesignerLoader=async(filters,signal)=>{
   const mode=new URLSearchParams(window.location.search).get('designerScenario')??'complete';
   await new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,mode==='slow'?2500:300);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new Error('Aborted'));},{once:true});});
   if(mode==='failure'||mode==='denied')throw new Error(mode==='denied'?'Developer access is required.':'Synthetic read failure. Retry when available.');
-  const report=designerFixture(mode);savedAssignments.clear();commands.clear();for(const a of report.assignments)savedAssignments.set(a.projectId,a);
+  const report=designerFixture(mode);savedAssignments.clear();commands.clear();savedOutcomes.clear();outcomeCommands.clear();for(const o of report.salesOutcomes)savedOutcomes.set(o.projectId,o);for(const a of report.assignments)savedAssignments.set(a.projectId,a);
   return {...report,start:filters.start,end:filters.end};
 };

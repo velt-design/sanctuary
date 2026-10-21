@@ -11,6 +11,23 @@ component identity. Test both completion orders and superseded failures; verify
 the final data-to-chart interval in an optimized browser with complete content.
 Owner: `marketing-performance.md` and `usePreparedReportViews`.
 
+## 2026-10-21: Attribute accepted jobs independently of visits
+
+Owner instruction: "Go ahead and update the report so all accepted jobs are
+attributed to designers, keep site visit conversion separate and exclude cancelled
+or refunded jobs from the going ahead figures." The accepted-family source covers
+jobs without retained original visits. Net accepted jobs retain completed sales,
+exclude recorded whole-job cancellation/refund and withdrawn acceptance, and
+separately expose gross history, add-on scope values and Unassigned projects.
+
+No structured refund classification exists in the payment ledger. A narrow,
+audited owner correction records the reporting fact without changing finance,
+operational work or provider eligibility. Partial adjustments/notes are not
+inferred refunds; independent operational cancellation cannot be cleared through
+the correction. Same command/revision safeguards as designer assignment apply.
+See [accepted designer sales](marketing-performance.md#accepted-jobs-by-designer-21-october-2026)
+for date semantics, implementation ownership and verification limits.
+
 ## 2026-10-21: prove access boundaries through the compiled framework
 
 Next normalizes Flight headers before middleware, so header mocks alone cannot

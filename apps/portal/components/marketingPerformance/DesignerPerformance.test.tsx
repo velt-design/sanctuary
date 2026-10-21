@@ -45,7 +45,7 @@ it('labels disabled-source activity as manual-only and leaves conversion unavail
 it('opens the exact original cohort from its count while keeping broader assignment management separate',async()=>{
  const report=designerFixture();report.assignments.push({projectId:report.visits[5].projectId!,designerKey:'jordan',revision:1,updatedAt:report.asOf,basis:'Synthetic assignment'});
  const view=renderIntoDocument(<DesignerPerformance hub={hubFixture} filters={filters} apply={vi.fn()} loader={async()=>report} synthetic/>);await flush();
- const row=[...view.container.querySelectorAll('tbody tr')].find(r=>r.querySelector('th')?.textContent==='Jordan')!;
+ const row=[...view.container.querySelectorAll('table[aria-label="Recorded visit conversion"] tbody tr')].find(r=>r.querySelector('th')?.textContent==='Jordan')!;
  const original=row.querySelectorAll('td')[1].querySelector('button')!;expect(original.textContent).toBe('1');act(()=>original.click());
  let dialog=view.container.querySelector('[role=dialog]')!;expect(dialog.getAttribute('aria-label')).toContain('Original-visit projects');expect(dialog.querySelectorAll('ul > li')).toHaveLength(1);expect(dialog.textContent).not.toContain('2026-09-20');
  act(()=>row.querySelectorAll('td')[4].querySelector('button')!.click());dialog=view.container.querySelector('[role=dialog]')!;
@@ -62,7 +62,7 @@ it('retains the selected designer through clearing their last assignment and a f
  const client:AssignmentClient={assign:async(id,command)=>{const value={projectId:id,designerKey:command.designerKey,revision:2,updatedAt:current.asOf,basis:command.basis};current={...current,assignments:current.assignments.map(a=>a.projectId===id?value:a)};return value;},read:async()=>current.assignments.find(a=>a.projectId===projectId)!};
  const apply=vi.fn(),selected={...filters,designer:'ellen'},loader:DesignerLoader=async()=>structuredClone(current);
  const props={hub:hubFixture,filters:selected,apply,loader,assignmentClient:client};const view=renderIntoDocument(<DesignerPerformance {...props}/>);await flush();
- const row=[...view.container.querySelectorAll('tbody tr')].find(r=>r.querySelector('th')?.textContent==='Ellen')!;
+ const row=[...view.container.querySelectorAll('table[aria-label="Recorded visit conversion"] tbody tr')].find(r=>r.querySelector('th')?.textContent==='Ellen')!;
  act(()=>row.querySelectorAll('td')[4].querySelector('button')!.click());
  const dialog=view.container.querySelector('[role=dialog]')!;act(()=>[...dialog.querySelectorAll('button')].find(b=>b.textContent==='Assign sales designer')!.click());
  act(()=>{const select=dialog.querySelector('select')!;select.value='';select.dispatchEvent(new Event('change',{bubbles:true}));const textarea=dialog.querySelector('textarea')!;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(textarea,'Clear synthetic assignment');textarea.dispatchEvent(new Event('input',{bubbles:true}));});

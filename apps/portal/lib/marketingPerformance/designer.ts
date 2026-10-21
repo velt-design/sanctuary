@@ -1,6 +1,7 @@
 import { aucklandDay } from './contract';
 import type { DesignerReport,DesignerVisit,DesignerScope } from './designerContract';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
+import { projectSalesExclusion } from './designerSales';
 
 export const visitIssueLabels:Record<string,string>={date:'Date not recorded',future:'Attendance dated in the future',identity:'Attendee identity not verified',link:'Project not linked',purpose:'Original purpose not confirmed',source:'Source or review questions unresolved',originals:'Conflicting original visits',originalIncomplete:'Another original record needs verification',chronology:'Sale predates visit or ordering is unknown'};
 const periodVisit=(v:DesignerVisit,r:DesignerReport)=>Boolean(v.day&&v.day>=r.start&&v.day<=r.end);
@@ -48,8 +49,9 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
     if(scopes.some(s=>(s.paymentEvidence&&!s.paidAt)||(s.paidAt&&!afterVisit(s.paidAt,first,report.asOf)))){for(const v of visits)issues.set(v.id,[...issues.get(v.id)!,'chronology']);continue;}
     if(!periodVisit(first,report)||(designer&&(assignments.get(projectId)??'unassigned')!==designer))continue;
     const quoted=scopes.filter(s=>afterVisit(s.firstSentAt,first,report.asOf));
-    const accepted=scopes.filter(s=>s.accepted&&afterVisit(s.acceptedAt,first,report.asOf));
-    const paid=scopes.filter(s=>afterVisit(s.paidAt,first,report.asOf));
+    const excluded=projectSalesExclusion(report,projectId);
+    const accepted=excluded?[]:scopes.filter(s=>s.accepted&&afterVisit(s.acceptedAt,first,report.asOf));
+    const paid=excluded?[]:scopes.filter(s=>afterVisit(s.paidAt,first,report.asOf));
     const quoteAt=scopes.some(s=>s.undatedSend)?null:scopes.map(s=>s.firstSentAt).filter((s):s is string=>Boolean(s)).sort()[0]??null;
     const paidAt=paid.map(s=>s.paidAt!).sort()[0]??null;
     outcomes.push({visit:first,designerKey:assignments.get(projectId)??null,quoted,accepted,paid,undatedQuotes:scopes.filter(s=>s.undatedSend),undatedAcceptances:scopes.filter(s=>s.accepted&&!s.acceptedAt),quoteDays:days(quoteAt,first,report.asOf),depositDays:days(paidAt,first,report.asOf)});
