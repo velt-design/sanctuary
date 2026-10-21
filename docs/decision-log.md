@@ -11,6 +11,11 @@ retain API retries. Independent client defaults must remain correct across an
 Auckland midnight. Measure complete content and transport separately from local
 promise plumbing. Owner: `marketing-performance.md` and its initial hub helpers.
 
+Flight thenables can inherit `Promise.prototype` while their own `then` returns
+void. Normalize through native `Promise.resolve` before chaining; `instanceof`
+is insufficient. Use that shape in pending, synchronous fulfillment, rejection,
+StrictMode and host recovery tests, then verify the compiled stream itself.
+
 ## 2026-10-21: prepare selected report components before their first visible mount
 
 A raw dynamic import can finish while React.lazy still has an uninitialized

@@ -7,7 +7,10 @@ Run `hubDocumentSelection`, `readHub.server`, the hub API/page tests,
 regional authority and report suites. Cover deferred page return, staff/developer
 and preview denial, exact/default Auckland dates, RSC/prefetch/Financial exclusions,
 one initial read, StrictMode, date/loader races, unmount, unavailable evidence,
-API retry, filters and record return. The neutral optimized scheduling experiment
+API retry, filters and record return. Use Flight-shaped thenables in hook/host
+tests, including a void-returning
+`then` and synchronous fulfillment; native promises alone miss that boundary.
+The neutral optimized scheduling experiment
 uses identical full fictional reports, assets and availability delays for client
 and streamed starts. It adds no simulated auth advantage. Verify actual Flight
 streaming, complete panel content, final data-to-content delay and retained

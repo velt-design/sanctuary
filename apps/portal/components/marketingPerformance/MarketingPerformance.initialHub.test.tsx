@@ -14,7 +14,10 @@ vi.mock('@/components/ui/drawer/Drawer', () => ({ Drawer: ({ open, children, tit
 vi.mock('recharts', () => ({ Bar: () => null, BarChart: () => null, Line: () => null, LineChart: () => null, Cell: () => null, CartesianGrid: () => null, ReferenceLine: () => null, ResponsiveContainer: () => null, Tooltip: () => null, XAxis: () => null, YAxis: () => null }));
 function deferred() {
   let resolve!: (result: HubReadResult) => void;
-  const result = new Promise<HubReadResult>(yes => { resolve = yes; });
+  const native = new Promise<HubReadResult>(yes => { resolve = yes; });
+  const result = Object.create(Promise.prototype, { then: { value: (yes: (value: HubReadResult) => unknown, no: (error: unknown) => unknown) => {
+    void native.then(yes, no);
+  } } }) as Promise<HubReadResult>;
   return { resolve, seed: { ...fixtureFilters, result } satisfies InitialHubSeed };
 }
 afterEach(() => { window.history.replaceState(null, '', '/'); sessionStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });

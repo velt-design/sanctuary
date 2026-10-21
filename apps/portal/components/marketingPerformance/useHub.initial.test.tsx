@@ -20,13 +20,20 @@ function Harness({ filters = fixtureFilters, seed, loader, revision = 0, skip = 
   return <div>{JSON.stringify({ busy: state.busy, error: state.error, report: state.hub })}</div>;
 }
 const state = (container: HTMLElement) => JSON.parse(container.textContent!);
-const seedFrom = (result: Promise<HubReadResult>): InitialHubSeed => ({ ...fixtureFilters, result });
+// Flight inherits Promise.prototype but its own then returns void. Include both
+// synchronous fulfilled callbacks and deferred fulfillment/rejection.
+const seedFrom = (source: Promise<HubReadResult> | HubReadResult): InitialHubSeed => ({ ...fixtureFilters,
+  result: Object.create(Promise.prototype, { then: { value: (yes: (value: HubReadResult) => unknown, no: (error: unknown) => unknown) => {
+    if ('then' in source) { void source.then(yes, no); } else { yes(source); }
+  } } }) as Promise<HubReadResult>,
+});
 const reportFor = (filters: Filters): HubReport => ({ ...hubFixture, start: filters.start, end: filters.end,
   enquiries: { ...hubFixture.enquiries, start: filters.start, end: filters.end },
   events: hubFixture.events.filter(event => event.day >= filters.start && event.day <= filters.end) });
 
 it('consumes the complete initial report once without duplicate API reads, then refreshes normally', async () => {
   const pending = deferred<HubReadResult>(), seed = seedFrom(pending.promise), loader = vi.fn<HubLoader>(async filters => reportFor(filters));
+  expect(seed.result instanceof Promise).toBe(true); expect(seed.result.then(() => {}, () => {})).toBeUndefined();
   const view = renderIntoDocument(<Harness loader={loader} seed={seed} />);
   expect(state(view.container)).toMatchObject({ busy: true, report: null }); expect(loader).not.toHaveBeenCalled();
   await act(async () => pending.resolve({ ok: true, report: hubFixture }));
@@ -89,7 +96,7 @@ it('shares the pending attempt across StrictMode replay and ignores a rejected s
   const view = renderIntoDocument(<StrictMode><Harness loader={loader} seed={seed} /></StrictMode>);
   expect(loader).not.toHaveBeenCalled(); await act(async () => pending.resolve({ ok: true, report: hubFixture }));
   expect(state(view.container).report).toEqual(hubFixture); expect(loader).not.toHaveBeenCalled(); view.unmount();
-  const settled = renderIntoDocument(<StrictMode><Harness loader={loader} seed={seedFrom(Promise.resolve({ ok: true, report: hubFixture }))} /></StrictMode>);
+  const settled = renderIntoDocument(<StrictMode><Harness loader={loader} seed={seedFrom({ ok: true, report: hubFixture })} /></StrictMode>);
   await act(async () => {}); expect(state(settled.container).report).toEqual(hubFixture); expect(loader).not.toHaveBeenCalled(); settled.unmount();
   const late = deferred<HubReadResult>(), removed = renderIntoDocument(<Harness loader={loader} seed={seedFrom(late.promise)} />);
   removed.unmount(); await act(async () => late.reject(new Error('private transport details')));

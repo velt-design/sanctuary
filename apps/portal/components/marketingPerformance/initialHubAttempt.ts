@@ -11,7 +11,7 @@ export function initialHubAttempt(seed?: InitialHubSeed, owner?: unknown) {
     take(filters: Filters, revision: number, currentOwner = owner): Promise<HubReport> | null {
       if (retired) return null;
       if (!seed || currentOwner !== owner || revision !== 0 || filters.start !== seed.start || filters.end !== seed.end) { retired = true; return null; }
-      pending ??= seed.result.then(result => {
+      pending ??= Promise.resolve(seed.result).then(result => {
         if (!result.ok) throw new Error(result.error);
         const report = hubSchema.safeParse(result.report);
         if (!report.success || report.data.start !== seed.start || report.data.end !== seed.end)
