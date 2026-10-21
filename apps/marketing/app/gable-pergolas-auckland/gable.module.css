@@ -1,0 +1,91 @@
+.page { --gable-gutter: clamp(22px, 4vw, 64px); background: #f1f0eb; color: #20251e; }
+.hero, .content { width: min(100%, 1440px); margin-inline: auto; padding-inline: var(--gable-gutter); }
+.page h1, .page h2, .page h3 { font-family: 'Instrument Sans Variable', sans-serif; font-weight: 500; letter-spacing: -.045em; text-wrap: balance; }
+.page p { line-height: 1.65; }
+.page figure { margin: 0; }
+.page figcaption, .small { color: #555d51; font-size: .8rem; line-height: 1.55; }
+.page figcaption { padding-top: 12px; }
+.eyebrow { color: #58614f; font-size: .68rem; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; margin: 0 0 17px; }
+.hero { padding-top: 52px; padding-bottom: 64px; }
+.opening { display: grid; grid-template-columns: 1.15fr 1fr; gap: 7%; align-items: end; margin-bottom: 32px; }
+.page h1 { font-size: clamp(3.2rem, 5.5vw, 5.4rem); line-height: 1.01; margin: 0; }
+.intro { max-width: 420px; font-size: 1rem; margin: 0 0 20px; }
+.primary, .textLink { display: inline-flex; align-items: center; gap: 14px; min-height: 44px; text-decoration: none; font-size: .82rem; font-weight: 600; }
+.primary { background: #3f4a3a; color: #fff; padding: 15px 23px; }
+.primary:hover { background: #303c2c; }
+.textLink { color: inherit; border-bottom: 1px solid #a7ae9f; }
+.page .primary svg, .page .textLink svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.page a:focus-visible, .page summary:focus-visible { outline: 2px solid #536449; outline-offset: 5px; }
+.heroPhoto img { display: block; width: 100%; height: auto; aspect-ratio: 1.9; object-fit: cover; object-position: 50% 50%; }
+.heroFoot { display: flex; justify-content: space-between; align-items: center; gap: 22px; margin-top: 14px; }
+.heroFoot p { margin: 0; }
+.formSection, .examples, .planning, .questions, .designer { scroll-margin-top: 110px; border-top: 1px solid #c8cdbf; padding-block: 64px; }
+.page h2 { margin: 0 0 22px; font-size: clamp(2.1rem, 3.8vw, 3.5rem); line-height: 1.08; }
+.page h3 { margin: 0 0 12px; font-size: 1.75rem; line-height: 1.15; }
+.formSection { display: grid; grid-template-columns: 1fr 1.1fr; gap: 9%; align-items: center; }
+.formCopy > p:not(.eyebrow) { max-width: 480px; }
+.formCopy dl { margin: 26px 0 0; }
+.formCopy dl > div { padding-block: 14px; border-top: 1px solid #c8cdbf; }
+.formCopy dt { font-weight: 600; font-size: .9rem; }
+.formCopy dd { margin: 5px 0 0; line-height: 1.6; font-size: .88rem; color: #555d51; }
+.sectionDiagram svg { width: 100%; height: auto; display: block; color: #394333; }
+.sectionDiagram svg text { font: 16px 'Inter Variable', sans-serif; fill: currentColor; }
+.sectionDiagram circle { fill: currentColor; }
+.structure, .roof { fill: none; stroke: currentColor; stroke-width: 8; stroke-linejoin: round; }
+.roof { stroke-width: 12; }
+.ground, .guideLine { fill: none; stroke: #8b9682; stroke-width: 1; }
+.guideLine { stroke-dasharray: 4 5; }
+.examples > header { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 10%; margin-bottom: 42px; }
+.examples > header p:not(.eyebrow) { max-width: 440px; }
+.story { display: grid; grid-template-columns: 1.12fr 1fr; gap: 8%; align-items: center; margin-top: 54px; }
+.story:nth-of-type(even) { grid-template-columns: 1fr 1.12fr; }
+.story:nth-of-type(even) figure { order: 2; }
+.story figure img { width: 100%; height: auto; display: block; aspect-ratio: 1.2; object-fit: cover; }
+.story:first-of-type figure img { aspect-ratio: 1.1; object-position: 50% 30%; }
+.story p { max-width: 440px; }
+.story .small { border-left: 2px solid #a4af98; padding-left: 14px; margin-block: 24px; }
+.planning { display: grid; grid-template-columns: .9fr 1.1fr; gap: 9%; }
+.planning ol { list-style: none; padding: 0; margin: 0; counter-reset: decision; }
+.planning li { position: relative; padding: 0 0 24px 40px; counter-increment: decision; }
+.planning li::before { content: '0' counter(decision); position: absolute; left: 0; top: 4px; font-size: .7rem; color: #68745f; }
+.planning li p { margin-top: 0; }
+.planning h3 { font-size: 1.35rem; }
+.designer { display: flex; justify-content: space-between; align-items: center; gap: 50px; }
+.designer > div { max-width: 660px; }
+.designer h2 { font-size: 2.25rem; }
+.designer > a { flex-shrink: 0; }
+.questions { display: grid; grid-template-columns: .8fr 1.2fr; gap: 8%; }
+.questions details { border-top: 1px solid #c8cdbf; }
+.questions summary { cursor: pointer; padding: 20px 0; font-size: .95rem; font-weight: 550; line-height: 1.5; }
+.questions details p { margin: 0 0 22px; font-size: .9rem; }
+.page :global(#project-details) { scroll-margin-top: 110px; }
+.page :global(#project-details > div) { max-width: 1440px; padding-inline: var(--gable-gutter); }
+@media (max-width: 800px) {
+  .hero { padding-top: 27px; padding-bottom: 36px; }
+  .opening { display: block; margin-bottom: 24px; }
+  .page h1 { font-size: clamp(2.65rem, 9.8vw, 4.2rem); line-height: 1.04; }
+  .eyebrow { margin-bottom: 12px; }
+  .intro { margin: 18px 0 16px; font-size: .92rem; line-height: 1.55; max-width: 500px; }
+  .primary { width: 100%; justify-content: space-between; }
+  .heroPhoto img { aspect-ratio: 1.33; object-position: 50% 50%; }
+  .heroFoot { align-items: start; flex-direction: column; gap: 8px; }
+  .formSection, .examples, .planning, .questions, .designer { padding-block: 40px; }
+  .formSection, .examples > header, .story, .story:nth-of-type(even), .planning, .questions { grid-template-columns: 1fr; gap: 24px; }
+  .sectionDiagram { margin-top: 10px !important; }
+  .examples > header { margin-bottom: 0; gap: 0; }
+  .story { margin-top: 34px; }
+  .story:nth-of-type(even) figure { order: 0; }
+  .story figure img { aspect-ratio: 1.2; }
+  .story h3 { font-size: 1.8rem; }
+  .story p { margin-bottom: 16px; }
+  .story .small { margin-block: 17px; }
+  .designer { display: block; }
+  .designer > a { margin-top: 10px; }
+  .questions { gap: 12px; }
+}
+@media (max-width: 360px) {
+  .hero { padding-top: 20px; }
+  .page h1 { font-size: 2.3rem; }
+  .intro { font-size: .88rem; margin-top: 14px; }
+  .primary { padding: 13px 18px; }
+}

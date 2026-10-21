@@ -1,5 +1,28 @@
 # Marketing UI Foundation
 
+## Gable form guide (21 October 2026)
+
+The existing `/gable-pergolas-auckland` route uses its page/content/CSS and a
+small `GableSection` illustration to explain the actual form. Riverhead's complete
+gable leads; Dairy Flat, Warkworth and Riverhead roof details show acrylic,
+combination and timber-lined applications. The centred 1440px canvas retains
+normal site chrome, generous original photographs, useful planning and directly
+accessible FAQs. The section diagram is qualitative, not a structural detail.
+
+`SeoLandingPage` still owns schema and the canonical enquiry. Required phone,
+all three audiences, optional dimensions/brief/photos, consent, native fallback
+and retry are unchanged. Validated incoming source/reference context is passed
+through `parseEnquiryContext`, without inventing a guided recommendation. The
+optional Gable product link continues into the existing selector and full designer;
+its saved choices and standard-configuration estimate remain owned there.
+
+`components/enquiry/EnquiryLink` now owns the previously verified enquiry anchor
+behavior. The acrylic/louvre guide retains its original module as a re-export.
+Both routes preserve router history, first/repeat target focus, modified clicks
+and native no-JavaScript links. No pricing, tracking, form policy or SQL changes
+are part of this revision. Hosted build, independent review and operational rollout
+are recorded separately from fenced local fixture journeys.
+
 ## Marketing arrows (21 October 2026)
 
 Public Marketing arrows use vector geometry, not Unicode glyphs that a device can
@@ -43,7 +66,8 @@ canonical URL, guide navigation, sitemap discovery and governed schema remain.
 Release build, review and rollout are separately recorded evidence. Local simulated
 submissions do not prove delivery or current production advertising attribution.
 
-The two guide enquiry anchors use route-local `EnquiryLink`, backed by Next Link,
+The two comparison enquiry anchors use the retained `EnquiryLink` adapter to the
+shared enquiry component, backed by Next Link,
 so visiting a project and using Back restores the guide's router state as well as
 its fragment URL. An already-current enquiry fragment repeats the native target
 scroll without creating another history entry or triggering a same-URL refresh.
