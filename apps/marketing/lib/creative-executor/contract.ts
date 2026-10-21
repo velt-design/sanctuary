@@ -28,16 +28,32 @@ const boundedJson = z.custom<CreativeJson>((value) => {
   };
   return valid(value, 0) && Buffer.byteLength(JSON.stringify(value)) <= 6000;
 });
-const tags = z.literal('utm_source=facebook&utm_medium=paid_social&utm_campaign={{campaign.id}}&utm_content={{ad.id}}&utm_term={{adset.id}}');
+export function approvedCreativeTags(value:unknown):'legacy_five'|'approved_six'|'invalid'{
+ if(typeof value!=='string'||value.length>400||/[\r\n\0]/.test(value))return'invalid';
+ const pairs=value.split('&').map(part=>part.split('=')),expected:Record<string,string>={utm_source:'facebook',utm_medium:'paid_social',utm_campaign:'{{campaign.id}}',utm_content:'{{ad.id}}',utm_term:'{{adset.id}}'};
+ if(pairs.some(([key])=>key==='utm_id'))expected.utm_id='{{campaign.id}}';
+ if(pairs.length!==Object.keys(expected).length||new Set(pairs.map(([key])=>key)).size!==pairs.length||pairs.some(pair=>pair.length!==2||expected[pair[0]!]!==pair[1]))return'invalid';
+ return expected.utm_id?'approved_six':'legacy_five';
+}
+const tags=z.string().max(400).refine(value=>approvedCreativeTags(value)!=='invalid');
 const common = { id, page: id, primary: text, path, urlTags: tags };
 export const imageCreativeSchema = z.object({ ...common, format: z.literal('image'), imageHash: z.string().regex(/^[a-f0-9]{32}$/),
   headline: z.string().min(1).max(120), description: z.string().max(200), action: z.enum(['LEARN_MORE', 'GET_QUOTE']) }).strict();
 export const videoCreativeSchema = z.object({ ...common, format: z.literal('video_assets'), payload: z.object({
-  object_story_spec: boundedJson, asset_feed_spec: boundedJson, degrees_of_freedom_spec: boundedJson.optional(),
+  object_story_spec: boundedJson, asset_feed_spec: boundedJson, media_sourcing_spec:boundedJson.optional(),creative_sourcing_spec:boundedJson.optional(),degrees_of_freedom_spec: boundedJson.optional(),
   interactive_components_spec: boundedJson.optional(), platform_customizations: boundedJson.optional(),
   contextual_multi_ads: boundedJson.optional(), instagram_user_id: id.optional(),
 }).strict() }).strict();
-export const creativeSchema = z.discriminatedUnion('format', [imageCreativeSchema, videoCreativeSchema]);
+// The video_data representation does not establish the number of UI-selected
+// placements/media. Preserve the complete supported response, never flatten it.
+const videoSources=z.object({videos:z.array(z.object({video_id:id}).passthrough()).length(2),images:boundedJson.optional(),bodies:boundedJson.optional(),titles:boundedJson.optional(),descriptions:boundedJson.optional(),destinations:boundedJson.optional(),posts:boundedJson.optional(),related_media:boundedJson.optional(),push_metadata_ids:boundedJson.optional()}).strict().refine(v=>new Set(v.videos.map(x=>x.video_id)).size===2&&boundedJson.safeParse(v).success);
+const thumbnail=z.string().url().max(2000).refine(value=>{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&(u.hostname==='fbcdn.net'||u.hostname.endsWith('.fbcdn.net'));});
+export const storyVideoCreativeSchema=z.object({...common,format:z.literal('video_story'),payload:z.object({
+ object_story_spec:z.object({page_id:id,video_data:z.object({video_id:id,message:text,title:z.string().min(1).max(120),link_description:z.string().max(200).optional(),customization_rules_spec:boundedJson.optional(),collection_thumbnails:boundedJson.optional(),additional_image_index:z.number().int().nonnegative().max(10).optional(),image_url:thumbnail.optional(),image_hash:z.string().regex(/^[a-f0-9]{32}$/).optional(),
+ call_to_action:z.object({type:z.enum(['GET_DETAILS','LEARN_MORE','GET_QUOTE']),value:z.object({link:z.string().url().max(300)}).strict()}).strict()}).strict()}).strict(),
+ media_sourcing_spec:videoSources,creative_sourcing_spec:boundedJson.optional(),degrees_of_freedom_spec:boundedJson.optional(),interactive_components_spec:boundedJson.optional(),platform_customizations:boundedJson.optional(),contextual_multi_ads:boundedJson.optional(),instagram_user_id:id.optional(),
+}).strict()}).strict().refine(v=>{const story=v.payload.object_story_spec,video=story.video_data;return v.payload.media_sourcing_spec.videos.some(x=>x.video_id===video.video_id)&&story.page_id===v.page&&video.message===v.primary&&!!(video.image_url||video.image_hash)&&video.call_to_action.value.link===`https://www.sanctuarypergolas.co.nz${v.path}`;});
+export const creativeSchema = z.discriminatedUnion('format', [imageCreativeSchema, videoCreativeSchema,storyVideoCreativeSchema]);
 export type Creative = z.infer<typeof creativeSchema>;
 export function creativeAssetHash(creative: Creative) {
   const copy = structuredClone(creative);
@@ -48,6 +64,7 @@ export function creativeAssetHash(creative: Creative) {
     const story = copy.payload.object_story_spec as { video_data?: { message?: string } };
     if (story.video_data?.message !== undefined) story.video_data.message = '';
   }
+  if(copy.format==='video_story')copy.payload.object_story_spec.video_data.message='';
   return canonicalHash(copy);
 }
 export const executionPlanSchema = z.object({ version: z.literal(1), landingTemplate: hash, purpose: z.enum(['paused_capability', 'formal_experiment']), capabilityDiagnostics:z.object({pageRead:z.enum(['confirmed','unavailable']),studyInventory:z.enum(['complete','partial','unavailable']),nativeEligibility:z.literal('unverified')}).strict().optional(), experiment: z.uuid(),
@@ -64,7 +81,7 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
   evaluation: z.object({ primary: z.literal('genuine_saved_enquiries_per_actual_NZD'), interval: z.literal('exact_conditional_poisson_rate_ratio_95'), providerEvent: z.literal('website_lead'), durationDays: z.literal(14), maturationHours: z.literal(72),
     formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.literal('inconclusive') }).strict(),
 }).strict().superRefine((p, ctx) => {
-  const validReview = p.purpose === 'formal_experiment' ? !!p.generator && !!p.reviewer && p.generator !== p.reviewer && p.challengerPrimary !== p.control.primary && nativeWindowValid(p.start,p.end) && Date.parse(p.approvalUntil)>=(p.end+72*3600)*1000
+  const validReview = p.purpose === 'formal_experiment' ? p.control.format!=='video_story' && (p.control.format!=='video_assets'||p.control.payload.media_sourcing_spec===undefined) && !!p.generator && !!p.reviewer && p.generator !== p.reviewer && p.challengerPrimary !== p.control.primary && nativeWindowValid(p.start,p.end) && Date.parse(p.approvalUntil)>=(p.end+72*3600)*1000
     : p.generator === null && p.reviewer === null && p.challengerPrimary === p.control.primary && p.end>p.start && p.end-p.start<=3600;
   if (!validReview || !p.originalAds.includes(p.controlAd) || p.control.page !== p.scope.page
     || p.end <= p.start
