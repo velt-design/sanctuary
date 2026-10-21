@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/foundation/FoundationControls';
-import { Drawer } from '@/components/ui/drawer/Drawer';
+import { Drawer } from '@/components/marketingPerformance/MarketingDrawer';
 import styles from './Financials.module.css';
 
 /** Keep report coordinates stable while loading, retaining evidence or recovering. */
