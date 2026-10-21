@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Button, Input, Select } from '@/components/ui/foundation/FoundationControls';
 import { Drawer } from '@/components/marketingPerformance/MarketingDrawer';
-import { completedMonth, financialsQuery, nzDay, previousQuery, yearToDate, type Financials, type FinancialSelection } from '@/lib/xero/financials/contract';
+import { completedMonth, financialsQuery, nzDay, previousQuery, yearToDate, type FinancialEvidence, type FinancialSelection } from '@/lib/xero/financials/contract';
 import styles from './Financials.module.css';
 
-export default function FinancialToolbar({ selection, apply, report, busy, retry }: { selection: FinancialSelection; apply: (next: FinancialSelection) => void; report: Financials | null; busy: boolean; retry: () => void }) {
+export default function FinancialToolbar({ selection, apply, report, busy, retry }: { selection: FinancialSelection; apply: (next: FinancialSelection) => void; report: FinancialEvidence | null; busy: boolean; retry: () => void }) {
   const [open,setOpen] = useState(false), [draft,setDraft] = useState(selection), [error,setError] = useState('');
   const month = completedMonth(), previous = previousQuery(month);
   const fy = report?.financialYearEnd ? yearToDate(report.financialYearEnd) : null;

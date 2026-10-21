@@ -2,8 +2,9 @@ import { requireStaffContext, jsonError, jsonOk } from '@/lib/api/staffApi';
 import { isDeveloper } from '@/lib/developerAccess';
 import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
 import { positionRuntime } from '@/lib/xero/financePositionRuntime';
+import { readFinancialPanel } from '@/lib/xero/financials/panel';
 import { readFinancials } from '@/lib/xero/financials/read';
-import { financialsQuery, nzDay } from '@/lib/xero/financials/contract';
+import { financialPanelQuery, financialsQuery, nzDay } from '@/lib/xero/financials/contract';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -21,7 +22,8 @@ export async function GET(request: Request) {
   const finance = await getPaymentPilotSession();
   if (!finance || finance.user.id !== staff.session.user.id) return denied();
   const params = new URL(request.url).searchParams;
-  const parsed = financialsQuery.safeParse(Object.fromEntries(params));
+  const panel = params.has('section')?financialPanelQuery.safeParse(Object.fromEntries(params)):null;
+  const parsed = panel??financialsQuery.safeParse(Object.fromEntries(params));
   if ([...params.keys()].some(key => params.getAll(key).length !== 1) || !parsed.success || parsed.data.to > nzDay())
     return privateResponse(jsonError('Choose a basis and 1–366 accounting dates ending today or earlier.', 400));
   try {
@@ -29,7 +31,8 @@ export async function GET(request: Request) {
       const current = await getPaymentPilotSession();
       if (!current || current.user.id !== finance.user.id || !isDeveloper(current.user)) throw new Error('FINANCIALS_ACCESS_CHANGED');
     });
-    const report = await readFinancials(parsed.data, source.deps, source.deadline);
+    // Already-open clients retain their full wire through rollout and rollback.
+    const report = panel?.success?await readFinancialPanel(panel.data, source.deps, source.deadline):await readFinancials(parsed.data, source.deps, source.deadline);
     return privateResponse(jsonOk({ report }));
   } catch (error) {
     if (error instanceof Error && error.message === 'FINANCIALS_ACCESS_CHANGED') return denied();

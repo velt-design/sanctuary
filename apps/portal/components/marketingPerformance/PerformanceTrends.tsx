@@ -4,8 +4,8 @@ import { filteredRows, type Filters, type MarketingReport, type MarketingRow } f
 import { comparisonMetrics, countChange, previousPeriod, weeklyEnquiries } from '@/lib/marketingPerformance/trends';
 import styles from './MarketingPerformance.module.css';
 
-export default function PerformanceTrends({ rows, filters, previous, comparisonError, onRetry, earliestReceipt }: {
-  rows: MarketingRow[]; filters: Filters; previous: MarketingReport | null; comparisonError: string; onRetry: () => void; earliestReceipt?:string|null;
+export default function PerformanceTrends({ rows, filters, previous, comparisonError, comparisonBusy=false, onRetry, earliestReceipt }: {
+  rows: MarketingRow[]; filters: Filters; previous: MarketingReport | null; comparisonError: string; comparisonBusy?:boolean; onRetry: () => void; earliestReceipt?:string|null;
 }) {
   const [weeklyOpen, setWeeklyOpen] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('weekly') === '1');
   const dates = previousPeriod(filters.start, filters.end);
@@ -15,6 +15,7 @@ export default function PerformanceTrends({ rows, filters, previous, comparisonE
   const weeks = weeklyEnquiries(rows, filters.start, filters.end);
   const peak = Math.max(0, ...weeks.map(week => week.dailyAverage));
   return <Card title="Change over time" padding="compact">
+    {comparisonBusy&&<p role="status">Reading previous-period evidence… Selected-period records are available.</p>}
     <p className={styles.muted}>Same source and campaign filters · previous {dates.days} days: {dates.start} – {dates.end}</p>
     <div className={styles.periodComparison}>
       <Table><TableHeader><TableRow><TableHead scope="col">Recorded enquiries</TableHead><TableHead scope="col">Selected period</TableHead><TableHead scope="col">Previous period</TableHead><TableHead scope="col">Change</TableHead></TableRow></TableHeader>

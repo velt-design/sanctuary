@@ -109,7 +109,13 @@ is lease/generation fenced. See [google-ads-connection.md](google-ads-connection
 
 `GET /api/staff/v1/marketing-performance/financials` requires current staff
 context, confirmed developer identity and the same identity's current finance
-grant before source access. It accepts exactly one from/to/basis query; future,
+grant before source access. It accepts exactly one from/to/basis/section query;
+section is profit, bank, receivables or payables. Only Organisation and the
+requested financial family are read. The strict response identifies that section;
+omitted families are explicitly not requested, never failed or zero. The full
+machine finance-position wire remains unchanged. Already-open clients omitting
+section keep the original full Financials wire under the same authority checks.
+Future,
 invalid, unknown and repeated fields are denied. The server-selected source
 actor/tenant and existing source binding are rechecked before provider reads and
 publication, together with the interactive finance identity. This does not grant

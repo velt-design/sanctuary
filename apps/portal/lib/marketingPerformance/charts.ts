@@ -24,7 +24,7 @@ export function enquiryWeeks(rows:MarketingRow[],start:string,end:string) {
 }
 export function sourceMeasures(rows:MarketingRow[],metric:ChartMetric,scale:string) {
   const groups=new Map<string,MarketingRow[]>();
-  for(const row of rows){const key=row.source??UNKNOWN_SOURCE;groups.set(key,[...(groups.get(key)??[]),row]);}
+  for(const row of rows){const key=row.source??UNKNOWN_SOURCE;let group=groups.get(key);if(!group){group=[];groups.set(key,group);}group.push(row);}
   return [...groups].map(([source,group])=>{
     const s=summarize(group), count=s[metric];
     const denominator=metric==='enquiries'?rows.length:metric==='qualified'?s.eligible:s.origins;

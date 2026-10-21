@@ -31,8 +31,9 @@ export type MarketingRow = z.infer<typeof rowSchema>;
 export type MarketingReport = z.infer<typeof reportSchema>;
 export type Filters = { start: string; end: string; source: string; campaign: string };
 
+const aucklandDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' });
 export function aucklandDay(date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+  return aucklandDate.format(date);
 }
 export function defaultFilters(now = new Date()): Filters {
   const end = aucklandDay(now);

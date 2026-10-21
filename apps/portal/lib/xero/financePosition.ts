@@ -53,7 +53,7 @@ export function parseFinanceReport(raw: unknown, family: 'bankSummary' | 'profit
 }
 export type PositionDependencies = { binding: (signal: AbortSignal) => Promise<FinanceOrganisationBinding>;
   read: (input: PositionRead, signal: AbortSignal) => Promise<unknown[]>; now: () => Date };
-export async function readFinancePosition(query: FinancePositionQuery, deps: PositionDependencies, signal: AbortSignal): Promise<FinancePosition> {
+export async function financePositionReader(query: FinancePositionQuery, deps: PositionDependencies, signal: AbortSignal) {
   const startedAt = deps.now().toISOString();
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' }).format(deps.now());
   if (!financePositionQuery.safeParse(query).success || query.to > today) throw new Error('POSITION_INVALID_QUERY');
@@ -82,7 +82,6 @@ export async function readFinancePosition(query: FinancePositionQuery, deps: Pos
   const reportDomain = async (family: 'bankSummary' | 'profitAndLoss') => organisation.status !== 'available'
     ? { status: 'unavailable' as const, reason: 'metadata_unavailable' as const, requiredScopes: [POSITION_SCOPES[family][0], POSITION_SCOPES.organisation[0]] }
     : domain(family, async () => { const values = await read(family); if (values.length !== 1) throw new PositionReadError('invalid_response'); return parseFinanceReport(values[0], family, query, organisation.data.baseCurrency); });
-  const bankSummary = await reportDomain('bankSummary'), profitAndLoss = await reportDomain('profitAndLoss');
   async function invoices(family: 'receivables' | 'payables') {
     return domain(family, async () => {
       const items: z.infer<typeof financePositionInvoice>[] = []; const ids = new Set<string>();
@@ -100,9 +99,17 @@ export async function readFinancePosition(query: FinancePositionQuery, deps: Pos
       throw new PositionReadError('limit_exceeded');
     });
   }
+  const finish = async () => {
+    const final = await deps.binding(signal); signal.throwIfAborted();
+    if (final.tenantId !== identity.tenantId || final.scope !== identity.scope) throw new Error('POSITION_AUTHORITY_CHANGED');
+  };
+  return { startedAt, identity, organisation, reportDomain, invoices, finish };
+}
+export async function readFinancePosition(query: FinancePositionQuery, deps: PositionDependencies, signal: AbortSignal): Promise<FinancePosition> {
+  const {startedAt,identity,organisation,reportDomain,invoices,finish}=await financePositionReader(query,deps,signal);
+  const bankSummary = await reportDomain('bankSummary'), profitAndLoss = await reportDomain('profitAndLoss');
   const receivables = await invoices('receivables'), payables = await invoices('payables');
-  const final = await deps.binding(signal); signal.throwIfAborted();
-  if (final.tenantId !== identity.tenantId || final.scope !== identity.scope) throw new Error('POSITION_AUTHORITY_CHANGED');
+  await finish();
   const result = financePositionSchema.parse({ schemaVersion: 'sanctuary.praxis.finance-position.v1', query, identity, startedAt,
     checkedAt: deps.now().toISOString(), consistency: 'sequential_read_window', organisation, bankSummary, profitAndLoss, receivables, payables,
     limitations: ['Reports describe their selected dates; outstanding invoices and bills describe the current sequential read window, not a historical balance.',
