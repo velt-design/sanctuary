@@ -1,0 +1,68 @@
+.theme {
+  color-scheme: dark;
+  --ui-canvas: #10110f;
+  --ui-surface: #10110f;
+  --ui-surface-primary: #10110f;
+  --ui-surface-secondary: #1c1d19;
+  --ui-surface-elevated: #151612;
+  --ui-surface-sunken: #22231f;
+  --ui-surface-inverse: #262722;
+  --ui-text-strong: #f7f5ed;
+  --ui-text: #eeede5;
+  --ui-text-muted: #b4b6aa;
+  --ui-text-subtle: #a1a497;
+  --ui-text-inverse: #f7f5ed;
+  --ui-action-text: #ff8a45;
+  --ui-border: #393c33;
+  --ui-border-strong: #62675a;
+  --ui-border-inverse: #393c33;
+  --ui-focus-colour: #ffa365;
+  --ui-focus: #ffa365;
+  --ui-destructive: #ff9787;
+  --ui-destructive-hover: #ffb4a9;
+  --ui-status-success-bg: #1b2b20;
+  --ui-status-success-border: #91b698;
+  --ui-status-warning-bg: #33291b;
+  --ui-status-warning-border: #dbb66e;
+  --ui-status-error-bg: #34221f;
+  --ui-status-error-border: #f49583;
+  --ui-status-info-bg: #202b2c;
+  --ui-status-info-border: #9ebdc0;
+  --ui-status-neutral-bg: #23251f;
+  --ui-status-neutral-border: #a5aa99;
+  --ui-radius-control: 0;
+  --ui-font-size-small: 14px;
+  --ui-font-size-caption: 12px;
+  --ui-font-size-label: 13px;
+  color: var(--ui-text);
+  font-family: var(--ui-font-body);
+}
+.theme :is(button,a,input,select,summary):focus-visible { outline:2px solid var(--ui-focus-colour); outline-offset:3px; }
+.theme :is(input,select,textarea) { color-scheme:dark; }
+.theme a { color:var(--ui-action-text); }
+.theme h2 { font-family:var(--ui-font-display); font-size:30px; line-height:1.1; font-weight:600; }
+.theme h3 { font-family:var(--ui-font-display); font-size:24px; font-weight:600; }
+.theme [role='tab'] { border-right:0; background:transparent; color:var(--ui-text-muted); font-size:12px; padding-inline:18px; min-height:46px; }
+.theme [role='tab'][aria-selected='true'] { color:var(--ui-text-strong); background:transparent; }
+.theme [role='tab']:hover { background:var(--ui-surface-secondary); }
+.theme :global(.recharts-text) { fill:var(--ui-text-muted); }
+.theme :global(.recharts-legend-item-text) { color:var(--ui-text)!important; }
+.theme :global(.recharts-default-tooltip) { background:var(--ui-surface-elevated)!important; border:1px solid var(--ui-border-strong)!important; color:var(--ui-text)!important; padding:14px!important; }
+.theme :global(.recharts-tooltip-item) { color:var(--ui-text)!important; }
+.theme :global(.recharts-tooltip-cursor) { stroke:var(--ui-border-strong); }
+.drawer { background:rgb(0 0 0 / .68); }
+.drawer [data-drawer-panel] { width:min(720px,100vw); max-width:100vw; background:var(--ui-surface-elevated); }
+.drawer [data-drawer-panel] > header { min-height:76px; padding:16px 24px; }
+.drawer [data-drawer-panel] > header h2 { font-size:28px; line-height:1.15; }
+.drawer [data-drawer-panel] > div { padding:20px 24px; }
+.drawer table { color:var(--ui-text); }
+.drawer summary { cursor:pointer; min-height:44px; padding-block:10px; }
+/* Only the mounted report owns this backdrop; ordinary Portal routes retain their palette. */
+:global(body):has(.theme[data-marketing-report]) { background:#10110f; }
+:global([data-portal-sidebar-mode]):has(.theme[data-marketing-report]) { background:#10110f; }
+@media(max-width:650px) {
+  .theme h2 { font-size:28px; }
+  .theme [role='tab'] { min-height:46px; padding-inline:14px; }
+  .drawer [data-drawer-panel] > header { padding:16px; }
+  .drawer [data-drawer-panel] > div { padding:16px; }
+}

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { Button, Select } from '@/components/ui/foundation/FoundationControls';
 
-import { Drawer } from '@/components/ui/drawer/Drawer';
+import { Drawer } from './MarketingDrawer';
 
 import { selectHub, money, type HubFilters, type HubReport } from '@/lib/marketingPerformance/hub';
 
@@ -24,9 +24,16 @@ import styles from './CommercialOverview.module.css';
 
 const labels: Record<CommercialMetric, string> = { quoted: 'Quoted value', accepted: 'Accepted value', average: 'Average accepted quote', enquiryDays: 'Enquiry to first quote', acceptanceDays: 'First quote to acceptance' };
 
-export default function CommercialOverview({ hub, filters, apply, loader, synthetic, revision = 0 }: {
+const compactMoney = (cents: number) => {
+  const dollars = cents / 100;
+  if (Math.abs(dollars) >= 1_000_000) return `$${(dollars / 1_000_000).toLocaleString('en-NZ', { maximumFractionDigits: 2 })}m`;
+  if (Math.abs(dollars) >= 1000) return `$${(dollars / 1000).toLocaleString('en-NZ', { maximumFractionDigits: 1 })}k`;
+  return money(cents);
+};
 
-  hub: HubReport; filters: HubFilters; apply: (filters: HubFilters) => void; loader?: CommercialLoader; synthetic?: boolean; revision?: number;
+export default function CommercialOverview({ hub, filters, apply, loader, synthetic, revision = 0, children }: {
+
+  hub: HubReport; filters: HubFilters; apply: (filters: HubFilters) => void; loader?: CommercialLoader; synthetic?: boolean; revision?: number; children?: ReactNode;
 
 }) {
 
@@ -64,9 +71,10 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
   };
 
-  if (busy) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance" aria-busy="true"><h2>Commercial performance</h2><p role="status">Reading quote values and timing…</p></section>;
+  // Source outcomes use the independent hub read and remain usable during commercial recovery.
+  if (busy) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><div aria-busy="true"><h2>Commercial performance</h2><p role="status">Reading quote values and timing…</p></div>{children}</section>;
 
-  if (!report || error) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><h2>Commercial performance</h2><p role="alert">{error || 'Commercial evidence unavailable.'} No partial values are shown.</p><Button onClick={() => setRetry(n => n + 1)}>Retry commercial report</Button></section>;
+  if (!report || error) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><h2>Commercial performance</h2><p role="alert">{error || 'Commercial evidence unavailable.'} No partial values are shown.</p><Button onClick={() => setRetry(n => n + 1)}>Retry commercial report</Button>{children}</section>;
 
   const selected = selectHub(hub, { ...filters, inspect: 'all' }), ids = new Set(selected.projects.map(p => p.id));
 
@@ -92,43 +100,32 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
   return <section ref={section} className={styles.section} aria-label="Commercial performance">
 
-    <div className={styles.heading}><h2>Commercial performance</h2><span className={styles.note}>{filters.start} – {filters.end} · NZ dates</span></div>
+    <div className={styles.metrics}>{(['quoted', 'accepted', 'average'] as const).map(key => { const currentCoverage = coverage(key); return <div className={styles.metric} key={key}>
 
-    {synthetic && <a className={styles.compare} href={`?${new URLSearchParams({ representative: '1', view: 'overview', start: '2026-08-01', end: '2026-09-22', commercialCoverage: '1' })}`}>Demo: missing history and add-on scope</a>}
-    <p className={styles.note}>NZD including GST · Quote scope values, not invoices or cash received. Select a figure to inspect its records.</p>
-
-    <div className={styles.metrics}>{(['quoted', 'accepted', 'average'] as const).map(key => { const currentCoverage = coverage(key), priorCoverage = coverage(key, true), comparable = currentCoverage === 'covered' && priorCoverage === 'covered'; return <div className={styles.metric} key={key}>
-
-      <button onClick={() => inspect(key)} aria-label={`Inspect ${labels[key]}`}><span>{labels[key]}</span><strong>{valueLabel(key, recordedMetricValue(key, current[key], currentCoverage))}</strong><small>{historyLabel(currentCoverage, current[key].length)}{currentCoverage !== 'covered' ? ' · ' : ''}{current[key].length} recorded commercial {current[key].length === 1 ? 'scope' : 'scopes'}{key === 'average' ? ' · per accepted scope' : ''}</small></button>
-
-      <button className={styles.compare} onClick={() => inspect(key, '', true)}>Previous: {valueLabel(key, recordedMetricValue(key, previous[key], priorCoverage))}{priorCoverage !== 'covered' ? ` · ${historyLabel(priorCoverage, previous[key].length)}` : ''}</button>
-
-      <small>{comparable ? comparison(recordedMetricValue(key, current[key], currentCoverage), recordedMetricValue(key, previous[key], priorCoverage)) : 'Comparison unavailable · period history incomplete'}</small>
+      <button onClick={() => inspect(key)} aria-label={`Inspect ${labels[key]}`} title={valueLabel(key, recordedMetricValue(key, current[key], currentCoverage))}><span>{labels[key]}</span><strong data-unavailable={recordedMetricValue(key, current[key], currentCoverage)===null||undefined}>{recordedMetricValue(key, current[key], currentCoverage)===null?'Unavailable':compactMoney(recordedMetricValue(key, current[key], currentCoverage)!)}</strong><small>{historyLabel(currentCoverage, current[key].length)}{currentCoverage !== 'covered' ? ' · ' : ''}{current[key].length} recorded commercial {current[key].length === 1 ? 'scope' : 'scopes'}{key === 'average' ? ' · per accepted scope' : ''}</small></button>
 
     </div>; })}</div>
 
-    {sendNote && <p className={styles.note}>{sendNote}</p>}
-    <p className={styles.note}>Previous period: {report.priorStart} – {report.priorEnd}, same number of days. {undated > 0 && `${undated} currently accepted scopes across all dates have no acceptance date and cannot be assigned to either period.`}</p>
+    <div className={styles.basisRow}><p className={styles.basis}>Quote scope values · NZD including GST · Selected dates, not invoices or cash received</p><details className={styles.comparisons}><summary>Previous period comparison</summary><div>{(['quoted','accepted','average'] as const).map(key=>{const currentCoverage=coverage(key),priorCoverage=coverage(key,true),comparable=currentCoverage==='covered'&&priorCoverage==='covered';return <div key={key}><h3>{labels[key]}</h3><button className={styles.compare} onClick={()=>inspect(key,'',true)}>Previous: {valueLabel(key,recordedMetricValue(key,previous[key],priorCoverage))}{priorCoverage!=='covered'?` · ${historyLabel(priorCoverage,previous[key].length)}`:''}</button><small>{comparable?comparison(recordedMetricValue(key,current[key],currentCoverage),recordedMetricValue(key,previous[key],priorCoverage)):'Comparison unavailable · period history incomplete'}</small></div>;})}</div></details></div>
+    {sendNote && <p className={styles.notice}>{sendNote}</p>}
+    {undated > 0 && <p className={styles.notice}>{undated} currently accepted scopes across all dates have no acceptance date and cannot be assigned to either period.</p>}
 
     <div className={styles.lower}>
 
-      <div><h3>Quote and acceptance values</h3><Select label="Group values by" value={filters.salesBucket} onChange={e => { inspect(null); apply({ ...filters, salesBucket: e.target.value as 'week' | 'month' }); }}><option value="week">Week</option><option value="month">Month</option></Select><p className={styles.note}>Within selected dates · first and last buckets may be partial{currentCoverage !== 'covered' ? ' · Earlier history is incomplete; bars show recorded values only.' : ''}{unallocated.length > 0 ? ' · Quoted bars are partial dated records; accepted values use acceptance dates.' : ''}</p>
+      <div><div className={styles.trendHeading}><h2>Quoted vs accepted value</h2><div className={styles.legend}><span><i/>Quoted value</span><span><i/>Accepted value</span></div>
+        <details className={styles.trendFigures}><summary>View trend figures</summary><div className={styles.table} tabIndex={0} role="region" aria-label="Commercial trend figures"><table><thead><tr><th>Period (NZ)</th><th>Quoted</th><th>Accepted</th></tr></thead><tbody>{trend.map(b => <tr key={b.key}><th>{b.start} – {b.end}{b.partial ? ' · partial dates' : ''}{b.coverage !== 'covered' && <small>{historyLabel(b.coverage, b.quotedCount + b.acceptedCount)}</small>}</th><td><button className={styles.compare} onClick={() => inspect('quoted', b.key)}>{b.quoted === null ? 'Unavailable' : money(b.quoted)} · {b.quotedCount} recorded scopes{b.quotedCoverage !== 'covered' ? ` · ${historyLabel(b.quotedCoverage,b.quotedCount)}` : ''}</button></td><td><button className={styles.compare} onClick={() => inspect('accepted', b.key)}>{b.accepted === null ? 'Unavailable' : money(b.accepted)} · {b.acceptedCount} recorded scopes</button></td></tr>)}</tbody></table></div></details>
+        <Select label="Group values by" value={filters.salesBucket} onChange={e => { inspect(null); apply({ ...filters, salesBucket: e.target.value as 'week' | 'month' }); }}><option value="week">Week</option><option value="month">Month</option></Select></div><p className={styles.note}>Within selected dates · first and last buckets may be partial{currentCoverage !== 'covered' ? ' · Earlier history is incomplete; lines show recorded values only.' : ''}{unallocated.length > 0 ? ' · Quoted values are partial dated records; accepted values use acceptance dates.' : ''}</p>
 
-        <div className={styles.chart}>{trend.every(b => b.quoted === null && b.accepted === null) ? <p className={styles.note}>Incomplete history for these dates. No verified values to plot.</p> : <ResponsiveContainer width="100%" height={260} minWidth={0}><BarChart data={trend} accessibilityLayer margin={{ left: 0, right: 8 }}>
+        <div className={styles.chart}>{trend.every(b => b.quoted === null && b.accepted === null) ? <p className={styles.note}>Incomplete history for these dates. No verified values to plot.</p> : <ResponsiveContainer width="100%" height="100%" minWidth={0}><LineChart data={trend} accessibilityLayer margin={{ left: 0, right: 20, top:12, bottom:12 }}>
 
-          <CartesianGrid vertical={false} stroke="var(--ui-border)"/><XAxis dataKey="label" tick={{ fontSize: 12 }}/><YAxis width={60} tick={{ fontSize: 12 }} tickFormatter={v => `$${Number(v) / 100000}k`}/><Tooltip labelFormatter={(_, payload) => { const b = payload?.[0]?.payload; return b ? `${b.start} – ${b.end}${b.coverage !== 'covered' ? ' · Partial recorded history' : ''}` : ''; }} formatter={(value, name, item) => [typeof value === 'number' ? money(value) : 'Unavailable', `${name}${name === 'Quoted' && item.payload?.quotedCoverage !== 'covered' ? ' · partial recorded history' : ''}`]}/><Legend/>
-
-          <Bar name="Quoted" dataKey="quoted" fill="#276987" isAnimationActive={false} onClick={(_, i) => { if (trend[i]) inspect('quoted', trend[i].key); }} cursor="pointer"/>
-
-          <Bar name="Accepted" dataKey="accepted" fill="#936022" isAnimationActive={false} onClick={(_, i) => { if (trend[i]) inspect('accepted', trend[i].key); }} cursor="pointer"/>
-
-        </BarChart></ResponsiveContainer>}</div>
-
-        <details><summary>View trend figures</summary><div className={styles.table} tabIndex={0} role="region" aria-label="Commercial trend figures"><table><thead><tr><th>Period (NZ)</th><th>Quoted</th><th>Accepted</th></tr></thead><tbody>{trend.map(b => <tr key={b.key}><th>{b.start} – {b.end}{b.partial ? ' · partial dates' : ''}{b.coverage !== 'covered' && <small>{historyLabel(b.coverage, b.quotedCount + b.acceptedCount)}</small>}</th><td><button className={styles.compare} onClick={() => inspect('quoted', b.key)}>{b.quoted === null ? 'Unavailable' : money(b.quoted)} · {b.quotedCount} recorded scopes{b.quotedCoverage !== 'covered' ? ` · ${historyLabel(b.quotedCoverage,b.quotedCount)}` : ''}</button></td><td><button className={styles.compare} onClick={() => inspect('accepted', b.key)}>{b.accepted === null ? 'Unavailable' : money(b.accepted)} · {b.acceptedCount} recorded scopes</button></td></tr>)}</tbody></table></div></details>
+          <CartesianGrid vertical={false} stroke="var(--ui-border)" strokeDasharray="2 3"/><XAxis dataKey="label" tick={{ fontSize: 12 }} minTickGap={32} tickMargin={12} tickLine={false}/><YAxis width={64} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={v => `$${Number(v) / 100000}k`}/><Tooltip labelFormatter={(_, payload) => { const b = payload?.[0]?.payload; return b ? `${b.start} – ${b.end}${b.coverage !== 'covered' ? ' · Partial recorded history' : ''}` : ''; }} formatter={(value, name, item) => [typeof value === 'number' ? money(value) : 'Unavailable', `${name}${name === 'Quoted' && item.payload?.quotedCoverage !== 'covered' ? ' · partial recorded history' : ''}`]}/>
+          {(['quoted','accepted'] as const).map(key=><Line key={key} name={key==='quoted'?'Quoted':'Accepted'} dataKey={key} stroke={key==='quoted'?'var(--ui-action)':'var(--ui-text-strong)'} strokeWidth={2.5} connectNulls={false} isAnimationActive={false} activeDot={false} dot={({cx,cy,payload})=>payload[key]===null||!Number.isFinite(cx)||!Number.isFinite(cy)?<g key={`${key}:${payload.key}`}/>:<circle key={`${key}:${payload.key}`} cx={cx} cy={cy} r={5} fill={key==='quoted'?'var(--ui-action)':'var(--ui-text-strong)'} className={styles.point} role="button" tabIndex={0} aria-label={`Inspect ${labels[key]} ${payload.start} to ${payload.end}`} onClick={()=>inspect(key,payload.key)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inspect(key,payload.key);}}}/>}/>)}
+        </LineChart></ResponsiveContainer>}</div>
 
       </div>
 
-      <div><h3>Time to move forward</h3><p className={styles.note}>Median elapsed days · initial scopes only, excluding add-ons</p><div className={styles.timing}>{(['enquiryDays', 'acceptanceDays'] as const).map(key => { const currentCoverage = coverage(key), priorCoverage = coverage(key,true); return <button key={key} onClick={() => inspect(key)}>
+      {children}
+      <div className={styles.timingSection}><h2>Time to move forward</h2><p className={styles.note}>Median elapsed days · initial scopes only, excluding add-ons</p><div className={styles.timing}>{(['enquiryDays', 'acceptanceDays'] as const).map(key => { const currentCoverage = coverage(key), priorCoverage = coverage(key,true); return <button key={key} onClick={() => inspect(key)}>
 
         <span>{labels[key]}</span><strong>{valueLabel(key, recordedMetricValue(key, current[key], currentCoverage))}</strong><small>{current[key].filter(r => r.days !== null).length} of {current[key].length} recorded eligible scopes have usable dates</small>{currentCoverage !== 'covered' && <small>{historyLabel(currentCoverage, current[key].length)}</small>}<small>{priorCoverage === 'covered' ? `Previous: ${valueLabel(key, recordedMetricValue(key, previous[key], priorCoverage))}` : `Previous: ${valueLabel(key, recordedMetricValue(key, previous[key], priorCoverage))} · ${historyLabel(priorCoverage, previous[key].length)}`}</small>
 
@@ -137,8 +134,10 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
     </div>
 
     <details><summary>How these figures are counted</summary><div className={styles.note}>
+      <p>Previous period: {report.priorStart} – {report.priorEnd}, same number of days.</p>
+      {synthetic && <a className={styles.compare} href={`?${new URLSearchParams({ representative: '1', view: 'overview', start: '2026-08-01', end: '2026-09-22', commercialCoverage: '1' })}`}>Demo: missing history and add-on scope</a>}
 
-      <p>Quoted value uses the latest version sent within this period for each quote family (commercial scope). Revisions count once within the whole selected period; a scope revised later can appear again in another period. Trend bars partition those exact records and add up to the headline.</p>
+      <p>Quoted value uses the latest version sent within this period for each quote family (commercial scope). Revisions count once within the whole selected period; a scope revised later can appear again in another period. Trend points partition those exact records and add up to the headline.</p>
 
       <p>Accepted value uses the authoritative currently accepted version of each scope, dated by its recorded acceptance. Withdrawals or replacement acceptances can restate historical totals. Separate add-on scopes are included in values and the average, not counted as duplicate versions. These are not invoiced revenue, receipts or a win rate.</p>
 
