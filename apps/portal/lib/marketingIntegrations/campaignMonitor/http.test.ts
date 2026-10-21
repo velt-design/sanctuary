@@ -78,9 +78,9 @@ function fixture() {
 it('composes the real lease with finite authority checks and all five fenced reads', async () => {
   const f = fixture(); const response = await campaignHealthResponse(f.request());
   expect(response.status).toBe(200); expect(f.provider).toHaveBeenCalledTimes(5);
-  // Initial authorization + five credential-acquisition checks + twelve route checks.
-  expect(f.authority).toHaveBeenCalledTimes(18);
-  expect(f.credentialCommand.mock.calls.filter(([action]) => action === 'check')).toHaveLength(17);
+  // Initial authorization + five credential-acquisition checks + thirteen route checks.
+  expect(f.authority).toHaveBeenCalledTimes(19);
+  expect(f.credentialCommand.mock.calls.filter(([action]) => action === 'check')).toHaveLength(18);
   for (const [index, item] of f.trace.entries()) if (['report:before', 'report:after', 'report:complete', 'report:deliver'].includes(item)) {
     expect(f.trace.slice(index - 2, index)).toEqual(['authority', 'credential:check']);
   }
@@ -96,7 +96,7 @@ it('rejects request authentication before acquiring credentials', async () => {
 it('keeps external authorization at every boundary when the credential lease is disabled', async () => {
   const f = fixture(); vi.mocked(openMetaReportCredential).mockResolvedValue(undefined);
   expect((await campaignHealthResponse(f.request())).status).toBe(200);
-  expect(f.authority).toHaveBeenCalledTimes(13); expect(f.provider).toHaveBeenCalledTimes(5);
+  expect(f.authority).toHaveBeenCalledTimes(14); expect(f.provider).toHaveBeenCalledTimes(5);
   expect(f.credentialCommand).not.toHaveBeenCalled();
 });
 
@@ -123,9 +123,15 @@ it('fences authority revoked during provider read before recording or delivering
 });
 
 it('fences delivery after outcome retrieval without re-reading any provider', async () => {
-  const f = fixture(); vi.mocked(supabaseServiceRole.rpc).mockReturnValue({ abortSignal: async () => { f.revoke(); return { error: true }; } } as never);
+  const f = fixture(); vi.mocked(supabaseServiceRole.rpc).mockImplementation(name => ({ abortSignal: async () => { if(name==='meta_creative_reporting_registry')return {data:[],error:null};f.revoke();return {error:true}; } }) as never);
   expect((await campaignHealthResponse(f.request())).status).toBe(503); expect(f.provider).toHaveBeenCalledTimes(5);
   expect(f.command.mock.calls.some(([action]) => action === 'complete')).toBe(true);
   expect(f.command.mock.calls.some(([action]) => action === 'deliver')).toBe(false);
   expect(f.credentialCommand.mock.calls.at(-1)?.[0]).toBe('finish');
+});
+
+it('fences authority changed during registry retrieval before any report read', async () => {
+ const f=fixture();vi.mocked(supabaseServiceRole.rpc).mockReturnValue({abortSignal:async()=>{f.revoke();return {data:[],error:null};}} as never);
+ expect((await campaignHealthResponse(f.request())).status).toBe(503);expect(f.provider).toHaveBeenCalledTimes(2);
+ expect(f.command.mock.calls.some(([action])=>action==='complete')).toBe(false);
 });

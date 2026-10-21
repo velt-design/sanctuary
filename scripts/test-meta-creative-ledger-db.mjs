@@ -1,0 +1,61 @@
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdtempSync,readFileSync,rmSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join,resolve,dirname,basename } from 'node:path';
+import {landingExperimentTestBootstrap} from './lib/landing-experiment-test-bootstrap.mjs';
+const bin=process.env.SANCTUARY_DISPOSABLE_POSTGRES_BIN;
+if(!bin)throw new Error('Set SANCTUARY_DISPOSABLE_POSTGRES_BIN to a local PostgreSQL installation. No remote database is used.');
+const suffix=process.platform==='win32'?'.exe':'',directory=mkdtempSync(join(tmpdir(),'sanctuary-experiment-'));
+let started=false;
+const run=(name,args,input,background=false)=>{const result=spawnSync(join(bin,name+suffix),args,{input,encoding:'utf8',windowsHide:true,stdio:background?'ignore':undefined,env:{NODE_ENV:'test'},maxBuffer:2e6});if(result.status!==0)throw new Error(result.stderr??String(result.error));return result.stdout;};
+const port=await new Promise((done,reject)=>{const server=createServer();server.on('error',reject);server.listen(0,'127.0.0.1',()=>{const address=server.address();if(!address||typeof address==='string')return reject();server.close(()=>done(address.port));});});
+const sql=value=>run('psql',['-X','-v','ON_ERROR_STOP=1','-h','127.0.0.1','-p',String(port),'-U','cluster_admin','-d','postgres','-q','-At'],value);
+try{
+ run('initdb',['-D',directory,'-U','cluster_admin','-A','trust','--no-locale','-E','UTF8']);run('pg_ctl',['-D',directory,'-l',join(directory,'postgres.log'),'-o',`-p ${port} -h 127.0.0.1`,'-w','start'],undefined,true);started=true;
+ sql(landingExperimentTestBootstrap(process.cwd()));
+ sql(readFileSync('supabase/migrations/20261021020002_landing_experiments.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050001_creative_effect_ledger.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_experiment_layout.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_experiment_learning.sql','utf8'));
+ sql(readFileSync('supabase/tests/campaign_intake_evidence.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021020003_campaign_intake_evidence.sql','utf8'));
+ sql(readFileSync('supabase/tests/campaign_intake_evidence_assertions.sql','utf8'));
+ if(sql('select count(*) from public.landing_experiments').trim()!=='0')throw new Error('Synthetic fixture did not roll back');
+ sql(readFileSync('supabase/tests/meta_creative_ledger.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050002_creative_executor.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050003_creative_measurement.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_measurement.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_outcomes.sql','utf8'));
+
+ sql("update public.landing_experiments set created_at=clock_timestamp()-interval '8 days'");
+ const plan="jsonb_build_object('scope',scope,'originalAds',original_ads,'budgetHash',budget_hash,'controlHash',control_hash,'nativeContractHash',native_contract_hash,'approvalHash',repeat('f',64),'catalogueHash',repeat('a',64),'generator','author','reviewer','reviewer')";
+ const creative="select public.meta_creative_command(repeat('b',64),gen_random_uuid(),gen_random_uuid(),'reserve',"+plan+") from public.meta_creative_control";
+ const landing="select public.landing_experiment_command(repeat('a',64),gen_random_uuid(),'prepare',gen_random_uuid(),jsonb_build_object('generation',generation,'template',template,'candidateHash',repeat('c',64),'evidenceHash',repeat('e',64),'path','/auckland-outdoor-living','copy','project','generator','author','minimumExposures',100,'durationDays',14)) from public.landing_experiment_control";
+ const concurrent=statement=>new Promise((done,reject)=>{const child=spawn(join(bin,'psql'+suffix),['-X','-v','ON_ERROR_STOP=1','-h','127.0.0.1','-p',String(port),'-U','cluster_admin','-d','postgres','-q','-At'],{windowsHide:true,env:{NODE_ENV:'test'}});child.stdout.resume();child.stderr.resume();child.on('error',reject);child.on('close',code=>done(code===0));child.stdin.end(statement);});
+ const experiment='f1000000-0000-4000-8000-000000000001',command='f1000000-0000-4000-8000-000000000002';
+ sql(`select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'${experiment}','reserve',${plan}) from public.meta_creative_control;
+ select public.meta_creative_command(repeat('b',64),'${command}','${experiment}','admit',jsonb_build_object('kind','create_paused_ad','objectId',null,'requestHash',repeat('a',64),'generation',generation,'preStateHash',repeat('c',64),'observedAt',clock_timestamp())) from public.meta_creative_control;`);
+ const check=`select public.meta_creative_command(repeat('b',64),'${command}','${experiment}','check',jsonb_build_object('requestHash',repeat('a',64)))`;
+ const noEffect=`select public.meta_creative_command(repeat('b',64),'${command}','${experiment}','no_effect',jsonb_build_object('requestHash',repeat('a',64),'evidenceHash',repeat('f',64),'reason','dispatch_not_started'))`;
+ if((await Promise.all([concurrent(check),concurrent(noEffect)])).filter(Boolean).length!==1)throw new Error('Dispatch/no-effect race did not admit exactly one');
+ const state=sql(`select state from public.meta_creative_effects where command='${command}'`).trim();
+ if(state==='uncertain'){
+  if(await concurrent(noEffect))throw new Error('Claimed dispatch resolved as no effect');
+  sql(`select public.meta_creative_command(repeat('b',64),'${command}','${experiment}','confirm',jsonb_build_object('requestHash',repeat('a',64),'objectId','81','evidenceHash',repeat('f',64)));
+  select public.meta_creative_command(repeat('b',64),'f1000000-0000-4000-8000-000000000003','${experiment}','admit_cleanup',jsonb_build_object('kind','pause_ad','objectId','81','requestHash',repeat('a',64),'generation',generation,'preStateHash',repeat('c',64),'observedAt',clock_timestamp())) from public.meta_creative_control;
+  select public.meta_creative_command(repeat('b',64),'f1000000-0000-4000-8000-000000000003','${experiment}','check',jsonb_build_object('requestHash',repeat('a',64)));
+  select public.meta_creative_command(repeat('b',64),'f1000000-0000-4000-8000-000000000003','${experiment}','confirm',jsonb_build_object('requestHash',repeat('a',64),'objectId','81','evidenceHash',repeat('f',64)));`);
+ }else if(state!=='no_effect')throw new Error('Unexpected race state');
+ if(await concurrent(check))throw new Error('Stale dispatch fence reused');
+ sql(`select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'${experiment}','cleanup',jsonb_build_object('evidenceHash',repeat('f',64)))`);
+ if((await Promise.all([concurrent(creative),concurrent(landing)])).filter(Boolean).length!==1)throw new Error('Cross-lane concurrent reservation did not admit exactly one');
+ if(sql('select count(*) from public.acquisition_experiment_reservation').trim()!=='1')throw new Error('Missing global reservation');
+ process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,disposableOnly:true,liveCalls:0}));
+}finally{
+ if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
+ if(dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('sanctuary-experiment-'))rmSync(directory,{recursive:true,force:true});
+}

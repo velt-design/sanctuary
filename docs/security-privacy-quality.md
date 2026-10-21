@@ -1,5 +1,10 @@
 # Security, Privacy, And Quality
 
+Creative template drift denies new preparation and non-cleanup effects. The
+authenticated machine read retains strictly validated registered state plus finite
+compatibility metadata so existing owned effects can reconcile and pause. This
+does not rebind a template, bypass Stop/credential authority or expose raw errors.
+
 ## Roof comparison guide boundary (21 October 2026)
 
 The roof illustration is local presentation state only. It does not emit design
