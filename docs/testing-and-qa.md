@@ -21,6 +21,14 @@ unlinked records, known-other versus invented other source, incomplete and compl
 coverage scenarios, and unchanged frozen reads. No additional personal data or
 consent is collected; ordinary CRM records and capability-release SQL are unchanged.
 
+Formal PAUSED-ad intents now include exact `ad_schedule_start_time` and
+`ad_schedule_end_time` from the frozen Auckland delivery window. The writer
+requires matching returned dates before confirmation; missing/changed schedules
+remain unconfirmed and do not trigger a repeated create. The capability path
+still creates an unchanged PAUSED ad without delivery dates. Synthetic composed
+readback is not proof of actual Meta scheduling support or enforcement. ACTIVE
+publication and formal continuation remain disabled pending their connected gates.
+
 ## Paused creative capability candidate, 21 October 2026
 
 The native outcome regression retains both existing launch-verification enquiry

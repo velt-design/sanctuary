@@ -33,6 +33,11 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
     if (!creative || object(state, arm)) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/ads`;
     body = { name, adset_id: plan.scope.adset, creative: JSON.stringify({ creative_id: creative }), tracking_specs: JSON.stringify(plan.adTracking), status: 'PAUSED' };
+    if(plan.purpose==='formal_experiment'){
+      if(plan.start*1000<=now)throw new ExecutorFailure('scope');
+      body.ad_schedule_start_time=new Date(plan.start*1000).toISOString();
+      body.ad_schedule_end_time=new Date(plan.end*1000).toISOString();
+    }
   } else if (kind === 'create_study') {
     const control = object(state, 'control'), challenger = object(state, 'challenger');
     if (plan.purpose !== 'formal_experiment' || !control || !challenger || object(state, 'study') || plan.start * 1000 <= now || plan.end <= plan.start) throw new ExecutorFailure('scope');
