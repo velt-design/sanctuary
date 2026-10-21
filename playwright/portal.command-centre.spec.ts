@@ -9,11 +9,14 @@ import {
   type CommandCentreViewFixtureState,
   type CommandCentreWorkFixtureScenario,
 } from "../apps/portal/app/qa/project-command-centre-fixture/fixtures";
+import { registerProjectHeaderStabilityTests } from './support/projectHeaderStability';
 import { captureProjectCloseEvidence } from "./support/projectCloseEvidence";
 import { correspondenceFixture } from "../apps/portal/app/qa/project-command-centre-fixture/correspondenceFixture";
 
 const FIXTURE_PATH = "/qa/project-command-centre-fixture";
 const PROJECT_SHELL_FIXTURE_PATH = "/qa/project-page-shell-fixture";
+
+registerProjectHeaderStabilityTests(PROJECT_SHELL_FIXTURE_PATH, expectNoDocumentOverflow);
 
 test.beforeEach(async ({ page }) => {
   // Shell fixtures have no real staff session or connected provider.

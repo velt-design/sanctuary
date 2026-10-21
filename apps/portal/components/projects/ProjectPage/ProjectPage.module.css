@@ -4,6 +4,11 @@
   gap: var(--ui-density-section-gap);
 }
 
+/* Summary and full content can differ in height without moving header targets. */
+:global(html):has(.page) {
+  scrollbar-gutter: stable;
+}
+
 .calculatorPageLayout {
   padding: var(--ui-space-2);
 }
@@ -154,6 +159,7 @@
 .projectTabBody {
   display: grid;
   align-content: start;
+  gap: var(--ui-grid-gutter);
 }
 
 .tabSectionWorkspace,

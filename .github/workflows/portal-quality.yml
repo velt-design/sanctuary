@@ -139,6 +139,8 @@ jobs:
         run: npm run test:geometry
 
       - name: Portal Project Work V2 contract gate
+        env:
+          VITEST_MAX_WORKERS: '2'
         run: npm run test:portal:project-work
 
       - name: Portal action delegation contracts and local client
@@ -154,6 +156,8 @@ jobs:
         run: npm run test:portal:actions:db
 
       - name: Commercial database and invoice draft contracts
+        env:
+          VITEST_MAX_WORKERS: '2'
         run: npm run test:commercial:db
 
       - name: Portal production build

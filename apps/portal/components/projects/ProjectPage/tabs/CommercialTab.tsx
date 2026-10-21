@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
@@ -40,12 +40,14 @@ export default function CommercialTab({
   projectName = 'Project estimate',
   view,
   calculatorWorkspace = false,
+  statusPanel,
 }: {
   host: string;
   projectId: string;
   projectName?: string;
   view: CommercialView;
   calculatorWorkspace?: boolean;
+  statusPanel?: ReactNode;
 }) {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -136,6 +138,7 @@ export default function CommercialTab({
         ) : null}
       </div> : null}
 
+      {statusPanel}
       <CommercialProjectNotice projectId={projectId} view={activeView} />
       {activeView === 'estimates' ? (
         <EstimatesTab key={projectId} host={host} projectId={projectId} projectName={projectName} />

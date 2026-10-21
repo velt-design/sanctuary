@@ -19,10 +19,11 @@ vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'hos
 vi.mock('@/components/debug/PortalDebugExportButton', () => ({ default: () => null }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
 vi.mock('@/components/projects/ProjectPage/ProjectPageFrame', () => ({
-  default: ({ snapshot, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab }: any) => {
+  default: ({ snapshot, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab, statusPanel }: any) => {
     const { commandQuery, paymentQuery } = useActiveProjectOverviewReads(host, snapshot.project.id);
     return <div data-frame={snapshot.project.id} data-snapshot={snapshotState}>
       <span>{snapshot.project.name}</span>
+      {statusPanel}
       <span data-command={commandQuery.data?.projectId}>{commandQuery.data?.projectId}</span>
       <span data-payment={paymentQuery.data?.paidIncGstCents} />
       <span data-command-fetching={String(commandQuery.isFetching)} data-tab={optimisticTab} />

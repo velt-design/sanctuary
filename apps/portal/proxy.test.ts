@@ -9,7 +9,7 @@ vi.mock('@supabase/ssr', () => ({
   createServerClient: (...args: unknown[]) => createServerClientMock(...args),
 }));
 
-import { proxy } from './proxy';
+import { middleware as proxy, config } from './middleware';
 
 const originalEnableFixtureFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
 const originalPortalQaFixtureFlag = process.env.ENABLE_PORTAL_QA_FIXTURES;
@@ -72,6 +72,10 @@ function setLookupFailed() {
 }
 
 describe('portal proxy', () => {
+  it('keeps the Node runtime and original routing coverage under the compatible filename', () => {
+    expect(config).toEqual({ runtime: 'nodejs', matcher: ['/((?!_next|api).*)'] });
+  });
+
   beforeEach(() => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';

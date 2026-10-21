@@ -1,5 +1,21 @@
 # Security, Privacy, And Quality
 
+## Proxy placement followup (21 October 2026 candidate)
+
+The Portal's per-function Vercel configuration pins only `middleware.ts` to `bom1`,
+beside the production database and existing render functions. It leaves the
+matcher, verified identity followed by role lookup, refreshed cookies, RSC access
+boundary and all diagnostic expiry/privacy rules unchanged. The role query uses
+the verified user ID and is intentionally sequential. No standalone Vercel proxy,
+global cache or authentication shortcut is introduced. Vercel's hosted validator
+rejected the Next16 `proxy.ts` function key before compilation. The handler uses
+the still-supported, deprecated `middleware.ts` convention with explicit `nodejs`
+runtime, preserving its body and matcher. This compatibility step should return
+to `proxy.ts` once the hosted validator supports that per-function key. Actual
+deployed output and fixed phase-region events must
+verify the placement. Tokyo-backed staging cannot establish Mumbai production
+latency. This followup is a candidate, not a verified speed improvement.
+
 ## Bounded document timing preparation (21 October 2026 candidate)
 
 `documentDiagnostics.ts` owns a default-disabled, server-only fixed event contract.

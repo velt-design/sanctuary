@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
 import type {
   ProjectPageSnapshot,
@@ -23,6 +23,7 @@ export default function ProjectPageFrame({
   onProjectAccessEnding,
   optimisticTab,
   onTabSelect,
+  statusPanel,
 }: {
   snapshot: ProjectPageSnapshot;
   host: string;
@@ -33,6 +34,7 @@ export default function ProjectPageFrame({
   onProjectAccessEnding?: (status: number) => void;
   optimisticTab: ProjectNavigationTabKey | null;
   onTabSelect: (tab: ProjectNavigationTabKey) => void;
+  statusPanel?: ReactNode;
 }) {
   const overviewReads = useOptionalProjectOverviewReads(host, snapshot.project.id);
   const projectWork = currentProjectWork(snapshot, overviewReads?.commandQuery.data);
@@ -94,6 +96,7 @@ export default function ProjectPageFrame({
           calculatorWorkspace={calculatorWorkspace}
           optimisticTab={optimisticTab}
           onProjectAccessEnding={onProjectAccessEnding}
+          statusPanel={statusPanel}
         />
         </ProjectCommercialProvider>
       </div>
