@@ -20,6 +20,26 @@ commercial/accepted scope values and in-memory assignment/outcome clients.
 a hosted save/readback or production migration result; those remain separate
 release evidence. No synthetic business record may be installed in production.
 
+## Pitched form guide (21 October 2026)
+
+`marketing.pitched-guide.spec.ts` covers 320/390/820/1440/2560 layouts, actual
+roof-photo loading, the labelled real high/low profile, canonical/schema/sitemap, keyboard FAQ,
+enquiry focus, project return, required phone and optional house-brief retry.
+The Pitched entries in `marketing.seo-programme.spec.ts` and responsive-preload
+hygiene use the new presentation. These are authored regression contracts;
+execution evidence belongs in the delivery record, not inferred from this list.
+The dedicated Pitched suite is registered in the Marketing browser config and
+replaces its old overlay-hero and generated-first-layer assertions. The audience
+suite still checks the Pitched hero and shared embedded form.
+
+Run `page.test.tsx` beside the canonical form/context/attachment/fallback,
+product selection, product/project claims and SEO view-model suites. Run Marketing
+TypeScript, scoped lint and changed-file/document guards. Browser evidence must
+use the permitted browser tool. Populated local journeys need persistent mocked
+intake/native/upload/vendor routes before input. Fixture success does not prove
+delivery or production pricing. The optional product/designer return and fresh
+consent should be inspected as connected journeys before handover.
+
 ## Sales designer responsibility (21 October 2026)
 
 The designer SQL suite executes the actual assignment migration and existing

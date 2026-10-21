@@ -87,9 +87,9 @@ for (const route of routes) test(`guide routes resolve directly with global busi
   const main = page.locator('main[data-marketing-foundation-page]').last();
   const heroImage = route === '/pergola-guides'
     ? main.locator('.guide-hub-hero__image')
-    : route === '/pergolas-with-blinds' || route === '/gable-pergolas-auckland' ? main.locator('figure img').first() : main.locator('.acrylic-hero__image');
+    : route === '/pergolas-with-blinds' || route === '/gable-pergolas-auckland' || route === '/pitched-pergolas-auckland' ? main.locator('figure img').first() : main.locator('.acrylic-hero__image');
 
-  if (route === '/pergolas-with-blinds' || route === '/gable-pergolas-auckland') {
+  if (route === '/pergolas-with-blinds' || route === '/gable-pergolas-auckland' || route === '/pitched-pergolas-auckland') {
     const heroHints = await heroImage.evaluate((image) => ({
       srcset: image.getAttribute('srcset'),
       sizes: image.getAttribute('sizes'),
