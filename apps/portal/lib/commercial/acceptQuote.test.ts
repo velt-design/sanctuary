@@ -101,7 +101,7 @@ describe('accepted quote project-work reconciliation', () => {
       actor: 'staff@example.test',
     });
 
-    expect(result.invoice.sent).toBe(true);
+    expect(result.invoice?.sent).toBe(true);
     expect(mocks.reconcileQuoteOutcomeCadence).toHaveBeenCalledWith({
       serviceClient: mocks.supabaseServiceRole,
       projectId: PROJECT_UUID,
@@ -152,7 +152,7 @@ describe('accepted quote project-work reconciliation', () => {
       actor: 'staff@example.test',
     });
 
-    expect(result.invoice.invoiceRef).toBe('INV-1001');
+    expect(result.invoice?.invoiceRef).toBe('INV-1001');
     expect(mocks.supabaseServiceRole).not.toHaveProperty('from');
   });
 
@@ -221,4 +221,13 @@ describe('accepted quote project-work reconciliation', () => {
     expect(mocks.reconcileQuoteOutcomeCadence).toHaveBeenCalledOnce();
     expect(mocks.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
+  it('accepts a funded revision without an invoice or delivery warning and retains the authoritative acceptance time', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: [{ ...acceptanceRow()[0], invoice_id: null, invoice_ref: null, invoice_created: false }], error: null });
+    const result = await acceptQuoteAndEnsureDepositInvoice({ quoteVersionUuid: QUOTE_VERSION_UUID, actor: 'staff@example.test' });
+    expect(result.invoice).toBeNull();
+    expect(mocks.deliverAcceptedDepositInvoiceById).not.toHaveBeenCalled();
+    expect(mocks.reconcileQuoteOutcomeCadence).toHaveBeenCalledOnce();
+    expect(mocks.recordMarketingConversionEvent).toHaveBeenCalledWith(expect.objectContaining({ occurredAt: INVOICE_CREATED_AT }));
+  });
+
 });

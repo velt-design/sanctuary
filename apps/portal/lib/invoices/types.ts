@@ -12,6 +12,11 @@ export type DepositInvoiceSummary = {
   invoiceRef: string;
   status: DepositInvoiceStatus;
   invoiceKind?: 'QUOTE_LINKED' | 'STANDALONE';
+  scopeAssignment?: {
+    treatment: 'QUOTE_PAYMENT' | 'SEPARATE_CHARGE';
+    quoteId: string | null;
+    quoteRef: string | null;
+  };
   paymentTermId: string;
   paymentTermLabel: string;
   paymentTermPosition: number;

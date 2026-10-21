@@ -598,6 +598,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 <TableCell data-label="Quote">
                   <div className={styles.meta}>
                     {invoice.quoteVersionId ? <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(projectId)}?tab=quotes&quoteId=${encodeURIComponent(invoice.quoteVersionId)}`}>{invoice.quoteRef} v{invoice.quoteVersionNumber}</ButtonLink> : <strong>Standalone invoice</strong>}
+                    {invoice.scopeAssignment ? <span className={styles.muted}>{invoice.scopeAssignment.treatment === 'QUOTE_PAYMENT'
+                      ? `Deposit applied to ${invoice.scopeAssignment.quoteRef || 'quoted work'}` : 'Separate assessment or additional charge'}</span> : null}
                     <span className={styles.muted}>{invoice.reference || invoice.projectName || '-'}</span>
                   </div>
                 </TableCell>

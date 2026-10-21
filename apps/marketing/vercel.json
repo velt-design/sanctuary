@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/revised-quote-deposits-20261022": false,
       "codex/meta-video-donor-20261022": false,
       "codex/portal-marketing-hub-speed-20261021": false,
       "codex/meta-creative-executor-current-20261021": false,

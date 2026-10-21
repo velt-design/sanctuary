@@ -312,6 +312,9 @@ export function useQuoteLifecycleActions({
         queryClient.invalidateQueries({
           queryKey: qk.invoices.byProject(hostKey, projectId),
         }),
+        queryClient.invalidateQueries({
+          queryKey: qk.invoices.scheduleByProject(hostKey, projectId),
+        }),
       ]);
       if (refreshResults.some((result) => result.status === "rejected")) {
         reportRefreshFailure("The quote acceptance");
@@ -330,7 +333,7 @@ export function useQuoteLifecycleActions({
           : "An invoice";
         toast.error(`Quote accepted. ${invoiceLabel} was prepared. ${action}`);
       } else {
-        toast.success("Quote accepted.");
+        toast.success("Quote accepted. Existing payments retained; create your progress invoice in Invoices.");
       }
     } catch (error) {
       const message =

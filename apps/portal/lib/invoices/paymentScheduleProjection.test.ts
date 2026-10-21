@@ -190,4 +190,22 @@ describe('projectInvoiceSchedule', () => {
     expect(schedule.remainingToInvoiceIncGstCents).toBe(0);
     expect(schedule.overCommittedIncGstCents).toBe(10_000);
   });
+  it('projects carried construction deposits separately from an assessment charge without false free credit', () => {
+    const schedule = projectInvoiceSchedule({
+      acceptedQuoteVersionId: 'qv-current', acceptedQuoteRef: 'Q-SYNTHETIC', acceptedQuoteVersionNumber: 3, acceptedQuoteTotalIncGstCents: 160000,
+      acceptedQuotes: [{ quoteVersionId: 'qv-current', quoteRef: 'Q-SYNTHETIC', quoteVersionNumber: 3, commercialScopeKind: 'base', totalIncGstCents: 160000,
+        terms: [{ id: 'payment-1', label: 'Payment', amountIncGstCents: 160000 }], funding: { paidIncGstCents: 70000, openIncGstCents: 0, carriedPaidIncGstCents: 70000 } }],
+      quoteTerms: [], planItems: [], invoices: [invoice({ id: 'fee', status: 'PAID', totalIncGstCents: 5000, scopeAssignment: { treatment: 'SEPARATE_CHARGE', quoteId: null, quoteRef: null } }),
+        invoice({ id: 'topup', status: 'PAID', invoiceKind: 'STANDALONE', totalIncGstCents: 20000, scopeAssignment: { treatment: 'QUOTE_PAYMENT', quoteId: 'quote-1', quoteRef: 'Q-SYNTHETIC' } })],
+      paymentEntries: [{ id: 'pmt-source', entryType: 'PAYMENT', amountIncGstCents: 75000, occurredAt: '2026-10-22', paymentMethod: null, reference: null, note: null, reason: null,
+        sourceInvoiceId: 'inv-source', sourceInvoiceRef: 'INV-SOURCE', reversed: false }], allocations: [], includePaymentEntries: true,
+      authoritativeTotals: { acceptedTotalIncGstCents: 165000, paidIncGstCents: 75000, outstandingIncGstCents: 0, remainingToInvoiceIncGstCents: 90000, overCommittedIncGstCents: 0 },
+    });
+    expect(schedule.standaloneTotalIncGstCents).toBe(5000);
+    expect(schedule.billableTotalIncGstCents).toBe(165000);
+    expect(schedule.terms[0]).toMatchObject({ allocatedPaidIncGstCents: 70000, remainingAmountIncGstCents: 90000 });
+    expect(schedule.acceptedQuotes?.[0].remainingToInvoiceIncGstCents).toBe(90000);
+    expect(schedule.unallocatedCreditIncGstCents).toBe(0);
+  });
+
 });
