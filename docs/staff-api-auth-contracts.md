@@ -1,5 +1,33 @@
 # Staff API And Auth Contracts
 
+## Initial document access candidate (21 October 2026, unreleased under qualification)
+
+For canonical HTML document GETs at `/staff/projects`, `/staff/site-visits` and
+`/staff/projects/(proj_)?<uuid>`, middleware renews session transport without using
+session contents as authority. `regionalDocumentAccess.ts` owns the exact request
+eligibility and sanitized callback context. `supabase/proxyClient.ts` forwards the
+same cookie rotation and chunk removals attached to the response. The root layout,
+staff layout and each selected page await the existing request-cached `getUser`
+and current `portal_users.role` check. The root gate runs before identity-bearing
+props, theme or finance reads; a descendant redirect is not sufficient protection
+against parallel rendering. Removed staff access fails closed; an administrator
+changed to staff retains staff access but not administrator access.
+
+The middleware overwrites the callback header from the actual path and full query,
+or strips it outside this lane. It is redirect context, never identity or role
+authority. Ordinary browser RSC/prefetch use non-document fetch destinations and
+retain the full global path, as do action/POST, specialist and other routes. Next
+normalizes Flight headers before middleware, so a deliberately forged document-
+shaped Flight request can enter the regional lane. It still requires fresh
+identity/current-role verification before private HTML or Flight output. Request
+shape chooses the location of verification, never whether verification occurs.
+APIs retain their own authoritative checks before private reads.
+There is no cross-request cache, service-role fallback or manual JWT parsing.
+Selected document responses remain private/no-store. Compiled local refresh,
+streaming, denial and request-isolation proof is required before this candidate
+can be treated as verified; hosted/provider behavior and useful-load improvement
+remain separate gates. No production release is implied.
+
 ## Outlook site visits
 
 `GET /api/staff/v1/outlook-site-visits` accepts optional project and exact visit UUIDs
