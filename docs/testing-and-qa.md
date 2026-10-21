@@ -1,5 +1,29 @@
 # Testing And QA
 
+## Regional document access candidate (21 October 2026)
+
+Run the focused middleware/access suite including `proxy.regional.test.ts`,
+`auth.regional.test.ts`, existing proxy/auth tests and document diagnostic tests.
+The selected page tests retain their early shell and awaited-parameter contracts.
+Unit mocks alone cannot qualify this authorization-boundary change. Compile the
+actual Portal with the installed SDK, synthetic loopback Supabase responses and
+external network forbidden. Inspect complete HTML/Flight streams while identity
+and current-role reads are independently delayed or denied; no private root
+identity, theme or finance work may precede authority. Cover fresh and expiring
+sessions, response and forwarded cookie rotation/chunk removals, subsequent GETs,
+parallel users, membership changes, exact query callbacks, forged context and
+diagnostics, direct RSC/prefetch/actions/API denial, and private/no-store responses.
+Distinguish ordinary browser RSC/prefetch (global verification) from forged
+document-shaped Flight input whose headers Next normalizes before middleware
+(regional verification). Both must deny before private output. Follow only an
+observed same-origin `_rsc` canonicalization hop, retaining headers/cookies; never
+auto-follow an authentication redirect. A streamed HTTP 200 containing a redirect
+digest is a denial, not a successful private page, and requires full-stream checks.
+Keep the build identity, fixtures, failures and raw stream receipts private.
+Synthetic renewal proves application/SDK transport, not the real provider's token
+rotation policy. Local HTTP proof is not browser usability or production latency
+evidence. Do not use real auth credentials or relax guards to prepare this fixture.
+
 ## Middleware build-output guard (21 October 2026 local candidate)
 
 Portal `postbuild` runs `scripts/check-portal-middleware-placement.mjs` after
