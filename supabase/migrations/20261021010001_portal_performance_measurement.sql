@@ -1,0 +1,152 @@
+-- Restore the narrowly scoped canonical aggregate telemetry objects where absent.
+-- Existing staff/admin helpers and pg_cron must already be provisioned. No extension,
+-- account, auth policy owner or historical migration batch is installed here.
+do $$ begin
+  if to_regprocedure('public.has_portal_access()') is null
+    or to_regprocedure('public.is_portal_admin()') is null
+    or to_regclass('cron.job') is null
+    or to_regprocedure('cron.schedule(text,text,text)') is null then
+    raise exception 'Existing Portal access helpers and cron scheduler required';
+  end if;
+end $$;
+
+create table if not exists public.portal_performance_metrics (
+  id bigint generated always as identity primary key,
+  captured_at timestamptz not null default now(),
+  metric_name text not null check (metric_name in ('CLS', 'FCP', 'INP', 'LCP', 'TTFB')),
+  metric_value double precision not null check (metric_value >= 0 and metric_value <= 600000),
+  rating text not null check (rating in ('good', 'needs-improvement', 'poor')),
+  route_template text not null check (route_template in (
+    '/dashboard',
+    '/staff/projects',
+    '/staff/projects/[projectId]',
+    '/staff/projects/[projectId]/design-workbench',
+    '/staff/projects/design-packages',
+    '/staff/projects/running-jobs',
+    '/staff/contacts',
+    '/staff/contacts/[contactId]',
+    '/staff/schedule',
+    '/staff/site-visits',
+    '/staff/calculator',
+    '/admin'
+  )),
+  navigation_type text not null check (navigation_type in (
+    'navigate', 'reload', 'back-forward', 'back-forward-cache', 'prerender', 'restore'
+  )),
+  device_class text not null check (device_class in ('desktop', 'tablet', 'mobile')),
+  build_id text null check (build_id is null or build_id ~ '^[a-zA-Z0-9._-]{1,128}$')
+);
+
+-- Existing installations keep their rows; extend only the known route allowlist.
+alter table public.portal_performance_metrics
+  drop constraint if exists portal_performance_metrics_route_template_check;
+alter table public.portal_performance_metrics
+  add constraint portal_performance_metrics_route_template_check check (route_template in (
+    '/dashboard', '/staff/projects', '/staff/projects/[projectId]',
+    '/staff/projects/[projectId]/design-workbench', '/staff/projects/design-packages',
+    '/staff/projects/running-jobs', '/staff/contacts', '/staff/contacts/[contactId]',
+    '/staff/schedule', '/staff/site-visits', '/staff/calculator', '/admin'
+  ));
+
+create index if not exists portal_performance_metrics_route_metric_captured_idx
+  on public.portal_performance_metrics(route_template, metric_name, captured_at desc);
+create index if not exists portal_performance_metrics_captured_idx
+  on public.portal_performance_metrics(captured_at);
+
+alter table public.portal_performance_metrics enable row level security;
+
+-- Normalize only these telemetry browser ACLs, including installation defaults.
+-- RLS does not protect TRUNCATE; no browser role may update/delete/truncate rows.
+revoke all on table public.portal_performance_metrics from public, anon, authenticated;
+revoke all on sequence public.portal_performance_metrics_id_seq from public, anon, authenticated;
+grant insert, select on table public.portal_performance_metrics to authenticated;
+grant usage, select on sequence public.portal_performance_metrics_id_seq to authenticated;
+
+drop policy if exists portal_performance_metrics_staff_insert on public.portal_performance_metrics;
+create policy portal_performance_metrics_staff_insert
+  on public.portal_performance_metrics
+  for insert
+  with check (public.has_portal_access());
+
+drop policy if exists portal_performance_metrics_admin_select on public.portal_performance_metrics;
+create policy portal_performance_metrics_admin_select
+  on public.portal_performance_metrics
+  for select
+  using (public.is_portal_admin());
+
+create or replace function public.portal_performance_summary(p_days integer default 7)
+returns table (
+  route_template text,
+  metric_name text,
+  sample_count bigint,
+  p75 double precision,
+  p95 double precision,
+  poor_count bigint
+)
+language plpgsql
+stable
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if p_days not in (7, 30) then
+    raise exception 'p_days must be 7 or 30' using errcode = '22023';
+  end if;
+  if not public.is_portal_admin() then
+    raise exception 'portal admin access required' using errcode = '42501';
+  end if;
+
+  return query
+  select
+    metrics.route_template,
+    metrics.metric_name,
+    count(*)::bigint,
+    percentile_cont(0.75) within group (order by metrics.metric_value)::double precision,
+    percentile_cont(0.95) within group (order by metrics.metric_value)::double precision,
+    count(*) filter (where metrics.rating = 'poor')::bigint
+  from public.portal_performance_metrics metrics
+  where metrics.captured_at >= now() - make_interval(days => p_days)
+  group by metrics.route_template, metrics.metric_name
+  order by metrics.route_template, metrics.metric_name;
+end;
+$$;
+
+revoke all on function public.portal_performance_summary(integer) from public, anon, authenticated;
+grant execute on function public.portal_performance_summary(integer) to authenticated;
+
+create or replace function public.purge_portal_performance_metrics()
+returns bigint
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  deleted_count bigint;
+begin
+  delete from public.portal_performance_metrics
+  where captured_at < now() - interval '30 days';
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+revoke all on function public.purge_portal_performance_metrics() from public, anon, authenticated;
+
+-- Preserve a correctly installed retention job. Refuse to take over a conflicting
+-- same-name job. First installation schedules the canonical 30-day purge daily.
+do $$
+declare jobs integer; matching integer;
+begin
+  select count(*), count(*) filter (where active and schedule = '17 3 * * *'
+    and command = 'select public.purge_portal_performance_metrics();'
+    and database = current_database() and username = current_user)
+    into jobs, matching from cron.job where jobname = 'portal-performance-retention-daily';
+  if jobs = 0 then
+    perform cron.schedule('portal-performance-retention-daily', '17 3 * * *',
+      'select public.purge_portal_performance_metrics();');
+  elsif jobs <> 1 or matching <> 1 then
+    raise exception 'Existing Portal performance retention job requires review';
+  end if;
+end $$;
+
+notify pgrst, 'reload schema';

@@ -1,5 +1,42 @@
 # Security, Privacy, And Quality
 
+## Bounded document timing preparation (21 October 2026 candidate)
+
+`documentDiagnostics.ts` owns a default-disabled, server-only fixed event contract.
+`portalAccess.ts` stays transport-free and accepts only an optional isolated timing
+callback. Proxy, cached RSC access and authorized theme readers wrap their existing
+operations without changing query order, auth, RLS, cache lifetime or result/error
+identity. `documentRenderDiagnostics.ts` shares the scope within a server render.
+The root layout records its own completion before descendant rendering, not TTFB
+or document completion. Nested totals must not be summed.
+
+Only normal GET document requests for Projects, a canonical project UUID route,
+and Site Visits qualify. API, client RSC and prefetch requests do not. The proxy
+strips/overwrites the two dedicated diagnostic headers, then signs the fixed
+UUID/template/window carrier with a temporary diagnostic-only nonce. Render
+verification establishes that this carrier was issued by the proxy; it does not
+independently discover the render destination. Replay protection at public entry
+is the proxy's overwrite/strip on matched routes, including direct RSC requests.
+No diagnostic field participates in authorization. The signed carrier is an
+internal forwarded request header; only the opaque UUID is echoed to the browser.
+Existing request cookies and refreshed response cookies retain their original paths.
+
+At most eleven fixed phase events contain a random request UUID, fixed route and
+phase/outcome enums, finite duration, validated commit hash and actual
+`VERCEL_REGION` (or null). No raw route/query, identity, payload, header, error or
+configuration value is logged. Synchronous logging failures and rejected promises
+are isolated with no awaited transport. Denied, failed, skipped and fallback
+outcomes remain explicit; incomplete phase sets are not fast successes.
+
+The single private `PORTAL_DOCUMENT_DIAGNOSTICS` setting is absent/empty by default.
+When explicitly enabled it is JSON with exactly `until` (UTC ISO expiry no more
+than thirty minutes ahead) and `nonce` (32 random bytes encoded as 43 base64url
+characters). Do not print or publish either the nonce or full setting. Every emit
+checks expiry; an expired, invalid or removed setting stops events even mid-read.
+A fresh window requires a new deliberate private setting. This candidate prepares
+measurement, not a production speed claim or authorization to enable live logs.
+
+
 ## Custom SEO measurement and contact policy (20 October 2026)
 
 Custom joins only the exact SEO action/continuation allowlist, not advertising

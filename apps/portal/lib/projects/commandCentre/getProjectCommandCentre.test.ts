@@ -6,6 +6,8 @@ import { resolveProjectWorkPrimaryAction } from '../workItems/primaryAction';
 const commandCentreDependencies = vi.hoisted(() => ({
   getProjectWorkProjection: vi.fn(),
   getProjectWorkDomainActions: vi.fn(),
+  loadProjectWorkDomainActionFacts: vi.fn().mockResolvedValue({}),
+  loadProjectWorkProjectionFacts: vi.fn().mockResolvedValue({}),
   isProjectWorkModelV2: vi.fn(),
 }));
 
@@ -15,6 +17,11 @@ vi.mock('@/lib/projects/workItems/repository', () => ({
 
 vi.mock('@/lib/projects/workItems/getProjectWorkDomainActions', () => ({
   getProjectWorkDomainActions: commandCentreDependencies.getProjectWorkDomainActions,
+  loadProjectWorkDomainActionFacts: commandCentreDependencies.loadProjectWorkDomainActionFacts,
+}));
+
+vi.mock('@/lib/projects/workItems/projectWorkProjectionFacts', () => ({
+  loadProjectWorkProjectionFacts: commandCentreDependencies.loadProjectWorkProjectionFacts,
 }));
 
 vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
@@ -207,6 +214,7 @@ describe('getProjectCommandCentre', () => {
       projectUuid: UUID.project,
       stage: 'new',
       currentDesign: result?.currentDesign,
+      facts: {},
     });
     expect(commandCentreDependencies.getProjectWorkProjection).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -6,6 +6,7 @@ import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
 import { activeConfirmationEventRows } from './confirmationFacts';
 import { getProjectWorkReadContext, type ProjectWorkReadContext } from './projectWorkReadContext';
+import { loadProjectWorkProjectionFacts, type ProjectWorkProjectionFacts, type ProjectWorkRow as Row } from './projectWorkProjectionFacts';
 import { getAuthoritativeProjectWorkQueue } from './teamQueue';
 import {
   resolveProjectWorkPrimaryAction,
@@ -25,12 +26,6 @@ import type {
   ProjectWorkProjection,
   ProjectWorkResponsibilityArea,
 } from './types';
-
-type Row = Record<string, unknown>;
-
-function rows(value: unknown): Row[] {
-  return Array.isArray(value) ? value.filter((entry): entry is Row => Boolean(entry && typeof entry === 'object')) : [];
-}
 
 function text(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -106,18 +101,6 @@ function mapConfirmationFact(row: Row): ProjectWorkConfirmationFact | null {
   };
 }
 
-async function queryRows(
-  query: PromiseLike<{
-    data: unknown;
-    error: { message?: string; code?: string } | null;
-  }>,
-  fallback: string,
-): Promise<Row[]> {
-  const result = await query;
-  if (result.error) throw Object.assign(new Error(result.error.message ?? fallback), result.error);
-  return rows(result.data);
-}
-
 export async function getProjectWorkProjection(params: {
   supabase: SupabaseClient;
   projectUuid: string;
@@ -125,41 +108,14 @@ export async function getProjectWorkProjection(params: {
   recoveryAction?: RecoveryActionCandidate | null;
   specialistAction?: SpecialistActionCandidate | null;
   readContext?: ProjectWorkReadContext;
+  facts?: ProjectWorkProjectionFacts;
 }): Promise<ProjectWorkProjection | null> {
   const { supabase, projectUuid } = params;
-  const [readContext, stateRows, itemRows, confirmationRows] = await Promise.all([
-    getProjectWorkReadContext(params),
-    queryRows(
-      supabase
-        .from('project_operational_states')
-        .select('state,waiting_until,waiting_reason,closed_outcome,row_version')
-        .eq('project_id', projectUuid)
-        .limit(1),
-      'Failed to load project operational state',
-    ),
-    queryRows(
-      supabase
-        .from('project_work_items')
-        .select(
-          'id,project_id,title,responsibility_area,status,due_at,sla_breach_at,deadline_policy,calendar_revision,assignee_user_id,priority,priority_reason,blocked_reason,origin,source_type,source_key,series_key,subject_kind,subject_id,row_version,created_at,updated_at,completed_at,cancelled_at,outcome,cancellation_reason',
-        )
-        .eq('project_id', projectUuid)
-        .in('status', ['OPEN', 'BLOCKED'])
-        .order('due_at', { ascending: true }),
-      'Failed to load project work items',
-    ),
-    queryRows(
-      supabase
-        .from('project_confirmation_events')
-        .select('id,event_kind,confirmation_type,subject_kind,subject_id,occurred_at,recorded_at,retracts_event_id')
-        .eq('project_id', projectUuid)
-        .order('recorded_at', { ascending: false })
-        .limit(100),
-      'Failed to load project confirmation facts',
-    ),
-  ]);
-
+  const readContext = await getProjectWorkReadContext(params);
   if (!readContext || readContext.modelVersion !== 2) return null;
+  const facts = params.facts ?? await loadProjectWorkProjectionFacts({ supabase, projectUuid, readContext });
+  if (facts.readContext !== readContext) throw new Error('Project work facts do not match this request read context');
+  const { stateRows, itemRows, confirmationRows } = facts;
   const stateRow = stateRows[0];
   const state = text(stateRow?.state) as ProjectOperationalState | null;
   if (!state) throw new Error('V2 project is missing its operational state');

@@ -19,6 +19,7 @@ const PORTAL_ROUTE_TEMPLATES = [
   '/staff/contacts',
   '/staff/contacts/[contactId]',
   '/staff/schedule',
+  '/staff/site-visits',
   '/staff/calculator',
   '/admin',
 ] as const;
@@ -62,6 +63,7 @@ export function portalRouteTemplate(pathname: string | null | undefined): Portal
     return '/staff/projects/[projectId]/design-workbench';
   }
   if (/^\/staff\/projects\/[^/]+(?:\/|$)/.test(pathname)) return '/staff/projects/[projectId]';
+  if (pathname === '/staff/site-visits') return '/staff/site-visits';
   if (pathname === '/staff/projects') return '/staff/projects';
   if (/^\/staff\/contacts\/[^/]+(?:\/|$)/.test(pathname)) return '/staff/contacts/[contactId]';
   if (pathname === '/staff/contacts') return '/staff/contacts';

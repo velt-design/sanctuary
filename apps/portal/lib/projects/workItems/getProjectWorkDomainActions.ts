@@ -14,6 +14,13 @@ type RepairSignalRow = {
   error_message?: unknown;
 };
 type ConfirmationIdentityRow = Record<string, unknown>;
+type DomainActionFacts = Readonly<{
+  supabase: SupabaseClient;
+  projectUuid: string;
+  stage: string;
+  repair: RepairSignalRow | null;
+  confirmations: ConfirmationIdentityRow[];
+}>;
 
 function requiredText(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -54,13 +61,11 @@ function repairRecoveryAction(row: RepairSignalRow | null, projectId: string): R
  * The repair table contains bounded staff-safe messages. Provider errors and
  * commercial state are deliberately not re-derived here.
  */
-export async function getProjectWorkDomainActions(params: {
+export async function loadProjectWorkDomainActionFacts(params: {
   supabase: SupabaseClient;
-  projectId: string;
   projectUuid: string;
   stage: string;
-  currentDesign: ProjectCommandCentreCurrentDesign;
-}): Promise<ProjectWorkDomainActions> {
+}): Promise<DomainActionFacts> {
   const stage = params.stage.trim().toLowerCase();
   const confirmationRead =
     stage === 'contacted' || stage === 'site_visit'
@@ -99,13 +104,29 @@ export async function getProjectWorkDomainActions(params: {
   const confirmationRows = Array.isArray(confirmationResult.data)
     ? (confirmationResult.data as ConfirmationIdentityRow[])
     : [];
+  return { supabase: params.supabase, projectUuid: params.projectUuid, stage, repair: row, confirmations: confirmationRows };
+}
+
+export async function getProjectWorkDomainActions(params: {
+  supabase: SupabaseClient;
+  projectId: string;
+  projectUuid: string;
+  stage: string;
+  currentDesign: ProjectCommandCentreCurrentDesign;
+  facts?: DomainActionFacts;
+}): Promise<ProjectWorkDomainActions> {
+  const stage = params.stage.trim().toLowerCase();
+  const facts = params.facts ?? await loadProjectWorkDomainActionFacts(params);
+  if (facts.supabase !== params.supabase || facts.projectUuid !== params.projectUuid || facts.stage !== stage) {
+    throw new Error('Project domain facts do not match this request');
+  }
   return projectWorkDomainActions(
     {
       projectId: params.projectId,
       stage,
-      siteVisitCompleted: hasActiveProjectConfirmation(confirmationRows, params.projectUuid, 'SITE_VISIT_COMPLETED'),
+      siteVisitCompleted: hasActiveProjectConfirmation(facts.confirmations, params.projectUuid, 'SITE_VISIT_COMPLETED'),
       currentDesign: params.currentDesign,
     },
-    repairRecoveryAction(row, params.projectId),
+    repairRecoveryAction(facts.repair, params.projectId),
   );
 }

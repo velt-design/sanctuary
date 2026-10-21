@@ -3,8 +3,10 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildQuoteHandoffPreviewFromEstimate } from '@/lib/quotes/estimateHandoffPreview';
 import { getProjectWorkProjection } from '@/lib/projects/workItems/repository';
-import { getProjectWorkDomainActions } from '@/lib/projects/workItems/getProjectWorkDomainActions';
+import { getProjectWorkDomainActions, loadProjectWorkDomainActionFacts } from '@/lib/projects/workItems/getProjectWorkDomainActions';
 import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
+import { loadProjectWorkProjectionFacts } from '@/lib/projects/workItems/projectWorkProjectionFacts';
+import type { ProjectWorkReadContext } from '@/lib/projects/workItems/projectWorkReadContext';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import { resolveCommandCentreSelection } from './resolve';
@@ -110,16 +112,43 @@ export async function getProjectCommandCentre(
   supabase: SupabaseClient,
   viewer: { userId: string; isAdmin: boolean } = { userId: '', isAdmin: false },
 ): Promise<ProjectCommandCentreResponse | null> {
-  let projectUuid: string;
+  return createProjectCommandCentreRead(projectId, supabase, viewer).read();
+}
+
+/** One invocation owns the client, project and model promise. Never shared across requests. */
+export function createProjectCommandCentreRead(
+  projectId: string,
+  supabase: SupabaseClient,
+  viewer: { userId: string; isAdmin: boolean } = { userId: '', isAdmin: false },
+) {
+  let projectUuid: string | null;
   try {
     projectUuid = uuidFromAppId(projectId, 'proj');
   } catch {
-    return null;
+    projectUuid = null;
   }
+  let modelRead: Promise<boolean> | undefined;
+  const readModel = () => modelRead ??= projectUuid
+    ? isProjectWorkModelV2(supabase, projectUuid)
+    : Promise.resolve(false);
+  return {
+    readModel,
+    read: () => projectUuid
+      ? loadProjectCommandCentre(projectId, projectUuid, supabase, viewer, readModel)
+      : Promise.resolve(null),
+  };
+}
 
+async function loadProjectCommandCentre(
+  projectId: string,
+  projectUuid: string,
+  supabase: SupabaseClient,
+  viewer: { userId: string; isAdmin: boolean },
+  readModel: () => Promise<boolean>,
+): Promise<ProjectCommandCentreResponse | null> {
   const [projectResult, usesV2ProjectWork] = await Promise.all([
     supabase.from('projects').select(PROJECT_COMMAND_CENTRE_SELECT).eq('id', projectUuid).maybeSingle(),
-    isProjectWorkModelV2(supabase, projectUuid),
+    readModel(),
   ]);
   if (projectResult.error) throw new Error(projectResult.error.message ?? 'Failed to load command centre');
   if (!projectResult.data) return null;
@@ -134,18 +163,29 @@ export async function getProjectCommandCentre(
     quoteVersions: quotes,
   });
 
-  let selectedDetail: AnyRecord | null = null;
-  if (selection.estimate) {
-    const estimateResult = await supabase
-      .from('estimates')
-      .select('id,project_id,created_at,updated_at,status,version,inputs,outputs,costing_manifest,costing_rules')
-      .eq('id', selection.estimate.sourceId)
-      .maybeSingle();
-    if (estimateResult.error || !estimateResult.data) {
-      throw new Error(estimateResult.error?.message ?? 'Selected estimate detail unavailable');
-    }
-    selectedDetail = estimateResult.data as AnyRecord;
-  }
+  const ownerRow = relationRows(projectRow.ownerAssignment)[0];
+  const readContext: ProjectWorkReadContext = {
+    supabase, projectUuid, archivedAt: isoTimestamp(projectRow.archived_at),
+    modelVersion: usesV2ProjectWork ? 2 : null, projectOwnerKey: trimmedString(ownerRow?.owner_key),
+  };
+  // These reads share the visible project/model boundary, not each other's data.
+  // Attach all rejections together; composition still needs every result.
+  const [selectedDetail, domainFacts, workFacts] = await Promise.all([
+    (async (): Promise<AnyRecord | null> => {
+      if (!selection.estimate) return null;
+      const estimateResult = await supabase
+        .from('estimates')
+        .select('id,project_id,created_at,updated_at,status,version,inputs,outputs,costing_manifest,costing_rules')
+        .eq('id', selection.estimate.sourceId)
+        .maybeSingle();
+      if (estimateResult.error || !estimateResult.data) {
+        throw new Error(estimateResult.error?.message ?? 'Selected estimate detail unavailable');
+      }
+      return estimateResult.data as AnyRecord;
+    })(),
+    usesV2ProjectWork ? loadProjectWorkDomainActionFacts({ supabase, projectUuid, stage }) : null,
+    usesV2ProjectWork ? loadProjectWorkProjectionFacts({ supabase, projectUuid, readContext }) : null,
+  ]);
 
   const status = statusPresentation(selection.source);
   const quoteSelected = selection.quote !== null;
@@ -244,7 +284,6 @@ export async function getProjectCommandCentre(
     generatedAt: new Date().toISOString(),
     currentDesign,
   };
-  const ownerRow = relationRows(projectRow.ownerAssignment)[0];
   const owner = buildProjectOwnerSummary({
     stage,
     assignment:
@@ -263,17 +302,13 @@ export async function getProjectCommandCentre(
       projectUuid,
       stage,
       currentDesign,
+      facts: domainFacts!,
     });
     const projectWork = await getProjectWorkProjection({
       supabase,
       projectUuid,
-      readContext: {
-        supabase,
-        projectUuid,
-        archivedAt: isoTimestamp(projectRow.archived_at),
-        modelVersion: 2,
-        projectOwnerKey: trimmedString(ownerRow?.owner_key),
-      },
+      readContext,
+      facts: workFacts!,
       ...domainActions,
     });
     if (!projectWork) throw new Error('V2 project work could not be loaded');

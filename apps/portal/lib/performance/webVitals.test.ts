@@ -14,6 +14,8 @@ describe('portal Web Vitals privacy boundary', () => {
     expect(portalRouteTemplate('/staff/contacts/contact-secret')).toBe('/staff/contacts/[contactId]');
     expect(portalRouteTemplate('/staff/projects/design-packages')).toBe('/staff/projects/design-packages');
     expect(portalRouteTemplate('/unknown/customer-name')).toBeNull();
+    expect(portalRouteTemplate('/staff/site-visits')).toBe('/staff/site-visits');
+    expect(portalRouteTemplate('/staff/site-visits/private-record')).toBeNull();
   });
 
   it('keeps only the closed event contract', () => {
@@ -51,6 +53,7 @@ describe('portal Web Vitals privacy boundary', () => {
       navigationType: 'reload',
       deviceClass: 'desktop',
     };
+    expect(sanitizePortalWebVitalEvent({ ...base, routeTemplate: '/staff/site-visits' })).toEqual({ ...base, routeTemplate: '/staff/site-visits' });
     expect(sanitizePortalWebVitalEvent({ ...base, value: Number.NaN })).toBeNull();
     expect(sanitizePortalWebVitalEvent({ ...base, value: Number.POSITIVE_INFINITY })).toBeNull();
     expect(sanitizePortalWebVitalEvent({ ...base, routeTemplate: '/staff/projects/secret' })).toBeNull();

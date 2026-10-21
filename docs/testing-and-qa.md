@@ -1,5 +1,45 @@
 # Testing And QA
 
+## Document measurement preparation checks (21 October 2026 candidate)
+
+Run the focused `documentDiagnostics`, `documentRenderDiagnostics`,
+`server.diagnostics`, `proxy.diagnostics`, existing proxy/auth/portalAccess and
+`webVitals` tests, plus `test/portal-performance-measurement.test.ts`. These preserve
+auth outcomes and cookie refresh, callback failure isolation, concurrent simulated
+React request contexts, one cached auth lookup, theme fallback/custom preset,
+strict privacy/provenance/expiry and Site Visits template coverage. The SQL test
+executes the actual forward migration in disposable PGlite for first/repeat
+installation, grants/RLS, invalid input, aggregate windows and exact retention
+cutoff. Its cron scheduler is explicitly a stub; actual extension/job state needs
+a separately bound catalogue read and installed-environment verification.
+
+Use one optimized candidate build for a small disabled/enabled/expired read-only
+check. Correlate the browser's opaque response UUID with fixed server events;
+inspect that internal signed headers/configuration never reach final responses or
+HTML. Preserve source, build, environment, runtime region and missing/error phases.
+Compare overhead separately from whole useful-load speed. A safe preview alone
+does not prove production latency or authorize live diagnostics/schema installation.
+
+
+## First-load project read contracts (21 October 2026 candidate)
+
+`projectReadConcurrency.integration.test.ts` runs the actual snapshot, Command
+Centre and work projection against deferred synthetic query results. It verifies
+independent reads overlap only after visible project/model checks, snapshot model
+reuse, explicit failure, pricing recovery, closed state, current subsequent data
+and isolation between clients/projects/read contexts. Run it with
+`npx vitest run apps/portal/lib/projects/commandCentre/projectReadConcurrency.integration.test.ts`
+and the existing `npm run test:portal:project-work` regression lane.
+
+Performance evidence must compare the same optimized build mode, staging data,
+visible useful-content markers and five repetitions per route/cache condition.
+Retained app storage with HTTP cache bypass is not an empty application cache.
+Keep CUA observation upper bounds, exact per-tab network events and server phases
+separate; timestamp-window server joins can contain another tab's background reads.
+Use a separate fresh origin for initial app-data correctness without clearing
+staff sessions/drafts. It is a smoke check, not a matched performance sample.
+No fixture result establishes production latency or external provider coverage.
+
 ## Outdoor Rooms contracts (21 October 2026)
 
 `marketing.outdoor-rooms.spec.ts` owns the specialised page's responsive, SEO,

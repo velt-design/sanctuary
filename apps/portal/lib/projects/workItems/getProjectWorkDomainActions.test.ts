@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProjectCommandCentreCurrentDesign } from '../commandCentre/types';
-import { getProjectWorkDomainActions } from './getProjectWorkDomainActions';
+import { getProjectWorkDomainActions, loadProjectWorkDomainActionFacts } from './getProjectWorkDomainActions';
 
 const PROJECT_UUID = '11111111-1111-4111-8111-111111111111';
 const PROJECT_ID = `proj_${PROJECT_UUID}`;
@@ -61,6 +61,17 @@ function clientWithSiteVisitFacts(confirmations: unknown[]) {
 }
 
 describe('project-work domain action read', () => {
+  it('composes loaded facts without a second read and rejects a different client, project or stage', async () => {
+    const supabase = client({ data: [], error: null });
+    const params = { supabase: supabase as never, projectId: PROJECT_ID, projectUuid: PROJECT_UUID, stage: 'quoting', currentDesign };
+    const facts = await loadProjectWorkDomainActionFacts(params);
+    await expect(getProjectWorkDomainActions({ ...params, facts })).resolves.toEqual({ recoveryAction: null, specialistAction: null });
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+    await expect(getProjectWorkDomainActions({ ...params, facts, stage: 'contacted' })).rejects.toThrow('do not match');
+    await expect(getProjectWorkDomainActions({ ...params, facts, projectUuid: 'another-project' })).rejects.toThrow('do not match');
+    await expect(getProjectWorkDomainActions({ ...params, facts, supabase: client({ data: [], error: null }) as never })).rejects.toThrow('do not match');
+  });
+
   it('excludes deferred cadence repair before limiting the recovery read', async () => {
     const supabase = client({
       data: [

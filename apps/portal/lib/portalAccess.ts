@@ -54,18 +54,30 @@ export function toPortalAuthUser(user: PortalAccessUserSource): PortalAuthUser {
   };
 }
 
-export async function resolvePortalAccessState(supabase: PortalAccessLookup): Promise<PortalAccessState> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+export type PortalAccessTimingObserver = (phase: { phase: 'identity' | 'role'; durationMs: number; outcome: 'complete' | 'error' }) => unknown;
+
+async function observeAccess<T extends { error?: unknown }>(phase: 'identity' | 'role', read: () => PromiseLike<T>, observer?: PortalAccessTimingObserver): Promise<T> {
+  if (!observer) return read();
+  const start = performance.now();
+  const emit = (outcome: 'complete' | 'error') => {
+    try { void Promise.resolve(observer({ phase, durationMs: performance.now() - start, outcome })).catch(() => undefined); } catch { /* Observation cannot change access. */ }
+  };
+  try { const value = await read(); emit(value.error ? 'error' : 'complete'); return value; }
+  catch (error) { emit('error'); throw error; }
+}
+
+export async function resolvePortalAccessState(supabase: PortalAccessLookup, observer?: PortalAccessTimingObserver): Promise<PortalAccessState> {
+  const { data: userData, error: userError } = await observeAccess('identity', () => supabase.auth.getUser(), observer);
   if (userError || !userData?.user) {
     return { kind: 'unauthenticated' };
   }
 
   const user = toPortalAuthUser(userData.user);
-  const { data: portalUser, error: portalError } = await supabase
+  const { data: portalUser, error: portalError } = await observeAccess('role', () => supabase
     .from('portal_users')
     .select('role')
     .eq('user_id', user.id)
-    .maybeSingle();
+    .maybeSingle(), observer);
 
   if (portalError) {
     return {

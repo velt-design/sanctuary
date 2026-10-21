@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getProjectCommandCentre } from '@/lib/projects/commandCentre/getProjectCommandCentre';
+import { createProjectCommandCentreRead, getProjectCommandCentre } from '@/lib/projects/commandCentre/getProjectCommandCentre';
 import type { ProjectWorkProjection } from './types';
 
 /**
@@ -19,4 +19,16 @@ export async function getAuthoritativeProjectWorkProjection(
   const commandCentre = await getProjectCommandCentre(projectId, supabase);
   if (!commandCentre || commandCentre.workModel !== 'v2') return null;
   return commandCentre.projectWork;
+}
+
+/** Snapshot model detection and full composition share only this bound invocation. */
+export function createAuthoritativeProjectWorkRead(projectId: string, supabase: SupabaseClient) {
+  const reader = createProjectCommandCentreRead(projectId, supabase);
+  return {
+    readModel: reader.readModel,
+    read: async (): Promise<ProjectWorkProjection | null> => {
+      const commandCentre = await reader.read();
+      return commandCentre?.workModel === 'v2' ? commandCentre.projectWork : null;
+    },
+  };
 }

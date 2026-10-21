@@ -1,5 +1,37 @@
 # Decision Log
 
+## 2026-10-21: measure the document boundary without weakening access
+
+Faster authoritative project APIs did not establish faster whole-page readiness.
+Keep the proxy and cached render checks intact. Use default-off, short-lived fixed
+phase logs with proxy-issued diagnostic provenance and no identity/business payload;
+separate browser response time from nested server totals. Catalogue evidence, not
+a generic HTTP 503, determines the narrowly selected telemetry restoration. Local
+SQL/cron stubs and preview measurements remain distinct from installed live proof.
+
+
+## 2026-10-21: Stable navigation also needs stable pointer targets
+
+The agenda's URL owner preserved the latest intent, but removing project scope
+and loading calendar notices still moved the next pointer target. Keep view and
+filter controls before changing source context, and reserve count/select widths
+through pending and loaded states. Preserve visible freshness and retry below
+the controls. Verify rapid pointer transitions and actual geometry alongside
+URL, keyboard and delayed-data tests; correct state logic alone does not prove
+an interaction is calm.
+
+## 2026-10-21: Overlap project facts after the access boundary, not around it
+
+Matched first-load traces showed selected-estimate, repair and operational reads
+waiting on one another inside the authoritative project composer. They may load
+together after the authenticated project and model marker are known. Preserve the
+full commercial/recovery composition and every failure; raw work rows are not an
+equivalent shortcut. Reuse model detection only inside a client/project-bound
+reader invocation, never a global cache or an injected claim of current access.
+Prove concurrency with held promises, plus invisible/model-missing and changing
+data cases. Duplicate-looking document/auth reads require causal evidence before
+changing their security/freshness owner.
+
 ## 2026-10-21: Measure identity and navigation handoffs before adding speed work
 
 An authenticated synthetic estimate-to-quote journey saved a valid quote, then

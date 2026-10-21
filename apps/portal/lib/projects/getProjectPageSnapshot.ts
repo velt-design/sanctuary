@@ -8,7 +8,7 @@ import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnapshot } from '@/lib/projects/types';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
-import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
+import { createAuthoritativeProjectWorkRead } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
 import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 
 const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
@@ -255,6 +255,7 @@ export async function getProjectPageSnapshot(
   // rows are embedded through their declared foreign keys in one PostgREST
   // request, avoiding a browser-open path with many HTTP round trips while
   // retaining auth-bound RLS on every relation.
+  const workRead = createAuthoritativeProjectWorkRead(appIdFromUuid('proj', projectUuid), client);
   const [projectRes, relatedRes, owner, usesV2ProjectWork] = await Promise.all([
     client
       .from('projects')
@@ -272,7 +273,7 @@ export async function getProjectPageSnapshot(
       .limit(PROJECT_NOTES_SNAPSHOT_LIMIT, { referencedTable: 'notes' })
       .maybeSingle(),
     loadProjectHeaderOwner(client, projectUuid),
-    isProjectWorkModelV2(client, projectUuid),
+    workRead.readModel(),
   ]);
 
   const projectRow = projectRes?.data ?? null;
@@ -289,7 +290,6 @@ export async function getProjectPageSnapshot(
   const summary = mapProjectSummary(projectRow, projectId);
   const workModelVersion = usesV2ProjectWork ? 2 : null;
   const stage = summary.stage;
-  const projectIdOut = summary.project.id;
 
   const currentUserId = authenticatedUserId === undefined
     ? (await client.auth.getUser())?.data?.user?.id ?? null
@@ -305,7 +305,7 @@ export async function getProjectPageSnapshot(
 
   const hasJobPacks = relationRows(relatedRow?.jobPacks).length > 0;
   const projectWork = workModelVersion === 2
-    ? await getAuthoritativeProjectWorkProjection(projectIdOut, client)
+    ? await workRead.read()
     : null;
   if (workModelVersion === 2 && !projectWork) {
     throw new Error('V2 project work could not be loaded');
