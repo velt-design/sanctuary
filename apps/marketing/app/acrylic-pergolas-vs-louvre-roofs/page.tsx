@@ -12,6 +12,7 @@ import { products } from '@/data/products';
 import { parseEnquiryContext, type EnquiryContextSearchParams } from '@/lib/enquiryContext';
 import { acrylicVsLouvreConfig as config, COMPARISON_ROUTE, roofComparison, roofQuestions } from './content';
 import RoofComparisonDiagram from './RoofComparisonDiagram';
+import EnquiryLink from './EnquiryLink';
 import styles from './comparison.module.css';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import '../../components/seo-landing/seo-landing.css';
@@ -38,7 +39,7 @@ export default async function AcrylicPergolasVsLouvreRoofsPage({ searchParams }:
       <p className={styles.intro}>{config.hero.intro}</p>
     </div>
     <div className={styles.heroAction}>
-      <a className={styles.primary} href="#project-details">{config.hero.primaryCta}<span aria-hidden="true"><ArrowUpRight /></span></a>
+      <EnquiryLink className={styles.primary}>{config.hero.primaryCta}<span aria-hidden="true"><ArrowUpRight /></span></EnquiryLink>
     </div>
     <figure className={styles.heroPhoto}>
       <Image src={config.hero.image} alt={config.hero.imageAlt} width={1417} height={1984} sizes="(max-width: 800px) 100vw, (max-width: 1440px) 53vw, 700px" preload />
@@ -72,7 +73,7 @@ export default async function AcrylicPergolasVsLouvreRoofsPage({ searchParams }:
       </table>
     </section>
     <section className={styles.brief} aria-labelledby="roof-brief-title">
-      <div><p className={styles.eyebrow}>Planning your fixed-roof pergola</p><h2 id="roof-brief-title">Start with your space.</h2><p>You do not need a finished design. These three questions make the first conversation more useful.</p><a className={styles.textLink} href="#project-details">Discuss a fixed-roof pergola <span aria-hidden="true"><ArrowUpRight /></span></a></div>
+      <div><p className={styles.eyebrow}>Planning your fixed-roof pergola</p><h2 id="roof-brief-title">Start with your space.</h2><p>You do not need a finished design. These three questions make the first conversation more useful.</p><EnquiryLink className={styles.textLink}>Discuss a fixed-roof pergola <span aria-hidden="true"><ArrowUpRight /></span></EnquiryLink></div>
       <ol>
         <li><h3>Where do you want light and shade?</h3><p>Consider the house windows, your usual seats and low sun from the open sides.</p></li>
         <li><h3>Would you want to change the roof position?</h3><p>A fixed roof needs no opening or closing. If adjustable overhead shade is important to you, ask a louvre supplier to demonstrate the positions and controls.</p></li>
