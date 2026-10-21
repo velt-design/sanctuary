@@ -27,6 +27,45 @@ distinct triggers, and an API-triggered Git build does not prove webhook parity.
 Even passing generated output does not prove the provider deployed it unchanged.
 Production regional acceptance remains failed.
 
+## Meta landing experiment candidate (21 October)
+
+`test/marketing-landing-experiments.test.ts` and the actual
+`components/landing-experiment/LandingExperiment.test.tsx` cover fixed copy/receipt
+validation, consent, retained control without tracking, delayed tab/designer return,
+withdrawal and source authority/exposure/intake replay.
+The component suite also covers cookie-less tab withdrawal, distinct/identical
+cookie receipts and delayed outdoor copy while a keyboard-focused link is held.
+Set only
+`SANCTUARY_DISPOSABLE_POSTGRES_BIN` to local PostgreSQL17 and run
+`node scripts/test-landing-experiments-db.mjs` for the actual source migration,
+canonical intake transaction, statistical/maturation/rollback and scoped intake
+provenance assertions. All synthetic records roll back; no live schema or delivered
+enquiry is proven. Run marketing/Portal types, relevant lint/tests, optimized build,
+docs/architecture guards and `node scripts/marketing/generate-landing-template.mjs
+--check`. `api/landing-experiment/probe.integration.test.ts` composes the actual
+visitor/command handlers and SQL. Its opt-in local browser fixture invokes the
+paired Velt compiled renderer against both local pages and every finite copy,
+accepting actual Set-Cookie/reload/exposure responses. No assignment response is
+fabricated. Set the loopback `IMPROVEMENT_RENDER_FIXTURE_ORIGIN`, local compiled
+`IMPROVEMENT_RENDER_MODULE` and `IMPROVEMENT_RENDER_EXECUTABLE` only for this fixture.
+Private screenshot artifacts prove local served-code behavior; all vendor and
+submission traffic is denied. Native probe tests cover scope, gates, maturation,
+separate denominators and immutable effect receipt recovery.
+Native learning assertions use160 historical experiments across all non-retained
+terminal states, prove bounded unique exclusions and prepare denial, and allow a
+changed control baseline or template. Velt separately proves the bounded result
+tail can evict a formal result after160 ordinary continuations while these source
+exclusions still prevent a paid generation request.
+Independent catalogue review and hosted execution remain separate acceptance.
+The compiled-page matrix covers both pages' three wording choices plus acrylic
+`action-first`. Local layout checks include320×568,390×740,390×844 and1440×960,
+first-visit consent/acceptance, reduced motion, held pointer/focus stability,
+unchanged links/desktop geometry and design-anchor return. Native layout assertions
+retain first-exposure mobile/treatment values across reload/resize; mobile is only
+a predeclared secondary breakdown, never an alternate formal winner. Emulation is
+not real-phone hardware proof. The native fallback regression composes the actual
+form-data builder with intake normalization; no real enquiry is delivered.
+
 ## Project header stability followup (21 October 2026 candidate)
 
 Run `ProjectPageFrame.test.tsx`, `ProjectSnapshotPageClient.test.tsx` and its

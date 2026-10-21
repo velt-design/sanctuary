@@ -1,4 +1,5 @@
 import { parsePreviewDraft } from '../../../components/configurator-prototype/previewDraft';
+import { readAssignment } from '../../../lib/landingExperiment.server';
 import { allowsOptionalEnquiryPhone } from '../../../lib/enquiryContactValidation';
 import { prepareEnquiryEmail } from '../../../lib/enquiryEmailPreparation';
 import { normalizeEnquiryProjectPreferences } from '../../../lib/enquiryProjectPreferences';
@@ -277,6 +278,7 @@ export async function POST(req: Request) {
     uploadSessionToken: _uploadSessionToken,
     enquiryContext: _untrustedEnquiryContext,
     calculationRef: _opaqueCalculationRef,
+    experimentReceipt:_experimentReceipt,
     ...payloadWithoutUploadToken
   } = payload;
   const rawPayload = safeJsonPayload({
@@ -405,6 +407,7 @@ export async function POST(req: Request) {
       };
     }
     intake = await createMarketingEnquiryIntake(supabase, {
+      ...(readAssignment(typeof payload.experimentReceipt==='string'?payload.experimentReceipt:null) ? { experimentAssignment: readAssignment(typeof payload.experimentReceipt==='string'?payload.experimentReceipt:null)!.assignment } : {}),
       submissionId,
       uploadSessionToken,
       ...(delivery ? { delivery } : {}),
