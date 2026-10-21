@@ -1,5 +1,39 @@
 # Testing And QA
 
+## Sales designer responsibility (21 October 2026)
+
+The designer SQL suite executes the actual assignment migration and existing
+visit/accounting helpers. It covers separate attendee/designer attribution,
+unknown dates/attendance, service exclusions, unchanged team cohort, CAS revisions,
+immutable replay receipts, clearing, direct-table denial and revoked owner access.
+API and editor tests cover guarded writes, malformed evidence, stale reload and
+lost-response retry. `scripts/test-sales-designer-concurrency.mjs` uses existing
+local PostgreSQL 17 binaries (`PRAXIS_DISPOSABLE_POSTGRES_BIN`) and two real
+connections against a disposable synthetic database, including competing revisions,
+simultaneous duplicate commands and revoked authority. It neither installs software
+nor contacts a remote database. Actual staged PostgREST and report-drawer save /
+readback remain separate release evidence; synthetic fixture writes are in-memory.
+
+## Gable form guide (21 October 2026)
+
+`marketing.gable-guide.spec.ts` checks the new route at 320/390/820/1440/2560,
+real responsive image loading, normal chrome/canonical/schema/sitemap, the
+qualitative section, keyboard FAQs and untouched phone consent. Both enquiry
+anchors retain first/repeat focus and project Back/Forward behavior. The direct
+form preserves all-audience source context, required phone, optional roof/brief,
+attachment rejection/removal and retry; no-JavaScript submission uses the native
+fallback. The optional product journey preserves an existing selected design
+through designer/enquiry/Back/reload and return to the guide.
+
+Run the new server-page handoff unit with existing seoLandingViewModel, product
+selection and canonical form/context/attachment/fallback suites. The exact Gable
+seo-copy-hygiene case verifies its modern responsive preload. Run the comparison
+guide's five enquiry-anchor/history/no-JavaScript cases when changing the shared
+`components/enquiry/EnquiryLink`; its retained adapter must remain equivalent.
+All populated tests install persistent intake/native/upload/vendor fences before
+input. Synthetic success and fixture prices are not delivery or live pricing
+evidence. There is no new policy, SQL or provider integration in this change.
+
 ## Regional document access candidate (21 October 2026)
 
 Run the focused middleware/access suite including `proxy.regional.test.ts`,

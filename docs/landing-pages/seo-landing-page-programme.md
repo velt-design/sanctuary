@@ -1,5 +1,18 @@
 # SEO Landing Page Programme
 
+## Gable secondary guide revision (21 October 2026)
+
+The indexed Gable route remains a roof-form guide, with a substantial real
+Riverhead opening and separate acrylic, combination and timber-lined examples.
+Its qualitative section, house connection, open/infilled ends and form-specific
+FAQs explain suitability without duplicating the product selector. Optional
+configuration continues to the existing Gable product route and full designer.
+Normal chrome, canonical, sitemap membership, guide links, required-phone enquiry
+and optional brief/photos remain. Source context is validated by the existing
+parser and accompanies the canonical form. No business policy or remote migration
+changes. Local simulated journeys establish interface behavior only; hosted build,
+independent review and publication are separately recorded.
+
 ## Outdoor Rooms service revision (21 October 2026)
 
 The existing indexed `/outdoor-rooms-auckland` route now leads with planning the

@@ -25,6 +25,20 @@ visit reader's volatility to permit PostgREST POST transactions to acquire the
 existing actor's shared access-row locks. Function body and ACL remain intact;
 the original designer migration is preserved.
 
+`20261021040001_project_sales_designer.sql` owns private
+`project_sales_designers` (one project, stable roster key, revision, reason and
+actor/time) and append-only `project_sales_designer_commands` receipts. RLS and
+revoked direct grants leave access exclusively through owner-guarded
+`project_sales_designer_read(uuid)` and
+`project_sales_designer_assign(uuid,uuid,integer,text,text)`. Both are VOLATILE
+for authority locks; assignment locks the project and command before compare-and-set.
+A cleared assignment retains its revision; command reuse with changed input fails.
+The existing report gains a bounded assignments projection while its visit,
+accounting and source-withholding semantics stay unchanged. Existing phase owner,
+retired legacy role assignments and drafting responsibility are separate owners.
+Applied 030001/030002 are preserved; installation and genuine HTTP proof remain
+root-owned release steps.
+
 ## Landing experiment and intake provenance candidate (21 October)
 
 Forward20261021020002 owns default-off source control, a single global active landing

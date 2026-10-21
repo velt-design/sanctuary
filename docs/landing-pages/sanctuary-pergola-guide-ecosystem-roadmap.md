@@ -2255,10 +2255,19 @@ The comparison page is concise, neutral, evidence-led, and clear about Sanctuary
 ### G15 - Refine the Gable secondary guide
 
 **Phase:** Phase 6 - Retained-guide content refinement  
-**Status:** Not started  
+**Status:** Implemented and reviewed; operational publication recorded separately
 **Relative effort:** Medium  
 **Implementation risk:** Medium  
 **Dependencies:** G09 and G10
+
+The 21 October revision leads with the complete Riverhead gable and uses Dairy
+Flat, Warkworth and Riverhead details to explain the roof choices. Its compact
+section illustration, house/edge planning and accessible FAQs remain form-led.
+The existing product selector/full designer is optional; the canonical enquiry
+keeps required phone, all audiences, source context, brief and attachments. The
+route-owned implementation and focused checks are mapped in Marketing UI
+Foundation and Testing and QA. Local fixtures do not establish delivery or live
+advertising attribution. The original scope below remains the acceptance basis.
 
 **Ready-to-use Codex goal prompt**
 

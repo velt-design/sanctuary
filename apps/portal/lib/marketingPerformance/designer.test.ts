@@ -3,12 +3,37 @@ import { designerFixture } from '@/app/qa/marketing-performance-fixture/designer
 import { designerPerformance,afterVisit,median } from './designer';
 import { designerReportSchema } from './designerContract';
 describe('designer attribution and coverage',()=>{
+  it('counts stable explicit attendance with questions while retaining review and stricter acquisition checks',()=>{
+    const report=designerFixture();report.visits[0].questions=1;
+    const result=designerPerformance(report);
+    expect(result.total.attended.map(v=>v.id)).toContain(report.visits[0].id);
+    expect(result.coverage.find(c=>c.visit.id===report.visits[0].id)?.reasons).toContain('source');
+    expect(result.total.outcomes.some(o=>o.visit.id===report.visits[0].id)).toBe(false);
+    for(const patch of [{status:null},{kind:'review'},{changed:true},{duplicate:true},{removed:true},{withdrawn:true},{kind:'excluded'},{day:'2026-09-23',at:'2026-09-23T00:00:00Z'}]){
+      const r=designerFixture();Object.assign(r.visits[0],{questions:1},patch);r.end='2026-09-23';
+      expect(designerPerformance(r).total.attended.map(v=>v.id)).not.toContain(r.visits[0].id);
+    }
+  });
+  it('selects assigned sales independently from actual attendee workload without fabricating missing attribution',()=>{
+    const r=designerFixture();r.visits[0].staff=['joe'];
+    const jordan=designerPerformance(r,null,'jordan');expect(jordan.total.outcomes).toHaveLength(1);expect(jordan.total.outcomes[0].visit.staff).toEqual(['joe']);
+    expect(jordan.total.attended.map(v=>v.id)).not.toContain(r.visits[0].id);
+    const joe=designerPerformance(r,null,'joe');expect(joe.total.attended.map(v=>v.id)).toContain(r.visits[0].id);expect(joe.total.outcomes).toEqual([]);
+    r.assignments=[];const unassigned=designerPerformance(r);expect(unassigned.total.outcomes).toHaveLength(2);
+    expect(unassigned.rows.find(row=>row.staffId==='unassigned')!.outcomes).toHaveLength(2);expect(unassigned.rows.find(row=>row.staffId==='joe')!.outcomes).toEqual([]);
+  });
+  it('retains an assigned undated project in designer details, excluding service history and unproven attendance from conversion',()=>{
+    const r=designerFixture();const v=r.visits[5];r.assignments.push({projectId:v.projectId!,designerKey:'jordan',revision:1,updatedAt:r.asOf,basis:'Synthetic confirmation'});
+    const m=designerPerformance(r,null,'jordan');expect(m.total.assignedVisits.map(v=>v.id)).toContain(v.id);expect(m.total.outcomes.some(o=>o.visit.id===v.id)).toBe(false);
+    r.visits[0].status=null;expect(designerPerformance(r).total.outcomes).toHaveLength(1);
+    r.visits[0].status='attended';r.visits[0].kind='excluded';const excluded=designerPerformance(r);expect(excluded.total.attended.map(v=>v.id)).not.toContain(r.visits[0].id);expect(excluded.total.outcomes).toHaveLength(1);
+  });
   it('deduplicates team projects and scopes while showing joint participation and repeat workload',()=>{
     const r=designerFixture(),m=designerPerformance(r);
     expect(m.total.outcomes).toHaveLength(2);expect(m.total.attended).toHaveLength(4);
     expect(m.total.outcomes.flatMap(o=>o.paid)).toHaveLength(1);
     expect(m.rows.find(x=>x.staffId==='jordan')!.outcomes).toHaveLength(1);
-    expect(m.rows.find(x=>x.staffId==='jp')!.outcomes).toHaveLength(2);
+    expect(m.rows.find(x=>x.staffId==='jp')!.outcomes).toHaveLength(1);
     expect(m.rows.find(x=>x.staffId==='joe')!.outcomes).toHaveLength(0);
     expect(m.coverage.some(c=>c.reasons.includes('date'))).toBe(true);
   });
@@ -36,7 +61,7 @@ describe('designer attribution and coverage',()=>{
   });
   it('uses designer selection independently of project filters and rejects duplicate DTOs',()=>{
     const r=designerFixture();expect(designerPerformance(r,null,'joe').total.outcomes).toEqual([]);
-    expect(designerPerformance(r,new Set([r.visits[0].projectId!]),'jp').total.outcomes).toHaveLength(1);
+    expect(designerPerformance(r,new Set([r.visits[0].projectId!]),'jp').total.outcomes).toHaveLength(0);
     expect(designerReportSchema.safeParse({...r,visits:[r.visits[0],r.visits[0]]}).success).toBe(false);
   });
   it('omits unknown first-send timing rather than synthesizing days from a later revision',()=>{

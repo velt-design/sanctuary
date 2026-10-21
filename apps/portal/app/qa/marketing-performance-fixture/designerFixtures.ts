@@ -1,3 +1,5 @@
+import { AssignmentError,type AssignmentClient } from '@/components/marketingPerformance/SalesDesignerAssignment';
+import { unassignedDesigner,type SalesDesigner,type SalesDesignerCommand } from '@/lib/marketingPerformance/salesDesigner';
 import type { DesignerLoader } from '@/components/marketingPerformance/useDesigner';
 import type { DesignerReport,DesignerVisit,DesignerScope } from '@/lib/marketingPerformance/designerContract';
 import { hubFixture } from './hubFixtures';
@@ -12,11 +14,25 @@ export function designerFixture(mode='complete'):DesignerReport {
   if(mode==='conflict')visits.push(visit(10,{projectId:project(1),staff:['joe']}));
   return {schemaVersion:1,asOf:'2026-09-22T08:00:00Z',start:'2026-09-01',end:'2026-09-22',
     source:{enabled:mode!=='disabled',lastSuccess:mode==='stale'?'2026-09-21T00:00:00Z':'2026-09-22T07:50:00Z',failed:mode==='source-failed',rangeStart:'2026-08-23T00:00:00Z',rangeEnd:'2026-12-21T00:00:00Z',firstImportedAt:'2026-09-21T00:00:00Z'},
+    assignments:mode==='unassigned'?[]:[{projectId:project(1),designerKey:'jordan',revision:1,updatedAt:'2026-09-21T00:00:00Z',basis:'Synthetic assignment'},{projectId:project(2),designerKey:'jp',revision:1,updatedAt:'2026-09-21T00:00:00Z',basis:'Synthetic assignment'}],
     visits:mode==='empty'?[]:mode==='disabled'?visits.filter(v=>v.origin==='history'):visits,scopes:mode==='empty'?[]:scopes};
 }
+const savedAssignments=new Map<string,SalesDesigner>();
+const commands=new Map<string,SalesDesigner>();
+export const designerAssignmentClient:AssignmentClient={
+  read:async id=>savedAssignments.get(id)??unassignedDesigner(id),
+  assign:async(id,command:SalesDesignerCommand)=>{
+    if(commands.has(command.commandId))return commands.get(command.commandId)!;
+    const current=savedAssignments.get(id)??unassignedDesigner(id);
+    if(current.revision!==command.expectedRevision)throw new AssignmentError(409);
+    const result:SalesDesigner={projectId:id,designerKey:command.designerKey,revision:current.revision+1,updatedAt:new Date().toISOString(),basis:command.basis};
+    savedAssignments.set(id,result);commands.set(command.commandId,result);return result;
+  }
+};
 export const designerLoader:DesignerLoader=async(filters,signal)=>{
   const mode=new URLSearchParams(window.location.search).get('designerScenario')??'complete';
   await new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,mode==='slow'?2500:300);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new Error('Aborted'));},{once:true});});
   if(mode==='failure'||mode==='denied')throw new Error(mode==='denied'?'Developer access is required.':'Synthetic read failure. Retry when available.');
-  return {...designerFixture(mode),start:filters.start,end:filters.end};
+  const report=designerFixture(mode);savedAssignments.clear();commands.clear();for(const a of report.assignments)savedAssignments.set(a.projectId,a);
+  return {...report,start:filters.start,end:filters.end};
 };
