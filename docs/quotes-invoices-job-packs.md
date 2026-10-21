@@ -1,5 +1,51 @@
 # Quotes, Invoices, And Job Packs
 
+## Revised quotes with existing funding (22 October 2026 candidate)
+
+Quote acceptance uses the versioned `commercial_accept_quote_with_project_lock_v2`
+command through `acceptQuote.ts`. Effective paid funding belonging to the same
+quote family selects manual progress billing. It accepts the saved scope, retains
+existing issued invoices and payments, and deliberately returns no invoice. The
+staff success message sends the next action to Invoices; staff choose the amount
+in the existing custom draft editor. Initial construction quotes without family
+funding keep their scheduled first invoice and normal delivery. A separately
+charged historical assessment does not fund that construction quote.
+
+`commercial_invoice_scope_assignments` records an explicit, audited economic
+relationship without rewriting invoice kind, number, content, status, payment
+allocations or provider identity. `QUOTE_PAYMENT` links a legacy invoice to one
+quote family; `SEPARATE_CHARGE` retains genuine historical work outside the latest
+construction price; `NATIVE` restores its original interpretation. Never infer a
+relationship from description text. The service-only reconciliation command
+requires exact amount/status, project/family agreement, assignment revision,
+ledger fingerprint, stable command ID, actor and reason. Replay retains the same
+receipt; changed evidence or conflicting command reuse fails closed.
+
+Implementation map: the migration owns family funding, economic job value,
+invoice limits and restoration; `invoices/scopeFunding.ts` is the server read
+adapter; `paymentScheduleProjection.ts` carries historical family funding through
+current terms and excludes source-owned receipts from free credit. Invoice history
+shows the relationship alongside the original document. Overview consumes the
+same schedule. Staff acceptance invalidates both invoice history and schedule.
+Public acceptance/reload recognises persisted manual billing and never offers a
+retry for an intentionally absent invoice, including after a later custom issue.
+Acceptance time remains the business acceptance time for attribution and work
+reconciliation. Provider producers and mappings are unchanged.
+
+Rollout is migration first, then both Portal and Marketing, then the separately
+approved exact reconciliation. The legacy two-argument acceptance RPC retains an
+invoice guarantee; it does not opt old applications into a nullable result. New
+applications alone invoke v2. A legacy retry after manual acceptance asks for the
+current application without changing acceptance or sending a later invoice.
+Keep staff on the matching app before reconciliation. Rollback the application
+only before any manual acceptance, or keep the v2-capable adapter deployed;
+never delete acceptance receipts or assignment history to simulate rollback.
+Recovery uses a new audited `NATIVE` or corrected assignment command with fresh
+evidence and revision. Deployment/reconciliation never accepts a customer's
+quote or creates an invoice on their behalf.
+
+
+
 ## Current workflow clarity (20 October 2026 local candidate)
 
 The project commercial context distinguishes saved commercial facts from the

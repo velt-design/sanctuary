@@ -42,7 +42,7 @@ returns table(paid_inc_gst_cents integer, open_inc_gst_cents integer, carried_pa
 language plpgsql stable security definer set search_path = pg_catalog, pg_temp as $$
 declare v_quote_id uuid; v_project_id uuid; v_paid integer; v_open integer; v_current integer;
 begin
-  if auth.role() <> 'service_role' and not public.has_portal_access() then
+  if coalesce(auth.role(),'') <> 'service_role' and not public.has_portal_access() then
     raise exception 'Staff access required' using errcode='42501';
   end if;
   select v.quote_id,q.project_id into strict v_quote_id,v_project_id
@@ -187,7 +187,7 @@ create or replace function public.commercial_project_value_breakdown(p_project_i
 returns jsonb language plpgsql stable security definer set search_path = pg_catalog, pg_temp as $$
 declare v_quote integer; v_additional integer;
 begin
-  if auth.role() <> 'service_role' and not public.has_portal_access() then raise exception 'Staff access required' using errcode='42501'; end if;
+  if coalesce(auth.role(),'') <> 'service_role' and not public.has_portal_access() then raise exception 'Staff access required' using errcode='42501'; end if;
   select coalesce(sum(c.total_inc_gst_cents),0)::integer into v_quote from public.commercial_current_accepted_quote_versions(p_project_id) c;
   v_additional:=public.commercial_project_additional_invoice_value(p_project_id);
   return jsonb_build_object('acceptedQuoteIncGstCents',v_quote,'standaloneIncGstCents',v_additional,'billableIncGstCents',v_quote+v_additional);
@@ -277,6 +277,12 @@ begin
       values(v_version.id,v_billing_mode,v_version.accepted_at);
   end if;
 
+  -- A funded revision retains issued invoices, including partial provider receipts.
+  if v_billing_mode='manual' then
+    return query select v_version.id,null::uuid,false,v_already_accepted;
+    return;
+  end if;
+
   update public.deposit_invoices invoice set
     status = 'VOID', voided_at = coalesce(invoice.voided_at, now()),
     voided_by = p_actor,
@@ -284,11 +290,6 @@ begin
     portal_token_hash = null, portal_token_expires_at = null
   where invoice.quote_id = v_quote.id and invoice.quote_version_id <> v_version.id
     and invoice.status = 'OPEN';
-
-  if v_billing_mode='manual' then
-    return query select v_version.id,null::uuid,false,v_already_accepted;
-    return;
-  end if;
 
   v_first_term := v_version.payment_terms->0;
   v_term_id := coalesce(nullif(trim(v_first_term->>'id'), ''), 'payment-1');
@@ -366,7 +367,7 @@ begin
       jsonb_build_object('quoteVersionId',p_quote_version_id,'actor',p_actor,'billingMode',
         public.commercial_quote_acceptance_billing_mode(p_quote_version_id))) on conflict(idempotency_key) do nothing;
   return query select v_version.id,v_invoice.id,v_invoice.invoice_ref,v_project_id,v_version.quote_id,
-    v_version.total_inc_gst_cents,v_version.accepted_at,v_result.invoice_created,v_result.already_accepted;
+    v_version.total_inc_gst_cents,(select b.accepted_at from private.commercial_quote_acceptance_billing b where b.quote_version_id=v_version.id),v_result.invoice_created,v_result.already_accepted;
 end;
 $$;
 

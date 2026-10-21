@@ -135,6 +135,65 @@ describe('funded revised quote and explicit deposit reconciliation, production S
     expect((await db.query<any>('select * from public.commercial_quote_scope_funding($1)', [version])).rows[0].paid_inc_gst_cents).toBe(50000);
     expect((await db.query<any>('select * from public.commercial_quote_scope_funding($1)', [addOnVersion])).rows[0].paid_inc_gst_cents).toBe(20000);
   });
+  it('accepts an explicitly funded family without requiring a historical acceptance', async () => {
+    const importedVersion = '30000000-0000-4000-8000-000000000005';
+    await db.query("insert into public.quote_versions(id,quote_id,version_number,status,total_inc_gst_cents,total_ex_gst_cents,gst_cents,payment_terms) values($1,$2,1,'SENT',80000,69565,10435,$3)", [importedVersion, otherQuote, term(80000)]);
+    // An explicit source invoice can be linked before any quote was accepted.
+    await db.query('update public.quotes set project_id=$1 where id=$2', [project, otherQuote]);
+    await reconcile(topup, 'QUOTE_PAYMENT', otherQuote, 20000);
+    const accepted = (await db.query<any>('select * from public.commercial_accept_quote_with_project_lock_v2($1,$2)', [importedVersion, 'synthetic-admin'])).rows[0];
+    expect(accepted.invoice_id).toBeNull();
+    expect((await db.query<any>('select * from public.commercial_quote_scope_funding($1)', [importedVersion])).rows[0].paid_inc_gst_cents).toBe(20000);
+  });
+  it('retains the scheduled replacement path for an unpaid revision', async () => {
+    const first = '30000000-0000-4000-8000-000000000005', next = '30000000-0000-4000-8000-000000000006';
+    await db.query("insert into public.quote_versions(id,quote_id,version_number,status,total_inc_gst_cents,total_ex_gst_cents,gst_cents,payment_terms) values($1,$3,1,'SENT',80000,69565,10435,$4),($2,$3,2,'SENT',100000,86957,13043,$5)", [first, next, otherQuote, term(40000,50), term(50000,50)]);
+    const old = (await db.query<any>('select * from public.commercial_accept_quote_with_project_lock_v2($1,$2)', [first, 'synthetic-admin'])).rows[0];
+    const revised = (await db.query<any>('select * from public.commercial_accept_quote_with_project_lock_v2($1,$2)', [next, 'synthetic-admin'])).rows[0];
+    expect(revised.invoice_id).toBeTruthy();
+    expect((await db.query<any>('select status from public.deposit_invoices where id=$1', [old.invoice_id])).rows[0].status).toBe('VOID');
+    expect((await db.query<any>('select total_inc_gst_cents from public.deposit_invoices where id=$1', [revised.invoice_id])).rows[0].total_inc_gst_cents).toBe(50000);
+  });
+  it('retains already-issued unpaid exposure alongside a funded revision', async () => {
+    // An existing additional stage remains payable after the scope is revised.
+    await db.query("insert into public.deposit_invoices(id,project_id,quote_id,quote_version_id,quote_ref,quote_version_number,invoice_ref,status,quote_total_inc_gst_cents,total_inc_gst_cents,total_ex_gst_cents,gst_cents,payment_term_id,payment_term_label) values($1,$2,$3,$4,'Q-SYNTHETIC',2,'INV-EXISTING','OPEN',100000,10000,8696,1304,'payment-2','Existing stage')", [draft, project, quote, oldVersion]);
+    await reconcile(topup, 'QUOTE_PAYMENT', quote, 20000);
+    await db.query('insert into auth.users values($1)', [cmd]);
+    await db.query("insert into public.project_payment_entries(id,project_id,entry_type,amount_inc_gst_cents,occurred_at) values($1,$2,'PAYMENT',2000,now())", [cmd,project]);
+    await db.query("insert into public.xero_deposit_matches(id,tenant_id,receipt_id,contact_id,project_id,invoice_id,payment_entry_id,amount_inc_gst_cents,receipt_date,evidence_fingerprint,approved_by) values($1,$1,$1,$1,$2,$3,$1,2000,current_date,repeat('a',64),$1)", [cmd,project,draft]);
+    const history = await stableHistory();
+    expect((await accept()).rows[0].invoice_id).toBeNull();
+    expect(await stableHistory()).toEqual(history);
+    expect(await truth()).toMatchObject({ paid_inc_gst_cents: 77000, open_invoice_inc_gst_cents: 8000, remaining_to_invoice_inc_gst_cents: 80000 });
+  });
+  it('checks a reconciled top-up against current family limits when restoring', async () => {
+    await reconcile(topup, 'QUOTE_PAYMENT', quote, 20000);
+    const unpaid = '40000000-0000-4000-8000-000000000004';
+    await db.query('select public.commercial_invoice_save_draft($1,$2,0,null,$3,$4)', [unpaid,project,JSON.stringify(content(20000)),JSON.stringify({ mode: 'custom', label: 'Additional deposit', amountIncGstCents: 20000, dueDate: '2026-10-30' })]);
+    await db.query('select public.commercial_invoice_issue_draft($1,1,$2,$3)', [unpaid,crypto.randomUUID(),'Synthetic details']);
+    const fingerprint = (await db.query<any>('select public.commercial_invoice_scope_fingerprint($1) value',[unpaid])).rows[0].value;
+    await db.query("select public.commercial_reconcile_invoice_scope($1,'QUOTE_PAYMENT',$2,20000,'OPEN',0,$3,$4,'Explicit additional deposit','synthetic-admin')",[unpaid,quote,fingerprint,crypto.randomUUID()]);
+    await db.query('select public.commercial_void_open_invoice($1,$2,$3)',[unpaid,'synthetic-admin','Accidental void']);
+    const voided = (await db.query<any>('select voided_at::text value from public.deposit_invoices where id=$1',[unpaid])).rows[0].value;
+    const restore = () => db.query('select public.commercial_restore_invoice($1,$2,$3,$4,$5)',[unpaid,voided,crypto.randomUUID(),'Restore valid deposit','synthetic-admin']);
+    await reject(restore,/no current accepted quote/);
+    await accept();
+    await db.exec('savepoint replacement');
+    await db.query("select * from public.commercial_create_admin_invoice_idempotent($1,$2,'custom',null,90000,null,'Remaining',null,null,'Synthetic details',false,null,'synthetic-admin','synthetic-full-limit')",[project,version]);
+    await reject(restore,/remaining agreed balance/);
+    await db.exec('rollback to savepoint replacement');
+    await restore();
+    expect((await truth()).remaining_to_invoice_inc_gst_cents).toBe(70000);
+  });
+  it('keeps manual acceptance stable after canonical payment reversal removes its funding', async () => {
+    await reconcile(topup, 'QUOTE_PAYMENT', quote, 20000); await accept();
+    for (const invoice of [topup,oldInvoice]) {
+      const payment=(await db.query<any>("select id from public.project_payment_entries where source_invoice_id=$1 and entry_type='PAYMENT'",[invoice])).rows[0].id;
+      await db.query('select public.commercial_reverse_payment_entry($1,$2,$3)',[payment,'Synthetic refund correction','synthetic-admin']);
+    }
+    expect((await db.query<any>('select * from public.commercial_quote_scope_funding($1)',[version])).rows[0].paid_inc_gst_cents).toBe(0);
+    expect((await accept()).rows[0].invoice_id).toBeNull();
+  });
   it('denies public/staff direct assignment writes and operator command execution', async () => {
     expect((await db.query<any>("select has_table_privilege('service_role','public.commercial_invoice_scope_assignments','UPDATE') value")).rows[0].value).toBe(false);
     expect((await db.query<any>("select has_function_privilege('authenticated','public.commercial_reconcile_invoice_scope(uuid,text,uuid,integer,text,integer,text,uuid,text,text)','EXECUTE') value")).rows[0].value).toBe(false);

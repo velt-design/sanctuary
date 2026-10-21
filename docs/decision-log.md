@@ -1,5 +1,20 @@
 # Decision Log
 
+## 2026-10-22: Separate revised scope acceptance from funded progress billing
+
+A revised quote's first scheduled term can exceed the remaining job balance when
+its family already has paid receipts. Do not change issued invoices or fabricate
+an acceptance to bypass that guard. Preserve explicit economic relationships and
+choose manual progress billing through a versioned acceptance capability. Persist
+that choice so retries cannot send a later custom invoice. Keep old callers'
+invoice contract during deployment. Separately charged historical work must be an
+explicit owner decision, not guessed from version order or document wording.
+Canonical funding must honour split allocations, reversals, existing OPEN exposure
+and provider receipts across all issuance/restoration/read owners. See
+`quotes-invoices-job-packs.md` for the current implementation and rollout.
+
+
+
 ## 2026-10-21: Preserve safe collector diagnostics before lifecycle redaction
 
 The GA4 collector classified failures, but the lifecycle replaced that diagnostic
