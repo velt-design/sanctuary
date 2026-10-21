@@ -1,5 +1,24 @@
 # Sanctuary Pergolas Guide Ecosystem Implementation Roadmap
 
+## G14 comparison-page implementation (21 October 2026)
+
+The implemented source replaces the historical generic G14 block presentation with
+Sanctuary's acrylic alternative and actual roof photography. Jordan's 21 October
+correction confirms that Sanctuary does not offer louvre roofs. It supersedes the
+rejected equal-tier comparison opening and the earlier pending supply position.
+The first section states the fixed acrylic, solid and combination offer; enquiry
+actions concern those supplied roofs. A lower labelled external-alternative
+comparison covers daylight, shade, sky view, operation and complete installed
+scope. Its diagram is illustrative; the photographs are separate installations.
+There is no category-wide performance/price ranking. The indexed
+URL, absolute title, normal navigation, canonical schema and existing full enquiry
+capabilities remain. Safe incoming source/audience context is retained through the
+canonical form. No new configurator, calculation or contact policy is added.
+The route-specific implementation and verification owners are recorded in the
+marketing foundation and testing docs. Operational publication and delivery evidence
+are recorded separately; source implementation alone is not a production release claim.
+Historical G14 block-level guidance below describes the replaced composition.
+
 **Status:** Active implementation programme; major copy reduction and G27
 variant consolidation complete
 **Prepared:** 24 July 2026  
@@ -2161,7 +2180,7 @@ Refine `/acrylic-pergolas-vs-louvre-roofs` as a neutral comparison guide. Preser
 - the requirement to compare complete installed scope and exact supplier documents
 - relevant fixed-roof project evidence
 
-Remove repeated versions of the same louvre disclosure and repeated warnings that already appear in the matrix or claims note. Keep the comparison calm and non-adversarial. Do not state that Sanctuary supplies louvres unless the active claims register has approved that position.
+Remove repeated versions of the same louvre disclosure and repeated warnings that already appear in the matrix or claims note. Keep the comparison calm and non-adversarial. Current position confirmed by Jordan on 21 October 2026: Sanctuary does not supply louvre roofs. The acrylic-led hierarchy above supersedes this historical neutral-comparison opening.
 
 Do not compare category-wide price, heat, ultraviolet, waterproofing, maintenance, wind, lifespan, or warranty performance. Preserve URL, canonical, indexation, sitemap, guide membership, form API, and external-proposal attachment pathway.
 
@@ -2200,7 +2219,7 @@ Update focused tests and run the comparison route, acrylic route, claim scan, ma
 
 - No competitor criticism.
 - No category performance score.
-- No current louvre offer claim without approval.
+- Sanctuary does not currently offer louvre roofs, as confirmed by Jordan on 21 October 2026. Any future range change requires new explicit approval.
 - No price or warranty comparison.
 - No rewrite of the fixed-acrylic page.
 
@@ -3706,7 +3725,7 @@ register, the related copy is no longer blocked within the approved scope.
 | Wind, span, post-free, and structural capability | Project engineering, approved system documentation, exact geometry and loads, support conditions, and responsible engineer | Sanctuary design lead and project engineer | Any general threshold or capability claim in G15 to G18, G24, or G26 | Keep all answers project-specific and ask for the site, dimensions, and desired openings |
 | Project dimensions and technical detail | Approved project file, drawings, as-built record, producer statements where relevant, supplier schedules, and permission to publish | Sanctuary project lead and marketing lead | G02 facts for the affected project and any evidence card that depends on them | Omit the uncertain fact while retaining the verified design brief and response |
 | KiwiRail published area basis | Approved explanation of how a 30.0 m by 3.0 m plan relates to the recorded 115 m2 total area, or a corrected approved figure | Sanctuary project lead and marketing lead | Prominent use of the area in G02, G18, G20, or later content | Remove the 115 m2 figure until reconciled |
-| Louvre product-range position | Written confirmation of whether Sanctuary supplies, installs, resells, partners on, or only compares louvre systems | Sanctuary product lead and leadership | Any change from the current external-proposal position in G14, G19, or G27 | Retain the current disclosure that Sanctuary's published offer is fixed acrylic, solid, and combination roofs |
+| Louvre product-range position | Resolved on 21 October 2026: Jordan confirmed Sanctuary does not currently offer louvre roofs | Jordan for Sanctuary leadership | A future change to the confirmed fixed-roof offer in G14, G19, or G27 requires new explicit approval | State the supplied fixed acrylic, solid and combination offer; any louvre comparison concerns other suppliers |
 | Consent and approval terminology | Current authority and building-control sources, legal or technical review, approved wording, named internal owner, review date, and re-review triggers | Sanctuary design lead, legal adviser, and relevant authority where required | G26 and any stronger consent copy elsewhere | Keep current project-specific caveats; do not publish a dedicated consent route |
 | Service area and site-visit terms | Current service boundary, travel conditions, availability of site visits, any fee, and review date | Sanctuary operations and commercial lead | Any exact location or free-visit expansion in guide and service copy | Use Auckland only where already verified and avoid free or universal availability wording |
 | Acrylic v2 consolidation decision | Complete 29 July 2026: approved reduced primary copy, retired variant source and one-hop permanent redirect. External-link and Search Console monitoring remain post-release checks. | Sanctuary marketing and SEO owner | None; G27 complete | Keep the primary route authoritative and the redirect one hop |

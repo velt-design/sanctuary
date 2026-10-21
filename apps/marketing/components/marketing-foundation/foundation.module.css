@@ -88,7 +88,7 @@
 .buttonSecondary:active { border-color: var(--color-text-primary); background: var(--color-surface-warm); }
 .inverse .buttonSecondary:active { border-color: var(--color-inverse-text); background: color-mix(in srgb, var(--color-inverse-text) 10%, transparent); }
 .textLink { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; gap: .6rem; color: inherit; font: 600 .78rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; border-bottom: 1px solid currentColor; transition: opacity var(--motion-duration-instant) var(--motion-ease-standard); }
-.textLink::after { content: "\2192"; transition: transform var(--motion-duration-short) var(--motion-ease-standard); }
+.textLink::after { content: ""; display: inline-block; width: 1em; height: 1em; flex-shrink: 0; vertical-align: -.125em; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12h16m-7-7 7 7-7 7' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") center / contain no-repeat; transition: transform var(--motion-duration-short) var(--motion-ease-standard); }
 .textLink:active { opacity: var(--motion-press-opacity); }
 .button:focus-visible, .textLink:focus-visible { outline: var(--focus-ring, 2px solid #4f5748); outline-offset: 4px; }
 .rule { height: 1px; width: 100%; margin: 0; border: 0; background: var(--color-rule); }
@@ -123,7 +123,7 @@
 .editorialCardContent > .editorialCardAction { margin-top: auto; }
 .editorialCardNumber { margin-bottom: clamp(1rem, 3vw, 2.5rem); color: var(--color-text-subtle); font: 500 .72rem/1.4 var(--font-body); font-variant-numeric: tabular-nums; }
 .editorialCardAction { min-height: 44px; display: inline-flex; align-items: center; gap: .6rem; border-bottom: 1px solid currentColor; font: 600 .74rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; }
-.editorialCardAction::after { content: "\2192"; }
+.editorialCardAction::after { content: ""; display: inline-block; width: 1em; height: 1em; flex-shrink: 0; vertical-align: -.125em; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12h16m-7-7 7 7-7 7' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") center / contain no-repeat; }
 .editorialCardCondensedMeta { display: none; }
 .editorialCardMedia > div { aspect-ratio: 16 / 10; }
 .editorialCardImageLed { grid-template-rows: auto 1fr; }

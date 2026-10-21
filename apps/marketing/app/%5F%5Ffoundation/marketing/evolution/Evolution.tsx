@@ -1,4 +1,5 @@
 'use client';
+import ArrowUpRight from '../../../../components/marketing-foundation/ArrowUpRight';
 
 import { useState } from 'react';
 import { Container, Eyebrow, Heading, MarketingPage, Text, TextLink } from '@/components/marketing-foundation';
@@ -30,7 +31,7 @@ export default function Evolution() {
       <Container width="wide" className={styles.toolbarInner}>
         <fieldset className={styles.mode}><legend>Motion treatment</legend><div>{(['quiet', 'expressive'] as const).map(value => <label key={value}><input type="radio" name="motion" checked={mode === value} onChange={() => setMode(value)} /><span>{value === 'quiet' ? 'Quiet' : 'Expressive'}</span></label>)}</div></fieldset>
         <label className={styles.still}><input type="checkbox" checked={still} onChange={event => setStill(event.target.checked)} /> Reduce motion</label>
-        <button className={styles.control} onClick={() => { document.getElementById('project-image-study')?.scrollIntoView({ block: 'start', behavior: 'instant' }); setReplay(value => value + 1); }}>Replay image arrival <span aria-hidden="true">↗</span></button>
+        <button className={styles.control} onClick={() => { document.getElementById('project-image-study')?.scrollIntoView({ block: 'start', behavior: 'instant' }); setReplay(value => value + 1); }}>Replay image arrival <span aria-hidden="true"><ArrowUpRight /></span></button>
         <p className={styles.motionNote} aria-live="polite">{still ? 'Motion removed. Feedback stays.' : mode === 'quiet' ? 'Quiet · smaller movement, brisk response.' : 'Expressive · more travel, softer settling.'}<span> Your device’s reduced-motion setting always takes priority.</span></p>
       </Container>
     </div>

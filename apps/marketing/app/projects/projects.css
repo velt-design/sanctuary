@@ -456,7 +456,7 @@
 }
 
 .project-action--text::after {
-  content: "→";
+  content: ""; display: inline-block; width: 1em; height: 1em; flex-shrink: 0; vertical-align: -.125em; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12h16m-7-7 7 7-7 7' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") center / contain no-repeat;
   margin-left: .55rem;
   transition: transform var(--motion-duration-short) var(--motion-ease-standard);
 }

@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 
 import Image from 'next/image';
 import {
@@ -167,7 +168,7 @@ export default function ProjectGallery({
           }}
           type="button"
         >
-          <span aria-hidden="true">←</span>
+          <span aria-hidden="true"><ArrowIcon direction="left" /></span>
           <span>Previous</span>
         </button>
         <p
@@ -188,7 +189,7 @@ export default function ProjectGallery({
           type="button"
         >
           <span>Next</span>
-          <span aria-hidden="true">→</span>
+          <span aria-hidden="true"><ArrowIcon direction="right" /></span>
         </button>
       </div>
     </div>

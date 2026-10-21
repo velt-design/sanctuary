@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { EnquiryContext } from '@/lib/enquiryContext';
 import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -28,6 +29,7 @@ type SeoLandingPageProps = {
   presentation?: { hero: ReactNode; content: ReactNode; className: string };
   guidedContext?: GuidedJourneyContextModel | null;
   projectFinderContext?: ProjectFinderJourneyContextModel | null;
+  enquiryContext?: EnquiryContext;
 };
 
 export default function SeoLandingPage({
@@ -35,9 +37,10 @@ export default function SeoLandingPage({
   guidedContext = null,
   projectFinderContext = null,
   presentation,
+  enquiryContext,
 }: SeoLandingPageProps) {
   const guide = findPergolaGuide(config.route);
-  const enquiryType = config.enquiryType ?? 'residential';
+  const enquiryType = enquiryContext?.enquiryType ?? config.enquiryType ?? 'residential';
   const blocks = prioritizeSeoLandingProjectEvidence(
     orderSeoLandingBlocks(config.blocks, config.blockOrder),
     guidedContext?.preferredProjectSlugs,
@@ -136,7 +139,7 @@ export default function SeoLandingPage({
       ) : (
         <SeoLandingBlocks blocks={blocks} disclosureGroups={config.mobileDisclosureGroups} />
       ))}
-      <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label={config.form.ariaLabel}><Container width="wide"><AcrylicPergolaEnquiryForm eyebrow={config.form.eyebrow} heading={config.form.heading} intro={config.form.intro} submitLabel={config.form.submitLabel} messageLabel={config.form.messageLabel} messagePlaceholder={config.form.messagePlaceholder} briefFields={config.form.briefFields} directContact={config.form.directContact} roofPreference={config.form.roofPreference} initialEnquiryType={enquiryType} sourceContext={guidedContext?.enquiryContext ?? projectFinderContext?.enquiryContext ?? { enquiryType, sourcePath: config.route, sourceComponent: 'embedded_form' }} /></Container></Section>
+      <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label={config.form.ariaLabel}><Container width="wide"><AcrylicPergolaEnquiryForm eyebrow={config.form.eyebrow} heading={config.form.heading} intro={config.form.intro} submitLabel={config.form.submitLabel} messageLabel={config.form.messageLabel} messagePlaceholder={config.form.messagePlaceholder} briefFields={config.form.briefFields} directContact={config.form.directContact} roofPreference={config.form.roofPreference} initialEnquiryType={enquiryType} sourceContext={guidedContext?.enquiryContext ?? projectFinderContext?.enquiryContext ?? enquiryContext ?? { enquiryType, sourcePath: config.route, sourceComponent: 'embedded_form' }} /></Container></Section>
     </main>
   );
 }

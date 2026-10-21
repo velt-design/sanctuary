@@ -1,3 +1,4 @@
+import ArrowIcon from '../../../components/marketing-foundation/ArrowIcon';
 import ChannelTrackingRegion from '@/components/journey/ChannelTrackingRegion';
 import type { LandingSourcePath } from '@/components/configurator-prototype/draftScope';
 import GuidedJourneyContext from '@/components/guided-journey/GuidedJourneyContext';
@@ -26,7 +27,7 @@ export default function PergolaLandingPage({ sourcePath, comparison = false, sea
       <div className={styles.heroTop}><span>Pergolas Auckland</span><span>Designed. Built. Lived in.</span></div>
       <div className={styles.heroContent}><h1 id="redesign-title">Room to live.<br />Outside.</h1><div className={styles.heroBottom}><div><p>A pergola that belongs with your home.<br />A place to make more of every day.</p><div className={styles.heroActions}><a className={styles.lightButton} href="#explore-options">Explore your pergola <ArrowUpRight /></a><a className={styles.heroTextLink} href="#project-details" data-channel-action="quote">Talk about your project <ArrowUpRight /></a></div></div><Link className={styles.heroCaption} href="/projects/riverhead-gable-pavilion"><span>Built by Sanctuary</span>Riverhead, Auckland <ArrowUpRight /></Link></div></div>
     </section>
-    <div className={styles.introduction}><p>Made for the house.<br />And the people in it.</p><div>Breakfast in the fresh air. Long lunches with friends. A sheltered place to unwind. Designed around the way you live.</div><a href="#explore-options" aria-label="Explore your pergola below">↓</a></div>
+    <div className={styles.introduction}><p>Made for the house.<br />And the people in it.</p><div>Breakfast in the fresh air. Long lunches with friends. A sheltered place to unwind. Designed around the way you live.</div><a href="#explore-options" aria-label="Explore your pergola below"><ArrowIcon direction="down" /></a></div>
     <GuidedJourneyContext context={guidedContext} />
     <ProjectFinderJourneyContext context={projectFinderContext} />
     <DesignWorkspace sourcePath={sourcePath} />

@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -38,10 +39,10 @@ export default function ProjectDetailNavigation({ previousProject, nextProject, 
     </Link></Container>
   </section>;
   return <Container width="wide"><nav className={styles.navigation} aria-label="Project navigation">
-    <Link href={collectionHref} className={styles.all} data-all-projects>← All projects</Link>
+    <Link href={collectionHref} className={styles.all} data-all-projects><span><ArrowIcon direction="left" /> All projects</span></Link>
     <div className={styles.steps}>
-      <Link {...linkProps(previousProject)} data-project-previous aria-label={`Previous project: ${previousProject.title}`} title={previousProject.title}><span className={styles.directionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m14 6-6 6 6 6M8 12h13" /></svg></span><span className={styles.directionText}>← Previous</span><strong>{previousProject.title}</strong></Link>
-      <Link {...linkProps(nextProject)} data-project-next aria-label={`Next project: ${nextProject.title}`} title={nextProject.title}><span className={styles.directionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m10 6 6 6-6 6M3 12h13" /></svg></span><span className={styles.directionText}>Next →</span><strong>{nextProject.title}</strong></Link>
+      <Link {...linkProps(previousProject)} data-project-previous aria-label={`Previous project: ${previousProject.title}`} title={previousProject.title}><span className={styles.directionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m14 6-6 6 6 6M8 12h13" /></svg></span><span className={styles.directionText}><ArrowIcon direction="left" /> Previous</span><strong>{previousProject.title}</strong></Link>
+      <Link {...linkProps(nextProject)} data-project-next aria-label={`Next project: ${nextProject.title}`} title={nextProject.title}><span className={styles.directionIcon} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m10 6 6 6-6 6M3 12h13" /></svg></span><span className={styles.directionText}>Next <ArrowIcon direction="right" /></span><strong>{nextProject.title}</strong></Link>
     </div>
   </nav></Container>;
 }

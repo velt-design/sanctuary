@@ -1,5 +1,22 @@
 # Decision Log
 
+## 2026-10-21: keep public directional icons independent of emoji fonts
+
+Jordan reported emoji arrows on Marketing, including the Pergolas page, and asked
+for a site-wide check. Use existing vector-icon presentation with a shared
+directional path owner and CSS masks for generated actions. Preserve action names,
+responsive visibility and navigation rather than forcing a font variation selector.
+The source guard and rendered route check cover raw, entity and escaped glyphs.
+
+## 2026-10-21: make the visible offer agree with the business range
+
+The roof-comparison preview stated Sanctuary's fixed-roof position but gave acrylic
+and louvres equal product-like prominence. Jordan rejected the resulting impression
+and confirmed that Sanctuary does not offer louvre roofs. Lead with the supplied
+fixed-roof alternative and its enquiry, then explain other suppliers' systems as
+comparison content. A caveat or passing phrase assertion does not establish correct
+offer perception. Review the opening, labels, actions and enquiry together.
+
 ## 2026-10-21: inspect regional deployment input before accepting a build
 
 The same middleware region configuration produced a single-region CLI preview
