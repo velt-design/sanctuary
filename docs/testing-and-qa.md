@@ -1,3 +1,19 @@
+## Formal creative registry continuation, unpublished (21 October 2026)
+
+The additive50005 wrapper exposes only authenticated exact closed-owned ad IDs
+and matching paused-capability proof from existing immutable records. No new
+provider effects or activation are enabled. Native proof exercises a real synthetic
+capability sequence, then a null-experiment read after reservation release. It
+preserves the previous proof without assuming the current active-plan pointer
+still contains it. Changed principal/account/native contract cannot inherit the
+capability. The consumer must recheck every listed ad is currently PAUSED with
+its exact Page; unknown/absent objects are not silently dropped.
+
+Deploy compatible optional read fields before50005. Its private wrapped function
+is revoked from public, anon, authenticated and service_role; only the existing
+service-only outer command exposes this bounded history. No live schema or
+provider capability is implied by disposable native tests.
+
 # Testing And QA
 
 ## Formal creative cohort continuation (local only)
