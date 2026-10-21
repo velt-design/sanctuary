@@ -1,5 +1,5 @@
 'use client';
-import { designerLoader,designerAssignmentClient } from './designerFixtures';
+import { designerLoader,designerAssignmentClient,designerOutcomeClient } from './designerFixtures';
 import { sampleMetaReport } from '@/lib/marketingIntegrations/meta/report';
 import type { MetaEvidenceLoader } from '@/lib/marketingPerformance/dataSources';
 import MarketingPerformance from '@/components/marketingPerformance/MarketingPerformance';
@@ -42,5 +42,5 @@ const metaLoader: MetaEvidenceLoader = async signal => {
   const fetchedAt=new Date(Date.now()-(mode==='stale'?48:1)*3600000).toISOString();
   return {status:'available',checkedAt:new Date().toISOString(),accountId:'123',expiresAt:new Date(Date.parse(fetchedAt)+7*86400000).toISOString(),report:{...sampleMetaReport({start:'2026-09-16',end:'2026-09-22'}),fetchedAt}};
 };
-export default function Fixture({representative=false}:{representative?:boolean}) { return <><MarketingPerformance assignmentClient={designerAssignmentClient} designerLoader={designerLoader} commercialLoader={commercialLoader} financialsLoader={financialsLoader} metaLoader={metaLoader} googleLoader={googleFixtureLoader} metaSaleLoader={metaSaleFixtureLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
+export default function Fixture({representative=false}:{representative?:boolean}) { return <><MarketingPerformance assignmentClient={designerAssignmentClient} outcomeClient={designerOutcomeClient} designerLoader={designerLoader} commercialLoader={commercialLoader} financialsLoader={financialsLoader} metaLoader={metaLoader} googleLoader={googleFixtureLoader} metaSaleLoader={metaSaleFixtureLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
   previewDescription={representative?'Representative demo · 1,200 fictional projects across active, archived and legacy work. Dates, sources and payment amounts are invented; missing-history patterns resemble the business. Demo ends 22 September 2026.':undefined} /><FinancialScenarioControl/></>; }

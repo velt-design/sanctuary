@@ -5,6 +5,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/meta-creative-executor-current-20261021": false,
+      "codex/designer-accepted-sales-20261021": false,
       "codex/ga4-diagnostics-20261021": false,
       "codex/designer-performance-20261021": false,
       "codex/configurator-pricing-candidate-20260915": false,
@@ -42,7 +43,9 @@
       "codex/gable-guide-20261021": false,
       "codex/sales-designer-assignment-20261021": false,
       "codex/portal-marketing-fresh-load-20261021": false,
-      "codex/pitched-guide-20261021": false
+      "codex/pitched-guide-20261021": false,
+      "codex/commercial-guide-20261021": false,
+      "codex/portal-marketing-panel-ready-20261021": false
     }
   },
   "crons": [

@@ -1,5 +1,29 @@
 # Marketing UI Foundation
 
+## Commercial photographic composition (21 October 2026)
+
+The Commercial page uses route-owned `CommercialPresentation.tsx` and
+`commercial.module.css` under `app/commercial-pergolas-auckland`. A bounded
+headline/action row precedes a large Good Home courtyard photograph. Good Home
+and Atelier Shu stories lead the offer; KiwiRail and Lilliput show the existing
+workplace and recreation roles. The operations and agreed-scope sections retain
+use, access, exposure, building interfaces and consultant responsibilities.
+The existing-building note offers a contextual handoff to Custom pergola design.
+
+`page.tsx` passes the visual slots and validated enquiry context to the existing
+`SeoLandingPage`. The same canonical form owns all three audiences, required phone,
+optional site/stage/team/operating brief, roof, files, native fallback and retry.
+Guided commercial context retains precedence. There is no new pricing or enquiry
+implementation. Ordinary website chrome, Service schema and canonical URL remain.
+
+The now-unused Commercial branch and its exclusive CSS selectors were retired
+from `AudienceLandingPage`; that owner continues to render Professionals with the
+same markup, Figure/TextLink contracts and CSS declarations. No Professional
+route/content file changes. No new media assets or theme are introduced.
+Jordan accepted the protected preview and authorised production release on
+21 October 2026. The release checks and production verification remain separate
+from that acceptance.
+
 ## Pitched form guide (21 October 2026)
 
 `/pitched-pergolas-auckland` has a route-owned presentation in `page.tsx`,
@@ -1342,11 +1366,10 @@ The residential `/pergolas-auckland` route uses six major regions before its fin
 
 The custom `/custom-pergolas-auckland` route adopts the same six-region budget without becoming a copy of residential. Three constrained-project examples and explicit site conditions explain why custom design is needed; a three-stage process leads to one `custom-planning-support` disclosure. The dominant guide-series navigation is disabled on both service routes while the useful canonical guide links remain. Custom enquiry links retain a residential audience with the custom source path.
 
-The commercial and professional routes use a scoped editorial composition in
+The professional route retains its scoped editorial composition in
 `components/seo-landing/AudienceLandingPage.tsx` and
-`audience-landing.module.css`. The Commercial page leads with a hospitality
-courtyard and Good Home / Atelier Shu proof, then the covered-space package,
-operating-site considerations and smaller workplace/recreation examples.
+`audience-landing.module.css`. The Commercial composition has moved to its route
+owner described above, retaining the hospitality-first offer and scope.
 Professionals leads with collaborative design development, verified roof and
 building-interface photography, and accurate historical project roles. These
 roles are not separate supply-only offers. The 30 September 2026 claim families

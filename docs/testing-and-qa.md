@@ -52,6 +52,18 @@ remain unconfirmed and do not trigger a repeated create. The capability path
 still creates an unchanged PAUSED ad without delivery dates. Synthetic composed
 readback is not proof of actual Meta scheduling support or enforcement. ACTIVE
 publication and formal continuation remain disabled pending their connected gates.
+## PG17 CI registry recovery (21 October 2026)
+
+The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR
+mirror of the same 17.6.1.107 linux/amd64 manifest, pinned to
+`sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`.
+Public ECR throttled before contract execution. Both registry manifests were
+read and matched byte-for-byte, including config and all layers; Supabase's own
+[mirror workflow](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml)
+publishes to both. This changes distribution only: PG17, PGMQ1.5.1, all contract
+assertions and the separate PG18 matrix remain unchanged. Local Docker was not
+running during verification, so metadata equality is not a container-test pass;
+the normal required CI jobs still execute the exact contracts.
 
 ## Paused creative capability candidate, 21 October 2026
 
@@ -79,6 +91,45 @@ Velt renderer for seven catalogue combinations at three widths plus short/tall
 mobile/banner/focus/designer-return cases. Local fixtures intercept provider and
 submission effects; they never prove live Meta capability or real delivery.
 
+## Commercial photographic presentation (21 October 2026)
+
+`marketing.commercial-guide.spec.ts` is registered in the Marketing browser lane.
+Its authored contracts cover 320/390/820/1440/2560, five meaningful photographs,
+early enquiry action, bounded wide layout, repeated focus/project return,
+professional source attribution, optional commercial brief and retry, required
+phone, native form action, schema/canonical and the adjacent Professional route.
+The Custom handoff sits beside the existing-building note. First and repeated
+enquiry focus respects the shared form's Call, Email, then Project type tab order.
+The audience suite retains upload failure/removal coverage on both audiences.
+Commercial-specific programme and preload assertions follow the new presentation;
+the obsolete overlay-hero expectation is replaced by the dedicated guide suite.
+
+Run the Commercial server-page handoff unit with canonical form, context,
+attachments, fallback, guided context and project/product claims suites. Run
+Marketing types, scoped lint, docs guard/impact and changed-file architecture.
+Source tests, authored browser contracts and actual permitted-browser journeys
+are separate evidence. Local populated tests need persistent intake, upload and
+vendor fences; fixture success does not establish production delivery.
+
+## Designer accepted-sales correction (21 October 2026)
+
+Run the marketingPerformance model/component suite, actual source projection
+`test/designer-performance-read.test.ts`, and the sales-outcome route tests.
+They cover accepted jobs without retained visits, selected Auckland dates versus
+all recorded dates, add-on deduplication, missing attribution, unknown dates,
+withdrawn scopes, whole-job refund exclusion and current cancelled-source priority.
+Ordinary UI proof inspects exact accepted scopes, records an outcome, retains gross
+history and removes positive visit credit. Editor tests retain immutable retries
+and require conflict reload. `node scripts/test-sales-designer-concurrency.mjs
+--outcomes` uses disposable native PostgreSQL 17 to prove concurrent revisions,
+simultaneous replay and revoked authority; it requires the existing
+`PRAXIS_DISPOSABLE_POSTGRES_BIN` runtime and sends no provider requests.
+
+The protected `designerScenario=accepted` fixture uses consistent synthetic
+commercial/accepted scope values and in-memory assignment/outcome clients.
+`acceptedDates=all` is URL-backed for reload and project return. Local proof is not
+a hosted save/readback or production migration result; those remain separate
+release evidence. No synthetic business record may be installed in production.
 
 ## Pitched form guide (21 October 2026)
 
