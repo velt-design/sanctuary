@@ -9,9 +9,11 @@ import PortfolioChart from './PortfolioChart';
 import SalesActivity from './SalesActivity';
 import styles from './HubCharts.module.css';
 import CommercialOverview from './CommercialOverview';
+import DesignerPerformance from './DesignerPerformance';
+import type { DesignerLoader } from './useDesigner';
 import type { CommercialLoader } from './useCommercial';
 
-export default function BusinessOverview({hub,filters,apply,commercialLoader,synthetic,revision}:{hub:HubReport;filters:HubFilters;apply:(f:HubFilters)=>void;commercialLoader?:CommercialLoader;synthetic?:boolean;revision?:number}) {
+export default function BusinessOverview({hub,filters,apply,commercialLoader,designerLoader,synthetic,revision}:{hub:HubReport;filters:HubFilters;apply:(f:HubFilters)=>void;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;synthetic?:boolean;revision?:number}) {
   const selected=selectHub(hub,{...filters,inspect:'all'});
   const ages=ageDistribution(selected.projects,hub.asOf);
   const chartAges=ages.filter(b=>b.key!=='unknown'||b.count>0);
@@ -19,6 +21,7 @@ export default function BusinessOverview({hub,filters,apply,commercialLoader,syn
   const inspectAge=(age:string)=>apply({...filters,view:'portfolio',age,created:false,inspect:'all'});
   return <>
     <CommercialOverview hub={hub} filters={filters} apply={apply} loader={commercialLoader} synthetic={synthetic} revision={revision}/>
+    <DesignerPerformance hub={hub} filters={filters} apply={apply} loader={designerLoader} synthetic={synthetic} revision={revision}/>
     <details><summary>Current portfolio and recorded sales activity</summary>
     <div className={styles.overviewNumbers}>
       <div><span>Projects</span><strong>{selected.projects.length.toLocaleString('en-NZ')}</strong><small>Current portfolio</small></div>

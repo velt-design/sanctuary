@@ -3,6 +3,16 @@
 Schedule V2 owns install planning. The Outlook site-visit agenda is a separate
 source-backed workflow at `/staff/site-visits`, available under Schedule navigation.
 
+The designer-performance candidate adds `?visit=<uuid>` as an exact correction
+entry, optionally constrained by `project`. It loads the retained visit even
+outside the rolling agenda window, preserves the existing correction editor and
+does not infer attendance. The explicit selected-visit notice offers return to
+History; changing agenda filters clears the exact selection. Report links open a
+new tab so the original report retains its date and attendee filters. Hidden or
+wrong-project records are not exposed. An exact visit with no accessible record
+shows an empty result, never a substitute appointment. See
+[designer reporting](marketing-performance.md#designer-visits-and-conversion-candidate-21-october-2026).
+
 The released 21 October navigation change makes agenda scope and filters
 share `siteVisitNavigation.ts`. Plain "Show all visits"
 navigation clears only project scope through native history, preserving the

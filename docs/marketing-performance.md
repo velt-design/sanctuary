@@ -1,5 +1,74 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Designer visits and conversion candidate (21 October 2026)
+
+Business Overview adds a recorded-attendee comparison immediately after the
+commercial overview. The selected Auckland dates apply to visits; quote and
+payment outcomes run to the read timestamp. The current project-owner filter
+narrows projects and never supplies visit attribution. The separate attending
+designer selection is retained in the URL. Staff appear from visit evidence,
+including activity without a valid conversion cohort; this is not a ranking.
+
+Explicit attendance counts workload across original, measurement, follow-up and
+unconfirmed purposes. Bookings, provisional appointments, recorded non-attendance
+and past bookings without attendance are separate. Undated attendance is visible
+in an all-dates review inventory and does not enter dated totals. Retained calendar
+history is incomplete: a recent import cannot prove the first ever visit. The
+30-minute source freshness boundary matches Site Visits, and failed/disabled
+source state remains visible beside saved figures.
+When the database source control is disabled, mirrored Outlook rows are withheld
+exactly as in the agenda. Manual history stays available and labelled as such;
+conversion is unavailable because first-original attribution cannot be assessed
+against withheld calendar history.
+
+Conversion uses the first recorded qualifying `initial` attended visit per
+project. Generic `site_visit` is not inferred to be original. Unverified people,
+unresolved review/source changes, conflicting originals, unknown dates and
+pre-visit or ambiguous payment chronology prevent attribution. Each verified
+joint attendee receives participation credit; team totals deduplicate projects
+and visits. Repeat measurements do not create additional sales credit. A dated
+original with no sale remains in the denominator, while an empty eligible cohort
+has an unavailable rate, never zero percent.
+
+Quotes and current acceptances count initial quote families, deduplicated to
+projects for conversion. Paid sales reuse `advertising_scope_facts` and current
+accepted-family value, with positive unreversed first-deposit evidence. Add-ons
+do not count as acquisition. Full NZD scope value includes GST and is separate
+from cash received. Unknown values/dates remain incomplete. Reversed payments
+and changed acceptances can restate outcomes. Open, recorded lost/cancelled and
+accepted-without-deposit states remain distinct. Timing uses ordered known pairs
+with visible denominators; date-only visits require a later Auckland outcome day.
+Exact agreed timestamps permit ordered same-day pairs, without claiming actual
+arrival or visit duration.
+
+Incremental map: `marketingPerformance/designerContract` validates the skinny
+DTO; `designer` owns attribution and contribution sets; `useDesigner` fences
+requests and refreshes. `DesignerPerformance` and `DesignerRecords` own the
+comparison and exact record inspection. `/api/staff/v1/marketing-performance/designers`
+uses the existing confirmed developer boundary and auth-bound RPC, with private
+no-store responses. Migration `20261021030001_designer_performance.sql` projects
+the existing correction/identity and accounting functions, with hard inventory
+bounds and no new fact store. It also adds the staff-only exact visit read used by
+`?visit=` correction links, including retained records outside the rolling agenda
+window. Hidden or incorrectly linked records remain inaccessible. Corrections
+stay in the existing Site Visits workflow; return to the report and refresh.
+
+Forward migration `20261021030002_designer_visit_detail_transaction.sql` marks
+the exact visit RPC `VOLATILE`, matching the canonical agenda reader. PostgREST
+then permits the existing actor's `FOR SHARE` access-row locks on POST calls.
+The function body, grants and authentication checks are unchanged; the RPC still
+does not alter business records. A normal writable SQL check cannot substitute
+for this transaction-mode regression or actual hosted RPC verification.
+
+Local verification covers actual migration/source helpers in disposable PGlite,
+model attribution, API denial/caps, hook races, drilldown invalidation and exact
+visit navigation. The existing protected fixture accepts `designerScenario`
+values `complete`, `incomplete`, `conflict`, `empty`, `stale`, `disabled`,
+`source-failed`, `failure`, `denied` and `slow`. Every fixture identity is synthetic.
+Local checks and fixtures are not production migration, hosted access or real
+record coverage proof. Both exact task-branch auto-deploy entries are disabled;
+release remains subject to the owning task's review and production approval.
+
 ## Cloud campaign source candidate (14 October 2026)
 
 This is a default-off local candidate, not activated monitoring. The owner asked

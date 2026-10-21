@@ -18,12 +18,13 @@ const views=[['today','Today'],['week','This week'],['upcoming','Upcoming'],['re
 export default function SiteVisitsAgenda(){
   const params=useSearchParams(),requestedView=params.get('view');
   const view=views.some(([key])=>key===requestedView)?requestedView!:'today',requestedPerson=params.get('person')??'',search=params.get('q')??'',projectId=params.get('project')||undefined;
-  const query=useCalendarVisits(projectId),client=useQueryClient(),lock=useRef(false),searchRef=useRef<HTMLInputElement>(null);
+  const visitId=params.get('visit')||undefined;
+  const query=useCalendarVisits(projectId,undefined,visitId),client=useQueryClient(),lock=useRef(false),searchRef=useRef<HTMLInputElement>(null);
   const [refreshing,setRefreshing]=useState(false),[message,setMessage]=useState('');
   const data=query.data;
   const reviewCount=data?.events.filter(requiresVisitReview).length;
   const person=resolveVisitPersonKey(data?.events??[],requestedPerson);
-  const events=visibleVisits(data?.events??[],view,person,search);
+  const events=visitId?(data?.events??[]).filter(v=>v.id===visitId):visibleVisits(data?.events??[],view,person,search);
   const scheduledCount=events.filter(isScheduledVisit).length;
   const groups=new Map<string,typeof events>();for(const visit of events){const day=visitGroupDay(visit,view);groups.set(day,[...(groups.get(day)??[]),visit]);}
   async function refresh(){if(lock.current)return;lock.current=true;setRefreshing(true);setMessage('');try{
@@ -39,6 +40,7 @@ export default function SiteVisitsAgenda(){
         <div className={styles.filters}><label className={styles.attendingFilter}>Attending<select value={person} onChange={e=>select({person:e.target.value})}><option value="">Everyone</option>{staff.map(p=><option key={personKey(p)} value={personKey(p)}>{personLabel(p)}</option>)}<option value="unassigned">Unassigned</option></select></label>
           <label>Find a visit<div className={styles.searchBox}><input ref={searchRef} value={search} type="search" onChange={e=>select({q:e.target.value})} onKeyDown={e=>{if(e.key==='Escape')select({q:''});}} placeholder="Customer, place or address" /><button type="button" disabled={!search} aria-label="Clear search" onClick={()=>{select({q:''});searchRef.current?.focus();}}>Clear</button></div></label></div></div>
       <div className={styles.calendarContext} aria-label="Calendar source and scope">
+        {visitId&&<p className={styles.projectScope}>Exact visit selected from the report. Use Correct details to record attendance, purpose or date. <Button variant="quiet" onClick={()=>select({visit:'',view:'history'})}>Show visit history</Button></p>}
         {projectId&&<p className={styles.projectScope}>Visits linked to this project. <Link href={allVisitsHref(params)} onClick={event=>{if(!shouldHandleRouteTransitionClick(event))return;event.preventDefault();select({project:''},'push');}}>Show all visits</Link></p>}
         {data&&<CalendarFreshness data={data} readFailed={query.isError} />}
         {data&&query.isError&&<Button variant="quiet" onClick={()=>void query.refetch()}>Retry loading saved visits</Button>}
