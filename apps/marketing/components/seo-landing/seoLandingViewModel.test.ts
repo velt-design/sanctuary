@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { acrylicVsLouvreConfig } from '../../app/acrylic-pergolas-vs-louvre-roofs/content';
 
 import { gablePergolasConfig } from '../../app/gable-pergolas-auckland/content';
 import { pitchedPergolasConfig } from '../../app/pitched-pergolas-auckland/content';
@@ -74,7 +73,6 @@ describe('guided project evidence', () => {
 const guideConfigs = [
   gablePergolasConfig,
   pitchedPergolasConfig,
-  acrylicVsLouvreConfig,
 ] as const;
 
 describe('buildGuideFirstLayer', () => {

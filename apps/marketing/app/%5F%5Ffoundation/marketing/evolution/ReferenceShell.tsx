@@ -1,4 +1,6 @@
 'use client';
+import ArrowUpRight from '../../../../components/marketing-foundation/ArrowUpRight';
+import ArrowIcon from '../../../../components/marketing-foundation/ArrowIcon';
 
 import Link from 'next/link';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -26,7 +28,7 @@ export default function ReferenceShell({ children, page, enquiryHref }: { childr
 
   return <MarketingPage className={`${motion.page} ${styles.page}`} data-reference={page} data-composition={layout} data-motion={expressive ? 'expressive' : 'quiet'} data-still={still}>
     <Link className={styles.skip} href="#reference-content">Skip to page content</Link>
-    <div className={styles.reviewBar}><Container width="wide" className={styles.reviewInner}><Link href={REFERENCE_ROOT}>← Foundation studies</Link><span>Local design preview</span><details className={styles.reviewSettings}><summary>Review settings</summary><div className={styles.settingsBody}>
+    <div className={styles.reviewBar}><Container width="wide" className={styles.reviewInner}><Link href={REFERENCE_ROOT}><ArrowIcon direction="left" /> Foundation studies</Link><span>Local design preview</span><details className={styles.reviewSettings}><summary>Review settings</summary><div className={styles.settingsBody}>
       <p>Compare the same content and imagery.</p>
       <fieldset><legend>Project composition</legend>{[['editorial', 'Editorial'], ['split', 'Split']].map(([value, label]) => <label key={value}><input type="radio" name="composition" checked={layout === value} onChange={() => changeSetting('composition', value)} />{label}</label>)}</fieldset>
       <fieldset><legend>Motion</legend>{[['quiet', 'Quiet'], ['expressive', 'Expressive']].map(([value, label]) => <label key={value}><input type="radio" name="reference-motion" checked={(expressive ? 'expressive' : 'quiet') === value} onChange={() => changeSetting('motion', value)} />{label}</label>)}</fieldset>
@@ -36,15 +38,15 @@ export default function ReferenceShell({ children, page, enquiryHref }: { childr
     <header className={styles.header}><Container width="wide" className={styles.headerInner}>
       <Link href={`${PROJECT_REFERENCE}?${query}`} className={styles.brand} aria-label="Sanctuary project reference">Sanctuary<span>Pergolas</span></Link>
       <nav aria-label="Reference pages" className={styles.desktopNav}>{links.map(link => <Link key={link.page} href={link.href} aria-current={page === link.page ? 'page' : undefined}>{link.label}</Link>)}</nav>
-      <Link className={styles.headerAction} href={enquiryHref}>Start your project <span aria-hidden="true">↗</span></Link>
+      <Link className={styles.headerAction} href={enquiryHref}>Start your project <span aria-hidden="true"><ArrowUpRight /></span></Link>
       <Dialog.Root open={menuOpen} onOpenChange={setMenuOpen}><Dialog.Trigger className={styles.menuButton}>Menu <span aria-hidden="true">＋</span></Dialog.Trigger><Dialog.Overlay className={styles.overlay} /><Dialog.Content className={styles.menu}>
         <div className={styles.menuTop}><span className={styles.brand}>Sanctuary<span>Pergolas</span></span><Dialog.Close className={styles.menuButton}>Close ×</Dialog.Close></div>
         <Dialog.Title className={styles.menuTitle}>Find your next step.</Dialog.Title><Dialog.Description>Explore the work and the form behind it.</Dialog.Description>
-        <nav aria-label="Menu">{links.map(link => <Link key={link.page} href={link.href} aria-current={page === link.page ? 'page' : undefined} onClick={() => setMenuOpen(false)}>{link.label}<span aria-hidden="true">↗</span></Link>)}<Link href={enquiryHref} onClick={() => setMenuOpen(false)}>Start your project<span aria-hidden="true">↗</span></Link></nav>
+        <nav aria-label="Menu">{links.map(link => <Link key={link.page} href={link.href} aria-current={page === link.page ? 'page' : undefined} onClick={() => setMenuOpen(false)}>{link.label}<span aria-hidden="true"><ArrowUpRight /></span></Link>)}<Link href={enquiryHref} onClick={() => setMenuOpen(false)}>Start your project<span aria-hidden="true"><ArrowUpRight /></span></Link></nav>
         <p className={styles.menuBottom}>Architectural pergolas.<br />Designed and built in Auckland.</p>
       </Dialog.Content></Dialog.Root>
     </Container></header>
     <div id="reference-content">{children}</div>
-    <div className={styles.footer}><Container width="wide" className={styles.footerInner}><span className={styles.brand}>Sanctuary<span>Pergolas</span></span><p>Architectural pergola design & build<br />Auckland and selected surrounding projects</p><Link href={REFERENCE_ROOT}>Back to foundation studies ↑</Link></Container></div>
+    <div className={styles.footer}><Container width="wide" className={styles.footerInner}><span className={styles.brand}>Sanctuary<span>Pergolas</span></span><p>Architectural pergola design & build<br />Auckland and selected surrounding projects</p><Link href={REFERENCE_ROOT}>Back to foundation studies <ArrowIcon direction="up" /></Link></Container></div>
   </MarketingPage>;
 }

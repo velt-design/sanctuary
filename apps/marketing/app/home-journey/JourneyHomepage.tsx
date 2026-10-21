@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -152,7 +153,7 @@ export default function JourneyHomepage({ model }: JourneyHomepageProps) {
               onClick={goBack}
               type="button"
             >
-              <span aria-hidden="true">&larr;</span>
+              <span aria-hidden="true"><ArrowIcon direction="left" /></span>
               Back
             </button>
           ) : (

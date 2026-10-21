@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from '../marketing-foundation/ArrowIcon';
 import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 import { useMobileConfigurator } from './useMobileConfigurator';
 
@@ -73,7 +74,7 @@ export default function PreviewViews({ readOnly = false, input, roof, activeDime
     {furnished && view === '3D' && (realism || surroundings) &&<span style={{position:'absolute',bottom:8,right:10,fontSize:10,color:'var(--color-text-secondary)',pointerEvents:'none'}}>Setting & furniture illustrative</span>}
     {!simple&&lighting?.night&&!hasLighting(lighting.value)&&<div className={styles.nightPrompt}>Your design has no lights yet. <button onClick={()=>{if(onAddLighting)onAddLighting();else lighting.open();if(expanded&&window.matchMedia('(max-width: 720px)').matches)onToggleExpanded();}}>Add lighting</button></div>}
     </div>
-    {!simple && <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint}>Drag ↔ · Pinch to zoom</span></> : renderable
+    {!simple && <div className={styles.viewerFooter}><p className={styles.viewNote}>{view === '3D' ? <><span className={styles.mouseHint}>Drag to rotate · Scroll to zoom</span><span className={styles.touchHint} aria-label="Drag to rotate. Pinch to zoom">Drag <ArrowIcon direction="horizontal" /> · Pinch to zoom</span></> : renderable
       ? lighting?.editing ? <>{lighting.tool==='strip'?'Tap beams or rafters to add LED strips · Gold means selected':lighting.tool==='rafter'?'Rafter lights are placed automatically':lighting.tool==='cedar'?'Cedar lights are centred between rafters':'Your lighting layout'}</> : guided ? <>Your footprint · dimensions in metres</> : rail.section==='roof' ? <>Roof plan · looking down from above</> : <>Hover or tap a side to edit<span className={styles.desktopNote}> · {geometry.plan.members.posts.length} posts</span></>
       : 'Adjust your selections to preview the frame.'}
       {renderable && roof.family === 'box' && <span> · Internal {geometry.assembly.roofPlanes.length === 2 ? 'gable' : 'pitched'} roof</span>}</p>

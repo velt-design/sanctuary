@@ -1,4 +1,5 @@
 'use client';
+import ArrowUpRight from '../../../../components/marketing-foundation/ArrowUpRight';
 
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState } from 'react';
@@ -26,7 +27,7 @@ export default function MenuStudy() {
       <div className={styles.menuTop}><span className={styles.brand}>Sanctuary<span>Pergolas</span></span><Dialog.Close className={styles.control}>Close <span aria-hidden="true">×</span></Dialog.Close></div>
       <Dialog.Title className={styles.menuTitle}>Take a closer look.</Dialog.Title>
       <Dialog.Description className={styles.menuDescription}>Explore the foundation studies.</Dialog.Description>
-      <nav aria-label="Study navigation">{destinations.map(([id, number, title]) => <a key={id} href={`#${id}`} onClick={() => { setDestination(id); setOpen(false); }}><span>{number}</span>{title}<span aria-hidden="true">↗</span></a>)}</nav>
+      <nav aria-label="Study navigation">{destinations.map(([id, number, title]) => <a key={id} href={`#${id}`} onClick={() => { setDestination(id); setOpen(false); }}><span>{number}</span>{title}<span aria-hidden="true"><ArrowUpRight /></span></a>)}</nav>
       <p className={styles.menuFoot}>Internal design preview<br />Sanctuary Marketing</p>
     </Dialog.Content>
   </Dialog.Root>;

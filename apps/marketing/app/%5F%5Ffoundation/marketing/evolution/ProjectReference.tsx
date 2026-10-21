@@ -1,3 +1,5 @@
+import ArrowUpRight from '../../../../components/marketing-foundation/ArrowUpRight';
+import ArrowIcon from '../../../../components/marketing-foundation/ArrowIcon';
 import { projectImageCaptions } from '@/data/projectImageCaptions';
 import { EditorialFacts, MeasurementGroups } from '@/components/marketing-foundation/editorial/EditorialFacts';
 import Link from 'next/link';
@@ -14,7 +16,7 @@ export default function ProjectReference({ project, enquiryHref }: { project: Pr
   return <>
     <Container width="wide"><section className={styles.projectHero} aria-labelledby="project-title">
       <div className={styles.heroTitle}><Eyebrow>Built work / {project.location}</Eyebrow><Heading as="h1" variant="display" id="project-title">{project.title}</Heading></div>
-      <div className={styles.heroIntro}><p className={styles.introText}>{project.blurb}</p><Link className={styles.jump} href="#project-story">Discover the project <span aria-hidden="true">↓</span></Link></div>
+      <div className={styles.heroIntro}><p className={styles.introText}>{project.blurb}</p><Link className={styles.jump} href="#project-story">Discover the project <span aria-hidden="true"><ArrowIcon direction="down" /></span></Link></div>
       <div className={styles.heroImage}><Figure image={interior.src} alt={interior.alt} objectPosition={interior.objectPosition} ratio="wide" mobileRatio="standard" priority sizes="(max-width: 1440px) 100vw, 1440px" caption="Warkworth Outdoor Room" detail={`${project.configuration} · ${project.year}`} /></div>
     </section><div className={styles.factsRail}><EditorialFacts variant="summary" items={[{ label: 'Location', value: project.location }, { label: 'Form', value: `${project.configuration} ${project.roof.toLowerCase()}` }, { label: 'Footprint', value: `${project.stats.width} × ${project.stats.depth}` }, { label: 'Completed', value: project.year }]} /></div></Container>
 
@@ -40,6 +42,6 @@ export default function ProjectReference({ project, enquiryHref }: { project: Pr
     </Container></section>
 
     <section className={styles.productBridge}><Container width="wide" className={styles.bridgeGrid}><div><Eyebrow>The form behind the project</Eyebrow><Heading>Why a gable?</Heading><Text>A central ridge brings height and a clear centre to the outdoor room. Explore how roof materials, proportions and end treatments shape the result.</Text><ReferenceLink href={PRODUCT_REFERENCE}>Explore gable pergolas</ReferenceLink></div><Figure image={project.heroImage.src} alt={project.heroImage.alt} objectPosition={project.heroImage.objectPosition} ratio="landscape" /></Container></section>
-    <section className={styles.conversion}><Container width="wide" className={styles.conversionGrid}><div><Eyebrow>Your place, your project</Eyebrow><Heading>An outdoor room<br />of your own.</Heading></div><div><Text size="large">Tell us about your home, the space and what you want it to become.</Text><Button href={enquiryHref}>Send your project brief <span aria-hidden="true">↗</span></Button><Text size="small">Start with your location, a few photos and any dimensions you have.</Text></div></Container></section>
+    <section className={styles.conversion}><Container width="wide" className={styles.conversionGrid}><div><Eyebrow>Your place, your project</Eyebrow><Heading>An outdoor room<br />of your own.</Heading></div><div><Text size="large">Tell us about your home, the space and what you want it to become.</Text><Button href={enquiryHref}>Send your project brief <span aria-hidden="true"><ArrowUpRight /></span></Button><Text size="small">Start with your location, a few photos and any dimensions you have.</Text></div></Container></section>
   </>;
 }

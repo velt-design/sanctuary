@@ -103,6 +103,16 @@ for (const route of routes) test(`guide routes resolve directly with global busi
       const hero = image as HTMLImageElement;
       return hero.complete && hero.naturalWidth > 0;
     }), { message: 'Blinds hero should finish loading successfully' }).toBe(true);
+  } else if (route === '/acrylic-pergolas-vs-louvre-roofs') {
+    const roofHero = main.getByRole('region', { name: 'An acrylic alternative.', exact: true }).locator('img');
+    const hints = await roofHero.evaluate(image => ({ srcset: image.getAttribute('srcset'), sizes: image.getAttribute('sizes') }));
+    expect(hints.srcset).toBeTruthy(); expect(hints.sizes).toBeTruthy();
+    await expect.poll(() => page.locator('head link[rel="preload"][as="image"]').evaluateAll((links, image) => links.some(link => link.getAttribute('imagesrcset') === image.srcset && link.getAttribute('imagesizes') === image.sizes), hints)).toBe(true);
+    await expect.poll(() => roofHero.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await expect(main.getByRole('img', { name: /Fixed clear acrylic roof/ })).toBeVisible();
+    await expect(main.getByRole('img', { name: /Solid tilting blades/ })).toBeVisible();
+    await main.locator('figure img').first().scrollIntoViewIfNeeded();
+    await expect.poll(() => main.locator('figure img').first().evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
   } else {
     await expect(heroImage).toHaveAttribute('loading', 'eager');
     await expect(heroImage).toHaveAttribute('fetchpriority', 'high');
