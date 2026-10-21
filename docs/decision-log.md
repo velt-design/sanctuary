@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-21: qualify framework configuration against hosted validation
+
+Vercel's Next adapter resolves `proxy.ts`, but its earlier function-key validator
+rejected that exact per-function configuration before compilation. The Portal
+uses the supported `middleware.ts` compatibility convention with explicit Node
+runtime and identical handler/matcher to target the existing regional function.
+Keep the deprecation visible and return to `proxy.ts` after actual hosted support
+is verified. Adapter source alone is not deployment proof; require generated and
+deployed runtime/region checks without loosening authentication.
+
 ## 2026-10-21: Keep refresh feedback below project navigation
 
 Status: followup candidate. Live measurement showed the Projects return target

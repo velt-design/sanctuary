@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { DOCUMENT_CARRIER_HEADER, DOCUMENT_ID_HEADER, readDocumentDiagnostics } from './lib/performance/documentDiagnostics';
 const h=vi.hoisted(()=>({getUser:vi.fn(),role:vi.fn(),setCookies:false}));
 vi.mock('@supabase/ssr',()=>({createServerClient:(_url:unknown,_key:unknown,options:{cookies:{setAll:(cookies:unknown[])=>void}})=>({auth:{getUser:async()=>{if(h.setCookies)options.cookies.setAll([{name:'refreshed',value:'private-cookie',options:{httpOnly:true}}]);return h.getUser();}},from:()=>({select:()=>({eq:()=>({maybeSingle:h.role})})})})}));
-import { proxy } from './proxy';
+import { middleware as proxy } from './middleware';
 beforeEach(()=>{vi.stubEnv('PORTAL_DOCUMENT_DIAGNOSTICS',JSON.stringify({until:new Date(Date.now()+60_000).toISOString(),nonce:'A'.repeat(43)}));vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','https://example.supabase.co');vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY','synthetic');h.getUser.mockResolvedValue({data:{user:{id:'private-user',email:'private@example.test'}},error:null});h.role.mockResolvedValue({data:{role:'staff'},error:null});h.setCookies=false;});
 afterEach(()=>{vi.unstubAllEnvs();vi.restoreAllMocks();h.getUser.mockReset();h.role.mockReset();});
 it.each(['authenticated','unauthenticated','no_access','lookup_failed','throw'] as const)('preserves %s behavior while correlating bounded document phases',async outcome=>{

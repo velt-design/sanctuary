@@ -12,12 +12,16 @@ Commercial sections tab. This is fixture geometry, not network or production lat
 Actual protected-preview checks must hold/release the snapshot read, include
 failure/Retry and attempt the early Projects return action while data arrives.
 
-The Portal-only `functions.proxy.ts.regions = [bom1]` candidate requires deployed
+The Portal-only `functions.middleware.ts.regions = [bom1]` candidate requires deployed
 function output plus actual runtime phase-region verification. Next's Node proxy
 manifest alone does not establish Vercel placement. Preserve both independent
 auth boundaries, cookies, redirects and expired/disabled diagnostic behavior.
 The Tokyo staging database makes preview timing unsuitable for a production
-Mumbai latency claim.
+Mumbai latency claim. The compatibility filename keeps explicit Node runtime and
+the existing matcher; run `proxy.test.ts` and `proxy.diagnostics.test.ts` against
+that entrypoint, and compare its generated runtime/matchers to the previous build.
+The deprecated filename is necessary until Vercel's pre-build function validator
+recognizes `proxy.ts`; it does not relax either access boundary.
 
 ## Document measurement preparation checks (21 October 2026 candidate)
 

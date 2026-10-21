@@ -215,7 +215,7 @@ function createProxySupabase(req: NextRequest) {
   };
 }
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const startedAt = performance.now();
   const { requestHeaders, diagnostics } = prepareProxyDocumentDiagnostics(req);
   try {
@@ -333,5 +333,6 @@ async function runProxy(req: NextRequest, requestHeaders?: Headers, observer?: P
 }
 
 export const config = {
+  runtime: 'nodejs',
   matcher: ['/((?!_next|api).*)'],
 };
