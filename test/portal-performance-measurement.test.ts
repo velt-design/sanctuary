@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 
-const migration = readFileSync('supabase/migrations/20261021000001_portal_performance_measurement.sql', 'utf8');
+const migration = readFileSync('supabase/migrations/20261021010001_portal_performance_measurement.sql', 'utf8');
 let db: PGlite;
 // PGlite cannot run pg_cron. This fixture verifies the exact job registration
 // contract; actual extension/job existence is separately checked before rollout.
