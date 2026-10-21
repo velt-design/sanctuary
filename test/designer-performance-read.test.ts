@@ -41,6 +41,7 @@ beforeAll(async()=>{
   await db.exec(file('20260813000003_commercial_truth_invariants').split('create or replace function public.commercial_project_financial_truth')[0]);
   await db.exec(file('20261014000001_advertising_scope_source'));
   await db.exec(file('20261021030001_designer_performance'));
+  await db.exec(file('20261021030002_designer_visit_detail_transaction'));
   await db.exec(`update private.outlook_calendar_control set enabled=true,binding='${binding}',last_success=now(),range_start='2026-10-01',range_end='2026-12-31' where singleton;
     insert into private.site_visit_staff_identities values('${binding}','designer@example.test','jordan');`);
   const payload={subject:'Private title',startsAt:'2026-09-03T00:00:00Z',endsAt:'2026-09-03T01:00:00Z',kind:'visit',staff:[{name:'Private staff alias',email:'designer@example.test'}],customerEmails:['private@example.test'],address:'Private address',cancelled:false,duplicate:false,reviewReasons:[],isAllDay:false};
@@ -92,6 +93,21 @@ it('supports an exact safe correction read outside agenda range; hidden and wron
  const single=async(project:string|null=null)=>(await db.query<{v:any}>('select public.outlook_site_visit_detail_read($1,$2) v',[id(11),project])).rows[0].v;
  expect((await single()).events).toHaveLength(1);expect((await single(id(99))).events).toEqual([]);
  await db.exec('begin');try{await db.exec(`update private.outlook_calendar_visits set hidden=true where id='${id(11)}'`);expect((await single()).events).toEqual([]);}finally{await db.exec('rollback');}
+});
+it('uses the PostgREST POST transaction mode needed by the unchanged actor row locks',async()=>{
+ const metadata=async()=>(await db.query<{provolatile:string;prosrc:string;prosecdef:boolean;proconfig:string[];proacl:string[]}>(`select provolatile,prosrc,prosecdef,proconfig,proacl from pg_proc where oid='public.outlook_site_visit_detail_read(uuid,uuid)'::regprocedure`)).rows[0];
+ const original=await metadata();expect(original.provolatile).toBe('v');
+ const sourceBefore=(await db.query('select * from private.site_visit_details')).rows;
+ // PostgREST selects READ ONLY for a STABLE POST RPC, even though its actor
+ // function is VOLATILE. A normal writable SQL session would miss this failure.
+ await db.exec('begin;alter function public.outlook_site_visit_detail_read(uuid,uuid) stable;commit;begin read only;set local role authenticated');
+ try{await expect(db.query('select public.outlook_site_visit_detail_read($1,null)',[id(11)])).rejects.toMatchObject({code:'25006'});}finally{await db.exec('rollback');}
+ await db.exec(file('20261021030002_designer_visit_detail_transaction'));
+ expect(await metadata()).toEqual(original);
+ await db.exec('begin read write;set local role authenticated');
+ try{const result=(await db.query<{v:any}>('select public.outlook_site_visit_detail_read($1,null) v',[id(11)])).rows[0].v;expect(result.events).toHaveLength(1);}finally{await db.exec('rollback');}
+ expect((await db.query('select * from private.site_visit_details')).rows).toEqual(sourceBefore);
+ await db.exec('begin');try{await db.exec(`delete from public.portal_users where user_id='${staff}';set local role authenticated`);await expect(db.query('select public.outlook_site_visit_detail_read($1,null)',[id(11)])).rejects.toMatchObject({code:'42501'});}finally{await db.exec('rollback');}
 });
 it('rejects oversized evidence rather than publishing a partial cohort and never mutates source records',async()=>{
  const before=(await db.query('select * from private.site_visit_details')).rows;await read();expect((await db.query('select * from private.site_visit_details')).rows).toEqual(before);

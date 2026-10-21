@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-21: Match RPC transaction mode to authentication locks
+
+The exact site-visit reader used `STABLE` while its existing actor check locks
+user and access rows `FOR SHARE`. PostgREST runs a STABLE POST RPC in a read-only
+transaction, causing `25006` even when a direct writable SQL check succeeds.
+A forward migration changes only the reader to `VOLATILE`, matching the agenda
+reader. Preserve the actor locks, grants and applied migration. Regression tests
+must exercise the transaction mode as well as the function's returned records.
+
 ## 2026-10-21: Keep designer attendance and sales attribution separate
 
 An appointment, current project owner or earliest retained booking does not prove

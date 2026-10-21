@@ -53,6 +53,13 @@ bounds and no new fact store. It also adds the staff-only exact visit read used 
 window. Hidden or incorrectly linked records remain inaccessible. Corrections
 stay in the existing Site Visits workflow; return to the report and refresh.
 
+Forward migration `20261021030002_designer_visit_detail_transaction.sql` marks
+the exact visit RPC `VOLATILE`, matching the canonical agenda reader. PostgREST
+then permits the existing actor's `FOR SHARE` access-row locks on POST calls.
+The function body, grants and authentication checks are unchanged; the RPC still
+does not alter business records. A normal writable SQL check cannot substitute
+for this transaction-mode regression or actual hosted RPC verification.
+
 Local verification covers actual migration/source helpers in disposable PGlite,
 model attribution, API denial/caps, hook races, drilldown invalidation and exact
 visit navigation. The existing protected fixture accepts `designerScenario`

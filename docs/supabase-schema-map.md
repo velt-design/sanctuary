@@ -20,6 +20,11 @@ functions. Shared-database rehearsal, install and PostgREST proof remain separat
 release checks. Metric definitions and implementation map live in
 [Marketing Performance](marketing-performance.md#designer-visits-and-conversion-candidate-21-october-2026).
 
+`20261021030002_designer_visit_detail_transaction.sql` changes only the exact
+visit reader's volatility to permit PostgREST POST transactions to acquire the
+existing actor's shared access-row locks. Function body and ACL remain intact;
+the original designer migration is preserved.
+
 ## Landing experiment and intake provenance candidate (21 October)
 
 Forward20261021020002 owns default-off source control, a single global active landing
