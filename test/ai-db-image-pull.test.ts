@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { pullAiDatabaseImage } from "../scripts/ci/pull-ai-db-image.mjs";
 
-const image = "public.ecr.aws/supabase/postgres:17.6.1.107";
+const image = "ghcr.io/supabase/postgres@sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721";
 const success = { status: 0, stdout: "Downloaded", stderr: "" };
 const throttle = { status: 1, stdout: "", stderr: "Error response from daemon: toomanyrequests: Rate exceeded\n" };
 
@@ -96,7 +96,10 @@ describe("AI database image pre-pull", () => {
   it("keeps pre-pull before one ordinary harness step, with no workflow retry or failure bypass", () => {
     const workflow = readFileSync(".github/workflows/ai-foundation.yml", "utf8");
     const databaseJob = workflow.slice(workflow.indexOf("  database-contract:"));
-    expect(databaseJob).toContain('image: "public.ecr.aws/supabase/postgres:17.6.1.107"');
+    expect(databaseJob).toContain(`image: "${image}"`);
+    const backgroundJob = readFileSync(".github/workflows/background-jobs.yml", "utf8");
+    expect(backgroundJob).toContain(`image: "${image}"`);
+    expect(backgroundJob).toContain('pgmq_version: "1.5.1"');
     expect(databaseJob).toMatch(/run: node scripts\/ci\/pull-ai-db-image\.mjs\s+- name: Exact-file rollback and executable database contract\s+run: npm run test:ai:db/);
     expect(databaseJob.match(/run: npm run test:ai:db/g)).toHaveLength(1);
     expect(databaseJob).not.toMatch(/continue-on-error|always\(\)|retry|while |until /);
