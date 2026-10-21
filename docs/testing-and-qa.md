@@ -2,6 +2,13 @@
 
 ## Meta landing experiment candidate (21 October)
 
+`test/marketing-experiment-runtime-dependencies.test.ts` guards the direct Zod
+runtime declaration in Marketing and its frozen workspace lock entry. Release
+verification must also install/build the Marketing workspace without Portal's
+dependencies or an ancestor hoisted node_modules. A full local monorepo install
+alone can mask a missing deployable-workspace dependency. This dependency repair
+does not change experiment SQL, template source or approved visual content.
+
 `test/marketing-landing-experiments.test.ts` and the actual
 `components/landing-experiment/LandingExperiment.test.tsx` cover fixed copy/receipt
 validation, consent, retained control without tracking, delayed tab/designer return,
