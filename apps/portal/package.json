@@ -6,6 +6,7 @@
     "dev": "next dev -p 3001",
     "dev:playwright": "next dev",
     "build": "next build",
+    "postbuild": "node ../../scripts/check-portal-middleware-placement.mjs",
     "start": "next start",
     "lint": "eslint ."
   },
