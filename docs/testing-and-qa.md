@@ -573,6 +573,14 @@ eight workers locally; the standalone Worker config uses the same policy. Set
 override. Invalid values fail while loading the config, before test discovery.
 The worker policy does not change ordinary unit or Playwright exclusions.
 
+Portal Quality sets `VITEST_MAX_WORKERS=2` only for its Project Work V2 and
+Commercial database contract steps. With four workers, CI hit separate five-second
+whole-test timeouts in unchanged schema-cache and finance-review cases that include
+PGlite startup. Reducing concurrency limits competing database startup; contention
+remains an inference. Test timeouts, assertions, native database contracts and retry
+policy are unchanged. Other CI steps retain four workers, and local defaults remain
+eight. Local matched runs support the change but do not reproduce GitHub timing.
+
 React component tests must wrap the event or asynchronous milestone that can
 commit state in `act(...)`, including promise-driven persistence and history or
 media-query events. Do not suppress `console.error`, filter React warnings
@@ -1413,7 +1421,8 @@ boundaries, foundation migration contracts, and readiness-checker unit tests.
 The owner-handoff database case has a local twenty-second integration budget for
 cold PGlite startup, bootstrap, migration, all policy/report assertions, and
 cleanup. It is not a query-latency benchmark. Other tests retain their existing
-limits; the gate keeps its normal concurrency and does not retry failed cases.
+limits; CI uses the two-worker database-batch setting above and does not retry
+failed cases.
 The budget allows headroom above reviewer-reported isolated runs of 9.606 and
 9.064 seconds; passing runs incur no extra delay.
 The focused PGlite test then applies the foundation, schema-cache repair, queue,
