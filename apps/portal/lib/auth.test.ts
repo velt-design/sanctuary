@@ -6,6 +6,7 @@ const redirect = vi.fn((href: string) => {
 });
 
 vi.mock('server-only', () => ({}));
+vi.mock('next/headers', () => ({ headers: async () => new Headers() }));
 
 vi.mock('react', () => ({
   cache: <T extends (...args: never[]) => unknown>(fn: T): T => {

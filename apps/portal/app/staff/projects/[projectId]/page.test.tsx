@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectDetailPage from './page';
+vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: vi.fn().mockResolvedValue({ role: 'staff' }) }));
 
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,

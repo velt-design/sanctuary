@@ -3,14 +3,12 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { DOCUMENT_CARRIER_HEADER, DOCUMENT_ID_HEADER, readDocumentDiagnostics } from './lib/performance/documentDiagnostics';
 const h=vi.hoisted(()=>({getUser:vi.fn(),role:vi.fn(),setCookies:false}));
-vi.mock('@supabase/ssr',()=>({createServerClient:(_url:unknown,_key:unknown,options:{cookies:{setAll:(cookies:unknown[])=>void}})=>({auth:{getUser:async()=>{if(h.setCookies)options.cookies.setAll([{name:'refreshed',value:'private-cookie',options:{httpOnly:true}}]);return h.getUser();}},from:()=>({select:()=>({eq:()=>({maybeSingle:h.role})})})})}));
+vi.mock('@supabase/ssr',()=>({createServerClient:(_url:unknown,_key:unknown,options:{cookies:{setAll:(cookies:unknown[])=>void}})=>({auth:{getSession:async()=>{if(h.setCookies)options.cookies.setAll([{name:'refreshed',value:'private-cookie',options:{httpOnly:true}}]);return h.getUser();}},from:()=>({select:()=>({eq:()=>({maybeSingle:h.role})})})})}));
 import { middleware as proxy } from './middleware';
 beforeEach(()=>{vi.stubEnv('PORTAL_DOCUMENT_DIAGNOSTICS',JSON.stringify({until:new Date(Date.now()+60_000).toISOString(),nonce:'A'.repeat(43)}));vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','https://example.supabase.co');vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY','synthetic');h.getUser.mockResolvedValue({data:{user:{id:'private-user',email:'private@example.test'}},error:null});h.role.mockResolvedValue({data:{role:'staff'},error:null});h.setCookies=false;});
 afterEach(()=>{vi.unstubAllEnvs();vi.restoreAllMocks();h.getUser.mockReset();h.role.mockReset();});
-it.each(['authenticated','unauthenticated','no_access','lookup_failed','throw'] as const)('preserves %s behavior while correlating bounded document phases',async outcome=>{
+it.each(['authenticated','unauthenticated','throw'] as const)('preserves %s session transport behavior while correlating bounded document phases',async outcome=>{
   if(outcome==='unauthenticated')h.getUser.mockResolvedValue({data:{user:null},error:null});
-  if(outcome==='no_access')h.role.mockResolvedValue({data:null,error:null});
-  if(outcome==='lookup_failed')h.role.mockResolvedValue({data:null,error:{message:'private SQL details'}});
   const failure=new Error('private error');if(outcome==='throw')h.getUser.mockRejectedValue(failure);
   const log=vi.spyOn(console,'info').mockImplementation(()=>undefined);
   const req=()=>new NextRequest('https://portal.example/staff/projects?name=private-customer',{headers:{'sec-fetch-dest':'document',accept:'text/html',cookie:'original=private', [DOCUMENT_CARRIER_HEADER]:'spoofed'}});
@@ -22,7 +20,7 @@ it('retains refreshed response cookies and original request cookies while forwar
   h.setCookies=true;vi.spyOn(console,'info').mockImplementation(()=>undefined);
   const response=await proxy(new NextRequest('https://portal.example/staff/site-visits',{headers:{'sec-fetch-dest':'document',accept:'text/html',cookie:'original=private','x-other':'keep'}}));
   expect(response.headers.get('set-cookie')).toContain('refreshed=private-cookie');
-  expect(response.headers.get('x-middleware-request-cookie')).toBe('original=private');
+  expect(response.headers.get('x-middleware-request-cookie')).toBe('original=private; refreshed=private-cookie');
   expect(response.headers.get('x-middleware-request-x-other')).toBe('keep');
   const forwarded=new Headers({'sec-fetch-dest':'document',accept:'text/html',[DOCUMENT_CARRIER_HEADER]:response.headers.get(`x-middleware-request-${DOCUMENT_CARRIER_HEADER}`)!});
   expect(readDocumentDiagnostics(forwarded)?.id).toBe(response.headers.get(DOCUMENT_ID_HEADER));
