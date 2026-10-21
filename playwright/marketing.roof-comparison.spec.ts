@@ -31,7 +31,8 @@ for (const width of [320, 390, 820, 1440, 2560]) test(`roof guide preserves SEO,
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     const hero = page.getByRole('region', { name: 'An acrylic alternative.', exact: true });
     await expect(hero).toContainText('Sanctuary builds fixed acrylic, solid and combination pergolas. We do not supply louvre roofs.');
-    await expect(hero.locator('svg')).toHaveCount(0);
+    await expect(hero.locator('svg[role="img"]')).toHaveCount(0);
+    await expect(hero.locator('svg[data-arrow-icon]')).toHaveCount(2);
     await expect(hero.getByRole('link', { name: /Discuss a fixed-roof pergola/ })).toHaveAttribute('href', '#project-details');
     const primaryAction = hero.getByRole('link', { name: /Discuss a fixed-roof pergola/ });
     await primaryAction.focus(); await primaryAction.press('Tab');
@@ -86,6 +87,64 @@ for (const width of [320, 390, 820, 1440, 2560]) test(`roof guide preserves SEO,
   expect(schema.map(item => item['@type'])).not.toContain('Service');
   expect(await (await request.get('/sitemap.xml')).text()).toContain(`https://www.sanctuarypergolas.co.nz${path}`);
   expect(await page.locator('main').innerText()).not.toMatch(/[\u2013\u2014]/);
+});
+
+for (const width of [390, 1440]) for (const entry of ['hero', 'planning'] as const) test(`enquiry anchor and project history restore the guide at ${width} from ${entry}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: width < 800 ? 844 : 1000 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const query = '?enquiry_type=professional&source_path=%2Fpergola-guides&source_component=pathway';
+  await page.goto(path + query);
+  const action = entry === 'hero'
+    ? page.getByRole('region', { name: 'An acrylic alternative.', exact: true }).getByRole('link', { name: 'Discuss a fixed-roof pergola', exact: true })
+    : page.getByRole('region', { name: 'Start with your space.', exact: true }).getByRole('link', { name: 'Discuss a fixed-roof pergola', exact: true });
+  await action.focus(); await action.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`${path}\\?.*#project-details$`));
+  await expect(page.locator('#estimate-form-title')).toBeInViewport();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('form.acrylic-form [name=enquiryType]')).toBeFocused();
+  const anchorState = await page.evaluate(() => ({ pathname: location.pathname, hash: location.hash, appRouterEntry: Boolean(history.state?.__NA) }));
+  await page.getByRole('link', { name: 'Explore the Dairy Flat pergola', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/dairy-flat-estate$/);
+  await expect(page.locator('h1')).toHaveText('Dairy Flat Estate');
+  await page.goBack();
+  await info.attach('anchor-history', { contentType: 'application/json', body: Buffer.from(JSON.stringify({ anchorState, returned: await page.evaluate(() => ({ pathname: location.pathname, hash: location.hash, title: document.title, heading: document.querySelector('h1')?.textContent })) })) });
+  await expect(page).toHaveURL(path + query + '#project-details');
+  await expect(page).toHaveTitle('Acrylic Pergolas vs Louvre Roofs | Auckland Guide');
+  await expect(page.locator('h1')).toHaveText('An acrylic alternative.');
+  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${path}`);
+  const form = page.locator('form.acrylic-form');
+  await expect(form.locator('[name=name]')).toHaveValue('');
+  await expect(form.locator('[name=email]')).toHaveValue('');
+  await expect(form.locator('[name=phone]')).toHaveValue('');
+  await expect(form.locator('[name=enquiryType]')).toHaveValue('professional');
+  expect(JSON.parse(await form.locator('[name=enquiryContext]').inputValue())).toMatchObject({ enquiry_type: 'professional', source_path: '/pergola-guides' });
+  await page.goForward();
+  await expect(page).toHaveURL(/\/projects\/dairy-flat-estate$/);
+  await expect(page.locator('h1')).toHaveText('Dairy Flat Estate');
+  await page.goBack();
+  await expect(page.locator('h1')).toHaveText('An acrylic alternative.');
+  const historyLength = await page.evaluate(() => history.length);
+  await action.focus(); await action.press('Enter');
+  await expect(page.locator('#estimate-form-title')).toBeInViewport();
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+  expect((await page.locator('#estimate-form-title').boundingBox())!.y).toBeGreaterThanOrEqual((await page.locator('header.site').boundingBox())!.height);
+  await page.keyboard.press('Tab');
+  await expect(form.locator('[name=enquiryType]')).toBeFocused();
+});
+
+test('enquiry fragment links retain native navigation without JavaScript', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  const page = await context.newPage(); await fence(page, baseURL!);
+  try {
+    await page.goto(path);
+    const action = page.getByRole('region', { name: 'An acrylic alternative.', exact: true }).getByRole('link', { name: 'Discuss a fixed-roof pergola', exact: true });
+    await expect(action).toHaveAttribute('href', '#project-details');
+    await action.click(); await expect(page.locator('#estimate-form-title')).toBeInViewport();
+    await page.getByRole('link', { name: 'Explore the Dairy Flat pergola', exact: true }).click();
+    await expect(page.locator('h1')).toHaveText('Dairy Flat Estate');
+    await page.goBack(); await expect(page.locator('h1')).toHaveText('An acrylic alternative.');
+    await expect(page.locator('form.acrylic-form [name=name]')).toHaveValue('');
+  } finally { await context.close(); }
 });
 
 for (const viewport of [{ width: 320, height: 700 }, { width: 390, height: 844 }]) test(`roof first visit identifies Sanctuary’s fixed-roof offer before the external comparison at ${viewport.width}`, async ({ browser, baseURL }, info) => {
