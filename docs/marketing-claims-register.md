@@ -1,5 +1,23 @@
 # Marketing Claims Register
 
+## Pitched form evidence (21 October 2026)
+
+The Pitched guide reuses existing public installed references `simple-pergolas/
+pitched-01.webp` and `pitched-06.webp`, already present in the Pitched product
+record. Captions describe visible framing, acrylic and house relationship, with
+no invented location, customer identity or outcome. Tindalls Bay 03 and Velskov
+02 use their governed project records: mixed insulated/acrylic roof zones and
+timber sarking/battens at Tindalls; a separate working shelter within forest at
+Velskov. Bespoke/commercial scope is distinguished from the standard designer.
+
+The complete Velskov 02 photograph shows its actual high-left and low-right roof
+profile. Labels identify those visible edges without inventing dimensions or
+adding an illustrative water route. Supporting copy discusses roof depth and
+site-specific drainage, not a pitch/span/clearance/drainage guarantee.
+No numeric specification or unresolved KiwiRail proof is
+published on this guide. Existing photos are unchanged and introduce no new
+claims of product performance or measured daylight outcomes.
+
 ## Gable form evidence (21 October 2026)
 
 The Gable guide uses existing public installation photographs and governed
