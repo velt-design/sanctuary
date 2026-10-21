@@ -1,5 +1,6 @@
 import type { WebsiteJourney } from "./journey";
 import type { BusinessEvidence } from "./outcomes";
+import type { Diagnostics } from './diagnostics';
 export type PaneId = "traffic" | "channels" | "landing" | "events";
 export interface Period { start: string; end: string }
 export interface ReportQuery { period: Period; comparison: Period | null }
@@ -19,6 +20,7 @@ export interface AnalyticsReport {
   warnings: string[];
   journey?: WebsiteJourney;
   business?: BusinessEvidence;
+  diagnostics?: Diagnostics;
 }
 const DAY = 86_400_000;
 export function validDate(value: string): boolean {

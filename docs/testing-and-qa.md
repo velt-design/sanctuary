@@ -228,7 +228,7 @@ tail can evict a formal result after160 ordinary continuations while these sourc
 exclusions still prevent a paid generation request.
 Independent catalogue review and hosted execution remain separate acceptance.
 The compiled-page matrix covers both pages' three wording choices plus acrylic
-`action-first`. Local layout checks include320Ã—568,390Ã—740,390Ã—844 and1440Ã—960,
+`action-first`. Local layout checks include320×568,390×740,390×844 and1440×960,
 first-visit consent/acceptance, reduced motion, held pointer/focus stability,
 unchanged links/desktop geometry and design-anchor return. Native layout assertions
 retain first-exposure mobile/treatment values across reload/resize; mobile is only
@@ -528,14 +528,76 @@ comparative retrieval or protected staff-route access; verify both separately.
 
 ## Sanctuary-owned GA4 candidate
 
+The v3 tests apply the exact existing 20260923070001 body plus forward candidate
+20261021082853. Fixed provider fixtures compose actual HTTP, parser, SQL
+completion and retained read for available, limited and validated row-limit
+outcomes. Tests retain first edit when keyEvents is zero, suppress comparisons,
+reject unavailable-with-metrics and unexpected failures, enforce shared byte and
+45-second phase bounds, and distinguish signed v2/v3 delegation and plan hashes.
+Portal's DataSources link test proves only dates enter the fixed Analytics URL.
+
+For native proof, set PRAXIS_DISPOSABLE_POSTGRES_BIN to an existing local PG17
+bin directory and run node test/sanctuary-ga4-native.mjs. This creates and
+disposes a new synthetic loopback cluster using the repository's existing native
+harness pattern. Exact base+forward DDL, v2/v3 lifecycle, roles, strict available
+and unavailable shapes, null/zero, hash/retention and delete/control fences passed
+on PG17.11. This historical local proof uses synthetic auth/source prerequisites
+and a cron stub, not the whole Sanctuary chain, PostgREST, real pg_cron or
+providers. That installed distribution has no safeupdate, so that local result
+did not verify the new migration with the real extension. The optional
+existing-image Docker substrate never pulls, mounts host paths or publishes
+ports; its local engine failed during startup before SQL. No reset or fake
+extension was used.
+
+The dedicated `.github/workflows/ga4-native.yml` runs the real-safeupdate
+substrate on the standard Ubuntu runner with Node22 and read-only
+repository permissions. Its PR/main triggers cover only that workflow, the
+committed native harness and the two exact GA4 migration bodies; manual dispatch
+has no inputs. A separate single-attempt180-second provisioning step pulls the
+official GHCR 17.6.1.167 linux/amd64 image by immutable manifest digest
+`sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4`,
+then associates the harness's fixed local ECR tag with that exact image and prints
+its resolved ID/registry digests. ECR and official GHCR tag indexes and child
+manifests were verified byte-identical on21October2026. The first published ECR
+provisioning attempt failed with Data limit exceeded before image/SQL execution.
+The subsequent GHCR transport correction passed in
+[native run 39552027487](https://github.com/velt-design/sanctuary/actions/runs/39552027487)
+at Source revision `357f8a057204bb989ecd430952bff46251297ffe`: official PG17.6,
+real safeupdate and 11 disposable synthetic databases. The run verified the
+exact committed 20260923070001 and then-20261021040001 SQL-body hashes, v2/v3 lifecycle,
+roles, strict shapes, association/hash, retention, deletion and control fences.
+The byte-identical GA4 candidate now uses 20261021082853 because installed
+20261021040001 belongs to sales-designer storage. Normal native CI must verify
+the renamed path; the historical run does not establish that newer revision.
+The ECR tag is only a local alias,
+not a second pull or fallback. No image was pulled locally.
+The unchanged harness still never pulls, runs its disposable container with
+network none and no host mounts/ports, loads real safeupdate in every SQL
+session and requires the unsafe-delete negative assertion. Job maximum15minutes;
+no dependency install, app build/tests, secrets, provider/remote database call
+or artifact upload. Only synthetic status and revision/image/SQL hashes reach
+stdout. This native receipt does not prove the whole historical Sanctuary chain,
+PostgREST transaction behavior, real pg_cron, provider compatibility, live data,
+shared schema installation or production release.
+
+Both Vercel project configs suppress Git deployment only for branch
+`codex/ga4-diagnostics-20261021` for paired CI; both branch entries remain false.
+Other branch entries, production settings, regions, functions and crons retain
+their existing values. The successful synthetic native proof does not authorize
+an application deployment or a Vercel service mutation.
+
 Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4
 test/sanctuary-ga4-sql.test.ts test/sanctuary-ga4-http-sql.test.ts`, Portal
 typecheck and scoped lint. These use synthetic provider/vault data and the actual
 `20260923070001` SQL body. Coverage includes rotated/nonrotated tokens, exact
 scope/property/item versions, unknown effects, lease expiry, disable/re-enable,
 query/hash association, seven-day retention, deletion races and delivery fencing.
-The six HTTP-to-SQL regressions preserve end-to-end composition proof rather than
-mocking the database's lifecycle decisions.
+The HTTP-to-SQL regressions preserve composition proof rather than mocking the
+database's lifecycle decisions. Retained-authority cases also prove the metadata
+envelope, existing read/deliver audit, disable/expiry/staff/quarantine denial and
+deletion between read and delivery. They use PGlite and synthetic identities;
+they are separate from native PostgreSQL and live provider evidence. HTTP tests
+reject corrupt hash/shape/final delivery and verify zero Google/vault access.
 
 On 23 September the 21 SQL/HTTP cases also passed native PostgreSQL 17.6 with
 safeupdate loaded, including explicit rejection of an unqualified delete. That
@@ -737,7 +799,7 @@ Automatic payment recording: `node scripts/test-xero-automatic-payments.mjs` run
 
 Automatic invoice approval: the Xero database harness applies `20260915000005_xero_automatic_approval.sql` and runs `supabase/tests/xero_automatic_approval.sql` for approved request freezing, lease/dispatch/finalisation, replay and preservation after the rollout switch changes. Transfer unit cases verify approved creation and refusal to accept a draft as the completed approved result. These checks do not prove a hosted Xero write; demo verification and production activation remain separate.
 
-Automatic payment Finance status: migration08 and `supabase/tests/xero_payment_finance_status.sql` extend the PostgreSQL jobs harness to verify clean â†’ review â†’ current queue transitions. Focused Finance tests cover approved-transfer labels, automatic exceptions and stale checks. Hosted rendered evidence is still required.
+Automatic payment Finance status: migration08 and `supabase/tests/xero_payment_finance_status.sql` extend the PostgreSQL jobs harness to verify clean → review → current queue transitions. Focused Finance tests cover approved-transfer labels, automatic exceptions and stale checks. Hosted rendered evidence is still required.
 
 Finance view regression: `supabase/tests/xero_finance_views.sql`, run by the existing background-jobs database harness, checks 55 historical payment exceptions plus60 ordinary historical invoices, filtering before pagination, legacy reader parity, revoked access and browser denial. Focused page/repository tests distinguish an empty queue from an unavailable read. Hosted migration and responsive browser evidence remain separate.
 
@@ -1561,7 +1623,7 @@ The 2026-08-06 instant-shell completion repeated the five newly covered warm jou
 
 After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. When Next records a stale missing JavaScript hash, the analyser accepts only one unambiguous emitted loader group with the exact same module id; missing CSS, no match, an ambiguous match, or an exact-module missing artifact still fails closed. Unrelated global loaders are filtered by module id before their artifacts are read. Turbopack may repeat route/layout CSS in a dynamic entry; CSS explicitly listed in the route manifest's `entryCSSFiles` is already loaded and is de-duplicated from lazy totals while the established initial-JavaScript baseline remains unchanged. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
-At the Overview V2 handoff on 2026-07-30, a clean current build and an isolated clean `060bea19` build with the same analyser both exceeded only the Contacts and Calculator initial ceilings; Project Detail remained within its unchanged allowance, and those aggregate baseline failures were not authority to raise unrelated budgets. A later isolated `.next-route-optimization` production build closed the Contacts and Calculator debt without changing any ceiling. Contacts measured 550.8/154.6 KiB raw/gzip initial against 588/168 KiB limits, with 8.8/3.4 KiB lazy. Calculator measured 1158.5/302.4 KiB initial against 1182/312 KiB limits, with no lazy group. The independent Turbopack analysis confirmed the shared `PortalFloatingPanel` owner on both routes, no `@radix-ui/react-dropdown-menu`, and only the two material-catalogue JSON sourcesâ€”not the full costing manifest, rules, overhead, hardware, or install-action inputsâ€”in Calculator's route graph. The aggregate assertion then passed every monitored route.
+At the Overview V2 handoff on 2026-07-30, a clean current build and an isolated clean `060bea19` build with the same analyser both exceeded only the Contacts and Calculator initial ceilings; Project Detail remained within its unchanged allowance, and those aggregate baseline failures were not authority to raise unrelated budgets. A later isolated `.next-route-optimization` production build closed the Contacts and Calculator debt without changing any ceiling. Contacts measured 550.8/154.6 KiB raw/gzip initial against 588/168 KiB limits, with 8.8/3.4 KiB lazy. Calculator measured 1158.5/302.4 KiB initial against 1182/312 KiB limits, with no lazy group. The independent Turbopack analysis confirmed the shared `PortalFloatingPanel` owner on both routes, no `@radix-ui/react-dropdown-menu`, and only the two material-catalogue JSON sources—not the full costing manifest, rules, overhead, hardware, or install-action inputs—in Calculator's route graph. The aggregate assertion then passed every monitored route.
 
 Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. The activity-key Overview is the default workflow and joins Commercial and conditional Job Packs as truthful local lazy boundaries; the embedded Calculator loads only after explicit estimate, duplicate/revision, or create intent inside Commercial. The project frame and tabs stay initial. Project details and stage correction live in Overview at every width, while the retired Details rail/tab and Emails UI have no runtime boundary. The Calculator drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
 
@@ -1996,11 +2058,11 @@ The initial expanded Docker command stopped at missing docker ENOENT. That local
 blocker was subsequently resolved; see the Docker verification evidence below.
 Syntax checks and PGlite results alone do not satisfy the PostgreSQL/PGMQ gate.
 
-Mobile enquiry journey check (2026-09-14): at 390 Ã— 844 in the in-app browser,
+Mobile enquiry journey check (2026-09-14): at 390 × 844 in the in-app browser,
 Help me choose exposed optional location/brief/timing/budget/uploads without
 requiring dimensions; Commercial / Professional exposed the audience choice and
 business fields without budget. The configured contact journey retained its
-6.0 Ã— 3.0 m design and scrolled to site-measure details inside the mobile layout.
+6.0 × 3.0 m design and scrolled to site-measure details inside the mobile layout.
 Plan remained selected when entering/leaving Lighting, and a temporary preferred-
 timing value survived that section change. The fixture text was cleared and the
 viewport reset. No files, contact details or enquiries were submitted. This is a
@@ -2008,7 +2070,7 @@ local responsive interaction check, not device performance, live upload/provider
 verification or numeric published-pricing approval.
 
 Configured proposal regression (2026-09-14): 44 of the 45 historical proposal
-cases still match exactly. The 6 Ã— 3 m pitched combination case originally used
+cases still match exactly. The 6 × 3 m pitched combination case originally used
 `area_override` (3.5760679331494534 mÂ²), which explicitly omitted acrylic/joiner
 installation labour. Replaying that input reproduces $17,900.50 including GST.
 The current two-acrylic-bay takeoff produces $18,128 rounded including GST and no
@@ -2073,9 +2135,9 @@ The harness owner `scripts/test-background-jobs-db.mjs` remains large. This pass
 
 Finance access tests also execute migration09 against isolated capability prerequisites and verify grant/revocation/regrant events, append-only history and role denial. The jobs DB harness runs `xero_finance_access.sql` after the invoice contract. Session tests cover Ellen/Jordan active grants, revocation, unconfirmed identity and ordinary-admin denial.
 
-The finance workflow SQL harness now applies migration10â€“12 after minimal commercial prerequisites and the existing grant-check owner. `xero_finance_workflow.sql` checks stopped-job mapping, audited save replay, canonical retry queue identity, payment double-count prevention and grant revocation. Lightweight `xero-finance-resume.test.ts` uses a recording retry adapter and is not proof of queue delivery.
+The finance workflow SQL harness now applies migration10–12 after minimal commercial prerequisites and the existing grant-check owner. `xero_finance_workflow.sql` checks stopped-job mapping, audited save replay, canonical retry queue identity, payment double-count prevention and grant revocation. Lightweight `xero-finance-resume.test.ts` uses a recording retry adapter and is not proof of queue delivery.
 
-Finance workflow run34836432934 at face622 passed both PostgreSQL/PGMQ matrix database jobs, covering forward Xero migrations05â€“12 plus the existing grant-check function, through the new mapping/retry/read contracts and earlier isolated transfer contracts. The harness uses minimal commercial table prerequisites, not the complete historical portal migration chain. It makes no Xero network writes.
+Finance workflow run34836432934 at face622 passed both PostgreSQL/PGMQ matrix database jobs, covering forward Xero migrations05–12 plus the existing grant-check function, through the new mapping/retry/read contracts and earlier isolated transfer contracts. The harness uses minimal commercial table prerequisites, not the complete historical portal migration chain. It makes no Xero network writes.
 
 The real finance workflow now applies migration13, prepares/finalises after the tax-mapping guard, and verifies persisted observations and fresh-target exclusion. Isolated tests additionally prove stale-generation and changed-portal-status refusal, audit immutability, unavailable provider reads, scheduler authentication and strict manual-check bodies.
 
