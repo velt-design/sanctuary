@@ -123,6 +123,16 @@ other row loss retain selected limited observations with comparisons/rankings
 suppressed. Missing stays null; observed zero remains zero. First-edit coverage
 is unknown and ordered-user reporting remains explicitly unavailable.
 
+Report-read failures emit `sanctuary_ga4_report_failure` to the existing private
+Source runtime log before lifecycle redaction. Only allowlisted stage and reason
+codes plus an optional numeric HTTP status are logged. Core and acquisition keep
+independent authority/request/response stages and statuses; normalization failures
+are separate. No provider body, error message, path, query, label, identifier or
+credential enters this log. Durable evidence still records only the existing
+unavailable outcome; generic HTTP responses and retention are unchanged. This
+diagnostic does not recover causes omitted from historical logs or authorize a
+refresh, retry, privacy exception or additional provider request.
+
 The additive retained-authority HTTP action is a local candidate (21 October).
 `GET ?action=authority` uses the same Praxis bearer/source identity and existing
 `sanctuary_ga4_command(read)` plus `deliver` fences as a full saved read. The
