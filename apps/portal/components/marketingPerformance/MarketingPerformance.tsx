@@ -49,7 +49,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   const prepared=usePreparedReportViews(applied?.view??null);
   const {overview:BusinessOverview,enquiries:EnquiryCharts,sales:SalesActivity,portfolio:PortfolioChart}=prepared.components;
   const panelState=prepared.error?<AlertBanner tone="error" title="Report view unavailable" action={<Button variant="secondary" onClick={prepared.retry}>Retry report view</Button>}>{prepared.error}</AlertBanner>:<p role="status">Preparing report view…</p>;
-  const position=useReportReturnPosition(busy||prepared.preparing);
+  const position=useReportReturnPosition(busy||prepared.preparing,busy);
   const tabs=useVisibleSelection(draft.view);
   useEffect(()=>{
     const restore=()=>{const query=new URLSearchParams(window.location.search);const f=parseHubFilters(query,initialFilters??defaultFilters());if(!query.has('view'))f.view='overview';setDraft(f);setApplied(f);setEventKind(f.kind);};

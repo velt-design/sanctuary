@@ -21,6 +21,8 @@ also avoids its unnecessary report-reveal delay. Only the selected panel loads;
 Financials and provider-drawer scheduling remain unchanged. Module failures have
 their own retry, and late selection/unmount results cannot replace the current
 panel. This per-mount cache contains component code, never private evidence.
+Return-position restoration waits for selected code, while links in already
+available underlying records still capture their current viewport position.
 Closed Overview supporting charts mount when opened.
 `contract.aucklandDay` reuses its fixed Auckland formatter, `overview` assigns age
 bands in one pass, and underlying-record dates format only the displayed page.
