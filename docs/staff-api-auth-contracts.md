@@ -2,8 +2,12 @@
 
 ## Outlook site visits
 
-`GET /api/staff/v1/outlook-site-visits` accepts only an optional project UUID
-(or existing `proj_` identity prefix). `/projects?q=` accepts one 2–100 character
+`GET /api/staff/v1/outlook-site-visits` accepts optional project and exact visit UUIDs
+(the project also accepts the existing `proj_` prefix). Unknown/duplicate query
+keys are rejected. An exact visit uses `outlook_site_visit_detail_read` to retrieve
+one retained entry outside the rolling window; hidden records and a mismatched
+project return no entry. The designer-report link supplies this ID without adding
+write authority. `/projects?q=` accepts one 2–100 character
 query and returns at most 21 candidates plus a truncation flag. Both use the
 auth-bound client and RPCs that recheck confirmed, active staff/admin identity.
 Private mirror tables have no direct authenticated or service-role grants.
@@ -39,6 +43,17 @@ Staff cannot select a tenant, mailbox, calendar or provider token. Ordinary read
 do not contact Microsoft. Errors are fixed safe strings; all responses are
 private/no-store, nosniff and no-referrer. See `schedule.md` and
 `environment-auth-supabase.md` for source and federation boundaries.
+
+## Designer performance candidate
+
+Designer performance at `/api/staff/v1/marketing-performance/designers` uses the
+same owner-only reporting boundary as commercial performance: active staff plus
+the confirmed developer identity. Only single `start` / `end` parameters are
+accepted, for up to 366 Auckland days through today. The auth-bound
+`marketing_designer_performance_read` RPC repeats the identity and range checks,
+fails on an oversized full history, and returns only validated slim facts.
+Denied, malformed, unavailable and complete responses all remain private/no-store.
+No service credential or preview identity bypass is introduced.
 
 ## Google advertising candidate
 
