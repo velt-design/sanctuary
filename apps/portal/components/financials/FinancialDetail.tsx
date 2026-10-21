@@ -1,4 +1,4 @@
-import { Drawer } from '@/components/ui/drawer/Drawer';
+import { Drawer } from '@/components/marketingPerformance/MarketingDrawer';
 import { cents, invoiceLink, money, matchingLine, reportLines, type Invoice, type ReportLine } from '@/lib/xero/financials/model';
 import type { FinancialReport, Financials } from '@/lib/xero/financials/contract';
 import styles from './Financials.module.css';

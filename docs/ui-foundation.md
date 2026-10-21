@@ -145,6 +145,15 @@ migration or add a new owner gate for every composition decision.
 
 ## Authority And Scope
 
+The 21 October Marketing visual candidate is an explicitly owner-authorised
+route exception: all Marketing & Sales tabs use a local dark palette and
+presentation owners under `components/marketingPerformance`, while continuing to
+use Foundation controls and the shared Drawer behaviour. Its optional Drawer
+class hook carries the local palette through portals. The mounted report alone
+owns its body backdrop; other Portal routes retain this document's existing
+system. See `marketing-performance.md` for its presentation map and verification
+boundary. This exception does not authorise a wider Portal restyle.
+
 The checked-in portal implementation and its rendered behavior are the current
 staff UI canon. This document describes the shared owners, active specialist
 boundaries, visual rules and regression evidence that exist now. It is not a

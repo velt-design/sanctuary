@@ -17,6 +17,7 @@ export type DrawerProps = {
   initialFocusRef?: RefObject<HTMLElement | null>;
   closeOnBackdrop?: boolean;
   closeOnEsc?: boolean;
+  className?: string;
 };
 
 export function Drawer({
@@ -28,6 +29,7 @@ export function Drawer({
   initialFocusRef,
   closeOnBackdrop = true,
   closeOnEsc = true,
+  className,
 }: DrawerProps) {
   const panelRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -62,7 +64,7 @@ export function Drawer({
   if (!open || typeof document === 'undefined') return null;
   return createPortal(
     <div
-      className={styles.overlay}
+      className={[styles.overlay, className].filter(Boolean).join(' ')}
       data-drawer-overlay="true"
       onMouseDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) {

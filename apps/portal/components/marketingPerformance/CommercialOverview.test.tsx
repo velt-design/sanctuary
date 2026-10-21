@@ -7,7 +7,7 @@ import { commercialFixture } from '@/app/qa/marketing-performance-fixture/commer
 import { hubDefaults } from '@/lib/marketingPerformance/hub';
 import type { CommercialReport } from '@/lib/marketingPerformance/commercial';
 import CommercialOverview from './CommercialOverview';
-vi.mock('recharts',()=>({Bar:()=>null,BarChart:()=>null,CartesianGrid:()=>null,Legend:()=>null,ResponsiveContainer:()=>null,Tooltip:()=>null,XAxis:()=>null,YAxis:()=>null}));
+vi.mock('recharts',()=>({Line:()=>null,LineChart:()=>null,CartesianGrid:()=>null,ResponsiveContainer:()=>null,Tooltip:()=>null,XAxis:()=>null,YAxis:()=>null}));
 it('retains geometry through parent remount without retaining stale quote values',async()=>{
  sessionStorage.clear();
  const bounds=vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockReturnValue({height:860,width:1200,x:0,y:0,top:0,left:0,bottom:860,right:1200,toJSON:()=>({})});
@@ -36,7 +36,11 @@ it('keeps useful partial recorded values qualified, including prior-period inspe
  report.earliestSentAt='2026-09-10T00:00:00Z';
  const view=renderIntoDocument(<CommercialOverview hub={hubFixture} filters={filters} apply={vi.fn()} loader={async()=>report}/>);await act(async()=>{});
  expect(view.container.textContent).toContain('Partial recorded history');
- const previous=[...view.container.querySelectorAll('button')].find(b=>b.textContent?.startsWith('Previous:'))!;
+ const comparisons=[...view.container.querySelectorAll('details')].filter(d=>d.querySelector('summary')?.textContent==='Previous period comparison');
+ expect(comparisons).toHaveLength(1);
+ act(()=>comparisons[0].querySelector('summary')!.click());expect(comparisons[0].open).toBe(true);
+ const priorButtons=[...comparisons[0].querySelectorAll('button')];expect(priorButtons).toHaveLength(3);
+ const previous=priorButtons[0];
  await act(async()=>previous.click());
  const drawer=document.querySelector('[role="dialog"]')!;
  expect(drawer.textContent).toContain(`${report.priorStart} – ${report.priorEnd} NZ`);expect(drawer.textContent).toContain('Incomplete history');expect(drawer.textContent).not.toContain('$0.00');view.unmount();
