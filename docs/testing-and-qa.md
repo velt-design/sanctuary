@@ -23,6 +23,29 @@ that entrypoint, and compare its generated runtime/matchers to the previous buil
 The deprecated filename is necessary until Vercel's pre-build function validator
 recognizes `proxy.ts`; it does not relax either access boundary.
 
+## Blinds guide contracts (21 October 2026)
+
+marketing.blinds.spec.ts owns this specialised guide's 320/390/820/1440/2560
+layout, SEO, original photography, reachable research, keyboard, context/reference,
+3D return/reload, invalid contact, retry, attachments and native form contracts.
+It replaces only the Blinds cases tied to the former generic SEO template.
+Intake, native fallback, uploads and vendors are fenced before any input.
+The corrected photography pass additionally checks real responsive preload,
+six decodable metadata-free assets, labelled Raised/Lowered keyboard transitions,
+stable image space and absence of design events or draft mutations from browsing
+photographs. Image subject, truthful crop and privacy still require actual visual
+inspection; a technical test does not establish editorial quality.
+Fresh 320x700 and 390x844 contexts also retain the untouched consent banner and
+require the complete hero photograph above it, with one reachable enquiry action.
+
+Route tests exercise source truth and direct/configured payload recovery, including
+an incoming project source different from the rendered form page. Shared draft,
+channel, contact and fallback suites include the exact route. The real disposable
+API/native/PGlite harness executes 20261021020001 and the Blinds SQL contract,
+covering narrow scope, security, rollback, idempotency and upload binding.
+No fixture establishes remote migration installation, actual delivery or genuine
+advertising attribution.
+
 ## Document measurement preparation checks (21 October 2026 candidate)
 
 Run the focused `documentDiagnostics`, `documentRenderDiagnostics`,

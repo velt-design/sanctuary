@@ -8,7 +8,7 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe('enquiry form contract', () => {
-  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'])('allows direct %s discussion without phone while preserving every other required field and scope', page => {
+  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds'])('allows direct %s discussion without phone while preserving every other required field and scope', page => {
     const base = { enquiryType: 'residential', page, requestType: 'project-discussion', name: 'Synthetic', email: 'fixture@example.invalid', suburb: 'Albany', phone: '' };
     expect(validateEnquiryForm(formData(base), [])).toEqual({});
     for (const patch of [{ requestType: '' }, { requestType: 'site-measure' }, { enquiryType: 'commercial' },
