@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-22: Historical sales credit and explicit test exclusion
+
+Keep historical sales-design attribution separate from current project owners and
+verified visit attendees. Add Steve only to the sales roster. Reuse the existing
+audited, revision-checked report outcome for an explicit TEST classification;
+do not represent test data as cancelled/refunded business or delete its history.
+Test inventory is inspectable and reversible, outside business sales/visit-conversion
+counts. Original financial/operational/provider facts and access boundaries stay intact.
+
 ## 2026-10-21: select an initial report read without moving its authority boundary
 
 A server-started report can overlap document delivery and hydration, but the

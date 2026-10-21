@@ -1,5 +1,16 @@
 # Testing And QA
 
+## Historical designer/test correction regression
+
+Run the existing `test/designer-performance-read.test.ts`, both project
+`sales-designer`/`sales-outcome` API tests, and Marketing Performance model/component
+tests. They exercise Steve credit without attendee/phase-owner invention, explicit
+TEST exclusion and clear, ordinary drawer recovery, real migration execution,
+existing-data/grant preservation, replay/conflict and owner denial. Existing native
+`scripts/test-sales-designer-concurrency.mjs` (with and without `--outcomes`) now
+also uses the widened enum values against disposable PostgreSQL17. Hosted schema,
+authenticated persistence and actual record corrections remain separate release checks.
+
 
 ## Video donor compatibility verification (22 October 2026)
 
