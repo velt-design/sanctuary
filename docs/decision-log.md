@@ -10,6 +10,16 @@ The paired consumer owns a separate finite metadata allowance; the existing
 full-read and provider limits stay in force. Owner: the GA4 source section in
 `environment-auth-supabase.md`; regressions: GA4 HTTP and HTTP-to-SQL tests.
 
+## 2026-10-21: inspect regional deployment input before accepting a build
+
+The same middleware region configuration produced a single-region CLI preview
+and all-region normal Git production output. The exact drop point is unresolved.
+The local candidate postbuild guard checks the awaited Vercel adapter's generated
+middleware configuration and fails closed on missing or mismatched output. It
+does not rewrite artifacts, change authentication or claim a speed improvement.
+Retain actual deployed-region qualification after the build. Owner and checks:
+`testing-and-qa.md`, `check-portal-middleware-placement.mjs` and its focused test.
+
 ## 2026-10-21: qualify framework configuration against hosted validation
 
 Vercel's Next adapter resolves `proxy.ts`, but its earlier function-key validator
