@@ -31,15 +31,16 @@ const compactMoney = (cents: number) => {
   return money(cents);
 };
 
-export default function CommercialOverview({ hub, filters, apply, loader, synthetic, revision = 0, children }: {
+export default function CommercialOverview({ hub, filters, apply, loader, synthetic, revision = 0, children, evidence, retryEvidence }: {
 
-  hub: HubReport; filters: HubFilters; apply: (filters: HubFilters) => void; loader?: CommercialLoader; synthetic?: boolean; revision?: number; children?: ReactNode;
+  hub: HubReport; filters: HubFilters; apply: (filters: HubFilters) => void; loader?: CommercialLoader; synthetic?: boolean; revision?: number; children?: ReactNode; evidence?: ReturnType<typeof useCommercial>; retryEvidence?: () => void;
 
 }) {
 
   const [retry, setRetry] = useState(0), [metric, setMetric] = useState<CommercialMetric | null>(null), [month, setMonth] = useState(''), [prior, setPrior] = useState(false);
 
-  const { report, busy, error } = useCommercial(filters, revision + retry, loader);
+  const local = useCommercial(evidence ? null : filters, revision + retry, loader);
+  const { report, busy, error } = evidence ?? local;
   const section = useRef<HTMLElement>(null);
   const geometryKey = () => `commercial-report-height:${window.innerWidth}`;
   // Geometry only, matching the existing report return-position policy. The hub
@@ -74,7 +75,7 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
   // Source outcomes use the independent hub read and remain usable during commercial recovery.
   if (busy) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><div aria-busy="true"><h2>Commercial performance</h2><p role="status">Reading quote values and timing…</p></div>{children}</section>;
 
-  if (!report || error) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><h2>Commercial performance</h2><p role="alert">{error || 'Commercial evidence unavailable.'} No partial values are shown.</p><Button onClick={() => setRetry(n => n + 1)}>Retry commercial report</Button>{children}</section>;
+  if (!report || error) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><h2>Commercial performance</h2><p role="alert">{error || 'Commercial evidence unavailable.'} No partial values are shown.</p><Button onClick={() => retryEvidence ? retryEvidence() : setRetry(n => n + 1)}>Retry commercial report</Button>{children}</section>;
 
   const selected = selectHub(hub, { ...filters, inspect: 'all' }), ids = new Set(selected.projects.map(p => p.id));
 

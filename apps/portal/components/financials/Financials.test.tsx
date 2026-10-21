@@ -13,8 +13,8 @@ it('opens the selected account after reload and preserves basis/comparison when 
   await act(async()=>{});
   expect(document.body.textContent).toContain('Materials');expect(document.body.textContent).toContain('2025-09-01');
   const close=document.querySelector<HTMLButtonElement>('[aria-label="Close Materials"]')!;act(()=>close.click());
-  const bank=[...view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(button=>button.textContent==='Bank balances')!;act(()=>bank.click());
-  expect(view.container.textContent).toContain('Opening Balance');expect(window.location.search).toContain('financeSection=bank');expect(window.location.search).toContain('financeBasis=cash');expect(window.location.search).toContain('financeCompare=yearAgo');expect(loader).toHaveBeenCalledTimes(1);view.unmount();
+  const bank=[...view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(button=>button.textContent==='Bank balances')!;await act(async()=>bank.click());
+  expect(view.container.textContent).toContain('Opening Balance');expect(window.location.search).toContain('financeSection=bank');expect(window.location.search).toContain('financeBasis=cash');expect(window.location.search).toContain('financeCompare=yearAgo');expect(loader).toHaveBeenCalledTimes(2);view.unmount();
 });
 it('ageing drilldown matches the exact currency population and does not include a second currency',()=>{
   const report=sampleFinancials(query),family=report.position.receivables;if(family.status!=='available')throw new Error('fixture');
@@ -27,7 +27,7 @@ it('missing comparison and partial families stay explicit with retry while curre
   window.history.replaceState(null,'','/?financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=accrual');
   const view=renderIntoDocument(<Financials loader={async query=>sampleFinancials(query,'partial')} synthetic/>);await act(async()=>{});
   expect(view.container.textContent).toContain('$201,468');expect(view.container.textContent).toContain('Comparison unavailable');
-  const bills=[...view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(button=>button.textContent==='Bills to pay')!;act(()=>bills.click());
+  const bills=[...view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(button=>button.textContent==='Bills to pay')!;await act(async()=>bills.click());
   expect(view.container.textContent).toContain('Bills to pay unavailable');
   const details=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!;act(()=>details.click());
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('does not currently grant');expect(view.container.querySelectorAll('tbody tr')).toHaveLength(0);view.unmount();
