@@ -73,12 +73,6 @@ const guideDetailRoutes = [
     returnHref: '/products/pergolas/pitched',
   },
   {
-    path: '/pergolas-with-blinds',
-    projectSlug: 'tindalls-bay-pavilion',
-    projectCount: 2,
-    returnHref: '/products/screens-walls/drop-down-blinds',
-  },
-  {
     path: '/acrylic-pergolas-vs-louvre-roofs',
     projectSlug: 'mt-maunganui-box',
     projectCount: 2,

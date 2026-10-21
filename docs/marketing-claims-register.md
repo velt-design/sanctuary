@@ -1,5 +1,23 @@
 # Marketing Claims Register
 
+## Blinds preview source review (21 October 2026)
+
+The revised /pergolas-with-blinds guide uses six inspected original installation
+photographs from Sanctuary's marketing library. The hero, pale mesh, clear PVC
+and roller/post detail describe what is visible without attributing a brand or
+unverified customer outcome. The raised/lowered gallery shows the same right-hand
+opening from slightly different camera positions, explicitly labelled as two
+photographs. It is not an aligned comparison or simulated fabric choice.
+
+Mesh/PVC, manual or motorised operation, licensed electrical supply and exact-system
+limitations remain within the governed product claims. Supplier source review
+confirmed manual operation is not universally crank-driven; the guide therefore
+keeps operation dependent on the selected system and material and does not promise
+motorised PVC. Visible PVC reflections and surface movement are not represented
+as glass-like clarity. No new brand, opening limit, weather guarantee, warranty,
+retrofit promise or fixed price is approved here. Original source paths, hashes
+and privacy inspections remain private; public assets contain no EXIF metadata.
+
 Status: active approval register for public marketing copy.
 
 This register is the approval authority for public marketing claims. Sanctuary

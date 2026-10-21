@@ -1,145 +1,35 @@
-import type { SeoLandingPageConfig } from '@/components/seo-landing/types';
+export const BLINDS_ROUTE = '/pergolas-with-blinds';
+export const blindsDescription = 'Plan an Auckland pergola with integrated outdoor blinds. Explore mesh, clear PVC, privacy, outlook and the details to consider before building.';
+export const blindsHero = {
+  image: '/images/blind-coastal-mesh.webp',
+  alt: 'A lowered dark mesh blind with its roller, side guide and bottom rail visible beside an open coastal outlook',
+};
 
-const faqItems = [
-  {
-    question: 'What can a pergola blind help with?',
-    answer: ['A selected edge can be planned for low sun, privacy or exposure. Results depend on the site, opening and exact system.'],
-  },
-  {
-    question: 'Should blinds be planned with a new pergola?',
-    answer: ['Yes. Headboxes, guides, power and clearances are easier to coordinate before fabrication.'],
-  },
-  {
-    question: 'Can blinds be added to an existing pergola?',
-    answer: ['Possibly. The structure, opening, fixings, clearances and product limits need review.'],
-  },
-  {
-    question: 'Can a blind stay down in strong wind?',
-    answer: ['Follow the operating limits and guidance for the exact selected system.'],
-  },
+/** Separate original installation photographs. They do not simulate fabric choices. */
+export const blindExamples = [
+  { material: 'Mesh', image: '/images/blind-pale-mesh.webp', width: 1800, height: 1200,
+    alt: 'Pale mesh blinds lowered across a timber-lined pergola, with the coastal outlook visible through the fabric',
+    caption: 'Pale mesh beneath a timber-lined roof. A completed installation.',
+    heading: 'A softer screen across the view.',
+    text: 'Mesh filters the outlook rather than making an opaque wall. The fabric’s openness, colour and the light on each side affect view-through and privacy.' },
+  { material: 'Clear PVC', image: '/images/blind-clear-pvc.webp', width: 1800, height: 1350,
+    alt: 'A clear PVC blind lowered across a deck opening, showing its headbox, side guides, bottom rail and reflections',
+    caption: 'Clear PVC across a deck opening. A separate completed installation.',
+    heading: 'A clear view through a lowered blind.',
+    text: 'Clear PVC keeps the view visible, with the reflections and surface movement you can see here. It is a flexible blind, not glass. We check the opening and operating requirements before recommending it.' },
 ] as const;
 
-export const pergolasWithBlindsConfig = {
-  marker: 'pergolas-with-blinds',
-  route: '/pergolas-with-blinds',
-  description: 'Plan pergola blinds around one exposed edge, the measured opening and the selected system.',
-  schemaName: 'Pergolas With Blinds',
-  serviceName: 'Pergola and blind planning in Auckland',
-  serviceType: 'Pergola blind planning and installation',
-  guideFirstLayer: {
-    answerBlockId: 'blind-is-an-edge',
-    projectBlockId: 'blind-projects',
-    projectSlug: 'tindalls-bay-pavilion',
-    returnHref: '/products/screens-walls/drop-down-blinds',
-    returnLabel: 'Review the blind option',
-    supportingAnswerTitle: 'More about changing edges',
-    supportingProjectsTitle: 'More screened projects',
-    supportingSummary: 'Blind integration, examples and questions',
-  },
-  hero: {
-    image: '/images/project-tindalls-bay.jpg',
-    imageAlt: 'Pergola with a screened edge beside an Auckland home',
-    objectPosition: '50% 42%',
-    eyebrow: 'Pergolas with blinds',
-    title: 'Plan blinds as part of the pergola.',
-    intro: 'Start with the edge affected by low sun, privacy or exposure.',
-    primaryCta: 'Send project brief',
-    secondaryCta: 'See blind decisions',
-    secondaryHref: '#blind-decisions',
-    proof: ['One edge at a time', 'Openings measured', 'Product limits confirmed'],
-  },
-  blocks: [
-    {
-      kind: 'split-intro',
-      id: 'blind-is-an-edge',
-      eyebrow: 'The edge',
-      title: 'A blind changes one boundary.',
-      paragraphs: ['Identify the direction, time and activity affected before choosing the number or type of blinds.'],
-    },
-    {
-      kind: 'projects',
-      id: 'blind-projects',
-      eyebrow: 'Built examples',
-      title: 'Edges respond to the brief.',
-      items: [
-        {
-          slug: 'tindalls-bay-pavilion',
-          label: 'Coastal home',
-          summary: 'Blinds were identified in the project brief for wind and privacy.',
-          facts: ['Mixed roof zones', 'Selected screened edges'],
-        },
-        {
-          slug: 'goodhome-commercial-terrace',
-          label: 'Hospitality courtyard',
-          summary: 'Screens were coordinated with two gables and the restaurant fit-out.',
-          facts: ['Commercial setting', 'Integrated lighting'],
-        },
-      ],
-    },
-    {
-      kind: 'decision-cards',
-      id: 'blind-decisions',
-      tone: 'warm',
-      eyebrow: 'Specification',
-      title: 'Define the changing edge.',
-      items: [
-        { title: 'Condition', outcome: 'Name the sun, privacy or exposure issue.', consider: 'Direction, timing and affected activity.' },
-        { title: 'Opening', outcome: 'Fit the selected system to the measured edge.', consider: 'Width, height, structure and obstructions.' },
-        { title: 'Operation', outcome: 'Choose controls and an open position.', consider: 'Power, access and written operating limits.' },
-      ],
-    },
-    {
-      kind: 'dark-cards',
-      id: 'blind-boundaries',
-      eyebrow: 'Product limits',
-      title: 'A blind is not a permanent wall.',
-      items: [
-        { title: 'Wind', text: 'Follow the exact system’s operating guidance.' },
-        { title: 'Weather', text: 'Do not treat an outdoor edge as complete enclosure.' },
-        { title: 'Warranty', text: 'Use current written terms for the selected product.' },
-      ],
-    },
-    {
-      kind: 'link-cards',
-      id: 'blind-next-decisions',
-      tone: 'neutral',
-      eyebrow: 'Related guides',
-      title: 'Keep the edge connected to the room.',
-      items: [
-        { title: 'Whole outdoor room', text: 'Coordinate use, furniture, roof and services.', href: '/outdoor-rooms-auckland', linkLabel: 'Outdoor room guide' },
-        { title: 'Blind product', text: 'Review fit, constraints and evidence.', href: '/products/screens-walls/drop-down-blinds', linkLabel: 'Drop-down blinds' },
-      ],
-    },
-    {
-      kind: 'faq',
-      id: 'pergolas-with-blinds-faq',
-      tone: 'elevated',
-      eyebrow: 'Questions',
-      title: 'Pergola blind questions.',
-      items: faqItems,
-    },
-  ],
-  form: {
-    ariaLabel: 'Pergola with blinds enquiry form',
-    eyebrow: 'Project brief',
-    heading: 'Tell us about the edge.',
-    intro: 'Share the opening and the condition you want to manage.',
-    submitLabel: 'Send project brief',
-    messageLabel: 'Which edge needs to change?',
-    messagePlaceholder: 'Describe the low sun, privacy or exposure issue and when it occurs.',
-    briefFields: [
-      { name: 'pergolaStatus', label: 'Pergola status', type: 'select', options: ['New pergola', 'Existing Sanctuary pergola', 'Other existing pergola', 'Unsure'] },
-      { name: 'openingDimensions', label: 'Opening size', type: 'text', placeholder: 'Width and height, if known' },
-      { name: 'controlPreference', label: 'Control', type: 'select', options: ['Manual', 'Motorised', 'Compare both', 'Unsure'] },
-    ],
-    roofPreference: {
-      detailKey: 'roofPreference',
-      options: [
-        { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] },
-        { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] },
-        { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] },
-        { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
-      ],
-    },
-  },
-} satisfies SeoLandingPageConfig;
+export const blindStates = [
+  { label: 'Raised', image: '/images/blind-opening-raised.webp', alt: 'The right-hand opening with its mesh blind rolled up above the sill, leaving the trees in full view' },
+  { label: 'Lowered', image: '/images/blind-opening-lowered.webp', alt: 'The same right-hand opening with its mesh blind lowered to the sill, filtering the view of the trees' },
+] as const;
+
+export const blindsFaqs = [
+  { question: 'Should every side of my pergola have a blind?', answer: 'Not necessarily. Start with the side where low sun, privacy or exposure affects how you use the space. Keep views, doors and everyday paths in mind. A blind changes the view and air movement when lowered; rolled away, the roller or headbox remains visible.' },
+  { question: 'How do I choose between mesh and clear PVC?', answer: 'Think about the condition you want to change and the outlook you want to keep. Mesh openness and lighting affect view-through and privacy. Clear PVC provides a clear panel, but its behaviour and operating limits differ from mesh. We discuss the exact fabric and system for your opening.', href: '/products/screens-walls/drop-down-blinds', link: 'Explore blind materials and details' },
+  { question: 'Can I enquire about blinds for an existing pergola?', answer: 'Yes. Send a few photos and tell us what you have. The existing frame, opening, fixing points and clearances need to be reviewed before we can confirm whether a suitable blind can be integrated. We do not assume every existing pergola is suitable.' },
+  { question: 'Are blinds manual or motorised?', answer: 'Manual and motorised options are available, depending on the selected blind system and material. Manual operation is not always a crank. We confirm how the proposed system works with you. Motorised blinds need suitable power supplied by a licensed electrician, along with access for maintenance. Plan these details with a new pergola.' },
+  { question: 'Will blinds make the space windproof or weatherproof?', answer: 'No blind is a universal weather seal. Mesh and PVC behave differently, and wind-driven rain can enter through edges and openings. Follow the operating limits for the exact product and site. We will discuss exposure, operating guidance and maintenance before the specification is agreed.' },
+  { question: 'Do I need measurements or a finished design?', answer: 'No. Tell us which side of the space you want to change and why. Photos, approximate measurements or plans are helpful if you have them, but they are optional. We can begin with a conversation and arrange a free Auckland site measure.' },
+  { question: 'What will a pergola with blinds cost?', answer: 'The structure, roof, number and size of openings, fabric, controls and site conditions all affect the price. We confirm the proposed scope and price with you. The optional 3D designer estimates supported standard pergola configurations; it is not a quote for a bespoke blind system or a retrofit.', href: '/pergola-cost-auckland', link: 'Understand pergola cost and scope' },
+] as const;
