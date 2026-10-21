@@ -1166,3 +1166,7 @@ fixtures exercise shared landing reservation, uncertain/no-effect fencing, one
 paused ad and reused creative reference cleanup. Service-only definer commands,
 empty search paths, explicit table/function revokes and immutable receipts remain
 mandatory. No production migration or capability is implied by fixture passes.
+
+## Project SharePoint bindings and provisioning (22 October 2026)
+
+Migration 20261022090001_project_sharepoint_files adds private project_files_control, project_file_roots, project_folder_provisions and project_file_events. RLS and revoked direct grants preserve the boundary. User-bound project_files_read rechecks active confirmed staff/admin membership; service-only project_files_admin imports explicit evidence-backed roots and project_files_provision manages leased attempts. A dark insert trigger queues only future projects atomically. See [Project SharePoint files](project-sharepoint-files.md).

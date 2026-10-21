@@ -2312,3 +2312,7 @@ post-Stop reconciliation, 24 normal plus three reserved terminal admissions,
 scoped-stop versus credential/global-Stop denial, exact never-dispatched proof,
 stale-fence denial and concurrent dispatch/no-effect exclusion. Disposable synthetic SQL is not a live
 schema/provider test. No Graph dispatcher or credential loader exists.
+
+## Project SharePoint file checks
+
+Run node scripts/test-project-sharepoint-files-pglite.mjs for the disposable real-migration contract and vitest run apps/portal/lib/projects/sharePointFiles plus the ProjectSharePointFilesPanel component test for source boundaries and ordinary file tasks. Fixtures do not establish live Graph coverage or browser/download acceptance. Activation checks are in [Project SharePoint files](project-sharepoint-files.md).
