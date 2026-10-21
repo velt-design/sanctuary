@@ -1,7 +1,7 @@
 /** Exact inline-design routes. Page content and SEO stay with each page owner. */
 export const GOOGLE_FUNNEL_PATHS = ['/ads/outdoor-living', '/ads/acrylic-pergolas'] as const;
 export const META_FUNNEL_PATHS = ['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas'] as const;
-const OTHER_INLINE_DESIGN_PATHS = ['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland', '/aluminium-pergolas-auckland', '/custom-pergolas-auckland'] as const;
+const OTHER_INLINE_DESIGN_PATHS = ['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland', '/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'] as const;
 export type GoogleFunnelPath = typeof GOOGLE_FUNNEL_PATHS[number];
 export type InlineFunnelPath = GoogleFunnelPath | typeof META_FUNNEL_PATHS[number] | typeof OTHER_INLINE_DESIGN_PATHS[number];
 export function isGoogleFunnelPath(path: string | null): path is GoogleFunnelPath {

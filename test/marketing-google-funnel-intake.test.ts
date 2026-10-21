@@ -11,6 +11,7 @@ const migrationPath = 'supabase/migrations/20261015000001_marketing_google_funne
 const metaMigrationPath = 'supabase/migrations/20261016000001_marketing_meta_funnel_optional_phone.sql';
 const aluminiumMigrationPath = 'supabase/migrations/20261020020001_marketing_aluminium_optional_phone.sql';
 const customMigrationPath = 'supabase/migrations/20261020030001_marketing_custom_optional_phone.sql';
+const outdoorRoomMigrationPath = 'supabase/migrations/20261021000001_marketing_outdoor_room_optional_phone.sql';
 const channelMigrationPath = 'supabase/migrations/20261020000001_marketing_facebook_channel_optional_phone.sql';
 const source = (path: string) => readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
 const h = vi.hoisted(() => ({ getClient: vi.fn(), send: vi.fn(), recordConversion: vi.fn() }));
@@ -149,6 +150,25 @@ it('extends only Custom discussion and preserves security, rollback, idempotency
   } finally { await db.close(); }
 }, 30_000);
 
+it('extends only Outdoor Rooms discussion and preserves security, rollback, idempotency and existing contact contracts', async () => {
+  const body = (path: string) => source(path).slice(source(path).indexOf('create or replace function')).trimEnd();
+  expect(body(outdoorRoomMigrationPath).replace(", '/outdoor-rooms-auckland'", '')).toBe(body(customMigrationPath));
+  const db = await createDatabase();
+  try {
+    await db.exec(source(customMigrationPath));
+    const definition = async () => (await db.query("select pg_get_functiondef('public.marketing_enquiry_intake(uuid,text,jsonb)'::regprocedure) body")).rows[0].body;
+    const previous = await definition();
+    await db.exec('begin;\n' + source(outdoorRoomMigrationPath) + '\nrollback;');
+    expect(await definition()).toBe(previous);
+    await db.exec(source(outdoorRoomMigrationPath));
+    await db.exec(source('supabase/tests/marketing_outdoor_room_optional_phone.sql'));
+    await db.exec(source('supabase/tests/marketing_enquiry_optional_phone.sql'));
+    for (const table of ['contacts', 'projects', 'enquiry_requests', 'email_outbox']) {
+      expect((await db.query(`select count(*)::int n from public.${table}`)).rows).toEqual([{ n: 0 }]);
+    }
+  } finally { await db.close(); }
+}, 30_000);
+
 describe('actual inline funnel API/native payload through the real intake function', () => {
   let db: PGlite;
   beforeAll(async () => {
@@ -158,6 +178,7 @@ describe('actual inline funnel API/native payload through the real intake functi
     await db.exec(source(channelMigrationPath));
     await db.exec(source(aluminiumMigrationPath));
     await db.exec(source(customMigrationPath));
+    await db.exec(source(outdoorRoomMigrationPath));
   }, 30_000);
   afterAll(async () => { await db.close(); });
   beforeEach(async () => {
@@ -190,7 +211,7 @@ describe('actual inline funnel API/native payload through the real intake functi
   });
   afterEach(async () => { await db.exec('rollback'); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland'])('rejects incomplete or wrongly scoped %s requests before intake', async page => {
+  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'])('rejects incomplete or wrongly scoped %s requests before intake', async page => {
     const { POST } = await import('../apps/marketing/app/api/enquiry/route');
     const base = { submissionId: randomUUID(), enquiryType: 'residential', page,
       requestType: 'project-discussion', name: 'Synthetic', email: 'fixture@example.invalid', phone: '', suburb: 'Albany' };
@@ -205,7 +226,7 @@ describe('actual inline funnel API/native payload through the real intake functi
     expect(h.send).not.toHaveBeenCalled();
   });
 
-  for (const page of ['/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']) {
+  for (const page of ['/outdoor-rooms-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']) {
     it.each([false, true])(`${page} accepts blank-phone JSON, configured=%s, preserving truthful receipt and retry`, async configured => {
       const { POST } = await import('../apps/marketing/app/api/enquiry/route');
       const payload = {

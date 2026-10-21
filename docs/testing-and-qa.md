@@ -40,6 +40,21 @@ Use a separate fresh origin for initial app-data correctness without clearing
 staff sessions/drafts. It is a smoke check, not a matched performance sample.
 No fixture result establishes production latency or external provider coverage.
 
+## Outdoor Rooms contracts (21 October 2026)
+
+`marketing.outdoor-rooms.spec.ts` owns the specialised page's responsive, SEO,
+photography, open research, keyboard, guided/finder, native and enquiry recovery
+contracts, replacing its former generic SEO-template cases. It fences intake,
+native fallback, attachment transport and vendors before input. Existing guided
+destination coverage remains intact. Unit coverage verifies route scope, full
+draft return, consent/action deduplication and direct/configured payloads.
+
+The existing disposable API/native/PGlite intake harness also executes forward
+migration 20261021000001 and `marketing_outdoor_room_optional_phone.sql` for the
+exact residential discussion route. It checks denials, unchanged security,
+rollback, upload binding and idempotency, with no shared database/provider calls.
+These fixtures do not prove remote migration installation or actual delivery.
+
 ## Custom SEO contracts (20 October 2026)
 
 marketing.custom.spec.ts covers the project-led page at phone, tablet, desktop and

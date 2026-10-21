@@ -64,6 +64,15 @@ The project record now separates the client constraint, roof approach, optional 
 
 ## Editorial fallback
 
+Outdoor Rooms (21 October 2026) uses the typed public Warkworth,
+Riverhead and Tindalls project records and original galleries for the pictured
+room layout, materials, roof zones, blinds and lighting. Warkworth and Riverhead
+retain the aluminium-and-steel qualifier. These are individual project examples,
+not standard furniture, deck, landscaping or services inclusions. Whole-room
+pricing, weatherproofing, general pool compliance and engineering thresholds are
+not asserted. The standard-shape designer is explicitly a pergola starting point,
+not a room planner or a complete-room quotation. No new numerical claim is added.
+
 ### Configurator enquiry policy approved on 2026-09-14
 
 Owner approval in the launch-journey interview permits: free site measure and

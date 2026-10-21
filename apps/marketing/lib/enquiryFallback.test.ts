@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { buildEnquiryFallbackPayload } from './enquiryFallback';
 
 describe('buildEnquiryFallbackPayload', () => {
+  it.each(['/aluminium-pergolas-auckland', '/custom-pergolas-auckland', '/outdoor-rooms-auckland'])('preserves explicit %s discussion but never supplies missing intent', page => {
+    const form = new FormData();
+    form.set('enquiryType', 'residential'); form.set('page', page);
+    expect(buildEnquiryFallbackPayload(form, 'fixture')).not.toHaveProperty('requestType');
+    form.set('requestType', 'project-discussion');
+    const payload = buildEnquiryFallbackPayload(form, 'fixture');
+    expect(payload).toMatchObject({ requestType: 'project-discussion', page });
+    expect(payload).not.toHaveProperty('customerDesign');
+  });
   it.each(['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/ads/outdoor-living', '/ads/acrylic-pergolas', '/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland'])('preserves the submitted discussion intent for %s without inventing one', page => {
     const form = new FormData();
     form.set('enquiryType', 'residential'); form.set('page', page);
