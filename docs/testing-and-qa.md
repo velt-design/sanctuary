@@ -76,6 +76,16 @@ an API request triggered a Git checkout or GitHub delivered a webhook: these are
 distinct triggers, and an API-triggered Git build does not prove webhook parity.
 Even passing generated output does not prove the provider deployed it unchanged.
 Production regional acceptance remains failed.
+## Creative policy preparation (21 October 2026, local only)
+
+`metaCreatives/policy.test.ts` validates exact intent/approval/catalogue/pre-state
+bindings, forbidden control fields, wrong assets/scopes/claims, budgets, exclusive
+reservation evidence, uncertain creation and registered-object status effects.
+Run it with `metaCredentials/renewal.test.ts` to preserve reporting/sales isolation.
+These pure fixtures exercise no provider, credential, SQL, ad or customer effect.
+They prove neither API eligibility nor durable reservation/idempotency, and every
+accepted plan still reports execution disabled. See the bounded implementation
+map in `meta-offline-sales.md` before any later credential or executor work.
 
 ## Meta landing experiment candidate (21 October)
 

@@ -208,6 +208,43 @@ after transmission remains a review state because its endpoint has no deletion.
 
 ## Durable Meta credential renewal (default off)
 
+### Separate creative policy preparation (21 October 2026)
+
+`metaCreatives/contract.ts` and `policy.ts` are pure, local-only policy owners.
+The declared credential capability vocabulary includes `creatives`, while
+`RuntimeMetaCredentialCapability`, existing credential configuration, loaders,
+vault sessions and renewal still admit only `reports` and `sales`. No creative
+secret, token scope, environment flag, route, provider request or migration is
+introduced. `CREATIVE_RUNTIME_ENABLED` is permanently false in this stage, and
+every validation result exposes `executionEnabled:false`.
+
+The internal intent allowlist is a paused variant using exact catalogue keys,
+activation of an owned ad, or pausing an owned ad. It contains no Meta wire schema.
+Strict parsing refuses extra offer, budget, targeting, destination, Page-post or
+provider control fields. Scope binds app/principal/business/account/Page/campaign/
+ad set; approved budget and immutable control fingerprint must match fresh source
+pre-state. Independent approval binds the exact intent and asset/copy/claim
+catalogue. Assets need bounded paid-use evidence and expiry, and claims must be
+explicitly approved. The validator does not authenticate supplied evidence or
+understand whether arbitrary prose is commercially true; a later source-owned
+approval/catalogue reader must establish that provenance.
+
+A matching held creative reservation, generation and unchanged pre-state are
+required. This is a pure check, not an implemented atomic cross-lane lock. A
+command/hash conflict fails; uncertain creation requires reconciliation, never
+another create. A confirmed response needs the matching source-owned object
+registry before it can be treated as already completed. Name matching is not
+provider idempotency. Status effects cannot target the original control ad.
+
+Remaining implementation prerequisites are deliberately explicit: authoritative
+native CreativeTests and permission contracts, independent Page/ad-account/app
+assignment and a separate vault capability, durable global landing/creative
+reservation, study/ad registry and compatible reporting/Clarity/intake consumers,
+actual ad previews, delivery/cleanup recovery and a reviewed end-decision rule.
+The current four-ad report schemas cannot accept extra ads unchanged. No native
+study fields, eligibility, budget allocation or automatic end-stop are assumed.
+No provider effects or credential operations are possible through this policy.
+
 `metaCredentials` owns separate report and sale vault sessions, provider checks,
 renewal and reconciliation. It does not modify Google access or the Velt legacy
 Meta item. Use dedicated Sanctuary items with one concealed `meta_credential`

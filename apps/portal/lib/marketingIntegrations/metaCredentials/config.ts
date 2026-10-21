@@ -1,8 +1,9 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import type { RuntimeMetaCredentialCapability } from './capability';
 
-export type MetaCapability = 'reports' | 'sales';
+export type MetaCapability = RuntimeMetaCredentialCapability;
 const id = z.string().regex(/^[1-9]\d{0,19}$/);
 export const identitySchema = z.object({ capability: z.enum(['reports','sales']), actorId: z.uuid(), appId: id,
   principalId: id, businessId: id, targetId: id, scopes: z.array(z.string().regex(/^[a-z_]{1,80}$/)).max(20),
