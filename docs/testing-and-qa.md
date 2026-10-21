@@ -1,5 +1,14 @@
 # Testing And QA
 
+## Formal creative cohort continuation (local only)
+
+The native ledger harness now verifies an immutable plan/registry-bound formal
+cohort. It restricts saved dates to delivery plus72hours, requires prior eligible
+exposure for late arrivals, deduplicates canonical projects, rejects contradictory
+UTMs and excludes post-cutoff qualification. Delayed CRM records remain intact.
+Counts explicitly cover consented attributable records; all-saved coverage stays
+unknown. This additive continuation is not installed or an activation proof.
+
 ## Paused creative capability candidate, 21 October 2026
 
 Run `node scripts/test-meta-creative-ledger-db.mjs` with the existing disposable

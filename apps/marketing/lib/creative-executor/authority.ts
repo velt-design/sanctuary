@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { canonicalHash, executionPlanSchema, hash, stateSchema, wireSchema } from './contract';
 import { serializeEffect } from './intent';
 const payloads = {
-  read: z.object({}).strict(), authority: z.object({ generation: z.number().int().positive() }).strict(),
+  read: z.object({}).strict(), cohort: z.object({freeze:z.boolean()}).strict(), authority: z.object({ generation: z.number().int().positive() }).strict(),
   prepare: z.object({ plan: executionPlanSchema, planHash: hash }).strict(),
   admit: z.object({ generation: z.number().int().positive(), intent: wireSchema, cleanup: z.boolean() }).strict(),
   check: z.object({ requestHash: hash }).strict(),

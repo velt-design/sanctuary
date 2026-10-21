@@ -29,6 +29,8 @@ try{
  sql(readFileSync('supabase/migrations/20261021050003_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050004_creative_formal_cohort.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_formal_cohort.sql','utf8'));
 
  sql("update public.landing_experiments set created_at=clock_timestamp()-interval '8 days'");
  const plan="jsonb_build_object('scope',scope,'originalAds',original_ads,'budgetHash',budget_hash,'controlHash',control_hash,'nativeContractHash',native_contract_hash,'approvalHash',repeat('f',64),'catalogueHash',repeat('a',64),'generator','author','reviewer','reviewer')";
@@ -53,7 +55,7 @@ try{
  sql(`select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'${experiment}','cleanup',jsonb_build_object('evidenceHash',repeat('f',64)))`);
  if((await Promise.all([concurrent(creative),concurrent(landing)])).filter(Boolean).length!==1)throw new Error('Cross-lane concurrent reservation did not admit exactly one');
  if(sql('select count(*) from public.acquisition_experiment_reservation').trim()!=='1')throw new Error('Missing global reservation');
- process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,disposableOnly:true,liveCalls:0}));
+ process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,disposableOnly:true,liveCalls:0}));
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
  if(dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('sanctuary-experiment-'))rmSync(directory,{recursive:true,force:true});
