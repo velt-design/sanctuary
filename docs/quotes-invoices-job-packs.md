@@ -1,6 +1,15 @@
 # Quotes, Invoices, And Job Packs
 
-## Current workflow clarity (20 October 2026 local candidate)
+## Studio design snapshots (20 October 2026 local candidate)
+
+The Studio path uses the current create/refresh/revise commercial owners through `lib/quotes/studioCommit.server.ts`. A prepared immutable source, publication, selling lines and actual captured Plan/3D image bytes bind to the quote in the same transaction. Generic commercial edits retain that binding; the deferred invariant prevents source/project/scope or compact identity drift. Revisions inherit the original quote's snapshot rather than reading the latest estimate. Refresh explicitly prepares the current saved design. Payment terms, commercial revisions, draft uniqueness, frozen delivery intents and invoice totals retain their existing owners.
+
+`readStudioQuoteHandoff` supplies the same validated lines to quote creation and the local-first Project preview. Missing or stale Studio evidence cannot fall back to the calculator. `buildQuoteRenderHash` includes snapshot and image identities. Customer PDF and token-authorised public quote view consume only the safe immutable projection, never private authored/costing evidence. Public lookup follows token validation and uses the binding RPC without reading raw pricing metadata. Historic `studioQuoteDraft` prototypes remain review-only. Full acceptance status and scope are in [Staff Design Studio](staff-design-studio-prototype.md).
+
+The server workflow and PDF hotspots grow only by thin calls to dedicated binding and design-page owners. Staff frozen-design presentation is a separate component. Broad existing workflow decomposition is intentionally outside this integration; the next safe extraction is the existing quote lifecycle command family, not a replacement of current transaction logic.
+
+
+## Current workflow clarity (20 October 2026 release)
 
 The project commercial context distinguishes saved commercial facts from the
 project's current operating state. Closed records retain accepted agreements,
@@ -11,6 +20,15 @@ controls recede until staff choose Review commercial actions for that state
 revision. Existing deliberate correction access, command authorization and all
 financial values remain unchanged. On-hold and unavailable-state handling use
 the same owner; no lifecycle or money mutation follows from entering a tab.
+
+Studio creation/revision and Review quote preparation/resume use this same
+presentation policy through `StudioCommercialPolicy`. Its actor/project-scoped
+command-centre read inherits the current query owner's always-refresh-on-mount
+behavior. Unavailable reads pause commands and offer retry; saved records,
+editing and view capture remain accessible. A preparation returned after the
+project state changes is retained and requires deliberate resume after review,
+using the same immutable snapshot and client intent. Existing server command
+permissions and commercial safeguards are unchanged.
 
 Commercial section and quote selection changes use `projectViewNavigation` and
 the live URL, with native Back/Forward and a dirty-quote guard for both section

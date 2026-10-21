@@ -50,6 +50,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('clientIntentId is required', 400);
   }
 
+  const studioSnapshot = body.studioSnapshot;
+  if (studioSnapshot !== undefined && (!studioSnapshot || typeof studioSnapshot.snapshotId !== 'string' || !/^[0-9a-f-]{36}$/i.test(studioSnapshot.snapshotId) || typeof studioSnapshot.contentHash !== 'string' || !/^[0-9a-f]{64}$/.test(studioSnapshot.contentHash))) return jsonError('Invalid prepared design identity',400);
   const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
 
   try {
@@ -61,6 +63,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
           internalName.value,
           Array.isArray(body.lineItems) ? body.lineItems : [],
         )
+      : studioSnapshot
+        ? await createQuoteFromEstimate(projectIdRaw, estimateVersionId, actor, clientIntentId, internalName.value, studioSnapshot)
       : internalName.value
         ? await createQuoteFromEstimate(projectIdRaw, estimateVersionId, actor, clientIntentId, internalName.value)
         : await createQuoteFromEstimate(projectIdRaw, estimateVersionId, actor, clientIntentId);

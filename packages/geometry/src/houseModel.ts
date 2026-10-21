@@ -147,6 +147,7 @@ export function buildHouseRoofEnvelopeArtifacts(input: {
     perimeterEdges,
     roofForm: input.roofForm,
     roofPlanes: roof.roofPlanes,
+    fasciaHeightMm: input.fasciaHeightMm,
   });
   const roofPlanesForSolids =
     roof.metadata.roofQaStatus === "valid" ? roof.roofPlanes : [];

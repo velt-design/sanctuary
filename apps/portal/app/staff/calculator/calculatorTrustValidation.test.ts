@@ -1,3 +1,4 @@
+import { buildQuoteHandoffPreviewFromEstimateDetail } from '@/lib/localFirst/quotePreparation';
 import { calculateSiteCostV1, priceAllBlinds } from '@sp/costing';
 import { describe, expect, it } from 'vitest';
 
@@ -7,7 +8,6 @@ import {
 } from '@/lib/estimates/costingPayload';
 import {
   buildOptimisticEstimateDetail,
-  buildQuoteHandoffPreviewFromEstimateDetail,
   type PortalEstimatePayload,
 } from '@/lib/localFirst/portalEntities';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';

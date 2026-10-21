@@ -7,7 +7,9 @@ const commandCentreDependencies = vi.hoisted(() => ({
   getProjectWorkProjection: vi.fn(),
   getProjectWorkDomainActions: vi.fn(),
   isProjectWorkModelV2: vi.fn(),
+  loadStudioQuoteView: vi.fn(),
 }));
+vi.mock('@/lib/quotes/studioCommit.server', () => ({loadStudioQuoteView:commandCentreDependencies.loadStudioQuoteView}));
 
 vi.mock('@/lib/projects/workItems/repository', () => ({
   getProjectWorkProjection: commandCentreDependencies.getProjectWorkProjection,
@@ -149,12 +151,35 @@ const DETAIL = {
 
 describe('getProjectCommandCentre', () => {
   beforeEach(() => {
+    commandCentreDependencies.loadStudioQuoteView.mockReset();
     commandCentreDependencies.getProjectWorkProjection.mockReset().mockResolvedValue(PROJECT_WORK);
     commandCentreDependencies.getProjectWorkDomainActions.mockReset().mockResolvedValue({
       recoveryAction: null,
       specialistAction: null,
     });
     commandCentreDependencies.isProjectWorkModelV2.mockReset().mockResolvedValue(false);
+  });
+
+  it('summarizes the exact frozen Studio composition and retains quote price and source identity', async () => {
+    const metadata={studioSnapshotId:'snapshot',studioSnapshotHash:'hash'};
+    commandCentreDependencies.loadStudioQuoteView.mockResolvedValue({selections:[
+      {label:'Pergola 1',details:['Pitched · 6000 × 3000 mm','Clear acrylic']},
+      {label:'Pergola 2',details:['Gable · 5000 × 4000 mm','Opal acrylic']},
+      {label:'Existing house',details:['Context only']},
+    ]});
+    const client=createClient(projectRow([estimateRow()],[quoteRow({pricing_source_metadata:metadata})]),{...DETAIL,outputs:{studio_authored:{invalid:'a later live shape must not replace the quote'}}});
+    const result=await getProjectCommandCentre(`proj_${UUID.project}`,client);
+    expect(commandCentreDependencies.loadStudioQuoteView).toHaveBeenCalledWith(UUID.quote,metadata);
+    expect(result?.currentDesign).toMatchObject({designState:'available',design:{size:'2 pergolas + house',additionalModuleCount:0},price:{source:'quote',totalIncGstCents:175000},estimate:{id:`est_${UUID.estimate}`},quote:{id:`qv_${UUID.quote}`}});
+    expect(result?.currentDesign.design?.shape).toContain('Pergola 2: Gable · 5000 × 4000 mm');
+    expect(result?.currentDesign.links.estimate).toBe(`/staff/design-studio/proj_${UUID.project}/est_${UUID.estimate}/edit`);
+  });
+
+  it('retains the frozen quote price but refuses calculator design fallback if its Studio snapshot is unavailable',async()=>{
+    commandCentreDependencies.loadStudioQuoteView.mockRejectedValue(Error('Missing frozen design'));
+    const client=createClient(projectRow([estimateRow()],[quoteRow({pricing_source_metadata:{studioSnapshotId:'missing'}})]),DETAIL);
+    const result=await getProjectCommandCentre(`proj_${UUID.project}`,client);
+    expect(result?.currentDesign).toMatchObject({design:null,designState:'source_unavailable',price:{source:'quote',totalIncGstCents:175000},warnings:['source_design_unavailable']});
   });
 
   it('returns a truthful new-lead state without loading estimate detail', async () => {

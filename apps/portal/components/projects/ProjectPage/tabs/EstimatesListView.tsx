@@ -141,7 +141,9 @@ export default function EstimatesListView({
               const status = estimateStatus(estimate);
               const name = estimateDisplayName(estimate, estimates);
               const linkedQuotes = quotesForEstimate(estimate.id, quotes ?? [], accepted);
-              const openLabel = estimate.isActiveDraft ? 'Edit in calculator' : 'Open in calculator';
+              const openLabel = estimate.designKind === 'studio' ? 'Open in Studio'
+                : estimate.designKind === 'calculator' ? estimate.isActiveDraft ? 'Edit in calculator' : 'Open in calculator'
+                  : 'Open design';
               const open = () => onOpen(estimate.id);
               return (
                 <TableRow
@@ -186,7 +188,7 @@ export default function EstimatesListView({
                       <Button size="small" variant="secondary" onClick={open}>{openLabel}</Button>
                       <OverflowMenu label={`Actions for ${name}`} menuLabel={name} items={[
                         { label: 'Rename', onSelect: () => onRename(estimate) },
-                        { label: 'Duplicate', disabled: !commercial.actionsAvailable, onSelect: () => onDuplicate(estimate.id) },
+                        { label: estimate.designKind === 'studio' ? 'Duplicate in Studio' : 'Duplicate', disabled: !commercial.actionsAvailable, onSelect: () => onDuplicate(estimate.id) },
                       ]} />
                     </div>
                   </TableCell>

@@ -1,3 +1,4 @@
+export { buildSoffitBracketSections } from './soffitBracketSections';
 export {layoutCedarLights} from './representativeCedarLights';
 export * from "./contracts";
 export {pergolaLightSites,layoutLights,layoutRafterLights,type RafterLightAmount,type PergolaLighting,type LightLayout,type LightSite,type StripSite} from './representativePergolaLighting';
@@ -120,3 +121,5 @@ export { representativeBlindOpenings, blindHeaderDepth } from './representativeB
 export type { BlindOpening } from './representativeBlindOpenings';
 export { buildRepresentativeBlind } from './representativeBlind';
 export type { BlindMesh } from './representativeBlind';
+
+export { parseAssemblyMemberProfile, resolveAssemblyMemberProfileAnchors } from './profiles';

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
-import { buildOptimisticQuoteDetail } from '@/lib/localFirst/portalEntities';
+import { buildOptimisticQuoteDetail } from '@/lib/localFirst/quotePreparation';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCommercialContext';
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
@@ -111,13 +111,14 @@ vi.mock('@/lib/quotes/quotesRepo', () => ({
   sendQuote: vi.fn(),
 }));
 
+vi.mock('@/lib/localFirst/quotePreparation', () => ({ buildOptimisticQuoteDetail: vi.fn() }));
+
 vi.mock('@/lib/localFirst/portalEntities', () => ({
   PORTAL_LOCAL_FIRST_MUTATIONS: {
     quoteCreateFromEstimate: 'portal.quote.createFromEstimate',
     quoteUpdateDraft: 'portal.quote.updateDraft',
   },
   applyDraftPatchToQuoteDetail: (detail: any) => detail,
-  buildOptimisticQuoteDetail: vi.fn(),
   buildQuoteEntityKey: (id: string) => `quote:detail:${id}`,
   createLocalQuoteId: () => 'local-quote:1',
   isLocalQuoteId: (id: string) => id.startsWith('local-quote:'),

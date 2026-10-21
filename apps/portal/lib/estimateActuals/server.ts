@@ -88,6 +88,9 @@ export function buildEstimateCostCalibrationComparison(
 ): EstimateCostCalibrationComparison {
   const outputs = record(estimateRow.outputs) ?? {};
   const inputs = record(estimateRow.inputs) ?? {};
+  // Studio retains legacy engine bytes as provenance. They are never a current
+  // estimate baseline; the separate Studio Review owns its live cost reference.
+  const studio=Object.hasOwn(outputs,'studio_authored');
   const estimated: EstimateActualCostValues & { totalExGst: number | null } = {
     materialsExGst: numberAt(outputs, ['materials', 'totals', 'materials_ex_gst']),
     installExGst: numberAt(outputs, ['install', 'totals', 'install_ex_gst']),
@@ -102,6 +105,7 @@ export function buildEstimateCostCalibrationComparison(
     totalExGst: numberAt(outputs, ['totals', 'cost_ex_gst']),
   };
   const actual = mapActual(actualRow, estimateId);
+  if(studio)for(const key of Object.keys(estimated) as Array<keyof typeof estimated>)estimated[key]=null;
   const actualTotal = actualTotalExGst(actual);
   return {
     estimated,

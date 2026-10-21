@@ -321,6 +321,7 @@ export function buildProjectPergolaRenderArtifacts(input: {
         message: solved.validation.status === 'pass' ? null : 'Pergola solved with validation warnings.',
       }),
       assembly: solved.assembly,
+      resolvedGeometry: solved,
       geometryTopProjection: solved.topProjection,
       viewerScene: solved.viewerScene,
     };

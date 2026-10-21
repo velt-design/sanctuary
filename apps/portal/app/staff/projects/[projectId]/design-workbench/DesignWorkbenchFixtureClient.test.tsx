@@ -5,8 +5,8 @@ import { preloadWorkbenchViewport } from '@/components/drawings/workbench/workbe
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 
-vi.mock('@react-three/fiber', () => ({
-  Canvas: () => <div data-testid="geometry-3d-canvas" />,
+vi.mock('@sp/geometry-viewer/react/canvas', () => ({
+  SceneCanvas: () => <div data-testid="geometry-3d-canvas" />,
 }));
 
 vi.mock('@react-three/drei', () => ({

@@ -1,3 +1,4 @@
+import { buildSoffitBracketSections } from './soffitBracketSections';
 import type { Assembly3D, Point3 } from './contracts';
 import { buildRepresentativeLandscape, type RepresentativeTree } from './representativeLandscape';
 import { buildRepresentativeHouseDetails } from './representativeHouseDetails';
@@ -74,18 +75,11 @@ export function buildRepresentativeSurroundings(
   // One continuous L silhouette preserves the 40mm mitred outer envelope.
   // Quantity is supplied by the product rule owner. Equal centres keep the
   // 40mm end brackets inside the solved ledger's outside faces.
-  const bracketStart = Math.min(ledger.centerline.start.x, ledger.centerline.end.x);
-  const bracketSpan = Math.abs(ledger.centerline.end.x - ledger.centerline.start.x) - 40;
-  const brackets: ContextSection[] = connection !== 'soffit' ? [] : Array.from({ length: options.soffitBracketCount }, (_, index) => ({
-    id: `soffit-bracket-${index + 1}`,
-    startX: bracketStart + bracketSpan * index / (options.soffitBracketCount - 1),
-    endX: bracketStart + bracketSpan * index / (options.soffitBracketCount - 1) + 40,
-    section: [
-      { y: wallY, z: fasciaBottom - 40 }, { y: backY + 40, z: fasciaBottom - 40 },
-      { y: backY + 40, z: bottomZ }, { y: backY, z: bottomZ },
-      { y: backY, z: fasciaBottom }, { y: wallY, z: fasciaBottom },
-    ],
-  }));
+  const brackets: ContextSection[] = connection !== 'soffit' ? [] : buildSoffitBracketSections({
+    startX: Math.min(ledger.centerline.start.x, ledger.centerline.end.x),
+    endX: Math.max(ledger.centerline.start.x, ledger.centerline.end.x),
+    wallY, backY, soffitZ: fasciaBottom, ledgerBottomZ: bottomZ, count: options.soffitBracketCount,
+  });
   const patio = box('patio', minX, wallY, groundZ, maxX, frontY, floorZ);
   const wall = box('house-wall', minX, roofBackY, groundZ, maxX, wallY, fasciaBottom);
   const postFeet = posts.map((post) => ({ ...post.centerline.start }));

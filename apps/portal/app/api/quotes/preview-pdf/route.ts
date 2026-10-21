@@ -1,3 +1,4 @@
+import {getQuoteVersionDetail} from '@/lib/quotes/serverCore';
 import { jsonError, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { generateQuotePdfBytes } from '@/lib/quotes/pdf';
 import type { QuoteVersionDetail } from '@/lib/quotes/types';
@@ -32,6 +33,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    const saved = await getQuoteVersionDetail(quoteVersion.id);
+    if (saved && saved.projectId !== quoteVersion.projectId) return jsonError('The quote is unavailable.', 409);
+    if (saved?.studioDesign) quoteVersion.studioDesign = saved.studioDesign;
+    else if (quoteVersion.studioDesign) return jsonError('The frozen design is unavailable.', 409);
     const bytes = await generateQuotePdfBytes(quoteVersion);
     return new NextResponse(new Uint8Array(bytes), {
       status: 200,

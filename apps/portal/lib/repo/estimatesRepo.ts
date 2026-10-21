@@ -1,6 +1,4 @@
 import type { Estimate, EstimateStatus } from '@/lib/types/estimate';
-import type { CalculatorInputs } from '@/lib/types/calculator';
-import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculatorInputsToV2 } from '@/lib/types/calculator';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
 import { fetchAllPages } from '@/lib/list/listLimits';
@@ -318,13 +316,4 @@ export async function deleteEstimate(estimateId: string): Promise<void> {
   const uuid = uuidFromAppId(estimateId, 'est');
   const { error } = await supabase.from('estimates').delete().eq('id', uuid);
   if (error) throw wrapError('estimates', error);
-}
-
-export async function duplicateEstimateToDraft(estimateId: string): Promise<CalculatorInputs> {
-  const estimate = await getEstimate(estimateId);
-  if (!estimate) throw new Error('Estimate not found');
-  const inputs: unknown = (estimate as any).inputs;
-  if (isCalculatorInputsV2(inputs)) return inputs;
-  if (isLegacyCalculatorInputsV1(inputs)) return migrateLegacyCalculatorInputsToV2(inputs);
-  throw new Error('Estimate inputs are not compatible with this calculator version.');
 }

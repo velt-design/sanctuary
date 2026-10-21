@@ -1,3 +1,4 @@
+import type {StudioQuoteView} from '@sp/quote-format';
 import 'server-only';
 
 import { hashAcceptToken } from '@/lib/quotes/acceptToken';
@@ -19,6 +20,7 @@ type PublicQuoteAttachment = {
 };
 
 export type PublicQuote = {
+  studioDesign?:StudioQuoteView;
   id: string;
   status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
   quoteRef: string;
@@ -350,7 +352,17 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
 
   const project = await loadProject(quoteProject.projectId);
 
+  let studioDesign: StudioQuoteView | undefined;
+  const savedDesign = await getServiceSupabase().rpc('studio_website_quote_view', {p_quote_version_id: version.quoteVersionUuid});
+  const view = savedDesign.data as StudioQuoteView | null;
+  if (savedDesign.error) return {quote:null, reason:'invalid'};
+  if (view) {
+    // The private binding owner returns only the immutable customer-safe projection.
+    if (view.schemaVersion !== 'studio_quote_snapshot.v1') return {quote:null, reason:'invalid'};
+    studioDesign = view;
+  }
   const quote: PublicQuote = {
+    ...(studioDesign?{studioDesign}:{}),
     id: params.quoteId,
     status: version.status,
     quoteRef: quoteProject.quoteRef,

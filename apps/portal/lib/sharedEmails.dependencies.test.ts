@@ -42,5 +42,5 @@ it('resolves shared email types with only Portal-declared workspace dependencies
 it('detects the hidden configurator dependency when a full-workspace install would mask it', () => {
   const dependencies = { ...portalPackage.dependencies };
   delete dependencies['@sp/configurator'];
-  expect(unresolvedSharedWorkspaceImports(dependencies)).toContain('@sp/configurator/core');
+  expect(unresolvedSharedWorkspaceImports(dependencies)).toContain('@sp/configurator/website');
 });

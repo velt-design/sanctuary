@@ -5,6 +5,12 @@ import {
 } from './server';
 
 describe('estimate actual cost calibration', () => {
+  it('retains actuals but never compares a Studio design with old engine provenance',()=>{
+    const comparison=buildEstimateCostCalibrationComparison('est_studio',{inputs:{travelExGst:'50'},outputs:{studio_authored:{schemaVersion:'studio_authored.v1'},materials:{totals:{materials_ex_gst:999}},install:{totals:{install_ex_gst:888,crew_hours:77}},overhead:{total_ex_gst:666},totals:{cost_ex_gst:2553}}},{materials_ex_gst:100,install_ex_gst:50,overhead_ex_gst:25,travel_ex_gst:0,extras_ex_gst:0,crew_hours:8});
+    expect(Object.values(comparison.estimated).every(value=>value===null)).toBe(true);
+    expect(Object.values(comparison.variance).every(value=>value===null)).toBe(true);
+    expect(comparison.actual?.materialsExGst).toBe(100);
+  });
   it('rejects negative actuals and normalises blank optional fields', () => {
     expect(parseEstimateActualCostInput({ materialsExGst: -1 })).toBeNull();
     expect(parseEstimateActualCostInput({

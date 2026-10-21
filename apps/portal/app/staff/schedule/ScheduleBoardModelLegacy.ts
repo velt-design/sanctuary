@@ -4,7 +4,7 @@ import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/sched
 import type { Estimate } from '@/lib/types/estimate';
 import type { Project } from '@/lib/types/project';
 import { nextActionTypeLabel, normalizeProjectStatus } from '@/lib/types/project';
-import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
+import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculatorInputGuards';
 import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import { buildLaneItems, formatDuration, formatHours, makeJobId, titleCase } from './ScheduleBoardModelShared';

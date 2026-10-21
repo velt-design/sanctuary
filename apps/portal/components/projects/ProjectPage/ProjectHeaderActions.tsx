@@ -1,5 +1,6 @@
 'use client';
 
+import StudioProjectLink from '@/components/designStudio/StudioProjectLink';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ExternalLink, Trash2 } from 'lucide-react';
@@ -52,6 +53,7 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
       <ProjectsIndexLink href="/staff/projects" variant="secondary" size="small">
         Projects
       </ProjectsIndexLink>
+      <StudioProjectLink projectId={project.id}/>
       <ButtonLink
         href={`/staff/projects/${encodeURIComponent(project.id)}/design-workbench`}
         size="small"

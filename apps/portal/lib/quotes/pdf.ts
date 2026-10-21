@@ -1,3 +1,4 @@
+import {appendStudioDesignPages} from './studioDesignPdf';
 import 'server-only';
 
 import {
@@ -1046,6 +1047,8 @@ async function generateQuotePdf(
       cursorY -= 3;
     }
   }
+
+  if(quote.studioDesign)await appendStudioDesignPages({pdf:pdfDoc,design:quote.studioDesign,page:()=>{addPage(false);return {page,top:cursorY};},regular:fonts.regular,semibold:fonts.semibold,ink:brandColors.ink,muted:brandColors.muted,x:CONTENT_X0,width:CONTENT_W,bottom:CONTENT_BOTTOM_Y});
 
   const pageCount = pdfDoc.getPageCount();
   pdfDoc.getPages().forEach((pdfPage, index) => {

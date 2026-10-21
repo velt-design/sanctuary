@@ -95,6 +95,13 @@ function isApprovedServerFlow(file) {
   // Calendar cron has no staff session. One RPC enforces the enabled source binding,
   // lease and atomic snapshot publication; no direct table or legacy booking writes.
   if (file === 'apps/portal/lib/siteVisits/syncCalendar.ts') return true;
+  // Server-only Studio commands first prove staff/project/source visibility with
+  // the caller's client. Fixed RPCs recheck actor authority and identity in SQL:
+  // create is idempotent, save is revision/CAS guarded, preparation freezes the
+  // validated publication and views. These are not general privileged readers.
+  if (file === 'apps/portal/lib/designStudio/createCommand.server.ts') return true;
+  if (file === 'apps/portal/lib/designStudio/saveCommand.server.ts') return true;
+  if (file === 'apps/portal/lib/designStudio/quotePrepare.server.ts') return true;
   // Delegated bearer grants cannot use staff cookies. This server-only adapter
   // calls scoped grant RPCs (which recheck authority) and the existing lost-
   // conversion owner; see docs/staff-api-auth-contracts.md. No general DB access.

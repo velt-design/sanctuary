@@ -429,3 +429,27 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
     });
   });
 });
+
+
+describe('single-house eaves preserve the authored wall footprint', () => {
+  const intents: RectangleRoofIntent[] = [
+    { form: 'flat' },
+    { form: 'mono', pitchDeg: 12, fallDirection: 'negative_y' },
+    { form: 'hipped', pitchDeg: 25, ridgeAxis: 'y', startCap: 'hipped', endCap: 'open_gable' },
+  ];
+  it.each(intents)('expands only the actual roof and eave boundary for $form', intent => {
+    const composition: HouseComposition = {primitives: [rect({x: 225, y: -6220, w: 8000, d: 6500, intent})], joins: []};
+    const before = structuredClone(composition);
+    const roof = composeRoofFromComposition({composition, eaveHeightMm: 3800, eaveOverhangMm: 450});
+    const points = roof.roofPlanes.flatMap(plane => plane.boundary);
+    expect([Math.min(...points.map(p => p.x)), Math.max(...points.map(p => p.x))]).toEqual([-225, 8675]);
+    expect([Math.min(...points.map(p => p.y)), Math.max(...points.map(p => p.y))]).toEqual([-6670, 730]);
+    expect(roof.eavePolygon?.map(p => [p.x, p.y])).toEqual([[-225,-6670],[8675,-6670],[8675,730],[-225,730]]);
+    expect(composition).toEqual(before);
+    const flush = composeRoofFromComposition({composition, eaveHeightMm: 3800});
+    expect(composeRoofFromComposition({composition, eaveHeightMm: 3800, eaveOverhangMm: 0})).toEqual(flush);
+    if (intent.form === 'mono') expect(roof.roofPlanes[0].metadata?.roofPrimaryFallDirection).toBe('negative_y');
+    if (intent.form === 'hipped') expect(roof.roofPlanes).toHaveLength(3);
+    for (const invalid of [-1, NaN, Infinity]) expect(() => composeRoofFromComposition({composition, eaveHeightMm:3800,eaveOverhangMm:invalid})).toThrow(/overhang/);
+  });
+});

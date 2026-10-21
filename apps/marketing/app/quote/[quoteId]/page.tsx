@@ -416,6 +416,7 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
         />
         <QuoteMetaGrid quote={quote} status={displayStatus} />
         <QuoteIntro introText={quote.introText} />
+        {quote.studioDesign&&<section className={styles.studioDesign} aria-label="Design included with this quote"><h2>Your design</h2><p>Design revision {quote.studioDesign.revision}</p>{quote.studioDesign.images.map(image=><figure key={image.kind}><img src={image.dataUrl} alt={image.kind==='plan'?'Saved design Plan':'Saved design perspective'} width={image.width} height={image.height}/><figcaption>{image.kind==='plan'?'Plan':'3D perspective'}</figcaption></figure>)}<div>{quote.studioDesign.selections.map((selection,i)=><section key={i}><h3>{selection.label}</h3>{selection.details.map((detail,n)=><p key={n}>{detail}</p>)}</section>)}</div></section>}
         <QuoteLineItemsTable lineItems={quote.lineItems} />
         <QuoteTotals quote={quote} />
         <QuoteTerms termsText={quote.termsText} sentAt={quote.sentAt} />

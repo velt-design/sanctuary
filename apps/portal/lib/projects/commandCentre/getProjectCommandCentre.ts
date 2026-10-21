@@ -10,6 +10,8 @@ import type { Estimate } from '@/lib/types/estimate';
 import { resolveCommandCentreSelection } from './resolve';
 import { buildProjectOwnerSummary } from './projectOwners';
 import { resolveCommandCentreCostingState, summarizeCommandCentreDesign } from './summarizeDesign';
+import { hasStudioDesign, summarizeSavedStudioDesign, summarizeStudioQuoteDesign } from './studioDesignSummary';
+import { loadStudioQuoteView } from '@/lib/quotes/studioCommit.server';
 import {
   COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT,
   commandCentreQuoteDeliveryState,
@@ -149,7 +151,7 @@ export async function getProjectCommandCentre(
 
   const status = statusPresentation(selection.source);
   const quoteSelected = selection.quote !== null;
-  const designState = selection.sourceEstimateMissing
+  let designState: ProjectCommandCentreCurrentDesign['designState'] = selection.sourceEstimateMissing
     ? 'source_unavailable'
     : selection.estimate
       ? 'available'
@@ -165,6 +167,21 @@ export async function getProjectCommandCentre(
   const basePath = `/staff/projects/${encodeURIComponent(projectId)}`;
   const estimate = selection.estimate;
   const quote = selection.quote;
+  const studioSource = hasStudioDesign(selectedDetail?.outputs);
+  const studioQuote = isRecord(quote?.pricingSourceMetadata) && typeof quote.pricingSourceMetadata.studioSnapshotId === 'string';
+  let design = selectedDetail ? (studioSource ? summarizeSavedStudioDesign(selectedDetail.outputs) : summarizeCommandCentreDesign(selectedDetail.inputs)) : null;
+  if (quote && (studioSource || studioQuote)) {
+    try {
+      const frozen = await loadStudioQuoteView(quote.sourceId, quote.pricingSourceMetadata);
+      if (!frozen) throw Error('Missing frozen Studio design');
+      design = summarizeStudioQuoteDesign(frozen);
+      designState = 'available';
+    } catch {
+      design = null;
+      designState = 'source_unavailable';
+    }
+  } else if (studioSource && !design) designState = 'source_unavailable';
+  if (designState === 'source_unavailable' && !warnings.includes('source_design_unavailable')) warnings.push('source_design_unavailable');
   let estimatePriceIncGstCents: number | null = null;
   if (!quote && estimate && selectedDetail) {
     const storedEstimate = storedEstimateFromRow(selectedDetail, estimate);
@@ -181,7 +198,7 @@ export async function getProjectCommandCentre(
     statusLabel: status.label,
     statusTone: status.tone,
     designState,
-    design: selectedDetail ? summarizeCommandCentreDesign(selectedDetail.inputs) : null,
+    design,
     price: quote
       ? {
           source: 'quote',
@@ -234,7 +251,9 @@ export async function getProjectCommandCentre(
     links: {
       designs: `${basePath}?tab=estimates`,
       quotes: `${basePath}?tab=quotes`,
-      estimate: estimate ? `${basePath}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}` : null,
+      estimate: estimate ? studioSource || studioQuote
+        ? `/staff/design-studio/${encodeURIComponent(projectId)}/${encodeURIComponent(estimate.id)}/edit`
+        : `${basePath}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}` : null,
       quote: quote ? `${basePath}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}` : null,
     },
   };

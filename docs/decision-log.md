@@ -1,5 +1,58 @@
 # Decision Log
 
+## 2026-10-21: Route retained Studio errors to their actual selection owner
+
+A house binding does not prove that every invalid attached product has a
+connection problem. Narrowing a pergola can retain a blind whose old opening no
+longer exists. Keep that blind and the attachment reference, withhold the price,
+and lead back to Sides. Connection repair must use actual connection failures;
+return labels and edge highlights must follow the active repair context and
+clear when another object is deliberately selected.
+
+## 2026-10-20: Check concurrent migration reservations before release
+
+Published Custom PR #230 uses Studio's proposed `20261020030001` version.
+Move only the four unmerged Studio filenames to verified-free
+`20261020080001..004`, preserving SQL bytes and exact `-text` attributes.
+Keep prior staging receipts under their actual identities. Any installed-ledger
+identity change is a separately guarded version-only operation, never a reason
+to replay SQL or alter another release. Recheck published main and open PR
+migration paths before final assembly.
+
+## 2026-10-20: Verify retirement against the committed PR comparison
+
+Studio's first CI run found three orphan helpers after their historical importers
+were removed. Local intent-to-add status had classified added files as modified,
+and a supplemental check read only Knip's top-level `files`, missing
+`issues[].files`. Preserve the failed receipt, inspect both representations and
+run the unchanged strict checker with the actual committed PR base/head.
+Recheck the remaining dependency closure after removal; a local green report is
+not equivalent to the committed CI comparison. Platform-sensitive path guards
+also need their real Linux CI result; preserve the required query owner rather
+than weakening a rule that Windows did not match.
+
+Continue the full mandatory chain after its first failure is corrected. Studio's
+three fixed RPC adapters were already reviewed in the Portal boundary test but
+missing from the architecture report's named server flows. Align only those exact
+paths, retain the strict predicate and prove neighboring names/locations still
+fail. A directory-wide exception would grant authority that was never reviewed.
+
+## 2026-10-20: Preserve pending interaction authority when integrating Studio
+
+The saved Studio adaptation retained gesture math but initially omitted the
+approved pending-proposal cache and canonical scene argument for departure.
+Reviewing only ordinary committed drags missed both seams. Keep the original
+authored edit as commit/Undo authority and the visible proposal as pointer basis;
+verify pending grab, cancel, attached/free commit and refused-method recovery
+through the mounted controller and normal UI. Method changes retain the same
+physical side and world anchor. See `staff-design-studio-prototype.md`.
+
+The same delivery review reproduced a generic PDF Preview failure before document
+loading: the prebuilt PDF.js exports variable collided with Next's development
+eval wrapper. Emit the installed, licensed module and matching worker as local
+assets and verify the actual production preview, including the invoice consumer.
+Valid downloadable PDF bytes alone do not establish an operational inline preview.
+
 ## 2026-10-21: Measure identity and navigation handoffs before adding speed work
 
 An authenticated synthetic estimate-to-quote journey saved a valid quote, then
