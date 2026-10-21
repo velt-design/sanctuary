@@ -1,5 +1,15 @@
 # Testing And QA
 
+
+## Video donor compatibility verification (22 October 2026)
+
+Exercise signed preparation and exact intent validation with a synthetic two-media
+video_story and six-key tracking; changed media intent must fail. Run the existing
+native ledger harness with representative/full-size synthetic plan and intent
+round trips and oversize denial. Source fixtures and local renderer closure hashes
+are not real Meta preservation or provider proof. The paired Velt v2 diagnostic
+must precede any remaining actual PAUSED attempt.
+
 ## Initial Marketing hub scheduling (21 October 2026)
 
 Run `hubDocumentSelection`, `readHub.server`, the hub API/page tests,
