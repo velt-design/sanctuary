@@ -81,6 +81,15 @@ it('agrees with the effective correction for unknown timing, identity and source
   const changed=await read();expect(changed.visits.find(v=>v.id===id(11))!.changed).toBe(true);expect(designerPerformance(changed).total.outcomes).toEqual([]);
  }finally{await db.exec('rollback');}
 });
+it('retains an explicitly attended stable source with a generic saved question as workload, not acquisition',async()=>{
+ await db.exec('begin');try{
+  await db.exec(`update private.site_visit_details set questions='["Address confirmation remains open"]' where id='${id(11)}'`);
+  const report=await read(),visit=report.visits.find(v=>v.id===id(11))!;
+  expect(visit).toMatchObject({status:'attended',kind:'visit',changed:false,duplicate:false,questions:1});
+  const result=designerPerformance(report);expect(result.total.attended.map(v=>v.id)).toContain(id(11));
+  expect(result.coverage.find(c=>c.visit.id===id(11))?.reasons).toContain('source');expect(result.total.outcomes).toEqual([]);
+ }finally{await db.exec('rollback');}
+});
 it('uses current accepted-family value, partial first deposit, reversals and missing payment dates honestly',async()=>{
  await db.exec('begin');try{
   await db.exec(`insert into quote_versions values('${id(20)}','${id(3)}',2,'ACCEPTED','2026-09-12','2026-09-12','2026-09-12',2100000)`);

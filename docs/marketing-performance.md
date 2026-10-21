@@ -50,11 +50,16 @@ payment outcomes run to the read timestamp. The current project-owner filter
 narrows projects and never supplies sales attribution. The Designer selection,
 retained in the URL, shows that person's assigned sales and their actual attended
 workload independently. These can involve different projects. Staff appear from
-recorded attendance or explicit assignments; this is not a ranking.
+recorded attendance or explicit assignments; the selected designer remains visible
+after their last assignment is cleared and after refresh. This is not a ranking.
 
 Explicit attendance counts workload across original, measurement, follow-up and
-unconfirmed purposes. Bookings, provisional appointments, recorded non-attendance
-and past bookings without attendance are separate. Undated attendance is visible
+unconfirmed purposes. Stable explicit attendance still counts when generic review
+questions remain; those questions stay visible and continue to prevent acquisition
+qualification. Changed, duplicate, review-classified, future or withdrawn records
+do not gain workload credit from this distinction. Bookings, provisional
+appointments, recorded non-attendance and past bookings without attendance are
+separate. Undated attendance is visible
 in an all-dates review inventory and does not enter dated totals. Retained calendar
 history is incomplete: a recent import cannot prove the first ever visit. The
 30-minute source freshness boundary matches Site Visits, and failed/disabled
@@ -116,7 +121,10 @@ require a reload and deliberate save. Uncertain responses retain the same comman
 Clearing retains a revision and audit record. No project phase, visit staff, purpose,
 date, booking or commercial evidence is changed. Assignment alone never qualifies
 a visit. Designer projects in details include relevant undated records even when
-conversion is unavailable. Assignments update the open report only after readback;
+conversion is unavailable. Original-project counts open only their exact qualifying
+cohort; the separate details entry retains all relevant assignment-management records.
+Empty personal workload never implies that assigned sales evidence is absent.
+Assignments update the open report only after readback;
 ordinary refresh replaces both source and assignment snapshots.
 
 Local verification covers actual migration/source helpers in disposable PGlite,

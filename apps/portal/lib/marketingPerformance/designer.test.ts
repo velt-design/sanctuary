@@ -3,6 +3,17 @@ import { designerFixture } from '@/app/qa/marketing-performance-fixture/designer
 import { designerPerformance,afterVisit,median } from './designer';
 import { designerReportSchema } from './designerContract';
 describe('designer attribution and coverage',()=>{
+  it('counts stable explicit attendance with questions while retaining review and stricter acquisition checks',()=>{
+    const report=designerFixture();report.visits[0].questions=1;
+    const result=designerPerformance(report);
+    expect(result.total.attended.map(v=>v.id)).toContain(report.visits[0].id);
+    expect(result.coverage.find(c=>c.visit.id===report.visits[0].id)?.reasons).toContain('source');
+    expect(result.total.outcomes.some(o=>o.visit.id===report.visits[0].id)).toBe(false);
+    for(const patch of [{status:null},{kind:'review'},{changed:true},{duplicate:true},{removed:true},{withdrawn:true},{kind:'excluded'},{day:'2026-09-23',at:'2026-09-23T00:00:00Z'}]){
+      const r=designerFixture();Object.assign(r.visits[0],{questions:1},patch);r.end='2026-09-23';
+      expect(designerPerformance(r).total.attended.map(v=>v.id)).not.toContain(r.visits[0].id);
+    }
+  });
   it('selects assigned sales independently from actual attendee workload without fabricating missing attribution',()=>{
     const r=designerFixture();r.visits[0].staff=['joe'];
     const jordan=designerPerformance(r,null,'jordan');expect(jordan.total.outcomes).toHaveLength(1);expect(jordan.total.outcomes[0].visit.staff).toEqual(['joe']);

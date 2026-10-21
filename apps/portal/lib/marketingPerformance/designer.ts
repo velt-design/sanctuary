@@ -55,7 +55,9 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
     outcomes.push({visit:first,designerKey:assignments.get(projectId)??null,quoted,accepted,paid,undatedQuotes:scopes.filter(s=>s.undatedSend),undatedAcceptances:scopes.filter(s=>s.accepted&&!s.acceptedAt),quoteDays:days(quoteAt,first,report.asOf),depositDays:days(paidAt,first,report.asOf)});
   }
   const summarize=(staffId:string,visits:DesignerVisit[],cohort:DesignerOutcome[]):DesignerSummary=>{
-    const attended=visits.filter(v=>v.status==='attended'&&!v.cancelled&&!visitIssues(v,report).some(i=>['future','source'].includes(i)));
+    // Generic questions still prevent acquisition qualification above, but do not
+    // erase stable explicit attendance. Source conflicts remain workload safeguards.
+    const attended=visits.filter(v=>v.status==='attended'&&!v.cancelled&&v.kind!=='review'&&!v.duplicate&&!v.changed&&!visitIssues(v,report).includes('future'));
     const assignmentKey=staffId==='team'?designer:staffId;
     return {staffId,visits,assignedVisits:all.filter(v=>v.projectId&&(!v.day||periodVisit(v,report))&&(!assignmentKey||(assignments.get(v.projectId)??'unassigned')===assignmentKey)),attended,booked:visits.filter(v=>!v.cancelled&&v.kind==='visit'&&(v.status===null||v.status==='booked')),
       provisional:visits.filter(v=>!v.cancelled&&v.kind==='provisional'),notAttended:visits.filter(v=>v.status==='not_attended'||v.status==='cancelled'||v.cancelled),

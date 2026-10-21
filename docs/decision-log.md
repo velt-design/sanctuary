@@ -21,6 +21,12 @@ before displaying a reconciled save. Assignment does not supply missing attendan
 purpose or dates, and a service inspection can remain in history while excluded
 from sales metrics through the existing correction workflow.
 
+Keep workload and acquisition qualification separate: a generic unresolved question
+does not negate stable explicit attendance, but still prevents sales attribution.
+Count drilldowns must use their exact cohort rather than the wider assignment
+management list. Preserve the selected designer after a last-assignment clear so
+the visible control, URL and model cannot disagree through refresh.
+
 ## 2026-10-21: Match RPC transaction mode to authentication locks
 
 The exact site-visit reader used `STABLE` while its existing actor check locks
