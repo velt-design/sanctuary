@@ -5,6 +5,7 @@ import { portalThemeCssVariables } from './cssVars';
 import { resolvePortalTheme } from './resolve';
 import type { PortalResolvedTheme, PortalThemeOverrides, PortalThemeTokens, PortalThemeUserPreset } from './types';
 import { sanitizePortalThemeOverrides, sanitizePortalThemeTokens } from './utils';
+import type { DocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
 
 type ThemeSettingsRow = {
   preset_id: string | null;
@@ -63,43 +64,46 @@ export async function listPortalUserPresets(userId: string): Promise<PortalTheme
   return (res.data ?? []).map((row) => parsePortalThemeUserPresetRow(row as ThemeUserPresetRow)).filter((row): row is PortalThemeUserPreset => Boolean(row));
 }
 
-export async function getPortalUserPresetById(userId: string, presetId: string): Promise<PortalThemeUserPreset | null> {
+export async function getPortalUserPresetById(userId: string, presetId: string, diagnostics?: DocumentDiagnostics | null): Promise<PortalThemeUserPreset | null> {
   const id = typeof presetId === 'string' ? presetId.trim() : '';
   if (!id) return null;
 
   const supabase = await getSupabaseServerAuth();
-  const res = await supabase
+  const read = () => supabase
     .from('portal_user_theme_presets')
     .select('id,user_id,name,tokens,created_at,updated_at')
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle();
+  const res = diagnostics ? await diagnostics.measure('theme.preset', read, result => result.error ? 'error' : result.data ? 'complete' : 'empty') : await read();
 
   if (res.error) {
-    if (isMissingRelationError(res.error)) return null;
+    if (isMissingRelationError(res.error)) { diagnostics?.record('theme.fallback', performance.now(), 'missing_relation'); return null; }
     throw res.error;
   }
 
   return parsePortalThemeUserPresetRow((res.data ?? null) as ThemeUserPresetRow | null);
 }
 
-export async function loadPortalThemeForUser(userId: string | null | undefined): Promise<PortalResolvedTheme> {
-  if (!userId) return resolvePortalTheme();
+export async function loadPortalThemeForUser(userId: string | null | undefined, diagnostics?: DocumentDiagnostics | null): Promise<PortalResolvedTheme> {
+  if (!userId) { diagnostics?.record('theme.fallback', performance.now(), 'unauthenticated'); return resolvePortalTheme(); }
 
   const supabase = await getSupabaseServerAuth();
-  const res = await supabase
+  const read = () => supabase
     .from('portal_user_theme_settings')
     .select('preset_id,user_preset_id,overrides,updated_at')
     .eq('user_id', userId)
     .maybeSingle();
+  const res = diagnostics ? await diagnostics.measure('theme.settings', read, result => result.error ? 'error' : result.data ? 'complete' : 'empty') : await read();
 
   if (res.error) {
-    if (isMissingRelationError(res.error)) return resolvePortalTheme();
+    if (isMissingRelationError(res.error)) { diagnostics?.record('theme.fallback', performance.now(), 'missing_relation'); return resolvePortalTheme(); }
     throw res.error;
   }
 
   const row = (res.data ?? null) as ThemeSettingsRow | null;
-  const selectedUserPreset = row?.user_preset_id ? await getPortalUserPresetById(userId, row.user_preset_id) : null;
+  const selectedUserPreset = row?.user_preset_id ? await getPortalUserPresetById(userId, row.user_preset_id, diagnostics) : null;
+  if (!row?.user_preset_id) diagnostics?.record('theme.preset', performance.now(), 'skipped');
   return parsePortalThemeRow(row, selectedUserPreset);
 }
 

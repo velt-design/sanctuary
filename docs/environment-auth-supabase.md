@@ -1,5 +1,26 @@
 # Environment, Auth, And Supabase
 
+## Document measurement and telemetry restoration candidate (21 October 2026)
+
+The server-only `PORTAL_DOCUMENT_DIAGNOSTICS` setting is default-disabled and has
+an absolute maximum thirty-minute window. Its exact private JSON contract and
+proxy/render provenance are owned by `security-privacy-quality.md`. It is not an
+authentication credential and must never be exposed as a public environment key.
+Enablement, exact environment inventory, expiry, safe log retrieval and removal
+must be qualified on the protected preview before any separately approved live run.
+
+Read-only catalogue inspection found the canonical aggregate telemetry objects
+absent in production and present in staging, explaining the admin summary 503 at
+the RPC boundary. Both already have the staff/admin helpers and pg_cron 1.6.4.
+Forward `20261021000001_portal_performance_measurement.sql` is a narrowly selected
+restoration/route update, not authority to apply historical migrations. It requires
+those existing prerequisites, preserves rows and an exact matching retention job,
+and refuses a conflicting job. Production installation requires an explicit
+release decision covering the table/functions/grants and daily 03:17 UTC retention
+job that removes only data older than thirty days. Preparation tests do not mean
+this SQL is installed. Private environment-bound receipts remain in the task record.
+
+
 ## Outlook calendar source
 
 Forward005's private `site_visit_staff_identities` is operator-managed identity

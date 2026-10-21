@@ -1,5 +1,26 @@
 # Testing And QA
 
+## Document measurement preparation checks (21 October 2026 candidate)
+
+Run the focused `documentDiagnostics`, `documentRenderDiagnostics`,
+`server.diagnostics`, `proxy.diagnostics`, existing proxy/auth/portalAccess and
+`webVitals` tests, plus `test/portal-performance-measurement.test.ts`. These preserve
+auth outcomes and cookie refresh, callback failure isolation, concurrent simulated
+React request contexts, one cached auth lookup, theme fallback/custom preset,
+strict privacy/provenance/expiry and Site Visits template coverage. The SQL test
+executes the actual forward migration in disposable PGlite for first/repeat
+installation, grants/RLS, invalid input, aggregate windows and exact retention
+cutoff. Its cron scheduler is explicitly a stub; actual extension/job state needs
+a separately bound catalogue read and installed-environment verification.
+
+Use one optimized candidate build for a small disabled/enabled/expired read-only
+check. Correlate the browser's opaque response UUID with fixed server events;
+inspect that internal signed headers/configuration never reach final responses or
+HTML. Preserve source, build, environment, runtime region and missing/error phases.
+Compare overhead separately from whole useful-load speed. A safe preview alone
+does not prove production latency or authorize live diagnostics/schema installation.
+
+
 ## First-load project read contracts (21 October 2026 candidate)
 
 `projectReadConcurrency.integration.test.ts` runs the actual snapshot, Command

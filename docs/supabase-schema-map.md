@@ -803,6 +803,13 @@ Access and retention rule:
 Migration source:
 
 - `supabase/migrations/20260718_000001_portal_performance_metrics.sql`.
+- Candidate forward `20261021000001_portal_performance_measurement.sql` restores
+  these same objects where absent and extends the route constraint with
+  `/staff/site-visits`. Existing rows, summary invoker security, staff insert/admin
+  read boundaries, non-client purge and the 30-day cutoff remain. The exact daily
+  03:17 UTC job is retained or created once; a conflicting same-name job aborts.
+  Existing access helpers and cron scheduler are prerequisites, not installed here.
+  This is prepared SQL; local rehearsal does not establish remote installation.
 
 ## Marketing, Automation, And Supporting Tables
 

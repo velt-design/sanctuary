@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { DOCUMENT_ID_HEADER, prepareProxyDocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
+import type { PortalAccessTimingObserver } from '@/lib/portalAccess';
 import {
   buildAccessStatusHref,
   buildLoginHref,
@@ -160,18 +162,19 @@ function withLocalHref(req: NextRequest, href: string): URL {
   return new URL(href, req.url);
 }
 
-function buildNormalizedResponse(req: NextRequest, route: NormalizedRoute): NextResponse {
+function buildNormalizedResponse(req: NextRequest, route: NormalizedRoute, requestHeaders?: Headers): NextResponse {
   const url = withPathname(req, route.pathname);
+  const init = requestHeaders ? { request: { headers: requestHeaders } } : undefined;
 
   if (route.action === 'rewrite') {
-    return NextResponse.rewrite(url);
+    return NextResponse.rewrite(url, init);
   }
 
   if (route.action === 'redirect') {
     return NextResponse.redirect(url, route.permanent ? 308 : 307);
   }
 
-  return NextResponse.next();
+  return NextResponse.next(init);
 }
 
 function createProxySupabase(req: NextRequest) {
@@ -213,7 +216,19 @@ function createProxySupabase(req: NextRequest) {
 }
 
 export async function proxy(req: NextRequest) {
+  const startedAt = performance.now();
+  const { requestHeaders, diagnostics } = prepareProxyDocumentDiagnostics(req);
+  try {
+    const response = await runProxy(req, requestHeaders, diagnostics?.accessObserver('proxy'));
+    diagnostics?.record('proxy.complete', startedAt, response.status >= 300 && response.status < 400 ? 'redirect' : 'complete');
+    if (diagnostics) response.headers.set(DOCUMENT_ID_HEADER, diagnostics.id);
+    return response;
+  } catch (error) { diagnostics?.record('proxy.complete', startedAt, 'error'); throw error; }
+}
+
+async function runProxy(req: NextRequest, requestHeaders?: Headers, observer?: PortalAccessTimingObserver) {
   const path = req.nextUrl.pathname;
+  const init = requestHeaders ? { request: { headers: requestHeaders } } : undefined;
 
   if (
     path.startsWith('/_next') ||
@@ -223,20 +238,20 @@ export async function proxy(req: NextRequest) {
     path === '/sitemap.xml' ||
     PUBLIC_FILE.test(path)
   ) {
-    return NextResponse.next();
+    return NextResponse.next(init);
   }
 
   if (isPortalQaFixtureInternalPath(path)) {
-    return NextResponse.next();
+    return NextResponse.next(init);
   }
 
   if (isStaffFixtureWorkbenchRequest(req) && areFixtureWorkbenchRoutesEnabled()) {
-    return NextResponse.rewrite(withPathname(req, FIXTURE_WORKBENCH_INTERNAL_PATH));
+    return NextResponse.rewrite(withPathname(req, FIXTURE_WORKBENCH_INTERNAL_PATH), init);
   }
 
   const normalized = normalizePortalRoute(path);
   if (normalized.action === 'redirect') {
-    return buildNormalizedResponse(req, normalized);
+    return buildNormalizedResponse(req, normalized, requestHeaders);
   }
 
   const originalCallback = currentRequestPathWithSearch(req.nextUrl);
@@ -248,15 +263,15 @@ export async function proxy(req: NextRequest) {
   const requiresAccessCheck = isLoginPath || isAccessStatusPath || isPortalProtectedPath(normalizedPath);
 
   if (!requiresAccessCheck) {
-    return buildNormalizedResponse(req, normalized);
+    return buildNormalizedResponse(req, normalized, requestHeaders);
   }
 
   const proxySupabase = createProxySupabase(req);
   if (!proxySupabase.supabase) {
-    return buildNormalizedResponse(req, normalized);
+    return buildNormalizedResponse(req, normalized, requestHeaders);
   }
 
-  const accessState = await resolvePortalAccessState(proxySupabase.supabase);
+  const accessState = await resolvePortalAccessState(proxySupabase.supabase, observer);
 
   if (isLoginPath) {
     if (accessState.kind === 'authenticated') {
@@ -279,7 +294,7 @@ export async function proxy(req: NextRequest) {
       );
     }
 
-    return proxySupabase.apply(buildNormalizedResponse(req, normalized));
+    return proxySupabase.apply(buildNormalizedResponse(req, normalized, requestHeaders));
   }
 
   if (isAccessStatusPath) {
@@ -289,7 +304,7 @@ export async function proxy(req: NextRequest) {
       );
     }
 
-    return proxySupabase.apply(buildNormalizedResponse(req, normalized));
+    return proxySupabase.apply(buildNormalizedResponse(req, normalized, requestHeaders));
   }
 
   if (accessState.kind === 'unauthenticated') {
@@ -314,7 +329,7 @@ export async function proxy(req: NextRequest) {
     return proxySupabase.apply(NextResponse.redirect(withPathname(req, '/staff/calculator')));
   }
 
-  return proxySupabase.apply(buildNormalizedResponse(req, normalized));
+  return proxySupabase.apply(buildNormalizedResponse(req, normalized, requestHeaders));
 }
 
 export const config = {

@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-21: measure the document boundary without weakening access
+
+Faster authoritative project APIs did not establish faster whole-page readiness.
+Keep the proxy and cached render checks intact. Use default-off, short-lived fixed
+phase logs with proxy-issued diagnostic provenance and no identity/business payload;
+separate browser response time from nested server totals. Catalogue evidence, not
+a generic HTTP 503, determines the narrowly selected telemetry restoration. Local
+SQL/cron stubs and preview measurements remain distinct from installed live proof.
+
+
 ## 2026-10-21: Stable navigation also needs stable pointer targets
 
 The agenda's URL owner preserved the latest intent, but removing project scope
