@@ -30,3 +30,16 @@ it('refuses signed formal preparation and admits only unchanged paused capabilit
 it('refuses formal effect admission even with a valid current signed plan',()=>{const plan=planFixture();const state:ExecutorState={template:'e'.repeat(64),enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};const intent=serializeEffect(plan,state,'create_creative',Date.now());expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent},state,'e'.repeat(64))).toThrow('Formal');});
 
 it('fences compiled template at effect admission while preserving exact owned cleanup',()=>{const base=planFixture(),now=Math.floor(Date.now()/1000);const plan=executionPlanSchema.parse({...base,purpose:'paused_capability',generator:null,reviewer:null,challengerPrimary:base.control.primary,approvedCopyHash:canonicalHash({control:base.control.primary,challenger:base.control.primary}),start:now,end:now+3600});const state:ExecutorState={template:plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};const intent=serializeEffect(plan,state,'create_creative',Date.now());expect(validateCreativeIntent({generation:1,cleanup:false,intent},state,plan.landingTemplate).intent.kind).toBe('create_creative');expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent},state,'f'.repeat(64))).toThrow('template');state.objects=[{kind:'control',id:'999',command:randomUUID(),requestHash:'a'.repeat(64)}];state.enabled=false;const cleanup=serializeEffect(plan,state,'pause_control',Date.now());expect(validateCreativeIntent({generation:1,cleanup:true,intent:cleanup},state,'f'.repeat(64)).intent.kind).toBe('pause_control');});
+
+it('separate default-off preparation flag admits future reviewed PAUSED mechanics, not activation',()=>{
+ vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','true');const plan=planFixture(),signed=request(plan);
+ expect(verifyCreativeCommand(signed.raw,signed.signature).stage).toBe('prepare');
+ const state:ExecutorState={template:plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};
+ const intent=serializeEffect(plan,state,'create_creative',Date.now());expect(validateCreativeIntent({generation:1,cleanup:false,intent},state,plan.landingTemplate).intent.kind).toBe('create_creative');
+ expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent:{...intent,kind:'activate_control'}},state,plan.landingTemplate)).toThrow();
+ expect(()=>validateCreativeIntent({generation:2,cleanup:false,intent},state,plan.landingTemplate)).toThrow();
+ state.stopped=true;expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent},state,plan.landingTemplate)).toThrow();
+});
+it('formal preparation does not extend an old or future-dated review',()=>{
+ vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','true');for(const age of [-60000,31*3600000]){const plan=planFixture();plan.approvedAt=new Date(Date.now()-age).toISOString();const signed=request(plan);expect(()=>verifyCreativeCommand(signed.raw,signed.signature)).toThrow();}
+});

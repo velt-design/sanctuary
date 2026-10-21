@@ -1,3 +1,11 @@
+## Formal preparation boundary, local only
+
+Creative authority tests prove the separate absent-by-default preparation flag,
+exact signed future reviewed plan, stale/future review rejection, current generation
+and Stop, and rejection of any ACTIVE intent. Existing capability behavior remains.
+This enables a future reviewed PAUSED account proof, not commercial activation or
+actual native eligibility. No live flag or provider effect was exercised locally.
+
 ## Formal creative registry continuation, unpublished (21 October 2026)
 
 The additive50005 wrapper exposes only authenticated exact closed-owned ad IDs

@@ -1,5 +1,13 @@
 # Security, Privacy, And Quality
 
+The unpublished formal preparation continuation adds a separate default-off
+`SANCTUARY_META_CREATIVE_PREPARATION_ENABLED` flag. It admits only signed, fresh,
+independently reviewed future plans and the existing PAUSED creative/ad/study
+intents under current template/control/Stop fences. It does not add an ACTIVE
+intent or alter credential scope, budget, targeting, original ads or consent.
+Absent flag preserves the released capability-only boundary. Cleanup remains
+available under its existing narrowly scoped authority.
+
 Creative template drift denies new preparation and non-cleanup effects. The
 authenticated machine read retains strictly validated registered state plus finite
 compatibility metadata so existing owned effects can reconcile and pause. This

@@ -23,16 +23,17 @@ export function verifyCreativeCommand(raw: unknown, signature: string | null, no
   const payload = payloads[row.stage].parse(row.payload);
   if (row.stage === 'prepare') {
     const prepared = payloads.prepare.parse(payload);
-    if(prepared.plan.purpose!=='paused_capability')throw new Error('Formal creative preparation unavailable');
+    const formal=prepared.plan.purpose==='formal_experiment';
+    if(formal&&process.env.SANCTUARY_META_CREATIVE_PREPARATION_ENABLED!=='true')throw new Error('Formal creative preparation unavailable');
     if (canonicalHash(prepared.plan) !== prepared.planHash || prepared.plan.experiment !== row.experiment
-      || Math.abs(prepared.plan.start*1000-now)>300000 || Date.parse(prepared.plan.approvalUntil) <= now) throw new Error('Stale plan');
+      || (formal ? prepared.plan.start*1000<=now || now-Date.parse(prepared.plan.approvedAt)>30*3600000 || Date.parse(prepared.plan.approvedAt)>now+1000 : Math.abs(prepared.plan.start*1000-now)>300000) || Date.parse(prepared.plan.approvalUntil) <= now) throw new Error('Stale plan');
   }
   return { ...row, payload };
 }
 export function validateCreativeIntent(payload: unknown, snapshot: unknown, compiledTemplate: string) {
   const intent = payloads.admit.parse(payload), state = stateSchema.parse(snapshot);
   if(!intent.cleanup && (state.template!==compiledTemplate || state.plan?.landingTemplate!==compiledTemplate))throw new Error('Creative template changed');
-  if(state.plan?.purpose==='formal_experiment'&&!intent.cleanup)throw new Error('Formal creative execution unavailable');
+  if(state.plan?.purpose==='formal_experiment'&&!intent.cleanup&&process.env.SANCTUARY_META_CREATIVE_PREPARATION_ENABLED!=='true')throw new Error('Formal creative execution unavailable');
   if (!state.plan || state.generation !== intent.generation || state.stopped || (intent.cleanup ? !state.cleanupEnabled : !state.enabled)) throw new Error('Source authority changed');
   if (intent.intent.at > Date.now() + 1000 || Date.now() - intent.intent.at > 90000) throw new Error('Stale intent');
   const expected = serializeEffect(state.plan, state, intent.intent.kind, intent.intent.at);
