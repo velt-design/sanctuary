@@ -1,5 +1,18 @@
 # Security, Privacy, And Quality
 
+## Proxy placement followup (21 October 2026 candidate)
+
+The Portal's per-function Vercel configuration pins only `proxy.ts` to `bom1`,
+beside the production database and existing render functions. It leaves the
+matcher, verified identity followed by role lookup, refreshed cookies, RSC access
+boundary and all diagnostic expiry/privacy rules unchanged. The role query uses
+the verified user ID and is intentionally sequential. No standalone Vercel proxy,
+Next runtime override, global cache or authentication shortcut is introduced.
+Official per-function configuration and the Next16 Vercel adapter support the
+entrypoint mapping; actual deployed output and fixed phase-region events must
+verify the placement. Tokyo-backed staging cannot establish Mumbai production
+latency. This followup is a candidate, not a verified speed improvement.
+
 ## Bounded document timing preparation (21 October 2026 candidate)
 
 `documentDiagnostics.ts` owns a default-disabled, server-only fixed event contract.

@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-21: Keep refresh feedback below project navigation
+
+Status: followup candidate. Live measurement showed the Projects return target
+moving up 83.69px when a summary banner disappeared, plus a 15px scrollbar shift.
+This establishes geometry movement, not the exact cause of a previously missed
+click. `ProjectPageFrame` now owns a status slot after its masthead and the project
+page reserves a scrollbar gutter. Preserve visible failure/Retry and readiness
+guards; verify delayed/error transitions with target coordinates, not only final
+screenshots. Owners: `projects-contacts-estimates-calculator.md`,
+`ProjectSnapshotNotice`, and the project-shell fixture geometry cases.
+
 ## 2026-10-21: measure the document boundary without weakening access
 
 Faster authoritative project APIs did not establish faster whole-page readiness.

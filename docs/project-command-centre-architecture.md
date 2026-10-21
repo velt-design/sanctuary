@@ -1,8 +1,8 @@
 # Project Operational Command Centre Architecture
 
-## First-load read path (21 October 2026 candidate)
+## First-load read path (released 21 October 2026)
 
-The first-load candidate keeps the full Command Centre as the authoritative
+The first-load read change keeps the full Command Centre as the authoritative
 project-work composer. `createProjectCommandCentreRead` owns one authenticated
 client, project ID and model-read promise per invocation. The snapshot uses the
 bound `createAuthoritativeProjectWorkRead` adapter for its initial model check and
@@ -19,10 +19,18 @@ closed/waiting/archive policy and error propagation remain with their existing
 owners. Missing/invisible models do not trigger operational reads. Snapshot base
 and related-project error semantics remain independent.
 
-This is a measured server-path candidate, not a released speed claim. Matched
+This is a released server-path change, not a whole-page speed claim. Matched
 optimized staging runs retain browser app storage and distinguish warm HTTP from
 asset-cache bypass. Fresh-origin correctness is a separate smoke check. Projects
 list, Site Visits, correspondence, auth, pricing and schemas are unchanged controls.
+
+The subsequent header-stability candidate changes only frame composition:
+`ProjectSnapshotNotice` and optional debug tools occupy a slot after the masthead,
+with shell forwarding below the commercial toolbar, leaving the Projects link
+and both tab rows above changing refresh feedback. The snapshot
+client retains all readiness, access and retry authority. The existing shell
+fixture's two geometry cases exercise delayed/failure/retry/fresh presentation at
+1440px and 390px; they do not replace actual network-transition verification.
 
 ## Workflow clarity (released 20 October 2026)
 

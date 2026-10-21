@@ -1,5 +1,24 @@
 # Testing And QA
 
+## Project header stability followup (21 October 2026 candidate)
+
+Run `ProjectPageFrame.test.tsx`, `ProjectSnapshotPageClient.test.tsx` and its
+`.reads.test.tsx` companion for live notice wiring, Retry, access loss, unchanged
+readiness and focused-link retention. The two `project header targets remain
+stable` cases in `portal.command-centre.spec.ts` use the real frame, header and
+notice at 1440px/390px through summary/failure/retry/fresh rendering and an explicit
+scrollbar transition. They measure both the Projects return link and each
+Commercial sections tab. This is fixture geometry, not network or production latency.
+Actual protected-preview checks must hold/release the snapshot read, include
+failure/Retry and attempt the early Projects return action while data arrives.
+
+The Portal-only `functions.proxy.ts.regions = [bom1]` candidate requires deployed
+function output plus actual runtime phase-region verification. Next's Node proxy
+manifest alone does not establish Vercel placement. Preserve both independent
+auth boundaries, cookies, redirects and expired/disabled diagnostic behavior.
+The Tokyo staging database makes preview timing unsuitable for a production
+Mumbai latency claim.
+
 ## Document measurement preparation checks (21 October 2026 candidate)
 
 Run the focused `documentDiagnostics`, `documentRenderDiagnostics`,

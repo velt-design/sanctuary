@@ -7,11 +7,22 @@ are owned by `lib/siteVisits` and `components/site-visits`, documented in
 `schedule.md`. Calendar imports do not confirm, notify, complete or advance a
 project. Existing manual completion and commercial evidence remain independent.
 
-The 21 October first-load candidate reuses a bound model read within each snapshot
+The released 21 October first-load read change reuses a bound model read within each snapshot
 and overlaps independent Command Centre facts after project access/model checks.
 It still returns the complete commercial-aware project-work projection. Read
 ownership and measurement limits are in `project-command-centre-architecture.md`;
-this candidate does not change browser caching, auth, writes or pricing.
+this read change does not change browser caching, auth, writes or pricing.
+
+The followup candidate keeps `ProjectPageFrame`'s masthead before the snapshot
+status panel. The shell forwards that panel below the Commercial sections toolbar
+on commercial views, so both tab rows remain stable. `ProjectSnapshotNotice` owns the unchanged loading/failure/Retry
+presentation; `ProjectSnapshotPageClient` still owns readiness and refetch.
+Summary, failed refresh, retry and fresh content therefore do not insert/remove
+a banner above the Projects return link or tabs. Project pages reserve the
+document scrollbar gutter while mounted, including their initial loading state.
+Diagnostic export tools also follow the masthead. Current status, access-ending
+recovery and paused owner/commercial actions retain their existing contracts.
+This followup still requires actual protected-preview geometry verification.
 
 ## Portal contact and return continuity (released 16 October 2026)
 

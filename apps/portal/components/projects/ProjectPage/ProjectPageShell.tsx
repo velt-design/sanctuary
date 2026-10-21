@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import type { ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import ProjectMainTabs from './ProjectMainTabs';
@@ -14,6 +15,7 @@ export default function ProjectPageShell({
   calculatorWorkspace = false,
   optimisticTab,
   onProjectAccessEnding,
+  statusPanel,
 }: {
   snapshot: ProjectPageSnapshot;
   host: string;
@@ -23,6 +25,7 @@ export default function ProjectPageShell({
   calculatorWorkspace?: boolean;
   optimisticTab?: ProjectNavigationTabKey | null;
   onProjectAccessEnding?: (status: number) => void;
+  statusPanel?: ReactNode;
 }) {
   return (
     <section className={styles.fullWidthShell} data-project-page-shell="true">
@@ -35,6 +38,7 @@ export default function ProjectPageShell({
         calculatorWorkspace={calculatorWorkspace}
         optimisticTab={optimisticTab}
         onProjectAccessEnding={onProjectAccessEnding}
+        statusPanel={statusPanel}
       />
     </section>
   );

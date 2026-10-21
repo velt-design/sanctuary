@@ -55,6 +55,15 @@ not a shared timeline or theme change.
 
 ## Search and commercial continuity (current)
 
+The 21 October header-stability followup candidate keeps project refresh notices
+and optional debug tools below the stable masthead. The notice remains visible
+with Retry on failure; no blank fixed-height banner is reserved. A project-scoped
+document scrollbar gutter prevents horizontal movement when full content arrives.
+The frame/shell forward the notice below the commercial toolbar where present;
+the snapshot client owns load/error state.
+Fixture geometry covers summary, failure, retry and fresh rendering at desktop
+and phone widths; actual early return-click verification remains a release check.
+
 `GlobalPortalSearch.client` only exposes selectable results whose normalized response
 query exactly matches the current input. Same-query cached results remain useful;
 changing query clears old links immediately while the pending read is announced.
