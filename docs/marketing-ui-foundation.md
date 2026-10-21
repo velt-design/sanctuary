@@ -4,10 +4,15 @@
 
 The existing two Meta pages retain their photographs, headlines, tint comparison,
 compact/full designer, estimate and canonical enquiry journey. The default-disabled
-`LandingExperiment` wrapper can replace exactly one hero support/design/help string
-from the finite `landingExperiment` catalogue. It accepts no arbitrary HTML, CSS,
-price, offer or form variation. This is infrastructure for a bounded wording test,
-not evidence of uplift or a complete layout/creative optimisation capability.
+`LandingExperiment` wrapper can change exactly one hero support/design/help string
+or use the acrylic-only `action-first` layout. That fourth option moves the existing
+whole action group (designer, enquiry and tint links) before support at widths up
+to760px. Copy, imagery, destinations and desktop order remain unchanged. A pending
+assignment waits while a pointer is held or a hero action retains focus; links are
+not duplicated or remounted. It accepts no arbitrary HTML, CSS, price, offer or form
+variation. This finite catalogue is not evidence of uplift or complete creative
+optimisation capability. Local browser geometry is separately dated evidence, not
+a claim that the primary action is hidden on every phone.
 
 Approved retained copy is server-rendered for all visitors without requiring
 tracking consent. Experimental assignment/exposure requires existing analytics and

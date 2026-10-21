@@ -22,6 +22,14 @@ Private screenshot artifacts prove local served-code behavior; all vendor and
 submission traffic is denied. Native probe tests cover scope, gates, maturation,
 separate denominators and immutable effect receipt recovery.
 Independent catalogue review and hosted execution remain separate acceptance.
+The compiled-page matrix covers both pages' three wording choices plus acrylic
+`action-first`. Local layout checks include320×568,390×740,390×844 and1440×960,
+first-visit consent/acceptance, reduced motion, held pointer/focus stability,
+unchanged links/desktop geometry and design-anchor return. Native layout assertions
+retain first-exposure mobile/treatment values across reload/resize; mobile is only
+a predeclared secondary breakdown, never an alternate formal winner. Emulation is
+not real-phone hardware proof. The native fallback regression composes the actual
+form-data builder with intake normalization; no real enquiry is delivered.
 
 ## Blinds guide contracts (21 October 2026)
 

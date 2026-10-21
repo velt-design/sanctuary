@@ -14,7 +14,7 @@ export const experimentPayloads = {
   read: z.object({}).strict(),
   receipt: z.object({command:z.string().uuid(),stage:z.enum(['prepare','review','visual','publish','verify','evaluate','rollback']),payload:z.record(z.string(),z.unknown())}).strict(),
   prepare: z.object({ generation: common.generation, candidateHash: hash, evidenceHash: hash, template: z.literal(EXPERIMENT_TEMPLATE),
-    path: z.enum(LANDING_EXPERIMENT_PATHS), copy: z.enum(['explore','project','estimate']), generator: operation,
+    path: z.enum(LANDING_EXPERIMENT_PATHS), copy: z.enum(['explore','project','estimate','action-first']), generator: operation,
     minimumExposures: z.literal(100), durationDays: z.literal(14) }).strict(),
   review: z.object({ ...common, reviewer: operation, verdict: z.enum(['pass','reject']) }).strict(),
   visual: z.object({ ...common, visualHash: hash, template: z.literal(EXPERIMENT_TEMPLATE) }).strict(),

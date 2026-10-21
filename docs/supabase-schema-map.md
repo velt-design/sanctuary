@@ -2,7 +2,7 @@
 
 ## Landing experiment and intake provenance candidate (21 October)
 
-Forward20261021010002 owns default-off source control, a single global active landing
+Forward20261021020002 owns default-off source control, a single global active landing
 experiment, deterministic command receipts, consented assignments/exposures and
 atomic enquiry joins through the existing intake/delivery owners. All tables/RPCs
 are service-only; public requests go through validated server routes. It predeclares
@@ -10,8 +10,13 @@ are service-only; public requests go through validated server routes. It predecl
 95% Newcombe difference and an independently evidenced quality guard before retain.
 Daily technical rollback needs no claimed winner. Prior winners remain the complete
 control baseline; relevant template mismatch denies new challenger/exposure.
+Separate short-lived `landing_experiment_probes` exercise signed preparation/live
+serving with no genuine assignment or enquiry row. Live renewal consumes an exact
+fresh cookie/reload/exposure proof under the same current eligibility predicate.
+The visitor RPC's final optional `p_display jsonb` records first-exposure mobile
+and applied-layout booleans. Secondary counts never change formal winner rules.
 
-Forward20261021010003 wraps the existing scoped campaign outcomes function and
+Forward20261021020003 wraps the existing scoped campaign outcomes function and
 revokes direct access to its renamed base. It adds only optional bounded original
 user-text intake provenance to the already authorised cohort. No customer record,
 qualification or mail is changed. Deploy optional Velt/Portal contracts first,

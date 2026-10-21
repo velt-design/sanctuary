@@ -16,7 +16,7 @@ it('rejects arbitrary copy, wrong slot, tampered and expired assignment',()=>{
 it('runs the source SQL authority, publication, exposure, maturation, withdrawal and rollback contract',async()=>{
  const db=new PGlite();try{
  await db.exec(landingExperimentTestBootstrap(process.cwd()));
- await db.exec(readFileSync('supabase/migrations/20261021010002_landing_experiments.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261021020002_landing_experiments.sql','utf8'));
  await db.exec(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
  await db.exec(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
  expect((await db.query('select count(*)::int n from landing_experiments')).rows).toEqual([{n:0}]);

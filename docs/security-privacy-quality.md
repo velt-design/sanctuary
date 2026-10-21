@@ -23,6 +23,11 @@ from a closed formal comparison. Existing privacy/consent/UTM rules remain intac
 Native fallback treats this receipt as optional transport data, never a customer
 brief field. Duplicate, malformed or oversized values are not truncated into valid
 receipts; current consent still governs the eventual join.
+The optional `p_display jsonb` exposure argument contains only two booleans:
+mobile viewport and applied action-first layout. SQL validates the treatment
+against the selected arm/copy and records it only on first exposure. These are
+client-reported display facts, not device identity or a trustworthy business
+outcome. All eligible visitors remain in the primary comparison.
 
 Serving diagnostics use the same fixed visitor endpoint, ordinary client and
 eligibility predicate with a registered short-lived HMAC header, separate cookie,

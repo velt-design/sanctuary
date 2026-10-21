@@ -14,11 +14,12 @@ const sql=value=>run('psql',['-X','-v','ON_ERROR_STOP=1','-h','127.0.0.1','-p',S
 try{
  run('initdb',['-D',directory,'-U','cluster_admin','-A','trust','--no-locale','-E','UTF8']);run('pg_ctl',['-D',directory,'-l',join(directory,'postgres.log'),'-o',`-p ${port} -h 127.0.0.1`,'-w','start'],undefined,true);started=true;
  sql(landingExperimentTestBootstrap(process.cwd()));
- sql(readFileSync('supabase/migrations/20261021010002_landing_experiments.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021020002_landing_experiments.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_experiment_layout.sql','utf8'));
  sql(readFileSync('supabase/tests/campaign_intake_evidence.sql','utf8'));
- sql(readFileSync('supabase/migrations/20261021010003_campaign_intake_evidence.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021020003_campaign_intake_evidence.sql','utf8'));
  sql(readFileSync('supabase/tests/campaign_intake_evidence_assertions.sql','utf8'));
  if(sql('select count(*) from public.landing_experiments').trim()!=='0')throw new Error('Synthetic fixture did not roll back');
  process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,fixturesRolledBack:true,liveCalls:0}));

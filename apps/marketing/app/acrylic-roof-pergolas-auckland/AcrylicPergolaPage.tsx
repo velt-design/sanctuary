@@ -1,5 +1,5 @@
 import type { LandingCopies } from '@/lib/landingExperiment';
-import { LandingExperiment, LandingCopy, OriginalLandingCopy } from '@/components/landing-experiment/LandingExperiment';
+import { LandingExperiment, LandingCopy, OriginalLandingCopy, LandingHeroOrder } from '@/components/landing-experiment/LandingExperiment';
 import ChannelTrackingRegion from '@/components/journey/ChannelTrackingRegion';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -36,7 +36,7 @@ export default function AcrylicPergolaPage({ path = '/acrylic-roof-pergolas-auck
           <h1 id="acrylic-hero-title">Keep the light.<br />Make room outside.</h1>
           <p className={funnelStyles.heroService}>Custom acrylic pergolas, designed and installed in Auckland.</p>
           <div className={styles.heroBottom}>
-            <div><p><LandingCopy slot="support"><OriginalLandingCopy path="/acrylic-roof-pergolas-auckland" slot="support"/></LandingCopy></p><div className={styles.heroActions}><a className={styles.primaryAction} href="#your-design"><LandingCopy slot="design"><OriginalLandingCopy path="/acrylic-roof-pergolas-auckland" slot="design"/></LandingCopy> <ArrowUpRight /></a><a className={styles.lightLink} href="#project-details" data-channel-action="quote"><LandingCopy slot="help"><OriginalLandingCopy path="/acrylic-roof-pergolas-auckland" slot="help"/></LandingCopy> <ArrowUpRight /></a><a className={styles.lightLink} href="#acrylic-options">Explore acrylic tints <span aria-hidden="true">↓</span></a></div></div>
+            <LandingHeroOrder className={styles.heroActionOrder}><p><LandingCopy slot="support"><OriginalLandingCopy path="/acrylic-roof-pergolas-auckland" slot="support"/></LandingCopy></p><div className={styles.heroActions}><a className={styles.primaryAction} href="#your-design"><LandingCopy slot="design"><OriginalLandingCopy path="/acrylic-roof-pergolas-auckland" slot="design"/></LandingCopy> <ArrowUpRight /></a><a className={styles.lightLink} href="#project-details" data-channel-action="quote"><LandingCopy slot="help"><OriginalLandingCopy path="/acrylic-roof-pergolas-auckland" slot="help"/></LandingCopy> <ArrowUpRight /></a><a className={styles.lightLink} href="#acrylic-options">Explore acrylic tints <span aria-hidden="true">↓</span></a></div></LandingHeroOrder>
             <Link className={styles.projectCaption} href="/projects/dairy-flat-estate"><span>Built by Sanctuary</span>Dairy Flat, Auckland <ArrowUpRight /></Link>
           </div>
         </div>

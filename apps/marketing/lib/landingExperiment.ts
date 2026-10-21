@@ -12,13 +12,14 @@ export const LANDING_COPY = {
   explore: { slot: 'design', text: 'Explore your pergola' },
   project: { slot: 'help', text: 'Tell us about your project' },
   estimate: { slot: 'support', text: 'Choose a size and roof. See an installed estimate.' },
+  'action-first': { slot: 'layout', text: 'Hero action group before support on mobile' },
 } as const;
 export type LandingCopyKey = keyof typeof LANDING_COPY;
 export type LandingSlot = typeof LANDING_COPY[LandingCopyKey]['slot'];
 export type LandingCopies = Partial<Record<LandingSlot, LandingCopyKey>>;
 export const LANDING_ORIGINAL_TEXT:Record<ExperimentPath,Record<LandingSlot,string>>={
-  '/auckland-outdoor-living':{design:'Design your pergola',help:'Tell us about your space',support:'A place for slow mornings. Long lunches.\nAnd a little more everyday living.'},
-  '/acrylic-roof-pergolas-auckland':{design:'Design your pergola',help:'Tell us about your space',support:'A covered space, with daylight above.\nDesigned around the home you love.'},
+  '/auckland-outdoor-living':{design:'Design your pergola',help:'Tell us about your space',support:'A place for slow mornings. Long lunches.\nAnd a little more everyday living.',layout:'Hero action group after support'},
+  '/acrylic-roof-pergolas-auckland':{design:'Design your pergola',help:'Tell us about your space',support:'A covered space, with daylight above.\nDesigned around the home you love.',layout:'Hero action group after support'},
 };
 export function landingControlText(path:ExperimentPath,copies:LandingCopies){
   return Object.fromEntries(Object.entries(LANDING_ORIGINAL_TEXT[path]).map(([slot,text])=>[slot,copies[slot as LandingSlot]?LANDING_COPY[copies[slot as LandingSlot]!].text:text]));

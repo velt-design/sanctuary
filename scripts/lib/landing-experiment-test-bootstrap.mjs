@@ -8,5 +8,6 @@ export function landingExperimentTestBootstrap(root){
   +read('supabase/enquiry_requests.sql').replace('create extension if not exists pgcrypto;','')
   +marketingEnquiryTestIntakeSql(root)
   +read('supabase/migrations/20261021000001_marketing_outdoor_room_optional_phone.sql')
+  +read('supabase/migrations/20261021020001_marketing_blinds_optional_phone.sql')
   +`create schema private;create table private.enquiry_qualification_events(enquiry_id uuid,state text,version int);`;
 }

@@ -10,6 +10,7 @@ export const maxDuration = 5;
 export const VISIT_DEADLINE_MS = 1500;
 const inputSchema = z.object({ stage: z.enum(['assign','expose','revoke']), path: z.enum(LANDING_EXPERIMENT_PATHS),
   consent: z.boolean(), receipt: z.string().max(1500).optional(),
+  display:z.object({mobile:z.boolean(),actionFirst:z.boolean()}).strict().optional(),
   utm: z.object({ utm_source: z.literal('facebook'), utm_medium: z.literal('paid_social'), utm_campaign: z.string().regex(/^[1-9]\d{0,19}$/),
     utm_content: z.string().regex(/^[1-9]\d{0,19}$/), utm_term: z.string().regex(/^[1-9]\d{0,19}$/) }).strict().optional() }).strict();
 export async function POST(request: Request) {
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
   try {
     if (request.headers.get('origin') !== new URL(request.url).origin || new URL(request.url).search) return Response.json({}, { status: 403, headers });
     const input = inputSchema.parse(await readBoundedJson(request, 4000, signal));
+    if(input.display&&input.stage!=='expose')throw new Error('Unexpected display receipt');
     const probeHeader=request.headers.get('x-landing-probe'),probe=readProbe(probeHeader);
     if(probeHeader&&(!probe||probe.path!==input.path||new URL(request.url).origin!=='https://www.sanctuarypergolas.co.nz'))throw new Error('Invalid diagnostic');
     // Diagnostic receipts are a different signing purpose. Never reinterpret
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
     if (input.stage !== 'assign' && (!previous || previous.path !== input.path)) throw new Error('Receipt required');
     const assignment = previous?.path === input.path ? previous.assignment : randomUUID();
     const result = await db.rpc('landing_experiment_visit', { p_stage: input.stage, p_id: assignment, p_path: input.path,p_template:EXPERIMENT_TEMPLATE,
+      p_display:input.display??null,
       p_ad: input.utm?.utm_content ?? null, p_campaign: input.utm?.utm_campaign ?? null, p_adset: input.utm?.utm_term ?? null }).abortSignal(signal);
     if (result.error) throw new Error('Visit unavailable');
     if (input.stage === 'revoke') return Response.json({}, { headers: { ...headers, 'Set-Cookie': `${cookie}=; Path=/; SameSite=Lax; Secure; Max-Age=0` } });

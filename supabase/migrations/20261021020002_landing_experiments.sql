@@ -7,19 +7,21 @@ create table public.landing_experiment_control (
  adset text not null, ads text[] not null, admitted_until timestamptz not null,
  control_outdoor jsonb not null default '{}', control_acrylic jsonb not null default '{}',
  check(control_outdoor <@ '{"design":"explore","help":"project","support":"estimate"}'::jsonb),
- check(control_acrylic <@ '{"design":"explore","help":"project","support":"estimate"}'::jsonb)
+ check(control_acrylic <@ '{"design":"explore","help":"project","support":"estimate","layout":"action-first"}'::jsonb)
 );
 create table public.landing_experiments (
  id uuid primary key, path text not null check(path in('/auckland-outdoor-living','/acrylic-roof-pergolas-auckland')),
  lane text not null default 'landing' check(lane='landing'), template text not null,
- copy text not null check(copy in('explore','project','estimate')), control_copy jsonb not null,
+ copy text not null check(copy in('explore','project','estimate','action-first')), control_copy jsonb not null,
+ check(copy<>'action-first' or path='/acrylic-roof-pergolas-auckland'),
  state text not null check(state in('candidate','rejected','reviewed','ready','live','retained','reverted','inconclusive')),
  candidate_hash text not null check(candidate_hash ~ '^[a-f0-9]{64}$'), evidence_hash text not null check(evidence_hash ~ '^[a-f0-9]{64}$'),
  generator text not null, reviewer text, visual_hash text, created_at timestamptz not null default clock_timestamp(),
  started_at timestamptz, ends_at timestamptz, lease_until timestamptz, verified_at timestamptz,
  minimum_exposures integer not null check(minimum_exposures between 100 and 100000),
  duration_days integer not null check(duration_days between 7 and 28),
- check(control_copy <@ '{"design":"explore","help":"project","support":"estimate"}'::jsonb)
+ check(control_copy <@ '{"design":"explore","help":"project","support":"estimate","layout":"action-first"}'::jsonb),
+ check(not(control_copy?'layout') or path='/acrylic-roof-pergolas-auckland')
 );
 -- This single lane-independent index is the reservation for future creative tests.
 create unique index landing_one_active_experiment on public.landing_experiments((true)) where state in('candidate','reviewed','ready','live');
@@ -31,7 +33,7 @@ create table public.landing_experiment_assignments (
  id uuid primary key, experiment uuid not null references public.landing_experiments(id),
  arm text not null check(arm in('control','challenger')), ad text not null,
  created_at timestamptz not null default clock_timestamp(), exposed_at timestamptz,
- revoked_at timestamptz
+ revoked_at timestamptz, mobile boolean, action_first boolean
 );
 create table public.landing_experiment_enquiries (
  enquiry_id uuid primary key references public.enquiry_requests(id), assignment uuid not null references public.landing_experiment_assignments(id),
@@ -100,7 +102,7 @@ begin
    if p_payload->>'template' is distinct from c.template or p_experiment is null then raise exception 'Template changed';end if;
    if exists(select 1 from public.landing_experiments where created_at>stamp-interval '7 days') then raise exception 'Candidate cadence exceeded';end if;
    previous_copy:=case when p_payload->>'path'='/auckland-outdoor-living' then c.control_outdoor else c.control_acrylic end;
-   selected_slot:=case p_payload->>'copy' when 'explore' then 'design' when 'project' then 'help' when 'estimate' then 'support' end;
+   selected_slot:=case p_payload->>'copy' when 'explore' then 'design' when 'project' then 'help' when 'estimate' then 'support' when 'action-first' then 'layout' end;
    if selected_slot is null or previous_copy->>selected_slot=p_payload->>'copy' then raise exception 'Unchanged candidate';end if;
    insert into public.landing_experiments(id,path,template,copy,control_copy,state,candidate_hash,evidence_hash,generator,minimum_exposures,duration_days)
     values(p_experiment,p_payload->>'path',c.template,p_payload->>'copy',previous_copy,'candidate',p_payload->>'candidateHash',p_payload->>'evidenceHash',p_payload->>'generator',
@@ -121,7 +123,7 @@ begin
    elsif p_stage='rollback' then
      if e.state not in('candidate','live','ready','reviewed','retained') then raise exception 'Cannot rollback';end if;
      if e.state='retained' then
-       selected_slot:=case e.copy when 'explore' then 'design' when 'project' then 'help' else 'support' end;
+       selected_slot:=case e.copy when 'explore' then 'design' when 'project' then 'help' when 'action-first' then 'layout' else 'support' end;
        if (case when e.path='/auckland-outdoor-living' then c.control_outdoor else c.control_acrylic end) is distinct from (e.control_copy||jsonb_build_object(selected_slot,e.copy)) then raise exception 'Control changed';end if;
        update public.landing_experiment_control set control_outdoor=case when e.path='/auckland-outdoor-living' then e.control_copy else control_outdoor end,
          control_acrylic=case when e.path='/acrylic-roof-pergolas-auckland' then e.control_copy else control_acrylic end where singleton;
@@ -150,7 +152,7 @@ begin
      if p_payload->>'decision'='retain' and (public.landing_experiment_decision(e.id)<>'retain' or p_payload->>'qualityGuard'<>'pass') then raise exception 'Retention not supported';end if;
      update public.landing_experiments set state=case p_payload->>'decision' when 'retain' then 'retained' when 'revert' then 'reverted' else 'inconclusive' end,lease_until=stamp where id=e.id;
      if p_payload->>'decision'='retain' then
-       selected_slot:=case e.copy when 'explore' then 'design' when 'project' then 'help' else 'support' end;
+       selected_slot:=case e.copy when 'explore' then 'design' when 'project' then 'help' when 'action-first' then 'layout' else 'support' end;
        update public.landing_experiment_control set
        control_outdoor=case when e.path='/auckland-outdoor-living' then e.control_copy||jsonb_build_object(selected_slot,e.copy) else control_outdoor end,
        control_acrylic=case when e.path='/acrylic-roof-pergolas-auckland' then e.control_copy||jsonb_build_object(selected_slot,e.copy) else control_acrylic end where singleton;end if;
@@ -165,13 +167,16 @@ end $$;
 
 create function public.landing_experiment_counts(p_experiment uuid) returns jsonb language sql stable security definer set search_path='' as $$
  with joined as (
- select a.id,a.arm,j.enquiry_id,(select state from private.enquiry_qualification_events q where q.enquiry_id=j.enquiry_id order by version desc limit 1) qualification
+ select a.id,a.arm,a.mobile,a.action_first,j.enquiry_id,(select state from private.enquiry_qualification_events q where q.enquiry_id=j.enquiry_id order by version desc limit 1) qualification
  from public.landing_experiment_assignments a left join public.landing_experiment_enquiries j on j.assignment=a.id
    and j.created_at<=(select ends_at+interval '72 hours' from public.landing_experiments where id=p_experiment)
  where a.experiment=p_experiment and a.exposed_at is not null and a.revoked_at is null
  ), arms(arm) as(values('control'),('challenger'))
  select jsonb_agg(x) from(select arms.arm,count(distinct j.id)::integer exposures,count(distinct j.enquiry_id)::integer enquiries,
  count(distinct j.id) filter(where j.enquiry_id is not null)::integer "convertedAssignments",
+ count(distinct j.id) filter(where j.mobile)::integer "mobileExposures",
+ count(distinct j.id) filter(where j.mobile and j.enquiry_id is not null)::integer "mobileConversions",
+ count(distinct j.id) filter(where j.action_first)::integer "actionFirstExposures",
  count(distinct j.enquiry_id) filter(where qualification='qualified')::integer qualified,
  count(distinct j.id) filter(where qualification='qualified')::integer "qualifiedAssignments",
  count(distinct j.enquiry_id) filter(where qualification is null or qualification='unreviewed')::integer unreviewed
@@ -212,7 +217,7 @@ grant execute on function public.landing_experiment_counts(uuid) to service_role
 revoke all on function public.landing_experiment_quality(uuid) from public,anon,authenticated;
 grant execute on function public.landing_experiment_quality(uuid) to service_role;
 
-create function public.landing_experiment_visit(p_stage text,p_id uuid,p_path text,p_template text,p_ad text default null,p_campaign text default null,p_adset text default null)
+create function public.landing_experiment_visit(p_stage text,p_id uuid,p_path text,p_template text,p_ad text default null,p_campaign text default null,p_adset text default null,p_display jsonb default null)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare c public.landing_experiment_control; e public.landing_experiments; a public.landing_experiment_assignments; stamp timestamptz:=clock_timestamp();
 begin
@@ -234,12 +239,17 @@ begin
  end if;
  select * into a from public.landing_experiment_assignments where id=p_id and experiment=e.id and revoked_at is null;
  if not found then return null;end if;
- if p_stage='expose' then update public.landing_experiment_assignments set exposed_at=coalesce(exposed_at,stamp) where id=p_id;end if;
+ if p_stage='expose' then
+   if p_display is not null and (jsonb_typeof(p_display)<>'object' or (select count(*) from jsonb_object_keys(p_display))<>2 or jsonb_typeof(p_display->'mobile') is distinct from 'boolean' or jsonb_typeof(p_display->'actionFirst') is distinct from 'boolean') then raise exception 'Invalid display receipt';end if;
+   if (p_display->>'actionFirst')::boolean and (not (p_display->>'mobile')::boolean or e.path<>'/acrylic-roof-pergolas-auckland' or not(coalesce(e.control_copy->>'layout'='action-first',false) or(a.arm='challenger' and e.copy='action-first'))) then raise exception 'Invalid treatment receipt';end if;
+   update public.landing_experiment_assignments set exposed_at=coalesce(exposed_at,stamp),mobile=case when exposed_at is null then (p_display->>'mobile')::boolean else mobile end,
+     action_first=case when exposed_at is null then (p_display->>'actionFirst')::boolean else action_first end where id=p_id;
+ end if;
  return jsonb_build_object('experiment',e.id,'assignment',a.id,'path',e.path,'arm',a.arm,'copies',case when a.arm='control' then e.control_copy
-   else e.control_copy||jsonb_build_object(case e.copy when 'explore' then 'design' when 'project' then 'help' else 'support' end,e.copy) end);
+   else e.control_copy||jsonb_build_object(case e.copy when 'explore' then 'design' when 'project' then 'help' when 'action-first' then 'layout' else 'support' end,e.copy) end);
 end $$;
-revoke all on function public.landing_experiment_visit(text,uuid,text,text,text,text,text) from public,anon,authenticated;
-grant execute on function public.landing_experiment_visit(text,uuid,text,text,text,text,text) to service_role;
+revoke all on function public.landing_experiment_visit(text,uuid,text,text,text,text,text,jsonb) from public,anon,authenticated;
+grant execute on function public.landing_experiment_visit(text,uuid,text,text,text,text,text,jsonb) to service_role;
 create function public.landing_experiment_probe_visit(p_probe uuid,p_stage text,p_path text,p_template text,p_generation bigint,p_candidate text,p_mode text,p_cookie boolean,p_ad text default null,p_campaign text default null,p_adset text default null)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare c public.landing_experiment_control;e public.landing_experiments;p public.landing_experiment_probes;stamp timestamptz:=clock_timestamp();begin
@@ -260,7 +270,7 @@ declare c public.landing_experiment_control;e public.landing_experiments;p publi
    if not p_cookie or p.assignments<=p.exposures then raise exception 'Diagnostic exposure unavailable';end if;
    update public.landing_experiment_probes set exposures=exposures+1 where id=p.id;
  end if;
- return jsonb_build_object('experiment',e.id,'assignment',p.id,'path',e.path,'arm','challenger','copies',e.control_copy||jsonb_build_object(case e.copy when 'explore' then 'design' when 'project' then 'help' else 'support' end,e.copy));
+ return jsonb_build_object('experiment',e.id,'assignment',p.id,'path',e.path,'arm','challenger','copies',e.control_copy||jsonb_build_object(case e.copy when 'explore' then 'design' when 'project' then 'help' when 'action-first' then 'layout' else 'support' end,e.copy));
 end $$;
 revoke all on function public.landing_experiment_probe_visit(uuid,text,text,text,bigint,text,text,boolean,text,text,text) from public,anon,authenticated;
 grant execute on function public.landing_experiment_probe_visit(uuid,text,text,text,bigint,text,text,boolean,text,text,text) to service_role;

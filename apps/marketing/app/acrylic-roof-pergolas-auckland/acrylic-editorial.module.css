@@ -140,3 +140,11 @@
   .questions { grid-template-columns: 1fr; }
 }
 @media(max-width: 360px) { .tintChoices { gap: .4rem; } .tintLabel { font-size: .65rem; } }
+
+/* One finite treatment: the existing action group precedes support on mobile.
+   The links retain their DOM/focus order; desktop and all copy stay unchanged. */
+@media (max-width: 760px) {
+  .heroActionOrder[data-landing-copy-key="action-first"] { display: flex; flex-direction: column; }
+  .heroActionOrder[data-landing-copy-key="action-first"] > .heroActions { order: -1; margin-bottom: 1.25rem; }
+  .heroActionOrder[data-landing-copy-key="action-first"] > p { margin-bottom: 0; }
+}
