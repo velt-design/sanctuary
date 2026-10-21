@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "dev:playwright": "next dev",
-    "prebuild": "node --conditions=react-server --require ../../scripts/marketing/node-css.cjs --import tsx ../../scripts/marketing/generate-landing-price-table.ts",
+    "prebuild": "node --conditions=react-server --require ../../scripts/marketing/node-css.cjs --import tsx ../../scripts/marketing/generate-landing-price-table.ts && node ../../scripts/marketing/generate-landing-template.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

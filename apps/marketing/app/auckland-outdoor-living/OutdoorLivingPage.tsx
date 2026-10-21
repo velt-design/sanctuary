@@ -1,3 +1,5 @@
+import type { LandingCopies } from '@/lib/landingExperiment';
+import { LandingExperiment, LandingCopy, OriginalLandingCopy } from '@/components/landing-experiment/LandingExperiment';
 import ChannelTrackingRegion from '@/components/journey/ChannelTrackingRegion';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,9 +12,9 @@ import { residentialProcessSteps } from '../pergolas-auckland/content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import styles from './outdoor-living.module.css';
 
-export default function OutdoorLivingPage({ path }: { path: '/auckland-outdoor-living' | '/ads/facebook/outdoor-living' }) {
+export default function OutdoorLivingPage({ path, control }: { control?: LandingCopies; path: '/auckland-outdoor-living' | '/ads/facebook/outdoor-living' }) {
   return (
-    <ChannelTrackingRegion><main className={`${foundation.marketingPage} ${styles.page} ${funnelStyles.page}`} data-marketing-foundation-page data-facebook-landing>
+    <ChannelTrackingRegion><LandingExperiment path={path} control={control}><main className={`${foundation.marketingPage} ${styles.page} ${funnelStyles.page}`} data-marketing-foundation-page data-facebook-landing>
       <section className={styles.hero} aria-labelledby="outdoor-living-title">
         <Image className={styles.heroImage} src="/images/project-riverhead-gable-01.jpg" alt="A timber-lined Sanctuary gable pavilion framing the garden beside a pool in Riverhead, Auckland" fill priority sizes="(max-width: 760px) 1100px, 100vw" />
         <div className={styles.heroShade} />
@@ -21,7 +23,7 @@ export default function OutdoorLivingPage({ path }: { path: '/auckland-outdoor-l
           <h1 id="outdoor-living-title">Make room<br />for life outside.</h1>
           <p className={funnelStyles.heroService}>Custom pergolas and covered outdoor spaces, designed and installed in Auckland.</p>
           <div className={styles.heroBottom}>
-            <div><p>A place for slow mornings. Long lunches.<br />And a little more everyday living.</p><div className={styles.heroActions}><a className={styles.primaryAction} href="#your-design">Design your pergola <ArrowUpRight /></a><a className={styles.lightLink} href="#project-details" data-channel-action="quote">Tell us about your space <ArrowUpRight /></a></div></div>
+            <div><p><LandingCopy slot="support"><OriginalLandingCopy path="/auckland-outdoor-living" slot="support"/></LandingCopy></p><div className={styles.heroActions}><a className={styles.primaryAction} href="#your-design"><LandingCopy slot="design"><OriginalLandingCopy path="/auckland-outdoor-living" slot="design"/></LandingCopy> <ArrowUpRight /></a><a className={styles.lightLink} href="#project-details" data-channel-action="quote"><LandingCopy slot="help"><OriginalLandingCopy path="/auckland-outdoor-living" slot="help"/></LandingCopy> <ArrowUpRight /></a></div></div>
             <Link className={styles.projectCaption} href="/projects/riverhead-gable-pavilion"><span>Built by Sanctuary</span>Riverhead, Auckland <ArrowUpRight /></Link>
           </div>
         </div>
@@ -64,6 +66,6 @@ export default function OutdoorLivingPage({ path }: { path: '/auckland-outdoor-l
 
 
       </FunnelJourney>
-    </main></ChannelTrackingRegion>
+    </main></LandingExperiment></ChannelTrackingRegion>
   );
 }

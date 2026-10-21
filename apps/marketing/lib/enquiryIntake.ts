@@ -38,13 +38,15 @@ export async function createMarketingEnquiryIntake(
     uploadSessionToken: string;
     payload: Record<string, unknown>;
     delivery?: EnquiryDelivery;
+    experimentAssignment?: string;
   },
 ): Promise<MarketingEnquiryIntakeResult> {
-  const { data, error } = await supabase.rpc(params.delivery ? 'marketing_enquiry_intake_with_delivery' : 'marketing_enquiry_intake', {
+  const { data, error } = await supabase.rpc(params.experimentAssignment ? 'marketing_experiment_intake' : params.delivery ? 'marketing_enquiry_intake_with_delivery' : 'marketing_enquiry_intake', {
     p_submission_id: params.submissionId,
     p_upload_token_hash: sha256(params.uploadSessionToken),
     p_payload: params.payload,
     ...(params.delivery ? { p_delivery: params.delivery } : {}),
+    ...(params.experimentAssignment ? { p_assignment: params.experimentAssignment } : {}),
   });
   if (error) throw new MarketingEnquiryIntakeError();
 
