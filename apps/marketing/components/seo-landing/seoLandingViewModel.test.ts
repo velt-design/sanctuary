@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { gablePergolasConfig } from '../../app/gable-pergolas-auckland/content';
-import { pitchedPergolasConfig } from '../../app/pitched-pergolas-auckland/content';
 import type { SeoLandingBlock } from './types';
 import {
   buildGuideFirstLayer,
@@ -72,11 +71,10 @@ describe('guided project evidence', () => {
 
 const guideConfigs = [
   gablePergolasConfig,
-  pitchedPergolasConfig,
 ] as const;
 
 describe('buildGuideFirstLayer', () => {
-  it('keeps generated supporting headings distinct across the guide programme', () => {
+  it('keeps the remaining generated guide supporting headings distinct', () => {
     const headings = guideConfigs.flatMap(({ guideFirstLayer }) => [
       guideFirstLayer.supportingAnswerTitle,
       guideFirstLayer.supportingProjectsTitle,

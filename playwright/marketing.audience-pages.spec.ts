@@ -62,12 +62,12 @@ for (const entry of pages) test(`${entry.audience} upload failure and retry pres
   expect(payload).toMatchObject({ enquiryType: entry.audience, page: entry.route, enquiryContext: { enquiry_type: entry.audience, source_path: entry.route, source_component: 'embedded_form' } });
 });
 
-test('default SEO renderer keeps its hero, content and embedded form', async ({ page }) => {
+test('Pitched custom presentation keeps its hero, content and canonical embedded form', async ({ page }) => {
   await page.goto('/pitched-pergolas-auckland');
-  await expect(page.locator('[data-editorial-landing-hero] h1')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Pitched pergolas. One clean roofline.' })).toBeVisible();
   expect(await page.locator('main section').count()).toBeGreaterThan(3);
   await expect(page.locator('#project-details form')).toHaveCount(1);
-  await expect(page.locator('main [data-editorial-landing-hero] a[href="#project-details"]')).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'Discuss your pergola', exact: true })).toHaveAttribute('href', '#project-details');
 });
 
 test('guided audience context takes precedence over the route form fallback', async ({ page }) => {

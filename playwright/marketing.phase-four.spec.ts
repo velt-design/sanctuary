@@ -47,6 +47,7 @@ const screenshotRoutes = new Set([
   'aluminium',
   'cost',
 ]);
+// Pitched now has its own photographic presentation and dedicated guide suite.
 const guideDetailRoutes = [
   {
     path: '/outdoor-rooms-auckland',
@@ -65,12 +66,6 @@ const guideDetailRoutes = [
     projectSlug: 'warkworth-outdoor-room',
     projectCount: 3,
     returnHref: '/products/pergolas/gable',
-  },
-  {
-    path: '/pitched-pergolas-auckland',
-    projectSlug: 'velskov-forest',
-    projectCount: 3,
-    returnHref: '/products/pergolas/pitched',
   },
 ] as const;
 
