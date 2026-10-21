@@ -414,16 +414,16 @@ bin directory and run node test/sanctuary-ga4-native.mjs. This creates and
 disposes a new synthetic loopback cluster using the repository's existing native
 harness pattern. Exact base+forward DDL, v2/v3 lifecycle, roles, strict available
 and unavailable shapes, null/zero, hash/retention and delete/control fences passed
-on PG17.11. It uses synthetic auth/source prerequisites and a cron stub, not the
-whole Sanctuary chain, PostgREST, real pg_cron or providers. That installed
-distribution has no safeupdate; the new migration's real-safeupdate gate remains
-unverified. The earlier PG17.6 safeupdate proof below does not verify new40001.
-The optional existing-image Docker substrate loads real safeupdate and never
-pulls, mounts host paths or publishes ports; its local engine failed during
-startup before SQL in this pass. No reset or fake extension was used.
+on PG17.11. This historical local proof uses synthetic auth/source prerequisites
+and a cron stub, not the whole Sanctuary chain, PostgREST, real pg_cron or
+providers. That installed distribution has no safeupdate, so that local result
+did not verify the new migration with the real extension. The optional
+existing-image Docker substrate never pulls, mounts host paths or publishes
+ports; its local engine failed during startup before SQL. No reset or fake
+extension was used.
 
-The dedicated `.github/workflows/ga4-native.yml` prepares the remaining real
-safeupdate substrate on the standard Ubuntu runner with Node22 and read-only
+The dedicated `.github/workflows/ga4-native.yml` runs the real-safeupdate
+substrate on the standard Ubuntu runner with Node22 and read-only
 repository permissions. Its PR/main triggers cover only that workflow, the
 committed native harness and the two exact GA4 migration bodies; manual dispatch
 has no inputs. A separate single-attempt180-second provisioning step pulls the
@@ -432,23 +432,29 @@ official GHCR 17.6.1.167 linux/amd64 image by immutable manifest digest
 then associates the harness's fixed local ECR tag with that exact image and prints
 its resolved ID/registry digests. ECR and official GHCR tag indexes and child
 manifests were verified byte-identical on21October2026. The first published ECR
-provisioning attempt failed with Data limit exceeded before image/SQL execution;
-GHCR is the prepared transport correction. The ECR tag is only a local alias,
-not a second pull or fallback. No image was pulled locally, and the correction
-is not an executed native proof.
+provisioning attempt failed with Data limit exceeded before image/SQL execution.
+The subsequent GHCR transport correction passed in
+[native run 39552027487](https://github.com/velt-design/sanctuary/actions/runs/39552027487)
+at Source revision `357f8a057204bb989ecd430952bff46251297ffe`: official PG17.6,
+real safeupdate and 11 disposable synthetic databases. The run verified the
+exact committed 20260923070001 and 20261021040001 SQL-body hashes, v2/v3 lifecycle,
+roles, strict shapes, association/hash, retention, deletion and control fences.
+This closes the new 20261021040001 real-safeupdate gate. The ECR tag is only a local alias,
+not a second pull or fallback. No image was pulled locally.
 The unchanged harness still never pulls, runs its disposable container with
 network none and no host mounts/ports, loads real safeupdate in every SQL
 session and requires the unsafe-delete negative assertion. Job maximum15minutes;
 no dependency install, app build/tests, secrets, provider/remote database call
 or artifact upload. Only synthetic status and revision/image/SQL hashes reach
-stdout. Preparing this workflow is not a successful CI receipt: the new40001
-real-safeupdate gate stays open until the exact published revision passes.
+stdout. This native receipt does not prove the whole historical Sanctuary chain,
+PostgREST transaction behavior, real pg_cron, provider compatibility, live data,
+shared schema installation or production release.
 
 Both Vercel project configs suppress Git deployment only for branch
-`codex/ga4-diagnostics-20261021` while this synthetic database proof is prepared.
+`codex/ga4-diagnostics-20261021` for paired CI; both branch entries remain false.
 Other branch entries, production settings, regions, functions and crons retain
-their existing values. This is local configuration preparation, not publication
-or a Vercel service mutation.
+their existing values. The successful synthetic native proof does not authorize
+an application deployment or a Vercel service mutation.
 
 Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4
 test/sanctuary-ga4-sql.test.ts test/sanctuary-ga4-http-sql.test.ts`, Portal
