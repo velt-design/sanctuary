@@ -328,8 +328,12 @@ typecheck and scoped lint. These use synthetic provider/vault data and the actua
 `20260923070001` SQL body. Coverage includes rotated/nonrotated tokens, exact
 scope/property/item versions, unknown effects, lease expiry, disable/re-enable,
 query/hash association, seven-day retention, deletion races and delivery fencing.
-The six HTTP-to-SQL regressions preserve end-to-end composition proof rather than
-mocking the database's lifecycle decisions.
+The HTTP-to-SQL regressions preserve composition proof rather than mocking the
+database's lifecycle decisions. Retained-authority cases also prove the metadata
+envelope, existing read/deliver audit, disable/expiry/staff/quarantine denial and
+deletion between read and delivery. They use PGlite and synthetic identities;
+they are separate from native PostgreSQL and live provider evidence. HTTP tests
+reject corrupt hash/shape/final delivery and verify zero Google/vault access.
 
 On 23 September the 21 SQL/HTTP cases also passed native PostgreSQL 17.6 with
 safeupdate loaded, including explicit rejection of an unqualified delete. That

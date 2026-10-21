@@ -54,6 +54,30 @@ it('saved read and deletion do not access credentials or Google', async () => {
   expect((await sanctuaryGa4Response(f.request('action=delete', {}, 'DELETE'), f.dependencies)).status).toBe(200);
   expect(f.dependencies.credentials).not.toHaveBeenCalled(); expect(f.google.token).not.toHaveBeenCalled();
 });
+it('authority validates the same retained payload and delivery fence but emits only metadata', async () => {
+  const f = fixture(), before = Date.now();
+  const response = await sanctuaryGa4Response(f.request('action=authority'), f.dependencies);
+  const wire = await response.json();
+  expect(response.status).toBe(200);
+  expect(wire).toMatchObject({ status: 'available', operation: id, generation: 1, resultHash: reportHash(f.report) });
+  expect(Object.keys(wire).sort()).toEqual(['checkedAt', 'expiresAt', 'generation', 'operation', 'requestId', 'resultHash', 'schemaVersion', 'source', 'status']);
+  expect(Date.parse(wire.checkedAt)).toBeGreaterThanOrEqual(before);
+  expect(Date.parse(wire.checkedAt)).toBeLessThanOrEqual(Date.parse(wire.source.retrievedAt));
+  expect(f.command.mock.calls.map(call => call[0])).toEqual(['read', 'deliver']);
+  expect(f.dependencies.credentials).not.toHaveBeenCalled(); expect(f.google.token).not.toHaveBeenCalled();
+});
+it.each(['hash', 'shape', 'deliver'])('authority withholds metadata on %s failure', async mode => {
+  const f = fixture(), original = f.command.getMockImplementation()!;
+  f.command.mockImplementation(async (...args) => {
+    const value = await original(...args);
+    if (args[0] === 'deliver' && mode === 'deliver') throw new Error('revoked');
+    if (args[0] === 'read' && mode === 'hash') return { ...(value as object), resultHash: 'b'.repeat(64) };
+    if (args[0] === 'read' && mode === 'shape') return { ...(value as object), payload: '{}' };
+    return value;
+  });
+  const response = await sanctuaryGa4Response(f.request('action=authority'), f.dependencies);
+  expect(response.status).toBe(503); expect(await response.text()).not.toContain('resultHash');
+});
 it.each(['auth', 'source', 'duplicate', 'unknown', 'method', 'retain'])('rejects %s before claim', async mode => {
   const f = fixture();
   const request = f.request(mode === 'duplicate' ? 'action=read&action=read' : mode === 'unknown' ? 'action=read&property=999'

@@ -90,7 +90,23 @@ ingest a conversion. New APIs/scopes, conversion action, live source data and
 schedules require production/access approval. Credential uncertainty quarantines
 automatic retries.
 
-## Sanctuary-owned GA4 candidate — disabled until provisioned
+## Sanctuary-owned GA4
+
+The additive retained-authority HTTP action is a local candidate (21 October).
+`GET ?action=authority` uses the same Praxis bearer/source identity and existing
+`sanctuary_ga4_command(read)` plus `deliver` fences as a full saved read. The
+application still verifies the complete saved payload, hash and association,
+then emits only the versioned `sanctuary.praxis.ga4.authority.v1` metadata envelope
+(4 KiB maximum). `checkedAt` starts before the first source check; it must never
+be interpreted as a new Google collection. Missing, quarantine, disable, expiry,
+generation changes and deletion deny or clear the prior authority.
+
+This action adds no source migration, Google/vault call, credential, scope or
+enabled grant. The six/hour Google claim limit and old read/refresh/delete
+contracts remain unchanged. The paired Velt consumer requires its separate
+bounded metadata admission and a hard display deadline of at most 60 seconds.
+Release the additive source action before that consumer. Local fixtures do not
+establish deployed capability or current provider coverage.
 
 Source configuration requires `SANCTUARY_GA4_REPORTS_ENABLED=true`,
 `SANCTUARY_GA4_ACTOR_ID`, `SANCTUARY_GA4_PROPERTY_ID`,

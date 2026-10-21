@@ -30,6 +30,8 @@ async function emptyBody(request: Request) {
 }
 
 export async function sanctuaryGa4Response(request: Request, dependencies: Dependencies): Promise<Response> {
+  // Authority begins before the first source check, never after network work.
+  const checkedAt = new Date().toISOString();
   const requestId = praxisRequestId(), headers = praxisResponseHeaders(requestId);
   let stage = 'authorize';
   let failOperation: (() => Promise<unknown>) | undefined;
@@ -37,13 +39,13 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
     const source = dependencies.source(); authorizePraxisRequest(request, source);
     const url = new URL(request.url), action = url.searchParams.get('action');
     const allowed = ['action', ...(action === 'refresh' ? ['start', 'end', 'comparisonStart', 'comparisonEnd', 'retain'] : [])];
-    if (!['refresh', 'read', 'delete'].includes(action ?? '') || request.method !== (action === 'delete' ? 'DELETE' : 'GET')
+    if (!['refresh', 'read', 'delete', 'authority'].includes(action ?? '') || request.method !== (action === 'delete' ? 'DELETE' : 'GET')
       || !(await emptyBody(request)) || [...url.searchParams.keys()].some(key => !allowed.includes(key) || url.searchParams.getAll(key).length !== 1)) {
       return Response.json({ error: 'invalid_ga4_request' }, { status: 400, headers });
     }
     const control = dependencies.control(process.env, action === 'delete');
     const command = dependencies.store(control, source);
-    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(110000)]);
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(action === 'authority' ? 15000 : 110000)]);
     const current = () => {
       signal.throwIfAborted();
       if (JSON.stringify(dependencies.control(process.env, action === 'delete')) !== JSON.stringify(control)) throw new Error('Control changed.');
@@ -54,6 +56,7 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
     const envelope = (value: object) => ({ schemaVersion: 'sanctuary.praxis.ga4.v1', requestId,
       source: { sourceKey: source.sourceKey, connectionId: source.connectionId, environment: source.environment,
         authority: 'canonical', propertyId: control.property, retrievedAt: new Date().toISOString() }, ...value });
+    const authorityEnvelope = (value: object) => ({ ...envelope(value), schemaVersion: 'sanctuary.praxis.ga4.authority.v1', checkedAt });
     if (action === 'delete') {
       stage = 'delete';
       const result = z.object({ status: z.literal('deleted') }).strict().parse(await command('delete', null, signal));
@@ -107,7 +110,7 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
     const raw = await command('read', null, signal); current();
     if (z.object({ status: z.literal('missing') }).strict().safeParse(raw).success) {
       if (refreshed) throw new Error('Completed report missing.');
-      return Response.json(envelope({ status: 'missing' }), { headers });
+      return Response.json(action === 'authority' ? authorityEnvelope({ status: 'missing' }) : envelope({ status: 'missing' }), { headers });
     }
     const saved = available.parse(raw);
     if (refreshed && saved.operation !== refreshed) throw new Error('Report superseded.');
@@ -118,6 +121,12 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
       || Date.parse(saved.expiresAt) !== Date.parse(report.fetchedAt) + 7 * 86400000) throw new Error('Report association unavailable.');
     stage = 'deliver';
     await command('deliver', saved.operation, signal); current(); if (delegation) await delegation();
+    if (action === 'authority') {
+      const metadata = authorityEnvelope({ status: 'available', operation: saved.operation, generation: saved.generation,
+        resultHash: saved.resultHash, expiresAt: new Date(saved.expiresAt).toISOString() });
+      if (Buffer.byteLength(JSON.stringify(metadata)) > 4096) throw new Error('Authority exceeds bound.');
+      return Response.json(metadata, { headers });
+    }
     const response = envelope({ status: 'available', retained: true, operation: saved.operation, generation: saved.generation,
       resultHash: saved.resultHash, expiresAt: new Date(saved.expiresAt).toISOString(), report });
     if (Buffer.byteLength(JSON.stringify(response)) > 262144) throw new Error('Response exceeds bound.');

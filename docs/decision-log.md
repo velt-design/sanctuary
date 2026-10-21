@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-21: Revalidate retained evidence without repeating the full transport
+
+Repeated full GA4 reads exhausted the consumer's shared hourly allowance. The
+source authority action reuses the existing saved-payload validation and final
+delivery fence, returning only its revision metadata. Do not replace those
+checks with a settings-row cache or move the display deadline to response time.
+The paired consumer owns a separate finite metadata allowance; the existing
+full-read and provider limits stay in force. Owner: the GA4 source section in
+`environment-auth-supabase.md`; regressions: GA4 HTTP and HTTP-to-SQL tests.
+
 ## 2026-10-21: qualify framework configuration against hosted validation
 
 Vercel's Next adapter resolves `proxy.ts`, but its earlier function-key validator
