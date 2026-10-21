@@ -2552,10 +2552,18 @@ The Aluminium guide has a precise material role, accurate handoffs, and no unsup
 ### G18 - Refine the Commercial secondary guide
 
 **Phase:** Phase 6 - Retained-guide content refinement  
-**Status:** Not started  
+**Status:** Photographic redesign accepted; production release authorised (21 October 2026), building on the existing 30 September commercial audience page
 **Relative effort:** Medium  
 **Implementation risk:** Medium to high  
 **Dependencies:** G09 and G10
+
+The accepted page moves the existing hospitality-first offer to a route-owned
+photographic presentation, preserving the optional commercial brief, operating
+constraints and agreed consultant responsibilities. Good Home and Atelier Shu
+lead; the existing KiwiRail workplace and Lilliput recreation roles remain
+secondary evidence without dimensions or new performance claims. The shared
+Professional presentation and canonical enquiry implementation remain unchanged.
+Production verification remains separate from the accepted preview.
 
 **Ready-to-use Codex goal prompt**
 

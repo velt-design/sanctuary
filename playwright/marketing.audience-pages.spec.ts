@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const pages = [
-  { route: '/commercial-pergolas-auckland', audience: 'commercial', title: 'Make more of your outdoor space.', action: 'Discuss your venue', projects: '#commercial-projects' },
+  { route: '/commercial-pergolas-auckland', audience: 'commercial', title: 'Commercial pergolas. Built around your business.', action: 'Discuss your project', projects: '#commercial-projects' },
   { route: '/architects-designers-builders', audience: 'professional', title: 'Bring us into the design.', action: 'Discuss a project', projects: '#professional-projects' },
 ] as const;
 
