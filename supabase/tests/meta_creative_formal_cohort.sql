@@ -8,7 +8,6 @@ update public.landing_experiment_control set template=repeat('a',64),enabled=tru
 select pg_temp.assert(not has_table_privilege('service_role','meta_creative_visits','SELECT'));
 select pg_temp.assert(not has_function_privilege('anon','landing_experiment_visit(text,uuid,text,text,text,text,text,jsonb)','EXECUTE'));
 select pg_temp.assert(not has_function_privilege('service_role','landing_experiment_visit_without_creative(text,uuid,text,text,text,text,text,jsonb)','EXECUTE'));
-alter table private.enquiry_qualification_events add column project_id uuid,add column recorded_at timestamptz not null default clock_timestamp();
 do $$declare f timestamptz;s timestamptz;m timestamptz;enq uuid;proj uuid;ad text;first_record record;retry_record record;submission uuid:=gen_random_uuid();payload jsonb;e uuid:='e2000000-0000-4000-8000-000000000001';p jsonb;cmd uuid;intent jsonb;visit uuid:='e3000000-0000-4000-8000-000000000001';result jsonb;i int;begin
  select jsonb_build_object('experiment',e,'scope',scope,'originalAds',original_ads,'preStateHash',control_hash,'nativeContractHash',native_contract_hash,
  'dailyMinor',40000,'weeklyMinor',280000,'studyDailyMinor',8000,'landingTemplate',repeat('a',64),'purpose','formal_experiment','currency','NZD','timezone','Pacific/Auckland',

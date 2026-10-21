@@ -3,7 +3,7 @@ import {landingCompatibility} from '../../../../lib/landingCompatibility.server'
 import { getServiceSupabase } from '@/lib/supabaseService';
 import { readBoundedJson } from '@/lib/marketingPublicRequest';
 import {stateSchema,executionPlanSchema} from '../../../../lib/creative-executor/contract';
-import { verifyCreativeCommand, validateCreativeIntent } from '../../../../lib/creative-executor/authority';
+import { verifyCreativeCommand, validateCreativeIntent, validateCreativeDispatch } from '../../../../lib/creative-executor/authority';
 export const runtime = 'nodejs';
 export const maxDuration = 15;
 export async function POST(request: Request) {
@@ -16,9 +16,11 @@ export async function POST(request: Request) {
     if(command.stage==='prepare' && executionPlanSchema.parse((command.payload as {plan:unknown}).plan).landingTemplate!==EXPERIMENT_TEMPLATE)throw new Error('Creative template changed');
     const db = getServiceSupabase(), signal = AbortSignal.any([request.signal, AbortSignal.timeout(10000)]);
     const args = { p_binding: process.env.SANCTUARY_LANDING_EXPERIMENT_BINDING, p_command: command.command, p_experiment: command.experiment };
-    if (command.stage === 'admit') {
+    if (command.stage === 'admit'||command.stage==='check') {
       const state = await db.rpc('meta_creative_executor_command', { ...args, p_stage: 'read', p_payload: {} }).abortSignal(signal);
-      if (state.error) throw new Error('Read unavailable'); validateCreativeIntent(command.payload, state.data, EXPERIMENT_TEMPLATE);
+      if (state.error) throw new Error('Read unavailable');
+      if(command.stage==='admit')validateCreativeIntent(command.payload, state.data, EXPERIMENT_TEMPLATE);
+      else validateCreativeDispatch(command.command,(command.payload as {requestHash:string}).requestHash,state.data,EXPERIMENT_TEMPLATE);
     }
     const result = await db.rpc('meta_creative_executor_command', { ...args, p_stage: command.stage, p_payload: command.payload }).abortSignal(signal);
     if (result.error) throw new Error('Command unavailable');

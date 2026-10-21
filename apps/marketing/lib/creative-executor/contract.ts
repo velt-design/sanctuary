@@ -1,3 +1,4 @@
+import {nativeAnalysisSchema,nativeDeliverySchema} from './analysis-contract';
 import {nativeAcceptanceSchema} from './native-acceptance';
 import { z } from 'zod';
 import { nativeWindowValid } from './window';
@@ -76,15 +77,15 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
   }
 });
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
-export const effectKinds = ['create_creative', 'create_control', 'create_challenger', 'create_study', 'pause_control', 'pause_challenger', 'end_study'] as const;
+export const effectKinds = ['create_creative', 'create_control', 'create_challenger', 'create_study', 'activate_control', 'activate_challenger', 'pause_control', 'pause_challenger', 'end_study'] as const;
 export type EffectKind = typeof effectKinds[number];
 export const objectSchema = z.object({ kind: z.enum(['creative', 'control', 'challenger', 'study']), id, command: z.uuid(), requestHash: hash }).strict();
 export const wireSchema = z.object({ kind: z.enum(effectKinds), path: z.string().regex(/^[A-Za-z0-9_/]{1,80}$/), body: z.record(z.string(), z.string().max(6000)), target: id.nullable(), requestHash: hash, at: z.number().int().positive() }).strict();
 export const effectSchema = z.object({ command: z.uuid(), kind: z.enum(effectKinds), requestHash: hash,
   state: z.enum(['prepared', 'uncertain', 'confirmed', 'no_effect']), object: id.nullable(), evidenceHash: hash.nullable(), intent: wireSchema }).strict();
-export const stateSchema = z.object({ nativeAcceptance:nativeAcceptanceSchema.nullable().optional(), settledAds:z.array(id).max(20).nullable().optional(),capabilityReady:z.boolean().optional(), compatibility: z.object({status:z.literal('template_mismatch'),expected:hash.nullable(),current:hash,release:z.string().regex(/^[a-f0-9]{40}$/).nullable()}).strict().optional(), enabled: z.boolean(), cleanupEnabled: z.boolean(), stopped: z.boolean(), generation: z.number().int().positive(),
+export const stateSchema = z.object({ analysis:nativeAnalysisSchema.nullable().optional(),deliveryProof:nativeDeliverySchema.nullable().optional(),cleanupComplete:z.boolean().optional(), delivery:z.enum(['unconfirmed','scheduled','delivering','ended']).optional(), nativeAcceptance:nativeAcceptanceSchema.nullable().optional(), settledAds:z.array(id).max(20).nullable().optional(),capabilityReady:z.boolean().optional(), compatibility: z.object({status:z.literal('template_mismatch'),expected:hash.nullable(),current:hash,release:z.string().regex(/^[a-f0-9]{40}$/).nullable()}).strict().optional(), enabled: z.boolean(), cleanupEnabled: z.boolean(), stopped: z.boolean(), generation: z.number().int().positive(),
   creativeReference:id.nullable().optional(),reserved:z.boolean().optional(),template:hash.nullable().optional(),nativeContractHash:hash.nullable().optional(),plan: executionPlanSchema.nullable(), objects: z.array(objectSchema).max(4), effects: z.array(effectSchema).max(32),
-  state: z.enum(['empty', 'prepared', 'canary_ready', 'cleanup', 'closed', 'uncertain']),
+  state: z.enum(['empty', 'prepared', 'canary_ready', 'cleanup', 'maturing', 'analysed', 'closed', 'uncertain']),
   measurementReady: z.boolean(), activationReady: z.literal(false),
 }).strict();
 export type ExecutorState = z.infer<typeof stateSchema>;
