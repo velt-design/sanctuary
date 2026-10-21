@@ -1070,6 +1070,17 @@ The install-only 20260914062002 migration adds marketing_enquiry_staff_receipts(
 
 ## Xero private connection storage
 
+### Local GA4 v3 forward candidate
+
+Migration 20261021082853_ga4_v3_diagnostics.sql extends only the private GA4
+operation requested_report_version (default v2), private strict diagnostic
+validators and existing service-only sanctuary_ga4_command. Completion and saved
+read associate v3 shape/version/hash with the frozen operation, including three
+occurrence stages and the closed available/limited/unavailable acquisition union.
+No grant, enabled control, retention period, daily job or provider budget changes.
+All existing update/delete predicates and deletion/generation fences remain.
+This migration is a local candidate, not a claim of production installation.
+
 Migration `20260914000001_xero_connection.sql` adds xero_private.connection, oauth_attempts and events. Only a separately provisioned restricted connector LOGIN receives access; anon/authenticated receive none. Audit grants are insert-only. No business or payment tables are changed. See [Xero connection](xero-connection.md).
 
 Migrations `20260914000002` through `20260914000004` add the separately gated payment pilot: `xero_payment_approvers`, immutable `xero_deposit_matches`, append-only `xero_deposit_review_notes`, `xero_deposit_review_context`, `xero_approve_deposit_match` and `xero_record_deposit_review_note`. Service-role receives bounded reads and command execution, not direct table writes; anon/authenticated receive no access. Approval uses the existing payment ledger and allocation commands under the canonical project lock, plus a global receipt lock and unique active source constraint. Existing ledger reversal synchronizes match history and invoice reopening. Grants start empty. These migrations are implementation artifacts until hosted rollout evidence is recorded in `docs/xero-connection.md`.
