@@ -1,5 +1,17 @@
 # Marketing Claims Register
 
+## Gable form evidence (21 October 2026)
+
+The Gable guide uses existing public installation photographs and governed
+project records: Riverhead 01/03 for timber sarking, open triangular ends and
+aluminium framing with steel beams; Dairy Flat 03 for acrylic roofing and an
+infilled end aligned with the house; Warkworth 04 for cedar lining, acrylic zones
+and a freestanding aluminium/steel room. These are separate projects, not a
+controlled material comparison. Furniture, landscaping, services and other work
+are included only where agreed. No new images, quotes or project outcomes are
+invented. The roof-section illustration explains ridge/eaves/width qualitatively;
+it specifies no pitch, span, load, height, drainage or approval guarantee.
+
 ## Roof comparison evidence (21 October 2026)
 
 Approved guide scope: explain fixed acrylic versus typical solid tilting blades
