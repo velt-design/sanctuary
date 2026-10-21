@@ -61,6 +61,15 @@ it('enforces owner and direct-table boundaries including revoked staff and anony
  await db.exec('reset role;begin');try{await db.exec(`update auth.users set banned_until=now()+interval '1 day' where id='${staff}'`);await expect(read()).rejects.toThrow('Developer access');}finally{await db.exec('rollback');}
  await db.exec('set role anon');await expect(read()).rejects.toThrow('permission denied');await db.exec('reset role');
 });
+it('withholds disabled Outlook source rows while preserving manual history and suppressing conversion',async()=>{
+ await db.exec('begin');try{
+  await db.exec('update private.outlook_calendar_control set enabled=false where singleton');
+  const r=await read();expect(r.source.enabled).toBe(false);expect(r.visits).toHaveLength(1);expect(r.visits[0]).toMatchObject({id:id(13),origin:'history',day:null});
+  expect(JSON.stringify(r.visits)).not.toContain(id(11));expect(designerPerformance(r).total.outcomes).toEqual([]);
+  await db.exec(`update private.site_visit_details set details=details||'{"purpose":"initial","timing":{"mode":"date","date":"2026-09-02","time":null,"endTime":null}}' where id='${id(13)}'`);
+  const dated=designerPerformance(await read());expect(dated.total.attended).toHaveLength(1);expect(dated.total.outcomes).toEqual([]);
+ }finally{await db.exec('rollback');}
+});
 it('agrees with the effective correction for unknown timing, identity and source-change conflicts',async()=>{
  await db.exec('begin');try{
   await db.exec(`update private.site_visit_details set details=details||'{"timing":{"mode":"unknown","date":null,"time":null,"endTime":null}}' where id='${id(11)}'`);

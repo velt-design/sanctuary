@@ -47,10 +47,11 @@ begin
   if p_start is null or p_end is null or p_end<p_start or p_end-p_start>365 or p_end>(now() at time zone 'Pacific/Auckland')::date then
     raise exception 'Choose up to 366 days ending today or earlier' using errcode='22023'; end if;
   -- Full retained history is needed to anchor the first original visit. Never truncate it.
-  if (select count(*) from private.outlook_calendar_visits where not hidden)+(select count(*) from private.site_visit_details where source_visit_id is null)>5000
+  if (select count(*) from private.outlook_calendar_visits where not hidden and (select enabled from private.outlook_calendar_control where singleton))+(select count(*) from private.site_visit_details where source_visit_id is null)>5000
     or (select count(*) from public.quotes)>5000 then raise exception 'Designer reporting limit reached' using errcode='54000'; end if;
   with visits as materialized (
     select private.designer_visit_fact(private.outlook_calendar_visit_json(v)) body from private.outlook_calendar_visits v where not v.hidden
+      and (select enabled from private.outlook_calendar_control where singleton)
     union all select private.designer_visit_fact(private.site_visit_history_json(d)) from private.site_visit_details d where d.source_visit_id is null
   ), accepted as materialized (
     select a.* from public.projects p cross join lateral public.commercial_current_accepted_quote_versions(p.id) a

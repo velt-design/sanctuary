@@ -33,6 +33,8 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
   for(const v of all)if(v.status==='attended'&&v.purpose==='initial'&&!v.cancelled&&v.projectId)originals.set(v.projectId,[...(originals.get(v.projectId)??[]),v]);
   const outcomes:DesignerOutcome[]=[];
   for(const [projectId,visits] of originals){
+    // Withheld Outlook history cannot support first-original attribution, even for manual rows.
+    if(!report.source.enabled)continue;
     const ordered=[...visits].sort((a,b)=>(a.day??'').localeCompare(b.day??'')||(a.at??'').localeCompare(b.at??'')||a.id.localeCompare(b.id));
     const first=ordered[0];
     // Unresolved originals could precede the apparent first. Never silently allocate them away.

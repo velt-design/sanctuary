@@ -16,6 +16,10 @@ in an all-dates review inventory and does not enter dated totals. Retained calen
 history is incomplete: a recent import cannot prove the first ever visit. The
 30-minute source freshness boundary matches Site Visits, and failed/disabled
 source state remains visible beside saved figures.
+When the database source control is disabled, mirrored Outlook rows are withheld
+exactly as in the agenda. Manual history stays available and labelled as such;
+conversion is unavailable because first-original attribution cannot be assessed
+against withheld calendar history.
 
 Conversion uses the first recorded qualifying `initial` attended visit per
 project. Generic `site_visit` is not inferred to be original. Unverified people,

@@ -8,7 +8,9 @@ owner-only, bounded at 5,000 retained visits / 5,000 quote families, and returns
 slim visit, current initial-scope and first-deposit facts. It reuses the installed
 Outlook correction/identity projection and canonical advertising accounting
 source; private contact bodies, email, address and calendar subjects do not leave
-the reporting RPC. `private.designer_visit_fact(jsonb)` owns only the projection.
+the reporting RPC. Disabled database calendar control withholds mirrored rows;
+manual history remains readable and conversion stays unavailable until source
+access is restored. `private.designer_visit_fact(jsonb)` owns only the projection.
 `outlook_site_visit_detail_read(uuid,uuid)` uses the existing staff actor boundary
 for an exact correction entry outside the rolling calendar window. Hidden or
 wrong-project records are withheld. All helpers revoke public/anon/service-role

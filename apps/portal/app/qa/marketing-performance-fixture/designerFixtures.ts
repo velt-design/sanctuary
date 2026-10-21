@@ -12,7 +12,7 @@ export function designerFixture(mode='complete'):DesignerReport {
   if(mode==='conflict')visits.push(visit(10,{projectId:project(1),staff:['joe']}));
   return {schemaVersion:1,asOf:'2026-09-22T08:00:00Z',start:'2026-09-01',end:'2026-09-22',
     source:{enabled:mode!=='disabled',lastSuccess:mode==='stale'?'2026-09-21T00:00:00Z':'2026-09-22T07:50:00Z',failed:mode==='source-failed',rangeStart:'2026-08-23T00:00:00Z',rangeEnd:'2026-12-21T00:00:00Z',firstImportedAt:'2026-09-21T00:00:00Z'},
-    visits:mode==='empty'?[]:visits,scopes:mode==='empty'?[]:scopes};
+    visits:mode==='empty'?[]:mode==='disabled'?visits.filter(v=>v.origin==='history'):visits,scopes:mode==='empty'?[]:scopes};
 }
 export const designerLoader:DesignerLoader=async(filters,signal)=>{
   const mode=new URLSearchParams(window.location.search).get('designerScenario')??'complete';

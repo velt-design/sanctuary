@@ -37,3 +37,7 @@ it('uses request identity for dates without refetching local designer selection'
 it('keeps selected attendee separate from owner in serialized report filters',()=>{
  const query=hubQuery({...filters,designer:'jp',owner:'dave'});expect(parseHubFilters(query,fixtureFilters)).toMatchObject({designer:'jp',owner:'dave'});
 });
+it('labels disabled-source activity as manual-only and leaves conversion unavailable',async()=>{
+ const loader:DesignerLoader=async()=>designerFixture('disabled');const view=renderIntoDocument(<DesignerPerformance hub={hubFixture} filters={filters} apply={vi.fn()} loader={loader}/>);await flush();
+ expect(view.container.textContent).toContain('Outlook records are withheld');expect(view.container.textContent).toContain('manual history only');expect(view.container.textContent).toContain('conversion is unavailable');view.unmount();
+});
