@@ -2,6 +2,12 @@
 
 ## Paused creative capability candidate, 21 October 2026
 
+Template-drift recovery keeps authenticated exact registry state readable with
+finite compatibility metadata. Exercise pending readback, owned pause and final
+cleanup through the actual Velt adapter and signed Source handler; new preparation
+and non-cleanup effects still require the current compiled template. No rebind or
+provider proof is implied by these synthetic cases.
+
 Run `node scripts/test-meta-creative-ledger-db.mjs` with the existing disposable
 PostgreSQL path, creative authority/intent/contract tests, campaign report/registry
 contracts and affected intake tests. Verify old canonical intake preservation,
@@ -222,7 +228,7 @@ tail can evict a formal result after160 ordinary continuations while these sourc
 exclusions still prevent a paid generation request.
 Independent catalogue review and hosted execution remain separate acceptance.
 The compiled-page matrix covers both pages' three wording choices plus acrylic
-`action-first`. Local layout checks include320×568,390×740,390×844 and1440×960,
+`action-first`. Local layout checks include320Ã—568,390Ã—740,390Ã—844 and1440Ã—960,
 first-visit consent/acceptance, reduced motion, held pointer/focus stability,
 unchanged links/desktop geometry and design-anchor return. Native layout assertions
 retain first-exposure mobile/treatment values across reload/resize; mobile is only
@@ -731,7 +737,7 @@ Automatic payment recording: `node scripts/test-xero-automatic-payments.mjs` run
 
 Automatic invoice approval: the Xero database harness applies `20260915000005_xero_automatic_approval.sql` and runs `supabase/tests/xero_automatic_approval.sql` for approved request freezing, lease/dispatch/finalisation, replay and preservation after the rollout switch changes. Transfer unit cases verify approved creation and refusal to accept a draft as the completed approved result. These checks do not prove a hosted Xero write; demo verification and production activation remain separate.
 
-Automatic payment Finance status: migration08 and `supabase/tests/xero_payment_finance_status.sql` extend the PostgreSQL jobs harness to verify clean → review → current queue transitions. Focused Finance tests cover approved-transfer labels, automatic exceptions and stale checks. Hosted rendered evidence is still required.
+Automatic payment Finance status: migration08 and `supabase/tests/xero_payment_finance_status.sql` extend the PostgreSQL jobs harness to verify clean â†’ review â†’ current queue transitions. Focused Finance tests cover approved-transfer labels, automatic exceptions and stale checks. Hosted rendered evidence is still required.
 
 Finance view regression: `supabase/tests/xero_finance_views.sql`, run by the existing background-jobs database harness, checks 55 historical payment exceptions plus60 ordinary historical invoices, filtering before pagination, legacy reader parity, revoked access and browser denial. Focused page/repository tests distinguish an empty queue from an unavailable read. Hosted migration and responsive browser evidence remain separate.
 
@@ -1555,7 +1561,7 @@ The 2026-08-06 instant-shell completion repeated the five newly covered warm jou
 
 After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. When Next records a stale missing JavaScript hash, the analyser accepts only one unambiguous emitted loader group with the exact same module id; missing CSS, no match, an ambiguous match, or an exact-module missing artifact still fails closed. Unrelated global loaders are filtered by module id before their artifacts are read. Turbopack may repeat route/layout CSS in a dynamic entry; CSS explicitly listed in the route manifest's `entryCSSFiles` is already loaded and is de-duplicated from lazy totals while the established initial-JavaScript baseline remains unchanged. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
-At the Overview V2 handoff on 2026-07-30, a clean current build and an isolated clean `060bea19` build with the same analyser both exceeded only the Contacts and Calculator initial ceilings; Project Detail remained within its unchanged allowance, and those aggregate baseline failures were not authority to raise unrelated budgets. A later isolated `.next-route-optimization` production build closed the Contacts and Calculator debt without changing any ceiling. Contacts measured 550.8/154.6 KiB raw/gzip initial against 588/168 KiB limits, with 8.8/3.4 KiB lazy. Calculator measured 1158.5/302.4 KiB initial against 1182/312 KiB limits, with no lazy group. The independent Turbopack analysis confirmed the shared `PortalFloatingPanel` owner on both routes, no `@radix-ui/react-dropdown-menu`, and only the two material-catalogue JSON sources—not the full costing manifest, rules, overhead, hardware, or install-action inputs—in Calculator's route graph. The aggregate assertion then passed every monitored route.
+At the Overview V2 handoff on 2026-07-30, a clean current build and an isolated clean `060bea19` build with the same analyser both exceeded only the Contacts and Calculator initial ceilings; Project Detail remained within its unchanged allowance, and those aggregate baseline failures were not authority to raise unrelated budgets. A later isolated `.next-route-optimization` production build closed the Contacts and Calculator debt without changing any ceiling. Contacts measured 550.8/154.6 KiB raw/gzip initial against 588/168 KiB limits, with 8.8/3.4 KiB lazy. Calculator measured 1158.5/302.4 KiB initial against 1182/312 KiB limits, with no lazy group. The independent Turbopack analysis confirmed the shared `PortalFloatingPanel` owner on both routes, no `@radix-ui/react-dropdown-menu`, and only the two material-catalogue JSON sourcesâ€”not the full costing manifest, rules, overhead, hardware, or install-action inputsâ€”in Calculator's route graph. The aggregate assertion then passed every monitored route.
 
 Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. The activity-key Overview is the default workflow and joins Commercial and conditional Job Packs as truthful local lazy boundaries; the embedded Calculator loads only after explicit estimate, duplicate/revision, or create intent inside Commercial. The project frame and tabs stay initial. Project details and stage correction live in Overview at every width, while the retired Details rail/tab and Emails UI have no runtime boundary. The Calculator drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
 
@@ -1990,11 +1996,11 @@ The initial expanded Docker command stopped at missing docker ENOENT. That local
 blocker was subsequently resolved; see the Docker verification evidence below.
 Syntax checks and PGlite results alone do not satisfy the PostgreSQL/PGMQ gate.
 
-Mobile enquiry journey check (2026-09-14): at 390 × 844 in the in-app browser,
+Mobile enquiry journey check (2026-09-14): at 390 Ã— 844 in the in-app browser,
 Help me choose exposed optional location/brief/timing/budget/uploads without
 requiring dimensions; Commercial / Professional exposed the audience choice and
 business fields without budget. The configured contact journey retained its
-6.0 × 3.0 m design and scrolled to site-measure details inside the mobile layout.
+6.0 Ã— 3.0 m design and scrolled to site-measure details inside the mobile layout.
 Plan remained selected when entering/leaving Lighting, and a temporary preferred-
 timing value survived that section change. The fixture text was cleared and the
 viewport reset. No files, contact details or enquiries were submitted. This is a
@@ -2002,8 +2008,8 @@ local responsive interaction check, not device performance, live upload/provider
 verification or numeric published-pricing approval.
 
 Configured proposal regression (2026-09-14): 44 of the 45 historical proposal
-cases still match exactly. The 6 × 3 m pitched combination case originally used
-`area_override` (3.5760679331494534 m²), which explicitly omitted acrylic/joiner
+cases still match exactly. The 6 Ã— 3 m pitched combination case originally used
+`area_override` (3.5760679331494534 mÂ²), which explicitly omitted acrylic/joiner
 installation labour. Replaying that input reproduces $17,900.50 including GST.
 The current two-acrylic-bay takeoff produces $18,128 rounded including GST and no
 costing warnings; material quantities, installation and operational overhead all
@@ -2067,9 +2073,9 @@ The harness owner `scripts/test-background-jobs-db.mjs` remains large. This pass
 
 Finance access tests also execute migration09 against isolated capability prerequisites and verify grant/revocation/regrant events, append-only history and role denial. The jobs DB harness runs `xero_finance_access.sql` after the invoice contract. Session tests cover Ellen/Jordan active grants, revocation, unconfirmed identity and ordinary-admin denial.
 
-The finance workflow SQL harness now applies migration10–12 after minimal commercial prerequisites and the existing grant-check owner. `xero_finance_workflow.sql` checks stopped-job mapping, audited save replay, canonical retry queue identity, payment double-count prevention and grant revocation. Lightweight `xero-finance-resume.test.ts` uses a recording retry adapter and is not proof of queue delivery.
+The finance workflow SQL harness now applies migration10â€“12 after minimal commercial prerequisites and the existing grant-check owner. `xero_finance_workflow.sql` checks stopped-job mapping, audited save replay, canonical retry queue identity, payment double-count prevention and grant revocation. Lightweight `xero-finance-resume.test.ts` uses a recording retry adapter and is not proof of queue delivery.
 
-Finance workflow run34836432934 at face622 passed both PostgreSQL/PGMQ matrix database jobs, covering forward Xero migrations05–12 plus the existing grant-check function, through the new mapping/retry/read contracts and earlier isolated transfer contracts. The harness uses minimal commercial table prerequisites, not the complete historical portal migration chain. It makes no Xero network writes.
+Finance workflow run34836432934 at face622 passed both PostgreSQL/PGMQ matrix database jobs, covering forward Xero migrations05â€“12 plus the existing grant-check function, through the new mapping/retry/read contracts and earlier isolated transfer contracts. The harness uses minimal commercial table prerequisites, not the complete historical portal migration chain. It makes no Xero network writes.
 
 The real finance workflow now applies migration13, prepares/finalises after the tax-mapping guard, and verifies persisted observations and fresh-target exclusion. Isolated tests additionally prove stale-generation and changed-portal-status refusal, audit immutability, unavailable provider reads, scheduler authentication and strict manual-check bodies.
 
