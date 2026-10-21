@@ -99,6 +99,9 @@ completion and retained read. Install forward migration 20261021082853 before
 the matching source application and before enabling Velt's
 VELT_GA4_DIAGNOSTICS_ENABLED switch. Existing credentials, roles, Stop, leases,
 generation/deletion fences and six/twelve provider claim caps are preserved.
+The previously unreleased GA4 migration was renamed without changing SQL bytes;
+20261021040001 now belongs to the installed sales-designer migration and must
+never be replayed or replaced as GA4.
 
 V3 executes the existing five core profiles and two fixed session-source/medium,
 landing-path without query and device profiles in separate batches. The added

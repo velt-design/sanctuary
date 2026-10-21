@@ -7,14 +7,14 @@ on:
       - '.github/workflows/ga4-native.yml'
       - 'test/sanctuary-ga4-native.mjs'
       - 'supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql'
-      - 'supabase/migrations/20261021040001_ga4_v3_diagnostics.sql'
+      - 'supabase/migrations/20261021082853_ga4_v3_diagnostics.sql'
   push:
     branches: [main]
     paths:
       - '.github/workflows/ga4-native.yml'
       - 'test/sanctuary-ga4-native.mjs'
       - 'supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql'
-      - 'supabase/migrations/20261021040001_ga4_v3_diagnostics.sql'
+      - 'supabase/migrations/20261021082853_ga4_v3_diagnostics.sql'
   workflow_dispatch:
 
 permissions:

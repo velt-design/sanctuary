@@ -1,5 +1,19 @@
 # Testing And QA
 
+## Sales designer responsibility (21 October 2026)
+
+The designer SQL suite executes the actual assignment migration and existing
+visit/accounting helpers. It covers separate attendee/designer attribution,
+unknown dates/attendance, service exclusions, unchanged team cohort, CAS revisions,
+immutable replay receipts, clearing, direct-table denial and revoked owner access.
+API and editor tests cover guarded writes, malformed evidence, stale reload and
+lost-response retry. `scripts/test-sales-designer-concurrency.mjs` uses existing
+local PostgreSQL 17 binaries (`PRAXIS_DISPOSABLE_POSTGRES_BIN`) and two real
+connections against a disposable synthetic database, including competing revisions,
+simultaneous duplicate commands and revoked authority. It neither installs software
+nor contacts a remote database. Actual staged PostgREST and report-drawer save /
+readback remain separate release evidence; synthetic fixture writes are in-memory.
+
 ## Gable form guide (21 October 2026)
 
 `marketing.gable-guide.spec.ts` checks the new route at 320/390/820/1440/2560,
@@ -490,9 +504,12 @@ The subsequent GHCR transport correction passed in
 [native run 39552027487](https://github.com/velt-design/sanctuary/actions/runs/39552027487)
 at Source revision `357f8a057204bb989ecd430952bff46251297ffe`: official PG17.6,
 real safeupdate and 11 disposable synthetic databases. The run verified the
-exact committed 20260923070001 and 20261021082853 SQL-body hashes, v2/v3 lifecycle,
+exact committed 20260923070001 and then-20261021040001 SQL-body hashes, v2/v3 lifecycle,
 roles, strict shapes, association/hash, retention, deletion and control fences.
-This closes the new 20261021082853 real-safeupdate gate. The ECR tag is only a local alias,
+The byte-identical GA4 candidate now uses 20261021082853 because installed
+20261021040001 belongs to sales-designer storage. Normal native CI must verify
+the renamed path; the historical run does not establish that newer revision.
+The ECR tag is only a local alias,
 not a second pull or fallback. No image was pulled locally.
 The unchanged harness still never pulls, runs its disposable container with
 network none and no host mounts/ports, loads real safeupdate in every SQL
