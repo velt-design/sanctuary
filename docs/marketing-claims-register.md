@@ -1,5 +1,34 @@
 # Marketing Claims Register
 
+## Roof comparison evidence (21 October 2026)
+
+Approved guide scope: explain fixed acrylic versus typical solid tilting blades
+qualitatively, with no universal winner or numeric price/performance claim. A
+fixed sheet remains overhead; tilting blades leave gaps but do not disappear.
+Retracting roofs and specialist translucent blades are different systems. Public
+supplier descriptions at [Louvretec](https://louvretec.co.nz/) distinguish opening
+and retracting roofs. [PLEXIGLAS material guidance](https://www.plexiglas.de/en/service/product-info/light-transmission)
+distinguishes transparent and translucent materials and product-dependent light
+transmission. These sources do not approve claims about a complete Sanctuary
+assembly, a competitor quote, controls included, heat, rain, warranty or lifespan.
+Jordan confirmed on 21 October 2026: "We dont currently offer louvre roofs. this
+page feels like a comparision of two products we offer". The current offer is fixed
+acrylic, solid and combination pergolas. The corrected guide leads with that
+offer and explicitly states that Sanctuary does not supply louvre roofs. Louvre
+systems appear only as external alternatives in the lower comparison. This
+supersedes the earlier pending supply position and the rejected equal-tier
+opening, not the fair comparison of installed scope and exact-product care.
+
+The existing Dairy Flat 03 archived installation photograph shows the gable,
+framing, infilled end and sky view. A technically resized original camera photograph
+of opal acrylic over a deck is included as roof-guide-opal-deck.webp, without
+metadata or scene edits. These are separate installations, not a measured tint
+comparison. No location or customer outcome is invented for the opal photograph.
+Original paths, hashes, metadata and privacy review remain in private evidence.
+Approval basis is the owner's comparison-page instruction and scoped original-photo
+selection. Publication review must verify the exact approved derivative bytes;
+operational rollout is recorded separately.
+
 ## Blinds source review (21 October 2026)
 
 The revised /pergolas-with-blinds guide uses six inspected original installation
@@ -62,7 +91,7 @@ public use until an approval owner changes its status here.
 | Selected-design estimate on the Auckland cost page | Same approved wording family: `Initial installed estimate`, `Including GST`, `Subject to site confirmation`, and selected structure, roof, priced options and standard installation allowances. | After the recommendation to put the existing approved estimate system on the cost page, Jordan instructed on 2026-10-14: "Okay can you rebuild Pergola cost auckland?" This approved the rebuild and review preview using the existing selected-design pricing owner. After accepting the preview and immediate-estimate follow-up, Jordan authorised production release on the same date: "Push these live". | Only the visitor's current validated design and environment-approved published version. No generic price band, historic project price, engineering assumption, fixed quote or new pricing rule. Invalid, unsupported and unavailable states show no fallback amount. Project photographs illustrate scope and are not tied to the displayed estimate. | Jordan for Sanctuary leadership | 2026-10-14 | `/pergola-cost-auckland` and selected-design continuations |
 | Preloaded selected-design landing estimates | The same qualified initial installed estimate, generated for the exact standard landing selections by the canonical frozen price owner. | After accepting the cost preview, Jordan instructed on 2026-10-14: "For this page and also the auckland pergolas page + any future pages we build similarly, I would like a cost table to be loaded on opening the page so that the estimate updates immediately". This authorises the delivery method, not new rates. After preview acceptance, Jordan separately authorised production release: "Push these live". | The complete 100 mm landing grid is generated per build from the approved immutable publication. Live publication gating and a maximum 30-second browser lease apply. Saved full-designer additions use canonical per-design pricing. No interpolation, generic bands, private costing exposure or guaranteed final quote. | Jordan for Sanctuary leadership | 2026-10-14 | Cost and Auckland landing pages, retained comparison and future consumers of the same shared contract |
 | Service area and Auckland base | Approved for qualitative use. Sanctuary is Auckland based and considers selected projects up to about a three-hour drive away when the project is a good fit. The Auckland address is a staffed base of operations; customers should contact the team before visiting. | Sanctuary leadership confirmation of current travel and office practice. | Do not promise that every project inside the travel area will be accepted, describe the base as a showroom, or guarantee that a particular staff member is available without an appointment. | Sanctuary leadership | 2026-07-29 | Footer, service-area copy, contact details and structured data |
-| Louvre supply position | Pending approval. Do not present louvres as a Sanctuary product. | Current product-range decision and any supplier or delivery arrangement. | Separate Sanctuary fixed-roof approaches from external louvre proposals until confirmed. | Sanctuary product and leadership | Pending | Acrylic vs Louvre, forms and product navigation |
+| Louvre supply position | Confirmed current position: Sanctuary does not offer or supply louvre roofs. Its offer is fixed acrylic, solid and combination pergolas. | Jordan's explicit business correction on 21 October 2026: "We dont currently offer louvre roofs." | Hierarchy, product labels and enquiry actions must convey the fixed-roof offer, not imply two Sanctuary ranges. Louvre comparisons concern other suppliers. A future range change needs a new explicit approval. | Jordan for Sanctuary leadership | 2026-10-21 | Acrylic vs Louvre, forms and product navigation |
 | Workmanship warranty | Approved wording: `Sanctuary Pergolas offers a 10-year warranty on workmanship.` Equivalent wording may use `10 year` where required by the surrounding style. | Explicit Sanctuary leadership approval on 2026-08-03 based on current business terms. Written warranty terms may be added later as a supporting record but are not required for publication of this approved claim. | This approval covers Sanctuary workmanship only. Do not present it as a combined product, coating, electrical, accessory or manufacturer warranty, and do not add coverage details or exclusions that have not been separately approved. | Sanctuary leadership | 2026-08-03 | All service pages, footer and sales material |
 | Product and coating warranties | Pending approval. Do not combine into one Sanctuary warranty. | Current manufacturer schedules for each specified product and finish. | Terms vary by product, exposure, installation and maintenance. | Sanctuary product lead | Pending | Product pages and guides |
 | Design, manufacture and installation timing | Pending approval. Do not publish a general duration. | Current operational lead-time data by project stage and project type. | Scheduling, design development, approval, material and site readiness can change the programme. | Sanctuary operations | Pending | All service pages and forms |

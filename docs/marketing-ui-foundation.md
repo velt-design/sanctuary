@@ -1,5 +1,48 @@
 # Marketing UI Foundation
 
+## Marketing arrows (21 October 2026)
+
+Public Marketing arrows use vector geometry, not Unicode glyphs that a device can
+render as emoji. `ArrowIcon` owns the seven directional paths; `ArrowUpRight`
+retains its existing API and diagonal path as a thin adapter. Existing size,
+colour and layout selectors remain the presentation owners. Decorative icons are
+hidden from assistive technology and cannot receive focus; their link or button
+retains the action name. The drag hint has an explicit rotation/zoom label.
+Foundation, product and retained project CSS actions use a small SVG mask for
+their generated right arrow. Existing vector icons and CSS chevrons stay intact.
+
+This is a rendering correction across current public pages and retained Marketing
+reference routes, not a navigation or copy redesign. The Meta landing-template
+fingerprint is regenerated through its existing generator after the import change;
+experiment eligibility, consent, receipts and accepted copy remain unchanged.
+
+## Acrylic and louvre comparison composition (21 October 2026)
+
+The exact /acrylic-pergolas-vs-louvre-roofs guide leads with Sanctuary's acrylic
+alternative, one actual acrylic installation photograph and the explicit current
+offer: fixed acrylic, solid and combination pergolas, with no louvre supply.
+The owner rejected the earlier equal-tier comparison opening because it implied
+two Sanctuary products despite its lower caveat. The corrected page/content/CSS
+own a centred 1440px canvas, a separate Opal example, a lower external-alternative
+comparison, practical questions and FAQs. Hero and enquiry actions concern the
+supplied fixed roofs; the diagram labels Sanctuary and other suppliers separately.
+RoofComparisonDiagram owns only the
+Open/Closed solid tilting-blade illustration. The fixed acrylic view does not
+change; all blades remain represented in both states. Native buttons preserve
+focus and stable geometry, without animation, pricing, stored design or analytics
+side effects. This is explanatory geometry, not a rendered proposal or model of
+light, rain or structural performance.
+
+SeoLandingPage's optional enquiryContext passes validated route-query context to
+the existing AcrylicPergolaEnquiryForm. Existing guided/finder precedence and
+callers without this prop retain their defaults. All three audiences, required
+name/phone/email, optional dimensions and comparison details, photos/plans,
+validation, native fallback and retry remain with that canonical form. No new
+contact policy, SQL, price or configurator owner is introduced. Normal site chrome,
+canonical URL, guide navigation, sitemap discovery and governed schema remain.
+Release build, review and rollout are separately recorded evidence. Local simulated
+submissions do not prove delivery or current production advertising attribution.
+
 ## Meta landing experiment candidate (21 October 2026)
 
 The existing two Meta pages retain their photographs, headlines, tint comparison,

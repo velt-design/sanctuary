@@ -154,7 +154,7 @@ knowledge, a supplier statement or another basis accepted by Sanctuary:
 - Span, post-free, wind-zone, coastal, engineering or structural-performance claims.
 - Waterproof, watertight, leak-proof, heat, UV, durability, coating, lifespan or maintenance-performance claims.
 - Product manufacturers, profiles, thicknesses, warranties and availability.
-- Any categorical Sanctuary louvre-supply claim until the current product-range position is formally approved.
+- Any Sanctuary louvre-supply claim. Jordan confirmed on 21 October 2026 that louvre roofs are not currently offered; a future range change needs new explicit approval.
 - Testimonials, ratings or review schema not already verified and eligible for use.
 
 Existing project photography and project facts come from `apps/marketing/data/projects.ts`. No stock or AI-generated project imagery is used.
@@ -238,7 +238,7 @@ Existing project photography and project facts come from `apps/marketing/data/pr
 - Full marketing browser suite: 87 of 87 passed with one worker.
 - Marketing typecheck and production build: passed; `/acrylic-pergolas-vs-louvre-roofs` generated as a static route.
 - Visual evidence: `artifacts/marketing-seo-landing/acrylic-pergolas-vs-louvre-roofs/` includes decision-led hero, acrylic project proof, responsive comparison matrix and form captures.
-- Claim gate: the page states no universal winner, makes all louvre observations conditional on a supplier-specific proposal and publishes no price, waterproofing, heat, UV, wind, lifespan, maintenance or warranty performance claim. It explicitly does not confirm a current Sanctuary louvre offer.
+- Claim gate: the page states no universal winner, makes all louvre observations conditional on a supplier-specific proposal and publishes no price, waterproofing, heat, UV, wind, lifespan, maintenance or warranty performance claim. The earlier unconfirmed supply position is superseded by Jordan's 21 October 2026 confirmation that Sanctuary does not offer louvre roofs. The corrected preview leads with its supplied fixed-roof alternative.
 - Distinct narrative: readers define required roof states, compare exact evidence in a purpose-built matrix and normalise complete installed scope before choosing.
 
 ### Page 10: Commercial Pergolas Auckland

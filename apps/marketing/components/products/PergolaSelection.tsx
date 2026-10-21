@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from '../marketing-foundation/ArrowIcon';
 import { type ReactNode, useId, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -25,7 +26,7 @@ export default function PergolaSelection({ comparison, table }: { comparison: Re
       <nav className={styles.shapeOverview} aria-label="Explore the three rooflines">
         {PRODUCT_FORM_CHOICES.map(choice => <a key={choice.type} href={`#compare-${choice.type}`}>
           <Image src={`/images/homepage-challenger-rooflines/${PRODUCT_DESIGNS[choice.type].imageFamily}-daylight.webp`} alt="" width={1120} height={1400} sizes="(max-width:760px) 30vw, 1px" />
-          <span>{choice.title} <span aria-hidden="true">↘</span></span>
+          <span>{choice.title} <span aria-hidden="true"><ArrowIcon direction="down-right" /></span></span>
         </a>)}
       </nav>
       <div className={styles.comparisonBar}>

@@ -1,3 +1,4 @@
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 import Image from 'next/image';
 import { useState } from 'react';
 import { ENQUIRY_AUDIENCE_OPTIONS } from '@/lib/enquiryFormContract';
@@ -53,7 +54,7 @@ export default function ContactPathwaySelector({
             <small className="contact-form__pathway-eyebrow">Explore your options</small>
             <strong>Design your pergola</strong>
             <p>Explore your size, roof and extras. See an installed estimate without entering your details.</p>
-            <span className="contact-form__design-button">Try the configurator <span aria-hidden="true">→</span></span>
+            <span className="contact-form__design-button">Try the configurator <span aria-hidden="true"><ArrowIcon direction="right" /></span></span>
           </div>
         </a>
         <p className="contact-form__alternative-heading">Prefer to talk to us?</p>

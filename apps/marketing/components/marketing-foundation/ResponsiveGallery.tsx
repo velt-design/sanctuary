@@ -1,4 +1,5 @@
 'use client';
+import ArrowIcon from './ArrowIcon';
 
 import {
   type CSSProperties,
@@ -240,7 +241,7 @@ export function ResponsiveGallery({
           aria-label={`Previous image in ${label}`}
           onClick={() => showRelativeItem(-1)}
         >
-          <span aria-hidden="true">←</span>
+          <span aria-hidden="true"><ArrowIcon direction="left" /></span>
           <span>Previous</span>
         </button>
         <p
@@ -260,7 +261,7 @@ export function ResponsiveGallery({
           onClick={() => showRelativeItem(1)}
         >
           <span>Next</span>
-          <span aria-hidden="true">→</span>
+          <span aria-hidden="true"><ArrowIcon direction="right" /></span>
         </button>
       </div>
     </section>

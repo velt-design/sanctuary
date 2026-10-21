@@ -1,3 +1,4 @@
+import ArrowIcon from '../../components/marketing-foundation/ArrowIcon';
 import cardLinks from '@/components/marketing-foundation/cardLinks.module.css';
 import EditorialLandingHero from '@/components/marketing-foundation/editorial/EditorialLandingHero';
 import type { Metadata } from 'next';
@@ -103,7 +104,7 @@ export default function PergolaGuidesPage() {
       />
 
       <EditorialLandingHero id="guide-hub-title" eyebrow="Sanctuary pergola design library" title="Pergola guides." intro="Start with the decision you need to make." image={heroImage} alt="Gable outdoor room with timber-lined ceiling and open garden edges" objectPosition={WARKWORTH_EXTERIOR_OBJECT_POSITION} caption="Warkworth outdoor room">
-        <Link className="editorial-guide-jump" href="#guide-library">Choose a guide ↓</Link>
+        <Link className="editorial-guide-jump" href="#guide-library">Choose a guide <ArrowIcon direction="down" /></Link>
         <Text size="small">Editorial review: {pergolaGuideEditorialReview.reviewer} · <time dateTime={pergolaGuideEditorialReview.date}>{pergolaGuideEditorialReview.dateLabel}</time></Text>
       </EditorialLandingHero>
 
@@ -150,7 +151,7 @@ export default function PergolaGuidesPage() {
                     </h3>
                   </div>
                   <p className="guide-hub-card__summary">{guide.summary}</p>
-                  <span className="guide-hub-card__arrow" aria-hidden="true">→</span>
+                  <span className="guide-hub-card__arrow" aria-hidden="true"><ArrowIcon direction="right" /></span>
                 </article>
               ))}
             </div>

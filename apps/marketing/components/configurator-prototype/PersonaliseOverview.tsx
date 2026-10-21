@@ -1,3 +1,4 @@
+import ArrowIcon from '../marketing-foundation/ArrowIcon';
 import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
 import type {PreviewRoofChoices} from './GableChoices';
 import {useRail, type RailSection} from './RailProvider';
@@ -13,4 +14,4 @@ export default function PersonaliseOverview({roof,lightingNotice}:{roof:PreviewR
  {section:'lighting',title:'Lighting',description:'See how your space could feel after sunset.',summary:((roof.lighting?.rafterCount??0)+(roof.lighting?.cedarCount??0))+' lights · '+(roof.lighting?.strips.length??0)+' LED strips'}];
  return <section className={css.overview}><p className={css.eyebrow}>02 / PERSONALISE</p><h2>Make it yours.</h2><p>Choose a section to make it yours.</p><div className={css.cards}>{cards.map(card=><button key={card.section} onClick={()=>choose(card.section)}><div className={art.cardHeading}><SectionIcon section={card.section}/><strong>{card.title}<span aria-hidden="true"><ArrowUpRight /></span></strong></div><span className={css.selection}>{card.summary}</span><span className={css.cardBenefit}>{card.description}</span><small>{card.section==='lighting' && lightingNotice ? 'Roof changed · check lighting' : explored.includes(card.section)?'Explored':'Explore options'}</small></button>)}</div><p className={css.note}>Extras are optional. You can keep refining your design with us.</p></section>;
 }
-export function PersonaliseSectionHeading(){const {section,choose}=useRail();if(!['roof','sides','lighting'].includes(section))return null;return <div className={css.sectionIntro}><button className={css.reviewLink} onClick={()=>choose('personalise')}>← Back to Personalise</button></div>;}
+export function PersonaliseSectionHeading(){const {section,choose}=useRail();if(!['roof','sides','lighting'].includes(section))return null;return <div className={css.sectionIntro}><button className={css.reviewLink} onClick={()=>choose('personalise')}><ArrowIcon direction="left" /> Back to Personalise</button></div>;}

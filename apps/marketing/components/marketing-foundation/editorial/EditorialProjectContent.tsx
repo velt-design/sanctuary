@@ -1,3 +1,4 @@
+import ArrowIcon from '../ArrowIcon';
 import type { ReactNode } from 'react';
 import ArrowUpRight from '@/components/marketing-foundation/ArrowUpRight';
 import type { Project } from '@/data/projects';
@@ -18,7 +19,7 @@ export default function EditorialProjectContent({ nextProjectNavigation, designS
     <Container width="wide"><section className={`${styles.projectHero} ${opening.hero} project-case-study__intro`}>
       <div className={styles.heroTitle}><Eyebrow>Built work / {project.location}</Eyebrow><Heading as="h1" variant="display" id="project-case-study-title">{project.title}</Heading></div>
       <div className={`${styles.heroImage} project-case-study__hero`}><Figure image={hero.src} alt={hero.alt} objectPosition={hero.objectPosition} ratio="wide" mobileRatio="standard" priority sizes="(max-width:1440px) 100vw,1440px" caption={project.title} detail={[project.configuration ?? project.type, project.year].filter(Boolean).join(' · ')} /></div>
-      <div className={styles.heroIntro}><p className={styles.introText}>{project.blurb}</p><a className={styles.jump} href="#project-story">Discover the project <span aria-hidden="true">↓</span></a></div>
+      <div className={styles.heroIntro}><p className={styles.introText}>{project.blurb}</p><a className={styles.jump} href="#project-story">Discover the project <span aria-hidden="true"><ArrowIcon direction="down" /></span></a></div>
     </section><div className={styles.factsRail}><EditorialFacts variant="summary" items={[
       { label:'Location',value:project.location }, { label:'Form',value:[project.configuration,getProjectFormLabel(project)].filter(Boolean).join(' ') },
       ...(project.stats.width && project.stats.depth ? [{ label:'Footprint',value:<MeasurementGroups value={project.stats.width+' × '+project.stats.depth} /> }] : []),
