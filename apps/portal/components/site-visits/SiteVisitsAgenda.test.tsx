@@ -44,6 +44,15 @@ beforeEach(()=>{
 });
 afterEach(()=>{mounted?.unmount();mounted=undefined;vi.restoreAllMocks();vi.useRealTimers();replace(null,'','/');});
 describe('Site visit URL and return state',()=>{
+  it('loads the exact report-linked visit independently of date/person filters then returns to history',()=>{
+    replace(null,'','/staff/site-visits?visit=first&project=project&view=history&person=none');
+    mounted=renderIntoDocument(<SiteVisitsAgenda/>);
+    expect(h.read).toHaveBeenLastCalledWith('project',undefined,'first');
+    expect(mounted.container.querySelectorAll('article')).toHaveLength(1);
+    expect(mounted.container.textContent).toContain('Exact visit selected from the report');
+    act(()=>button('Show visit history').click());expect(new URL(window.location.href).searchParams.has('visit')).toBe(false);
+    expect(h.read).toHaveBeenLastCalledWith('project',undefined,undefined);
+  });
   it('keeps controls before changing source/scope content through delayed data, errors and scope clearing',()=>{
     replace(null,'','/staff/site-visits?project=project&view=history');
     const saved=h.read();const refetch=vi.fn();
@@ -91,10 +100,10 @@ describe('Site visit URL and return state',()=>{
     act(()=>all.click());act(()=>button('This week').click());
     expect(new URL(window.location.href).searchParams.has('project')).toBe(false);
     expect(button('This week').getAttribute('aria-pressed')).toBe('true');
-    expect(h.read).toHaveBeenLastCalledWith(undefined);
+    expect(h.read).toHaveBeenLastCalledWith(undefined,undefined,undefined);
     expect(window.history.state).toEqual({__NA:true,tree:['existing-router-state']});
-    await historyGo('back');expect(h.read).toHaveBeenLastCalledWith('project');expect(button('Upcoming').getAttribute('aria-pressed')).toBe('true');
-    await historyGo('forward');expect(h.read).toHaveBeenLastCalledWith(undefined);expect(button('This week').getAttribute('aria-pressed')).toBe('true');
+    await historyGo('back');expect(h.read).toHaveBeenLastCalledWith('project',undefined,undefined);expect(button('Upcoming').getAttribute('aria-pressed')).toBe('true');
+    await historyGo('forward');expect(h.read).toHaveBeenLastCalledWith(undefined,undefined,undefined);expect(button('This week').getAttribute('aria-pressed')).toBe('true');
     expect(mounted.container.querySelector('input')!.value).toBe('Courtyard');
   });
   it('shows one attending filter for mapped Outlook and manual versions of the same staff member',()=>{
@@ -123,9 +132,9 @@ describe('Site visit URL and return state',()=>{
   it('follows Back and Forward with a mounted agenda, including project scope',async()=>{
     replace(null,'','/staff/site-visits?view=week&person=morgan%40example.test&q=Courtyard&project=project');
     window.history.pushState(null,'','/staff/site-visits?view=today');mounted=renderIntoDocument(<SiteVisitsAgenda/>);
-    await historyGo('back');expect(button('This week').getAttribute('aria-pressed')).toBe('true');expect(h.read).toHaveBeenLastCalledWith('project');
+    await historyGo('back');expect(button('This week').getAttribute('aria-pressed')).toBe('true');expect(h.read).toHaveBeenLastCalledWith('project',undefined,undefined);
     expect(mounted.container.querySelector('input')!.value).toBe('Courtyard');
-    await historyGo('forward');expect(button('Today').getAttribute('aria-pressed')).toBe('true');expect(h.read).toHaveBeenLastCalledWith(undefined);
+    await historyGo('forward');expect(button('Today').getAttribute('aria-pressed')).toBe('true');expect(h.read).toHaveBeenLastCalledWith(undefined,undefined,undefined);
     expect(mounted.container.querySelector('input')!.value).toBe('');expect(mounted.container.querySelector('select')!.value).toBe('');
     expect(mounted.container.querySelector('article')!.textContent).toBe('Harbour today');
   });

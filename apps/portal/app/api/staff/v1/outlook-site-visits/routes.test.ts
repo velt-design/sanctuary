@@ -24,6 +24,12 @@ describe('Outlook staff API boundaries',()=>{
    expect((await search(request('/projects?q=a'))).status).toBe(400);expect((await search(request('/projects?q=example&extra=true'))).status).toBe(400);
    expect((await search(request('/projects?q=example'))).status).toBe(200);expect(h.rpc).toHaveBeenLastCalledWith('outlook_site_visit_projects',{p_query:'example'});
  });
+ it('uses the exact staff visit read without invoking provider or correction writes',async()=>{
+   const result=await read(request(`/visits?visit=${id}&project=proj_${id}`));
+   expect(result.status).toBe(200);expect(h.rpc).toHaveBeenLastCalledWith('outlook_site_visit_detail_read',{p_visit:id,p_project:id});
+   expect(result.headers.get('cache-control')).toBe('private, no-store');expect(h.sync).not.toHaveBeenCalled();
+   for(const query of ['visit=x',`visit=${id}&visit=${id}`,`visit=${id}&extra=1`])expect((await read(request(`/visits?${query}`))).status).toBe(400);
+ });
  it('requires exact origin and strict review contract; maps stale revisions without overwriting',async()=>{
    const body={id,revision:1,projectId:null,linkMode:'manual',kind:'visit'};
    expect((await review(request('/review',body,{origin:'https://evil.invalid'}))).status).toBe(403);expect(h.rpc).not.toHaveBeenCalled();
