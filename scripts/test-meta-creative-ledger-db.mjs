@@ -33,6 +33,8 @@ try{
  sql(readFileSync('supabase/tests/meta_creative_formal_cohort.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050005_creative_settled_registry.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_settled_registry.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050006_creative_native_acceptance.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_native_acceptance.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_outcomes.sql','utf8'));
 
  sql("update public.landing_experiments set created_at=clock_timestamp()-interval '8 days'");

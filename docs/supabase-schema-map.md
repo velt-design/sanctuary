@@ -1,3 +1,13 @@
+## Creative native account proof (uninstalled continuation)
+
+`20261021050006_creative_native_acceptance.sql` adds RLS-protected, immutable
+`meta_creative_native_acceptance` and `meta_creative_native_revocations`, with no
+application table grants. Private insert guard and lookup are revoked from all
+application roles; the existing authenticated executor read returns only the
+matching current unrevoked proof. No identity sequence or provider-effect route
+is added. Consumer-before-migration ordering and separately reviewed operator
+provisioning are required. Existing capability migrations remain unchanged.
+
 # Supabase Schema Map
 
 ## Designer accepted sales outcomes (21 October 2026)

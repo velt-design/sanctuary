@@ -1,3 +1,4 @@
+import {nativeAcceptanceSchema} from './native-acceptance';
 import { z } from 'zod';
 import { nativeWindowValid } from './window';
 import { createHash } from 'node:crypto';
@@ -81,7 +82,7 @@ export const objectSchema = z.object({ kind: z.enum(['creative', 'control', 'cha
 export const wireSchema = z.object({ kind: z.enum(effectKinds), path: z.string().regex(/^[A-Za-z0-9_/]{1,80}$/), body: z.record(z.string(), z.string().max(6000)), target: id.nullable(), requestHash: hash, at: z.number().int().positive() }).strict();
 export const effectSchema = z.object({ command: z.uuid(), kind: z.enum(effectKinds), requestHash: hash,
   state: z.enum(['prepared', 'uncertain', 'confirmed', 'no_effect']), object: id.nullable(), evidenceHash: hash.nullable(), intent: wireSchema }).strict();
-export const stateSchema = z.object({ settledAds:z.array(id).max(20).nullable().optional(),capabilityReady:z.boolean().optional(), compatibility: z.object({status:z.literal('template_mismatch'),expected:hash.nullable(),current:hash,release:z.string().regex(/^[a-f0-9]{40}$/).nullable()}).strict().optional(), enabled: z.boolean(), cleanupEnabled: z.boolean(), stopped: z.boolean(), generation: z.number().int().positive(),
+export const stateSchema = z.object({ nativeAcceptance:nativeAcceptanceSchema.nullable().optional(), settledAds:z.array(id).max(20).nullable().optional(),capabilityReady:z.boolean().optional(), compatibility: z.object({status:z.literal('template_mismatch'),expected:hash.nullable(),current:hash,release:z.string().regex(/^[a-f0-9]{40}$/).nullable()}).strict().optional(), enabled: z.boolean(), cleanupEnabled: z.boolean(), stopped: z.boolean(), generation: z.number().int().positive(),
   creativeReference:id.nullable().optional(),reserved:z.boolean().optional(),template:hash.nullable().optional(),nativeContractHash:hash.nullable().optional(),plan: executionPlanSchema.nullable(), objects: z.array(objectSchema).max(4), effects: z.array(effectSchema).max(32),
   state: z.enum(['empty', 'prepared', 'canary_ready', 'cleanup', 'closed', 'uncertain']),
   measurementReady: z.boolean(), activationReady: z.literal(false),

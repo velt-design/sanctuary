@@ -1,3 +1,19 @@
+## Native account acceptance, local continuation
+
+Additive50006 records immutable operator-only account/method acceptance and
+revocation, separately from candidate approval and the reviewed method hash.
+It requires an existing formal example study/canary and both registered owned
+ad/cell identities. Distinct evidence hashes cover actual unit, inside-campaign
+allocation, unchanged originals and intended objective proof. Numeric echo or
+UI80 alone cannot establish allocation. Missing actual proof means no receipt.
+The latest revoked proof cannot silently fall back to an older acceptance.
+Application roles cannot write either table or call the private lookup/wrapper.
+Native disposable tests exercise registry identity, independently changed scope
+and method, immutability/revocation, missing allocation evidence and surviving
+owned cleanup. These are storage/security tests, not actual Meta acceptance.
+Deploy optional read consumers before50006; root's guarded operator alone may
+provision the actual receipt after real evidence. No ACTIVE effect exists yet.
+
 # Security, Privacy, And Quality
 
 The unpublished formal preparation continuation adds a separate default-off
