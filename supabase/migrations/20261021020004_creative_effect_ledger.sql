@@ -20,7 +20,7 @@ create table public.meta_creative_plans (
 create table public.meta_creative_effects (
  command uuid primary key, experiment uuid not null references public.meta_creative_plans(id),
  command_hash text not null, request_hash text not null check(request_hash ~ '^[a-f0-9]{64}$'), kind text not null
- check(kind in('create_paused_ad','create_study','activate_ad','pause_ad','end_study')),
+ check(kind in('create_creative','create_paused_ad','create_study','activate_ad','pause_ad','end_study')),
  target text, generation bigint not null, pre_state_hash text not null,
  terminal_cleanup boolean not null default false,
  state text not null default 'prepared' check(state in('prepared','uncertain','confirmed','no_effect')),
@@ -29,7 +29,7 @@ create table public.meta_creative_effects (
 );
 create table public.meta_creative_objects (
  object_id text primary key check(object_id ~ '^[1-9][0-9]{0,19}$'), experiment uuid not null references public.meta_creative_plans(id),
- kind text not null check(kind in('ad','study')), created_by uuid not null unique references public.meta_creative_effects(command),
+ kind text not null check(kind in('creative','ad','study')), created_by uuid not null unique references public.meta_creative_effects(command),
  request_hash text not null, evidence_hash text not null, registered_at timestamptz not null default clock_timestamp()
 );
 create table public.meta_creative_receipts (
@@ -106,13 +106,13 @@ begin
   select count(*) into key_count from jsonb_object_keys(p_payload);
   if key_count<>6 or not(p_payload ?& array['kind','objectId','requestHash','generation','preStateHash','observedAt']) or coalesce(p_payload->>'requestHash','') !~ '^[a-f0-9]{64}$' or coalesce(p_payload->>'preStateHash','') !~ '^[a-f0-9]{64}$' or p_payload->>'observedAt' is null or (p_payload->>'observedAt')::timestamptz not between clock_timestamp()-interval '5 minutes' and clock_timestamp() then raise exception 'Invalid effect proof';end if;
   v_kind:=p_payload->>'kind';obj:=p_payload->>'objectId';
-  if v_kind not in('create_paused_ad','create_study','activate_ad','pause_ad','end_study') then raise exception 'Unapproved effect';end if;
+  if v_kind not in('create_creative','create_paused_ad','create_study','activate_ad','pause_ad','end_study') then raise exception 'Unapproved effect';end if;
   if exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state in('prepared','uncertain')) then raise exception 'Unresolved effect requires reconciliation';end if;
   if p_stage='admit_cleanup' and v_kind not in('pause_ad','end_study') then raise exception 'Cleanup effect not allowed';end if;
   if p_stage='admit' and exists(select 1 from public.meta_creative_effects where experiment=p_experiment and terminal_cleanup) then raise exception 'Terminal cleanup has started';end if;
-  if v_kind in('create_paused_ad','create_study') then
+  if v_kind in('create_creative','create_paused_ad','create_study') then
    if obj is not null then raise exception 'Create cannot name an object';end if;
-   if (select count(*) from public.meta_creative_objects o where o.experiment=p_experiment and o.kind=case when v_kind='create_paused_ad' then 'ad' else 'study' end)>=(case when v_kind='create_paused_ad' then 2 else 1 end) then raise exception 'Registry bound';end if;
+   if (select count(*) from public.meta_creative_objects o where o.experiment=p_experiment and o.kind=case when v_kind='create_paused_ad' then 'ad' when v_kind='create_creative' then 'creative' else 'study' end)>=(case when v_kind='create_paused_ad' then 2 else 1 end) then raise exception 'Registry bound';end if;
   else
    if obj is null or not exists(select 1 from public.meta_creative_objects o where o.experiment=p_experiment and o.object_id=obj and o.kind=case when v_kind='end_study' then 'study' else 'ad' end) then raise exception 'Unowned target';end if;
   end if;
@@ -151,8 +151,8 @@ begin
   if e.state='confirmed' then if e.object_id<>obj or e.evidence_hash<>p_payload->>'evidenceHash' then raise exception 'Conflicting confirmation';end if;return jsonb_build_object('confirmed',true);end if;
   if e.state<>'uncertain' or e.dispatch_claimed_at is null then raise exception 'Effect was not dispatched';end if;
   if p.plan->'originalAds' ? obj then raise exception 'Original ad is not owned';end if;
-  if e.kind in('create_paused_ad','create_study') then
-   insert into public.meta_creative_objects(object_id,experiment,kind,created_by,request_hash,evidence_hash) values(obj,p_experiment,case when e.kind='create_study' then 'study' else 'ad' end,p_command,e.request_hash,p_payload->>'evidenceHash');
+  if e.kind in('create_creative','create_paused_ad','create_study') then
+   insert into public.meta_creative_objects(object_id,experiment,kind,created_by,request_hash,evidence_hash) values(obj,p_experiment,case when e.kind='create_study' then 'study' when e.kind='create_creative' then 'creative' else 'ad' end,p_command,e.request_hash,p_payload->>'evidenceHash');
   elsif e.target<>obj then raise exception 'Target changed';end if;
   update public.meta_creative_effects set state='confirmed',object_id=obj,evidence_hash=p_payload->>'evidenceHash',confirmed_at=clock_timestamp() where command=p_command;
   return jsonb_build_object('confirmed',true);
@@ -160,7 +160,7 @@ begin
  if p_stage='cleanup' then
   if (select count(*) from jsonb_object_keys(p_payload))<>1 or coalesce(p_payload->>'evidenceHash','') !~ '^[a-f0-9]{64}$' then raise exception 'Invalid cleanup proof';end if;
   if r.lane is distinct from 'creative' or r.experiment is distinct from p_experiment or exists(select 1 from public.meta_creative_effects where experiment=p_experiment and state in('prepared','uncertain')) then raise exception 'Cleanup unresolved';end if;
-  if exists(select 1 from public.meta_creative_objects o where o.experiment=p_experiment and not exists(select 1 from public.meta_creative_effects x where x.command=(select command from public.meta_creative_effects where experiment=p_experiment and object_id=o.object_id and state='confirmed' order by admitted_at desc limit 1) and x.kind=case when o.kind='ad' then 'pause_ad' else 'end_study' end)) then raise exception 'Owned objects not stopped';end if;
+  if exists(select 1 from public.meta_creative_objects o where o.experiment=p_experiment and o.kind<>'creative' and not exists(select 1 from public.meta_creative_effects x where x.command=(select command from public.meta_creative_effects where experiment=p_experiment and object_id=o.object_id and state='confirmed' order by admitted_at desc limit 1) and x.kind=case when o.kind='ad' then 'pause_ad' else 'end_study' end)) then raise exception 'Owned objects not stopped';end if;
   insert into public.meta_creative_receipts(command,experiment,stage,request_hash,evidence_hash) values(p_command,p_experiment,p_stage,h,p_payload->>'evidenceHash');
   delete from public.acquisition_experiment_reservation where singleton;
   return jsonb_build_object('released',true);
