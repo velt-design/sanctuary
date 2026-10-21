@@ -72,6 +72,18 @@ do not contact Microsoft. Errors are fixed safe strings; all responses are
 private/no-store, nosniff and no-referrer. See `schedule.md` and
 `environment-auth-supabase.md` for source and federation boundaries.
 
+## Designer sales outcome correction
+
+`GET` / `PUT /api/staff/v1/projects/[projectId]/sales-outcome` require confirmed
+owner staff access. PUT additionally requires same origin, JSON and a bounded
+strict body: commandId, expectedRevision, outcome (`cancelled`, `refunded` or null)
+and a 3–500 character basis. The auth-bound RPC independently locks/verifies the
+actor, locks the project and enforces exact replay and optimistic revision.
+400/403/404/409/503 distinguish input, authority, missing source, conflict and
+uncertain results without raw database errors. Responses are private/no-store,
+validated and pinned to the requested project. There is no service-role client.
+This records a report-only whole-job fact, not a finance refund or operational close.
+
 ## Designer performance candidate
 
 Designer performance at `/api/staff/v1/marketing-performance/designers` uses the

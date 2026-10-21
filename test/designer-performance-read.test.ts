@@ -4,6 +4,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { beforeAll,afterAll,it,expect } from 'vitest';
 import { designerReportSchema } from '../apps/portal/lib/marketingPerformance/designerContract';
 import { designerPerformance } from '../apps/portal/lib/marketingPerformance/designer';
+import { designerSales } from '../apps/portal/lib/marketingPerformance/designerSales';
 import { reviewedVisit } from '../apps/portal/lib/siteVisits/reviewedVisit';
 const db=new PGlite(),id=(n:number)=>`66666666-6666-4666-8666-${String(n).padStart(12,'0')}`,staff=id(90),binding='a'.repeat(64);
 const file=(name:string)=>readFileSync(`supabase/migrations/${name}.sql`,'utf8');
@@ -43,6 +44,7 @@ beforeAll(async()=>{
   await db.exec(file('20261021030001_designer_performance'));
   await db.exec(file('20261021030002_designer_visit_detail_transaction'));
   await db.exec(file('20261021040001_project_sales_designer'));
+  await db.exec(file('20261021100001_designer_accepted_sales'));
   await db.exec(`update private.outlook_calendar_control set enabled=true,binding='${binding}',last_success=now(),range_start='2026-10-01',range_end='2026-12-31' where singleton;
     insert into private.site_visit_staff_identities values('${binding}','designer@example.test','jordan');`);
   const payload={subject:'Private title',startsAt:'2026-09-03T00:00:00Z',endsAt:'2026-09-03T01:00:00Z',kind:'visit',staff:[{name:'Private staff alias',email:'designer@example.test'}],customerEmails:['private@example.test'],address:'Private address',cancelled:false,duplicate:false,reviewReasons:[],isAllDay:false};
@@ -125,6 +127,35 @@ it('rejects oversized evidence rather than publishing a partial cohort and never
 });
 const assignment=async(command=91,expected=0,key:string|null='jordan',basis='Confirmed sales responsibility')=>(await db.query<{v:any}>('select public.project_sales_designer_assign($1,$2,$3,$4,$5) v',[id(1),id(command),expected,key,basis])).rows[0].v;
 async function denied(command:()=>Promise<unknown>,code:string){await db.exec('savepoint rejected');try{await expect(command()).rejects.toMatchObject({code});}finally{await db.exec('rollback to savepoint rejected');}}
+const outcome=async(command=101,expected=0,value:string|null='refunded')=>(await db.query<{v:any}>('select public.project_sales_outcome_record($1,$2,$3,$4,$5) v',[id(1),id(command),expected,value,'Owner-confirmed reporting outcome'])).rows[0].v;
+it('records report-only outcomes exactly once with optimistic concurrency, preserving finance, assignment and visit history',async()=>{
+ await db.exec('begin');try{
+  const before=await read(),financial=(await db.query('select * from project_payment_entries')).rows;
+  await db.exec('set local role authenticated');const first=await outcome();expect(first).toMatchObject({outcome:'refunded',revision:1});expect(await outcome()).toEqual(first);
+  await denied(()=>outcome(102,0,'cancelled'),'40001');await denied(()=>outcome(101,0,'cancelled'),'40001');
+  let report=await read();expect(report.visits).toEqual(before.visits);expect(report.scopes).toEqual(before.scopes);expect(report.assignments).toEqual(before.assignments);
+  expect(designerSales(report).total.jobs).toHaveLength(1);expect(designerSales(report).total.goingAhead).toHaveLength(0);expect(designerPerformance(report).total.outcomes[0].paid).toEqual([]);
+  await outcome(103,1,null);report=await read();expect(designerSales(report).total.goingAhead).toHaveLength(1);
+  await db.exec('reset role');expect((await db.query('select * from project_payment_entries')).rows).toEqual(financial);expect((await db.query('select * from private.project_sales_outcome_commands')).rows).toHaveLength(2);
+  await db.exec(`insert into project_operational_states values('${id(1)}','CLOSED','CANCELLED')`);
+  report=await read();expect(designerSales(report).total.excluded[0].exclusion).toBe('cancelled');
+ }finally{await db.exec('rollback');}
+});
+it('retains withdrawn and undated historical acceptance; negative financial adjustments never become a guessed refund',async()=>{
+ await db.exec('begin');try{
+  await db.exec(`insert into quote_versions values('${id(22)}','${id(3)}',2,'DECLINED','2026-09-16',null,'2026-09-06',1900000);update quote_versions set accepted_at=null where id='${id(6)}';insert into project_payment_entries values('${id(23)}',null,'ADJUSTMENT','2026-09-18',-20000,null)`);
+  const report=await read(),base=report.scopes.find(s=>s.id===id(3))!;
+  expect(base).toMatchObject({accepted:false,everAccepted:true,lastAcceptedAt:expect.stringMatching(/^2026-09-06T00:00:00/),lastAcceptedValueCents:1900000});
+  const result=designerSales(report);expect(result.total.jobs[0].exclusion).toBe('acceptance_withdrawn');expect(result.total.undated).toHaveLength(1);
+  expect(report.salesOutcomes).toEqual([]);expect(designerSales(report,null,'',true).total.goingAhead).toHaveLength(1);
+ }finally{await db.exec('rollback');}
+});
+it('denies direct outcome access and anonymous/non-owner commands, including revoked actor authority',async()=>{
+ await db.exec('set role anon');await expect(outcome()).rejects.toThrow('permission denied');await db.exec('reset role;begin');try{
+  await db.exec('set local role authenticated');await denied(()=>db.query('select * from private.project_sales_outcomes'),'42501');await denied(()=>db.query('select * from private.project_sales_outcome_commands'),'42501');
+  await db.exec(`reset role;update auth.users set banned_until=now()+interval '1 day' where id='${staff}';set local role authenticated`);await denied(()=>outcome(),'42501');
+ }finally{await db.exec('rollback');await db.exec('reset role');}
+});
 it('audits sales attribution separately, replays once and rejects a competing stale revision',async()=>{
  await db.exec('begin');try{
   await db.exec(`update private.site_visit_details set details=details||'{"staff":[{"name":"Joe","email":null,"staffId":"joe"}]}' where id='${id(11)}'`);

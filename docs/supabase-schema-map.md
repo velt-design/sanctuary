@@ -1,5 +1,19 @@
 # Supabase Schema Map
 
+## Designer accepted sales outcomes (21 October 2026)
+
+`20261021100001_designer_accepted_sales.sql` adds private
+`project_sales_outcomes` and append-only `project_sales_outcome_commands`.
+Only owner-authenticated `project_sales_outcome_read(uuid)` and
+`project_sales_outcome_record(uuid,uuid,integer,text,text)` may access them;
+VOLATILE preserves the existing actor locks. Command identity/revision and row
+locks protect replay/concurrent updates. RLS/direct grants deny public, anon,
+authenticated and service role table access. Clear retains revision/audit.
+The report adds `salesOutcomes`, `salesProjects` and historical accepted-family
+fields without changing assignments, source visits or financial/provider facts.
+No operational-close or advertising trigger consumes this report-only outcome.
+See [Marketing Performance](marketing-performance.md#accepted-jobs-by-designer-21-october-2026).
+
 ## Designer performance read candidate (21 October 2026)
 
 `20261021030001_designer_performance.sql` adds no business tables or writes.

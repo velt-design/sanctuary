@@ -93,6 +93,56 @@ small screens, drawers, filters and incomplete/unavailable evidence. Current
 rendered evidence and independent review remain in the private owning work record;
 local styling and tests alone do not establish production or owner acceptance.
 
+## Accepted jobs by designer (21 October 2026)
+
+The owner asked for all accepted jobs to receive explicit designer attribution,
+independently of retained site visits, and for cancelled/refunded jobs to be
+excluded from going-ahead figures. The Designer section now leads with **Accepted
+jobs** (historical gross), **Net accepted jobs** and **Excluded jobs**. Completed
+sales retain credit. The visit-conversion section remains a separate conservative
+cohort, not the accepted-job denominator. Missing designer assignments stay in an
+inspectable Unassigned row and team totals; no owner/sender/attendee fallback.
+
+Selected-period sales use Auckland acceptance dates, with current outcome as of
+refresh. The latest accepted lifecycle revision per quote family supplies its
+historical date/value; a withdrawn acceptance remains inspectable. All recorded
+acceptance dates is an explicit separate selection, including undated acceptance
+evidence. Unknown/future dates are inspectable and cannot enter selected-date
+counts. Base and add-on scopes both appear; unique jobs deduplicate projects.
+A project with a withdrawn base and a current add-on remains one net accepted job,
+with both scopes visible. Values include GST and describe accepted scope value,
+not cash received or a calculated refund balance.
+
+`20261021100001_designer_accepted_sales.sql` adds report-only whole-project
+`cancelled` / `refunded` corrections with owner, reason, revision and immutable
+command receipts. Clear removes only that correction. Independent operational
+CANCELLED/LOST outcomes still exclude the job. Archived alone is not cancellation.
+The existing payment ledger has PAYMENT/ADJUSTMENT/REVERSAL, not a verified refund
+classification: a negative adjustment, payment reversal, partial refund or note
+is never inferred to be a whole-job refund. The editor states this before saving.
+No work is closed and no invoice, quote, payment or provider eligibility is changed.
+Cancelled/refunded jobs retain visit history and original-visit denominators but
+cannot retain positive accepted/paid conversion credit in this report.
+
+Incremental map: `designerSales` owns acceptance cohorts, exclusions and exact
+project/scope sets; `DesignerSales` owns their drawer and shared-designer filtering.
+`salesOutcome` and `ProjectSalesOutcome` own the bounded command and recovery UI.
+`GET`/`PUT /api/staff/v1/projects/[projectId]/sales-outcome` repeat the established
+owner-only auth-bound RPC, same-origin, no-store and strict command boundaries.
+The command is VOLATILE for actor locks; idempotent replay returns its historical
+receipt, followed by current-state readback. Concurrent revisions require reload;
+uncertain results retry the identical command. Direct table access is revoked.
+The source projection is additive, capped, and carries skinny project outcome and
+historical scope fields; original migrations and provider functions are unchanged.
+
+The `designerScenario=accepted` synthetic fixture aligns commercial accepted
+scopes/values with designer gross acceptance, and adds no-visit, measurement-only,
+undated, unassigned and refunded examples. Net project counts legitimately differ
+from gross accepted-scope totals. Its assignment/outcome saves are in-memory only.
+Actual SQL/source tests, native PostgreSQL concurrent commands, model/API/editor
+and ordinary accepted-job-to-outcome transitions are local evidence. Target schema,
+actual authenticated save/readback and live data coverage remain release checks.
+
 ## Designer visits and conversion candidate (21 October 2026)
 
 Business Overview shows sales-design responsibility and actual attendance after the

@@ -15,10 +15,11 @@ import CommercialOverview from './CommercialOverview';
 import SourceOutcomes from './SourceOutcomes';
 import DesignerPerformance from './DesignerPerformance';
 import type { DesignerLoader } from './useDesigner';
+import type { OutcomeClient } from './ProjectSalesOutcome';
 import type { AssignmentClient } from './SalesDesignerAssignment';
 import type { CommercialLoader } from './useCommercial';
 
-export default function BusinessOverview({hub,filters,apply,commercialLoader,designerLoader,synthetic,revision,commercialEvidence,designerEvidence,retryCommercial,retryDesigner,assignmentClient}:{hub:HubReport;filters:HubFilters;apply:(f:HubFilters)=>void;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;synthetic?:boolean;revision?:number;commercialEvidence?:ReturnType<typeof useCommercial>;designerEvidence?:ReturnType<typeof useDesigner>;retryCommercial?:()=>void;retryDesigner?:()=>void;assignmentClient?:AssignmentClient}) {
+export default function BusinessOverview({hub,filters,apply,commercialLoader,designerLoader,synthetic,revision,commercialEvidence,designerEvidence,retryCommercial,retryDesigner,assignmentClient,outcomeClient}:{hub:HubReport;filters:HubFilters;apply:(f:HubFilters)=>void;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;synthetic?:boolean;revision?:number;commercialEvidence?:ReturnType<typeof useCommercial>;designerEvidence?:ReturnType<typeof useDesigner>;retryCommercial?:()=>void;retryDesigner?:()=>void;assignmentClient?:AssignmentClient;outcomeClient?:OutcomeClient}) {
   const [supportOpen,setSupportOpen]=useState(false);
   const selected=selectHub(hub,{...filters,inspect:'all'});
   const ages=supportOpen?ageDistribution(selected.projects,hub.asOf):[];
@@ -27,7 +28,7 @@ export default function BusinessOverview({hub,filters,apply,commercialLoader,des
   const inspectAge=(age:string)=>apply({...filters,view:'portfolio',age,created:false,inspect:'all'});
   return <>
     <CommercialOverview hub={hub} filters={filters} apply={apply} evidence={commercialEvidence} retryEvidence={retryCommercial} loader={commercialLoader} synthetic={synthetic} revision={revision}><SourceOutcomes rows={selected.enquiries} filters={filters} apply={apply} compact/></CommercialOverview>
-    <DesignerPerformance hub={hub} filters={filters} apply={apply} evidence={designerEvidence} retryEvidence={retryDesigner} loader={designerLoader} assignmentClient={assignmentClient} synthetic={synthetic} revision={revision}/>
+    <DesignerPerformance hub={hub} filters={filters} apply={apply} evidence={designerEvidence} retryEvidence={retryDesigner} loader={designerLoader} assignmentClient={assignmentClient} outcomeClient={outcomeClient} synthetic={synthetic} revision={revision}/>
     <details onToggle={event=>setSupportOpen(event.currentTarget.open)}><summary>Current portfolio and recorded sales activity</summary>
     {supportOpen&&<>
     <div className={styles.overviewNumbers}>
