@@ -11,6 +11,12 @@ unknown. This additive continuation is not installed or an activation proof.
 
 ## Paused creative capability candidate, 21 October 2026
 
+The native outcome regression retains both existing launch-verification enquiry
+and project exclusions. A genuine later enquiry on an ordinary project still
+owns its confirmed visit/quote when an excluded test was first. Counts, sampled
+correspondence and opaque references exclude both tests; null-project records
+remain visible as unlinked. This is synthetic preservation proof, not live data.
+
 Template-drift recovery keeps authenticated exact registry state readable with
 finite compatibility metadata. Exercise pending readback, owned pause and final
 cleanup through the actual Velt adapter and signed Source handler; new preparation
