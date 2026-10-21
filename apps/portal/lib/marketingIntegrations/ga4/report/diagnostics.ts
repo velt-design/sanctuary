@@ -1,0 +1,125 @@
+import { z } from 'zod';
+import { JOURNEY_COMPLETE_FROM } from './journey';
+import { shiftDate, type Measure, type ReportQuery } from './report';
+
+export const DIAGNOSTIC_VERSION = 'sanctuary-ga4-v3' as const;
+export const STAGES = ['contact_form_interaction', 'contact_start', 'contact_success'] as const;
+const count = z.number().int().nonnegative().safe().nullable();
+const pair = z.object({ value: count, previous: count }).strict();
+const stage = <T extends typeof STAGES[number]>(event: T) => z.object({ event: z.literal(event), count: pair }).strict();
+const quality = z.object({ sampled: z.boolean(), thresholded: z.boolean(), otherRowLoss: z.boolean(), provisional: z.boolean(), comparisonsAllowed: z.boolean() }).strict()
+  .refine(value => !(value.sampled || value.thresholded || value.otherRowLoss || value.provisional) || !value.comparisonsAllowed);
+const label = (maximum: number) => z.string().min(1).max(maximum).refine(safeLabel);
+const path = label(512).refine(safePath);
+const cohort = z.object({ sourceMedium: label(128), landingPath: path, deviceCategory: label(32), sessions: pair, firstEdits: pair, submitAttempts: pair, acceptedSuccesses: pair }).strict();
+const acquisitionBase = { dimensions: z.tuple([z.literal('sessionSourceMedium'), z.literal('landingPage'), z.literal('deviceCategory')]),
+  sessionUnit: z.literal('sessions'), eventUnit: z.literal('event_occurrences'), quality,
+  rows: z.array(cohort).max(200).refine(rows => new Set(rows.map(row => JSON.stringify([row.sourceMedium, row.landingPath, row.deviceCategory]))).size === rows.length) };
+export const acquisitionSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('available'), ...acquisitionBase }).strict(),
+  z.object({ status: z.literal('limited'), ...acquisitionBase }).strict(),
+  z.object({ status: z.literal('unavailable'), reason: z.enum(['row_limit', 'compatibility_unproven']) }).strict(),
+]).superRefine((value, context) => {
+  if (value.status === 'unavailable') return;
+  const limited = value.quality.sampled || value.quality.thresholded || value.quality.otherRowLoss;
+  if ((value.status === 'limited') !== limited) context.addIssue({ code: 'custom', message: 'Acquisition quality differs.' });
+  if (!value.quality.comparisonsAllowed && value.rows.some(row => [row.sessions, row.firstEdits, row.submitAttempts, row.acceptedSuccesses].some(cell => cell.previous !== null)))
+    context.addIssue({ code: 'custom', message: 'Unsafe acquisition comparisons.' });
+});
+export const diagnosticsSchema = z.object({ version: z.literal(DIAGNOSTIC_VERSION), firstEditCompleteFrom: z.null(),
+  stageUnit: z.literal('event_occurrences'), stagesQuality: quality,
+  stages: z.tuple([stage('contact_form_interaction'), stage('contact_start'), stage('contact_success')]),
+  acquisition: acquisitionSchema,
+  orderedFunnel: z.object({ status: z.literal('unavailable'), reason: z.literal('source_capability_unproven'), unit: z.literal('active_users') }).strict(),
+}).strict().superRefine((value, context) => {
+  if ((!value.firstEditCompleteFrom && value.stages[0].count.previous !== null)
+    || (!value.stagesQuality.comparisonsAllowed && value.stages.some(stage => stage.count.previous !== null))) context.addIssue({ code: 'custom', message: 'Unsafe stage comparisons.' });
+  if (!value.firstEditCompleteFrom && value.acquisition.status !== 'unavailable' && value.acquisition.rows.some(row => row.firstEdits.previous !== null))
+    context.addIssue({ code: 'custom', message: 'First-edit coverage is unknown.' });
+});
+export type Diagnostics = z.infer<typeof diagnosticsSchema>;
+export type Acquisition = z.infer<typeof acquisitionSchema>;
+export function validateDiagnosticComparisons(value: Diagnostics, query: { comparison: { start: string } | null }): void {
+  const known = query.comparison && query.comparison.start >= '2026-09-17';
+  const cells = [...value.stages.slice(1).map(stage => stage.count), ...(value.acquisition.status === 'unavailable' ? [] : value.acquisition.rows.flatMap(row => [row.submitAttempts, row.acceptedSuccesses]))];
+  if ((!known && cells.some(cell => cell.previous !== null)) || (!query.comparison && value.acquisition.status !== 'unavailable' && value.acquisition.rows.some(row => row.sessions.previous !== null)))
+    throw new Error('Diagnostic comparison coverage differs.');
+}
+type Quality = Diagnostics['stagesQuality'];
+
+export function safeLabel(value: string): boolean {
+  return ![...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)
+    && !/[^\s@]+@[^\s@]+\.[^\s@]+|:\/\/|\b[0-9a-f]{8}-[0-9a-f-]{27,}\b|\beyJ[A-Za-z0-9_-]{12,}/i.test(value);
+}
+export function safePath(value: string): boolean {
+  let decoded: string; try { decoded = decodeURIComponent(value); } catch { return false; }
+  return value === '(not set)' || (value.startsWith('/') && !value.startsWith('//') && safeLabel(decoded)
+    && !/[?#\\]/.test(decoded) && !/^\/(api|staff|admin|auth|login|quote|quotes|invoice|invoices)(\/|$)/i.test(decoded));
+}
+const observed = (value: string) => { if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error('Invalid diagnostic count.'); return Number(value); };
+const metadata = z.object({ timeZone: z.string().min(1).max(80), subjectToThresholding: z.boolean().default(false), dataLossFromOtherRow: z.boolean().default(false),
+  samplingMetadatas: z.array(z.object({ samplesReadCount: z.string().regex(/^\d+$/), samplingSpaceSize: z.string().regex(/^\d+$/) })).max(2).optional(),
+  emptyReason: z.string().max(512).optional(), schemaRestrictionResponse: z.object({ activeMetricRestrictions: z.array(z.unknown()).max(10).optional() }).optional() });
+type Metadata = z.infer<typeof metadata>;
+function flags(data: Metadata, query: ReportQuery, now: Date): Quality {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: data.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  const sampled = Boolean(data.samplingMetadatas?.length), thresholded = data.subjectToThresholding, otherRowLoss = data.dataLossFromOtherRow, provisional = query.period.end >= shiftDate(today, -3);
+  return { sampled, thresholded, otherRowLoss, provisional, comparisonsAllowed: !(sampled || thresholded || otherRowLoss || provisional) };
+}
+export function coreDiagnostics(rows: Measure[], data: unknown, query: ReportQuery, now: Date): Diagnostics {
+  const stagesQuality = flags(metadata.parse(data), query, now);
+  return diagnosticsSchema.parse({ version: DIAGNOSTIC_VERSION, firstEditCompleteFrom: null, stageUnit: 'event_occurrences', stagesQuality,
+    stages: STAGES.map(event => ({ event, count: { value: rows.find(row => row.label === event)?.value ?? null,
+      previous: event !== STAGES[0] && stagesQuality.comparisonsAllowed && query.comparison && query.comparison.start >= JOURNEY_COMPLETE_FROM ? rows.find(row => row.label === event)?.previous ?? null : null } })),
+    acquisition: { status: 'unavailable', reason: 'compatibility_unproven' }, orderedFunnel: { status: 'unavailable', reason: 'source_capability_unproven', unit: 'active_users' } });
+}
+export function acquisitionPlan(query: ReportQuery) {
+  const dimensions = ['sessionSourceMedium', 'landingPage', 'deviceCategory'];
+  const dateRanges = [{ startDate: query.period.start, endDate: query.period.end, name: 'selected' }, ...(query.comparison ? [{ startDate: query.comparison.start, endDate: query.comparison.end, name: 'prior' }] : [])];
+  return { requests: [false, true].map(events => ({ dimensions: [...dimensions, ...(events ? ['eventName'] : [])].map(name => ({ name })),
+    metrics: [{ name: events ? 'eventCount' : 'sessions' }], dateRanges, keepEmptyRows: true, returnPropertyQuota: true, limit: '201', offset: '0',
+    orderBys: [...dimensions, ...(events ? ['eventName'] : [])].map(dimensionName => ({ dimension: { dimensionName } })),
+    ...(events ? { dimensionFilter: { filter: { fieldName: 'eventName', inListFilter: { values: [...STAGES], caseSensitive: true } } } } : {}) })) };
+}
+const response = z.object({ dimensionHeaders: z.array(z.object({ name: z.string() })).max(5), metricHeaders: z.array(z.object({ name: z.string(), type: z.literal('TYPE_INTEGER') })).length(1),
+  rows: z.array(z.object({ dimensionValues: z.array(z.object({ value: z.string().max(512) })).max(5), metricValues: z.array(z.object({ value: z.string().max(32) })).length(1) })).max(402).default([]),
+  rowCount: z.number().int().nonnegative().safe().default(0), metadata });
+export function parseAcquisition(raw: unknown, query: ReportQuery, timezone: string, now: Date): Acquisition {
+  const batch = z.object({ reports: z.array(response).length(2), kind: z.literal('analyticsData#batchRunReports').optional() }).parse(raw);
+  const rows = new Map<string, z.infer<typeof cohort>>(); let overflow = false;
+  const qualities = batch.reports.map(report => flags(report.metadata, query, now));
+  batch.reports.forEach((report, index) => {
+    const dimensions = ['sessionSourceMedium', 'landingPage', 'deviceCategory', ...(index ? ['eventName'] : []), ...(query.comparison ? ['dateRange'] : [])];
+    const headers = report.dimensionHeaders.map(header => header.name);
+    if (JSON.stringify([...headers].sort()) !== JSON.stringify([...dimensions].sort()) || report.metricHeaders[0].name !== (index ? 'eventCount' : 'sessions')
+      || report.metadata.timeZone !== timezone || report.metadata.emptyReason || report.metadata.schemaRestrictionResponse?.activeMetricRestrictions?.length) throw new Error('Diagnostic profile unavailable.');
+    const groups = new Set<string>(), pairs = new Set<string>();
+    for (const row of report.rows) {
+      if (row.dimensionValues.length !== dimensions.length) throw new Error('Diagnostic dimensions differ.');
+      const cell = (name: string) => row.dimensionValues[headers.indexOf(name)]?.value;
+      const sourceMedium = label(128).parse(cell('sessionSourceMedium')), landingPath = path.parse(cell('landingPage')), deviceCategory = label(32).parse(cell('deviceCategory'));
+      const event = index ? z.enum(STAGES).parse(cell('eventName')) : null, range = query.comparison ? cell('dateRange') : 'selected';
+      if (range !== 'selected' && range !== 'prior') throw new Error('Diagnostic range differs.');
+      const group = JSON.stringify([sourceMedium, landingPath, deviceCategory, event]), identity = JSON.stringify([group, range]);
+      if (pairs.has(identity)) throw new Error('Duplicate diagnostic row.'); pairs.add(identity); groups.add(group);
+      const number = observed(row.metricValues[0].value), key = JSON.stringify([sourceMedium, landingPath, deviceCategory]);
+      const empty = () => ({ value: null, previous: null });
+      const result = rows.get(key) ?? { sourceMedium, landingPath, deviceCategory, sessions: empty(), firstEdits: empty(), submitAttempts: empty(), acceptedSuccesses: empty() };
+      const measure = index ? event === STAGES[0] ? result.firstEdits : event === STAGES[1] ? result.submitAttempts : result.acceptedSuccesses : result.sessions;
+      measure[range === 'selected' ? 'value' : 'previous'] = number; rows.set(key, result);
+    }
+    if (groups.size > report.rowCount || (report.rowCount > 0 && !report.rows.length)) throw new Error('Diagnostic row count differs.');
+    if (report.rowCount > 200) { overflow = true; return; }
+    if (groups.size !== report.rowCount || report.rows.length !== report.rowCount * (query.comparison ? 2 : 1)) throw new Error('Diagnostic rows incomplete.');
+  });
+  if (overflow || rows.size > 200) return { status: 'unavailable', reason: 'row_limit' };
+  const quality = Object.fromEntries(['sampled', 'thresholded', 'otherRowLoss', 'provisional'].map(key => [key, qualities.some(value => value[key as keyof Quality])])) as Omit<Quality, 'comparisonsAllowed'>;
+  const combined = { ...quality, comparisonsAllowed: qualities.every(value => value.comparisonsAllowed) };
+  for (const row of rows.values()) {
+    row.firstEdits.previous = null;
+    if (!combined.comparisonsAllowed) for (const measure of [row.sessions, row.firstEdits, row.submitAttempts, row.acceptedSuccesses]) measure.previous = null;
+    else if (!query.comparison || query.comparison.start < JOURNEY_COMPLETE_FROM) { row.submitAttempts.previous = null; row.acceptedSuccesses.previous = null; }
+  }
+  return acquisitionSchema.parse({ status: quality.sampled || quality.thresholded || quality.otherRowLoss ? 'limited' : 'available', dimensions: ['sessionSourceMedium', 'landingPage', 'deviceCategory'],
+    sessionUnit: 'sessions', eventUnit: 'event_occurrences', quality: combined, rows: [...rows.values()] });
+}

@@ -7,7 +7,8 @@ import { ga4Store, ga4LifecycleStore, Ga4StoreFailure } from './store';
 import { refreshGa4Report, type Ga4Vault } from './lifecycle';
 import { ga4Google } from './providers';
 import { ga4Delegation } from './delegation';
-import { readGa4Report, reportHash, reportIntent } from './report/ga4';
+import { readGa4Report, reportHash, reportIntent, REPORT_VERSION } from './report/ga4';
+import { DIAGNOSTIC_VERSION } from './report/diagnostics';
 import { parseReportResponse } from './report/response';
 import { businessOutcomes, type BusinessEvidence } from './report/outcomes';
 
@@ -38,7 +39,7 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
   try {
     const source = dependencies.source(); authorizePraxisRequest(request, source);
     const url = new URL(request.url), action = url.searchParams.get('action');
-    const allowed = ['action', ...(action === 'refresh' ? ['start', 'end', 'comparisonStart', 'comparisonEnd', 'retain'] : [])];
+    const allowed = ['action', ...(action === 'refresh' ? ['start', 'end', 'comparisonStart', 'comparisonEnd', 'retain', 'reportVersion'] : [])];
     if (!['refresh', 'read', 'delete', 'authority'].includes(action ?? '') || request.method !== (action === 'delete' ? 'DELETE' : 'GET')
       || !(await emptyBody(request)) || [...url.searchParams.keys()].some(key => !allowed.includes(key) || url.searchParams.getAll(key).length !== 1)) {
       return Response.json({ error: 'invalid_ga4_request' }, { status: 400, headers });
@@ -66,26 +67,32 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
     if (action === 'refresh') {
       stage = 'query';
       if (url.searchParams.get('retain') !== 'true') return Response.json({ error: 'invalid_ga4_request' }, { status: 400, headers });
-      const queryUrl = new URL(url); queryUrl.searchParams.delete('action'); queryUrl.searchParams.delete('retain');
+      const requestedVersion = url.searchParams.get('reportVersion');
+      if (requestedVersion !== null && requestedVersion !== DIAGNOSTIC_VERSION) return Response.json({ error: 'invalid_ga4_request' }, { status: 400, headers });
+      const version = requestedVersion ?? REPORT_VERSION;
+      const queryUrl = new URL(url); queryUrl.searchParams.delete('action'); queryUrl.searchParams.delete('retain'); queryUrl.searchParams.delete('reportVersion');
       const query = parseMarketingQuery(queryUrl);
-      delegation = dependencies.delegation(request, query, signal, dependencies.fetcher);
+      delegation = dependencies.delegation(request, query, signal, dependencies.fetcher, requestedVersion ?? undefined);
       await delegation(); current();
       const config = dependencies.credentials();
       if (config.actor !== control.actor || config.propertyId !== control.property || config.binding !== control.binding) throw new Error('Credentials changed.');
       stage = 'claim';
-      const claim = z.object({ operation: z.uuid(), generation: z.number().int().positive() }).strict().parse(await command('claim', null, signal, { query }));
+      const claim = z.object({ operation: z.uuid(), generation: z.number().int().positive() }).strict().parse(await command('claim', null, signal,
+        { query, ...(requestedVersion ? { evidence: { reportVersion: version } } : {}) }));
       refreshed = claim.operation;
       const store = ga4LifecycleStore(command, claim.operation, signal);
       failOperation = () => store.finish('uncertain');
       const guarded = { ...store, before: async (...args: Parameters<typeof store.before>) => {
         current(); await delegation!(); await store.before(...args);
       } };
-      const intent = reportIntent(control.property, query);
+      const intent = reportIntent(control.property, query, version);
       stage = 'collect';
       const report = await refreshGa4Report({ config, vault: dependencies.vault(config), google: dependencies.google(dependencies.fetcher, signal),
         store: guarded, signal, intent,
         read: async token => {
-          const ga4 = await dependencies.read(token, control.property, query, signal, dependencies.fetcher);
+          const ga4 = await dependencies.read(token, control.property, query, signal, dependencies.fetcher,
+            { version, beforeRequest: async () => { current(); await delegation!(); current(); } });
+          if ((version === DIAGNOSTIC_VERSION) !== Boolean(ga4.diagnostics)) throw new Error('Report version differs.');
           let business: BusinessEvidence;
           try {
             current(); await delegation!();
@@ -96,12 +103,13 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
           } catch { business = { status: 'unavailable', reason: 'complete_snapshot_unavailable' }; }
           return parseReportResponse({ ...ga4, business }, query);
         },
-        evidence: value => ({ ...intent, resultHash: reportHash(value), rowCount: value.traffic.length + value.channels.length + value.landing.length + value.events.length,
+        evidence: value => ({ ...intent, resultHash: reportHash(value), rowCount: value.traffic.length + value.channels.length + value.landing.length + value.events.length
+          + (value.diagnostics ? 3 + (value.diagnostics.acquisition.status === 'unavailable' ? 0 : value.diagnostics.acquisition.rows.length) : 0),
           warningCount: value.warnings.length, timezone: value.timezone }),
       });
       stage = 'complete'; current(); await delegation();
       const payload = JSON.stringify(report);
-      if (Buffer.byteLength(payload) > 262144) throw new Error('Report exceeds bound.');
+      if (Buffer.byteLength(payload) > (version === DIAGNOSTIC_VERSION ? 245760 : 262144)) throw new Error('Report exceeds bound.');
       z.object({ status: z.literal('completed'), operation: z.literal(claim.operation) }).strict()
         .parse(await command('complete', claim.operation, signal, { payload }));
       failOperation = undefined;

@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { boundedGoogleJson } from "./transport";
+import { boundedGoogleJson, during } from "./transport";
 import { websiteJourney } from "./journey";
 import { periodDays, shiftDate, validateQuery, validDate, type AnalyticsReport, type Measure, type PaneId, type ReportQuery } from "./report";
+import { acquisitionPlan, coreDiagnostics, DIAGNOSTIC_VERSION, parseAcquisition } from './diagnostics';
 
 export const REPORT_VERSION = "sanctuary-ga4-v2";
+export type ReportVersion = typeof REPORT_VERSION | typeof DIAGNOSTIC_VERSION;
 const periodSchema = z.object({ start: z.string(), end: z.string() }).strict();
 export const querySchema = z.object({ period: periodSchema, comparison: periodSchema.nullable() }).strict()
   .refine(query => validateQuery(query) === null);
@@ -27,10 +29,11 @@ export function reportPlan(query: ReportQuery) {
   })) };
 }
 export const reportHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
-export function reportIntent(property: string, query: ReportQuery) {
-  return { property, queryHash: reportHash({ version: REPORT_VERSION, property, plan: reportPlan(query) }),
+export function reportIntent(property: string, query: ReportQuery, version: ReportVersion = REPORT_VERSION) {
+  return { property, queryHash: reportHash({ version, property, plan: reportPlan(query), ...(version === DIAGNOSTIC_VERSION ? {
+    diagnosticsPlan: acquisitionPlan(query), bounds: { deadlineMs: 45000, wireBytes: 262144, normalizedBytes: 245760, envelopeBytes: 262144, profileGroups: 200, expandedRows: 400, cohorts: 200 } } : {}) }),
     startDate: query.period.start, endDate: query.period.end,
-    comparisonStart: query.comparison?.start ?? null, comparisonEnd: query.comparison?.end ?? null, reportVersion: REPORT_VERSION };
+    comparisonStart: query.comparison?.start ?? null, comparisonEnd: query.comparison?.end ?? null, reportVersion: version };
 }
 const valueSchema = z.object({ value: z.string().max(512) });
 const rowSchema = z.object({ dimensionValues: z.array(valueSchema).max(2).default([]), metricValues: z.array(valueSchema).min(1).max(2) });
@@ -71,7 +74,7 @@ function completeComparisonRows(report: z.infer<typeof responseSchema>, headers:
   return false;
 }
 
-export function parseGa4Report(raw: unknown, property: string, query: ReportQuery, now = new Date()): AnalyticsReport {
+export function parseGa4Report(raw: unknown, property: string, query: ReportQuery, now = new Date(), diagnostics = false): AnalyticsReport {
   querySchema.parse(query);
   const batch = batchSchema.parse(raw);
   const timezone = batch.reports[0]!.metadata.timeZone;
@@ -96,7 +99,10 @@ export function parseGa4Report(raw: unknown, property: string, query: ReportQuer
     if (report.metadata.timeZone !== timezone) throw new Error("Report timezone mismatch.");
     const metadata = report.metadata;
     if (metadata.schemaRestrictionResponse?.activeMetricRestrictions?.length) throw new Error("Report metrics are restricted.");
-    if (metadata.emptyReason) warnings.add("GA4 reported an empty-data condition; missing observations are unavailable, not zero.");
+    if (metadata.emptyReason) {
+      if (diagnostics) throw new Error('Core observations unavailable.');
+      warnings.add("GA4 reported an empty-data condition; missing observations are unavailable, not zero.");
+    }
     if (metadata.dataLossFromOtherRow) { warnings.add("GA4 grouped some data into (other). Comparisons are unavailable."); comparisonSafe = false; }
     if (metadata.subjectToThresholding) { warnings.add("GA4 applied privacy thresholds. Comparisons are unavailable."); comparisonSafe = false; }
     if (metadata.samplingMetadatas?.length) { warnings.add("GA4 returned sampled data. Comparisons are unavailable."); comparisonSafe = false; }
@@ -150,6 +156,7 @@ export function parseGa4Report(raw: unknown, property: string, query: ReportQuer
       });
     } else output[definition.id] = [...rows.values()].filter(row => definition.id !== "events" || (row.value ?? 0) > 0 || (row.previous ?? 0) > 0).sort((a, b) => (b.value ?? -1) - (a.value ?? -1) || a.label.localeCompare(b.label));
     if (definition.id === "events") output.journey = websiteJourney([...eventRows.values()], query);
+    if (diagnostics && definition.id === 'events') output.diagnostics = coreDiagnostics([...eventRows.values()], metadata, query, now);
   });
   if (!comparisonSafe) {
     output.previousSessions = null;
@@ -197,13 +204,32 @@ const validationReasons: Record<string, string> = {
   "Duplicate report row.": "duplicate_row", "Sessions must be integers.": "fractional_sessions",
   "Provider response exceeded limit.": "response_limit", "Provider response missing.": "response_missing",
 };
-export async function readGa4Report(accessToken: string, property: string, query: ReportQuery, signal?: AbortSignal, fetcher: typeof fetch = fetch): Promise<AnalyticsReport> {
+export async function readGa4Report(accessToken: string, property: string, query: ReportQuery, signal?: AbortSignal, fetcher: typeof fetch = fetch,
+  options: { version?: ReportVersion; beforeRequest?: () => Promise<void> } = {}): Promise<AnalyticsReport> {
   if (!/^[1-9]\d{0,19}$/.test(property)) throw new Error("Invalid property.");
   let status: number | undefined;
   let raw: unknown;
   try {
     const observedFetch: typeof fetch = async (url, init) => { const response = await fetcher(url, init); status = response.status; return response; };
-    raw = await boundedGoogleJson(observedFetch, `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports`, {
+    const endpoint = `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports`;
+    if (options.version === DIAGNOSTIC_VERSION) {
+      const abort = new AbortController(), phase = AbortSignal.any([...(signal ? [signal] : []), abort.signal, AbortSignal.timeout(45000)]), budget = { remaining: 262144 };
+      const dispatch = async (plan: unknown) => {
+        await during(options.beforeRequest?.() ?? Promise.resolve(), phase); phase.throwIfAborted();
+        return boundedGoogleJson(observedFetch, endpoint, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(plan), signal: phase }, 262144, 45000, budget);
+      };
+      try {
+        const [core, acquisition] = await Promise.all([dispatch(reportPlan(query)), dispatch(acquisitionPlan(query))]);
+        phase.throwIfAborted(); raw = core;
+        const now = new Date(), report = parseGa4Report(core, property, query, now, true);
+        report.diagnostics!.acquisition = parseAcquisition(acquisition, query, report.timezone, now);
+        if (Buffer.byteLength(JSON.stringify(report)) > 245760) throw new Error('Report exceeds bound.');
+        phase.throwIfAborted(); return report;
+      } catch (error) { abort.abort(); throw error; }
+    }
+    await options.beforeRequest?.();
+    raw = await boundedGoogleJson(observedFetch, endpoint, {
       method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(reportPlan(query)), signal,
     }, 262144, 45000);
     return parseGa4Report(raw, property, query);

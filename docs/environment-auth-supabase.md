@@ -92,6 +92,34 @@ automatic retries.
 
 ## Sanctuary-owned GA4
 
+The local v3 candidate accepts only an explicit refresh reportVersion of
+sanctuary-ga4-v3; omission preserves v2. The requested version is frozen at SQL
+claim and bound through signed delegation, fixed-plan hash, report-read intent,
+completion and retained read. Install forward migration 20261021040001 before
+the matching source application and before enabling Velt's
+VELT_GA4_DIAGNOSTICS_ENABLED switch. Existing credentials, roles, Stop, leases,
+generation/deletion fences and six/twelve provider claim caps are preserved.
+
+V3 executes the existing five core profiles and two fixed session-source/medium,
+landing-path without query and device profiles in separate batches. The added
+event profile allows only contact_form_interaction, contact_start and
+contact_success. It derives all three stages from eventCount, independent of
+keyEvents. Only contact_success is the completion count. The new profiles share
+45 seconds and 262144 streamed bytes, with at most two posts concurrently. V3
+normalized payloads are at most 245760 bytes; source envelopes remain262144.
+Ceilings of 200 profile groups, 400 range-expanded rows and 200 union groups are
+unproven live fit. EventName consumes groups too. There is no pagination or
+arbitrary query, alpha API, browser tracker or direct compatibility fallback.
+
+A validated row limit permits complete fresh core/stages and strict acquisition
+unavailable with no metric cells. Genuine unattempted capability has a separate
+closed reason; provider failures cannot be recast as that reason. Unexpected
+auth/provider/body/transport/deadline/authority/effect failures preserve the old
+snapshot and existing effect/quarantine semantics. Sampling, thresholding and
+other row loss retain selected limited observations with comparisons/rankings
+suppressed. Missing stays null; observed zero remains zero. First-edit coverage
+is unknown and ordered-user reporting remains explicitly unavailable.
+
 The additive retained-authority HTTP action is a local candidate (21 October).
 `GET ?action=authority` uses the same Praxis bearer/source identity and existing
 `sanctuary_ga4_command(read)` plus `deliver` fences as a full saved read. The

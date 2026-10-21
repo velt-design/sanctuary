@@ -360,6 +360,27 @@ comparative retrieval or protected staff-route access; verify both separately.
 
 ## Sanctuary-owned GA4 candidate
 
+The v3 tests apply the exact existing 20260923070001 body plus forward candidate
+20261021040001. Fixed provider fixtures compose actual HTTP, parser, SQL
+completion and retained read for available, limited and validated row-limit
+outcomes. Tests retain first edit when keyEvents is zero, suppress comparisons,
+reject unavailable-with-metrics and unexpected failures, enforce shared byte and
+45-second phase bounds, and distinguish signed v2/v3 delegation and plan hashes.
+Portal's DataSources link test proves only dates enter the fixed Analytics URL.
+
+For native proof, set PRAXIS_DISPOSABLE_POSTGRES_BIN to an existing local PG17
+bin directory and run node test/sanctuary-ga4-native.mjs. This creates and
+disposes a new synthetic loopback cluster using the repository's existing native
+harness pattern. Exact base+forward DDL, v2/v3 lifecycle, roles, strict available
+and unavailable shapes, null/zero, hash/retention and delete/control fences passed
+on PG17.11. It uses synthetic auth/source prerequisites and a cron stub, not the
+whole Sanctuary chain, PostgREST, real pg_cron or providers. That installed
+distribution has no safeupdate; the new migration's real-safeupdate gate remains
+unverified. The earlier PG17.6 safeupdate proof below does not verify new40001.
+The optional existing-image Docker substrate loads real safeupdate and never
+pulls, mounts host paths or publishes ports; its local engine failed during
+startup before SQL in this pass. No reset or fake extension was used.
+
 Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4
 test/sanctuary-ga4-sql.test.ts test/sanctuary-ga4-http-sql.test.ts`, Portal
 typecheck and scoped lint. These use synthetic provider/vault data and the actual
