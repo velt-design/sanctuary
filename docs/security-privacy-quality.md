@@ -1,5 +1,63 @@
 # Security, Privacy, And Quality
 
+## Bounded landing experiment candidate (21 October)
+
+Default-off environment: `SANCTUARY_LANDING_EXPERIMENT_ENABLED=false` and
+`NEXT_PUBLIC_LANDING_EXPERIMENT_ENABLED=false`. The server-only shared HMAC
+`SANCTUARY_LANDING_EXPERIMENT_KEY` and64hex
+`SANCTUARY_LANDING_EXPERIMENT_BINDING` are privately provisioned. Exact source
+control scope/template/admission and publishing flags remain separate. The command
+route requires a signed30-second bounded body, no Origin/query, strict fixed stage
+schemas and service-only RPCs. Visitor JSON cannot select an arm, template or copy.
+Same-origin public assign/expose/revoke has a streaming4KB body limit and one1.5s
+deadline shared by the existing30/minute/IP-hash limiter and visit RPC; host maximum
+is5seconds. Errors fall back to authored control, withdrawal is best effort. These
+are per-request/rate bounds, not an aggregate arbitrary-traffic spending guarantee.
+
+Only exact two Meta paths participate. Signed per-path receipts are transient
+cookies/tab state, consent-gated and cleared on withdrawal. The canonical intake
+strips the receipt from raw customer payload and uses a service-only transactional
+wrapper to join the original exposed assignment without duplicating delivery.
+Delayed valid enquiries retain experienced variant after rollback but are excluded
+from a closed formal comparison. Existing privacy/consent/UTM rules remain intact.
+Native fallback treats this receipt as optional transport data, never a customer
+brief field. Duplicate, malformed or oversized values are not truncated into valid
+receipts; current consent still governs the eventual join.
+Withdrawal revokes both the experienced tab receipt and current cookie receipt
+when they differ, and always clears mounted fields even when the cookie is absent.
+Asynchronous copy painting waits for focused hero links on both Meta routes,
+including links without the acrylic layout wrapper.
+The optional `p_display jsonb` exposure argument contains only two booleans:
+mobile viewport and applied action-first layout. SQL validates the treatment
+against the selected arm/copy and records it only on first exposure. These are
+client-reported display facts, not device identity or a trustworthy business
+outcome. All eligible visitors remain in the primary comparison.
+
+Serving diagnostics use the same fixed visitor endpoint, ordinary client and
+eligibility predicate with a registered short-lived HMAC header, separate cookie,
+signing purpose and private probe table. Preparation cannot renew a live test.
+Live renewal requires the actual cookie/reload/exposure chain, current generation,
+template, publishing and lease, then atomically consumes that fresh proof. Genuine
+intake rejects diagnostic receipts. Diagnostic rows expire and are pruned after
+two days; at most one preparation and six live proofs are admitted per Auckland
+day. Closed enrolment reuses only an earlier verified diagnostic enrollment.
+Immutable source-effect receipt reads permit recovery after response loss without
+repeating publication or formal evaluation.
+The source read derives at most four excluded catalogue keys per exact page from
+all rejected, reverted or inconclusive experiments on the current template and
+whole control baseline. Prepare enforces the same exclusion atomically, even if
+Velt's display history has expired. Fresh evidence alone cannot repeat a failed
+comparison; a changed baseline or relevant template can permit a new candidate.
+
+`sanctuary_campaign_outcomes` adds optional bounded intake provenance only after
+the original source authority/cohort function succeeds. Exact original raw/canonical
+suburb/message agreement and supported Meta source route are required. Hidden
+residential defaults, seeded design and targeting are not evidence of suitability.
+No source text or contact identity is copied into general experiment reports.
+Deploy compatible Velt and Portal consumers before this additive SQL extension;
+old strict consumers must not receive the new field prematurely. Experiment SQL
+and app deployment do not themselves enable publishing or prove customer delivery.
+
 ## Proxy placement followup (21 October 2026 candidate)
 
 The Portal's per-function Vercel configuration pins only `middleware.ts` to `bom1`,

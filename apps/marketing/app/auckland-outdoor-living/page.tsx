@@ -1,3 +1,5 @@
+import { landingControl } from '@/lib/landingExperimentControl.server';
+export const revalidate = 60;
 import type { Metadata } from 'next';
 import OutdoorLivingPage from './OutdoorLivingPage';
 
@@ -14,4 +16,4 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() { return <OutdoorLivingPage path="/auckland-outdoor-living"/>; }
+export default async function Page() { return <OutdoorLivingPage path="/auckland-outdoor-living" control={await landingControl("/auckland-outdoor-living")}/>; }

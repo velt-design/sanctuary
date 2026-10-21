@@ -90,13 +90,15 @@ export async function takeMarketingRateLimit(
     maxHits: number;
     windowSeconds: number;
   },
+  signal?: AbortSignal,
 ): Promise<MarketingRateLimitResult> {
-  const { data, error } = await supabase.rpc('marketing_public_rate_limit_take', {
+  const query = supabase.rpc('marketing_public_rate_limit_take', {
     p_scope: params.scope,
     p_key_hash: params.keyHash,
     p_max_hits: params.maxHits,
     p_window_seconds: params.windowSeconds,
   });
+  const { data, error } = await (signal ? query.abortSignal(signal) : query);
   if (error) return { ok: false, retryAfterSeconds: 60, unavailable: true };
 
   const row = Array.isArray(data) ? data[0] : data;
@@ -113,10 +115,34 @@ export async function takeMarketingRateLimit(
 export async function readBoundedJson(
   req: Request,
   maxBytes: number,
+  signal?: AbortSignal,
 ): Promise<Record<string, unknown> | null> {
   const contentLength = Number(req.headers.get('content-length') || 0);
   if (Number.isFinite(contentLength) && contentLength > maxBytes) return null;
-  const raw = await req.text();
+  let raw: string;
+  if (signal) {
+    const reader = req.body?.getReader();
+    if (!reader) return null;
+    const chunks: Uint8Array[] = [];
+    let bytes = 0;
+    const cancel = () => { void reader.cancel().catch(() => undefined); };
+    signal.addEventListener('abort', cancel, { once: true });
+    try {
+      while (true) {
+        signal.throwIfAborted();
+        const next = await reader.read();
+        signal.throwIfAborted();
+        if (next.done) break;
+        bytes += next.value.byteLength;
+        if (bytes > maxBytes) return null;
+        chunks.push(next.value);
+      }
+      raw = Buffer.concat(chunks).toString('utf8');
+    } finally {
+      signal.removeEventListener('abort', cancel);
+      await reader.cancel().catch(() => undefined);
+    }
+  } else raw = await req.text();
   if (!raw || Buffer.byteLength(raw, 'utf8') > maxBytes) return null;
   try {
     const parsed = JSON.parse(raw) as unknown;

@@ -1,3 +1,5 @@
+import { landingControl } from '@/lib/landingExperimentControl.server';
+export const revalidate = 60;
 import type { Metadata } from 'next';
 import AcrylicPergolaPage from './AcrylicPergolaPage';
 const route = '/acrylic-roof-pergolas-auckland';
@@ -18,4 +20,4 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() { return <AcrylicPergolaPage/>; }
+export default async function Page() { return <AcrylicPergolaPage control={await landingControl(route)}/>; }

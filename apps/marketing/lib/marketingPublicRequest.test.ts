@@ -107,4 +107,14 @@ describe('marketing public request boundaries', () => {
       body: JSON.stringify({ value: 'x'.repeat(40) }),
     }), 20)).resolves.toBeNull();
   });
+  it('cancels a stalled bounded stream on its shared deadline and preserves the optional legacy reader', async () => {
+    const controller = new AbortController(), cancelled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({cancel:cancelled});
+    const request = new Request('https://example.test', {method:'POST', body, duplex:'half'} as RequestInit);
+    const pending = readBoundedJson(request, 4096, controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toThrow();
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    await expect(readBoundedJson(new Request('https://example.test',{method:'POST',body:'{"ok":true}'}),4096,new AbortController().signal)).resolves.toEqual({ok:true});
+  });
 });

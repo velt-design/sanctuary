@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useLayoutEffect,useRef,type FormEventHandler,type ReactNode} from 'react';
 import AdvertisingMeasurementNotice from '../../components/enquiry/AdvertisingMeasurementNotice';
+import {ExperimentReceiptField} from '../../components/landing-experiment/ExperimentReceiptField';
 import {isInlineFunnelPath,isGoogleFunnelPath} from '../../lib/googleFunnel';
 import {allowsOptionalEnquiryPhone} from '../../lib/enquiryContactValidation';
 import type {ContactFieldErrors} from './contactFormModel';
@@ -20,6 +21,7 @@ export default function ConfiguredEnquiryFields({onSubmit,onInteraction,attachme
  const save=()=>{if(!form.current)return;const data=new FormData(form.current);try{sessionStorage.setItem(key,JSON.stringify(Object.fromEntries(['name','suburb','email','phone','message'].map(name=>[name,data.get(name)]))));}catch{}};
  if(state==='success')return <div className={css.form} ref={status} tabIndex={-1} role="status">{receivedEarlier?<><h1>Your earlier enquiry was received.</h1><p>Changes made after your first send attempt are not included in that enquiry.</p><p>We’ll contact you to discuss your design. You can tell us about any changes then.</p></>:<><h1>{mobileFinish?'Design saved. Enquiry sent.':'Your enquiry has been sent.'}</h1><p>We’ll review your enquiry and contact you to discuss the next step.</p>{!mobileFinish&&hasDesign&&<p>Your design is shown here for reference.</p>}</>}</div>;
  return <form method="post" action="/api/enquiry/fallback" data-clarity-mask="true" data-inline-enquiry={funnel||undefined} className={`${css.form}${editorialForm?' acrylic-form':''}`} ref={form} onInput={save} onInputCapture={onInteraction} onChangeCapture={onInteraction} onSubmit={onSubmit} noValidate>
+ <ExperimentReceiptField sourcePath={sourcePath}/>
  {funnel ? <h3>Your details</h3> : <><h1>{mobileFinish?'Your details':'Enquire about your design.'}</h1><p>{mobileFinish?'Your design is saved with your enquiry when you send.':'We’ll review your pergola and contact you to discuss your space.'}</p></>}
  <input type="hidden" name="page" value={sourcePath}/><input type="hidden" name="source" value="website"/><input type="hidden" name="enquiryContext" value={sourceContext}/><input type="hidden" name="enquiryType" value="residential"/><input type="hidden" name="requestType" value="project-discussion"/>
  {(hasErrors||error)&&<div ref={status} tabIndex={-1} role="alert" className={css.error}>{error||'Please check the details below.'}</div>}
