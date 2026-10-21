@@ -55,5 +55,33 @@ try {
   await db.exec('reset role');
   await db.exec(`update auth.users set banned_until=now()+interval '1 day' where id='${staff}'`);
   await assert.rejects(call('select public.project_files_read($1::uuid) result', [existing]), /Access denied/);
-  console.log('PASS: migration rollback, dark defaults, atomic enqueue, no backfill, leases, retries, multi-root import/replay/conflicts, source binding and staff/private boundaries.');
+  await db.exec(`update auth.users set banned_until=null where id='${staff}'; set request.jwt.claim.role='service_role';
+    create table public.quotes(id uuid primary key,project_id uuid references public.projects(id));`);
+  const pending = '00000000-0000-4000-8000-000000000005';
+  const running = '00000000-0000-4000-8000-000000000006';
+  await db.exec(`insert into public.projects values('${running}','Running fixture');`);
+  assert.equal((await provision('claim')).projectId, running);
+  await db.exec(`insert into public.projects values('${pending}','Pending fixture');`);
+  for (const id of [existing, fresh, pending, running]) {
+    await db.query('insert into public.quotes(id,project_id) values($1,$1)', [id]);
+    // The existing administrator route makes these two requests separately.
+    await db.query('delete from public.quotes where project_id=$1', [id]);
+    await db.query('delete from public.projects where id=$1', [id]);
+    assert.equal((await db.query('select count(*)::int n from public.projects where id=$1', [id])).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from private.project_file_roots where project_id=$1', [id])).rows[0].n, 0);
+    assert.equal((await db.query('select count(*)::int n from private.project_folder_provisions where project_id=$1', [id])).rows[0].n, 0);
+    const audit = (await db.query("select detail from private.project_file_events where project_id=$1 and event='project_deleted'", [id])).rows[0].detail;
+    assert.ok(audit.projectName);
+    if (id === existing) assert.deepEqual(audit.roots.map(root => root.itemId).sort(), ['historical1', 'historical2']);
+    if (id === fresh) assert.equal(audit.roots[0].itemId, 'newroot');
+    if ([pending, running].includes(id)) assert.equal(audit.provision.status, id === pending ? 'pending' : 'running');
+    await assert.rejects(call('select public.project_files_read($1::uuid) result', [id]), /Project not found/);
+  }
+  const retainedEvents = (await db.query('select count(*)::int n from private.project_file_events')).rows[0].n;
+  await assert.rejects(provision('complete', running, { itemId: 'late-provider-folder', evidenceSha256: binding }), /Lease expired/);
+  await assert.rejects(provision('fail', running, { code: 'source_unavailable' }), /Lease expired/);
+  assert.equal((await provision('claim')).claimed, false);
+  assert.equal((await db.query('select count(*)::int n from private.project_file_roots')).rows[0].n, 0);
+  assert.equal((await db.query('select count(*)::int n from private.project_file_events')).rows[0].n, retainedEvents);
+  console.log('PASS: migration/rollback, dark defaults, enqueue/lease/retry/import/auth contracts, linked/completed/pending/running deletion with retained audit identities, and rejected stale worker completion. Database-only retirement has no provider delete operation.');
 } finally { await db.close(); }

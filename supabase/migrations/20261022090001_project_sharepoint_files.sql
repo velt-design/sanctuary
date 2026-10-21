@@ -6,14 +6,14 @@ create table private.project_files_control (
 );
 insert into private.project_files_control(singleton) values(true);
 create table private.project_file_roots (
- id uuid primary key default gen_random_uuid(), project_id uuid not null references public.projects(id),
+ id uuid primary key default gen_random_uuid(), project_id uuid not null references public.projects(id) on delete cascade,
  drive_id text not null, item_id text not null, label text not null check(length(label) between 1 and 200),
  evidence_sha256 text not null check(evidence_sha256 ~ '^[a-f0-9]{64}$'),
  created_at timestamptz not null default clock_timestamp(), unique(drive_id,item_id)
 );
 create index project_file_roots_project on private.project_file_roots(project_id);
 create table private.project_folder_provisions (
- project_id uuid primary key references public.projects(id), binding text not null,
+ project_id uuid primary key references public.projects(id) on delete cascade, binding text not null,
  folder_name text not null, folder_year text not null,
  status text not null default 'pending' check(status in ('pending','running','ready','needs_attention')),
  attempts integer not null default 0, next_attempt timestamptz not null default clock_timestamp(),
@@ -21,7 +21,8 @@ create table private.project_folder_provisions (
  created_at timestamptz not null default clock_timestamp(), updated_at timestamptz not null default clock_timestamp()
 );
 create table private.project_file_events (
- id bigint generated always as identity primary key, project_id uuid not null references public.projects(id),
+ -- Historical identity deliberately survives deletion of the live project.
+ id bigint generated always as identity primary key, project_id uuid not null,
  event text not null, detail jsonb not null default '{}', created_at timestamptz not null default clock_timestamp()
 );
 alter table private.project_files_control enable row level security;
@@ -29,6 +30,23 @@ alter table private.project_file_roots enable row level security;
 alter table private.project_folder_provisions enable row level security;
 alter table private.project_file_events enable row level security;
 revoke all on private.project_files_control,private.project_file_roots,private.project_folder_provisions,private.project_file_events from public,anon,authenticated,service_role;
+
+-- Retire Portal relationships only. This trigger never calls Microsoft or deletes source files.
+create function private.project_files_retire_project() returns trigger language plpgsql security definer set search_path='' as $$
+declare roots jsonb; job jsonb;
+begin
+ select coalesce(jsonb_agg(jsonb_build_object('rootId',id,'driveId',drive_id,'itemId',item_id,'label',label,'evidenceSha256',evidence_sha256)),'[]')
+ into roots from private.project_file_roots where project_id=old.id;
+ select jsonb_build_object('binding',binding,'folderName',folder_name,'year',folder_year,'status',status,'attempts',attempts,'rootItemId',root_item_id,
+  'driveId',(select drive_id from private.project_files_control where singleton),'enquiriesItemId',(select enquiries_item_id from private.project_files_control where singleton))
+ into job from private.project_folder_provisions where project_id=old.id;
+ if jsonb_array_length(roots)>0 or job is not null or exists(select 1 from private.project_file_events where project_id=old.id) then
+  insert into private.project_file_events(project_id,event,detail)
+  values(old.id,'project_deleted',jsonb_build_object('projectName',old.name,'roots',roots,'provision',job));
+ end if;
+ return old;
+end $$;
+create trigger project_files_retire_project before delete on public.projects for each row execute function private.project_files_retire_project();
 
 create function private.project_files_actor() returns void language plpgsql security definer set search_path='' as $$
 begin
@@ -120,6 +138,10 @@ begin
   update private.project_folder_provisions set status='running',attempts=attempts+1,lease_token=p_lease,lease_until=clock_timestamp()+interval '2 minutes',updated_at=clock_timestamp() where project_id=r.project_id;
   return jsonb_build_object('claimed',true,'projectId',r.project_id,'folderName',r.folder_name,'year',r.folder_year,'parentId',c.enquiries_item_id);
  end if;
+ -- Lock the parent before the job, matching project deletion's parent/cascade order.
+ -- A worker that finishes after deletion cannot recreate a binding or queue row.
+ perform 1 from public.projects where id=p_project_id for key share;
+ if not found then raise exception using errcode='42501',message='Lease expired'; end if;
  select * into r from private.project_folder_provisions where project_id=p_project_id for update;
  if not found or r.binding<>p_binding or r.status<>'running' or r.lease_token is distinct from p_lease or r.lease_until<clock_timestamp() then raise exception using errcode='42501',message='Lease expired'; end if;
  if p_action='complete' then
@@ -136,7 +158,7 @@ begin
  end if;
  raise exception 'Invalid action';
 end $$;
-revoke all on function private.project_files_actor(),private.project_files_enqueue_new() from public,anon,authenticated,service_role;
+revoke all on function private.project_files_actor(),private.project_files_enqueue_new(),private.project_files_retire_project() from public,anon,authenticated,service_role;
 revoke all on function public.project_files_read(uuid),public.project_files_admin(text,jsonb),public.project_files_provision(text,text,uuid,uuid,jsonb) from public,anon,authenticated,service_role;
 grant execute on function public.project_files_read(uuid) to authenticated;
 grant execute on function public.project_files_admin(text,jsonb),public.project_files_provision(text,text,uuid,uuid,jsonb) to service_role;
