@@ -13,6 +13,8 @@ import {
   type PortalAccessState,
 } from '@/lib/portalAccess';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { DOCUMENT_CALLBACK_HEADER, regionalDocumentCallback } from './regionalDocumentAccess';
 import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
 
 export type PortalSession = {
@@ -91,7 +93,14 @@ async function requirePortalSessionPageAccess(callbackUrl: string): Promise<Port
 }
 
 export async function requireStaffPageAccess(callbackUrl: string): Promise<PortalSession> {
-  return requirePortalSessionPageAccess(callbackUrl);
+  // Middleware overwrites this redirect-only context. It never supplies access.
+  const context = regionalDocumentCallback((await headers()).get(DOCUMENT_CALLBACK_HEADER));
+  return requirePortalSessionPageAccess(context ?? callbackUrl);
+}
+
+export async function requireRegionalDocumentAccess(): Promise<void> {
+  const callback = regionalDocumentCallback((await headers()).get(DOCUMENT_CALLBACK_HEADER));
+  if (callback) await requirePortalSessionPageAccess(callback);
 }
 
 export async function requireAdminPageAccess(callbackUrl: string, fallbackHref = '/staff/calculator'): Promise<PortalSession> {
