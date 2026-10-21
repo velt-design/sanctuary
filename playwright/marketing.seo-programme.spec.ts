@@ -75,12 +75,12 @@ const pages: ProgrammePage[] = [
     route: '/pitched-pergolas-auckland',
     title: 'Pitched Pergolas Auckland | Mono-Pitch Roof Guide',
     description: 'Plan a pitched pergola around the house connection, available height, roof fall and drainage.',
-    h1: 'Pitched pergolas for Auckland homes.',
-    submitLabel: 'Send project brief',
-    faqCount: 4,
+    h1: 'Pitched pergolas. One clean roofline.',
+    submitLabel: 'Send your enquiry',
+    faqCount: 7,
     role: 'product-guide',
     briefFieldName: 'highEdgeContext',
-    projectCount: 3,
+    projectCount: 1,
     captureId: 'pitched-projects',
     comparisonId: 'pitched-decisions-title',
     comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland'],
@@ -139,6 +139,9 @@ async function getEditorialCopy(main: Locator) {
 }
 
 for (const programmePage of pages) {
+  const isPitched = programmePage.marker === 'pitched-pergolas-auckland';
+  const projectImages = isPitched ? '#pitched-projects article img' : programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects img' : '.acrylic-project-card img';
+  const projectFacts = isPitched ? '#pitched-projects article' : programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects article' : '.seo-landing__project-facts';
   for (const viewport of viewports) {
     test(`Page ${programmePage.order} ${programmePage.marker} is publish-ready at ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -152,8 +155,8 @@ for (const programmePage of pages) {
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
       await expect(page.getByRole('heading', { level: 1, name: programmePage.h1 })).toBeVisible();
       await expect(main.locator('h1')).toHaveCount(1);
-      await expect(main.locator(programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects img' : '.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
-      await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
+      await expect(main.locator(projectImages)).toHaveCount(programmePage.projectCount);
+      await expect(main.locator(isPitched ? '#pitched-faq details' : '.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
       const guideNavigation = main.getByRole('navigation', {
         name: 'Related planning decisions',
       });
@@ -176,7 +179,7 @@ for (const programmePage of pages) {
           '22 July 2026',
         );
       }
-      await expect(main.locator(programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects article' : '.seo-landing__project-facts')).toHaveCount(programmePage.projectCount);
+      await expect(main.locator(projectFacts)).toHaveCount(programmePage.projectCount);
       const optionalProjectDetails = main.locator('details.acrylic-form__optional');
       await expect(optionalProjectDetails).toBeAttached();
       if ((await optionalProjectDetails.getAttribute('open')) === null) {
@@ -242,7 +245,7 @@ for (const programmePage of pages) {
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-top.png`) });
         await main.locator(`#${programmePage.captureId}`).scrollIntoViewIfNeeded();
         if (programmePage.projectCount) {
-          await expect.poll(() => main.locator(programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects img' : '.acrylic-project-card img').evaluateAll((images) => images.filter((image) => (image as HTMLImageElement).naturalWidth > 0).length)).toBe(programmePage.projectCount);
+          await expect.poll(() => main.locator(projectImages).evaluateAll((images) => images.filter((image) => (image as HTMLImageElement).naturalWidth > 0).length)).toBe(programmePage.projectCount);
         }
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-proof.png`) });
         await main.locator(`#${programmePage.comparisonId}`).scrollIntoViewIfNeeded();
@@ -361,7 +364,8 @@ for (const programmePage of pages) {
     const service = jsonLd.find((node) => node['@type'] === 'Service');
     if (programmePage.role === 'service') expect(service).toBeDefined();
     else expect(service).toBeUndefined();
-    expect(jsonLd.find((node) => node['@type'] === 'FAQPage')).toBeUndefined();
+    if (isPitched) expect(jsonLd.find((node) => node['@type'] === 'FAQPage')?.mainEntity).toHaveLength(programmePage.faqCount);
+    else expect(jsonLd.find((node) => node['@type'] === 'FAQPage')).toBeUndefined();
     expect(jsonLd.find((node) => node['@type'] === 'BreadcrumbList')).toBeDefined();
     expect(jsonLd.find((node) => node['@type'] === 'WebPage')).toMatchObject({ dateModified: '2026-07-22', reviewedBy: { name: 'Sanctuary Pergolas' } });
   });

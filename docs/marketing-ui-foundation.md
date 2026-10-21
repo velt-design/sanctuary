@@ -1,5 +1,31 @@
 # Marketing UI Foundation
 
+## Pitched form guide (21 October 2026)
+
+`/pitched-pergolas-auckland` has a route-owned presentation in `page.tsx`,
+`content.ts`, `pitched.module.css` and `PitchedSection`, which owns a complete
+Velskov profile photograph with restrained high/low-edge labels. Existing
+residential installed photography leads into this real freestanding roof, house
+connection and daylight decisions, then the distinct Tindalls application.
+The earlier schematic was rejected by Jordan as visually weak; increasing its
+label size had not solved that problem. The replacement uses existing photography
+and shorter notes about height, roof depth and water, with no invented dimensions.
+Its 1440px canvas and capped heading avoid viewport
+growth inside a fixed-width text column. No new photo asset is introduced.
+
+The shared `SeoLandingPage` still owns schema and the canonical required-phone,
+all-audience enquiry form. Shared `EnquiryLink` owns first/repeat focus and history;
+validated source/project/guided attribution remains in `parseEnquiryContext`.
+The Pitched product and full designer remain optional existing continuations,
+without a second selector, pricing owner or new engineering specification.
+This page no longer uses the generic first-layer blocks. Its dedicated route
+tests replace that obsolete presentation assumption; shared renderer tests retain
+coverage for the remaining generated Gable configuration.
+
+Local fixture, independent review, preview and owner acceptance are separate
+checks. Jordan accepted the photographic page and authorised release; operational
+publication and live verification remain recorded separately.
+
 ## Gable form guide (21 October 2026)
 
 The existing `/gable-pergolas-auckland` route uses its page/content/CSS and a

@@ -2357,10 +2357,18 @@ The Gable page is a focused secondary guide to form suitability, with exact prod
 ### G16 - Refine the Pitched secondary guide
 
 **Phase:** Phase 6 - Retained-guide content refinement  
-**Status:** Not started  
+**Status:** Photographic redesign accepted; production release authorised (21 October 2026)
 **Relative effort:** Medium  
 **Implementation risk:** Medium  
 **Dependencies:** G09 and G10
+
+The accepted page uses an existing residential pitched photograph, a full Velskov
+roof photograph labelled at its visible high and low edges, a second house-
+connection image and the distinct Tindalls Bay application. Short notes retain
+height, depth, fall and site-specific drainage decisions. Optional existing Pitched product/designer continuation
+and the canonical enquiry remain. KiwiRail evidence is omitted. No source,
+local-check or reviewer statement alone establishes hosted preview acceptance or
+production release; the owning delivery record retains those outcomes.
 
 **Ready-to-use Codex goal prompt**
 
