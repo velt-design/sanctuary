@@ -17,18 +17,18 @@ export default function SalesActivity({events,filters,apply}:{events:HubEvent[];
     <Card title="Sales activity" padding="compact">
       <div className={styles.trendToolbar}><Select label="Group sales by" value={filters.salesBucket} onChange={e=>apply({...filters,salesBucket:e.target.value as ActivityBucket})}><option value="week">Week</option><option value="month">Month</option></Select><p className={styles.note}>{filters.start} – {filters.end} · Recorded {filters.salesBucket==='week'?'weekly':'monthly'} activity</p></div>
       <div className={styles.grid}>
-        <section aria-label="Quote activity trend"><h3>Quote versions</h3><div className={styles.legend}><span><i style={{background:'#276987'}}/>Sent</span><span><i style={{background:'#725298'}}/>Accepted</span></div>
+        <section aria-label="Quote activity trend"><h3>Quote versions</h3><div className={styles.legend}><span><i style={{background:'var(--ui-action)'}}/>Sent</span><span><i style={{background:'var(--ui-text-strong)'}}/>Accepted</span></div>
           <div className={styles.plot}><ResponsiveContainer width="100%" height={280} minWidth={0}><BarChart data={buckets} accessibilityLayer>
             <CartesianGrid vertical={false} stroke="var(--ui-border)"/><XAxis dataKey="label" tick={{fontSize:11}}/><YAxis allowDecimals={false} width={45}/><Tooltip labelFormatter={(_,payload)=>{const b=payload?.[0]?.payload;return b?`${b.start} – ${b.end}${b.partial?' · partial period':''}`:'';}}/>
-            <Bar dataKey="sent" name="Sent versions" fill="#276987" isAnimationActive={false} cursor="pointer" onClick={(_,i)=>{if(buckets[i]?.sent)inspectBucket(i,'quote_sent');}}/>
-            <Bar dataKey="accepted" name="Accepted versions" fill="#725298" isAnimationActive={false} cursor="pointer" onClick={(_,i)=>{if(buckets[i]?.accepted)inspectBucket(i,'quote_accepted');}}/>
+            <Bar dataKey="sent" name="Sent versions" fill="var(--ui-action)" isAnimationActive={false} cursor="pointer" onClick={(_,i)=>{if(buckets[i]?.sent)inspectBucket(i,'quote_sent');}}/>
+            <Bar dataKey="accepted" name="Accepted versions" fill="var(--ui-text-strong)" isAnimationActive={false} cursor="pointer" onClick={(_,i)=>{if(buckets[i]?.accepted)inspectBucket(i,'quote_accepted');}}/>
           </BarChart></ResponsiveContainer></div>
         </section>
-        <section aria-label="Net recorded receipt trend"><h3>Net recorded receipts · NZD</h3><div className={styles.legend}><span><i style={{background:'#47705b'}}/>Payments less reversals</span></div>
+        <section aria-label="Net recorded receipt trend"><h3>Net recorded receipts · NZD</h3><div className={styles.legend}><span><i style={{background:'var(--ui-action)'}}/>Payments less reversals</span></div>
           <div className={styles.plot}><ResponsiveContainer width="100%" height={280} minWidth={0}><LineChart data={buckets} accessibilityLayer>
             <CartesianGrid vertical={false} stroke="var(--ui-border)"/><XAxis dataKey="label" tick={{fontSize:11}}/><YAxis width={70} tickFormatter={n=>`$${Number(n).toLocaleString('en-NZ')}`} tick={{fontSize:11}}/>
             <Tooltip labelFormatter={(_,payload)=>{const b=payload?.[0]?.payload;return b?`${b.start} – ${b.end}`:'';}} formatter={value=>[money(Number(value)*100),'Net recorded receipts']}/><ReferenceLine y={0} stroke="var(--ui-text-muted)"/>
-            <Line dataKey="receipts" name="Net recorded receipts" stroke="#47705b" strokeWidth={2} isAnimationActive={false} connectNulls={false} activeDot={false} dot={({cx,cy,payload})=><circle key={payload.key} cx={cx} cy={cy} r={5} fill="#47705b" style={{cursor:'pointer'}} onClick={()=>inspectBucket(buckets.findIndex(m=>m.key===payload.key),'receipts')}/>}/>
+            <Line dataKey="receipts" name="Net recorded receipts" stroke="var(--ui-action)" strokeWidth={2} isAnimationActive={false} connectNulls={false} activeDot={false} dot={({cx,cy,payload})=><circle key={payload.key} cx={cx} cy={cy} r={5} fill="var(--ui-action)" style={{cursor:'pointer'}} onClick={()=>inspectBucket(buckets.findIndex(m=>m.key===payload.key),'receipts')}/>}/>
           </LineChart></ResponsiveContainer></div>
         </section>
       </div>

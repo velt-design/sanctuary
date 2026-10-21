@@ -10,6 +10,15 @@ including a streamed HTTP 200 redirect. Calibrate boundary evidence on a known
 global route; preserve framework-hop and fixture failures rather than weakening
 denial assertions. Owners: `staff-api-auth-contracts.md` and `testing-and-qa.md`.
 
+## 2026-10-21: preserve independent report sections during recovery
+
+A composition slot placed hub-backed source outcomes inside the commercial
+report. Its early loading/error returns omitted that slot and hid usable source
+records. Render independently loaded children in every report state, and scope
+busy semantics to the pending read. Cover the actual parent, source rows and
+inspection through failure and retry, rather than checking only a child marker.
+Owner and regression: `marketing-performance.md`, `CommercialOverview.test.tsx`.
+
 ## 2026-10-21: Match RPC transaction mode to authentication locks
 
 The exact site-visit reader used `STABLE` while its existing actor check locks

@@ -11,7 +11,7 @@ import { hubDefaults, hubQuery, parseHubFilters, selectHub, views, eventLabels, 
 import BusinessOverview from './BusinessOverview';
 import SalesActivity from './SalesActivity';
 import HubToolbar from './HubToolbar';
-import { Drawer } from '@/components/ui/drawer/Drawer';
+import { Drawer } from './MarketingDrawer';
 import HubMetrics from './HubMetrics';
 import HubRecords from './HubRecords';
 import HubCompleteness from './HubCompleteness';
@@ -26,6 +26,7 @@ import useHub, { loadHub, type HubLoader } from './useHub';
 import { loadReport, type ReportLoader } from './useMarketingReports';
 import useReportReturnPosition from './useReportReturnPosition';
 import styles from './MarketingPerformance.module.css';
+import theme from './MarketingTheme.module.css';
 import Financials from '@/components/financials/Financials';
 import type { FinancialsLoader } from '@/components/financials/useFinancials';
 import type { DesignerLoader } from './useDesigner';
@@ -62,15 +63,14 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   const selected=hub&&applied?selectHub(hub,{...applied,inspect:'all'}):null;
   const totals=selected?summarize(selected.enquiries):null;
   const priorFiltered=hub&&previous&&applied?{...previous,rows:selectHub({...hub,enquiries:previous},{...applied,inspect:'all'}).enquiries}:null;
-  return <PageLayout className={styles.page}>
-    <Header variant="index" title="Marketing & Sales"/>
-    {(synthetic||staging||previewDescription)&&<p className={styles.environmentLabel}>{productionSnapshot?'Private preview · Real snapshot · 22 Sep 2026':synthetic?'Demo · Fictional records':staging?'Staging · Test records':'Preview'}</p>}
+  return <PageLayout width="full" className={`${theme.theme} ${styles.page}`} data-marketing-report>
+    <Header className={styles.reportHeader} variant="index" title="Marketing & Sales" right={draft.view!=='financials'?<HubToolbar filters={applied??draft} apply={apply} hub={hub}/>:undefined} subtitle={(synthetic||staging||previewDescription)?<span className={styles.environmentLabel}>{productionSnapshot?'Private preview · Real snapshot · 22 Sep 2026':synthetic?'Demo · Fictional records':staging?'Staging · Test records':'Preview'}</span>:undefined}/>
     <div ref={tabs} style={{minWidth:0}}><TabNavigation items={views.map(v=>({...v,controls:'hub-results'}))} selectedKey={draft.view} onSelect={view=>apply({...draft,view,inspect:'all'})} ariaLabel="Marketing and sales views"/></div>
     {draft.view==='financials'?<div id="hub-results"><Financials loader={financialsLoader} synthetic={synthetic}/></div>:<>
-    <HubToolbar filters={applied??draft} apply={apply} hub={hub}/>{validation&&<p role="alert">{validation}</p>}
+    {validation&&<p role="alert">{validation}</p>}
     <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>
-        <div className={styles.contextLine}><span>{applied.view==='overview'?'Commercial performance in selected dates':applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>
+        {applied.view!=='overview'&&<div className={styles.contextLine}><span>{applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>}
         {applied.view==='overview'?<BusinessOverview hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} synthetic={synthetic} revision={revision}/>:<>
         <HubMetrics hub={hub} filters={applied} apply={apply} inspectEvents={inspectEvents}/>
         {applied.view==='enquiries'&&<div className={styles.contextLine}><div className={styles.coverageTrack}><span style={{width:rate(totals.attributed,totals.enquiries)}}/></div><span>{rate(totals.attributed,totals.enquiries)} source known · {totals.enquiries-totals.attributed} unknown</span><Button variant="quiet" onClick={()=>setInfo(true)}>How it’s counted</Button></div>}

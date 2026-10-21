@@ -33,19 +33,39 @@
 .trendToolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; min-height:76px; }
 .trendToolbar > :first-child { width:150px; flex-shrink:0; }
 .comparisonCaption { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; margin:12px 0; color:var(--ui-text-muted); font-size:12px; }
-.outcomeScroll { height:320px; overflow:auto; }
+.outcomeScroll { max-height:460px; overflow:auto; }
 .outcomeTable { width:100%; min-width:780px; table-layout:fixed; border-collapse:collapse; text-align:left; font-variant-numeric:tabular-nums; }
-.outcomeTable th,.outcomeTable td { padding:12px 10px; border-bottom:1px solid var(--ui-border); vertical-align:top; }
+.outcomeTable th,.outcomeTable td { padding:14px 12px; border-bottom:1px solid var(--ui-border); vertical-align:middle; }
 .outcomeTable thead th { position:sticky; top:0; z-index:1; background:var(--ui-surface-primary); font-size:12px; font-weight:600; }
 .outcomeTable th:first-child { width:22%; }
 .outcomeTable th small { display:block; color:var(--ui-text-muted); font-size:11px; font-weight:400; margin-top:4px; }
-.outcomeTable tbody th { font-size:13px; font-weight:500; overflow-wrap:anywhere; }
+.outcomeTable tbody th { font-size:14px; font-weight:500; overflow-wrap:anywhere; }
+.outcomeTable tbody tr:hover { background:var(--ui-surface-secondary); }
 .outcomeTable tbody th i { display:inline-block; width:9px; height:9px; margin-right:7px; }
 .outcomeCell { display:flex; flex-direction:column; gap:6px; width:100%; min-height:64px; padding:0; background:none; border:0; color:var(--ui-text); text-align:left; cursor:pointer; }
 .outcomeCell:hover .cellValue { text-decoration:underline; }
 .outcomeCell:focus-visible { outline:2px solid var(--ui-text); outline-offset:4px; }
-.cellValue { font-size:19px; font-weight:600; }
+.cellValue { font-family:var(--ui-font-display); font-size:30px; font-weight:600; line-height:1.1; }
+.cellValue[data-unavailable] { font-family:var(--ui-font-body); font-size:13px; font-weight:500; line-height:1.5; }
 .cellValue small,.outcomeCell > small { font-size:11px; font-weight:400; color:var(--ui-text-muted); }
-.cellTrack { height:6px; width:100%; background:var(--ui-border); display:block; }
+.cellTrack { height:3px; width:100%; background:var(--ui-border); display:block; }
 .cellTrack > span { display:block; height:100%; }
 @media(max-width:650px) { .trendToolbar { align-items:flex-start; } .trendToolbar .note { font-size:11px; } }
+.outcomes { border:0; border-top:1px solid var(--ui-border); }
+.outcomes > header { padding:12px 0 0; border:0; }
+.outcomes > header h2 { font-size:34px; }
+.outcomes > div { padding:0; }
+.outcomes .comparisonCaption { margin:8px 0 16px; font-size:13px; }
+.compactOutcomes .outcomeTable { min-width:740px; }
+.compactOutcomes .comparisonCaption { margin:4px 0 8px; }
+.compactOutcomes .cellValue { font-size:28px; }
+.compactOutcomes .outcomeTable th:first-child { width:27%; }
+.compactOutcomes .outcomeCell { min-height:44px; gap:4px; }
+.compactOutcomes .cellTrack { display:none; }
+.compactOutcomes .outcomeTable th,.compactOutcomes .outcomeTable td { padding:6px 12px; }
+.grid > section { border:0; border-top:1px solid var(--ui-border); }
+.grid > section > header { padding:20px 0 12px; border:0; }
+.grid > section > div { padding:0; }
+.grid h3 { font-family:var(--ui-font-display); font-size:24px; margin:12px 0; }
+.overviewNumbers strong { font-weight:600; font-size:54px; }
+@media(max-width:650px) { .compactOutcomes .outcomeTable { min-width:680px; }.outcomes > header h2 { font-size:30px; }.cellValue { font-size:26px; }.plot,.sourcePlot { margin-top:12px; } }
