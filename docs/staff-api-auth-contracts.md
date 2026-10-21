@@ -1,6 +1,6 @@
 # Staff API And Auth Contracts
 
-## Initial document access candidate (21 October 2026, local only)
+## Initial document access candidate (21 October 2026, unreleased under qualification)
 
 For canonical HTML document GETs at `/staff/projects`, `/staff/site-visits` and
 `/staff/projects/(proj_)?<uuid>`, middleware renews session transport without using

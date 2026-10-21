@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-21: prove access boundaries through the compiled framework
+
+Next normalizes Flight headers before middleware, so header mocks alone cannot
+prove which access boundary receives a request. Keep ordinary browser RSC and
+prefetch checks distinct from forged document-shaped Flight input. Both must
+verify fresh identity and current role before private reads or root serialization,
+including a streamed HTTP 200 redirect. Calibrate boundary evidence on a known
+global route; preserve framework-hop and fixture failures rather than weakening
+denial assertions. Owners: `staff-api-auth-contracts.md` and `testing-and-qa.md`.
+
 ## 2026-10-21: inspect regional deployment input before accepting a build
 
 The same middleware region configuration produced a single-region CLI preview

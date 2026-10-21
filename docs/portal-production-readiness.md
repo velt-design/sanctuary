@@ -11,7 +11,7 @@ remained global despite correct generated single-region configuration. Earlier
 preview placement is not proof of production placement or a useful-load gain.
 The approved measurement windows are complete; no ongoing logging is implied.
 
-The next local-only candidate moves session transport, not authority, for three
+The next unreleased candidate under qualification moves session transport, not authority, for three
 canonical document routes. Root and explicit page gates retain fresh regional
 identity/current-role checks before private work. Compiled synthetic denial,
 refresh, streaming and concurrency proof must pass before protected qualification.
