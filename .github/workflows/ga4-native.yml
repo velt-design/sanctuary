@@ -1,0 +1,61 @@
+name: GA4 Native SQL
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/ga4-native.yml'
+      - 'test/sanctuary-ga4-native.mjs'
+      - 'supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql'
+      - 'supabase/migrations/20261021040001_ga4_v3_diagnostics.sql'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ga4-native.yml'
+      - 'test/sanctuary-ga4-native.mjs'
+      - 'supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql'
+      - 'supabase/migrations/20261021040001_ga4_v3_diagnostics.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ga4-native-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PRAXIS_DISPOSABLE_POSTGRES_BIN: ''
+      # Official 17.6.1.167 linux/amd64 manifest, verified from public ECR metadata.
+      GA4_NATIVE_IMAGE: public.ecr.aws/supabase/postgres@sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4
+      GA4_NATIVE_TAG: public.ecr.aws/supabase/postgres:17.6.1.167
+    steps:
+      - name: Checkout exact event revision
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Provision exact native database image
+        timeout-minutes: 4
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 180s docker pull --platform linux/amd64 "$GA4_NATIVE_IMAGE"
+          docker tag "$GA4_NATIVE_IMAGE" "$GA4_NATIVE_TAG"
+          test "$(docker image inspect "$GA4_NATIVE_IMAGE" --format '{{.Id}}')" = "$(docker image inspect "$GA4_NATIVE_TAG" --format '{{.Id}}')"
+          docker image inspect "$GA4_NATIVE_TAG" --format 'Image ID: {{.Id}}; registry digests: {{json .RepoDigests}}'
+      - name: Exact native SQL and real safeupdate contract
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          sha256sum test/sanctuary-ga4-native.mjs
+          node test/sanctuary-ga4-native.mjs

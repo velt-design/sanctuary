@@ -381,6 +381,30 @@ The optional existing-image Docker substrate loads real safeupdate and never
 pulls, mounts host paths or publishes ports; its local engine failed during
 startup before SQL in this pass. No reset or fake extension was used.
 
+The dedicated `.github/workflows/ga4-native.yml` prepares the remaining real
+safeupdate substrate on the standard Ubuntu runner with Node22 and read-only
+repository permissions. Its PR/main triggers cover only that workflow, the
+committed native harness and the two exact GA4 migration bodies; manual dispatch
+has no inputs. A separate single-attempt180-second provisioning step pulls the
+official17.6.1.167 linux/amd64 image by immutable manifest digest
+`sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4`,
+then associates the harness's fixed local tag with that exact image and prints
+its resolved ID/registry digests. The digest was verified from public ECR tag
+index and child-manifest bytes on21October2026; no image was pulled locally.
+The unchanged harness still never pulls, runs its disposable container with
+network none and no host mounts/ports, loads real safeupdate in every SQL
+session and requires the unsafe-delete negative assertion. Job maximum15minutes;
+no dependency install, app build/tests, secrets, provider/remote database call
+or artifact upload. Only synthetic status and revision/image/SQL hashes reach
+stdout. Preparing this workflow is not a successful CI receipt: the new40001
+real-safeupdate gate stays open until the exact published revision passes.
+
+Both Vercel project configs suppress Git deployment only for branch
+`codex/ga4-diagnostics-20261021` while this synthetic database proof is prepared.
+Other branch entries, production settings, regions, functions and crons retain
+their existing values. This is local configuration preparation, not publication
+or a Vercel service mutation.
+
 Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4
 test/sanctuary-ga4-sql.test.ts test/sanctuary-ga4-http-sql.test.ts`, Portal
 typecheck and scoped lint. These use synthetic provider/vault data and the actual
