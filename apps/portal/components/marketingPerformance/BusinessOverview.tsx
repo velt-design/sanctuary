@@ -9,6 +9,7 @@ import PortfolioChart from './PortfolioChart';
 import SalesActivity from './SalesActivity';
 import styles from './HubCharts.module.css';
 import CommercialOverview from './CommercialOverview';
+import SourceOutcomes from './SourceOutcomes';
 import DesignerPerformance from './DesignerPerformance';
 import type { DesignerLoader } from './useDesigner';
 import type { AssignmentClient } from './SalesDesignerAssignment';
@@ -21,7 +22,7 @@ export default function BusinessOverview({hub,filters,apply,commercialLoader,des
   const open=ages.reduce((n,b)=>n+b.count,0);
   const inspectAge=(age:string)=>apply({...filters,view:'portfolio',age,created:false,inspect:'all'});
   return <>
-    <CommercialOverview hub={hub} filters={filters} apply={apply} loader={commercialLoader} synthetic={synthetic} revision={revision}/>
+    <CommercialOverview hub={hub} filters={filters} apply={apply} loader={commercialLoader} synthetic={synthetic} revision={revision}><SourceOutcomes rows={selected.enquiries} filters={filters} apply={apply} compact/></CommercialOverview>
     <DesignerPerformance hub={hub} filters={filters} apply={apply} loader={designerLoader} assignmentClient={assignmentClient} synthetic={synthetic} revision={revision}/>
     <details><summary>Current portfolio and recorded sales activity</summary>
     <div className={styles.overviewNumbers}>
@@ -37,7 +38,7 @@ export default function BusinessOverview({hub,filters,apply,commercialLoader,des
           <BarChart data={chartAges} layout="vertical" margin={{top:8,right:24,bottom:8,left:0}} accessibilityLayer>
             <CartesianGrid horizontal={false} stroke="var(--ui-border)"/><XAxis type="number" allowDecimals={false} tick={{fontSize:12}}/>
             <YAxis type="category" dataKey="label" width={112} tick={{fontSize:12}}/><Tooltip/>
-            <Bar dataKey="count" name="Projects" fill="#276987" isAnimationActive={false} cursor="pointer" onClick={(_,i)=>{if(chartAges[i]?.count)inspectAge(chartAges[i].key);}}/>
+            <Bar dataKey="count" name="Projects" fill="var(--ui-action)" isAnimationActive={false} cursor="pointer" onClick={(_,i)=>{if(chartAges[i]?.count)inspectAge(chartAges[i].key);}}/>
           </BarChart>
         </ResponsiveContainer></div>
         <ReportDetail title="Age of open work"><p>Calendar days since project creation at the report read time in Auckland, not inactivity, time in stage or overdue days. Active and waiting projects only; closed, archived and unknown-state projects are excluded. Future creation dates need review. Select an age group for its records, oldest first. Historical and test-labelled projects remain included.</p></ReportDetail>

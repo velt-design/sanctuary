@@ -1,5 +1,47 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Marketing visual direction (21 October 2026)
+
+Jordan selected the second developed visual concept for all five Marketing tabs:
+a black canvas, strong condensed figures, fine dividers, orange and ivory quoted
+versus accepted values, and readable source rows. The authorised local candidate
+applies this direction to Business overview, Enquiries, Sales activity, Project
+portfolio, all four Financials views, Designer evidence and report drawers.
+Production publication remains with the owning task and its release approval.
+
+Incremental presentation map: `MarketingTheme.module.css` owns the local palette,
+chart tooltip contrast and mounted-report backdrop; `MarketingDrawer` carries it
+across the existing document-body portal. The shared Drawer adds an optional
+class hook with unchanged default behaviour. `CommercialOverview` keeps the
+existing contribution/coverage model and now plots its exact weekly or monthly
+records as a full-width line chart. Compact figures retain exact amounts in
+inspection and hover titles. Its composition slot places `SourceOutcomes` after
+the trend; overview cells open the corresponding enquiry population, preserving
+source aliases. Timing, Designer and portfolio sections remain available below.
+The rest of the hub and Financials retain their existing state, date, accounting,
+permission and recovery owners. No loader, model, API, connector or pricing rule
+changes form part of this visual work. Fixture records remain fictional.
+
+The header composes report dates and quiet filter/saved-view controls alongside
+the existing staff search. A single prior-comparison disclosure retains all
+three exact prior contribution inspections. The broad commercial chart uses a
+shallower desktop frame so source outcomes share the opening screen; narrow
+layouts retain a taller plot and wrapping controls. Tax, date and incomplete
+history labels remain visible at their existing size or larger.
+
+Source outcomes depend on the hub read, independently of the commercial report.
+Their rows and enquiry inspection remain available while commercial values load,
+fail or retry; commercial loading does not mark source actions busy. Cached outer
+geometry still keeps the following sections stable, and healthy composition is
+unchanged. The actual BusinessOverview integration regression covers pending,
+failure, retry pending and recovery with real synthetic source rows and counts.
+
+Verification for this candidate uses the existing component/model suites and
+protected Marketing fixture, including representative populations, all tabs,
+small screens, drawers, filters and incomplete/unavailable evidence. Current
+rendered evidence and independent review remain in the private owning work record;
+local styling and tests alone do not establish production or owner acceptance.
+
 ## Designer visits and conversion candidate (21 October 2026)
 
 Business Overview shows sales-design responsibility and actual attendance after the
