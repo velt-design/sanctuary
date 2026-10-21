@@ -486,3 +486,5 @@ The default-dark Xero adapter is portal-owned, with a dedicated database role, e
 ## SharePoint project-file boundary (22 October 2026)
 
 The existing Project Files surface uses a staff API and explicit private project-to-drive-item bindings; Graph never runs in the browser. A scoped private outbox handles future enquiry folders using the existing leased-command pattern. This does not activate the generic dark worker. The server-only provisioning owner and operator-only import boundary are documented in [Project SharePoint files](project-sharepoint-files.md).
+
+The exact provisioning adapter is registered in both Portal's service-role usage inventory and the repository's strict service-role report. The operator importer remains covered by the existing operational-script policy with its explicit preflight/apply rationale. No directory-wide SharePoint exception is introduced; a focused governance test rejects neighbouring privileged runtime files.
