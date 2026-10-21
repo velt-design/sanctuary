@@ -9,6 +9,18 @@ UTMs and excludes post-cutoff qualification. Delayed CRM records remain intact.
 Counts explicitly cover consented attributable records; all-saved coverage stays
 unknown. This additive continuation is not installed or an activation proof.
 
+The continuation's coverage diagnostic counts canonical first-project WEBSITE
+requests in the matched delivery/maturation window, including unlinked requests
+(one saved record per ID), and retains both launch-test exclusions. Only exact
+current-test registry joins enter the native arms. Verified original-ad or other
+activated registered-test joins are separately counted; arbitrary other-campaign
+claims, missing consent, inconsistent tags and missing attribution remain unknown.
+The counts reconcile to the whole declared website domain. Unknown attribution or
+unresolved late enrolment prevents a commercial winner. Native fixtures include
+unlinked records, known-other versus invented other source, incomplete and complete
+coverage scenarios, and unchanged frozen reads. No additional personal data or
+consent is collected; ordinary CRM records and capability-release SQL are unchanged.
+
 ## Paused creative capability candidate, 21 October 2026
 
 The native outcome regression retains both existing launch-verification enquiry
