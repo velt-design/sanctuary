@@ -71,9 +71,10 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
 
   };
 
-  if (busy) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance" aria-busy="true"><h2>Commercial performance</h2><p role="status">Reading quote values and timing…</p></section>;
+  // Source outcomes use the independent hub read and remain usable during commercial recovery.
+  if (busy) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><div aria-busy="true"><h2>Commercial performance</h2><p role="status">Reading quote values and timing…</p></div>{children}</section>;
 
-  if (!report || error) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><h2>Commercial performance</h2><p role="alert">{error || 'Commercial evidence unavailable.'} No partial values are shown.</p><Button onClick={() => setRetry(n => n + 1)}>Retry commercial report</Button></section>;
+  if (!report || error) return <section className={styles.section} style={{ minHeight: waitingHeight }} aria-label="Commercial performance"><h2>Commercial performance</h2><p role="alert">{error || 'Commercial evidence unavailable.'} No partial values are shown.</p><Button onClick={() => setRetry(n => n + 1)}>Retry commercial report</Button>{children}</section>;
 
   const selected = selectHub(hub, { ...filters, inspect: 'all' }), ids = new Set(selected.projects.map(p => p.id));
 

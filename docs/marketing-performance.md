@@ -29,6 +29,13 @@ shallower desktop frame so source outcomes share the opening screen; narrow
 layouts retain a taller plot and wrapping controls. Tax, date and incomplete
 history labels remain visible at their existing size or larger.
 
+Source outcomes depend on the hub read, independently of the commercial report.
+Their rows and enquiry inspection remain available while commercial values load,
+fail or retry; commercial loading does not mark source actions busy. Cached outer
+geometry still keeps the following sections stable, and healthy composition is
+unchanged. The actual BusinessOverview integration regression covers pending,
+failure, retry pending and recovery with real synthetic source rows and counts.
+
 Verification for this candidate uses the existing component/model suites and
 protected Marketing fixture, including representative populations, all tabs,
 small screens, drawers, filters and incomplete/unavailable evidence. Current
