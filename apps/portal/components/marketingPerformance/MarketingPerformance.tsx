@@ -29,13 +29,14 @@ import styles from './MarketingPerformance.module.css';
 import Financials from '@/components/financials/Financials';
 import type { FinancialsLoader } from '@/components/financials/useFinancials';
 import type { DesignerLoader } from './useDesigner';
+import type { AssignmentClient } from './SalesDesignerAssignment';
 import type { CommercialLoader } from './useCommercial';
 import useVisibleSelection from '@/components/financials/useVisibleSelection';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
 import type { loadMetaSaleStatus } from '@/lib/marketingIntegrations/metaSales/contract';
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader}: {
-  financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient}: {
+  financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;assignmentClient?:AssignmentClient;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
   const [draft,setDraft]=useState<FiltersState>(()=>({...hubDefaults(initialFilters??defaultFilters()),view:'overview' as const}));
@@ -71,7 +72,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
     <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>
         <div className={styles.contextLine}><span>{applied.view==='overview'?'Commercial performance in selected dates':applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>
-        {applied.view==='overview'?<BusinessOverview hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} synthetic={synthetic} revision={revision}/>:<>
+        {applied.view==='overview'?<BusinessOverview hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} assignmentClient={assignmentClient} synthetic={synthetic} revision={revision}/>:<>
         <HubMetrics hub={hub} filters={applied} apply={apply} inspectEvents={inspectEvents}/>
         {applied.view==='enquiries'&&<div className={styles.contextLine}><div className={styles.coverageTrack}><span style={{width:rate(totals.attributed,totals.enquiries)}}/></div><span>{rate(totals.attributed,totals.enquiries)} source known · {totals.enquiries-totals.attributed} unknown</span><Button variant="quiet" onClick={()=>setInfo(true)}>How it’s counted</Button></div>}
         {applied.view==='enquiries'&&<EnquiryCharts rows={selected.enquiries} filters={applied} apply={apply}/>}

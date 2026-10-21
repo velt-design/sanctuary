@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-21: Assign sales responsibility without rewriting attendance
+
+The owner clarified that conversion belongs to the sales designer, who may differ
+from the person attending a visit. Store that project responsibility separately
+with an audited revision command. Never repurpose current phase ownership,
+drafting responsibility or the visit's actual staff. Missing assignments remain
+visible and cannot remove eligible projects from team conversion. A replayed write
+receipt describes its original command, so the editor reads current assignment
+before displaying a reconciled save. Assignment does not supply missing attendance,
+purpose or dates, and a service inspection can remain in history while excluded
+from sales metrics through the existing correction workflow.
+
 ## 2026-10-21: Match RPC transaction mode to authentication locks
 
 The exact site-visit reader used `STABLE` while its existing actor check locks

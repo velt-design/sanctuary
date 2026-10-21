@@ -55,6 +55,17 @@ fails on an oversized full history, and returns only validated slim facts.
 Denied, malformed, unavailable and complete responses all remain private/no-store.
 No service credential or preview identity bypass is introduced.
 
+`GET` / `PUT /api/staff/v1/projects/[projectId]/sales-designer` use the same
+confirmed owner and auth-bound client. PUT requires the exact Portal origin and
+strict JSON containing only commandId, expectedRevision, designerKey (nullable
+existing roster key) and a 3–500 character reason. The body is bounded at 3,000
+characters. The database independently locks current owner/staff authority and
+the project, serializes command identities, compares the revision, and appends an
+audit receipt. These POST RPCs are VOLATILE because authority guards use row locks.
+No direct private table or service-role execution is granted. A stale/reused
+command is 409, revoked authority 403, missing project 404 and uncertain persistence
+503; raw database errors are not returned. All responses are private/no-store.
+
 ## Google advertising candidate
 
 `GET /api/staff/v1/marketing-performance/google-ads` requires the existing staff
