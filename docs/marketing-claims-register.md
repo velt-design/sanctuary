@@ -1,5 +1,21 @@
 # Marketing Claims Register
 
+## Commercial photographic refresh (21 October 2026)
+
+The Commercial page retains the approved 30 September hospitality-first
+covered-space package and July design-and-build scope below. Existing Good Home
+06/05 and Atelier Shu 01 photographs lead the page. KiwiRail 01 and Tamaki Drive
+01 retain the current published workplace-canopy and Lilliput project identities
+and exact historical consultant-led roles. No project dimensions, numerical
+performance, location expansion or stronger accessory claim is introduced.
+
+The full package remains an agreed scope. Engineering sign-off stays with the
+project engineer; approvals and operating access remain site-specific. Furniture,
+landscaping and unrelated building work are separately agreed. The photo refresh
+is not approval of uninterrupted operation, deadlines, general compliance or
+structural guarantees, nor a new supply-only offer. The unresolved KiwiRail
+area/legacy material details are not used.
+
 ## Pitched form evidence (21 October 2026)
 
 The Pitched guide reuses existing public installed references `simple-pergolas/

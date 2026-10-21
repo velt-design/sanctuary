@@ -1,5 +1,25 @@
 # Testing And QA
 
+## Commercial photographic presentation (21 October 2026)
+
+`marketing.commercial-guide.spec.ts` is registered in the Marketing browser lane.
+Its authored contracts cover 320/390/820/1440/2560, five meaningful photographs,
+early enquiry action, bounded wide layout, repeated focus/project return,
+professional source attribution, optional commercial brief and retry, required
+phone, native form action, schema/canonical and the adjacent Professional route.
+The Custom handoff sits beside the existing-building note. First and repeated
+enquiry focus respects the shared form's Call, Email, then Project type tab order.
+The audience suite retains upload failure/removal coverage on both audiences.
+Commercial-specific programme and preload assertions follow the new presentation;
+the obsolete overlay-hero expectation is replaced by the dedicated guide suite.
+
+Run the Commercial server-page handoff unit with canonical form, context,
+attachments, fallback, guided context and project/product claims suites. Run
+Marketing types, scoped lint, docs guard/impact and changed-file architecture.
+Source tests, authored browser contracts and actual permitted-browser journeys
+are separate evidence. Local populated tests need persistent intake, upload and
+vendor fences; fixture success does not establish production delivery.
+
 ## Designer accepted-sales correction (21 October 2026)
 
 Run the marketingPerformance model/component suite, actual source projection
