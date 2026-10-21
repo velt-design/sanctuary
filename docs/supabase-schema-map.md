@@ -1,8 +1,8 @@
 # Supabase Schema Map
 
-## Blinds residential discussion preview contract (21 October 2026)
+## Blinds residential discussion contract (21 October 2026)
 
-Source-only forward migration 20261021020001_marketing_blinds_optional_phone.sql
+Forward migration 20261021020001_marketing_blinds_optional_phone.sql
 adds exactly /pergolas-with-blinds to marketing_enquiry_intake(uuid,text,jsonb)
 blank-phone route eligibility. Residential audience, nonempty email/suburb and
 explicit project-discussion remain required. The prior Outdoor Rooms function is
@@ -11,8 +11,9 @@ grants, configured exception, contact matching, upload binding, replay and atomi
 writes. Supplied phones retain the existing application validation.
 
 The disposable API/native/SQL harness exercises the exact source function and
-rollback. This preview does not authorise installation on a shared database.
-Reviewed reconciliation, rehearsal and rollout remain a separate release step.
+rollback. Shared-environment reconciliation, reviewed rehearsal, installation and
+postflight are separate operational checks, required before enabling this form's
+contract. Fixture results alone do not establish rollout or customer delivery.
 
 ## Outdoor Rooms residential discussion contract (21 October 2026)
 
@@ -830,6 +831,16 @@ Access and retention rule:
 Migration source:
 
 - `supabase/migrations/20260718_000001_portal_performance_metrics.sql`.
+- Candidate forward `20261021010001_portal_performance_measurement.sql` restores
+  these same objects where absent and extends the route constraint with
+  `/staff/site-visits`. Existing rows, summary invoker security, staff insert/admin
+  read boundaries, non-client purge and the 30-day cutoff remain. Browser table/
+  sequence ACLs are normalized to remove broad installation defaults, including
+  TRUNCATE. Unrelated roles/objects are untouched. The exact daily
+  03:17 UTC job is retained or created once, bound to the current database and
+  approved execution owner; a conflicting same-name job aborts.
+  Existing access helpers and cron scheduler are prerequisites, not installed here.
+  This is prepared SQL; local rehearsal does not establish remote installation.
 
 ## Marketing, Automation, And Supporting Tables
 

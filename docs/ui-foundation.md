@@ -9,10 +9,14 @@ The agenda reads current Next search parameters directly, including project scop
 native history replacement updates typing without adding entries. Cached route
 props are not copied into independent filter state. Regression coverage includes
 project round trips, Back/Forward, rapid typing and clearing without losing scope.
-In the 21 October local/preview candidate, `siteVisitNavigation.ts` also owns scope changes, so clearing project scope cannot
+In the released 21 October navigation change, `siteVisitNavigation.ts` also owns scope changes, so clearing project scope cannot
 race a subsequent view choice. Scope changes add one returnable history entry;
 typing and view filters replace that entry. The sidebar and compact rail share
 `navRouteMatch.ts`, including the separate agenda under Schedule.
+The subsequent first-load candidate places the view/search/attending controls
+before changing source/scope notices. The review count reserves its width while
+loading, and attending labels cannot widen their select. Scope, freshness and
+retry remain directly below, preserving rapid pointer targets as data arrives.
 All-day and provisional source entries use an All day label with their actual
 calendar date range in agenda/project detail and an All day dashboard marker.
 Multi-day entries remain visible during the covered dates and leave upcoming

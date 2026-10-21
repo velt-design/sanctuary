@@ -13,6 +13,7 @@ import {
   type PortalAccessState,
 } from '@/lib/portalAccess';
 import { redirect } from 'next/navigation';
+import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
 
 export type PortalSession = {
   user: User;
@@ -26,21 +27,29 @@ const getRequestPortalAccess = cache(async (): Promise<{
   accessState: PortalAccessState;
   authenticatedUser: User | null;
 }> => {
-  const supabase = await getSupabaseServerAuth();
-  const lookup = supabase as unknown as PortalAccessLookup;
-  let authenticatedUser: User | null = null;
-  const trackedLookup: PortalAccessLookup = {
-    auth: {
-      getUser: async () => {
-        const result = await supabase.auth.getUser();
-        authenticatedUser = result.data?.user ?? null;
-        return result;
+  const diagnostics = await getDocumentRenderDiagnostics();
+  const startedAt = performance.now();
+  try {
+    const supabase = await getSupabaseServerAuth();
+    const lookup = supabase as unknown as PortalAccessLookup;
+    let authenticatedUser: User | null = null;
+    const trackedLookup: PortalAccessLookup = {
+      auth: {
+        getUser: async () => {
+          const result = await supabase.auth.getUser();
+          authenticatedUser = result.data?.user ?? null;
+          return result;
+        },
       },
-    },
-    from: lookup.from.bind(lookup),
-  };
-  const accessState = await resolvePortalAccessState(trackedLookup);
-  return { accessState, authenticatedUser };
+      from: lookup.from.bind(lookup),
+    };
+    const accessState = await resolvePortalAccessState(trackedLookup, diagnostics?.accessObserver('rsc'));
+    diagnostics?.record('rsc.access', startedAt, accessState.kind);
+    return { accessState, authenticatedUser };
+  } catch (error) {
+    diagnostics?.record('rsc.access', startedAt, 'error');
+    throw error;
+  }
 });
 
 export async function getPortalAccessState(): Promise<PortalAccessState> {

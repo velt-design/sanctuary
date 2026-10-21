@@ -2036,7 +2036,7 @@ The Cost guide is shorter, owns cost education clearly, and retains a safe path 
 ### G13 - Refine the Pergolas With Blinds core guide
 
 **Phase:** Phase 6 - Retained-guide content refinement  
-**Status:** Implemented for preview review, 21 October 2026
+**Status:** Implemented; release verification recorded separately, 21 October 2026
 **Relative effort:** Medium  
 **Implementation risk:** Medium  
 **Dependencies:** G09 and G10
@@ -2049,9 +2049,9 @@ gallery switches distinct photographs without an aligned wipe or design event.
 An early optional-photo enquiry, assessed existing-pergola path, practical edge
 planning and individual FAQs preserve the guide role. The standard 3D path is
 optional and qualified; canonical context, contact, draft and price owners remain.
-The exact optional-phone migration is source-only. See Marketing UI Foundation
-and Testing And QA for the implementation map and fixture limits. Hosted review
-and any production release remain separate from these local checks.
+See Marketing UI Foundation and Testing And QA for the implementation map and
+fixture limits. Exact optional-phone migration rollout, hosted verification and
+production release remain separate operational checks.
 
 **Ready-to-use Codex goal prompt**
 

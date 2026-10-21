@@ -1,6 +1,6 @@
 # Marketing UI Foundation
 
-## Pergolas With Blinds preview composition (21 October 2026)
+## Pergolas With Blinds composition (21 October 2026)
 
 The exact /pergolas-with-blinds guide uses a centred 1440px photographic canvas
 and an early direct enquiry. Its corrected opening makes a lowered mesh blind
@@ -31,8 +31,8 @@ other callers retain their existing default.
 Only this SEO route is added to the existing scoped draft, deliberate-action and
 contact-policy lists. No pricing, geometry, provider or ad-classification owner
 changes. Fenced local receipts and sample prices are fixture evidence, not shared
-intake, delivery or live attribution. The exact phone migration is source-only
-until a separately authorised release.
+intake, delivery or live attribution. Publication and exact phone-migration rollout
+require separate verification and an operational record.
 
 ## Outdoor Rooms composition (21 October 2026)
 

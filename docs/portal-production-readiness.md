@@ -1,5 +1,17 @@
 # Portal Production Readiness
 
+## First-load measurement preparation (21 October 2026, unreleased)
+
+The request-local project read optimization reduces measured server work, but the
+matched protected-preview useful-load observations have not improved overall.
+Production first-response cost remains unproven. A default-disabled, automatically
+expiring document phase diagnostic and minimal existing telemetry restoration are
+being prepared to identify the next evidenced bottleneck. They preserve auth and
+query semantics. Protected measurement verification and explicit live measurement/
+schema approval remain distinct from code tests and earlier functional acceptance.
+See the security, environment and testing owners for contracts and qualification.
+
+
 Portal experience release completed through PR222 after Jordan requested "push
 live" on 16 October 2026. Production deployment and read-only verification passed;
 the earlier `bd0ec70` review was a historical candidate, not the final release.

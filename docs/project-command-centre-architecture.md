@@ -1,6 +1,30 @@
 # Project Operational Command Centre Architecture
 
-## Workflow clarity (20 October 2026 local candidate)
+## First-load read path (21 October 2026 candidate)
+
+The first-load candidate keeps the full Command Centre as the authoritative
+project-work composer. `createProjectCommandCentreRead` owns one authenticated
+client, project ID and model-read promise per invocation. The snapshot uses the
+bound `createAuthoritativeProjectWorkRead` adapter for its initial model check and
+later full work read. There is no cross-request result cache or caller-supplied
+model assertion. Separate requests still establish their own access and data.
+
+After the Command Centre has read a visible project and its model marker, it
+loads the selected estimate, domain recovery facts and operational facts together.
+`projectWorkProjectionFacts` owns the unchanged state/item/confirmation queries;
+`getProjectWorkDomainActions` separates its fact read from action composition.
+The final repository requires the same request context for prefetched facts.
+The complete commercial selection, pricing warnings, recovery priority, owner,
+closed/waiting/archive policy and error propagation remain with their existing
+owners. Missing/invisible models do not trigger operational reads. Snapshot base
+and related-project error semantics remain independent.
+
+This is a measured server-path candidate, not a released speed claim. Matched
+optimized staging runs retain browser app storage and distinguish warm HTTP from
+asset-cache bypass. Fresh-origin correctness is a separate smoke check. Projects
+list, Site Visits, correspondence, auth, pricing and schemas are unchanged controls.
+
+## Workflow clarity (released 20 October 2026)
 
 Overview starts with the existing server-owned project work/action. Two stable
 desktop columns group work with commercial facts, and contact details with
@@ -47,7 +71,7 @@ keeps the draft without prompting. Full-document exits retain beforeunload.
 `useCommercialListState` restores a list's scroll on detail return,
 but does not apply another tab's saved scroll after its read finishes.
 
-Outlook site visits (20 October candidate): Overview composes the separate
+Outlook site visits (released 20 October): Overview composes the separate
 `components/site-visits/ProjectNextVisit` owner below the commercial summary. Its
 authenticated query reads linked mirrored visits and source freshness; no source
 calls or matching policy lives in the Overview hotspot. The specialist action

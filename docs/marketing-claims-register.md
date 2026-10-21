@@ -1,6 +1,6 @@
 # Marketing Claims Register
 
-## Blinds preview source review (21 October 2026)
+## Blinds source review (21 October 2026)
 
 The revised /pergolas-with-blinds guide uses six inspected original installation
 photographs from Sanctuary's marketing library. The hero, pale mesh, clear PVC

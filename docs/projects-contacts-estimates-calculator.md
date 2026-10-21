@@ -1,13 +1,19 @@
 # Projects, Contacts, Estimates, And Calculator
 
-The 20 October Outlook site-visit candidate adds an extracted next-visit summary
+The released 20 October Outlook site-visit integration adds an extracted next-visit summary
 to Overview and changes site-visit specialist links to the project-filtered
 `/staff/site-visits` agenda. Its source dates/staff, linking decisions and freshness
 are owned by `lib/siteVisits` and `components/site-visits`, documented in
 `schedule.md`. Calendar imports do not confirm, notify, complete or advance a
 project. Existing manual completion and commercial evidence remain independent.
 
-## Portal contact and return continuity (16 October 2026 candidate)
+The 21 October first-load candidate reuses a bound model read within each snapshot
+and overlaps independent Command Centre facts after project access/model checks.
+It still returns the complete commercial-aware project-work projection. Read
+ownership and measurement limits are in `project-command-centre-architecture.md`;
+this candidate does not change browser caching, auth, writes or pricing.
+
+## Portal contact and return continuity (released 16 October 2026)
 
 Jordan's approved connected-workflow improvement explicitly requires ordinary contact
 information without entering Edit. This supersedes the earlier compact Overview's
@@ -15,7 +21,8 @@ omitted phone and collapsed contact disclosure. `ProjectOrientationBand` now exp
 name, phone, email and site address at the top of Overview, with direct contact/maps
 links and copy actions owned by `ProjectContactValue`. Missing values stay explicit.
 These are read actions and do not create call tasks or alter the email-only lead cadence.
-`ProjectOverviewLayout` places this region before the work/commercial/email columns.
+The released 20 October task-first `ProjectOverviewLayout` groups work/commercial
+facts and contact/correspondence in stable columns, stacking in that reading order.
 
 `useCommercialListState` retains project-scoped estimate/quote/invoice search choices
 and list reading position in the existing staff query client. State is isolated when

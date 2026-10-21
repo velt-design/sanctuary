@@ -10,7 +10,10 @@ vi.mock('@/lib/api/routeDiagnostics', () => ({
 }));
 
 vi.mock('@/lib/projects/workItems/getAuthoritativeProjectWorkProjection', () => ({
-  getAuthoritativeProjectWorkProjection,
+  createAuthoritativeProjectWorkRead: (projectId: string, client: unknown) => ({
+    readModel: () => isProjectWorkModelV2(client, projectId.replace(/^proj_/, '')),
+    read: () => getAuthoritativeProjectWorkProjection(projectId, client),
+  }),
 }));
 
 vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
