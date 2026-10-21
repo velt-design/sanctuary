@@ -1,5 +1,18 @@
 # Testing And QA
 
+## Initial Marketing hub scheduling (21 October 2026)
+
+Run `hubDocumentSelection`, `readHub.server`, the hub API/page tests,
+`useHub.initial`, and `MarketingPerformance.initialHub` with the existing hub,
+regional authority and report suites. Cover deferred page return, staff/developer
+and preview denial, exact/default Auckland dates, RSC/prefetch/Financial exclusions,
+one initial read, StrictMode, date/loader races, unmount, unavailable evidence,
+API retry, filters and record return. The neutral optimized scheduling experiment
+uses identical full fictional reports, assets and availability delays for client
+and streamed starts. It adds no simulated auth advantage. Verify actual Flight
+streaming, complete panel content, final data-to-content delay and retained
+recovery; unit promise tests do not establish hosted speed or access behavior.
+
 ## Commercial photographic presentation (21 October 2026)
 
 `marketing.commercial-guide.spec.ts` is registered in the Marketing browser lane.

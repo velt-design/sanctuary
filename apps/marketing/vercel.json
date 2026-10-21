@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/portal-marketing-hub-speed-20261021": false,
       "codex/designer-accepted-sales-20261021": false,
       "codex/ga4-diagnostics-20261021": false,
       "codex/designer-performance-20261021": false,
