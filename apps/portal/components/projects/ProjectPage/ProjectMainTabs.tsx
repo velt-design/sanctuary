@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { coerceProjectTab, type ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
@@ -21,6 +22,7 @@ export default function ProjectMainTabs({
   calculatorWorkspace = false,
   optimisticTab,
   onProjectAccessEnding,
+  statusPanel,
 }: {
   snapshot: ProjectPageSnapshot;
   host: string;
@@ -30,12 +32,14 @@ export default function ProjectMainTabs({
   calculatorWorkspace?: boolean;
   optimisticTab?: ProjectNavigationTabKey | null;
   onProjectAccessEnding?: (status: number) => void;
+  statusPanel?: ReactNode;
 }) {
   const searchParams = useSearchParams();
   const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
   // Summary metadata cannot prove a specialist is absent. Match route/navigation
   // intent until the full snapshot resolves availability, including on failure.
   const activeTab = coerceProjectTab(requestedTab, !snapshotContentReady || Boolean(snapshot.project.hasJobPacks));
+  const commercial = activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices';
 
   return (
     <section
@@ -50,6 +54,7 @@ export default function ProjectMainTabs({
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
       >
+        {!commercial ? statusPanel : null}
         {activeTab === 'activity' ? (
           <OverviewTab
             snapshot={snapshot}
@@ -66,6 +71,7 @@ export default function ProjectMainTabs({
             projectName={snapshot.project.name}
             view={activeTab}
             calculatorWorkspace={calculatorWorkspace}
+            statusPanel={statusPanel}
           />
         ) : null}
         {activeTab === 'job-packs' ? snapshotContentReady ? <JobPacksTab projectId={snapshot.project.id} /> : (

@@ -2,6 +2,7 @@ import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
 import Frame from "./ProjectPageFrame";
+import ProjectSnapshotNotice from './ProjectSnapshotNotice';
 import { useProjectTabSelection } from "./useProjectTabSelection";
 import type { ComponentProps } from "react";
 function ProjectPageFrame(props: Omit<ComponentProps<typeof Frame>, 'optimisticTab' | 'onTabSelect'>) {
@@ -46,20 +47,20 @@ vi.mock("./ProjectTabNavigation", () => ({
 }));
 
 vi.mock("./ProjectPageShell", () => ({
-  default: ({ optimisticTab, calculatorWorkspace }: any) => (
+  default: ({ optimisticTab, calculatorWorkspace, statusPanel }: any) => (
     <section
       data-testid="mock-project-shell"
       data-optimistic-tab={optimisticTab ?? ""}
       data-calculator-workspace={String(Boolean(calculatorWorkspace))}
     >
-      Shell
+      {statusPanel}Shell
     </section>
   ),
 }));
 
 vi.mock("./ProjectHeaderOwnerControl", () => ({
-  default: ({ project }: any) => (
-    <span data-project-owner={project.owner?.key ?? "unassigned"}>
+  default: ({ project, externallyPaused }: any) => (
+    <span data-project-owner={project.owner?.key ?? "unassigned"} data-owner-paused={String(externallyPaused)}>
       <strong>Owner</strong>
       <span>{project.owner?.displayName ?? "Unassigned"}</span>
     </span>
@@ -83,6 +84,33 @@ const snapshot = {
 } as any;
 
 describe("ProjectPageFrame", () => {
+  it('keeps the focused masthead before changing refresh notices and preserves Retry', () => {
+    const retry = vi.fn();
+    const frame = (state: 'summary' | 'refresh-failed' | 'fresh') => <ProjectPageFrame
+      snapshot={snapshot} host="host" tab="estimates" snapshotState={state} snapshotContentReady={state === 'fresh'}
+      statusPanel={<ProjectSnapshotNotice state={state} onRetry={retry} />} />;
+    const rendered = renderIntoDocument(frame('summary'));
+    const masthead = rendered.container.querySelector('[data-project-masthead-slot]')!;
+    const returnLink = Array.from(masthead.querySelectorAll('a')).find(link => link.textContent === 'Projects')!;
+    act(() => returnLink.focus());
+    for (const state of ['summary', 'refresh-failed', 'summary', 'fresh'] as const) {
+      rendered.rerender(frame(state));
+      expect(rendered.container.querySelector('[data-project-page-frame]')?.firstElementChild).toBe(masthead);
+      expect(document.activeElement).toBe(returnLink);
+      expect(returnLink.getAttribute('href')).toBe('/staff/projects');
+      expect(rendered.container.querySelector('[data-owner-paused]')?.getAttribute('data-owner-paused')).toBe(String(state !== 'fresh'));
+      if (state === 'refresh-failed') {
+        const button = Array.from(rendered.container.querySelectorAll('button')).find(node => node.textContent === 'Retry')!;
+        expect(masthead.contains(button)).toBe(false);
+        act(() => button.click());
+        expect(retry).toHaveBeenCalledTimes(1);
+      }
+    }
+    expect(rendered.container.textContent).not.toContain('Updating project');
+    expect(rendered.container.textContent).not.toContain('Showing saved project details');
+    rendered.unmount();
+  });
+
   it.each(['activity', 'estimates', 'quotes', 'invoices'])('shows closure rather than historic Scheduled on %s', (tab) => {
     const rendered = renderIntoDocument(
       <ProjectPageFrame snapshot={{

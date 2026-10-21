@@ -36,6 +36,29 @@ a predeclared secondary breakdown, never an alternate formal winner. Emulation i
 not real-phone hardware proof. The native fallback regression composes the actual
 form-data builder with intake normalization; no real enquiry is delivered.
 
+## Project header stability followup (21 October 2026 candidate)
+
+Run `ProjectPageFrame.test.tsx`, `ProjectSnapshotPageClient.test.tsx` and its
+`.reads.test.tsx` companion for live notice wiring, Retry, access loss, unchanged
+readiness and focused-link retention. The two `project header targets remain
+stable` cases in `portal.command-centre.spec.ts` use the real frame, header and
+notice at 1440px/390px through summary/failure/retry/fresh rendering and an explicit
+scrollbar transition. They measure both the Projects return link and each
+Commercial sections tab. This is fixture geometry, not network or production latency.
+Actual protected-preview checks must hold/release the snapshot read, include
+failure/Retry and attempt the early Projects return action while data arrives.
+
+The Portal-only `functions.middleware.ts.regions = [bom1]` candidate requires deployed
+function output plus actual runtime phase-region verification. Next's Node proxy
+manifest alone does not establish Vercel placement. Preserve both independent
+auth boundaries, cookies, redirects and expired/disabled diagnostic behavior.
+The Tokyo staging database makes preview timing unsuitable for a production
+Mumbai latency claim. The compatibility filename keeps explicit Node runtime and
+the existing matcher; run `proxy.test.ts` and `proxy.diagnostics.test.ts` against
+that entrypoint, and compare its generated runtime/matchers to the previous build.
+The deprecated filename is necessary until Vercel's pre-build function validator
+recognizes `proxy.ts`; it does not relax either access boundary.
+
 ## Blinds guide contracts (21 October 2026)
 
 marketing.blinds.spec.ts owns this specialised guide's 320/390/820/1440/2560
@@ -608,6 +631,14 @@ eight workers locally; the standalone Worker config uses the same policy. Set
 `VITEST_MAX_WORKERS` to a positive safe integer for an explicit one-run
 override. Invalid values fail while loading the config, before test discovery.
 The worker policy does not change ordinary unit or Playwright exclusions.
+
+Portal Quality sets `VITEST_MAX_WORKERS=2` only for its Project Work V2 and
+Commercial database contract steps. With four workers, CI hit separate five-second
+whole-test timeouts in unchanged schema-cache and finance-review cases that include
+PGlite startup. Reducing concurrency limits competing database startup; contention
+remains an inference. Test timeouts, assertions, native database contracts and retry
+policy are unchanged. Other CI steps retain four workers, and local defaults remain
+eight. Local matched runs support the change but do not reproduce GitHub timing.
 
 React component tests must wrap the event or asynchronous milestone that can
 commit state in `act(...)`, including promise-driven persistence and history or
@@ -1449,7 +1480,8 @@ boundaries, foundation migration contracts, and readiness-checker unit tests.
 The owner-handoff database case has a local twenty-second integration budget for
 cold PGlite startup, bootstrap, migration, all policy/report assertions, and
 cleanup. It is not a query-latency benchmark. Other tests retain their existing
-limits; the gate keeps its normal concurrency and does not retry failed cases.
+limits; CI uses the two-worker database-batch setting above and does not retry
+failed cases.
 The budget allows headroom above reviewer-reported isolated runs of 9.606 and
 9.064 seconds; passing runs incur no extra delay.
 The focused PGlite test then applies the foundation, schema-cache repair, queue,

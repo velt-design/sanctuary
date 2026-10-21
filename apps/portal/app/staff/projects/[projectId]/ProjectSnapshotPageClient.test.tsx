@@ -46,6 +46,7 @@ vi.mock("@/components/projects/ProjectPage/ProjectPageFrame", () => ({
     snapshotContentReady,
     snapshotState,
     onProjectAccessEnding,
+    statusPanel,
   }: any) => (
     <div
       data-testid="project-frame"
@@ -53,6 +54,7 @@ vi.mock("@/components/projects/ProjectPage/ProjectPageFrame", () => ({
       data-snapshot-state={snapshotState}
     >
       {snapshot.project.name}
+      {statusPanel}
       {[401, 403, 404].map((status) => (
         <button
           key={status}
@@ -168,6 +170,7 @@ describe("ProjectSnapshotPageClient", () => {
     ).not.toBeNull();
     expect(rendered.container.textContent).toContain("Cached Project");
     expect(rendered.container.textContent).toContain("Updating project");
+    expect(rendered.container.querySelector('[data-testid="project-frame"]')?.textContent).toContain("Updating project");
     expect(rendered.container.textContent).toContain(
       "Loading the latest Project Work, commercial state, notes and events.",
     );

@@ -5,13 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import ProjectPageFrame from "@/components/projects/ProjectPage/ProjectPageFrame";
+import ProjectSnapshotNotice from "@/components/projects/ProjectPage/ProjectSnapshotNotice";
 import { useProjectTabSelection } from "@/components/projects/ProjectPage/useProjectTabSelection";
 import { ProjectOverviewReadsProvider, useProjectOverviewReads } from "@/components/projects/ProjectPage/ProjectOverviewReads";
 import styles from "@/components/projects/ProjectPage/ProjectPage.module.css";
 import StaffPageHeader from "@/components/layout/StaffPageHeader";
 import {
-  AlertBanner,
-  Button,
   Card,
   DataStatePanel,
   LoadingSkeleton,
@@ -260,25 +259,6 @@ export default function ProjectSnapshotPageClient({
       data-project-shell-ready="true"
       data-project-snapshot-state={loadState}
     >
-      {debugExport ? <PortalDebugExportButton payload={debugExport} /> : null}
-      {loadState === "summary" ? (
-        <AlertBanner tone="info" title="Updating project">
-          Loading the latest Project Work, commercial state, notes and events.
-        </AlertBanner>
-      ) : null}
-      {loadState === "refresh-failed" ? (
-        <AlertBanner
-          tone="warning"
-          title="Showing saved project details"
-          action={
-            <Button variant="secondary" onClick={retry}>
-              Retry
-            </Button>
-          }
-        >
-          The latest refresh failed. Your last known details remain available.
-        </AlertBanner>
-      ) : null}
       <ProjectOverviewReadsProvider value={overviewReads}>
       <ProjectPageFrame
         key={snapshot.project.id}
@@ -291,6 +271,10 @@ export default function ProjectSnapshotPageClient({
         onTabSelect={navigation.selectTab}
         calculatorWorkspace={calculatorWorkspace}
         onProjectAccessEnding={handleProjectAccessEnding}
+        statusPanel={<>
+          <ProjectSnapshotNotice state={loadState} onRetry={retry} />
+          {debugExport ? <PortalDebugExportButton payload={debugExport} /> : null}
+        </>}
       />
       </ProjectOverviewReadsProvider>
     </PageLayout>
