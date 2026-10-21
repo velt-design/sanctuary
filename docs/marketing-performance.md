@@ -14,8 +14,14 @@ actual visit attendance. The assignment client reaches exact record details;
 local edits update assigned conversion while refresh replaces both snapshots.
 Assignment changes do not create an additional Designer read behind the hub.
 
-Selected chart modules preload during the data wait; unused views and provider
-drawers load on demand. Closed Overview supporting charts mount when opened.
+Selected chart modules resolve to stable component state during the data wait
+and render directly when evidence is available. Downloading a module alone does
+not initialize a Next/React lazy payload; avoiding that first-mount suspension
+also avoids its unnecessary report-reveal delay. Only the selected panel loads;
+Financials and provider-drawer scheduling remain unchanged. Module failures have
+their own retry, and late selection/unmount results cannot replace the current
+panel. This per-mount cache contains component code, never private evidence.
+Closed Overview supporting charts mount when opened.
 `contract.aucklandDay` reuses its fixed Auckland formatter, `overview` assigns age
 bands in one pass, and underlying-record dates format only the displayed page.
 The complete bounded hub inventory, source aliases, filters and inspection remain

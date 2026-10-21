@@ -29,18 +29,11 @@ import useDesigner, { type DesignerLoader } from './useDesigner';
 import type { AssignmentClient } from './SalesDesignerAssignment';
 import useCommercial, { type CommercialLoader } from './useCommercial';
 import useVisibleSelection from '@/components/financials/useVisibleSelection';
+import usePreparedReportViews from './usePreparedReportViews';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
 import type { loadMetaSaleStatus } from '@/lib/marketingIntegrations/metaSales/contract';
 
-const loadBusinessOverview=()=>import('./BusinessOverview');
-const BusinessOverview=dynamic(loadBusinessOverview,{loading:()=> <p role="status">Preparing report view…</p>});
-const loadSalesActivity=()=>import('./SalesActivity');
-const SalesActivity=dynamic(loadSalesActivity,{loading:()=> <p role="status">Preparing report view…</p>});
 const DataSources=dynamic(()=>import('./DataSources'),{loading:()=> <p role="status">Preparing report view…</p>});
-const loadEnquiryCharts=()=>import('./EnquiryCharts');
-const EnquiryCharts=dynamic(loadEnquiryCharts,{loading:()=> <p role="status">Preparing report view…</p>});
-const loadPortfolioChart=()=>import('./PortfolioChart');
-const PortfolioChart=dynamic(loadPortfolioChart,{loading:()=> <p role="status">Preparing report view…</p>});
 
 export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient}: {
   financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;assignmentClient?:AssignmentClient;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
@@ -53,12 +46,10 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   const commercialEvidence=useCommercial(applied?.view==='overview'?applied:null,revision+commercialRetry,commercialLoader);
   const designerEvidence=useDesigner(applied?.view==='overview'?applied:null,revision+designerRetry,designerLoader);
   const {hub,previous,busy,error,comparisonError,comparisonBusy}=useHub(applied?.view==='financials'?null:applied,revision,loader,priorLoader,applied?.view==='enquiries');
-  useEffect(()=>{
-    const load=applied?.view==='overview'?loadBusinessOverview:applied?.view==='enquiries'?loadEnquiryCharts:applied?.view==='sales'?loadSalesActivity:applied?.view==='portfolio'?loadPortfolioChart:null;
-    // Fetch selected code during the independent data wait, not after its response.
-    if(load)void load().catch(()=>{});
-  },[applied?.view]);
-  const position=useReportReturnPosition(busy);
+  const prepared=usePreparedReportViews(applied?.view??null);
+  const {overview:BusinessOverview,enquiries:EnquiryCharts,sales:SalesActivity,portfolio:PortfolioChart}=prepared.components;
+  const panelState=prepared.error?<AlertBanner tone="error" title="Report view unavailable" action={<Button variant="secondary" onClick={prepared.retry}>Retry report view</Button>}>{prepared.error}</AlertBanner>:<p role="status">Preparing report view…</p>;
+  const position=useReportReturnPosition(busy||prepared.preparing);
   const tabs=useVisibleSelection(draft.view);
   useEffect(()=>{
     const restore=()=>{const query=new URLSearchParams(window.location.search);const f=parseHubFilters(query,initialFilters??defaultFilters());if(!query.has('view'))f.view='overview';setDraft(f);setApplied(f);setEventKind(f.kind);};
@@ -83,15 +74,15 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
     <div ref={tabs} style={{minWidth:0}}><TabNavigation items={views.map(v=>({...v,controls:'hub-results'}))} selectedKey={draft.view} onSelect={view=>apply({...draft,view,inspect:'all'})} ariaLabel="Marketing and sales views"/></div>
     {draft.view==='financials'?<div id="hub-results"><Financials loader={financialsLoader} synthetic={synthetic}/></div>:<>
     {validation&&<p role="alert">{validation}</p>}
-    <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy} data-comparison-pending={comparisonBusy||undefined}>
+    <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy||prepared.preparing} data-comparison-pending={comparisonBusy||undefined}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>
         {applied.view!=='overview'&&<div className={styles.contextLine}><span>{applied.view==='portfolio'?applied.created?'Projects created in selected dates':'All project dates · Current position':applied.view==='enquiries'?'Enquiries received in selected dates · Outcomes to date':'Recorded events in selected dates'} · NZ time</span></div>}
-        {applied.view==='overview'?<BusinessOverview commercialEvidence={commercialEvidence} designerEvidence={designerEvidence} retryCommercial={()=>setCommercialRetry(n=>n+1)} retryDesigner={()=>setDesignerRetry(n=>n+1)} hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} assignmentClient={assignmentClient} synthetic={synthetic} revision={revision}/>:<>
+        {applied.view==='overview'?(BusinessOverview?<BusinessOverview commercialEvidence={commercialEvidence} designerEvidence={designerEvidence} retryCommercial={()=>setCommercialRetry(n=>n+1)} retryDesigner={()=>setDesignerRetry(n=>n+1)} hub={hub} filters={applied} apply={apply} commercialLoader={commercialLoader} designerLoader={designerLoader} assignmentClient={assignmentClient} synthetic={synthetic} revision={revision}/>:panelState):<>
         <HubMetrics hub={hub} filters={applied} apply={apply} inspectEvents={inspectEvents}/>
         {applied.view==='enquiries'&&<div className={styles.contextLine}><div className={styles.coverageTrack}><span style={{width:rate(totals.attributed,totals.enquiries)}}/></div><span>{rate(totals.attributed,totals.enquiries)} source known · {totals.enquiries-totals.attributed} unknown</span><Button variant="quiet" onClick={()=>setInfo(true)}>How it’s counted</Button></div>}
-        {applied.view==='enquiries'&&<EnquiryCharts rows={selected.enquiries} filters={applied} apply={apply}/>}
-        {applied.view==='portfolio'&&<PortfolioChart projects={selected.projects} filters={applied} apply={apply}/>}
-        {applied.view==='sales'&&<SalesActivity events={selected.events} filters={applied} apply={apply}/>}
+        {applied.view==='enquiries'&&(EnquiryCharts?<EnquiryCharts rows={selected.enquiries} filters={applied} apply={apply}/>:panelState)}
+        {applied.view==='portfolio'&&(PortfolioChart?<PortfolioChart projects={selected.projects} filters={applied} apply={apply}/>:panelState)}
+        {applied.view==='sales'&&(SalesActivity?<SalesActivity events={selected.events} filters={applied} apply={apply}/>:panelState)}
         {applied.view==='sales'&&<Select label="Sales events to inspect" value={eventKind} onChange={e=>inspectEvents(e.target.value)}><option value="">All event types</option><option value="receipts">Payments and reversals</option>{Object.entries(eventLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</Select>}
         <HubRecords productionSnapshot={productionSnapshot} hub={hub} filters={applied} synthetic={synthetic} eventKind={eventKind} apply={apply}/>
         </>}
