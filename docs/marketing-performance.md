@@ -2,6 +2,26 @@
 
 ## Fresh-entry performance candidate (21 October 2026)
 
+The server-started hub candidate begins one full report read during an eligible
+initial Marketing HTML document, after the unchanged staff, confirmed-developer
+and preview gates. `hubDocumentSelection` uses middleware's overwritten callback
+only to select the exact date window. It skips RSC/prefetch, Financials, ambiguous
+or invalid windows; request shape never grants authority. `readHub.server` owns
+the API and seed's same guarded RPC, complete schema/date verification, private
+snapshot behavior and public errors. Only dates and a safe result promise cross
+Flight, never an auth client or session. The page does not await the report and
+the browser observes the promise without suspending the report shell.
+
+`initialHubAttempt` belongs to one mounted `useHub`. It consumes only a matching
+first request, including StrictMode's pending replay. Mismatch, date departure,
+Financial entry, loader change, settlement or refresh retires that opportunity.
+Client URL restoration and Auckland defaults remain independent, so a midnight
+mismatch uses the ordinary API. Failure shows unavailable evidence; explicit
+retry, later dates and route return use the API. Aborted or superseded results
+cannot replace current data. No report records, SQL, shared private cache or
+provider behavior change. Fixture scheduling proof, real authority tests and
+live useful-load improvement remain separate evidence.
+
 Independent Overview reads start with the selected hub dates. Commercial and
 Designer state retain their own failures, retry and request identity; the hub
 still supplies exact project/source filtering before values are displayed.

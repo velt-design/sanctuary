@@ -33,10 +33,12 @@ import useVisibleSelection from '@/components/financials/useVisibleSelection';
 import usePreparedReportViews from './usePreparedReportViews';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
 import type { loadMetaSaleStatus } from '@/lib/marketingIntegrations/metaSales/contract';
+import type { InitialHubSeed } from '@/lib/marketingPerformance/initialHub';
 
 const DataSources=dynamic(()=>import('./DataSources'),{loading:()=> <p role="status">Preparing report view…</p>});
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient,outcomeClient}: {
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,initialHubSeed,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient,outcomeClient}: {
+  initialHubSeed?:InitialHubSeed;
   financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;assignmentClient?:AssignmentClient;outcomeClient?:OutcomeClient;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
@@ -46,7 +48,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   const [commercialRetry,setCommercialRetry]=useState(0),[designerRetry,setDesignerRetry]=useState(0);
   const commercialEvidence=useCommercial(applied?.view==='overview'?applied:null,revision+commercialRetry,commercialLoader);
   const designerEvidence=useDesigner(applied?.view==='overview'?applied:null,revision+designerRetry,designerLoader);
-  const {hub,previous,busy,error,comparisonError,comparisonBusy}=useHub(applied?.view==='financials'?null:applied,revision,loader,priorLoader,applied?.view==='enquiries');
+  const {hub,previous,busy,error,comparisonError,comparisonBusy}=useHub(applied?.view==='financials'?null:applied,revision,loader,priorLoader,applied?.view==='enquiries',initialHubSeed,applied?.view==='financials');
   const prepared=usePreparedReportViews(applied?.view??null);
   const {overview:BusinessOverview,enquiries:EnquiryCharts,sales:SalesActivity,portfolio:PortfolioChart}=prepared.components;
   const panelState=prepared.error?<AlertBanner tone="error" title="Report view unavailable" action={<Button variant="secondary" onClick={prepared.retry}>Retry report view</Button>}>{prepared.error}</AlertBanner>:<p role="status">Preparing report view…</p>;
