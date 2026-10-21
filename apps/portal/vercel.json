@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/ga4-diagnostics-20261021": false,
       "codex/designer-performance-20261021": false,
       "codex/configurator-pricing-candidate-20260915": false,
       "codex/google-connections-20261013": false,
