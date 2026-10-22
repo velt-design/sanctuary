@@ -1,6 +1,6 @@
 import { getSafeCallbackUrl } from './portalAccess';
 
-// Redirect context only. This header never carries identity or authorization.
+// Redirect and initial-read scheduling context only. Never identity or authorization.
 export const DOCUMENT_CALLBACK_HEADER = 'x-portal-document-callback';
 
 export function isRegionalDocumentPath(path: string): boolean {

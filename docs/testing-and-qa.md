@@ -34,7 +34,28 @@ All populated tests install persistent intake/native/upload/vendor fences before
 input. Synthetic success and fixture prices are not delivery or live pricing
 evidence. There is no new policy, SQL or provider integration in this change.
 
-## Regional document access candidate (21 October 2026)
+## Projects initial document read candidate (21 October 2026)
+
+Run the Projects page, view mapping, initial-read loader/adapter and query suites.
+The handoff cases cover one read, exact normalized query matching, cancellation,
+filter-before-result, concurrent users, existing/updated cache, failed read,
+retry and later access denial. Compile the actual candidate and verify a delayed
+server read leaves the input responsive before rows, with no duplicate initial
+browser API request. Exercise rapid filtering, error then Retry and filtered
+project-return/scroll behavior; an old result must not replace newer intent.
+Count server index RPCs as well as browser requests, including RSC return/prefetch.
+Reuse compiled denial/isolation/cookie/no-store checks for the changed private
+stream. Synthetic data proves the compiled mechanism, not real service latency.
+
+Compare the same useful endpoint on an exact-source local production baseline
+and candidate, with the same staging data and browser cache conditions. Local
+warm-process measurements are not platform-cold evidence. The historical cold
+runner samples shell feedback after `page.goto` completes; any correction needs
+the same before/after observer and must not change the 100 ms target or be counted
+as runtime improvement. Visits and complete project work remain separate from
+this Projects implementation slice.
+
+## Regional document access (released in PR241, 21 October 2026)
 
 Run the focused middleware/access suite including `proxy.regional.test.ts`,
 `auth.regional.test.ts`, existing proxy/auth tests and document diagnostic tests.

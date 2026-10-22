@@ -32,6 +32,8 @@ import {
 import { useProjectIndexView } from './useProjectIndexView';
 import { projectIndexSessionKey } from '@/lib/projects/projectIndexSession';
 import { useProjectsIndexData } from './useProjectsIndexData';
+import type { ProjectsIndexInitialRead } from './projectsIndexInitialRead';
+import { projectsIndexParamsFromView } from './projectIndexView';
 import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
@@ -71,8 +73,10 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
 
 export default function ProjectsIndexClient({
   initialFilters,
+  initialRead,
 }: {
   initialFilters?: ProjectsIndexFilters;
+  initialRead?: ProjectsIndexInitialRead;
 }) {
   const router = useRouter();
   const { finishInstantRoute } = usePortalRouteTransition();
@@ -84,7 +88,7 @@ export default function ProjectsIndexClient({
   const { view, update: updateView, reset: resetView, restoreScroll } = useProjectIndexView(
     initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()),
   );
-  const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, archiveFilter, sort, page, pageSize } = view;
+  const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, page, pageSize } = view;
   const setPage = (page: number) => updateView({ page }, false);
   const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -101,17 +105,10 @@ export default function ProjectsIndexClient({
 
   const queryClient = useQueryClient();
   const projectMutations = useProjectsIndexMutations(host);
-  const projectsIndex = useProjectsIndexData({
-    archive: archiveFilter,
-    search: debouncedQuery,
-    status: stageFilter,
-    journey: journeyFilter,
-    state: stateFilter,
-    owner: ownerFilter,
-    page,
-    pageSize,
-    sort,
-  });
+  const projectsIndex = useProjectsIndexData(
+    projectsIndexParamsFromView({ ...view, query: debouncedQuery }),
+    { ownerId: user?.id ?? null, initialRead },
+  );
   const projects = projectsIndex.data?.projects.rows ?? [];
   const contacts = projectsIndex.data?.contacts.rows ?? [];
 

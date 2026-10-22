@@ -11,12 +11,38 @@ remained global despite correct generated single-region configuration. Earlier
 preview placement is not proof of production placement or a useful-load gain.
 The approved measurement windows are complete; no ongoing logging is implied.
 
-The next unreleased candidate under qualification moves session transport, not authority, for three
-canonical document routes. Root and explicit page gates retain fresh regional
-identity/current-role checks before private work. Compiled synthetic denial,
-refresh, streaming and concurrency proof must pass before protected qualification.
-See `staff-api-auth-contracts.md` and `testing-and-qa.md`. The original faster useful
-first-load outcome remains open; this candidate has not been released.
+PR241 released regional document verification for the three canonical routes.
+Root and explicit page gates retain fresh identity/current-role checks before
+private work. Compiled denial, refresh, streaming and concurrency checks passed;
+the closing independent review passed 56 checks. Retained ordinary production
+reload observations showed roughly 20–24% useful-load improvements on the measured
+journeys. These observations do not establish platform-cold startup performance.
+Current production was independently source-bound to main `ad7055b` on 21 October.
+
+The next local candidate starts the exact Projects index read on the verified
+server document path, then hands it to the mounted client query once. Current
+production request traces show the index API still starts after the document;
+this candidate targets that delay. It is not released. Controls must remain
+usable while the read is pending; filter changes, returns, retry and access loss
+retain ordinary fresh API behavior. See `projects-contacts-estimates-calculator.md`,
+`staff-api-auth-contracts.md` and `testing-and-qa.md`.
+
+The corrected local optimized candidate reduced the same table-and-enabled-filter
+endpoint from a 1,614 ms baseline median to 956 ms across five reloads per version
+(40.8%). All five candidate reloads made zero initial index API requests. Both
+used the same authenticated staging identity/data, disabled HTTP cache and warm
+local processes. Eight compiled synthetic checks also passed for private-read
+ordering, delayed streaming, denial, isolation and avoiding RSC/prefetch reads.
+The first candidate failed this comparison because its native-Promise assumption
+did not match React Flight's thenable; its measurements were retained and the
+corrected adapter has a regression test. These are local mechanism and latency
+results, not production, platform-cold or all-route acceptance.
+
+The broader faster first-load outcome remains open. Historical cold feedback
+measurements waited for document load before observing the shell and therefore
+did not identify its first paint. The 100 ms target is unchanged; correcting
+measurement alone cannot count as a speed gain. Site Visits, complete project
+work and actual platform-cold performance still require their own evidence.
 
 
 Portal experience release completed through PR222 after Jordan requested "push

@@ -1,6 +1,6 @@
 # Staff API And Auth Contracts
 
-## Initial document access candidate (21 October 2026, unreleased under qualification)
+## Initial document access (released in PR241, 21 October 2026)
 
 For canonical HTML document GETs at `/staff/projects`, `/staff/site-visits` and
 `/staff/projects/(proj_)?<uuid>`, middleware renews session transport without using
@@ -14,7 +14,7 @@ against parallel rendering. Removed staff access fails closed; an administrator
 changed to staff retains staff access but not administrator access.
 
 The middleware overwrites the callback header from the actual path and full query,
-or strips it outside this lane. It is redirect context, never identity or role
+or strips it outside this lane. It is redirect and initial-read scheduling context, never identity or role
 authority. Ordinary browser RSC/prefetch use non-document fetch destinations and
 retain the full global path, as do action/POST, specialist and other routes. Next
 normalizes Flight headers before middleware, so a deliberately forged document-
@@ -24,9 +24,21 @@ shape chooses the location of verification, never whether verification occurs.
 APIs retain their own authoritative checks before private reads.
 There is no cross-request cache, service-role fallback or manual JWT parsing.
 Selected document responses remain private/no-store. Compiled local refresh,
-streaming, denial and request-isolation proof is required before this candidate
-can be treated as verified; hosted/provider behavior and useful-load improvement
-remain separate gates. No production release is implied.
+streaming, denial and request-isolation checks and the closing independent review
+passed for PR241. Ordinary production gains and the remaining cold-start evidence
+limits are recorded in `portal-production-readiness.md`.
+
+The subsequent local Projects candidate starts its index read only after
+`requireStaffPageAccess` returns a fresh verified identity and current staff role.
+`loadProjectsIndexInitialRead` uses the cookie-bound client and existing
+`loadProjectsIndexData` owner, with no service-role or cross-request data cache.
+Its unsettled result is private Flight data under the same document boundary.
+The overwritten document context chooses scheduling only; RSC navigation and
+prefetch do not start an extra index read. A client may consume the result once,
+only for the same verified user, normalized query and empty, uninvalidated query
+state. Later cache changes, cancellation, filters, returns and retry use the
+existing independently authorized API. This does not give the initial result
+authority over current access-ending API failures.
 
 ## Outlook site visits
 
