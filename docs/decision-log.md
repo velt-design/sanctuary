@@ -11,6 +11,10 @@ original-file receipt. Bound memory, work, abandoned uploads and cleanup, then
 verify sustained browsing without hiding waits behind readiness probes.
 Owner: [Project SharePoint files](project-sharepoint-files.md).
 
+A renewal timer must explicitly bypass a longer query freshness window and read
+the current navigation at execution time. Otherwise a four-minute timer can
+silently become eight-minute reads or keep renewing the folder captured at mount.
+
 ## 2026-10-23: Recover file locality using the complete ordinary task
 
 The Singapore canary lowered authentication time but regressed both matched

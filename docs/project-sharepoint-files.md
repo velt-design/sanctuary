@@ -209,6 +209,10 @@ another network gate. This is reuse of a response already delivered to that
 authenticated recipient. Every subsequent server delivery still repeats current
 session/RPC/Graph proof. A four-minute active timer renews metadata and variant
 receipts before the five-minute lease; unchanged bodies are not retransferred.
+The fixed project timer reads the latest saved folder/source/selection on each
+pass and forces that bounded metadata pass through the fresh-query lease. Initial
+preparation still reuses fresh data; concurrent exact-key requests coalesce.
+Selection changes cannot postpone renewal, including after leaving website files.
 Logout/owner/project changes cancel owned work; logout/owner switch purges memory.
 Observed deletion, version change, root removal or failed proof purges affected
 bytes. Refresh bypasses leases. Late responses cannot undo newer observations.

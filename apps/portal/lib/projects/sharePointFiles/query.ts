@@ -13,9 +13,11 @@ export function projectFilesQueryOptions(host: string, ownerId: string | null, p
   });
 }
 
-export async function prepareProjectFiles(client: QueryClient, host: string, ownerId: string, projectId: string, rootId?: string, folderId?: string, signal?: AbortSignal, onPage?: (page: ProjectFilesPage, updatedAt: number) => void) {
+export async function prepareProjectFiles(client: QueryClient, host: string, ownerId: string, projectId: string, rootId?: string, folderId?: string, signal?: AbortSignal, onPage?: (page: ProjectFilesPage, updatedAt: number) => void, renew = false) {
   async function prepare(options: ReturnType<typeof projectFilesQueryOptions>) {
-    await client.prefetchInfiniteQuery({ ...options, pages: 1 });
+    // A scheduled renewal must reach the source before the five-minute lease.
+    // Ordinary preparation still reuses fresh data and concurrent reads coalesce.
+    await client.prefetchInfiniteQuery({ ...options, staleTime: renew ? 0 : options.staleTime, pages: 1 });
     const page = client.getQueryData(options.queryKey)?.pages[0];
     if (!signal?.aborted && client.getQueryState(options.queryKey)?.status === 'success' && page) onPage?.(page, client.getQueryState(options.queryKey)?.dataUpdatedAt ?? 0);
   }
