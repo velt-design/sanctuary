@@ -1,6 +1,6 @@
 # Project SharePoint files
 
-Status: Dedicated Files workspace and bounded performance candidate implemented locally on 22 October 2026. Live first-new-file latency remains above target. The protected recent-preview verification correction is implemented locally and requires fresh platform acceptance; large original delivery retains its separate acceptance requirement. This work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover.
+Status: Dedicated Files workspace and protected recent-preview correction are live as of 23 October 2026. Actual `0de9bf77` acceptance verified recent photo/PDF 200 receipts and manual Refresh. First-new-file speed remains above target. The local open-route-only Sydney candidate is unproved and changes no authority or freshness policy; large original delivery retains its separate acceptance requirement. This work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover.
 
 ## Outcome and ownership
 
@@ -157,11 +157,34 @@ header from 304 responses, causing a valid recent PDF to disappear after its
 recheck. Bare 304/ETag is insufficient proof because an intermediary can generate
 it from an unverified 200 body. The correction therefore uses the authenticated 200
 JSON receipt above, which carries no signed URL or file body. The separate local
-platform model reproduces header-stripped 304 and conditional rewriting; actual
-corrected-platform acceptance remains outstanding. Observed first photo/PDF
-headers were about 2.9/3.3 seconds, so the first-new-file speed goal is still unmet.
-Prepared navigation avoided extra source reads. This fix adds no new body
-prefetch, authority cache, region change or durable copy.
+platform model reproduces header-stripped 304 and conditional rewriting. Actual
+`0de9bf77` acceptance verified recent photo/PDF 200 receipts and manual Refresh.
+First photo/PDF headers were about 3.1/2.9 seconds, with application time about
+2.5/2.3 seconds; current metadata proof, optional content redirect and source
+headers account for the measured work. The exact decoded bodies rendered, but
+aborted transport reporting does not establish native completion or exact paint.
+The first-new-file speed goal remains unmet. Prepared navigation avoided extra
+source reads. The receipt fix adds no new body prefetch, authority cache or durable copy.
+
+### Open-route locality candidate
+
+The 23 October local candidate assigns only
+`app/api/staff/v1/projects/*/files/*/open/route.ts` to Sydney (`syd1`) through
+Portal's Vercel per-function configuration. Lists, children, middleware and other
+Portal functions retain their existing Mumbai/default placement. Node runtime,
+memory, duration, current staff/project/root/containment/version checks, original
+delivery, Graph request shape and five-minute policy remain unchanged.
+
+This is an unproved latency hypothesis: Sydney can reduce the client/source path
+while increasing the distance to authentication and binding data in Mumbai.
+Before promotion, inspect actual function artifacts to establish the open-only
+placement, then compare ordinary photo/PDF useful content, transport and existing
+phase timings. A local configuration or synthetic fixture cannot prove the gain.
+Remove only this override, or restore the previous accepted deployment, if the
+comparison regresses or does not materially improve the ordinary task. No broad
+Portal region move, extra services, body preparation or persistent file copies
+are part of this candidate. [Vercel per-function regions](https://vercel.com/docs/functions/configuring-functions/region)
+own this deployment setting; the deprecated Next `preferredRegion` export is not used.
 
 The separate private localhost harness executes the actual list/open handlers,
 Graph/token/containment owners and client workspace with synthetic auth/RPC and

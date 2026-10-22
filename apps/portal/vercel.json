@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/project-file-open-locality-20261023": false,
       "codex/project-files-live-preview-fix-20261022": false,
       "codex/seo-google-mobile-20261022": false,
       "codex/project-files-main-tab-20261022": false,
@@ -74,6 +75,11 @@
     }
   },
   "functions": {
+    "app/api/staff/v1/projects/*/files/*/open/route.ts": {
+      "regions": [
+        "syd1"
+      ]
+    },
     "middleware.ts": {
       "regions": [
         "bom1"
