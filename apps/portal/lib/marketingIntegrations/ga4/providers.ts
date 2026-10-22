@@ -2,6 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { GA4_READ_SCOPE, type Ga4Google, type Ga4Vault } from './lifecycle';
 import { boundedGoogleJson } from './report/transport';
+import { observeGa4Vault } from './vault-failure';
 
 const tokenSchema = z.object({
   access_token: z.string().min(1).max(16384), refresh_token: z.string().min(1).max(16384).optional(),
@@ -26,8 +27,8 @@ export function ga4Google(fetcher: typeof fetch = fetch, signal?: AbortSignal): 
   };
 }
 
-// The composition root supplies the actual SDK and its enum values. Keep SDK
-// package loading and credentials out of this independently testable boundary.
+// The composition root supplies SDK client creation and enum values. Tests inject
+// client methods; error classification does not initialize an SDK session.
 export interface Ga4VaultSdk {
   apiCredentialsCategory: string;
   concealedFieldType: string;
@@ -45,7 +46,7 @@ async function boundedVault<T>(operation: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([operation, new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('Vault outcome uncertain.')), 15000);
+      timer = setTimeout(() => reject(new DOMException('Vault outcome uncertain.', 'TimeoutError')), 15000);
     })]);
   } finally { clearTimeout(timer); }
 }
@@ -65,12 +66,14 @@ export function ga4Vault(config: { vaultId: string; itemId: string; vaultToken: 
   return {
     async authenticate() {
       client = undefined; item = undefined;
-      client = await boundedVault(sdk.createClient({ auth: config.vaultToken, integrationName: 'Sanctuary GA4', integrationVersion: '1.0.0' }));
+      client = await observeGa4Vault('vault_auth', () => boundedVault(sdk.createClient({ auth: config.vaultToken, integrationName: 'Sanctuary GA4', integrationVersion: '1.0.0' })));
     },
     async read() {
       if (!client || writeAttempted) throw new Error('Vault session required.');
       item = undefined;
-      const checked = validate(await boundedVault(client.items.get(config.vaultId, config.itemId)));
+      const session = client;
+      const raw = await observeGa4Vault('vault_read', () => boundedVault(session.items.get(config.vaultId, config.itemId)));
+      const checked = await observeGa4Vault('item_validation', async () => validate(raw));
       item = checked.item;
       return { refreshToken: checked.token, version: item.version };
     },

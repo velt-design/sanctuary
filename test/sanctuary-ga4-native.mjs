@@ -24,6 +24,7 @@ function native(name, args, input) {
 }
 const base = readFileSync(new URL('../supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20261021082853_ga4_v3_diagnostics.sql', import.meta.url), 'utf8');
+const settlement = readFileSync(new URL('../supabase/migrations/20261022013028_ga4_pre_token_settlement.sql', import.meta.url), 'utf8');
 const actor = '10000000-0000-4000-8000-000000000001', connection = '20000000-0000-4000-8000-000000000001', binding = 'a'.repeat(64), vaultId = 'a'.repeat(26), itemId = 'b'.repeat(26);
 const query = { period: { start: '2026-10-01', end: '2026-10-02' }, comparison: { start: '2026-09-29', end: '2026-09-30' } };
 const literal = value => value === null ? 'null' : `'${String(typeof value === 'object' ? JSON.stringify(value) : value).replaceAll("'", "''")}'`;
@@ -73,7 +74,7 @@ create table public.portal_users(user_id uuid primary key,role text);
 create table praxis_reporting.source_identity_v1(singleton boolean,source_key text,connection_id uuid,environment text);
 insert into auth.users values('${actor}',now(),null,null);insert into public.portal_users values('${actor}','staff');
 insert into praxis_reporting.source_identity_v1 values(true,'synthetic','${connection}','test');`, 'ga4_template');
-  sql(base, 'ga4_template'); sql(migration, 'ga4_template');
+  sql(base, 'ga4_template'); sql(migration, 'ga4_template'); sql(settlement, 'ga4_template');
   sql(`insert into private.sanctuary_ga4_control(actor_id,property_id,binding_hash,vault_id,item_id,expires_at,source_key,connection_id,environment)
 values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 day','synthetic','${connection}','test');`, 'ga4_template');
   assert.throws(() => command('ga4_template', 'claim', null, { query }), /authority unavailable/);
@@ -104,8 +105,28 @@ values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 
   const deleteDatabase = fixture(), deleted = ready(deleteDatabase); command(deleteDatabase, 'delete'); assert.throws(() => command(deleteDatabase, 'complete', deleted.operation, { payload: deleted.payload }), /not ready/);
   const stopDatabase = fixture(), stopped = ready(stopDatabase); sql('update private.sanctuary_ga4_control set enabled=false where singleton=true', stopDatabase); assert.throws(() => command(stopDatabase, 'complete', stopped.operation, { payload: stopped.payload }), /authority unavailable/);
   const versionDatabase = fixture(), versionValue = ready(versionDatabase, 'sanctuary-ga4-v2'); const changed = JSON.stringify({ ...versionValue.report, diagnostics: diagnostics() }); assert.throws(() => command(versionDatabase, 'complete', versionValue.operation, { payload: changed }), /diagnostic version or shape/);
-  console.log(JSON.stringify({ status: 'passed', postgres, imageId, safeupdate: !bin, safeupdateGate: bin ? 'UNVERIFIED: installed native package has no safeupdate extension; no fake substitute used' : 'passed', databases: index, baseSha256: createHash('sha256').update(base).digest('hex'), migrationSha256: createHash('sha256').update(migration).digest('hex'),
-    checks: ['native DDL and v2 compatibility', 'RPC-only roles', ...(!bin ? ['real safeupdate'] : []), 'claim/intent version', 'strict diagnostics and unavailable union', 'payload hash association', 'seven-day retention and expired writer delivery', 'delete and control fencing'],
+  for (const step of ['vault_auth', 'vault_read', 'token_refresh', 'vault_write']) {
+    const database = fixture(), operation = command(database, 'claim', null, { query }).operation;
+    if (step !== 'vault_auth') boundary(database, operation, 'vault_auth');
+    if (['token_refresh', 'vault_write'].includes(step)) boundary(database, operation, 'vault_read', { vaultId, itemId }, { vaultId, itemId, afterVersion: 3 });
+    if (step === 'vault_write') { boundary(database, operation, 'token_refresh', {}, { scope: 'https://www.googleapis.com/auth/analytics.readonly', expiresIn: 3600, refreshRotated: true }); boundary(database, operation, 'property_read', { property: '123' }); }
+    const evidence = step === 'vault_read' ? { vaultId, itemId } : step === 'vault_write' ? { vaultId, itemId, beforeVersion: 3 } : {};
+    command(database, 'before', operation, { step, evidence });
+    if (['vault_auth', 'vault_read'].includes(step)) {
+      const before = sql(`select to_jsonb(o)-'status' from private.sanctuary_ga4_operations o where id='${operation}'`, database);
+      command(database, 'finish', operation, { evidence: { outcome: 'report_failed' } });
+      assert.equal(sql(`select to_jsonb(o)-'status' from private.sanctuary_ga4_operations o where id='${operation}'`, database), before);
+      assert.throws(() => command(database, 'after', operation, { step, evidence: step === 'vault_read' ? { ...evidence, afterVersion: 3 } : evidence }), /Invalid GA4 boundary/);
+      assert.throws(() => command(database, 'before', operation, { step: 'token_refresh', evidence: {} }), /Invalid GA4 boundary/);
+      command(database, 'claim', null, { query });
+    } else {
+      assert.throws(() => command(database, 'finish', operation, { evidence: { outcome: 'report_failed' } }), /unresolved/);
+      command(database, 'finish', operation, { evidence: { outcome: 'uncertain' } });
+      assert.throws(() => command(database, 'claim', null, { query }), /writer unresolved/);
+    }
+  }
+  console.log(JSON.stringify({ status: 'passed', postgres, imageId, safeupdate: !bin, safeupdateGate: bin ? 'UNVERIFIED: installed native package has no safeupdate extension; no fake substitute used' : 'passed', databases: index, baseSha256: createHash('sha256').update(base).digest('hex'), migrationSha256: createHash('sha256').update(migration).digest('hex'), settlementSha256: createHash('sha256').update(settlement).digest('hex'),
+    checks: ['native DDL and v2 compatibility', 'RPC-only roles', ...(!bin ? ['real safeupdate'] : []), 'claim/intent version', 'strict diagnostics and unavailable union', 'payload hash association', 'seven-day retention and expired writer delivery', 'delete and control fencing', 'pre-token terminal fencing and preserved evidence', 'token/write quarantine preserved'],
     limits: ['synthetic auth/source prerequisites and cron stub, not full Sanctuary schema', 'no real pg_cron scheduling or HTTP/provider/vault call', 'PGlite HTTP composition is a separate receipt', ...(bin ? ['safeupdate unavailable in this native binary distribution'] : [])], network: bin ? 'disposable loopback only' : 'none', hostMounts: false, publishedPorts: false }));
 } finally {
   if (started) { if (bin) native('pg_ctl', ['-D', data, '-m', 'immediate', '-w', 'stop']); else docker(['rm', '--force', container]); }

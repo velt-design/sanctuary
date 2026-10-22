@@ -674,8 +674,10 @@ comparative retrieval or protected staff-route access; verify both separately.
 
 ## Sanctuary-owned GA4 candidate
 
-The v3 tests apply the exact existing 20260923070001 body plus forward candidate
-20261021082853. Fixed provider fixtures compose actual HTTP, parser, SQL
+The GA4 tests apply the exact 20260923070001 and 20261021082853 bodies plus
+20261022013028 pre-token settlement. SQL/HTTP fixtures verify failed vault reads,
+preserved saved reports, terminal stale-executor fencing, cancellation, Stop and
+continued token/write quarantine. Fixed provider fixtures compose actual HTTP, parser, SQL
 completion and retained read for available, limited and validated row-limit
 outcomes. Tests retain first edit when keyEvents is zero, suppress comparisons,
 reject unavailable-with-metrics and unexpected failures, enforce shared byte and
@@ -698,7 +700,7 @@ extension was used.
 The dedicated `.github/workflows/ga4-native.yml` runs the real-safeupdate
 substrate on the standard Ubuntu runner with Node22 and read-only
 repository permissions. Its PR/main triggers cover only that workflow, the
-committed native harness and the two exact GA4 migration bodies; manual dispatch
+committed native harness and the exact GA4 migration bodies; manual dispatch
 has no inputs. A separate single-attempt180-second provisioning step pulls the
 official GHCR 17.6.1.167 linux/amd64 image by immutable manifest digest
 `sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4`,

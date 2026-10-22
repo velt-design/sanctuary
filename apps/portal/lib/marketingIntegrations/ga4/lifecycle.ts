@@ -82,8 +82,8 @@ export async function refreshGa4Report<T>(input: {
     signal.throwIfAborted();
     return report;
   } catch {
-    // report_failed is accepted only when the durable store proves credential
-    // steps settled. Otherwise quarantine; never turn lease expiry into a retry.
+    // SQL atomically fences this executor when no token intent began, or when
+    // credential effects settled. Otherwise quarantine; expiry is never a retry.
     await store.finish('report_failed').catch(async () => {
       await store.finish('uncertain').catch(() => undefined);
     });

@@ -19,6 +19,7 @@ beforeEach(async()=>{
  insert into praxis_reporting.source_identity_v1 values(true,'synthetic','${connection}','test');`);
  await db.exec(await readFile('supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql','utf8'));
  await db.exec(await readFile('supabase/migrations/20261021082853_ga4_v3_diagnostics.sql','utf8'));
+ await db.exec(await readFile('supabase/migrations/20261022013028_ga4_pre_token_settlement.sql','utf8'));
  await db.exec(`insert into private.sanctuary_ga4_control(actor_id,property_id,binding_hash,vault_id,item_id,expires_at,source_key,connection_id,environment)
  values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 day','synthetic','${connection}','test');`);
 },30000);
@@ -64,7 +65,7 @@ it('does not resurrect a report after deletion between ready and completion',asy
  await expect(command('complete',op,{payload:saved.payload})).rejects.toThrow('not ready');
  await command('finish',op,{evidence:{outcome:'report_failed'}});expect(await command('read')).toEqual({status:'missing'});await claim();
 });
-it.each(['vault_auth','vault_read','token_refresh','property_read','vault_write'])('quarantines unresolved %s even after expiry, disabling, deletion and re-enabling',async step=>{
+it.each(['token_refresh','property_read','vault_write'])('quarantines unresolved %s even after expiry, disabling, deletion and re-enabling',async step=>{
  await enable();const op=await claim();
  if(step!=='vault_auth')await boundary(op,'vault_auth');
  if(!['vault_auth','vault_read'].includes(step))await boundary(op,'vault_read',{vaultId,itemId},{vaultId,itemId,afterVersion:3});
@@ -146,4 +147,36 @@ it('keeps finite validation authority expiry effective',async()=>{
  await db.exec("reset role;update private.sanctuary_ga4_control set expires_at=now()+interval '30 seconds' where singleton=true;set role service_role");
  await expect(claim()).rejects.toThrow('authority');await expect(command('read')).rejects.toThrow('authority');
  await expect(command('deliver',op)).rejects.toThrow('authority');await command('delete');
+});
+
+it.each(['claimed','auth_pending','auth_done','read_pending','read_done'])('settles proven pre-token %s without clearing evidence and fences stale continuation',async state=>{
+ await enable();const op=await claim();
+ if(state!=='claimed')await command('before',op,{step:'vault_auth',evidence:{}});
+ if(['auth_done','read_pending','read_done'].includes(state))await command('after',op,{step:'vault_auth',evidence:{}});
+ if(['read_pending','read_done'].includes(state))await command('before',op,{step:'vault_read',evidence:{vaultId,itemId}});
+ if(state==='read_done')await command('after',op,{step:'vault_read',evidence:{vaultId,itemId,afterVersion:3}});
+ await db.exec('reset role');const before=(await db.query<Record<string,unknown>>(`select * from private.sanctuary_ga4_operations where id='${op}'`)).rows[0];await db.exec('set role service_role');
+ await command('finish',op,{evidence:{outcome:'report_failed'}});
+ await db.exec('reset role');const after=(await db.query<Record<string,unknown>>(`select * from private.sanctuary_ga4_operations where id='${op}'`)).rows[0];await db.exec('set role service_role');
+ expect(after).toEqual({...before,status:'report_failed'});
+ await expect(command('before',op,{step:'token_refresh',evidence:{}})).rejects.toThrow();
+ await expect(command('after',op,{step:'vault_read',evidence:{vaultId,itemId,afterVersion:3}})).rejects.toThrow();
+ await expect(command('finish',op,{evidence:{outcome:'uncertain'}})).rejects.toThrow('already final');
+ expect(await command('read')).toEqual({status:'missing'});await claim();
+});
+it('cannot settle token intent even before its executor starts, or use settlement to release an old uncertain operation',async()=>{
+ await enable();const op=await claim();await boundary(op,'vault_auth');await boundary(op,'vault_read',{vaultId,itemId},{vaultId,itemId,afterVersion:3});
+ await command('before',op,{step:'token_refresh',evidence:{}});
+ await expect(command('finish',op,{evidence:{outcome:'report_failed'}})).rejects.toThrow('unresolved');
+ await command('finish',op,{evidence:{outcome:'uncertain'}});
+ await expect(command('finish',op,{evidence:{outcome:'report_failed'}})).rejects.toThrow('already final');
+ await expect(claim()).rejects.toThrow('writer unresolved');
+});
+it('settlement cannot bypass Stop, rebinding or generation fences',async()=>{
+ await enable();const op=await claim();await command('before',op,{step:'vault_auth',evidence:{}});
+ await db.exec(`reset role;update private.sanctuary_ga4_control set enabled=false where singleton=true;set role service_role`);
+ await command('finish',op,{evidence:{outcome:'report_failed'}});await expect(claim()).rejects.toThrow('authority');
+ await enable();await expect(command('before',op,{step:'vault_auth',evidence:{}})).rejects.toThrow();
+ await db.exec(`reset role;update private.sanctuary_ga4_control set binding_hash='${'d'.repeat(64)}' where singleton=true;set role service_role`);
+ await expect(claim()).rejects.toThrow('authority');
 });

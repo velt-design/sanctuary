@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-22: Separate pre-token read failure from credential-write uncertainty
+
+A failed vault read quarantined GA4 even though no Google token intent existed,
+also denying an unchanged saved report. Settle proven pre-token working failures
+under the existing command lock and terminal-status fence, preserving pending
+evidence. Never treat expiry alone as permission to replay a credential effect.
+Existing uncertain work needs exact operator evidence; token/write uncertainty
+stays quarantined. Closed SDK-class and item-validation diagnostics observe only
+existing calls. SQL/HTTP and native tests cover stale continuation, cancellation,
+Stop and preserved token/write quarantine. Owner: Sanctuary-owned GA4 in
+`environment-auth-supabase.md`.
+
 ## 2026-10-22: Historical sales credit and explicit test exclusion
 
 Keep historical sales-design attribution separate from current project owners and

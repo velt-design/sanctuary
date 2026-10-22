@@ -269,6 +269,13 @@ starts disabled and its purge requires real pg_cron. Source actor/credentials
 are separately provisioned after paired Velt direct-writer exclusion is proven.
 See `testing-and-qa.md` for native and rollback-only exact-schema evidence.
 
+`20261022013028_ga4_pre_token_settlement.sql` replaces only the existing GA4
+command's failure-finalisation policy. Proven pre-token working failures may
+become terminal `report_failed` with their pending evidence preserved; the same
+lock fences stale continuation. Already uncertain operations and all uncertain
+token/write effects remain operator-owned. There are no new tables, columns,
+grants, enabled controls, credential stores or automatic retries.
+
 ## Meta source ownership candidate
 
 `20260923050001_sanctuary_meta_reporting.sql` adds private Meta control,

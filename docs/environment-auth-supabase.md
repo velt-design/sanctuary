@@ -194,6 +194,24 @@ direct collector, reconcile source operation evidence and the current vault item
 Application roles cannot release quarantine or change the source control.
 No new schedule, subscription, customer-data write or Google permission is added.
 
+Forward migration `20261022013028_ga4_pre_token_settlement.sql` lets the existing
+failure finalizer settle a working operation as `report_failed` only when its
+ordered ledger proves no token-refresh intent began, or credential effects are
+already settled. It leaves pending-step evidence intact. The same advisory lock
+and terminal-status fence reject any late result or later token intent from that
+executor. Token-refresh/write uncertainty remains quarantined, including after
+expiry or Stop. Existing `uncertain` operations still require a separately
+verified operator reconciliation; this migration does not release them.
+
+Vault auth/read failures emit only fixed stage/code enums in the private
+`sanctuary_ga4_vault_failure` log. Known SDK auth-expired/rate-limit classes,
+timeouts and item validation are distinguished without SDK messages, item fields,
+credentials or identifiers. This observes an existing attempt and never retries.
+Historical omitted causes remain unknown. Recovery of a pre-token operation
+restores eligibility to read the unchanged saved report; it does not establish
+working vault access or authorize another collection. Keep the Google refresh
+token in its existing mutable vault item.
+
 ## Organisation finance candidate gates
 
 `PRAXIS_XERO_FINANCE_POSITION_ENABLED` defaults off and independently gates the
