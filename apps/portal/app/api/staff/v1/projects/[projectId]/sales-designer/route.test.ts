@@ -28,3 +28,9 @@ it('makes stale commands, denial and uncertain persistence distinguishable witho
  }
  mocks.auth.mockResolvedValue({ok:false,response:Response.json({error:'Unauthorized'},{status:401})});expect((await PUT(request(),context)).status).toBe(401);
 });
+
+it('accepts the explicit steve correction and verifies its current readback',async()=>{
+ const changed={...value,designerKey:'steve'};mocks.rpc.mockResolvedValue({data:changed,error:null});
+ const written=await PUT(request({...command,designerKey:'steve'}),context);expect(written.status).toBe(200);expect(await written.json()).toEqual({assignment:changed});
+ const read=await GET(new Request('https://portal.example.test'),context);expect(read.status).toBe(200);expect(await read.json()).toEqual({assignment:changed});
+});

@@ -2,6 +2,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/portal-cold-start-20261021": false,
+      "codex/designer-history-support-20261022": false,
       "codex/meta-video-donor-20261022": false,
       "codex/portal-marketing-hub-speed-20261021": false,
       "codex/meta-creative-executor-current-20261021": false,

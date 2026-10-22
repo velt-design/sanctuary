@@ -16,7 +16,7 @@ const id=n=>`99999999-9999-4999-8999-${String(n).padStart(12,'0')}`,actor=id(1),
 async function client(){const sql=postgres({host:'127.0.0.1',port,username:'postgres',database:'postgres',max:1,onnotice:()=>{}});const c={query:async(text,args=[])=>({rows:await sql.unsafe(text,args)}),end:()=>sql.end()};clients.push(c);await c.query(`set statement_timeout='8s';set lock_timeout='6s';set test.uid='${actor}'`);return c;}
 async function waiting(admin){const until=Date.now()+3000;while(Date.now()<until){if((await admin.query("select count(*)::int n from pg_stat_activity where datname='postgres' and pid<>pg_backend_pid() and wait_event_type='Lock'")).rows[0].n===2)return;await new Promise(resolve=>setTimeout(resolve,20));}throw Error('Both synthetic writers did not reach the held lock');}
 const outcomes=process.argv.includes('--outcomes');
-const keys=outcomes?['refunded','cancelled',null]:['jordan','joe','jp'];
+const keys=outcomes?['test','refunded',null]:['steve','joe','steve'];
 const commandTable=outcomes?'project_sales_outcome_commands':'project_sales_designer_commands',stateTable=outcomes?'project_sales_outcomes':'project_sales_designers';
 const command=(c,idValue,revision,key)=>c.query(`select public.${outcomes?'project_sales_outcome_record':'project_sales_designer_assign'}($1,$2,$3,$4,$5) value`,[project,idValue,revision,key,'Synthetic concurrency proof']);
 try{
@@ -29,7 +29,8 @@ try{
  create function auth.uid() returns uuid language sql stable as $$select current_setting('test.uid')::uuid$$;
  insert into auth.users values('${actor}','jordan@sanctuarypergolas.co.nz',now(),null,null);insert into portal_users values('${actor}','staff');insert into projects values('${project}');`);
  await admin.query(readFileSync(path.join(root,'supabase/migrations/20261021040001_project_sales_designer.sql'),'utf8'));
- if(outcomes)await admin.query(readFileSync(path.join(root,'supabase/migrations/20261021100001_designer_accepted_sales.sql'),'utf8'));
+ await admin.query(readFileSync(path.join(root,'supabase/migrations/20261021100001_designer_accepted_sales.sql'),'utf8'));
+ await admin.query(readFileSync(path.join(root,'supabase/migrations/20261022010001_designer_history_support.sql'),'utf8'));
  // Both real connections wait on the same project lock before competing at revision zero.
  await admin.query('begin');await admin.query('select 1 from projects where id=$1 for update',[project]);
  const first=command(a,id(3),0,keys[0]),second=command(b,id(4),0,keys[1]);
