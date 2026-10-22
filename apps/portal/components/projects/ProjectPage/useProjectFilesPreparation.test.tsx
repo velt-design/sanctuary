@@ -3,6 +3,7 @@ import { act } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { prepareProjectFiles, projectFilesQueryOptions } from '@/lib/projects/sharePointFiles/query';
+import type { ProjectFilesPage } from '@/lib/projects/sharePointFiles/types';
 import { readPreview, retainPreview, setPreviewOwner } from './tabs/overview/projectFilePreviewCache';
 import { useProjectFilesPreparation } from './useProjectFilesPreparation';
 import { emptyFilesNavigation, filesNavigationKey, readFilesNavigation, writeFilesNavigation } from './tabs/overview/projectFilesNavigation';
@@ -114,7 +115,7 @@ it('renews the loaded three-page extent and later-page selected preview without 
   const selectedId = 'late-selected', ids = ['first','second',selectedId], metadataRequests: string[] = [], previewRequests: string[][] = [];
   let shortened = false;
   const roots = [{ id: rootId, itemId: 'root', label: 'Project' }];
-  const rootPage = { state: 'ready', rootId, folderId: 'root', roots, items: [], cursor: null };
+  const rootPage: ProjectFilesPage = { state: 'ready', rootId, folderId: 'root', roots, items: [], cursor: null };
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/previews')) {
       const input = JSON.parse(init!.body as string); previewRequests.push(input.items.map((item: { id: string }) => item.id));
@@ -156,7 +157,7 @@ it('renews the loaded three-page extent and later-page selected preview without 
 
 it('does not overwrite a longer explicit-root page set while normalizing a first-page default-root preparation', async () => {
   const { client } = renewalFixture(), explicit = projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey;
-  const page = { state: 'ready', rootId, folderId: 'root', roots: [{ id: rootId, itemId: 'root', label: 'Project' }], items: [], cursor: 'next' };
+  const page: ProjectFilesPage = { state: 'ready', rootId, folderId: 'root', roots: [{ id: rootId, itemId: 'root', label: 'Project' }], items: [], cursor: 'next' };
   client.setQueryData(explicit, { pages: [page,page,page], pageParams: [undefined,'second','third'] }, { updatedAt: Date.now()-60_000 });
   await prepareProjectFiles(client,'host','staff-a','project-a');
   expect(client.getQueryData(explicit)?.pages).toHaveLength(3);
