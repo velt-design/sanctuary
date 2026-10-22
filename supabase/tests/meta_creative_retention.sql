@@ -105,7 +105,7 @@ do $$declare test_case text;e uuid;cmd uuid;p jsonb;begin
   exception when sqlstate'P9998'then null;end;
  end loop;
 end$$;
-do $$declare first_e uuid;second_e uuid;other_e uuid;baseline jsonb;cmd uuid;p jsonb;before_rows jsonb;begin
+do $$declare first_e uuid;second_e uuid;third_e uuid;other_e uuid;baseline jsonb;cmd uuid;p jsonb;before_rows jsonb;begin
  first_e:=pg_temp.ret_seed('21');select jsonb_agg(to_jsonb(x))into before_rows from public.meta_creative_execution x;
  perform pg_temp.ret_assert(public.meta_creative_retention_next(public.meta_creative_retention_state(first_e))='create_retained');
  cmd:=gen_random_uuid();p:=pg_temp.ret_payload(first_e,'create_retained');
@@ -127,9 +127,18 @@ do $$declare first_e uuid;second_e uuid;other_e uuid;baseline jsonb;cmd uuid;p j
  perform pg_temp.ret_assert(jsonb_array_length(public.meta_creative_retained_ads())=2);
  perform pg_temp.ret_effect(second_e,'pause_previous');
  perform pg_temp.ret_assert(public.meta_creative_retained_ads()@>'[{"donor":"22","ad":"9702"}]');
- perform public.meta_creative_executor_command(repeat('b',64),gen_random_uuid(),second_e,'retention_abort',jsonb_build_object('generation',(select generation from public.meta_creative_control),'evidenceHash',repeat('a',64)));
+ cmd:=gen_random_uuid();p:=jsonb_build_object('generation',(select generation from public.meta_creative_control),'evidenceHash',repeat('a',64));
+ perform public.meta_creative_executor_command(repeat('b',64),cmd,second_e,'retention_abort',p);
  perform pg_temp.ret_effect(second_e,'pause_retained');perform pg_temp.ret_effect(second_e,'restore_previous');perform pg_temp.ret_finish(second_e,'reverted');
+ perform public.meta_creative_executor_command(repeat('b',64),cmd,second_e,'retention_abort',p);
+ perform pg_temp.ret_assert(not exists(select 1 from public.acquisition_experiment_reservation));
+ perform pg_temp.ret_reject(format('select public.meta_creative_executor_command(%L,gen_random_uuid(),%L,%L,%L)',repeat('b',64),second_e,'retention_abort',p));
  perform pg_temp.ret_assert(jsonb_array_length(public.meta_creative_retained_ads())=2 and public.meta_creative_retained_ads()@>'[{"donor":"21","ad":"9701"},{"donor":"22","ad":"9702"}]');
+ third_e:=pg_temp.ret_seed('21',baseline);perform pg_temp.ret_effect(third_e,'create_retained','9704');perform pg_temp.ret_effect(third_e,'pause_previous');perform pg_temp.ret_effect(third_e,'activate_retained');perform pg_temp.ret_finish(third_e,'retained');
+ -- The former winner cannot restore an obsolete lineage after replacement.
+ perform pg_temp.ret_reject(format('select public.meta_creative_executor_command(%L,gen_random_uuid(),%L,%L,%L)',repeat('b',64),first_e,'retention_abort',p));
+ perform pg_temp.ret_assert(not exists(select 1 from public.acquisition_experiment_reservation));
+ perform pg_temp.ret_assert(jsonb_array_length(public.meta_creative_retained_ads())=2 and public.meta_creative_retained_ads()@>'[{"donor":"21","ad":"9704"},{"donor":"22","ad":"9702"}]');
  perform pg_temp.ret_assert((select jsonb_agg(to_jsonb(x))=before_rows from public.meta_creative_execution x where experiment=first_e));
  perform pg_temp.ret_assert(not exists(select 1 from public.meta_creative_effects e join public.meta_creative_control c on c.singleton where c.original_ads?e.target));
 end$$;

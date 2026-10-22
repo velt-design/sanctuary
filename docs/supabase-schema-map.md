@@ -12,6 +12,9 @@ use that donor's exact current winning control/tracking. Originals are never tar
 Both test ads require settled cleanup and fresh PAUSED proof. A new PAUSED owned
 ad reuses the winning creative without schedule edits. Unknown dispatch is consumed;
 exact ID readback reconciles, never another create. Final receipt replay is immutable.
+Abort replay returns its immutable receipt without reserving again. New rollback
+of reverted or superseded winners is denied; only the current donor lineage can
+start a rollback after its original experiment reservation has been released.
 Rollback cannot change a comparator beneath a dependent reservation. The native
 fixture's old proposal expiry demonstrates that maturation creates no renewal gate;
 current Source/global/generation/template/native admission still governs effects.

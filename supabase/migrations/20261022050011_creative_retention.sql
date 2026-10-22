@@ -149,6 +149,14 @@ begin
  end if;
  if p_stage='retention_abort'then
   if coalesce(p_payload->>'evidenceHash','')!~'^[a-f0-9]{64}$'then raise exception 'Retention abort evidence differs';end if;
+  -- Replay acknowledges the immutable receipt without reacquiring a released
+  -- reservation. New rollback may affect only the current donor lineage.
+  if exists(select 1 from public.meta_creative_execution_receipts where command=p_command)then
+   if not exists(select 1 from public.meta_creative_execution_receipts where command=p_command and experiment=p_experiment and stage='retention_aborted'and evidence_hash=p_payload->>'evidenceHash')then raise exception 'Retention abort conflict';end if;
+   return jsonb_build_object('aborting',true);
+  end if;
+  if s->>'finalized'='reverted'or(s->>'finalized'='retained'and not exists(select 1 from jsonb_array_elements(public.meta_creative_retained_ads())v where v->>'experiment'=p_experiment::text and v->>'ad'=s->>'ad'))
+   or exists(select 1 from public.meta_creative_execution_receipts where experiment=p_experiment and stage='retention_aborted')then raise exception 'Retained rollback lineage changed';end if;
   if c.global_stop or not c.authority_current or not c.cleanup_enabled or c.generation is distinct from(p_payload->>'generation')::bigint then raise exception 'Retention abort unavailable';end if;
   if exists(select 1 from public.acquisition_experiment_reservation where lane<>'creative'or experiment<>p_experiment)then raise exception 'Acquisition reservation unavailable';end if;
   insert into public.acquisition_experiment_reservation(lane,experiment)values('creative',p_experiment)on conflict(singleton)do nothing;
