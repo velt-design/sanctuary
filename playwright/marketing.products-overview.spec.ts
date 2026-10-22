@@ -32,12 +32,16 @@ for (const width of [320, 390, 820, 1100, 1440]) test(`overview compares all roo
     expect(box!.width).toBeGreaterThanOrEqual(44);
   }
   if (width <= 760) {
-    const overview = page.getByRole('navigation', { name: 'Explore the three rooflines' });
-    await expect(overview.getByRole('link')).toHaveCount(3);
-    expect((await overview.boundingBox())!.y + (await overview.boundingBox())!.height).toBeLessThan(650);
-    await overview.getByRole('link', { name: /Box/ }).click();
-    await expect(page.locator('#compare-box-perimeter h2')).toBeInViewport();
-    await expect(page.locator('#compare-pitched')).toBeVisible();
+    // One compact image/price row per roofline, without duplicate navigation.
+    for (const card of await cards.all()) {
+      const box = (await card.boundingBox())!;
+      expect(box.height).toBeLessThanOrEqual(300);
+      const image = (await card.locator('img').boundingBox())!;
+      const heading = (await card.getByRole('heading').boundingBox())!;
+      expect(image.width).toBeGreaterThan(90);
+      expect(heading.x).toBeGreaterThan(image.x + image.width);
+      expect((await card.getByRole('link').boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
   } else {
     const positions = await cards.evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top));
     expect(Math.max(...positions) - Math.min(...positions)).toBeLessThanOrEqual(2);
@@ -129,9 +133,26 @@ test('overview preserves saved product choice and support routes', async ({ page
   for (const product of products.filter(product => product.categorySlug !== 'pergolas')) {
     await expect(page.locator(`[data-product-option-gateway] a[href="${product.route}"]`)).toHaveCount(1);
   }
-  await expect(page.getByRole('link', { name: /^Discuss a bespoke design/ })).toHaveAttribute('href', /enquiry_intent=bespoke/);
+  await expect(page.getByRole('link', { name: /^Discuss a bespoke pergola/ })).toHaveAttribute('href', /enquiry_intent=bespoke/);
   await expect(page.locator('a[href="/pergola-cost-auckland"]')).toHaveCount(1);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://www.sanctuarypergolas.co.nz/products');
   await page.getByText('Comparison details', { exact: false }).first().click();
   await expect(page.getByRole('table', { name: 'Pergola form comparison' })).toBeVisible();
+});
+
+
+test('roof finish evidence and undecided enquiry retain useful return paths', async ({ page }) => {
+  await prepare(page);
+  await page.goto('/products');
+  await expect(page.locator('[data-roof-finish]')).toHaveCount(3);
+  await expect(page.getByText('the estimates above are for acrylic roofing with open sides.', { exact: false })).toBeVisible();
+  await page.getByRole('link', { name: 'See Warkworth', exact: true }).click();
+  await expect(page).toHaveURL(/projects\/warkworth-outdoor-room/);
+  await page.goBack();
+  await page.getByRole('link', { name: 'Help me choose', exact: true }).click();
+  await expect(page).toHaveURL(/contact.*enquiry_intent=help/);
+  await expect(page.locator('input[name="phone"]')).toHaveAttribute('required', '');
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pergolas.');
+  await expect(page.locator('[data-product-form-grid] > article')).toHaveCount(3);
 });

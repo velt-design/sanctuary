@@ -1,10 +1,11 @@
 'use client';
-import ArrowIcon from '../marketing-foundation/ArrowIcon';
+import ArrowUpRight from '../marketing-foundation/ArrowUpRight';
+import Link from 'next/link';
+import { buildAssistedEnquiryHref } from '../../lib/configuratorEntry';
 import { type ReactNode, useId, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Container, Heading } from '../marketing-foundation/Primitives';
-import { PRODUCT_DESIGNS, PRODUCT_FORM_CHOICES } from './productDesigns';
+import { PRODUCT_FORM_CHOICES } from './productDesigns';
 import { INITIAL_PRODUCT_SELECTION } from './productSelection';
 import ProductCard from './ProductCard';
 import styles from './product-hub.module.css';
@@ -21,14 +22,9 @@ export default function PergolaSelection({ comparison, table }: { comparison: Re
   return <section className={styles.selection} id="pergola-forms" aria-labelledby="products-title">
     <Container width="wide">
       <header className={styles.intro}>
-        <Heading as="h1" id="products-title" variant="display">Pergolas.</Heading>
+        <div><p className={styles.eyebrow}>Designed around your home</p><Heading as="h1" id="products-title" variant="display">Pergolas.</Heading><p className={styles.introText}>Choose a roofline. Make the space your own.</p></div>
+        <Link className={styles.introEnquiry} href={buildAssistedEnquiryHref({ sourcePath: '/products', sourceComponent: 'hero' }, 'help')}>Help me choose <ArrowUpRight /></Link>
       </header>
-      <nav className={styles.shapeOverview} aria-label="Explore the three rooflines">
-        {PRODUCT_FORM_CHOICES.map(choice => <a key={choice.type} href={`#compare-${choice.type}`}>
-          <Image src={`/images/homepage-challenger-rooflines/${PRODUCT_DESIGNS[choice.type].imageFamily}-daylight.webp`} alt="" width={1120} height={1400} sizes="(max-width:760px) 30vw, 1px" />
-          <span>{choice.title} <span aria-hidden="true"><ArrowIcon direction="down-right" /></span></span>
-        </a>)}
-      </nav>
       <div className={styles.comparisonBar}>
         <fieldset className={styles.sizes} disabled={currentTable.status !== 'priced'}><legend>Width × projection</legend><div>
           {COMPARISON_SIZES.map(([width, projection], index) => <label key={`${width}-${projection}`}><input type="radio" name={`comparison-size-${table.status}-${sizeGroupId}`} value={`${width}-${projection}`} checked={sizeIndex === index} onChange={() => setSizeIndex(index)} /><span>{width / 1000} × {projection / 1000} m</span></label>)}
