@@ -5,8 +5,8 @@
 Forward `20261023010001_landing_owner_decisions.sql` adds no table or public
 endpoint. Four private helpers project prior/settled state, validate capacity,
 and expire only an unprepared decision reservation. The existing signed command
-wraps its previous implementation; three unique receipt indexes enforce one
-owner/Auckland-day decision, one preparation and one first prepare-probe. A
+wraps its previous implementation; its initial three unique receipt indexes enforce
+one owner/Auckland-day decision, one preparation and one first prepare-probe. A
 null/reject consumes the decision. A lost dispatch is reconciled by its exact
 receipt, never refunded or repeated. Ordinary probe rows/counters remain intact.
 Exact committed prepare/probe replay precedes current-capacity validation, so
@@ -14,6 +14,21 @@ expiry, Stop or generation changes cannot hide the saved result. Binding and
 the complete stage/experiment/payload digest still must match. Signed probe
 receipt reads return only the original saved fields, without a new capability
 or extended probe expiry; fresh commands still require current capacity.
+
+Forward `20261023020001_landing_corrected_reassessment.sql` replaces the daily
+unique index with owner/day/correction uniqueness and caps issuance at two that
+day under the existing acquisition lock. The second requires the first's exact
+`owner_end` no-hypothesis receipt, no preparation/probe, distinct corrected Velt
+release and funding receipt, and unchanged scope/template/generation/controls/
+prior experiment. The sole earlier immutable owner/day receipt is the exact
+predecessor, checked against Velt's explicit predecessor by the paired operator.
+Receipt row shape and signed result stay unchanged, preserving historical native
+whole-row hashes. No old rows, ordinary probes or model slots are reset.
+Exact lost-response replay still precedes current capacity checks. These native
+changes work with the already reviewed compatible consumer; no public-page or
+renderer change is required. Installation requires committed reviewed files,
+exact rollback rehearsal and ledger/readback evidence. Required Git merge checks
+remain separate and unchanged.
 
 Capacity is acquired before Velt reserves collection/model work, under the same
 acquisition lock as ordinary landing and creative tests. It binds owner/request,
