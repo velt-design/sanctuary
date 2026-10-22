@@ -1500,6 +1500,14 @@ npm run test:commercial:db
 npx vitest run apps/portal/lib/commercial apps/portal/app/api/quotes/_lib apps/portal/app/api/projects/[projectId]/estimates/route.test.ts apps/portal/components/projects/ProjectPage/tabs/QuotesTab.test.tsx
 ```
 
+For a database-only acceptance-date correction, the bounded command
+`node scripts/test-commercial-workflow-db.mjs` also reproduces the previous
+unwanted reopening before applying `20261022020001`, verifies rollback and
+unchanged function authority, and runs `supabase/tests/acceptance_date_reconciliation.sql`.
+It covers competing accepted revisions/add-ons, missing-date fills and preserved
+existing-date, lifecycle, amount, invoice and negative-payment reconciliation.
+This disposable fixture is not a whole production-schema or PostgREST proof.
+
 `npm run test:commercial:db` executes the commercial bootstrap, trust and commercial-truth migrations, stale-conflict correction, and SQL contracts in disposable in-process PGlite PostgreSQL 18 databases. It proves rollback, atomic apply, exact estimate/quote intents, current accepted base/add-on scope, acceptance and invoice caps, idempotent replay, whole-invoice payment/reversal rules, lifecycle tombstones, completion settlement, and service-role-only grants without reaching a shared database. The static migration test remains a complementary source-shape guard. Never use shared or production data as the disposable fixture.
 
 `npm run test:portal:commercial:staging` is the opt-in post-migration smoke. It refuses any linked Supabase project that is not positively identified as healthy staging, provisions one deterministic `.invalid` staff/scenario lane, strips provider email variables, starts an isolated portal on port 3002, and checks authenticated quote reads, a revision-safe update, immediate stale-write `409`, prepared-delivery recovery read, final persisted state, PDF artifact refresh without a swallowed server failure, and rendered Review & Send readiness. It must not call send/resend, public acceptance, invoice delivery, or any production target.

@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-22: Separate missing historical dates from financial mutations
+
+A NULL acceptance-date fill on an already-ACCEPTED version does not change the
+canonical financial selection: status already qualifies it, and version number,
+creation time and ID determine precedence. The shared reconciliation trigger
+must not reopen legacy completed jobs for that date-only repair. Exempt only
+that transition with every other field unchanged except `updated_at`; preserve
+ordinary date edits, status/value changes, invoices and payment corrections.
+The regression first proves the old reopening, then covers competing accepted
+versions, rollback and unchanged authority. Historical repairs remain separately
+guarded and audited, never a reason to fabricate settlement or disable triggers.
+
 ## 2026-10-22: Compose project filters from the current URL
 
 Rapid audience and roof-form changes could each spread the same stale server
