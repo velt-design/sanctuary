@@ -1,6 +1,6 @@
 import 'server-only';
 
-export const projectFilesPhases = ['auth', 'bindings_rpc', 'token', 'library', 'source_batch', 'ancestry', 'children'] as const;
+export const projectFilesPhases = ['auth', 'bindings_rpc', 'token', 'library', 'source_batch', 'ancestry', 'children', 'content_redirect', 'source_headers'] as const;
 export type ProjectFilesPhase = typeof projectFilesPhases[number];
 export type ProjectFilesTimingObserver = (phase: ProjectFilesPhase, durationMs: number) => unknown;
 

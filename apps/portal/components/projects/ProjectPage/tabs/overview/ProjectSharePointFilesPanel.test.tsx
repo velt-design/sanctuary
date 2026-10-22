@@ -195,13 +195,13 @@ it('paints a recent verified image immediately on return, rechecks current acces
   fetcher.mockImplementation(async (url: string, init: RequestInit) => {
     if (!url.includes('/open?')) return Response.json({ ...ready, items: [{ ...item('Photo', 'image/png'), eTag: '"v1"' }] });
     opens++;
-    if (opens > 1) { expect(new Headers(init.headers).get('if-none-match')).toBe('"v1"'); if (failRecheck) return new Response('{}', { status: 503 }); return new Promise<Response>(resolve => { recheck = resolve; }); }
+    if (opens > 1) { expect(new Headers(init.headers).get('x-project-file-preview-version')).toBe('"v1"'); expect(new Headers(init.headers).get('if-none-match')).toBeNull(); if (failRecheck) return new Response('{}', { status: 503 }); return new Promise<Response>(resolve => { recheck = resolve; }); }
     return new Response(new Uint8Array([1,2,3]), { headers: { 'content-type': 'image/png', 'content-length': '3', 'x-project-file-verified-version': '"v1"' } });
   });
   const c = await render(true); await selectFile(c, 'Photo.png'); expect(c.querySelector('img')).not.toBeNull();
   await click(c, 'Work'); await click(c, 'Files');
   expect(c.querySelector('img')).not.toBeNull(); expect(c.textContent).toContain('Checking latest'); expect(opens).toBe(2);
-  await act(async () => recheck!(new Response(null, { status: 304, headers: { 'x-project-file-verified-version': '"v1"' } }))); await flush();
+  await act(async () => recheck!(Response.json({ kind: 'project-file-current-v1', projectId: 'proj_fixture', rootId, itemId: 'Photo', version: '"v1"', name: 'Photo.png', contentType: 'image/png', size: 3 }))); await flush();
   expect(c.textContent).not.toContain('Checking latest');
   await click(c, 'Work'); failRecheck = true; await click(c, 'Files');
   expect(c.querySelector('img')).toBeNull(); expect(c.textContent).toContain('Preview unavailable');
@@ -232,4 +232,45 @@ it('debounces folder intent and cancels unobserved speculative work when leaving
   await act(async () => vi.advanceTimersByTimeAsync(150));
   const speculative = fetcher.mock.calls.filter(([url]) => String(url).includes('folderId=')); expect(speculative).toHaveLength(1);
   mounted!.unmount(); mounted = undefined; expect(speculative[0][1].signal.aborted).toBe(true);
+});
+
+it.each(['stripped304', 'unexpected304', 'missing', 'malformed', 'version', 'scope', 'mime', 'size', 'extra'])('fails closed on invalid verification %s after immediately displaying a resident', async failure => {
+  let opens = 0;
+  fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+    if (!url.includes('/open?')) return Response.json({ ...ready, items: [{ ...item('Photo', 'image/png'), eTag: '"v1"' }] });
+    opens++;
+    if (opens === 1) return new Response(new Uint8Array([1,2,3]), { headers: { 'content-type': 'image/png', 'x-project-file-verified-version': '"v1"' } });
+    expect(new Headers(init.headers).get('if-none-match')).toBeNull();
+    if (failure.includes('304')) return new Response(null, { status: 304, headers: { ETag: '"v1"', ...(failure === 'unexpected304' ? { 'x-project-file-verified-version': '"v1"' } : {}) } });
+    if (failure === 'malformed') return new Response('{', { headers: { 'content-type': 'application/json' } });
+    const receipt: any = { kind: 'project-file-current-v1', projectId: 'proj_fixture', rootId, itemId: 'Photo', version: '"v1"', name: 'Photo.png', contentType: 'image/png', size: 3 };
+    if (failure === 'missing') delete receipt.kind;
+    if (failure === 'version') receipt.version = '"v2"';
+    if (failure === 'scope') receipt.itemId = 'other';
+    if (failure === 'mime') receipt.contentType = 'application/pdf';
+    if (failure === 'size') receipt.size = 4;
+    if (failure === 'extra') receipt.extra = true;
+    return Response.json(receipt);
+  });
+  const c = await render(true); await selectFile(c, 'Photo.png'); await click(c, 'Work'); await click(c, 'Files');
+  expect(c.querySelector('img')).toBeNull(); expect(c.textContent).toContain('Preview unavailable');
+  await click(c, 'Work'); await click(c, 'Files');
+  const calls = fetcher.mock.calls.filter(([url]) => String(url).includes('/open?'));
+  expect(new Headers(calls.at(-1)![1].headers).get('x-project-file-preview-version')).toBeNull();
+});
+
+it('does not retain or display a late receipt after its selection was cancelled', async () => {
+  let release: ReadableStreamDefaultController<Uint8Array> | undefined;
+  const counts = new Map<string, number>();
+  fetcher.mockImplementation(async (url: string) => {
+    if (!url.includes('/open?')) return Response.json({ ...ready, items: ['Photo','Other'].map(id => ({ ...item(id, 'image/png'), eTag: '"v1"' })) });
+    const id = url.includes('/Photo/') ? 'Photo' : 'Other'; const count = (counts.get(id) ?? 0) + 1; counts.set(id, count);
+    if (count === 1) return new Response(new Uint8Array([1,2,3]), { headers: { 'content-type': 'image/png', 'x-project-file-verified-version': '"v1"' } });
+    if (id === 'Photo') return new Response(new ReadableStream({ start(controller) { release = controller; } }), { headers: { 'content-type': 'application/json' } });
+    return Response.json({ kind: 'project-file-current-v1', projectId: 'proj_fixture', rootId, itemId: id, version: '"v1"', name: id+'.png', contentType: 'image/png', size: 3 });
+  });
+  const c = await render(); await selectFile(c, 'Photo.png'); await selectFile(c, 'Other.png'); await selectFile(c, 'Photo.png');
+  const oldSignal = fetcher.mock.calls.at(-1)![1].signal; await selectFile(c, 'Other.png'); expect(oldSignal.aborted).toBe(true);
+  await act(async () => { release!.enqueue(new TextEncoder().encode(JSON.stringify({ kind: 'project-file-current-v1', projectId: 'proj_fixture', rootId, itemId: 'Photo', version: '"v1"', name: 'Late name.png', contentType: 'image/png', size: 3 }))); release!.close(); }); await flush();
+  expect(c.querySelector('img')?.getAttribute('alt')).toBe('Other.png'); expect(c.textContent).not.toContain('Late name');
 });

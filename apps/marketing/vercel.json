@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/project-files-live-preview-fix-20261022": false,
       "codex/seo-google-mobile-20261022": false,
       "codex/project-files-main-tab-20261022": false,
       "codex/campaign-render-deadline-20261022": false,

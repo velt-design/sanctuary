@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-22: Verify protected preview reuse through the platform
+
+A platform may rewrite a conditional response to304 and strip application
+verification headers. Bare304 or ETag cannot prove current protected-file
+authority. Recent previews now require an explicit bounded200 JSON receipt after
+current access, containment and source-version checks. Model proxy rewriting as
+well as application responses when testing this boundary. See
+[Project SharePoint files](project-sharepoint-files.md) for the contract and
+remaining first-open performance limits.
+
 ## 2026-10-22: Preserve paid proposal lineage across a changed landing template
 
 Forward130001 supports one private completion receipt for a never-published

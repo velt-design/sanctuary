@@ -22,13 +22,13 @@ async function readFileRoots(db: SupabaseClient, projectId: string, observer?: P
   if (!parsed.success) throw new ProjectFilesError('source_invalid');
   return parsed.data;
 }
-export async function projectGraph(db: SupabaseClient, projectId: string, rootId: string | undefined, assertion: string, signal: AbortSignal, itemId?: string) {
-  const snapshot = await readFileRoots(db, projectId);
+export async function projectGraph(db: SupabaseClient, projectId: string, rootId: string | undefined, assertion: string, signal: AbortSignal, itemId?: string, observer?: ProjectFilesTimingObserver) {
+  const snapshot = await readFileRoots(db, projectId, observer);
   const cfg = sharePointConfig();
   if (snapshot.state !== 'ready' || snapshot.binding !== cfg.binding) throw new ProjectFilesError('not_configured');
   const root = rootId ? snapshot.roots.find(value => value.id === rootId) : snapshot.roots[0];
   if (!root) throw new ProjectFilesError('not_found', 404);
-  return { snapshot, root, cfg, graph: await createGraph(cfg, assertion, signal, undefined, undefined, itemId ? { rootId: root.itemId, itemId, download: true } : undefined) };
+  return { snapshot, root, cfg, graph: await createGraph(cfg, assertion, signal, undefined, observer, itemId ? { rootId: root.itemId, itemId, download: true } : undefined) };
 }
 export async function listProjectFiles(db: SupabaseClient, projectId: string, input: { rootId?: string; folderId?: string; cursor?: string }, assertion: string, observer?: ProjectFilesTimingObserver, requestSignal?: AbortSignal): Promise<ProjectFilesPage> {
   const snapshot = await readFileRoots(db, projectId, observer);
