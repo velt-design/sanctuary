@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Card, TabNavigation } from "@/components/ui/foundation";
 import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import ProjectEnquiryFilesPanel from "./ProjectEnquiryFilesPanel";
+import ProjectSharePointFilesPanel from "./ProjectSharePointFilesPanel";
 import ProjectEnquiryReceiptPanel from "./ProjectEnquiryReceiptPanel";
 import styles from "./ProjectWorkFilesCard.module.css";
 
@@ -48,6 +49,7 @@ export default function ProjectWorkFilesCard({
     >
       {selectedPanel === "files" ? (
         <div id="project-files-panel" role="tabpanel" aria-label="Files">
+          <ProjectSharePointFilesPanel key={projectId} projectId={projectId} host={host} disabled={disableFileActions || initialAttachments !== undefined} />
           <ProjectEnquiryFilesPanel
             projectId={projectId}
             host={host}
