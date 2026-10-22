@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/pergolas-overview-release-20261022": false,
       "codex/project-files-explorer-20261022": false,
       "codex/ga4-acquisition-recovery-20261022": false,
       "codex/professionals-release-20261022": false,
