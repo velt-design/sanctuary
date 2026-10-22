@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/ga4-acquisition-recovery-20261022": false,
       "codex/professionals-release-20261022": false,
       "codex/accepted-date-reconciliation-20261022": false,
       "codex/projects-release-20261022": false,

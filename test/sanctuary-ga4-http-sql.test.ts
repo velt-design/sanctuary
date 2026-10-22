@@ -89,12 +89,13 @@ it.each(['available','row_limit','limited'] as const)('actual HTTP/provider pars
  expect(operation.requested_report_version).toBe('sanctuary-ga4-v3');expect(operation.report_intent.reportVersion).toBe('sanctuary-ga4-v3');
  expect(operation.report_result.rowCount).toBe(body.report.traffic.length+body.report.channels.length+body.report.landing.length+body.report.events.length+3+(mode==='row_limit'?0:body.report.diagnostics.acquisition.rows.length));
 });
-it('unexpected acquisition failure preserves the previous actual v2 snapshot and settles the report failure',async()=>{
+it('invalid acquisition retains fresh validated core through completion and saved SQL read',async()=>{
  await enable();const original=await(await sanctuaryGa4Response(request(),dependencies())).json();
- const {deps}=diagnosticDependencies('unexpected');expect((await sanctuaryGa4Response(v3Request(),deps)).status).toBe(503);
- const saved=await(await sanctuaryGa4Response(request('read'),deps)).json();expect(saved.report).toEqual(original.report);expect(saved.operation).toBe(original.operation);
+ const {deps}=diagnosticDependencies('unexpected');const response=await sanctuaryGa4Response(v3Request(),deps);expect(response.status).toBe(200);const fresh=await response.json();
+ expect(fresh.report.diagnostics.acquisition).toEqual({status:'unavailable',reason:'compatibility_unproven'});expect(fresh.report.diagnostics.stages[0].count.value).toBe(37);
+ const saved=await(await sanctuaryGa4Response(request('read'),deps)).json();expect(saved.report).toEqual(fresh.report);expect(saved.resultHash).toBe(fresh.resultHash);expect(saved.operation).not.toBe(original.operation);
  await db.exec('reset role');const operations=(await db.query<{status:string}>('select status from private.sanctuary_ga4_operations order by created_at')).rows;
- expect(operations.map(row=>row.status)).toEqual(['completed','report_failed']);
+ expect(operations.map(row=>row.status)).toEqual(['completed','completed']);
 });
 it('SQL retained read rejects unavailable acquisition carrying hidden partial metric cells',async()=>{
  await enable();const {deps}=diagnosticDependencies('row_limit');expect((await sanctuaryGa4Response(v3Request(),deps)).status).toBe(200);

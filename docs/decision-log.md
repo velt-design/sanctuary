@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-22: Keep validated core when optional acquisition validation fails
+
+An HTTP200 acquisition schema rejection discarded an independently validated
+core report. Catch only typed local acquisition validation and schema errors at
+that parser boundary. Preserve core and first-edit evidence with explicit
+unavailable acquisition and no rows, using the existing wire contract. Do not
+turn transport, cancellation, authority, core or normalization failures into
+success. Fixed validation classifications improve future diagnosis without
+retaining provider values; historical evidence does not identify the exact field.
+
 ## 2026-10-22: Separate missing historical dates from financial mutations
 
 A NULL acceptance-date fill on an already-ACCEPTED version does not change the
