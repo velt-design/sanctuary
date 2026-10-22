@@ -21,6 +21,14 @@ requires exact amount/status, project/family agreement, assignment revision,
 ledger fingerprint, stable command ID, actor and reason. Replay retains the same
 receipt; changed evidence or conflicting command reuse fails closed.
 
+Separate-charge receipts may settle their own frozen invoice version and stage,
+including a corrected cash payment or a full set of approved bank/invoice-payment
+receipts. That historical settlement never funds a newer construction scope.
+Reconciliation and allocation guards resolve both direct invoice ownership and
+active provider-match ownership; canonical provider fences continue to reject
+cross-scope reallocations. Reverse and re-record through existing commands rather
+than deleting payment history or changing the assessment's issued document.
+
 Implementation map: the migration owns family funding, economic job value,
 invoice limits and restoration; `invoices/scopeFunding.ts` is the server read
 adapter; `paymentScheduleProjection.ts` carries historical family funding through

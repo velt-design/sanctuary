@@ -7,7 +7,9 @@
 bodies to synthetic PGlite prerequisites, then tests separate assessment plus
 family deposit reconciliation, immutable financial history, old/new acceptance
 compatibility, no-invoice replay, custom draft/issue/reload, scope limits, split
-allocations and authority. The existing native invoice harness additionally runs
+allocations and authority. Recovery coverage reverses and repays a separate fee,
+settles partial bank and invoice-payment receipts, corrects those matches, and
+rejects moving their money to construction. The existing native invoice harness runs
 real competing PostgreSQL sessions for reconciliation and acceptance replay.
 Local PGlite is not concurrent-session or complete deployed-schema evidence.
 

@@ -194,6 +194,54 @@ describe('funded revised quote and explicit deposit reconciliation, production S
     expect((await db.query<any>('select * from public.commercial_quote_scope_funding($1)',[version])).rows[0].paid_inc_gst_cents).toBe(0);
     expect((await accept()).rows[0].invoice_id).toBeNull();
   });
+  it('settles a reversed separate assessment against its own frozen stage without funding construction', async () => {
+    await reconcile(topup, 'QUOTE_PAYMENT', quote, 20000); await accept();
+    const receipt=(await db.query<any>("select id from public.project_payment_entries where source_invoice_id=$1 and entry_type='PAYMENT'",[fee])).rows[0].id;
+    await db.query('select public.commercial_reverse_payment_entry_with_project_lock($1,$2,$3)',[receipt,'Correct assessment receipt','synthetic-admin']);
+    expect((await db.query<any>('select status from public.deposit_invoices where id=$1',[fee])).rows[0].status).toBe('OPEN');
+    await db.query('select * from public.commercial_mark_invoice_paid_with_project_lock($1,$2,null,null,null,null)',[fee,'synthetic-admin']);
+    const repayment=(await db.query<any>("select id from public.project_payment_entries e where source_invoice_id=$1 and entry_type='PAYMENT' and not exists(select 1 from public.project_payment_entries r where r.reverses_entry_id=e.id)",[fee])).rows[0].id;
+    expect(repayment).not.toBe(receipt);
+    expect((await db.query<any>('select quote_version_id,payment_term_id from public.project_payment_allocations where payment_entry_id=$1 and reversed_at is null',[repayment])).rows).toEqual([{ quote_version_id: feeVersion, payment_term_id: 'payment-1' }]);
+    await reject(()=>db.query('select public.commercial_replace_payment_allocations_with_project_lock($1,$2,$3,$4)',[repayment,JSON.stringify([{quote_version_id:version,payment_term_id:'payment-1',amount_inc_gst_cents:5000}]),'Cannot fund construction','synthetic-admin']),/Separate charge receipts/);
+    expect((await db.query<any>('select * from public.commercial_quote_scope_funding($1)',[version])).rows[0].paid_inc_gst_cents).toBe(70000);
+    expect(await truth()).toMatchObject({ accepted_total_inc_gst_cents:165000, paid_inc_gst_cents:75000, remaining_to_invoice_inc_gst_cents:90000 });
+  });
+  it.each(['BANK_TRANSACTION','INVOICE_PAYMENT'])('settles and corrects separate historical work from %s receipts', async source => {
+    const separateVersion='30000000-0000-4000-8000-000000000005', invoice='40000000-0000-4000-8000-000000000005';
+    const provider='60000000-0000-4000-8000-000000000005';
+    await db.query("insert into public.quote_versions(id,quote_id,version_number,status,accepted_at,total_inc_gst_cents,total_ex_gst_cents,gst_cents,payment_terms) values($1,$2,1,'SUPERSEDED',now(),5000,4348,652,$3)",[separateVersion,otherQuote,term(5000)]);
+    await db.query("insert into public.deposit_invoices(id,project_id,quote_id,quote_version_id,quote_ref,quote_version_number,invoice_ref,status,quote_total_inc_gst_cents,total_inc_gst_cents,total_ex_gst_cents,gst_cents,payment_term_id,payment_term_label) values($1,$2,$3,$4,'Q-OTHER',1,'INV-SEPARATE','OPEN',5000,5000,4348,652,'payment-1','Assessment')",[invoice,otherProject,otherQuote,separateVersion]);
+    const fingerprint=(await db.query<any>('select public.commercial_invoice_scope_fingerprint($1) value',[invoice])).rows[0].value;
+    await db.query("select public.commercial_reconcile_invoice_scope($1,'SEPARATE_CHARGE',null,5000,'OPEN',0,$2,$3,'Separate historical work','synthetic-admin')",[invoice,fingerprint,crypto.randomUUID()]);
+    await db.query('insert into auth.users values($1)',[cmd]);
+    await db.query("insert into public.xero_payment_approvers(user_id,granted_by) values($1,'Synthetic payment test')",[cmd]);
+    if(source==='INVOICE_PAYMENT') {
+      await db.query('insert into private.xero_invoice_transfer_control(singleton,tenant_id) values(true,$1)',[cmd]);
+      await db.query('insert into private.xero_invoice_transfers(id,invoice_id,project_id,tenant_id,provider_invoice_id) values($1,$2,$3,$1,$4)',[cmd,invoice,otherProject,provider]);
+      await db.query('insert into private.xero_invoice_requests(transfer_id,body) values($1,$2)',[cmd,JSON.stringify({Invoices:[{Contact:{ContactID:cmd}}]})]);
+    }
+    const approve=async(amount:number)=>{
+      const context=(await db.query<any>('select public.xero_deposit_review_context($1) value',[invoice])).rows[0].value;
+      const args=[crypto.randomUUID(),cmd,cmd,crypto.randomUUID(),cmd,otherProject,invoice,amount,'2026-10-22',context.invoiceFingerprint,context.ledgerFingerprint,'a'.repeat(64),'Synthetic receipt'];
+      const call=source==='INVOICE_PAYMENT'?'select public.xero_approve_invoice_payment($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) result':'select public.xero_approve_deposit_match($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) result';
+      return (await db.query<any>(call,source==='INVOICE_PAYMENT'?[...args,provider]:args)).rows[0].result;
+    };
+    const first=await approve(2000); await approve(3000);
+    expect((await db.query<any>('select status from public.deposit_invoices where id=$1',[invoice])).rows[0].status).toBe('PAID');
+    await db.query('select public.commercial_reverse_payment_entry_with_project_lock($1,$2,$3)',[first.paymentEntryId,'Correct provider receipt',cmd]);
+    expect((await db.query<any>('select status from public.deposit_invoices where id=$1',[invoice])).rows[0].status).toBe('OPEN');
+    const corrected=await approve(2000);
+    // Reconciliation recognises provider-owned allocations to this frozen source.
+    await reconcile(invoice,'NATIVE',null,5000,1);
+    await reconcile(invoice,'SEPARATE_CHARGE',null,5000,2);
+    expect((await db.query<any>('select status from public.deposit_invoices where id=$1',[invoice])).rows[0].status).toBe('PAID');
+    expect((await db.query<any>('select coalesce(sum(amount_inc_gst_cents),0)::int value from public.project_payment_allocations where quote_version_id=$1 and reversed_at is null',[separateVersion])).rows[0].value).toBe(5000);
+    // An otherwise valid same-project future scope cannot consume that receipt.
+    await db.query("insert into public.quote_versions(id,quote_id,version_number,status,total_inc_gst_cents,total_ex_gst_cents,gst_cents,payment_terms) values($1,$2,2,'SENT',10000,8696,1304,$3)",[draft,otherQuote,term(10000)]);
+    await reject(()=>db.query('select public.commercial_replace_payment_allocations_with_project_lock($1,$2,$3,$4)',[corrected.paymentEntryId,JSON.stringify([{quote_version_id:draft,payment_term_id:'payment-1',amount_inc_gst_cents:2000}]),'Cannot move assessment receipt',cmd]),/reserved for its invoice|Separate charge receipts/);
+    expect((await db.query<any>('select * from public.commercial_quote_scope_funding($1)',[draft])).rows[0].paid_inc_gst_cents).toBe(0);
+  });
   it('denies public/staff direct assignment writes and operator command execution', async () => {
     expect((await db.query<any>("select has_table_privilege('service_role','public.commercial_invoice_scope_assignments','UPDATE') value")).rows[0].value).toBe(false);
     expect((await db.query<any>("select has_function_privilege('authenticated','public.commercial_reconcile_invoice_scope(uuid,text,uuid,integer,text,integer,text,uuid,text,text)','EXECUTE') value")).rows[0].value).toBe(false);

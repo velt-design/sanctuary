@@ -111,8 +111,14 @@ returns trigger language plpgsql security definer set search_path=pg_catalog,pg_
 begin
   if new.quote_version_id is not null and exists(
     select 1 from public.project_payment_entries e
-      join public.commercial_invoice_scope_assignments a on a.invoice_id=e.source_invoice_id
+      left join public.xero_deposit_matches m on m.payment_entry_id=e.id and m.reversed_at is null
+      join public.deposit_invoices i on i.id=coalesce(e.source_invoice_id,m.invoice_id)
+      join public.commercial_invoice_scope_assignments a on a.invoice_id=i.id
     where e.id=new.payment_entry_id and a.treatment='SEPARATE_CHARGE'
+      -- Settlement retains the separate document's own frozen stage. That is
+      -- accounting for its receipt, never funding a current construction scope.
+      and (new.quote_version_id is distinct from i.quote_version_id
+        or new.payment_term_id is distinct from i.payment_term_id)
   ) then raise exception 'Separate charge receipts cannot settle quoted work' using errcode='55000'; end if;
   return new;
 end;
@@ -166,8 +172,12 @@ begin
     select 1 from public.commercial_current_accepted_quote_versions(v_invoice.project_id) c where c.quote_version_id=v_invoice.quote_version_id
   )) then raise exception 'Separate charge must be a historical quote-linked invoice' using errcode='22023'; end if;
   if p_treatment='SEPARATE_CHARGE' and exists(
-    select 1 from public.project_payment_entries e join public.project_payment_allocations a on a.payment_entry_id=e.id
-    where e.source_invoice_id=v_invoice.id and a.reversed_at is null and a.quote_version_id is distinct from v_invoice.quote_version_id
+    select 1 from public.project_payment_entries e
+      left join public.xero_deposit_matches m on m.payment_entry_id=e.id and m.reversed_at is null
+      join public.project_payment_allocations a on a.payment_entry_id=e.id
+    where coalesce(e.source_invoice_id,m.invoice_id)=v_invoice.id and a.reversed_at is null
+      and (a.quote_version_id is distinct from v_invoice.quote_version_id
+        or a.payment_term_id is distinct from v_invoice.payment_term_id)
   ) then raise exception 'Reconcile explicit payment allocations before separating this charge' using errcode='55000'; end if;
   insert into public.commercial_invoice_scope_assignments(invoice_id,project_id,treatment,quote_id,revision,command_id,reason,actor)
     values(p_invoice_id,v_invoice.project_id,p_treatment,p_quote_id,p_expected_revision+1,p_command_id,trim(p_reason),trim(p_actor))
