@@ -12,3 +12,18 @@ it('turns provider-budget expiry into family unavailability while allowing final
     outer.abort();expect(source.deadline.aborted).toBe(true);
   }finally{timeout.mockRestore();}
 });
+
+it('starts independent fresh authorities together and withholds provider access until both pass',async()=>{
+ const deps=fixture();let grant!:(value:void)=>void;const pending=new Promise<void>(yes=>{grant=yes;});
+ const recheck=vi.fn(()=>pending),source=positionRuntime(new AbortController().signal,deps,recheck);
+ const binding=source.deps.binding(source.deadline);expect(recheck).toHaveBeenCalledOnce();expect(deps.binding).toHaveBeenCalledOnce();
+ let done=false;void binding.then(()=>{done=true;});await Promise.resolve();expect(done).toBe(false);expect(deps.read).not.toHaveBeenCalled();
+ grant();await expect(binding).resolves.toEqual({tenantId:id,scope:'organisation'});
+});
+it('does not bypass caller denial or keep a request window across runtimes',async()=>{
+ const deps=fixture(),close=vi.fn(async()=>{}),read=vi.fn(async()=>[]),openRead=vi.fn(()=>({read,close}));
+ const source=positionRuntime(new AbortController().signal,{...deps,openRead},async()=>{throw new Error('FINANCIALS_ACCESS_CHANGED');},true);
+ await expect(source.deps.binding(source.deadline)).rejects.toThrow('FINANCIALS_ACCESS_CHANGED');expect(read).not.toHaveBeenCalled();
+ await source.close();expect(close).toHaveBeenCalledOnce();
+ const second=positionRuntime(new AbortController().signal,{...deps,openRead},undefined,true);expect(openRead).toHaveBeenCalledTimes(2);await second.close();
+});

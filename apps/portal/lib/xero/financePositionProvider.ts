@@ -1,6 +1,6 @@
 import 'server-only';
 import { config, XERO_SCOPES } from './security';
-import { access } from './store';
+import { access, createRequestAccess } from './store';
 import type { FinancePositionQuery } from './financePositionContract';
 
 export type PositionRead = { family: 'organisation' | 'bankSummary' | 'profitAndLoss' | 'receivables' | 'payables'; tenantId: string; query: FinancePositionQuery; page: number };
@@ -52,4 +52,10 @@ export async function readPositionPage(input: PositionRead, signal: AbortSignal,
   const rows = body[resource === 'Organisation' ? 'Organisations' : resource === 'Invoices' ? 'Invoices' : 'Reports'];
   if (!Array.isArray(rows) || rows.length > (resource === 'Invoices' ? 100 : 1)) throw new PositionReadError('invalid_response');
   return rows;
+}
+
+/** A caller must close this request-owned lease in finally. No token cache. */
+export function createPositionReadWindow() {
+  const lease = createRequestAccess();
+  return { read: (input: PositionRead, signal: AbortSignal) => readPositionPage(input, signal, { ...dependencies, access: lease.access }), close: lease.close };
 }

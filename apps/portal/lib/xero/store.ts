@@ -1,29 +1,8 @@
 import 'server-only';
-import postgres from 'postgres';
-import { rootCertificates } from 'node:tls';
-import { supabaseCa } from './supabaseCa';
+import { createConnectorDatabase, withDatabase } from './connectorDatabase';
 import { config, seal, unseal, XERO_SCOPES } from './security';
 import { accountingRead, connections, tokenRequest, type Tokens, XeroError } from './provider';
 
-async function withDatabase<T>(work: (db: ReturnType<typeof postgres>) => Promise<T>): Promise<T> {
-  const cfg = config();
-  const hostname = new URL(cfg.databaseUrl).hostname;
-  const managedSupabase = /^[a-z0-9-]+\.pooler\.supabase\.com$|^db\.[a-z0-9]{20}\.supabase\.co$/.test(hostname);
-  const ssl = cfg.local ? false : managedSupabase
-    ? { rejectUnauthorized: true, ca: [...rootCertificates, supabaseCa] }
-    : 'verify-full';
-  const db = postgres(cfg.databaseUrl, { ssl, max: 1, prepare: false, connect_timeout: 10, onnotice: () => {} });
-  try {
-    const [identity] = await db`select current_user as name, rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls,
-      pg_has_role(current_user, 'sanctuary_xero_connector', 'member') as connector,
-      pg_has_role(current_user, 'service_role', 'member') as service,
-      not exists (select 1 from pg_roles r where r.rolname not in (current_user::text,'sanctuary_xero_connector')
-        and pg_has_role(current_user,r.oid,'member')) as only_connector
-      from pg_roles where rolname=current_user`;
-    if (!identity?.connector || !identity.only_connector || identity.service || identity.rolsuper || identity.rolcreaterole || identity.rolcreatedb || identity.rolreplication || identity.rolbypassrls) throw new Error('XERO_DATABASE_ROLE_INVALID');
-    return await work(db);
-  } finally { await db.end({ timeout: 5 }); }
-}
 
 export async function saveAttempt(stateHash: string, userId: string) {
   await withDatabase(async db => {
@@ -83,12 +62,12 @@ export async function grantedConsentScopes(): Promise<string[]> {
   });
 }
 
-export async function access(): Promise<Tokens> {
+async function readAccess(database: typeof withDatabase): Promise<Tokens> {
   const cfg = config();
   if (!cfg.tenantId) throw new Error('XERO_ORGANISATION_NOT_PINNED');
   // A database row lock serialises rotation across cron, reads and reconnects.
   // Commit rotated tokens before any subsequent provider reads can fail.
-  const result = await withDatabase(async db => db.begin(async tx => {
+  const result = await database(async db => db.begin(async tx => {
     await tx`set local lock_timeout='3s'`;
     const [row] = await tx`select * from xero_private.connection where singleton for update`;
     if (!row?.encrypted_tokens || row.tenant_id !== cfg.tenantId) return { error: 'RECONNECT_REQUIRED' };
@@ -109,6 +88,15 @@ export async function access(): Promise<Tokens> {
   }));
   if (!result.tokens) throw new XeroError(result.error ?? 'CONNECTION_UNAVAILABLE');
   return result.tokens;
+}
+
+export function access(): Promise<Tokens> { return readAccess(withDatabase); }
+
+/** One request owns the connection, never the tokens. Every call rechecks the role
+ * and locks/rereads the current encrypted grant through the same policy as access(). */
+export function createRequestAccess() {
+  const connection = createConnectorDatabase();
+  return { access: () => readAccess(work => connection.run(work)), close: () => connection.close() };
 }
 
 export async function readAccounting(resource: 'Invoices' | 'BankTransactions', where: string, recordId?: string) {

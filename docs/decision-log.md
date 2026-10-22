@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-22: Historical sales credit and explicit test exclusion
+
+Keep historical sales-design attribution separate from current project owners and
+verified visit attendees. Add Steve only to the sales roster. Reuse the existing
+audited, revision-checked report outcome for an explicit TEST classification;
+do not represent test data as cancelled/refunded business or delete its history.
+Test inventory is inspectable and reversible, outside business sales/visit-conversion
+counts. Original financial/operational/provider facts and access boundaries stay intact.
+
 ## 2026-10-21: Preserve safe collector diagnostics before lifecycle redaction
 
 The GA4 collector classified failures, but the lifecycle replaced that diagnostic

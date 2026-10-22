@@ -25,6 +25,16 @@ provisioning are required. Existing capability migrations remain unchanged.
 
 # Supabase Schema Map
 
+## Historical designer and explicit test corrections
+
+`20261022010001_designer_history_support.sql` extends the existing private
+sales-designer key check and authenticated assignment validator with `steve`, and
+the report-only outcome check/validator with `test`. No new table, grant, actor,
+provider trigger or report projection. Existing revision/audit rows are retained;
+POST commands remain VOLATILE with the same locked owner guard. The Portal read
+model retains test records for inspection while excluding them from business sales
+and conversion populations.
+
 ## Designer accepted sales outcomes (21 October 2026)
 
 `20261021100001_designer_accepted_sales.sql` adds private
