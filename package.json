@@ -154,7 +154,8 @@
     "portal:agent-scenarios": "npm run portal:auth-env && npx playwright test playwright/portal.agent-scenarios.spec.ts --project=portal-chromium",
     "portal:agent-scenarios:provision": "npm run portal:test-user:ensure && npm run portal:scenarios:ensure && npm run portal:agent-scenarios",
     "portal:calculator-ui": "npm run portal:auth-env && npx playwright test playwright/portal.calculator-foundation-ui.spec.ts playwright/portal.calculator.spec.ts --project=portal-chromium --workers=1",
-    "portal:calculator-ui:provision": "npm run portal:test-user:ensure && npm run portal:scenarios:ensure && npm run portal:calculator-ui"
+    "portal:calculator-ui:provision": "npm run portal:test-user:ensure && npm run portal:scenarios:ensure && npm run portal:calculator-ui",
+    "sharepoint:files": "node --conditions=react-server --import tsx scripts/sharepoint-project-files.ts"
   },
   "dependencies": {
     "@react-email/render": "^2.0.4",
@@ -182,7 +183,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.12",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "esbuild": "0.27.2"
   },
   "overrides": {
     "postcss": "8.5.26",

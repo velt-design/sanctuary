@@ -482,3 +482,9 @@ Docs name the destination. Tests, lint, CI, and package boundaries should increa
 The approved everyday-finance goal adds an in-progress default-disabled invoice-draft job on the existing durable jobs spine. The portal remains the finance-domain and connector credential owner. The issuance trigger, mapping/comparison helpers, lease-fenced portal gateway and gated worker handler are wired in code. Verified finance mappings, expanded consent and hosted end-to-end execution remain unfinished. Do not activate the producer or distribute portal connector database credentials to the worker as a shortcut. See `docs/xero-connection.md`.
 
 The default-dark Xero adapter is portal-owned, with a dedicated database role, encrypted connection state and read-only provider scopes. It does not widen Praxis reporting or change invoice/payment ownership. See [Xero connection](xero-connection.md).
+
+## SharePoint project-file boundary (22 October 2026)
+
+The existing Project Files surface uses a staff API and explicit private project-to-drive-item bindings; Graph never runs in the browser. A scoped private outbox handles future enquiry folders using the existing leased-command pattern. This does not activate the generic dark worker. The server-only provisioning owner and operator-only import boundary are documented in [Project SharePoint files](project-sharepoint-files.md).
+
+The exact provisioning adapter is registered in both Portal's service-role usage inventory and the repository's strict service-role report. The operator importer remains covered by the existing operational-script policy with its explicit preflight/apply rationale. No directory-wide SharePoint exception is introduced; a focused governance test rejects neighbouring privileged runtime files.

@@ -1,0 +1,8 @@
+.filesTable {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.filesTable th:first-child { width: 43%; }
+.filesTable th:nth-child(2) { width: 21%; }
+.filesTable td { overflow-wrap: anywhere; }
