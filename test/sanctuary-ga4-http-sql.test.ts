@@ -19,6 +19,7 @@ beforeEach(async()=>{
  await db.exec(await readFile('supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql','utf8'));
  await db.exec(await readFile('supabase/migrations/20261021082853_ga4_v3_diagnostics.sql','utf8'));
  await db.exec(await readFile('supabase/migrations/20261022013028_ga4_pre_token_settlement.sql','utf8'));
+ await db.exec(await readFile('supabase/migrations/20261022030852_ga4_vercel_credentials.sql','utf8'));
  await db.exec(`insert into private.sanctuary_ga4_control(actor_id,property_id,binding_hash,vault_id,item_id,expires_at,source_key,connection_id,environment)
  values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 day','synthetic','${connection}','test');`);
 },30000);
@@ -36,7 +37,7 @@ import { acquisitionFixture, coreFixture } from '../apps/portal/lib/marketingInt
 const source={databaseUrl:'postgres://unused',databaseSsl:false as const,token:'t'.repeat(32),sourceKey:'synthetic',connectionId:connection,environment:'test'};
 const control={actor,property:'123',binding};
 function request(action='refresh',signal?:AbortSignal){return new Request('https://portal.test/api/integrations/praxis/v1/marketing/ga4?action='+action+(action==='refresh'?'&start=2026-08-10&end=2026-08-11&comparisonStart=2026-08-08&comparisonEnd=2026-08-09&retain=true':''),{method:action==='delete'?'DELETE':'GET',signal,headers:{authorization:'Bearer '+source.token,'x-praxis-source-key':source.sourceKey,'x-praxis-connection-id':connection,'x-praxis-environment':'test'}});}
-function dependencies(rotate=false){return {source:()=>source,control:()=>control,credentials:()=>({...control,propertyId:'123',vaultId,itemId,clientId:'synthetic',clientSecret:'synthetic',vaultToken:'synthetic'}),
+function dependencies(rotate=false){return {source:()=>source,control:()=>control,credentials:()=>({credentialStore:'vault' as const,...control,propertyId:'123',vaultId,itemId,clientId:'synthetic',clientSecret:'synthetic',vaultToken:'synthetic'}),
  store:()=>async(action:string,op:string|null,_signal:AbortSignal,input:object={})=>command(action,op,input),
  vault:()=>({authenticate:async()=>{},read:async()=>({refreshToken:'synthetic',version:3}),write:async()=>({version:4})}),
  google:()=>({token:async()=>({accessToken:'synthetic',scope,expiresIn:3600,...(rotate?{refreshToken:'rotated-synthetic'}:{})}),property:async()=>{}}),

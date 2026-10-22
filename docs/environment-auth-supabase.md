@@ -149,7 +149,8 @@ bounded metadata admission and a hard display deadline of at most 60 seconds.
 Release the additive source action before that consumer. Local fixtures do not
 establish deployed capability or current provider coverage.
 
-Source configuration requires `SANCTUARY_GA4_REPORTS_ENABLED=true`,
+Legacy vault configuration (the default when credential store is unset) requires
+`SANCTUARY_GA4_REPORTS_ENABLED=true`,
 `SANCTUARY_GA4_ACTOR_ID`, `SANCTUARY_GA4_PROPERTY_ID`,
 `SANCTUARY_GA4_BINDING_SHA256`, `SANCTUARY_GA4_VAULT_ID`,
 `SANCTUARY_GA4_CREDENTIAL_ITEM_ID`, `SANCTUARY_GA4_CLIENT_ID`,
@@ -209,8 +210,54 @@ timeouts and item validation are distinguished without SDK messages, item fields
 credentials or identifiers. This observes an existing attempt and never retries.
 Historical omitted causes remain unknown. Recovery of a pre-token operation
 restores eligibility to read the unchanged saved report; it does not establish
-working vault access or authorize another collection. Keep the Google refresh
-token in its existing mutable vault item.
+working vault access or authorize another collection.
+
+### Vercel credential storage
+
+The explicit `SANCTUARY_GA4_CREDENTIAL_STORE=vercel` mode requires
+`VERCEL_ENV=production`, the existing actor/property/report binding/client ID and
+client secret, and `SANCTUARY_GA4_REFRESH_TOKEN`. Provision the refresh token as a
+sensitive production-only environment variable on the Source Portal project.
+It is never browser-prefixed, returned, logged or written to a local file. Normal
+reporting in this mode does not construct or call the vault adapter. Access tokens
+remain in request memory. Legacy vault mode and its real versioned rotation
+writes remain supported for unchanged configuration.
+
+Forward migration `20261022030852_ga4_vercel_credentials.sql` separates credential
+mode/binding from existing report authority. The binding includes production,
+actor, property, client credentials, refresh token and existing report binding;
+only its digest reaches the private lifecycle ledger. Each claim freezes it and
+SQL checks subsequent effect boundaries. Vercel mode records `credential_read`
+intent/result, never synthetic vault authentication, reads or versions. Missing
+configuration fails before claim. Proven pre-token failures settle with terminal
+fencing; token uncertainty remains quarantined. Same-token echoes do not require
+persistence. A genuinely different refresh token is recorded as unresolved rotation
+and stops before property/report access. The private log contains only
+`rotation_requires_recovery`. The replacement cannot be retained after the request
+in this immutable environment mode: explicit secure credential recovery is required.
+No automatic vault fallback, Vercel management credential or retry is introduced.
+
+The one-purpose `/api/integrations/praxis/ga4-credential-transfer` route is admitted
+only on an exact protected production-target deployment at its `VERCEL_URL` and
+commit SHA. A finite nonce hash plus transient operator platform token authorizes
+one fixed cloud-to-cloud installation. It verifies the existing actor, source,
+control hash, vault/item and destination absence, then reads the existing item
+once and creates only the production-sensitive refresh-token key. It never calls
+Google or returns a token. SQL serializes transfer admission and install intent
+against normal claims; its fixed metadata uses the existing control and append-only
+event tables. A proven pre-install failure terminalizes and fences late execution;
+possible installs remain unconfirmed and cannot retry or reopen merely on expiry.
+
+Release order: install reviewed forward SQL, create the protected production-target
+transfer deployment without assigning custom domains, admit and perform the single
+transfer, verify its installed receipt, set the explicit mode and deploy the final
+normal application pair with the new environment. Perform the guarded control
+cutover against the exact installed receipt and unchanged control with no unresolved
+operations. Old deployments cannot claim after cutover. Saved body/authority retain
+their original binding, generation, operation, hash and expiry throughout transfer
+and cutover. Stop, deletion and independent credential uncertainty remain authoritative.
+Remove transfer admission after use. A failed or unknown transfer needs evidence-led
+operator reconciliation, never blind replay or an automatic return to the vault.
 
 ## Organisation finance candidate gates
 

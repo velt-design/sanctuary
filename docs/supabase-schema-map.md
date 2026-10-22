@@ -276,6 +276,19 @@ lock fences stale continuation. Already uncertain operations and all uncertain
 token/write effects remain operator-owned. There are no new tables, columns,
 grants, enabled controls, credential stores or automatic retries.
 
+`20261022030852_ga4_vercel_credentials.sql` adds explicit credential mode and
+binding to the existing control and frozen operations, plus finite transfer metadata
+on the control. Report authority and snapshot rows are unchanged. Honest
+`credential_read` boundaries replace vault steps only for Vercel claims. The
+service-role-only `sanctuary_ga4_credential_transfer` RPC accepts fixed source,
+nonce and receipt metadata, never credentials or caller-selected destinations.
+Its install intent and terminal pre-install failure share the lifecycle advisory
+lock; transfer events remain append-only. The credential-change trigger permits
+only a verified vault-to-Vercel cutover with unchanged source/report authority,
+an exact installed receipt and no unresolved operations. No new credential table,
+secret column, direct table grant or automatic recovery is introduced. See the
+Vercel credential storage section in `environment-auth-supabase.md`.
+
 ## Meta source ownership candidate
 
 `20260923050001_sanctuary_meta_reporting.sql` adds private Meta control,

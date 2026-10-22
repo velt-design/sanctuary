@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-22: separate credential storage from retained report authority
+
+Moving an existing Google refresh token to production Vercel secrets must not
+simulate vault events or erase an unchanged report. Explicit credential mode and
+frozen binding now govern the single lifecycle, while report authority remains
+stable across a guarded same-credential cutover. A finite cloud transfer records
+install intent before writing: proven pre-install failure may settle, but uncertain
+writes never replay or expire into permission. Unexpected genuine Google rotation
+quarantines before reporting and requires secure recovery; same-token echo is not
+rotation. Owner: GA4 in `environment-auth-supabase.md`. Regression evidence: Vercel
+configuration/lifecycle/transfer, SQL/HTTP and native transition tests.
+
 ## 2026-10-22: Separate pre-token read failure from credential-write uncertainty
 
 A failed vault read quarantined GA4 even though no Google token intent existed,

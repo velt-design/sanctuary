@@ -17,7 +17,7 @@ export const ga4HttpDependencies = {
   source: loadPraxisConnectorConfig, control: ga4ControlConfig, credentials: ga4Config, store: ga4Store,
   google: ga4Google, read: readGa4Report, business: readPraxisMarketing, delegation: ga4Delegation, fetcher: fetch,
 };
-type Dependencies = typeof ga4HttpDependencies & { vault: (config: ReturnType<typeof ga4Config>) => Ga4Vault };
+type Dependencies = typeof ga4HttpDependencies & { vault: (config: Extract<ReturnType<typeof ga4Config>, { credentialStore: 'vault' }>) => Ga4Vault };
 const available = z.object({ status: z.literal('available'), operation: z.uuid(), generation: z.number().int().positive(),
   payload: z.string().max(262144), resultHash: z.string().regex(/^[a-f0-9]{64}$/), expiresAt: z.iso.datetime({ offset: true }) }).strict();
 
@@ -79,7 +79,9 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
       if (config.actor !== control.actor || config.propertyId !== control.property || config.binding !== control.binding) throw new Error('Credentials changed.');
       stage = 'claim';
       const claim = z.object({ operation: z.uuid(), generation: z.number().int().positive() }).strict().parse(await command('claim', null, signal,
-        { query, ...(requestedVersion ? { evidence: { reportVersion: version } } : {}) }));
+        { query, ...(config.credentialStore === 'vercel' ? { evidence: { reportVersion: version,
+          credentialStore: 'vercel', credentialBinding: config.credentialBinding } }
+          : requestedVersion ? { evidence: { reportVersion: version } } : {}) }));
       refreshed = claim.operation;
       const store = ga4LifecycleStore(command, claim.operation, signal);
       failOperation = () => store.finish('uncertain');
@@ -88,7 +90,8 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
       } };
       const intent = reportIntent(control.property, query, version);
       stage = 'collect';
-      const report = await refreshGa4Report({ config, vault: dependencies.vault(config), google: dependencies.google(dependencies.fetcher, signal),
+      const report = await refreshGa4Report({ config, ...(config.credentialStore === 'vercel' ? {} : { vault: dependencies.vault(config) }),
+        google: dependencies.google(dependencies.fetcher, signal),
         store: guarded, signal, intent,
         read: async token => {
           let failureStage: 'collection' | 'normalization' = 'collection';

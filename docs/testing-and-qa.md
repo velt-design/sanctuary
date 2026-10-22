@@ -684,7 +684,8 @@ comparative retrieval or protected staff-route access; verify both separately.
 ## Sanctuary-owned GA4 candidate
 
 The GA4 tests apply the exact 20260923070001 and 20261021082853 bodies plus
-20261022013028 pre-token settlement. SQL/HTTP fixtures verify failed vault reads,
+20261022013028 pre-token settlement and 20261022030852 Vercel credentials.
+SQL/HTTP fixtures verify failed vault reads,
 preserved saved reports, terminal stale-executor fencing, cancellation, Stop and
 continued token/write quarantine. Fixed provider fixtures compose actual HTTP, parser, SQL
 completion and retained read for available, limited and validated row-limit
@@ -692,6 +693,15 @@ outcomes. Tests retain first edit when keyEvents is zero, suppress comparisons,
 reject unavailable-with-metrics and unexpected failures, enforce shared byte and
 45-second phase bounds, and distinguish signed v2/v3 delegation and plan hashes.
 Portal's DataSources link test proves only dates enter the fixed Analytics URL.
+
+`test/sanctuary-ga4-vercel.test.ts` covers actual HTTP/SQL Vercel composition,
+saved report preservation across transfer/cutover, old-deployment rejection,
+credential binding, pre-token fencing and genuine rotation quarantine. The finite
+transfer test uses synthetic SDK/platform fixtures to check single-use admission,
+production-only destination, redaction and failed-before-install versus possible
+write outcomes. `test/sanctuary-ga4-vercel-native.mjs` extends the existing native
+harness with those SQL state transitions. No fixture proves live credential access
+or a successful Google report; those remain explicit operational verification.
 
 For native proof, set PRAXIS_DISPOSABLE_POSTGRES_BIN to an existing local PG17
 bin directory and run node test/sanctuary-ga4-native.mjs. This creates and

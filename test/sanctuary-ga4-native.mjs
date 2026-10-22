@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createServer } from 'node:net';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { proveGa4Vercel } from './sanctuary-ga4-vercel-native.mjs';
 const image = 'public.ecr.aws/supabase/postgres:17.6.1.167';
 const container = `sanctuary-ga4-v3-${process.pid}-${Date.now()}`;
 const bin = process.env.PRAXIS_DISPOSABLE_POSTGRES_BIN;
@@ -25,6 +26,7 @@ function native(name, args, input) {
 const base = readFileSync(new URL('../supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20261021082853_ga4_v3_diagnostics.sql', import.meta.url), 'utf8');
 const settlement = readFileSync(new URL('../supabase/migrations/20261022013028_ga4_pre_token_settlement.sql', import.meta.url), 'utf8');
+const credentials = readFileSync(new URL('../supabase/migrations/20261022030852_ga4_vercel_credentials.sql', import.meta.url), 'utf8');
 const actor = '10000000-0000-4000-8000-000000000001', connection = '20000000-0000-4000-8000-000000000001', binding = 'a'.repeat(64), vaultId = 'a'.repeat(26), itemId = 'b'.repeat(26);
 const query = { period: { start: '2026-10-01', end: '2026-10-02' }, comparison: { start: '2026-09-29', end: '2026-09-30' } };
 const literal = value => value === null ? 'null' : `'${String(typeof value === 'object' ? JSON.stringify(value) : value).replaceAll("'", "''")}'`;
@@ -74,7 +76,7 @@ create table public.portal_users(user_id uuid primary key,role text);
 create table praxis_reporting.source_identity_v1(singleton boolean,source_key text,connection_id uuid,environment text);
 insert into auth.users values('${actor}',now(),null,null);insert into public.portal_users values('${actor}','staff');
 insert into praxis_reporting.source_identity_v1 values(true,'synthetic','${connection}','test');`, 'ga4_template');
-  sql(base, 'ga4_template'); sql(migration, 'ga4_template'); sql(settlement, 'ga4_template');
+  sql(base, 'ga4_template'); sql(migration, 'ga4_template'); sql(settlement, 'ga4_template'); sql(credentials, 'ga4_template');
   sql(`insert into private.sanctuary_ga4_control(actor_id,property_id,binding_hash,vault_id,item_id,expires_at,source_key,connection_id,environment)
 values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 day','synthetic','${connection}','test');`, 'ga4_template');
   assert.throws(() => command('ga4_template', 'claim', null, { query }), /authority unavailable/);
@@ -125,8 +127,9 @@ values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 
       assert.throws(() => command(database, 'claim', null, { query }), /writer unresolved/);
     }
   }
-  console.log(JSON.stringify({ status: 'passed', postgres, imageId, safeupdate: !bin, safeupdateGate: bin ? 'UNVERIFIED: installed native package has no safeupdate extension; no fake substitute used' : 'passed', databases: index, baseSha256: createHash('sha256').update(base).digest('hex'), migrationSha256: createHash('sha256').update(migration).digest('hex'), settlementSha256: createHash('sha256').update(settlement).digest('hex'),
-    checks: ['native DDL and v2 compatibility', 'RPC-only roles', ...(!bin ? ['real safeupdate'] : []), 'claim/intent version', 'strict diagnostics and unavailable union', 'payload hash association', 'seven-day retention and expired writer delivery', 'delete and control fencing', 'pre-token terminal fencing and preserved evidence', 'token/write quarantine preserved'],
+  const vercelChecks = proveGa4Vercel({ fixture, sql, command, boundary, ready, literal, actor, connection, binding, query });
+  console.log(JSON.stringify({ status: 'passed', postgres, imageId, safeupdate: !bin, safeupdateGate: bin ? 'UNVERIFIED: installed native package has no safeupdate extension; no fake substitute used' : 'passed', databases: index, baseSha256: createHash('sha256').update(base).digest('hex'), migrationSha256: createHash('sha256').update(migration).digest('hex'), settlementSha256: createHash('sha256').update(settlement).digest('hex'), credentialsSha256: createHash('sha256').update(credentials).digest('hex'),
+    checks: ['native DDL and v2 compatibility', 'RPC-only roles', ...(!bin ? ['real safeupdate'] : []), 'claim/intent version', 'strict diagnostics and unavailable union', 'payload hash association', 'seven-day retention and expired writer delivery', 'delete and control fencing', 'pre-token terminal fencing and preserved evidence', 'token/write quarantine preserved', ...vercelChecks],
     limits: ['synthetic auth/source prerequisites and cron stub, not full Sanctuary schema', 'no real pg_cron scheduling or HTTP/provider/vault call', 'PGlite HTTP composition is a separate receipt', ...(bin ? ['safeupdate unavailable in this native binary distribution'] : [])], network: bin ? 'disposable loopback only' : 'none', hostMounts: false, publishedPorts: false }));
 } finally {
   if (started) { if (bin) native('pg_ctl', ['-D', data, '-m', 'immediate', '-w', 'stop']); else docker(['rm', '--force', container]); }

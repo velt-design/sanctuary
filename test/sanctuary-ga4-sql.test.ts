@@ -20,6 +20,7 @@ beforeEach(async()=>{
  await db.exec(await readFile('supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql','utf8'));
  await db.exec(await readFile('supabase/migrations/20261021082853_ga4_v3_diagnostics.sql','utf8'));
  await db.exec(await readFile('supabase/migrations/20261022013028_ga4_pre_token_settlement.sql','utf8'));
+ await db.exec(await readFile('supabase/migrations/20261022030852_ga4_vercel_credentials.sql','utf8'));
  await db.exec(`insert into private.sanctuary_ga4_control(actor_id,property_id,binding_hash,vault_id,item_id,expires_at,source_key,connection_id,environment)
  values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 day','synthetic','${connection}','test');`);
 },30000);
