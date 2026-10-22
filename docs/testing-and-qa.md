@@ -1,5 +1,22 @@
 # Testing And QA
 
+## Saved Visits initial read verification (22 October 2026)
+
+Run `vitest run apps/portal/app/staff/site-visits apps/portal/components/site-visits
+apps/portal/lib/siteVisits apps/portal/app/api/staff/v1/outlook-site-visits` with
+the existing regional auth/proxy checks. Cover document-only scheduling after
+fresh access, cookie-client isolation, exact visit/project validation, realistic
+Flight thenables, one-use query matching, cancellation, correction invalidation,
+polling, safe failure/Retry and denial hiding. Preserve ordinary agenda controls,
+local filters and project/agenda return.
+
+Compare exact-source optimized baseline/candidate against the same populated
+agenda and enabled controls, counting both browser requests and server reads.
+Verify delayed streaming, scope change before completion, failure then Retry and
+visit-to-project-to-return in the compiled application. These local warm-process
+observations are not platform-cold or production results. Keep all raw samples;
+do not change the100ms target or count a timer correction as runtime improvement.
+
 ## Targeted Marketing latency verification (22 October 2026)
 
 Run report document selection/page/API, seed hooks and host return tests together

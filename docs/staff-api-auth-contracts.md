@@ -75,6 +75,18 @@ there is no session/client serialization or shared evidence cache. See
 
 ## Outlook site visits
 
+The local initial-document candidate starts the same saved-calendar read only
+after `requireStaffPageAccess` verifies the current user and staff role. API and
+page paths share `siteVisits/readSavedVisits.server`, using their existing
+cookie-bound client and the same current-actor guarded RPC. No identity, role or
+client is serialized or cached across requests. The overwritten callback header
+selects initial document scheduling only; ordinary RSC/prefetch starts no read.
+The client accepts a matching owner/host/project/visit handoff once, never over
+populated/invalidated or subsequently updated query state. Later reads and Retry
+use the independently authorized API; 401/403 continues to hide saved rows.
+Private/no-store responses, cookie renewal and provider-refresh authority stay
+unchanged. No live Outlook read occurs on navigation.
+
 `GET /api/staff/v1/outlook-site-visits` accepts optional project and exact visit UUIDs
 (the project also accepts the existing `proj_` prefix). Unknown/duplicate query
 keys are rejected. An exact visit uses `outlook_site_visit_detail_read` to retrieve

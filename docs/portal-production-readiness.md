@@ -1,5 +1,18 @@
 # Portal Production Readiness
 
+## Saved Visits experiment (22 October 2026, local)
+
+The next bounded candidate starts the existing saved-calendar read after the
+Site Visits page's fresh staff gate, streaming it to the unchanged query owner
+without waiting to mount controls. The same API loader, polling, correction
+invalidation, scope filters, denial and recovery paths remain in use. It does not
+refresh Outlook or change provider/schema data. The optimized baseline is bound
+to `e267f583`; useful populated-agenda comparison and independent delivery review
+remain required before a gain or readiness claim. See `schedule.md` for the
+implementation map and `testing-and-qa.md` for acceptance checks. Projects' prior
+results below remain bound to their original measurements; complete Work and
+platform-cold outcomes remain open.
+
 ## First-load continuation (21 October 2026)
 
 PR233 released the request-local read optimization, expiring phase diagnostics
