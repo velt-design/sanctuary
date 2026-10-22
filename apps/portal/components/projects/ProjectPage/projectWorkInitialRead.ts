@@ -6,7 +6,7 @@ const consumedReads = new WeakMap<QueryClient, Set<string>>();
 
 /** Each existing query owns one matching Flight result; later reads use its ordinary API. */
 export function projectWorkReadFunction<K extends keyof ProjectWorkInitialData, Q extends QueryKey>(
-  client: QueryClient, key: Q, kind: K, host: string, projectId: string, ownerId: string | null,
+  client: QueryClient, key: NoInfer<Q>, kind: K, host: string, projectId: string, ownerId: string | null,
   fallback: (context: QueryFunctionContext<Q>) => ProjectWorkInitialData[K] | Promise<ProjectWorkInitialData[K]>, initial?: ProjectWorkInitialRead,
 ) {
   return async (context: QueryFunctionContext<Q>): Promise<ProjectWorkInitialData[K]> => {
