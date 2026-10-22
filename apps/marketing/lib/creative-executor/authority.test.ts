@@ -31,6 +31,19 @@ it('refuses formal effect admission even with a valid current signed plan',()=>{
 
 it('fences compiled template at effect admission while preserving exact owned cleanup',()=>{const base=planFixture(),now=Math.floor(Date.now()/1000);const plan=executionPlanSchema.parse({...base,purpose:'paused_capability',generator:null,reviewer:null,challengerPrimary:base.control.primary,approvedCopyHash:canonicalHash({control:base.control.primary,challenger:base.control.primary}),start:now,end:now+3600});const state:ExecutorState={template:plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};const intent=serializeEffect(plan,state,'create_creative',Date.now());expect(validateCreativeIntent({generation:1,cleanup:false,intent},state,plan.landingTemplate).intent.kind).toBe('create_creative');expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent},state,'f'.repeat(64))).toThrow('template');state.objects=[{kind:'control',id:'999',command:randomUUID(),requestHash:'a'.repeat(64)}];state.enabled=false;const cleanup=serializeEffect(plan,state,'pause_control',Date.now());expect(validateCreativeIntent({generation:1,cleanup:true,intent:cleanup},state,'f'.repeat(64)).intent.kind).toBe('pause_control');});
 
+it('separate default-off preparation flag admits future reviewed PAUSED mechanics, not activation',()=>{
+ vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','true');const plan=planFixture(),signed=request(plan);
+ expect(verifyCreativeCommand(signed.raw,signed.signature).stage).toBe('prepare');
+ const state:ExecutorState={template:plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};
+ const intent=serializeEffect(plan,state,'create_creative',Date.now());expect(validateCreativeIntent({generation:1,cleanup:false,intent},state,plan.landingTemplate).intent.kind).toBe('create_creative');
+ expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent:{...intent,kind:'activate_control'}},state,plan.landingTemplate)).toThrow();
+ expect(()=>validateCreativeIntent({generation:2,cleanup:false,intent},state,plan.landingTemplate)).toThrow();
+ state.stopped=true;expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent},state,plan.landingTemplate)).toThrow();
+});
+it('formal preparation does not extend an old or future-dated review',()=>{
+ vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','true');for(const age of [-60000,31*3600000]){const plan=planFixture();plan.approvedAt=new Date(Date.now()-age).toISOString();const signed=request(plan);expect(()=>verifyCreativeCommand(signed.raw,signed.signature)).toThrow();}
+});
+
 it('validates signed unchanged video-story preparation and exact source-media intent without widening effects',()=>{
  const old=planFixture(),now=Math.floor(Date.now()/1000),payload={object_story_spec:{page_id:old.scope.page,video_data:{video_id:'91001',message:old.control.primary,title:'Approved title',image_hash:'a'.repeat(32),call_to_action:{type:'GET_DETAILS' as const,value:{link:`https://www.sanctuarypergolas.co.nz${old.control.path}`}}}},media_sourcing_spec:{videos:[{video_id:'91001'},{video_id:'91002'}],bodies:[{text:old.control.primary}]},creative_sourcing_spec:{selected_video_id:'91001'},contextual_multi_ads:{enroll_status:'OPT_OUT'}};
  const control={id:old.control.id,page:old.scope.page,primary:old.control.primary,path:old.control.path,urlTags:old.control.urlTags+'&utm_id={{campaign.id}}',format:'video_story' as const,payload};
