@@ -82,3 +82,39 @@ test('guided audience context takes precedence over the route form fallback', as
     await expect(page.locator('[data-guided-journey-context]').getByRole('link', { name: 'Change answers' })).toHaveAttribute('href', /home-guided\?/);
   }
 });
+
+for (const width of [390, 1440]) test(`professional collaboration, case-study return and repeated brief entry at ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/architects-designers-builders');
+  const main = page.locator('main[data-seo-landing="architects-designers-builders"]');
+  const action = main.locator('header').getByRole('link', { name: 'Discuss a project', exact: true });
+  await action.click();
+  await expect(page.locator('#project-details')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#acrylic-enquiry-type')).toBeFocused();
+  await expect(page.locator('#acrylic-enquiry-phone')).toHaveAttribute('required', '');
+  await expect(page.locator('#acrylic-enquiry-files')).toBeEnabled();
+  await expect(page.locator('#project-details form')).toHaveAttribute('action', '/api/enquiry/fallback');
+  const context = JSON.parse(await page.locator('input[name="enquiryContext"]').inputValue());
+  expect(context).toMatchObject({ enquiry_type: 'professional', source_path: '/architects-designers-builders', source_component: 'embedded_form' });
+  await action.click();
+  await expect(page.locator('#project-details')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#acrylic-enquiry-type')).toBeFocused();
+
+  for (const slug of ['kiwi-rail-platform', 'lilliput-mini-golf', 'goodhome-commercial-terrace']) {
+    await main.locator(`article a[href="/projects/${slug}"]`).click();
+    await expect(page.locator('[data-project-case-study]')).toHaveAttribute('data-project-case-study', slug);
+    await page.goBack();
+    await expect(main.locator('h1')).toHaveText('Bring us into the design.');
+  }
+  const summary = main.locator('summary').filter({ hasText: 'Engineering, consent and responsibilities' });
+  await summary.click();
+  await expect(summary.locator('..')).toHaveAttribute('open', '');
+  await expect(summary.locator('..')).toContainText('delivery responsibilities with your team');
+  await summary.click();
+  await expect(summary.locator('..')).not.toHaveAttribute('open', '');
+  await expect(main.getByText('Engineering design and sign-off remain with the project engineer.', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

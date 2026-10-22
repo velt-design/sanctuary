@@ -1,5 +1,222 @@
 # Decision Log
 
+## 2026-10-23: Recover file locality using the complete ordinary task
+
+The Singapore canary lowered authentication time but regressed both matched
+first-file transfers. Recover only the open route's better observed Sydney
+placement, preserving the accepted fresh identity/RPC checks and dependency fix.
+Judge the whole file task and recent-return behavior; one phase improvement does
+not establish the owner outcome or a general regional cause from one window.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
+## 2026-10-23: Budget the complete landing visit response
+
+A hosted diagnostic committed its fourth assignment but returned 503 before the
+client received confirmation. The 1.5-second shared limiter/visit budget and
+provider timing strongly support deadline exhaustion; the old logs cannot prove
+the exact exception. A real loopback Supabase transport and PostgreSQL regression
+reproduces that partial outcome, and malformed responses remain a distinct cause.
+Use one 3-second budget inside the unchanged 5-second route for genuine visitors
+and diagnostics, no retry or privileged timing bypass. Fixed stage/code logs
+distinguish deadline, client abort and transport without retaining private values.
+No committed counter may manufacture a successful assignment or exposure.
+See [security and privacy](security-privacy-quality.md).
+
+## 2026-10-23: Declare build-checked test tools in their workspace
+
+A Portal SQL-boundary test resolved PGlite through the full-root development
+install but failed Next type checking in the deployed workspace install. Declare
+the exact existing tool version in the importing workspace's development
+manifest and lock entry. Verify a fresh selected-workspace install without an
+ancestor dependency tree; do not exclude tests or add a runtime dependency.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
+## 2026-10-23: Reuse current RPC authority after fresh file identity
+
+The Sydney file-open path repeated a generic Portal role query before an RPC
+that already checks current staff/account state and project roots. Open now
+keeps fresh Supabase `getUser()` and its request client, while the existing
+actor-checked RPC supplies current staff authority. Reuse the refreshed client;
+do not substitute JWT claims or a cached role for live session/RPC checks.
+Verify denial before provider access and actual cookie refresh at the boundary.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
+## 2026-10-22: Verify protected preview reuse through the platform
+
+A platform may rewrite a conditional response to304 and strip application
+verification headers. Bare304 or ETag cannot prove current protected-file
+authority. Recent previews now require an explicit bounded200 JSON receipt after
+current access, containment and source-version checks. Model proxy rewriting as
+well as application responses when testing this boundary. See
+[Project SharePoint files](project-sharepoint-files.md) for the contract and
+remaining first-open performance limits.
+
+## 2026-10-22: Reuse bounded technical continuation instead of per-failure retry ladders
+
+Forward140001 records at most three operator-issued technical continuations of
+one original paid proposal. Each has a distinct corrected release and failed
+predecessor, exact partial-probe snapshot, new probe, current control/template,
+private funding hash and a <=45-minute window on one explicitly funded Sydney
+date. No old expiry, counter or terminal row changes. A new calendar day does
+not unlock an unreceipted ordinary probe. The same candidate may continue only
+while unchanged; a template change or technical rollback requires the existing
+atomic terminal/prepare transaction and a separately linked candidate with the
+same copy, evidence and original generator. Genuine assignments, publication,
+review, Stop/config drift and uncertain prior outcomes fail closed. No receipt,
+model call, public-page change or live action is installed by the migration.
+
+## 2026-10-22: Preserve paid proposal lineage across a changed landing template
+
+Forward130001 supports one private completion receipt for a never-published
+candidate whose browser diagnostic partially completed before a provider timeout.
+The existing locked control/rollback/prepare operations close the old candidate
+and prepare one derivative on the current template atomically. Original author,
+evidence, copy and hypothesis remain exact; the candidate hash changes honestly
+with the template. The old row, partial probe and model accounting remain intact.
+The matching Velt proof supplies fresh geometry and independent review, one
+additional render and a fixed completion window. No public route, Origin policy,
+customer attribution or ordinary retry rule changes. The private receipt is an
+operator-installed exception, not an automatic admission or a production result.
+
+## 2026-10-22: Keep sticky state out of measured layout
+
+The inline mobile estimate observer watched a section whose height it changed
+by fixing a child and adding a guessed spacer. Ordinary scrolling could then
+oscillate across the same threshold. Native sticky positioning now preserves
+flow geometry; verification samples section height through both scroll directions.
+Related funnel consumers share the correction. Check ancestor overflow as well:
+mobile overflow-x:hidden can create an unintended sticky scroll container.
+
+## 2026-10-22: Give Files a route-owned workspace
+
+Embedding Files in Overview changed the parent column topology and pushed
+commercial/contact content downward. Jordan approved a main Files tab filling
+the available screen below the stable project header. The route registry and
+lazy FilesTab now own entry/layout; existing explorer controllers, protected
+reads and return state remain unchanged. Verify the real frame and outer layout
+constraints, including entry from a scrolled Overview and direct reload, rather
+than accepting an isolated file-card fixture as integration evidence.
+
+## 2026-10-22: Preserve query cancellation policy through initial-read adapters
+
+Reading TanStack Query's context signal marks the query as cancellable even when
+the underlying API ignores it. The Work initial-read adapter did this before
+checking for an eligible handoff, so observer remounts cancelled query state and
+started a second ordinary GET while the first transport continued. Consume the
+signal only for the pending handoff; let each fallback retain its existing
+policy. The Projects adapter had the same cause through an enumerable context
+spread, so it now forwards the typed context unchanged. Visits already passes
+its signal to the actual transport. Real QueryObserver detach/remount tests cover absent, mismatched, consumed,
+cached and invalidated handoffs, alongside the unchanged shell single-GET browser
+assertion. Owners: `project-command-centre-architecture.md` and
+`projects-contacts-estimates-calculator.md`.
+
+## 2026-10-22: Keep validated core when optional acquisition validation fails
+
+An HTTP200 acquisition schema rejection discarded an independently validated
+core report. Catch only typed local acquisition validation and schema errors at
+that parser boundary. Preserve core and first-edit evidence with explicit
+unavailable acquisition and no rows, using the existing wire contract. Do not
+turn transport, cancellation, authority, core or normalization failures into
+success. Fixed validation classifications improve future diagnosis without
+retaining provider values; historical evidence does not identify the exact field.
+
+## 2026-10-22: Separate missing historical dates from financial mutations
+
+A NULL acceptance-date fill on an already-ACCEPTED version does not change the
+canonical financial selection: status already qualifies it, and version number,
+creation time and ID determine precedence. The shared reconciliation trigger
+must not reopen legacy completed jobs for that date-only repair. Exempt only
+that transition with every other field unchanged except `updated_at`; preserve
+ordinary date edits, status/value changes, invoices and payment corrections.
+The regression first proves the old reopening, then covers competing accepted
+versions, rollback and unchanged authority. Historical repairs remain separately
+guarded and audited, never a reason to fabricate settlement or disable triggers.
+
+## 2026-10-22: Selected Explorer retains current-folder finding and source authority
+
+Jordan selected folders, list and preview together after the three-direction
+exploration. `ProjectSharePointFilesPanel` composes the existing Foundation and
+lazy canvas PDF renderer; it does not import the standalone prototype. The
+existing Work card defers website attachment reads until that source is selected.
+Current-folder finding progressively reads existing 100-item cursor pages in
+bounded batches and labels partial results; no broader Microsoft search grant
+or whole-project index is needed. Existing authenticated metadata queries keep a
+30-second freshness window with equivalent-root key seeding. Bounded scoped
+session navigation preserves task state without storing URLs/tokens/document
+bytes or introducing project query keys. Selected preview bytes are transient,
+cancelled on change and reused by the dialog. Original downloads retain the
+protected browser redirect and 50 MB inline cap. No shared auth/query framework,
+provisioning or migration changes belong to this UI increment.
+
+Independent review identified deep-page restoration saving its own temporary
+first-page clamp and a removed modal return trigger. The local list-position
+owner now defers restoration through the saved bounded metadata pages, ignores
+programmatic intermediate offsets and lets deliberate scrolling take control.
+Filtered/full list offsets are separate. A persistent preview owner/Expand
+control and explicit current-row return repair gallery/desktop keyboard close
+without changing the shared Modal or re-reading content solely for expansion.
+
+The actual old/new WorkFilesCard fixture comparison separates request savings
+from task retention: first entry defers one attachment read; both fresh returns
+make zero reads, but only Explorer restores the folder. Live source timing and
+full valid large Rhino delivery remain unverified without an approved runtime
+access route. Owner/security details and focused checks live in
+`project-sharepoint-files.md`; local private evidence is not deployment payload.
+
+## 2026-10-22: Check committed service-role additions against the PR base
+
+The finite GA4 credential transfer used the reviewed service-only RPC but lacked
+its exact-file declaration in the service-role guard. Register that server owner
+without granting neighboring modules access. A clean worktree check does not
+cover committed PR changes: set both architecture base/head and worktree
+base/head references to the actual PR comparison before reporting guard coverage.
+The transfer's nonce, source, install-intent and SQL authority checks are unchanged.
+The separate Portal boundary suite also inventories every service-role user with
+an exact allowlist. Register the same reviewed path there and run that suite
+alongside the strict changed-file guard; neither check substitutes for the other.
+
+## 2026-10-22: Compose project filters from the current URL
+
+Rapid audience and roof-form changes could each spread the same stale server
+search-parameter props while the first router navigation was unresolved. The
+second edit then silently removed the first selection. Collection filter events
+now carry partial patches and synchronously merge against the current browser
+URL. Native history integrates with Next `useSearchParams`, making URL, rendered
+controls and Back/Forward share one source. Reset preserves unrelated query
+parameters. Existing project-return metadata and detail switching are unchanged. Independent
+review additionally found the mobile BODY scroll container was ignored by the
+return capture/restore path. Both now resolve the same current scroll owner; a
+BODY-scrolled lower-card regression protects All projects and browser Back.
+A component regression exercises two events before rerender; the focused browser
+journey covers real history, reload and project return. Do not reintroduce
+independent optimistic filter state or await navigation between ordinary edits.
+
+
+## 2026-10-22: separate credential storage from retained report authority
+
+Moving an existing Google refresh token to production Vercel secrets must not
+simulate vault events or erase an unchanged report. Explicit credential mode and
+frozen binding now govern the single lifecycle, while report authority remains
+stable across a guarded same-credential cutover. A finite cloud transfer records
+install intent before writing: proven pre-install failure may settle, but uncertain
+writes never replay or expire into permission. Unexpected genuine Google rotation
+quarantines before reporting and requires secure recovery; same-token echo is not
+rotation. Owner: GA4 in `environment-auth-supabase.md`. Regression evidence: Vercel
+configuration/lifecycle/transfer, SQL/HTTP and native transition tests.
+
+## 2026-10-22: Separate pre-token read failure from credential-write uncertainty
+
+A failed vault read quarantined GA4 even though no Google token intent existed,
+also denying an unchanged saved report. Settle proven pre-token working failures
+under the existing command lock and terminal-status fence, preserving pending
+evidence. Never treat expiry alone as permission to replay a credential effect.
+Existing uncertain work needs exact operator evidence; token/write uncertainty
+stays quarantined. Closed SDK-class and item-validation diagnostics observe only
+existing calls. SQL/HTTP and native tests cover stale continuation, cancellation,
+Stop and preserved token/write quarantine. Owner: Sanctuary-owned GA4 in
+`environment-auth-supabase.md`.
+
 ## 2026-10-22: project file relationships must preserve project deletion
 
 Independent review found that new SharePoint binding/job/audit foreign keys would
@@ -15,6 +232,54 @@ The same review distinguished file-action links from delivery acceptance. The
 isolated browser harness now clicks View/Download through the actual open handler
 with synthetic boundaries and verifies image pixels plus original filename/bytes.
 Synthetic transport and native/live provider acceptance remain separate claims.
+
+## 2026-10-22: Bound finite ambiguity without inventing attribution
+
+All-site unknown coverage can include ordinary unrelated website enquiries. Keep
+those unknowns and matched-CPE labels, but predeclare a finite sensitivity envelope
+that must remain decisive under every allowed adverse allocation. Retention also
+needs pessimistic observed-quality and concrete adverse guards; robust harm can
+revert independently of missing quality. This does not relabel Google traffic,
+remove join validity, force winners or reinterpret old immutable analyses. Shared
+Source/Velt v2 validation and v3 learning keep the denominator visible. The recorded
+finite pool cannot cover missing/unbounded evidence or unrecorded/offline outcomes.
+
+
+## 2026-10-22: Retained baselines keep donor lineage and shared reservation
+
+The owner outcome includes publishing variants and keeping or reverting them
+using recorded results. The local method retains one winner per original donor,
+at most four, while one acquisition experiment remains globally reserved. A new
+PAUSED owned ad avoids unproved expired-schedule clearing. Pause/readback the same
+donor's predecessor before activation; failed replacement pauses its challenger
+before a fenced restore. Rollback shares the reservation so it cannot silently
+change a later test's comparator. Retention proof includes actual PAUSED test ads,
+not just elapsed study time. Saved original metrics remain original context.
+Synthetic/native tests establish mechanics, not provider or whole-loop acceptance.
+
+## 2026-10-22: Separate learning summaries from duplicate authority
+
+A bounded display tail cannot be the durable exclusion list. Creative proposals
+read genuine scoped terminal facts and public hook prefixes; Source admission
+checks all matching rendered copies under the reservation lock. Coverage overflow
+fails closed instead of silently dropping an old experiment. An immutable plan
+replay keeps its existing identity, and a changed donor/control/media domain does
+not inherit unrelated exclusions. Carry all-saved coverage and unassigned outcome
+counts alongside matched/consented counts: an incomplete [0,0] cohort must not
+look like known zero or support all-enquiry CPE inference. Local synthetic proof
+is not live acceptance.
+
+
+
+## 2026-10-22: Compare experiment text independently of its storage key
+
+A finite choice and authored text can render the same slot and words. Raw-key
+exclusion lets an unsuccessful experiment reopen under its alias, including when
+the retained control map changes only representation. Compare exact slot/text
+and the fully rendered baseline at durable history and admission boundaries;
+return the same canonical exclusion to the proposer before model selection.
+Preserve original immutable records and distinguish deliberately different text.
+Owner: the authored landing contract in `supabase-schema-map.md`.
 
 ## 2026-10-22: Historical sales credit and explicit test exclusion
 
@@ -6320,6 +6585,10 @@ The first production Schedule migration attempt rolled back because its extra da
 
 PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
 
+## 2026-10-23 — Shared GHCR database setup throttling
+
+Source CI failed before SQL because GHCR returned a numeric microsecond `retry-after` throttle instead of the older `Rate exceeded` message. The same bounded pull helper now recognizes that exact format and runs before both AI and Background database harnesses. Preserve the pinned images, three-pull ceiling and 30/60-second backoff; do not retry SQL, arbitrary transport errors or failed assertions. See `docs/testing-and-qa.md` and `test/ai-db-image-pull.test.ts`.
+
 ## 2026-09-09 — AI database image-pull throttling
 
 Status: Promoted. PRs #115 and #116 independently failed before SQL when the pinned public ECR image pull returned `toomanyrequests: Rate exceeded`. AI Foundation now gives only that exact pull failure three attempts with 30/60-second backoff. Other failures stop immediately, and the existing database harness runs once after a successful pull. Preserve the original failures as evidence; never rerun database assertions to hide setup or contract failures. Promoted to `docs/testing-and-qa.md`; synthetic coverage is `test/ai-db-image-pull.test.ts`.
@@ -6388,3 +6657,13 @@ The same review found a new quote-version name field that the existing family
 contract ignored. Named families now show their shared name and direct changes
 to Rename; optimistic creation uses the same name. New/unnamed/manual scopes
 retain the optional field.
+
+
+## 2026-10-22 - Verify specialist layouts inside the real project parent
+
+The Files Explorer passed an isolated actual-card fixture but its production
+Overview parent constrained the card to one of two columns. This hid the
+adjacent preview even on a wide desktop. Selected Files now spans the project
+row; Work and neighboring owners retain their existing layout and state.
+Responsive acceptance must include the actual containing layout and its width,
+not only viewport width or the leaf component. Owner: `project-sharepoint-files.md`.

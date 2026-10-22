@@ -1,5 +1,177 @@
 # Marketing UI Foundation
 
+## Enquiry privacy-link continuity (22 October 2026)
+
+The shared `AdvertisingMeasurementNotice` opens its privacy policy and choices
+in a clearly labelled new tab. Reading the notice must leave the original
+contact, configured-design or SEO enquiry mounted with its selected pathway,
+entered details, attachments and any recoverable submission error. An actual
+mobile check found that same-tab policy navigation followed by Back reset an
+unfinished contact brief. This uses native link behaviour rather than adding
+persistent storage of personal information; policy content and tracking choices
+remain unchanged.
+
+## SEO enquiry mobile input sizing (22 October 2026)
+
+The standard `AcrylicPergolaEnquiryForm`, shared by SEO services and guides,
+uses a 16px minimum editable-field font size at widths up to 760px. Live mobile
+inspection found the previous 0.95rem fields rendered at 15.2px. The shared
+stylesheet corrects the focus-zoom risk without disabling browser zoom, changing
+desktop typography, or affecting the separate inline funnel form. Pricing,
+validation, phone requirements, attachments and delivery remain unchanged.
+Physical iPhone keyboard/zoom behaviour remains separate hardware evidence.
+
+A seeded configurator's Close action returns to its validated recorded source via
+router replacement, preserving the query and fragment, rather than assuming a
+native fragment history entry can restore the App Router page. Browser Back may
+then revisit the original source entry. The existing return helper captures and
+restores BODY scrolling where that layout owns the scroll, otherwise the window.
+The existing Auckland/Cost selection sections signal when their restored options
+have settled, including failure; restoration waits for that layout rather than
+a fixed delay. User input cancels pending restoration, and route cleanup removes
+its observer/listeners. Standalone and storage-unavailable entries retain their
+safe source fallback.
+
+## Professionals photographic presentation (22 October 2026)
+
+The owner approved the preview uplift of Architects, Designers & Builders, then
+authorised release: "Looks good. Do final checks and push the Architects,
+Designers & Builders page live." The
+existing "Bring us into the design." positioning and all metadata/form wording
+remain. This is a refinement of the September collaboration page, not a new
+supply-only or completed-drawings offer.
+
+The route now owns ProfessionalPresentation.tsx and professionals.module.css.
+The bounded opening gives KiwiRail03 more architectural presence and an olive
+brief action. Three substantial stories use distinct KiwiRail01, Lilliput02 and
+Good Home05 photographs with accurate project roles. Engineering sign-off stays
+visible; native optional disclosures hold materials, interfaces and coordination
+scope. The canonical SeoLandingPage continues to own schema, guided context and
+the existing professional form, optional brief fields, uploads and recovery.
+Enquiry anchors reuse EnquiryLink for first/repeated focus and Back compatibility.
+
+The now-unused AudienceLandingPage and its audience stylesheet are retired after
+consumer search. No shared form, Commercial or project-page owner changes. The
+existing headline, public photos and claims remain; no new services or numeric
+performance are introduced. Review actual phone/desktop crops, case-study Back,
+repeated brief entry and disclosure access. Preview acceptance and release
+verification remain separate evidence.
+
+## Project stories rollout (22 October 2026)
+
+Jordan authorised the remaining 14 project pages to reach the quality of the
+accepted Warkworth page, in small reviewed batches. The original Projects overview
+and accepted Warkworth component/styles stay unchanged. After reviewing the
+complete preview, Jordan authorised release of all project pages: "Looks good.
+Do final checks and push all of the project pages live." Deployment verification
+remains a separate release step.
+
+All 14 stories now use `projectEditorialStories.ts` for their own brief and photo
+choices, and `PhotographicProjectContent.tsx` for the accepted Warkworth visual
+vocabulary. Warkworth retains its separate approved component and stylesheet.
+Story length follows the actual evidence: one or two design decisions, followed
+by concise facts and optional technical scope. Photographs used in the story are
+not repeated in the gallery; unused original photos remain available there.
+
+The case-study hero owner `getProjectCaseStudyHero` keeps rendering, preload,
+metadata and schema aligned. Finished-space heroes now lead St Heliers (02),
+Tindalls Bay (03), Waiheke (04), Muriwai (02), Good Home (06), Lilliput (02) and
+KiwiRail (03). Atelier retains its separately governed front-on02 hero. Original
+overview thumbnails and collection data remain unchanged. Related project cards
+use the case-study photograph; named navigation and finder continuation remain.
+
+St Heliers retains the existing 6 by 3 m gable designer entry and its limitations.
+Velskov retains its video and actual project brief. Commercial enquiry wording
+addresses the site/use rather than a residential room. Existing enquiry context
+continues to own audience, source and return. No pricing, contact form, global
+navigation, image assets or overview layout changes. No new project claims.
+
+Implementation map: `ProjectDetailContent` selects the approved Warkworth owner
+or each configured photographic story; the existing editorial fallback remains
+for an as-yet unconfigured future project. Technical bullets remain accessible,
+with paragraph-only sections retained. Original description facts are deliberately
+carried into each brief/story/details rather than sliced away.
+
+
+## Projects collection and Warkworth (22 October 2026)
+
+Jordan accepted Warkworth but rejected the overview restyle: "Okay I dont like
+the change to the projects overview page but I do like the change to the
+warkworth project". The overview therefore retains its prior visual design,
+portrait card ratio, type/form labels and original slim collection payload.
+All 15 projects, audience/form filters, view scale and shareable URLs remain.
+Only the rapid-filter and actual-scroll-owner return fixes apply to the overview;
+the accepted Warkworth presentation remains unchanged.
+
+`ProjectNavigator.tsx` owns filter controls. Each partial edit merges against the
+current browser URL synchronously and pushes native history. Next's
+`useSearchParams` remains the rendered URL source. This fixes rapid edits losing
+the first selection while a prior router navigation was unresolved, and keeps
+Back/Forward, reload, unrelated query fields and filtered project return intact.
+The detailed project switcher remains unchanged. The existing collection return
+owner now captures and restores the actual scroll container: an independently
+scrollable BODY when present, otherwise the document viewport. Return metadata
+and URL contracts remain unchanged.
+
+`WarkworthProjectContent.tsx` and `warkworth.module.css` own the new case study.
+The finished-space image 02 matches the existing hero/preload/SEO helper. The full
+original brief precedes three photographic decisions (01, 04 and 06), concise
+facts and an optional technical disclosure. The remaining 03, 05 and 07 images
+retain the accessible gallery. Related projects use photos and existing context
+links. Both enquiry actions retain the canonical project source and audience.
+No new image, customer claim, form, pricing or global theme is introduced.
+
+The duplicate Warkworth-only branches were retired from
+`EditorialProjectContent`; its other project branches remain the shared owner.
+The new presentation supersedes Warkworth's September reference-composition pixel
+parity only. The product reference and general project accessibility/navigation
+coverage remain. The original preview boundary was superseded by the explicit
+all-project release approval above.
+
+Implementation map: route selection stays in `ProjectDetailContent`; collection
+state stays in `ProjectNavigator`; Warkworth composition is a small separate
+owner. Further navigator modality extraction and collection stylesheet splitting
+are deferred to avoid expanding this race fix into a shared navigation rewrite.
+The next safe extraction is collection filter/view-scale controls with their
+existing URL and return tests. Existing long browser suites receive only changed
+assertions; the new connected regression lives in a separate focused spec.
+
+
+
+## Authored landing experiment slots (local continuation)
+
+`landingCopyContract` validates bounded plain text in the existing design/help/
+support slots. `LandingExperiment` paints only server-assigned validated copy
+after both tracking consents and the existing interaction-safe paint gate; links,
+control content, pricing and enquiry behavior remain owned by the current pages.
+`landingExperiment.server` exposes authored-copy availability only when Source
+migration50009 confirms its bounded history capacity. No arbitrary HTML/CSS, new
+claims, offers, targeting or customer communication is admitted.
+
+The local browser acceptance composes both compiled landing pages, actual signed
+diagnostic handlers/SQL and Velt's renderer. It exercises authored text in each
+slot at320/390/1440 widths, cookie reload and exposure, plus layout interaction and
+return behavior. Screenshots are private review evidence. Local fixture success,
+independent rendered review, protected preview and live measurements are distinct;
+this continuation is not yet a published experiment or the full automatic loop.
+
+## Bounded authored landing experiments (22 October 2026)
+
+`landingCopyContract` accepts the existing finite choices plus plain text in the
+design/help/support slots. Velt may author within the shared approved vocabulary
+and length limits; arbitrary markup, links, prices, claims and CSS are rejected.
+`LandingExperiment` applies one admitted slot over the saved control map, keeping
+destinations, designer, enquiry, consent, focus and interaction stability intact.
+The existing action-first mobile layout remains a separate finite option.
+
+Source50009 extends the existing command/visit contract and durable scoped copy
+exclusion. It adds no endpoint or public history. The paired Velt consumer reviews
+actual candidate screenshots at 320/390/1440 CSS pixels before publication.
+Local fixture assignment is diagnostic only and cannot count as a customer
+exposure or enquiry. Hosted publication and measured decisions still require
+ordinary cloud admission. Formal creative delivery is outside this landing stage.
+
+
 ## Photographic guide hub (22 October 2026)
 
 `app/pergola-guides/page.tsx`, `content.ts` and `guides.module.css` own the
@@ -40,9 +212,10 @@ Guided commercial context retains precedence. There is no new pricing or enquiry
 implementation. Ordinary website chrome, Service schema and canonical URL remain.
 
 The now-unused Commercial branch and its exclusive CSS selectors were retired
-from `AudienceLandingPage`; that owner continues to render Professionals with the
-same markup, Figure/TextLink contracts and CSS declarations. No Professional
-route/content file changes. No new media assets or theme are introduced.
+from `AudienceLandingPage`. At that release, Professionals retained the same
+markup, Figure/TextLink contracts and CSS declarations, with no Professional
+route/content changes. The subsequent Professionals refresh is described above.
+No new media assets or theme were introduced.
 Jordan accepted the protected preview and authorised production release on
 21 October 2026. The release checks and production verification remain separate
 from that acceptance.
@@ -289,6 +462,26 @@ review disclosure and configured enquiry actions count. The optional-phone conta
 policy and required migration are mapped in the schema owner. Local synthetic
 pricing/enquiry checks do not establish live pricing, receipt or attribution.
 
+
+## Inline mobile estimate scroll stability (22 October 2026)
+
+The shared `FunnelJourney` price/action stays in normal flow and uses native
+bottom-sticky positioning on phones. The former observer changed its own section
+height by switching the estimate to fixed positioning and adding an approximate
+padding allowance. That could repeatedly cross the observation threshold and
+move the document while scrolling. There is no observer, spacer estimate or
+scroll-state layout toggle now. The same single price and enquiry action retain
+one compact geometry as they join the controls and leave with the section.
+
+The existing route-scoped document-scroll rule explicitly uses overflow-x:clip
+to avoid the global mobile hidden-overflow rule creating a non-scrolling BODY
+container for sticky descendants. Existing modal/menu scroll locks remain intact.
+An open consent banner or focused decimal text input makes the same-size panel
+static; range-slider focus keeps it sticky. Balanced columns preserve the price
+and44px retry target at320px. No prices, drafts, tracking or enquiry rules change.
+This fixes both exact Facebook paths and their shared Google/compatibility/SEO
+consumers. Desktop retains the existing inline panel. Hardware-specific keyboard,
+browser chrome and rubber-band behaviour require real-device verification.
 
 ## Channel-page structure (20 October 2026)
 
@@ -904,14 +1097,26 @@ implementation. Verify click-to-select text, keyboard slider input, invalid and
 out-of-range values, stable panels, small/large furniture, same-design prices,
 and responsive transitions when extending these components.
 
-## Residential pergola overview (29 September 2026, preview)
+## Residential pergola overview (22 October 2026, release candidate)
 
-`ProductsHub` retains the `/products` metadata, catalogue schema and secondary
+Owner-approved preview is the release candidate; production verification follows
+the normal release. `ProductsHub` retains the `/products` metadata, catalogue schema and secondary
 bespoke, accessory, project and planning-guide paths. Its `PergolaSelection`
 opening compares Pitched, Gable and Box in three aligned desktop columns. Mobile
-first shows all three roofline anchors, then all three image-led options; no
-product is hidden behind tabs. Existing neutral-daylight illustrations describe
+uses three compact image/price rows, with the same six shared size choices; no
+product is hidden behind tabs or duplicated in a thumbnail navigation. Existing neutral-daylight illustrations describe
 the forms, not a live rendering of the selected dimensions.
+
+The compact opening includes an assisted enquiry for visitors who are undecided.
+`ProductHubDetails` owns the server-rendered remainder: three real roof-finish
+examples, visible blinds/screens/lighting details, all six existing accessory
+routes, bespoke enquiry and the cost guide. Dairy Flat shows acrylic, Riverhead
+shows timber lining, and Warkworth shows both; its project link is the single
+Warkworth proof placement. The copy explicitly separates these finishes from the
+acrylic/open-side comparison prices. Existing coastal mesh, Milford privacy-screen
+and Good Home LED photographs show the actual subjects. No new price, weather,
+engineering or service claims are introduced. Its scoped stylesheet and the
+hub-only comparison rules preserve the shared homepage fallback price styles.
 
 `PergolaSelection` owns only a shared 2 x 3 / 4 x 3 / 6 x 3 / 8 x 3 / 6 x 4 / 6 x 5 m
 comparison choice, defaulting to 6 x 3 m. Both width and projection identify
@@ -1389,10 +1594,10 @@ The residential `/pergolas-auckland` route uses six major regions before its fin
 
 The custom `/custom-pergolas-auckland` route adopts the same six-region budget without becoming a copy of residential. Three constrained-project examples and explicit site conditions explain why custom design is needed; a three-stage process leads to one `custom-planning-support` disclosure. The dominant guide-series navigation is disabled on both service routes while the useful canonical guide links remain. Custom enquiry links retain a residential audience with the custom source path.
 
-The professional route retains its scoped editorial composition in
-`components/seo-landing/AudienceLandingPage.tsx` and
-`audience-landing.module.css`. The Commercial composition has moved to its route
-owner described above, retaining the hospitality-first offer and scope.
+The professional route uses its scoped `ProfessionalPresentation.tsx` and
+`professionals.module.css` owners described above. The retired shared audience
+renderer has no remaining consumers. Commercial retains its separate route
+owner, hospitality-first offer and scope.
 Professionals leads with collaborative design development, verified roof and
 building-interface photography, and accurate historical project roles. These
 roles are not separate supply-only offers. The 30 September 2026 claim families

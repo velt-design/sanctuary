@@ -51,9 +51,11 @@ it('shares one actual auth lookup within each simulated render context and isola
   const ids = await Promise.all(reads);
   expect(new Set(ids).size).toBe(2);
   for (const id of ids) {
-    expect(log.mock.calls.map((call) => call[1]).filter((event) => event.requestId === id).map((event) => event.phase))
+    expect(log.mock.calls.map((call) => call[1]).filter((event) => event.requestId === id && event.event === 'portal.document.phase').map((event) => event.phase))
       .toEqual(['rsc.identity', 'rsc.role', 'rsc.access']);
   }
+  const transport = log.mock.calls.map(call => call[1]).filter(event => event.event === 'portal.document.transport');
+  expect(transport).toEqual([expect.objectContaining({ requestId: ids[1], operation: 'rsc.identity', outcome: 'not_observed' })]);
   expect(JSON.stringify(log.mock.calls)).not.toMatch(/private-|example.test/);
 });
 

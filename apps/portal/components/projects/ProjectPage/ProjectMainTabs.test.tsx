@@ -23,6 +23,7 @@ vi.mock('./projectTabModules', () => ({
       data-calculator-workspace={String(Boolean(calculatorWorkspace))}
     ><input aria-label="Unsaved draft" defaultValue="" /></div>
   ),
+  FilesTab: () => <div data-testid="files-tab" />,
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
 }));
 
@@ -35,6 +36,15 @@ const snapshot = {
 } as any;
 
 describe('ProjectMainTabs', () => {
+  it('renders Files as a full project view without Overview cards', () => {
+    mockSearchParams = 'tab=files';
+    const rendered = renderIntoDocument(<ProjectMainTabs host="host" snapshot={snapshot} tab="files" />);
+    expect(rendered.container.querySelector('[data-testid="files-tab"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="overview-tab"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-project-active-tab="files"]')).not.toBeNull();
+    rendered.unmount();
+  });
+
   it.each(['quotes', 'invoices', 'estimates'])('preserves the %s editor while customer identity hydrates', view => {
     mockSearchParams = `tab=${view}`;
     const rendered = renderIntoDocument(<ProjectMainTabs host="host" snapshot={snapshot} tab={view} />);

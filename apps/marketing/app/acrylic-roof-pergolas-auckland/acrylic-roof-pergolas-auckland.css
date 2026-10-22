@@ -464,6 +464,10 @@ body:has(.acrylic-landing) footer { font-family: "Inter Variable", Arial, sans-s
   color: var(--color-text-primary);
   font: 400 0.95rem/1.4 var(--font-body);
 }
+/* Keep mobile field focus from zooming the page; browser/user zoom stays available. */
+@media (max-width: 760px) {
+  .acrylic-form:not([data-inline-enquiry]) :is(input, select, textarea) { font-size: max(16px, 1rem); }
+}
 .acrylic-form:not([data-inline-enquiry]) textarea { min-height: 9rem; resize: vertical; }
 .acrylic-form:not([data-inline-enquiry]) :is(input, select, textarea)::placeholder { color: var(--color-text-subtle); }
 .acrylic-form:not([data-inline-enquiry]) :is(input, select, textarea):hover { border-color: var(--color-text-secondary); }

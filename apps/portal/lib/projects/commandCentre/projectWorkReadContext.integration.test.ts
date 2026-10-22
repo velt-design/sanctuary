@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getProjectCommandCentre } from './getProjectCommandCentre';
+import { createProjectCommandCentreRead, getProjectCommandCentre } from './getProjectCommandCentre';
+import { createAuthoritativeProjectWorkRead } from '../workItems/getAuthoritativeProjectWorkProjection';
 import { getAuthoritativeProjectWorkQueue } from '../workItems/teamQueue';
 import { factsEnvelope, factsId } from '../../../../../test/fixtures/projectWorkDomainFacts';
 
@@ -40,6 +41,22 @@ function client(overrides: Record<string, { data: unknown[]; error?: { code: str
 }
 
 describe('Command Centre to Project Work read boundary', () => {
+  it('shares the full authoritative command only inside the same client and project invocation', async () => {
+    const { supabase, requests } = client();
+    const read = createProjectCommandCentreRead(projectId, supabase, { userId: 'staff-a', isAdmin: false });
+    const projection = createAuthoritativeProjectWorkRead(projectId, supabase, read);
+    const [command, snapshotWork, model] = await Promise.all([read.read(), projection.read(), projection.readModel()]);
+    expect(model).toBe(true);
+    expect(snapshotWork).toBe(command?.projectWork);
+    expect(await read.read()).toBe(command);
+    expect(requests.filter((table) => table === 'projects')).toHaveLength(1);
+    expect(requests.filter((table) => table === 'project_work_model_versions')).toHaveLength(1);
+    expect(() => createAuthoritativeProjectWorkRead(projectId, client().supabase, read)).toThrow('scope mismatch');
+    expect(() => createAuthoritativeProjectWorkRead('proj_22222222-2222-4222-8222-222222222222', supabase, read)).toThrow('scope mismatch');
+    const other = createProjectCommandCentreRead(projectId, supabase, { userId: 'staff-b', isAdmin: true });
+    await other.read();
+    expect(requests.filter((table) => table === 'projects')).toHaveLength(2);
+  });
   it('agrees with the queue on simultaneous delivery failure despite opposite log order', async () => {
     const logs = [
       { status: 'SENT', created_at: '2026-10-13T00:00:00.123456Z', sent_at: null },

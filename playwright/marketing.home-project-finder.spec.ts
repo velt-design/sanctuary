@@ -420,7 +420,7 @@ test('viewing a project keeps the finder brief and viewed project through a late
     /\/projects\/warkworth-outdoor-room\?project=bespoke&priorities=daylight%2Ccoordination&reference=warkworth-outdoor-room$/,
   );
   await expect(page.locator('.project-case-study__intro-actions')).toHaveCount(0);
-  const finalEnquiry = page.locator('[data-project-case-study]').getByRole('link', { name: /Send project brief/ });
+  const finalEnquiry = page.locator('[data-project-case-study]').getByRole('link', { name: /Discuss a similar project/ }).last();
   await expect(finalEnquiry).toHaveAttribute(
     'href',
     /source_project=warkworth-outdoor-room.*source_experience=project-finder-home-v1.*project_direction=bespoke.*project_priorities=daylight%2Ccoordination/,

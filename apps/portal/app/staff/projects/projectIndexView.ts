@@ -1,5 +1,5 @@
 import { isProjectsIndexSort } from '@/lib/projects/projectsIndexContract';
-import type { ProjectsIndexPageSize, ProjectsIndexSort } from '@/lib/projects/projectsIndexContract';
+import type { ProjectsIndexPageSize, ProjectsIndexSort, ProjectsIndexParams } from '@/lib/projects/projectsIndexContract';
 import { parseProjectsIndexFilters, type ProjectsIndexFilters } from './projectIndexFilters';
 
 export type ProjectIndexView = ProjectsIndexFilters & {
@@ -7,6 +7,14 @@ export type ProjectIndexView = ProjectsIndexFilters & {
   page: number;
   pageSize: ProjectsIndexPageSize;
 };
+
+export function projectsIndexParamsFromView(view: ProjectIndexView): ProjectsIndexParams {
+  return {
+    archive: view.archiveFilter, search: view.query.trim(), status: view.stageFilter,
+    journey: view.journeyFilter, state: view.stateFilter, owner: view.ownerFilter,
+    page: view.page, pageSize: view.pageSize, sort: view.sort,
+  };
+}
 
 export function parseProjectIndexView(params: URLSearchParams): ProjectIndexView {
   const page = Number(params.get('page') ?? 1);

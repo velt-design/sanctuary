@@ -6,6 +6,8 @@ import { qk } from '@/lib/queries/keys';
 import { useActiveProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
 import ProjectMainTabs from '@/components/projects/ProjectPage/ProjectMainTabs';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
+import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
+vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const state = vi.hoisted(() => ({ search: '', preload: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(state.search) }));
@@ -13,6 +15,7 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
   preloadProjectOverviewModule: state.preload,
   OverviewTab: () => <div data-testid="overview-tab" />,
   CommercialTab: () => <div data-testid="commercial-tab" />,
+  FilesTab: () => <div data-testid="files-tab" />,
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
 }));
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'host', supabaseRuntimeUrl: () => 'https://host.supabase.co' }));
@@ -46,8 +49,8 @@ function response(kind: string, id = 'proj_1', hasJobPacks = true) {
   if (kind === 'invoice-schedule') return { schedule: { paidIncGstCents: 12345 } };
   return { snapshot: { project, workModel: 'v2', pipeline: { stage: 'new' }, activity: [], emails: [], notes: [] }, generatedAt: '2026-10-13T00:00:00Z' };
 }
-function element(projectId = 'proj_1', tab = 'activity') {
-  return <QueryClientProvider client={client}><ProjectSnapshotPageClient projectId={projectId} tab={tab} estimateId={null} debugExportEnabled={false} /></QueryClientProvider>;
+function element(projectId = 'proj_1', tab = 'activity', initialRead?: ProjectWorkInitialRead) {
+  return <QueryClientProvider client={client}><ProjectSnapshotPageClient projectId={projectId} tab={tab} estimateId={null} debugExportEnabled={false} initialRead={initialRead} /></QueryClientProvider>;
 }
 async function settle() {
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
@@ -74,6 +77,45 @@ beforeEach(() => {
 afterEach(() => { view?.unmount(); view = undefined; client.clear(); vi.unstubAllGlobals(); });
 
 describe('active Overview reads across the route and lazy-consumer boundary', () => {
+  it('streams summary first and keeps failed snapshot incomplete despite successful command and payment, then retries the API', async () => {
+    let finishSnapshot!: (value: any) => void;
+    const initial: ProjectWorkInitialRead = { id: 'render-a', ownerId: 'staff-a', host: 'host', projectId: 'proj_1', results: {
+      summary: Promise.resolve({ ok: true, data: response('summary') as any }),
+      snapshot: new Promise((resolve) => { finishSnapshot = resolve; }),
+      command: Promise.resolve({ ok: true, data: response('command-centre') as any }),
+      payment: Promise.resolve({ ok: true, data: { paidIncGstCents: 12345 } as any }),
+    } };
+    view = renderIntoDocument(element('proj_1', 'activity', initial));
+    await settle(); await settle();
+    expect(requests).toHaveLength(0);
+    expect(view.container.querySelector('[data-frame]')).not.toBeNull();
+    expect(view.container.querySelector('[data-project-snapshot-state="summary"]')).not.toBeNull();
+    await act(async () => finishSnapshot({ ok: false, status: 500, message: 'Failed to load project snapshot' }));
+    await settle();
+    expect(view.container.querySelector('[data-project-snapshot-state="refresh-failed"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-command="proj_1"]')).not.toBeNull();
+    act(() => [...view!.container.querySelectorAll('button')].find((button) => button.textContent === 'Retry')!.click());
+    expect(count('snapshot')).toBe(1);
+    await answer('snapshot');
+    expect(view.container.querySelector('[data-project-snapshot-state="fresh"]')).not.toBeNull();
+  });
+
+  it('adopts all four initial results and refreshes the ordinary command API on a tab return', async () => {
+    const initial = { id: 'render-b', ownerId: 'staff-a', host: 'host', projectId: 'proj_1', results: {
+      summary: Promise.resolve({ ok: true, data: response('summary') }),
+      snapshot: Promise.resolve({ ok: true, data: response('snapshot') }),
+      command: Promise.resolve({ ok: true, data: response('command-centre') }),
+      payment: Promise.resolve({ ok: true, data: { paidIncGstCents: 12345 } }),
+    } } as unknown as ProjectWorkInitialRead;
+    view = renderIntoDocument(element('proj_1', 'activity', initial));
+    await settle(); await settle();
+    expect(requests).toHaveLength(0);
+    expect(view.container.querySelector('[data-project-snapshot-state="fresh"]')).not.toBeNull();
+    act(() => [...view!.container.querySelectorAll('button')].find((button) => button.textContent === 'Commercial')!.click());
+    act(() => [...view!.container.querySelectorAll('button')].find((button) => button.textContent === 'Overview')!.click());
+    expect(count('command-centre')).toBe(1);
+    await answer('command-centre');
+  });
   it.each(['before', 'after'])('starts all four reads together and never rereads when data finishes %s Overview mounts', async (order) => {
     view = renderIntoDocument(element());
     expect(requests.map((request) => request.path.split('/').at(-1)).sort()).toEqual(['command-centre', 'invoice-schedule', 'snapshot', 'summary']);
@@ -116,6 +158,23 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     // The existing payment freshness policy remains unchanged.
     expect(count('invoice-schedule')).toBe(1);
     expect(view.container.querySelector('[data-command-fetching="true"]')).not.toBeNull();
+  });
+
+  it('keeps a direct Files entry independent of Overview reads through snapshot failure and Retry', async () => {
+    state.search = 'tab=files';
+    view = renderIntoDocument(element('proj_1', 'files'));
+    await answer('summary');
+    expect(view.container.querySelector('[data-testid="files-tab"]')).not.toBeNull();
+    await answer('snapshot', 500);
+    expect(view.container.querySelector('[data-project-active-tab="files"]')).not.toBeNull();
+    expect(count('command-centre')).toBe(0);
+    expect(count('invoice-schedule')).toBe(0);
+    expect(state.preload).not.toHaveBeenCalled();
+    act(() => [...view!.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!.click());
+    await answer('snapshot');
+    expect(view.container.querySelector('[data-testid="files-tab"]')).not.toBeNull();
+    expect(count('command-centre')).toBe(0);
+    expect(count('invoice-schedule')).toBe(0);
   });
 
   it('resolves unknown Job Packs availability without speculative Overview reads', async () => {

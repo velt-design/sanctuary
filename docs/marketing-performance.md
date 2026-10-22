@@ -1,5 +1,22 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Lossless initial report representation (22 October 2026)
+
+`columnarReports.ts` owns a versioned, Marketing-only initial-document wire
+representation. The same small codec handles projects, events and enquiries in
+Hub, Commercial rows and Designer's five evidence arrays. Ordered field names
+are stored once per array; every value, row, null and explicit undefined stays
+present. New or heterogeneous row shapes retain the original complete report.
+Malformed columns fail visibly rather than producing partial totals.
+
+The page applies this representation only after the existing guarded readers
+validate evidence. Initial Hub/Commercial/Designer consumers expand it before
+their unchanged full report/date schemas run. APIs, Financials, snapshot rules,
+read scheduling, one-shot matching, refresh/retry and access remain unchanged.
+`initialReportAttempt` separates its input/output types without changing its
+lifecycle. No report data is cached, deferred or pruned. This is a local size
+candidate; hosted latency and actual delivery-step improvements are unverified.
+
 ## Bounded hosted Overview attribution (22 October 2026)
 
 `documentDiagnostics.ts` adds the exact Marketing document to the existing signed,
@@ -18,6 +35,24 @@ nested and concurrent durations are not a summed critical path. This prepares
 hosted attribution, not a latency fix or proof of the cause. Module work before
 the measured functions and later delivery/serialization can remain unattributed.
 The window/privacy owner is [security-privacy-quality.md](security-privacy-quality.md).
+
+The same admitted window can additionally observe native fetch transport for the
+existing identity, finance-navigation and three Overview reads. This leaves
+fetch, clients, dispatcher, pooling, authority and report work unchanged.
+`documentTransportDiagnostics.server.ts` owns the bounded request/socket timing
+observer; `documentDiagnostics.ts` owns signed admission and sanitized emission;
+`auth.ts` wraps only the existing identity call. Existing finance/report phase
+wrappers supply their contexts without changing the layout or page scheduling.
+
+Transport observations distinguish dispatch/setup, sent-request-to-headers wait
+and body completion. Header wait includes network and upstream service/queue
+time. A socket is new only when its connection and first use were observed in
+one uninterrupted subscription generation; prior observed use proves reuse.
+Other sockets are unknown. Pure connection duration stays null because native
+concurrent connection events cannot be reliably paired. Missing native events
+are `not_observed`, never evidence of zero work; an unsettled body is incomplete
+and is not consumed by diagnostics. This is additional cause attribution, not a
+speed improvement or proof that a particular transport setting should change.
 
 ## Targeted P&L and Overview latency follow-up (22 October 2026)
 

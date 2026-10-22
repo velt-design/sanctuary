@@ -191,6 +191,34 @@ try {
   process.stdout.write(
     "commercial-workflow-db: authoritative totals, lifecycle, invoice, payment, and completion contracts passed\n",
   );
+  const dateMigrationSql = readFileSync(path.join(repositoryRoot,
+    "supabase/migrations/20261022020001_acceptance_date_reconciliation.sql"), "utf8");
+  const dateContractSql = readFileSync(path.join(repositoryRoot,
+    "supabase/tests/acceptance_date_reconciliation.sql"), "utf8");
+  const triggerContract = async () => (await truthDatabase.query(`
+    select proacl,prosecdef,proconfig,provolatile from pg_proc
+    where oid='public.commercial_reconcile_paid_stage_trigger()'::regprocedure
+  `)).rows[0];
+  const beforeDateContract = await triggerContract();
+  // The regression must fail against the previous trigger, not merely execute.
+  let oldTriggerRejected = false;
+  try {
+    await applyTransaction(truthDatabase,dateContractSql,"Previous date-only behavior",{rollback:true});
+  } catch (error) {
+    oldTriggerRejected = /date-only fill preserves legacy PAID/.test(error.cause?.message ?? "");
+  }
+  requireCondition(oldTriggerRejected,"Date-only regression did not reproduce the original reopening.");
+  const beforeDateDefinition = (await truthDatabase.query(`select pg_get_functiondef(
+    'public.commercial_reconcile_paid_stage_trigger()'::regprocedure) value`)).rows[0].value;
+  await applyTransaction(truthDatabase,dateMigrationSql,"Date-only correction rollback",{rollback:true});
+  requireCondition((await truthDatabase.query(`select pg_get_functiondef(
+    'public.commercial_reconcile_paid_stage_trigger()'::regprocedure) value`)).rows[0].value === beforeDateDefinition,
+    "Date-only migration did not roll back the trigger definition.");
+  await applyTransaction(truthDatabase,dateMigrationSql,"Date-only correction");
+  requireCondition(JSON.stringify(await triggerContract())===JSON.stringify(beforeDateContract),
+    "Date-only correction changed trigger authority/configuration.");
+  await applyTransaction(truthDatabase,dateContractSql,"Date-only reconciliation contract",{rollback:true});
+  process.stdout.write("commercial-workflow-db: date-only backfill, competing versions and retained financial triggers passed\n");
 } catch (error) {
   executionError = error;
 }

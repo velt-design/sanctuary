@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     if (result.error) throw new Error('Command unavailable');
     if(command.stage==='probe'){
       const row=result.data;
-      return Response.json({...row,capability:signProbe({probe:row.probe,experiment:command.experiment!,...(command.payload as {candidateHash:string;template:typeof EXPERIMENT_TEMPLATE;generation:number;mode:'prepare'|'live'}),path:row.path,expires:Date.parse(row.expires)})},{headers});
+      const {candidateHash,template,generation,mode}=command.payload as {candidateHash:string;template:typeof EXPERIMENT_TEMPLATE;generation:number;mode:'prepare'|'live'};
+      return Response.json({...row,capability:signProbe({probe:row.probe,experiment:command.experiment!,candidateHash,template,generation,mode,path:row.path,expires:Date.parse(row.expires)})},{headers});
     }
     if (command.stage === 'read' && result.data?.template !== EXPERIMENT_TEMPLATE) return Response.json(landingCompatibility(result.data?.template),{status:503,headers});
     return Response.json(command.stage === 'read' ? { ...result.data, renderer: template.hash,

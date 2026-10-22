@@ -25,7 +25,7 @@ function fixture() {
       resultHash: reportHash(JSON.parse(payload)), expiresAt: new Date(Date.parse(report.fetchedAt) + 7 * 86400000).toISOString() };
     return {};
   });
-  const credentials = vi.fn(() => ({ actor: id, propertyId: '123', binding: control.binding, vaultId: 'a'.repeat(26), itemId: 'b'.repeat(26),
+  const credentials = vi.fn(() => ({ credentialStore: 'vault' as const, actor: id, propertyId: '123', binding: control.binding, vaultId: 'a'.repeat(26), itemId: 'b'.repeat(26),
     clientId: 'synthetic-client', clientSecret: 'private-secret', vaultToken: 'private-token' }));
   const guard = vi.fn(async () => undefined);
   const vault = { authenticate: vi.fn(async () => undefined), read: vi.fn(async () => ({ refreshToken: 'private-refresh', version: 1 })), write: vi.fn(async () => ({ version: 2 })) };
@@ -99,12 +99,24 @@ it('deletion or revocation at the final delivery fence withholds the report', as
   const response = await sanctuaryGa4Response(f.request(), f.dependencies);
   expect(response.status).toBe(503); expect(await response.text()).not.toContain('fetchedAt');
 });
-it.each(['http', 'private_path', 'normalization'] as const)('logs only fixed report diagnostics through lifecycle for %s failure', async mode => {
+it('withholds a core-only report when final delivery authority is revoked', async () => {
+  const f = fixture(), original = f.command.getMockImplementation()!;
+  f.command.mockImplementation(async (...args) => { if (args[0] === 'deliver') throw new Error('revoked'); return original(...args); });
+  f.dependencies.fetcher.mockImplementation(async (_url, init) => Response.json(
+    JSON.parse(String(init?.body)).requests.length === 5 ? coreFixture(f.report.query) : { PRIVATE_BODY: true }));
+  const response = await sanctuaryGa4Response(f.request('action=refresh&start=2026-08-01&end=2026-08-07&retain=true&reportVersion=sanctuary-ga4-v3'),
+    { ...f.dependencies, read: readGa4Report });
+  expect(response.status).toBe(503); expect(await response.text()).not.toMatch(/fetchedAt|PRIVATE_BODY/);
+  expect(f.command.mock.calls.map(call => call[0])).toContain('complete');
+  const payload = JSON.parse((f.command.mock.calls.find(call => call[0] === 'complete')![3] as { payload: string }).payload);
+  expect(payload.diagnostics.acquisition).toEqual({ status: 'unavailable', reason: 'compatibility_unproven' });
+});
+it.each(['http', 'core_schema', 'normalization'] as const)('logs only fixed report diagnostics through lifecycle for %s failure', async mode => {
   const f = fixture();
   const dependencies = { ...f.dependencies, read: mode === 'normalization' ? async () => ({ ...f.report, property: 'PRIVATE_VALUE' }) : readGa4Report };
   dependencies.fetcher.mockImplementation(async (_url, init) => {
     const core = JSON.parse(String(init?.body)).requests.length === 5;
-    if (core) return Response.json(coreFixture(f.report.query));
+    if (core) return Response.json(mode === 'core_schema' ? { PRIVATE_BODY: true } : coreFixture(f.report.query));
     if (mode === 'http') return new Response('PRIVATE_TOKEN PRIVATE_EMAIL PRIVATE_QUERY', { status: 403 });
     const raw = acquisitionFixture(f.report.query); raw.reports[0].rows[0].dimensionValues[1].value = '/quote/PRIVATE_IDENTIFIER';
     return Response.json(raw);
@@ -114,7 +126,7 @@ it.each(['http', 'private_path', 'normalization'] as const)('logs only fixed rep
   expect(response.status).toBe(503);
   const logs = vi.mocked(console.warn).mock.calls.filter(call => call[0] === 'sanctuary_ga4_report_failure');
   expect(logs).toEqual([['sanctuary_ga4_report_failure', mode === 'normalization' ? { stage: 'normalization', reason: 'response_schema' }
-    : { stage: mode === 'http' ? 'acquisition_request' : 'acquisition_response', reason: mode === 'http' ? 'provider_http' : 'response_schema', status: mode === 'http' ? 403 : 200 }]]);
+    : { stage: mode === 'http' ? 'acquisition_request' : 'core_response', reason: mode === 'http' ? 'provider_http' : 'response_schema', status: mode === 'http' ? 403 : 200 }]]);
   expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toMatch(/PRIVATE_|private-|123|2026-|metricValues|dimensionValues|schemaIssues|structure/);
   expect(await response.json()).toEqual({ error: 'sanctuary_ga4_unavailable' });
   const commands = f.command.mock.calls.map(call => call[0]);

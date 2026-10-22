@@ -1,8 +1,15 @@
 import type { ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectDetailPage from './page';
-vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: vi.fn().mockResolvedValue({ role: 'staff' }) }));
+const scheduling = vi.hoisted(() => ({ headers: new Headers(), load: vi.fn(), gate: vi.fn() }));
+vi.mock('next/headers', () => ({ headers: async () => scheduling.headers }));
+vi.mock('./loadProjectWorkInitialRead', () => ({ loadProjectWorkInitialRead: scheduling.load }));
+vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: scheduling.gate }));
+beforeEach(() => {
+  scheduling.headers = new Headers(); scheduling.load.mockReset();
+  scheduling.gate.mockReset().mockResolvedValue({ role: 'staff', user: { id: 'staff-a' } });
+});
 
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
@@ -22,6 +29,27 @@ vi.mock('./ProjectSnapshotPageClient', () => ({
 }));
 
 describe('ProjectDetailPage', () => {
+  it('starts only a matching Work document read after the fresh gate', async () => {
+    const id = 'proj_11111111-1111-4111-8111-111111111111';
+    scheduling.headers.set('x-portal-document-callback', `/staff/projects/${id}?tab=activity`);
+    scheduling.load.mockImplementation(() => {
+      expect(scheduling.gate).toHaveBeenCalledWith(`/staff/projects/${id}`);
+      return undefined;
+    });
+    await ProjectDetailPage({ params: Promise.resolve({ projectId: id }) });
+    expect(scheduling.load).toHaveBeenCalledWith(id, { userId: 'staff-a', isAdmin: false });
+    scheduling.load.mockClear();
+    await ProjectDetailPage({ params: Promise.resolve({ projectId: id }), searchParams: Promise.resolve({ tab: 'estimates' }) });
+    scheduling.headers = new Headers();
+    await ProjectDetailPage({ params: Promise.resolve({ projectId: id }) });
+    expect(scheduling.load).not.toHaveBeenCalled();
+  });
+
+  it('never starts private reads when the page gate rejects', async () => {
+    scheduling.gate.mockRejectedValue(new Error('denied'));
+    await expect(ProjectDetailPage({ params: Promise.resolve({ projectId: 'proj_1' }) })).rejects.toThrow('denied');
+    expect(scheduling.load).not.toHaveBeenCalled();
+  });
   it('renders an unavailable state for invalid ids', async () => {
     const ui = (await ProjectDetailPage({
       params: Promise.resolve({ projectId: '   ' }),
@@ -56,7 +84,7 @@ describe('ProjectDetailPage', () => {
     expect(markup).toContain('data-calculator-workspace="true"');
   });
 
-  it('coerces removed files tabs back to activity', async () => {
+  it('preserves a direct Files workspace entry', async () => {
     const ui = (await ProjectDetailPage({
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ tab: 'files' }),
@@ -64,7 +92,7 @@ describe('ProjectDetailPage', () => {
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('data-project-id="proj_1"');
-    expect(markup).toContain('data-tab="activity"');
+    expect(markup).toContain('data-tab="files"');
   });
 
   it('coerces the retired Emails tab back to activity', async () => {

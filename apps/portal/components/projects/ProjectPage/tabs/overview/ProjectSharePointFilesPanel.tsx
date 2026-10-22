@@ -1,53 +1,113 @@
 'use client';
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Button, ButtonLink, DataStatePanel, LoadingSkeleton, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation';
-import type { ProjectFilesPage } from '@/lib/projects/sharePointFiles/types';
-import styles from './ProjectEnquiryFilesPanel.module.css';
-import layout from './ProjectSharePointFilesPanel.module.css';
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { discardProjectPreviews, reconcileFolderPreviews, reconcileRootPreviews, setPreviewOwner } from './projectFilePreviewCache';
+import { PortalAuthContext } from '@/components/auth/PortalAuthProvider';
+import { Button, ButtonLink, DataStatePanel, Input, LoadingSkeleton, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation';
+import { ProjectFilesReadError, projectFileOpenHref } from '@/lib/projects/sharePointFiles/client';
+import { useProjectFilesExplorer } from './useProjectFilesExplorer';
+import { useProjectFilesListPosition } from './useProjectFilesListPosition';
+import ProjectFilePreview from './ProjectFilePreview';
+import { formatFileSize, ProjectFileIcon } from './projectFilePresentation';
+import styles from './ProjectSharePointFilesPanel.module.css';
 
 const states = {
-  disabled: ['SharePoint files are not connected yet', 'Website enquiry files are available below.'],
-  unlinked: ['No SharePoint folder linked yet', 'Existing folders need a verified project match.'],
+  disabled: ['SharePoint files are not connected yet', 'Website enquiry files remain available.'],
+  unlinked: ['No SharePoint folder linked yet', 'This project does not have a verified folder link.'],
   pending: ['Project folder is being prepared', 'Refresh shortly to see the new project folders.'],
-  needs_attention: ['Project folder needs attention', 'Folder setup has not finished. Contact an administrator; existing files remain safe.'],
+  needs_attention: ['Project folder needs attention', 'Folder setup has not finished. Existing files remain safe.'],
 } as const;
-export default function ProjectSharePointFilesPanel({ projectId, host, disabled = false }: { projectId: string; host: string; disabled?: boolean }) {
-  const [rootId, setRootId] = useState<string>();
-  const [trail, setTrail] = useState<{ id: string; name: string }[]>([]);
-  const [cursors, setCursors] = useState<string[]>([]);
-  const folderId = trail.at(-1)?.id;
-  const query = useQuery({
-    queryKey: ['project-sharepoint-files', host, projectId, rootId, folderId, cursors.at(-1)],
-    enabled: !disabled, retry: false, staleTime: 30000,
-    queryFn: async (): Promise<ProjectFilesPage> => {
-      const params = new URLSearchParams();
-      if (rootId) params.set('rootId', rootId);
-      if (folderId) params.set('folderId', folderId);
-      if (cursors.length) params.set('cursor', cursors.at(-1)!);
-      const response = await fetch(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/files?${params}`, { cache: 'no-store', credentials: 'same-origin' });
-      if (!response.ok) throw new Error('Files unavailable');
-      return response.json();
-    },
-  });
+export default function ProjectSharePointFilesPanel(props: { projectId: string; host: string; disabled?: boolean; websiteFiles?: ReactNode; workspace?: boolean }) {
+  const auth = useContext(PortalAuthContext);
+  // Production uses the existing authenticated-owner QueryClient boundary. Isolated fixtures may omit the context; HTTP authorization is never bypassed.
+  return <Explorer key={`${props.host}:${auth?.user?.id ?? 'fixture'}:${props.projectId}`} {...props} ownerId={auth?.user?.id ?? null} allowed={!auth || (auth.status === 'authenticated' && (auth.role === 'staff' || auth.role === 'admin'))} />;
+}
+function Explorer({ projectId, host, disabled = false, websiteFiles, ownerId, allowed, workspace = false }: { projectId: string; host: string; disabled?: boolean; websiteFiles?: ReactNode; ownerId: string | null; allowed: boolean; workspace?: boolean }) {
+  const client = useQueryClient();
+  const previewOwner = ownerId && allowed ? JSON.stringify([host, ownerId]) : null;
+  const model = useProjectFilesExplorer(projectId, host, ownerId, !disabled && allowed);
+  const { navigation: nav, query, roots, first, rootPage, allItems, rootFolders, scope } = model;
+  const [expanded, setExpanded] = useState(false);
+  const [previewRevision, setPreviewRevision] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const expandButtonRef = useRef<HTMLButtonElement>(null);
+  const wasExpanded = useRef(false);
+  const [compact, setCompact] = useState(false);
+  const rootId = first?.rootId ?? nav.rootId;
+  const denied = !allowed || Boolean(rootPage && rootId && !rootPage.roots.some(root => root.id === rootId)) || [query.error, roots.error].some(error => error instanceof ProjectFilesReadError && [401, 403].includes(error.status));
+  const sourceFailed = query.isError || roots.isError;
+  const items = denied || sourceFailed || first?.state !== 'ready' ? [] : allItems;
+  const selected = items.find(item => item.kind === 'file' && item.id === nav.selectedId);
+  useEffect(() => { setPreviewOwner(client, previewOwner); }, [client, previewOwner]);
+  useEffect(() => {
+    if (!previewOwner) return;
+    if (rootPage) reconcileRootPreviews(client, previewOwner, projectId, rootPage.roots.map(root => root.id));
+    if (denied || sourceFailed || first && first.state !== 'ready') discardProjectPreviews(client, previewOwner, projectId);
+    else if (first?.state === 'ready' && rootId) reconcileFolderPreviews(client, previewOwner, projectId, rootId, first.folderId ?? '', allItems, !query.hasNextPage);
+  }, [client, previewOwner, projectId, denied, sourceFailed, query.dataUpdatedAt, roots.dataUpdatedAt, first, rootId, query.hasNextPage]);
+  const term = nav.term.trim().toLocaleLowerCase();
+  const matches = items.filter(item => !term || item.name.toLocaleLowerCase().includes(term));
+  const photos = items.filter(item => item.viewable && item.contentType?.startsWith('image/'));
+  useLayoutEffect(() => {
+    const node = panelRef.current;
+    if (!node) return;
+    const measure = () => setCompact(node.clientWidth <= 960);
+    measure(); const observer = new ResizeObserver(measure); observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const scrollScope = nav.term ? `${scope}:find:${nav.term}` : scope;
+  const listPosition = useProjectFilesListPosition({ listRef, scope: scrollScope, savedTop: nav.scrolls[scrollScope] ?? 0,
+    ready: model.hydrated && !query.isFetching && !query.isError && ((query.data?.pages.length ?? 0) >= Math.min(nav.pageCounts[scope] ?? 1, 10) || !query.hasNextPage),
+    hasMore: Boolean(query.hasNextPage), save: top => model.update(value => ({ ...value, scrolls: { ...value.scrolls, [scrollScope]: top } })) });
+  useEffect(() => {
+    // Modal cleanup restores its original trigger first. Gallery changes should
+    // then return to the current row/control, never a removed previous file.
+    if (wasExpanded.current && !expanded) {
+      const target = compact ? listRef.current?.querySelector<HTMLButtonElement>('button[aria-current="true"]') : expandButtonRef.current;
+      target?.focus({ preventScroll: true });
+    }
+    wasExpanded.current = expanded;
+  }, [expanded, compact]);
+  const select = (id: string) => { listPosition.takeControl(); model.update(value => ({ ...value, selectedId: id })); if (compact) setExpanded(true); };
+  const navigate: typeof model.navigate = (...args) => { setExpanded(false); model.navigate(...args); };
+  const refresh = () => { setPreviewRevision(value => value + 1); model.refresh(); };
   if (disabled) return null;
-  if (query.isPending) return <LoadingSkeleton rows={3} columns={3} label="Loading SharePoint files" />;
-  if (query.isError) return <DataStatePanel state="error" title="SharePoint files could not be loaded" description="Your files have not changed. Try again, or ask an administrator to check the connection." onRetry={() => void query.refetch()} />;
-  const page = query.data;
-  if (page.state !== 'ready') return <div className={styles.panel}><DataStatePanel state="empty" title={states[page.state][0]} description={states[page.state][1]} /><Button variant="tertiary" size="small" onClick={() => void query.refetch()}>Refresh files</Button></div>;
-  const href = (id: string, mode: string) => `/api/staff/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(id)}/open?${new URLSearchParams({ rootId: page.rootId!, mode })}`;
-  return <section className={styles.panel} aria-label="SharePoint project files">
-    <h3>Project files</h3>
-    {page.roots.length > 1 ? <Select label="Project folder" aria-label="Project folder" value={page.rootId ?? ''} onChange={event => { setRootId(event.target.value); setTrail([]); setCursors([]); }}>{page.roots.map(root => <option key={root.id} value={root.id}>{root.label}</option>)}</Select> : <p>{page.roots[0]?.label}</p>}
-    <div className={styles.actions}>
-      {trail.length > 0 && <Button variant="secondary" size="small" onClick={() => { setTrail(trail.slice(0, -1)); setCursors([]); }}>Back to {trail.length > 1 ? trail[trail.length - 2].name : 'project folder'}</Button>}
-      <Button variant="tertiary" size="small" onClick={() => void query.refetch()}>Refresh files</Button>
+  const hasMore = query.hasNextPage;
+  const readError = (query.error ?? roots.error) instanceof Error ? (query.error ?? roots.error)!.message : 'Try again. Your folder position is kept.';
+  const unavailable = denied || sourceFailed || first?.state !== 'ready';
+  const visibleRoots = denied ? [] : rootPage?.roots ?? [];
+  return <section ref={panelRef} className={`${styles.panel} ${workspace ? styles.workspace : ''}`} aria-label="SharePoint project files">
+    <header className={styles.header}><div><h3>Files</h3><p className={styles.metadata}>{nav.source === 'website' ? 'Website enquiry attachments' : 'SharePoint'}{query.isFetching ? ' · Updating…' : query.dataUpdatedAt ? ` · Checked ${new Date(query.dataUpdatedAt).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}` : ''}</p></div><div className={styles.headerControls}>
+      <Select aria-label="Project folder" value={nav.source === 'website' ? 'website' : nav.rootId ?? rootPage?.rootId ?? ''} onChange={event => { if (event.target.value === 'website') { setExpanded(false); model.update(value => ({ ...value, source: 'website' })); } else navigate([], event.target.value); }}>
+        {!visibleRoots.length && <option value={nav.rootId ?? ''}>Project folder</option>}{visibleRoots.map(root => <option key={root.id} value={root.id}>{root.label}</option>)}{websiteFiles && <option value="website">Website enquiry files</option>}
+      </Select><Button variant="quiet" size="small" onClick={refresh} disabled={query.isFetching || nav.source === 'website'}>Refresh files</Button></div></header>
+    <div className={styles.explorer}>
+      <nav className={styles.rail} aria-label="Project folders"><Button variant="quiet" size="small" aria-current={!nav.trail.length && nav.source === 'sharepoint' ? 'page' : undefined} onClick={() => navigate([])}>Project folder</Button>
+        {!denied && rootFolders.map(folder => <Button key={folder.id} variant="quiet" size="small" aria-current={nav.source === 'sharepoint' && nav.trail[0]?.id === folder.id ? 'page' : undefined} onPointerEnter={() => model.prepareFolder(folder.id)} onFocus={() => model.prepareFolder(folder.id)} onClick={() => navigate([{ id: folder.id, name: folder.name }])}><ProjectFileIcon folder />{folder.name}</Button>)}
+        {!denied && nav.trail.slice(1).map((part, index) => <Button key={part.id} variant="quiet" size="small" onClick={() => navigate(nav.trail.slice(0, index + 2))}><ProjectFileIcon folder />{part.name}</Button>)}
+        {!denied && roots.hasNextPage && <Button size="small" variant="quiet" disabled={roots.isFetching} onClick={() => void roots.fetchNextPage()}>More project folders</Button>}
+        {websiteFiles && <Button size="small" variant="quiet" aria-current={nav.source === 'website' ? 'page' : undefined} onClick={() => { setExpanded(false); model.update(value => ({ ...value, source: 'website' })); }}>Website enquiry files</Button>}
+      </nav>
+      {nav.source === 'website' ? <div className={styles.website}>{websiteFiles}</div> : <>
+        <div className={styles.browser}>
+          <div className={styles.toolbar}><nav className={styles.breadcrumbs} aria-label="Folder path"><Button size="small" variant="quiet" onClick={() => navigate([])}>Project folder</Button>{!denied && nav.trail.map((part, index) => <span key={part.id}>/<Button size="small" variant="quiet" onClick={() => navigate(nav.trail.slice(0, index + 1))}>{part.name}</Button></span>)}</nav><Input aria-label="Find in this folder" placeholder="Find in this folder" value={nav.term} maxLength={200} onChange={event => model.find(event.target.value)} /></div>
+          {nav.trail.length > 0 && <Button size="small" variant="quiet" onClick={() => navigate(nav.trail.slice(0, -1))}>Back to {nav.trail.length > 1 ? nav.trail.at(-2)!.name : 'project folder'}</Button>}
+          {denied ? <DataStatePanel state="error" title="File access is unavailable" description="The staff file request was denied. Refresh to check current access." onRetry={model.refresh} />
+            : !model.hydrated || query.isPending ? <div className={styles.state}><LoadingSkeleton rows={5} columns={2} label="Loading project files" /></div>
+              : sourceFailed ? <div className={styles.state}><DataStatePanel state="error" title="SharePoint files could not be loaded" description={readError} onRetry={model.refresh} /></div>
+                : first && first.state !== 'ready' ? <div className={styles.state}><DataStatePanel state="empty" title={states[first.state][0]} description={states[first.state][1]} /></div>
+                  : <><div className={styles.finding} role="status">{term ? `${matches.length} matches · ${items.length} items checked${hasMore ? ' · More files remain' : ' · Folder complete'}` : `${items.length} items${hasMore ? ' loaded · More files available' : ' · Folder complete'}`}{model.scanning ? ' · Finding…' : ''}</div>
+                    <div ref={listRef} className={styles.list} aria-label="Files list" tabIndex={0} onScroll={listPosition.onScroll} onWheel={listPosition.takeControl} onTouchMove={listPosition.takeControl} onPointerDown={event => { if (event.target === event.currentTarget) listPosition.takeControl(); }} onKeyDown={event => { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key)) listPosition.takeControl(); }}>
+                      {matches.length ? <Table className={styles.filesTable}><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead><span className={styles.srOnly}>Download</span></TableHead></TableRow></TableHeader><TableBody>{matches.map(item => <TableRow key={item.id} className={nav.selectedId === item.id ? styles.selected : undefined}>
+                        <TableCell><button type="button" className={styles.filename} onPointerEnter={() => { if (item.kind === 'folder') model.prepareFolder(item.id); }} onFocus={() => { if (item.kind === 'folder') model.prepareFolder(item.id); }} aria-current={nav.selectedId === item.id ? 'true' : undefined} onClick={() => item.kind === 'folder' ? navigate([...nav.trail, { id: item.id, name: item.name }]) : select(item.id)}><span className={styles.fileIcon}><ProjectFileIcon folder={item.kind === 'folder'} /></span><span>{item.name}<small>{item.kind === 'folder' ? 'Folder' : item.viewable ? 'Preview available' : 'Original download'}</small></span></button></TableCell>
+                        <TableCell>{item.kind === 'file' ? formatFileSize(item.size) : ''}</TableCell><TableCell>{item.kind === 'file' && rootId ? <ButtonLink href={projectFileOpenHref(projectId, rootId, item.id, 'download')} prefetch={false} target="_blank" rel="noopener noreferrer" variant="quiet" size="small" aria-label={`Download ${item.name}`}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" /></svg></ButtonLink> : null}</TableCell>
+                      </TableRow>)}</TableBody></Table> : <p className={styles.empty}>{term ? hasMore ? 'No matches in the files checked so far. More files remain.' : 'No files match this name in this folder.' : 'This folder is empty.'}</p>}
+                      {hasMore && <div className={styles.paging}><Button variant="secondary" size="small" disabled={query.isFetching || model.scanning} onClick={() => void (term ? model.loadBatch() : query.fetchNextPage())}>{query.isFetching ? 'Loading files…' : term ? 'Continue finding in this folder' : 'Load more files'}</Button></div>}
+                    </div></>}
+        </div>
+        {!unavailable && selected && rootId ? <ProjectFilePreview key={rootId} item={selected} rootId={rootId} projectId={projectId} expanded={expanded} onExpandedChange={setExpanded} expandButtonRef={expandButtonRef} photos={photos} onSelect={select} revision={previewRevision} onSourceChanged={model.refresh} previewScope={previewOwner ? { owner: previewOwner, projectId, rootId, itemId: selected.id, folderId: first!.folderId ?? '' } : null} /> : <aside className={styles.inspector}><p className={styles.empty}>{nav.selectedId && hasMore ? 'Load more files to restore the selected file.' : 'Select a file to preview or download.'}</p></aside>}
+      </>}
     </div>
-    {trail.length > 0 && <p aria-live="polite">{trail.map(part => part.name).join(' / ')}</p>}
-    {page.items.length ? <Table className={layout.filesTable}><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>
-      {page.items.map(item => <TableRow key={item.id}><TableCell>{item.kind === 'folder' ? <Button variant="tertiary" size="small" onClick={() => { setRootId(page.rootId!); setTrail([...trail, { id: item.id, name: item.name }]); setCursors([]); }}>{item.name}</Button> : <strong className={styles.filename}>{item.name}</strong>}</TableCell><TableCell>{item.kind === 'file' ? `${(item.size / 1048576).toFixed(1)} MB` : 'Folder'}</TableCell><TableCell>{item.kind === 'file' && <div className={styles.actions}>{item.viewable && <ButtonLink href={href(item.id, 'view')} prefetch={false} target="_blank" rel="noopener noreferrer" variant="secondary" size="small">View</ButtonLink>}<ButtonLink href={href(item.id, 'download')} prefetch={false} target="_blank" rel="noopener noreferrer" variant="tertiary" size="small">Download</ButtonLink></div>}</TableCell></TableRow>)}
-    </TableBody></Table> : <p>This folder is empty.</p>}
-    <div className={styles.actions}>{cursors.length > 0 && <Button variant="secondary" size="small" onClick={() => setCursors(cursors.slice(0, -1))}>Previous page</Button>}{page.cursor && <Button variant="secondary" size="small" onClick={() => { setRootId(page.rootId!); setCursors([...cursors, page.cursor!]); }}>Next page</Button>}</div>
-    <h3>Website enquiry files</h3>
   </section>;
 }

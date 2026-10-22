@@ -13,13 +13,16 @@ import VisitAgendaRow from './VisitAgendaRow';
 import CalendarFreshness from './CalendarFreshness';
 import { allVisitsHref,selectSiteVisitView as select } from './siteVisitNavigation';
 import { shouldHandleRouteTransitionClick } from '@/components/page-state/PortalRouteTransition';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
+import type { CalendarVisitsInitialRead } from '@/lib/siteVisits/savedVisitsContract';
 import styles from './siteVisits.module.css';
 const views=[['today','Today'],['week','This week'],['upcoming','Upcoming'],['review','Needs review'],['history','History'],['changes','Changes']] as const;
-export default function SiteVisitsAgenda(){
+export default function SiteVisitsAgenda({initialRead}:{initialRead?:CalendarVisitsInitialRead}){
+  const {user}=usePortalSession();
   const params=useSearchParams(),requestedView=params.get('view');
   const view=views.some(([key])=>key===requestedView)?requestedView!:'today',requestedPerson=params.get('person')??'',search=params.get('q')??'',projectId=params.get('project')||undefined;
   const visitId=params.get('visit')||undefined;
-  const query=useCalendarVisits(projectId,undefined,visitId),client=useQueryClient(),lock=useRef(false),searchRef=useRef<HTMLInputElement>(null);
+  const query=useCalendarVisits(projectId,undefined,visitId,initialRead?{read:initialRead,ownerId:user?.id??null}:undefined),client=useQueryClient(),lock=useRef(false),searchRef=useRef<HTMLInputElement>(null);
   const [refreshing,setRefreshing]=useState(false),[message,setMessage]=useState('');
   const data=query.data;
   const reviewCount=data?.events.filter(requiresVisitReview).length;

@@ -1,5 +1,244 @@
 # Supabase Schema Map
 
+## Funded owner landing decisions (23 October 2026, local candidate)
+
+Forward `20261023010001_landing_owner_decisions.sql` adds no table or public
+endpoint. Four private helpers project prior/settled state, validate capacity,
+and expire only an unprepared decision reservation. The existing signed command
+wraps its previous implementation; three unique receipt indexes enforce one
+owner/Auckland-day decision, one preparation and one first prepare-probe. A
+null/reject consumes the decision. A lost dispatch is reconciled by its exact
+receipt, never refunded or repeated. Ordinary probe rows/counters remain intact.
+Exact committed prepare/probe replay precedes current-capacity validation, so
+expiry, Stop or generation changes cannot hide the saved result. Binding and
+the complete stage/experiment/payload digest still must match. Signed probe
+receipt reads return only the original saved fields, without a new capability
+or extended probe expiry; fresh commands still require current capacity.
+
+Capacity is acquired before Velt reserves collection/model work, under the same
+acquisition lock as ordinary landing and creative tests. It binds owner/request,
+funding receipt/day, current template/controls/generation, terminal predecessor,
+corrected Velt release and <=4h expiry within both Sydney and Auckland days.
+Preparation atomically transfers the one reservation to its new experiment.
+Genuine prior assignment, publication or unresolved active state denies issuance;
+seven-day cadence uses actual start time. Rejected canonical slot/text remains
+excluded for the same rendered control across implementation-template changes.
+Nothing in this migration revives a prior candidate or installs an admission.
+
+
+## Composed authored/native campaign layer (23 October 2026, local only)
+
+Unreleased landing migration50009 patches only explicit copy-semantic anchors
+in the existing `landing_experiment_command`. It must preserve installed
+100001 through140001 probe, technical-resume, expiry and replay protections;
+the command is not replaced by an older full definition. Its existing authored
+visit helpers and strict canonical slot/text exclusions remain unchanged.
+Native creative migrations50005 through50013 retain their documented scope.
+No new recovery receipt or control transition is installed by this composition.
+
+## Finite technical landing continuation (22 October 2026)
+
+Forward20261022140001 adds private `landing_technical_resume_expiry(uuid,uuid)`
+and two unique indexes over existing `landing_experiment_receipts` (predecessor
+and corrected release per original admission). It extends existing
+`landing_packaging_recovery_expiry`, `landing_packaging_prepare` and
+`landing_experiment_command`; no table, public endpoint or grant is added.
+Existing control/global-reservation locks, signature, Origin, consent, genuine
+assignment and cleanup behavior remain. The operator receipt is private and
+requires exact native UTC row hashes; it does not install itself or infer funding.
+
+## Exact same-candidate probe successor (22 October 2026)
+
+Forward20261022120001 extends only the existing private
+landing_packaging_recovery_expiry(uuid,jsonb), retaining its ACL/search path/UTC
+contract, and adds a unique prepare_successor_recovery receipt per experiment.
+The fixed ordinal4 proof binds the existing replacement, original expiry,
+correction release, complete previous recovery receipt and expired zero-visit
+third probe. All older probes must still match their original zero-visit hashes.
+The replacement must remain candidate, unreviewed/unpublished, under the same
+controls and global reservation with no genuine assignments. Existing signed
+probe atomically admits only the pinned new UUID, with normal idempotent receipt
+readback; fifth/changed/replayed new work denies. No prepare/new experiment,
+Origin/CSRF change, public endpoint, model allowance or credential is introduced.
+The migration appends no operational receipt. Native test composes through the
+earlier real three-probe/replacement history and preserves it after its rollback.
+
+## Historical packaging-probe continuation (22 October 2026)
+
+Forward20261022110001 adds private landing_packaging_recovery_expiry(uuid,jsonb)
+and landing_packaging_prepare(uuid,jsonb), patches the two existing recovery
+predicates plus exact prepare cadence/copy-exclusion exceptions in
+landing_experiment_command, and adds unique recovery/replacement receipt indexes. The exact third
+prepare probe requires both original probes expired, zero-visit, unenrolled and
+unverified; full native hashes bind both and the previous prepare_recovery receipt.
+Candidate, full control hash/generation/binding and original finite expiry agree.
+The prior experiment stays reverted, never published and without real assignments.
+Its complete row and guard rollback receipt are hashed. The receipt names exactly
+one new experiment; ordinary prepare copies the exact paid candidate/evidence/
+generator/settings and atomically reacquires the existing global reservation.
+No general cadence or exclusion changes; the original remains in exclusions.
+Trusted operator receipt+prepare is one transaction, with ordinary cloud render,
+independent review, publication and actual serving verification still separate.
+Only the trusted operator appends this receipt after proving the consumer package
+correction. No migration installs it, no service-role issuer/endpoint is added,
+and there is no Source HTTP, public renderer or customer-record change. Lost
+responses reconcile the same command receipt. A fourth probe remains denied.
+The first two probes and all earlier receipts remain unchanged. Stop revokes;
+rollback keeps forward schema/history and never resets counters or expiry.
+
+## Historical first preparation-probe recovery (22 October 2026)
+
+Forward20261022100001 adds private landing_prepare_recovery_expiry(uuid,jsonb)
+and patches only landing_experiment_command(text,uuid,text,uuid,jsonb). A unique
+prepare_recovery receipt per experiment authorizes one extra preparation probe
+for the exact expired zero-assignment/exposure/reload original. It binds current
+control JSONB hash, generation, binding, template, candidate and fresh probe UUID.
+The operator receipt is finite (at most4h, same Sydney/Auckland days) and its
+request_hash covers the exact result JSONB. No receipt is installed by migration.
+Existing signed HTTP payload, control checks, idempotency and live probe bounds
+remain unchanged. All old probes/candidates/receipts survive. The private helper
+and receipt table are not exposed to service-role issuance. There is no new
+runtime, endpoint, visitor ownership, customer mutation or Source hosting need.
+Stop revokes the exception; recovery never resets the ordinary daily counter.
+
+
+
+## Composed campaign loop candidate (22 October 2026)
+
+The isolated integration branch preserves current main and composes the accepted
+landing50009 canonical-copy correction with formal creative50004-50008 and
+learning/retention/ambiguity/steady inventory50010-50013. Apply the actual ordered
+migration history, once each; the native harness checks50009 after50008 and before
+the later creative layers. This does not install any migration or change live
+controls. Current main's unrelated SharePoint/date/project changes remain intact.
+
+The paired Velt consumer also preserves the separate Outlook001 and diagnostic002
+contracts. Compatible readers precede any new Source registry version. The new
+template/native/renderer hashes are local candidates until reviewed deployment,
+schema equality and guarded binding establish compatibility. Keep the live finite
+landing lane separate, preserve current controls/history and use existing Stop,
+owned cleanup and uncertain-effect reconciliation for recovery. No test fixture
+establishes actual Meta media, study scheduling/allocation or retained delivery.
+
+The inherited stage notes below retain their original scope and evidence. The combined local candidate now includes authored-copy aliases, terminal history, retention, bounded ambiguity and steady inventory. Statements that a later local layer remains unfinished describe that earlier checkpoint; actual hosted compatibility, provider/media acceptance and the whole live loop remain unverified.
+
+## Native finite ambiguity (uninstalled local layer)
+
+20261022050012_creative_ambiguity.sql versions the existing cohort and analysis
+contracts without a table, endpoint, permission or schedule expansion. The existing
+2000-record immutable window includes every website enquiry; Google/cpc or route
+labels are never outside-test proof. U is the disjoint unknown-attribution plus
+unresolved-late pool. Both native arms and all-site coverage remain explicit.
+400 shared quality keys plus omitted counts and aggregate canonical concerns bound
+quality evidence. Contradictory native joins prevent any commercial conclusion.
+
+New plans predeclare the finite-allocation policy. Native validation independently
+recomputes exact rate extrema at all-U-control/all-U-challenger using fixed actual
+positive spend. Retain requires lower>1 and every O(U) pessimistic quality allocation
+to pass; revert needs finite upper<1. Observed assessment minimum5, coverage1/2,
+gap1/5 and unsuitable guards use integer comparisons. Concrete unassigned adverse
+signals veto retention. Zero control concerns with U>0 cannot retain. Missing or
+unbounded pools, invalid joins, incomplete delivery or overlapping bounds abstain.
+No records are assigned to a cell by these hypothetical sensitivity calculations.
+
+Receipt v2 binds its exact frozen source pool/conflicts/quality availability;
+legacy v1 remains readable and immutable. History v3 retains coverage, matched
+counts, null spend and the new sensitivity interval separately from CPE. Existing
+latest4/all64 exclusion limits and admission locks remain. Paired Velt015 accepts
+this same aggregate contract. These migrations depend on all prior unpublished
+formal/retention layers; operator review and current-main integration remain.
+The independent-enquiry/rate-per-dollar assumptions are unchanged. Unrecorded
+outcomes and latent adverse events are not established absent. Steady retained-ad
+inventory/reporting/attribution integration remains a separate release requirement.
+
+## Retained creative serving (uninstalled local continuation)
+
+`20261022050011_creative_retention.sql` extends the existing private intent and
+receipt enums, with one unique retained effect per experiment/kind. It adds no
+table, scheduler or access grant. Mirrored `retention-policy` and Source authority
+validate exact mature retain results, native acceptance and fresh serving proofs.
+The existing global acquisition lock/reservation serializes create, predecessor
+pause, activation, rollback and restore. Finished serving releases that reservation.
+Four original donors may each have one registered winner; a new experiment must
+use that donor's exact current winning control/tracking. Originals are never targets.
+
+Both test ads require settled cleanup and fresh PAUSED proof. A new PAUSED owned
+ad reuses the winning creative without schedule edits. Unknown dispatch is consumed;
+exact ID readback reconciles, never another create. Final receipt replay is immutable.
+Abort replay returns its immutable receipt without reserving again. New rollback
+of reverted or superseded winners is denied; only the current donor lineage can
+start a rollback after its original experiment reservation has been released.
+Rollback cannot change a comparator beneath a dependent reservation. The native
+fixture's old proposal expiry demonstrates that maturation creates no renewal gate;
+current Source/global/generation/template/native admission still governs effects.
+Actual provider schedule representation/allocation, full approved video mapping,
+and steady retained-ad inventory/reporting integration remain separate gaps.
+
+## Creative terminal learning (uninstalled local continuation)
+
+Migration 20261022050010_creative_learning.sql wraps the existing executor with
+an authenticated history stage and locked duplicate admission check. It adds no
+table, endpoint or provider effect. A private helper joins immutable execution
+and analysis rows by plan hash, exact scope/originals/native method/donor/template
+and whole control (including media). All scoped rendered-primary JSON-string
+hashes remain exclusion authority; the latest four public hook prefixes and arm
+aggregates are display/learning context only. History version 2 includes exact
+all-saved coverage and the bounded sum of unknown-attribution/unresolved-late
+records; matched/consented enquiry zeros are never all-saved evidence by default.
+Over 64 distinct copies returns
+incomplete coverage and denies new preparation. Exact prepared-plan replay keeps
+its existing immutable identity checks. Application roles cannot call the helper
+or bypass wrapper. Deploy paired compatible consumers before this migration.
+Existing 50001-50003 and all production data remain unchanged by local work.
+
+## Authored landing copy (uninstalled continuation)
+
+`20261021050009_landing_authored_copy.sql` extends the existing command, copy-map
+constraints and private text helpers for bounded approved-vocabulary plain text
+in design/help/support slots. It preserves original controls and immutable
+command identities. Authored capacity is limited to32 distinct failed alternatives
+per baseline, exposed with bounded exclusions to prevent forgotten repeats.
+Helpers revoke application execution; the established command remains the only
+service boundary. Compatible Source/Velt consumers and exact reviewed template
+binding precede installation. Deployed50001-50003 are unchanged.
+
+Formal local50007 gates activation proofs and50008 freezes72-hour mature analysis
+and acknowledgment. This is local implementation, not production schema evidence;
+creative retained serving remains unfinished.
+
+## Creative native account proof (uninstalled continuation)
+
+`20261021050006_creative_native_acceptance.sql` adds RLS-protected, immutable
+`meta_creative_native_acceptance` and `meta_creative_native_revocations`, with no
+application table grants. Private insert guard and lookup are revoked from all
+application roles; the existing authenticated executor read returns only the
+matching current unrevoked proof. No identity sequence or provider-effect route
+is added. Consumer-before-migration ordering and separately reviewed operator
+provisioning are required. Existing capability migrations remain unchanged.
+
+## Authored landing copy (22 October 2026)
+
+`20261021050009_landing_authored_copy.sql` extends the existing landing command,
+slot/text/map validation, constraints and bounded read receipt. It introduces
+no tables or endpoint. It preserves the control map, existing command identities,
+generation/cadence/publication gates and acquisition reservation. Durable scoped
+failed-copy exclusion and a 32-distinct-authored cap prevent fresh evidence from
+repeating earlier inconclusive candidates or reopening a truncated history.
+
+Private `landing_copy_identity` and `landing_control_identity` compare exact
+rendered slot/text, filling omitted control slots with their original text.
+Finite/authored aliases share a comparison identity in read, prepare and the
+authored exploration cap. Raw immutable copy/control fields are never rewritten;
+distinct text remains eligible and semantic similarity is not inferred.
+`supabase/tests/landing_authored_copy.sql`, `landing_copy_identity.sql` and the native ledger harness verify
+this over the already deployed 50001-50003 schema, without formal 50004-50008.
+
+Release both compatible consumers before installing this additive contract and
+rebinding the stopped landing control to the exact reviewed template. Preserve
+the original control maps and all histories/counters. Recovery uses the existing
+stop/rollback/readback commands and generation fence; do not revert to a consumer
+that cannot parse retained authored copy. Installation and hosted measurement
+remain separate acceptance evidence from local tests.
 ## Historical designer and explicit test corrections
 
 `20261022010001_designer_history_support.sql` extends the existing private
@@ -291,6 +530,26 @@ fences; deleting reports never clears credential uncertainty. The migration
 starts disabled and its purge requires real pg_cron. Source actor/credentials
 are separately provisioned after paired Velt direct-writer exclusion is proven.
 See `testing-and-qa.md` for native and rollback-only exact-schema evidence.
+
+`20261022013028_ga4_pre_token_settlement.sql` replaces only the existing GA4
+command's failure-finalisation policy. Proven pre-token working failures may
+become terminal `report_failed` with their pending evidence preserved; the same
+lock fences stale continuation. Already uncertain operations and all uncertain
+token/write effects remain operator-owned. There are no new tables, columns,
+grants, enabled controls, credential stores or automatic retries.
+
+`20261022030852_ga4_vercel_credentials.sql` adds explicit credential mode and
+binding to the existing control and frozen operations, plus finite transfer metadata
+on the control. Report authority and snapshot rows are unchanged. Honest
+`credential_read` boundaries replace vault steps only for Vercel claims. The
+service-role-only `sanctuary_ga4_credential_transfer` RPC accepts fixed source,
+nonce and receipt metadata, never credentials or caller-selected destinations.
+Its install intent and terminal pre-install failure share the lifecycle advisory
+lock; transfer events remain append-only. The credential-change trigger permits
+only a verified vault-to-Vercel cutover with unchanged source/report authority,
+an exact installed receipt and no unresolved operations. No new credential table,
+secret column, direct table grant or automatic recovery is introduced. See the
+Vercel credential storage section in `environment-auth-supabase.md`.
 
 ## Meta source ownership candidate
 
@@ -693,6 +952,14 @@ Migration source:
 - `supabase/migrations/20260818000001_rehome_sent_manual_variation.sql` rehomes one known sent variation from an already-accepted base family into an independent add-on family after strict no-acceptance/no-invoice precondition checks; the application prevents recurrence by scoping post-acceptance manual creates independently. It was exact-file applied to positively identified production on 2026-08-18 after a completed physical-backup check in the same controlled commercial rollout window and two rollback rehearsals, including a full acceptance/invoice proof with mocked reference allocators. The canonical-LF SHA-256 is `4f012c0b0884036e72e350065f945836cf8faf3e74de3f136f16067d094cf508`; the Windows/ledger CRLF body is 3,329 bytes with SHA-256 `fc805f0a9bc1ab5bf73e1050da651246e4896fb8ae271c7f250f9aff1ca530ea`. Postflight matched the stored body, independent scope, version `1`, one repair audit event, `SENT` status, and zero invoices; no acceptance or customer email was committed.
 - `supabase/migrations/20260811000001_commercial_internal_names.sql` adds bounded staff-only names to estimates and quote families without backfilling historical rows. It was exact-file applied to production on 2026-08-11; postflight verified both columns, constraints, PostgREST visibility, zero backfilled names, and the unique migration-ledger entry.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
+
+The forward migration `20261022020001_acceptance_date_reconciliation.sql` replaces
+only `commercial_reconcile_paid_stage_trigger()`, retaining its security, grants
+and callers. A NULL-to-date fill on an already-ACCEPTED version skips financial
+reopening only when all other fields except `updated_at` are unchanged. Existing
+date edits/removal and real lifecycle/financial changes retain reconciliation.
+No schema, write permission or business-data backfill is added. See
+[historical date correction](quotes-invoices-job-packs.md#historical-acceptance-date-correction).
 
 ## Schedule, Site Visits, And Running Jobs
 
@@ -1205,3 +1472,35 @@ mandatory. No production migration or capability is implied by fixture passes.
 Migration 20261022090001_project_sharepoint_files adds private project_files_control, project_file_roots, project_folder_provisions and project_file_events. RLS and revoked direct grants preserve the boundary. User-bound project_files_read rechecks active confirmed staff/admin membership; service-only project_files_admin imports explicit evidence-backed roots and project_files_provision manages leased attempts. A dark insert trigger queues only future projects atomically. See [Project SharePoint files](project-sharepoint-files.md).
 
 Project deletion cascades only local bindings/provisioning rows. A private deletion trigger snapshots root/job evidence before cleanup; audit project UUIDs intentionally survive without a live-project FK. No provider file deletion is dispatched. Late completion cannot resurrect deleted project metadata, and completion locks parent before job to match deletion order. The disposable migration contract covers imported, completed, pending and running deletion.
+
+## Steady creative inventory candidate (22 October 2026)
+
+Forward migration `20261022050013_creative_steady_inventory.sql` follows the
+formal retention and ambiguity migrations. It keeps the immutable two native arms
+and their historical windows intact. The existing reporting RPC gains version 2
+with separate experimental and steady arrays. Steady rows include every known
+owned retained ad, its original donor/creative/scope, current-winner flag and
+confirmed serving intervals. Paused, superseded and reverted objects remain in
+the inventory; an arbitrary provider extra still fails closed. The private
+helpers introduce no endpoint, credentials, provider calls or public table grants.
+
+Serving begins at confirmed activation (including restore_previous), ends at
+the first subsequent owned pause dispatch, and is unknown after an uncertain
+effect. Prepared-only pause admission does not close an interval. Exact ad
+identity spans predecessor/successor experiments. Under the existing global
+acquisition lock, new ad creates count confirmed plus in-flight objects against
+40 owned ads; formal prepare requires room for both arms and a possible winner.
+At capacity new preparation stops, while cleanup/reconciliation remains usable.
+At most four current winners remain separate from this all-owned bound.
+
+The existing consented visit table adds delivery_kind; only steady receipts have
+a null arm. Canonical enquiry intake is preserved even when attribution is
+missing, expired, revoked, conflicting or outside confirmed serving. A valid
+receipt may support a late return within 28 days after pause. Steady saved
+outcomes and proven outside-test cohort rows require exact raw/normalized tags,
+path and both consents. Frozen cohorts remain byte-identical.
+
+Deploy compatible Portal/Marketing and Velt consumers before installing 50013.
+The public transport dependency changes the generated landing template hash, so
+review serving compatibility before any later activation. This is local source
+work, not evidence of installed schema, provider acceptance or live delivery.

@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
+import { projectWorkReadFunction } from '@/components/projects/ProjectPage/projectWorkInitialRead';
+import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import ProjectPageFrame from "@/components/projects/ProjectPage/ProjectPageFrame";
+import { useProjectFilesPreparation } from '@/components/projects/ProjectPage/useProjectFilesPreparation';
 import ProjectSnapshotNotice from "@/components/projects/ProjectPage/ProjectSnapshotNotice";
 import { useProjectTabSelection } from "@/components/projects/ProjectPage/useProjectTabSelection";
 import { ProjectOverviewReadsProvider, useProjectOverviewReads } from "@/components/projects/ProjectPage/ProjectOverviewReads";
@@ -42,12 +46,14 @@ export default function ProjectSnapshotPageClient({
   estimateId: initialEstimateId,
   calculatorWorkspace: initialCalculatorWorkspace = false,
   debugExportEnabled,
+  initialRead,
 }: {
   projectId: string;
   tab: string;
   estimateId: string | null;
   calculatorWorkspace?: boolean;
   debugExportEnabled: boolean;
+  initialRead?: ProjectWorkInitialRead;
 }) {
   // Native tab/history navigation updates the live query without a server render.
   // Workspace chrome and debug identity must follow that query too.
@@ -57,6 +63,8 @@ export default function ProjectSnapshotPageClient({
   const calculatorWorkspace = currentTab === null ? initialCalculatorWorkspace : currentTab === 'estimates'
     && Boolean(estimateId || currentSearchParams.get('fromEstimateId') || currentSearchParams.get('newDesign') === '1');
   const queryClient = useQueryClient();
+  const { user } = usePortalSession();
+  const ownerId = user?.id ?? null;
   const [projectAccess, setProjectAccess] = useState<{
     projectId: string;
     status: number;
@@ -74,13 +82,17 @@ export default function ProjectSnapshotPageClient({
     [host, projectId, queryClient],
   );
 
+  const summaryOptions = projectPageSummaryQueryOptions(host, projectId);
+  const snapshotOptions = projectPageSnapshotQueryOptions(host, projectId);
   const summaryQuery = useQuery({
-    ...projectPageSummaryQueryOptions(host, projectId),
+    ...summaryOptions,
+    queryFn: projectWorkReadFunction(queryClient, summaryOptions.queryKey, 'summary', host, projectId, ownerId, summaryOptions.queryFn!, initialRead),
     enabled: !cachedSummary && projectAccessStatus === null,
   });
 
   const snapshotQuery = useQuery({
-    ...projectPageSnapshotQueryOptions(host, projectId),
+    ...snapshotOptions,
+    queryFn: projectWorkReadFunction(queryClient, snapshotOptions.queryKey, 'snapshot', host, projectId, ownerId, snapshotOptions.queryFn!, initialRead),
     placeholderData: cachedSummary ?? summaryQuery.data,
     enabled: projectAccessStatus === null,
   });
@@ -99,11 +111,13 @@ export default function ProjectSnapshotPageClient({
   );
   const overviewReads = useProjectOverviewReads(
     host, projectId, navigation.activeTab === "activity" && projectAccessStatus === null,
+    initialRead ? { read: initialRead, ownerId } : undefined,
   );
   const readAccessStatus = [summaryQuery.error, snapshotQuery.error, overviewReads.commandQuery.error, overviewReads.paymentQuery.error]
     .find((error) => error instanceof ApiError && [401, 403, 404].includes(error.status));
   const readAccessEndingStatus = readAccessStatus instanceof ApiError ? readAccessStatus.status : null;
   const accessUnavailable = projectAccessStatus !== null || readAccessEndingStatus !== null;
+  useProjectFilesPreparation(projectId, host, !calculatorWorkspace && !accessUnavailable);
   const handleProjectAccessEnding = useCallback(
     (status: number) => {
       if (![401, 403, 404].includes(status)) return;

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { projects } from '../apps/marketing/data/projects';
+import { getProjectCaseStudyHero } from '../apps/marketing/app/projects/projectSeo';
 
 const initialProject = projects.find(
   ({ slug }) => slug === 'goodhome-commercial-terrace',
@@ -53,7 +54,7 @@ for (const width of [390, 1440, 1920]) {
   await page.goForward(); await expectProjectReady(page,targetProject.slug);
   const next=projects[(projects.indexOf(targetProject)+1)%projects.length]!;
   await page.locator('[data-next-project] a').press('Enter'); await expectProjectReady(page,next.slug);
-  if (width >= 900) { await expect(page.locator('h1')).toBeFocused(); await page.keyboard.press('Tab'); await expect(page.getByRole('link',{name:'Discover the project'})).toBeFocused(); }
+  if (width >= 900) { await expect(page.locator('h1')).toBeFocused(); await page.keyboard.press('Tab'); await expect(page.getByRole('link',{name:'Discuss a similar project'}).first()).toBeFocused(); }
   await expect(page.locator('h1')).toBeInViewport();
  });
 }
@@ -74,7 +75,7 @@ test('native links work without JavaScript',async({browser},testInfo)=>{
 });
 test('the current project remains intact until the incoming hero is decoded', async ({ page }) => {
   await page.setViewportSize({ width: 1_440, height: 900 });
-  const targetHero = targetProject.caseStudyHeroImage ?? targetProject.heroImage;
+  const targetHero = getProjectCaseStudyHero(targetProject);
   const targetFile = targetHero.src.split('/').at(-1)!;
   let delayedTargetRequest = false;
   let releaseTargetRequest = () => undefined;
@@ -195,7 +196,7 @@ for (const width of [390,1440]) test('finder brief survives project switching, e
  const finderHref=page.url();await page.locator('[data-project-evidence="warkworth-outdoor-room"]').getByRole('link',{name:'View project'}).click();
  await expect(page.locator('[data-project-next]')).toHaveAttribute('href',/project=bespoke/);
  await page.locator('[data-project-next]').click();await expect(page.locator('h1')).toHaveText('Mt Maunganui Box');
- const projectHref=page.url();await page.getByRole('link',{name:/Send project brief/}).click();
+ const projectHref=page.url();await page.getByRole('link',{name:'Discuss a similar project'}).first().click();
  const enquiry=JSON.parse(await page.locator('#contact-form input[name="enquiryContext"]').inputValue());expect(enquiry).toMatchObject({source_project:'mt-maunganui-box',project_direction:'bespoke',source_experience:'project-finder-home-v1'});
  await page.goBack();await expect(page).toHaveURL(projectHref);await expect(page.locator('h1')).toHaveText('Mt Maunganui Box');await page.goBack();await expect(page.locator('h1')).toHaveText('Warkworth Outdoor Room');
  await page.goBack();await expect(page).toHaveURL(finderHref);await expect(page.getByRole('radio',{name:/Custom design/})).toBeChecked();
@@ -217,11 +218,16 @@ test('mobile opening prioritises project name and substantial image',async({page
   expect((await nav.boundingBox())!.height).toBeLessThanOrEqual(58);
   const next=page.locator('[data-project-next]');await expect(next).toHaveAccessibleName(/^Next project: /);
   expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-  const title=page.locator('h1'),image=page.locator('.project-case-study__hero img'),summary=page.locator('.project-case-study__intro > div').last();
+  const title=page.locator('h1'),image=page.locator('.project-case-study__hero img');
   await expect(image).toBeVisible();const titleBox=(await title.boundingBox())!,imageBox=(await image.boundingBox())!;
-  expect(imageBox.y).toBeGreaterThan(titleBox.y+titleBox.height);expect(imageBox.y).toBeLessThan(360);
-  expect(Math.min(630,imageBox.y+imageBox.height)-imageBox.y).toBeGreaterThan(220);
-  expect((await summary.boundingBox())!.y).toBeGreaterThan(imageBox.y+imageBox.height);
+  expect(imageBox.y).toBeGreaterThan(titleBox.y+titleBox.height);
+  const action = page.getByRole('link', { name: 'Discuss a similar project' }).first();
+  await expect(action).toBeInViewport();
+  const actionBox = (await action.boundingBox())!;
+  expect(actionBox.y + actionBox.height).toBeLessThan(imageBox.y);
+  expect(imageBox.height).toBeGreaterThan(220);
+  const brief = page.locator('#project-story');
+  expect((await brief.boundingBox())!.y).toBeGreaterThan(imageBox.y + imageBox.height);
   await page.screenshot({path:'artifacts/marketing-foundation-evolution/project-mobile-'+slug+'.png'});
  }
 });
@@ -234,7 +240,7 @@ for (const width of [390,1440]) test('collection return belongs only to its navi
  const nextHref=await page.locator('[data-project-next]').getAttribute('href');await page.locator('[data-project-next]').click();await expect(page).toHaveURL(new URL(nextHref!,page.url()).href);
  await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects?audience=residential');
  await page.reload();await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects?audience=residential');
- const detail=page.url();await page.getByRole('link',{name:/Send project brief/}).click();await expect(page.locator('#contact-form')).toBeVisible();await page.goBack();await expect(page).toHaveURL(detail);
+ const detail=page.url();await page.getByRole('link',{name:'Discuss a similar project'}).first().click();await expect(page.locator('#contact-form')).toBeVisible();await page.goBack();await expect(page).toHaveURL(detail);
  await expect(page.locator('[data-all-projects]')).toHaveAttribute('href','/projects?audience=residential');await page.locator('[data-all-projects]').click();
  await expect(page.getByLabel('Filter by audience')).toHaveValue('residential');await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeCloseTo(scroll,0);
  await page.locator('[data-project-card]').first().click();await page.getByRole('link',{name:'Sanctuary Pergolas home'}).click();

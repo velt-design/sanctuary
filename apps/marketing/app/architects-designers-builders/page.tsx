@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
-import AudienceLandingPage from '@/components/seo-landing/AudienceLandingPage';
+import SeoLandingPage from '../../components/seo-landing/SeoLandingPage';
+import { ProfessionalHero, ProfessionalContent } from './ProfessionalPresentation';
+import styles from './professionals.module.css';
 import {
   resolveGuidedJourneyContext,
   type GuidedJourneySearchParams,
-} from '@/lib/guidedJourneyContext';
+} from '../../lib/guidedJourneyContext';
 import { professionalCapabilityConfig } from './content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import '../../components/seo-landing/seo-landing.css';
@@ -48,5 +50,5 @@ export default async function ArchitectsDesignersBuildersPage({
     'professional',
     searchParams ? await searchParams : {},
   );
-  return <AudienceLandingPage audience="professional" config={professionalCapabilityConfig} guidedContext={guidedContext} />;
+  return <SeoLandingPage config={professionalCapabilityConfig} guidedContext={guidedContext} presentation={{ className: styles.page, hero: <ProfessionalHero />, content: <ProfessionalContent /> }} />;
 }

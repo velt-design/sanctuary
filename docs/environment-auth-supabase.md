@@ -114,10 +114,14 @@ Ceilings of 200 profile groups, 400 range-expanded rows and 200 union groups are
 unproven live fit. EventName consumes groups too. There is no pagination or
 arbitrary query, alpha API, browser tracker or direct compatibility fallback.
 
-A validated row limit permits complete fresh core/stages and strict acquisition
-unavailable with no metric cells. Genuine unattempted capability has a separate
-closed reason; provider failures cannot be recast as that reason. Unexpected
-auth/provider/body/transport/deadline/authority/effect failures preserve the old
+A validated row limit permits fresh validated core/stages and strict acquisition
+unavailable with no metric cells. A successfully received acquisition JSON batch
+that fails its schema, profile, privacy or completeness validation also leaves
+only validated core/stages, with `compatibility_unproven` and no acquisition rows.
+This is a partial report, not proof of complete acquisition coverage. The parser
+still rejects all unsafe values; none are returned, persisted or logged.
+Auth/provider HTTP/body decoding/transport/deadline/authority/effect failures,
+core validation and final normalization failures preserve the old
 snapshot and existing effect/quarantine semantics. Sampling, thresholding and
 other row loss retain selected limited observations with comparisons/rankings
 suppressed. Missing stays null; observed zero remains zero. First-edit coverage
@@ -132,6 +136,14 @@ credential enters this log. Durable evidence still records only the existing
 unavailable outcome; generic HTTP responses and retention are unchanged. This
 diagnostic does not recover causes omitted from historical logs or authorize a
 refresh, retry, privacy exception or additional provider request.
+
+An acquisition-only validation limitation emits
+`sanctuary_ga4_acquisition_unavailable` with fixed stage, validation category and
+HTTP status. It never logs provider values or detailed schema issues. The catch
+surrounds only synchronous acquisition parsing after both bounded requests and
+validated core, with cancellation checked before retaining core and returning.
+Unknown exceptions remain fatal. The historical response-schema failure cannot
+identify its exact rejected field because its raw response was not retained.
 
 The additive retained-authority HTTP action is a local candidate (21 October).
 `GET ?action=authority` uses the same Praxis bearer/source identity and existing
@@ -149,7 +161,8 @@ bounded metadata admission and a hard display deadline of at most 60 seconds.
 Release the additive source action before that consumer. Local fixtures do not
 establish deployed capability or current provider coverage.
 
-Source configuration requires `SANCTUARY_GA4_REPORTS_ENABLED=true`,
+Legacy vault configuration (the default when credential store is unset) requires
+`SANCTUARY_GA4_REPORTS_ENABLED=true`,
 `SANCTUARY_GA4_ACTOR_ID`, `SANCTUARY_GA4_PROPERTY_ID`,
 `SANCTUARY_GA4_BINDING_SHA256`, `SANCTUARY_GA4_VAULT_ID`,
 `SANCTUARY_GA4_CREDENTIAL_ITEM_ID`, `SANCTUARY_GA4_CLIENT_ID`,
@@ -193,6 +206,70 @@ writes, so runtime never retries them. Before re-enabling or restoring Velt's
 direct collector, reconcile source operation evidence and the current vault item.
 Application roles cannot release quarantine or change the source control.
 No new schedule, subscription, customer-data write or Google permission is added.
+
+Forward migration `20261022013028_ga4_pre_token_settlement.sql` lets the existing
+failure finalizer settle a working operation as `report_failed` only when its
+ordered ledger proves no token-refresh intent began, or credential effects are
+already settled. It leaves pending-step evidence intact. The same advisory lock
+and terminal-status fence reject any late result or later token intent from that
+executor. Token-refresh/write uncertainty remains quarantined, including after
+expiry or Stop. Existing `uncertain` operations still require a separately
+verified operator reconciliation; this migration does not release them.
+
+Vault auth/read failures emit only fixed stage/code enums in the private
+`sanctuary_ga4_vault_failure` log. Known SDK auth-expired/rate-limit classes,
+timeouts and item validation are distinguished without SDK messages, item fields,
+credentials or identifiers. This observes an existing attempt and never retries.
+Historical omitted causes remain unknown. Recovery of a pre-token operation
+restores eligibility to read the unchanged saved report; it does not establish
+working vault access or authorize another collection.
+
+### Vercel credential storage
+
+The explicit `SANCTUARY_GA4_CREDENTIAL_STORE=vercel` mode requires
+`VERCEL_ENV=production`, the existing actor/property/report binding/client ID and
+client secret, and `SANCTUARY_GA4_REFRESH_TOKEN`. Provision the refresh token as a
+sensitive production-only environment variable on the Source Portal project.
+It is never browser-prefixed, returned, logged or written to a local file. Normal
+reporting in this mode does not construct or call the vault adapter. Access tokens
+remain in request memory. Legacy vault mode and its real versioned rotation
+writes remain supported for unchanged configuration.
+
+Forward migration `20261022030852_ga4_vercel_credentials.sql` separates credential
+mode/binding from existing report authority. The binding includes production,
+actor, property, client credentials, refresh token and existing report binding;
+only its digest reaches the private lifecycle ledger. Each claim freezes it and
+SQL checks subsequent effect boundaries. Vercel mode records `credential_read`
+intent/result, never synthetic vault authentication, reads or versions. Missing
+configuration fails before claim. Proven pre-token failures settle with terminal
+fencing; token uncertainty remains quarantined. Same-token echoes do not require
+persistence. A genuinely different refresh token is recorded as unresolved rotation
+and stops before property/report access. The private log contains only
+`rotation_requires_recovery`. The replacement cannot be retained after the request
+in this immutable environment mode: explicit secure credential recovery is required.
+No automatic vault fallback, Vercel management credential or retry is introduced.
+
+The one-purpose `/api/integrations/praxis/ga4-credential-transfer` route is admitted
+only on an exact protected production-target deployment at its `VERCEL_URL` and
+commit SHA. A finite nonce hash plus transient operator platform token authorizes
+one fixed cloud-to-cloud installation. It verifies the existing actor, source,
+control hash, vault/item and destination absence, then reads the existing item
+once and creates only the production-sensitive refresh-token key. It never calls
+Google or returns a token. SQL serializes transfer admission and install intent
+against normal claims; its fixed metadata uses the existing control and append-only
+event tables. A proven pre-install failure terminalizes and fences late execution;
+possible installs remain unconfirmed and cannot retry or reopen merely on expiry.
+
+Release order: install reviewed forward SQL, create the protected production-target
+transfer deployment without assigning custom domains, admit and perform the single
+transfer, verify its installed receipt, set the explicit mode and deploy the final
+normal application pair with the new environment. Perform the guarded control
+cutover against the exact installed receipt and unchanged control with no unresolved
+operations. Old deployments cannot claim after cutover. Saved body/authority retain
+their original binding, generation, operation, hash and expiry throughout transfer
+and cutover. Stop, deletion and independent credential uncertainty remain authoritative.
+Remove transfer admission after use. A failed or unknown transfer needs evidence-led
+operator reconciliation, never blind replay or an automatic return to the vault.
 
 ## Organisation finance candidate gates
 

@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createGraph } from './graph';
 import type { SharePointConfig } from './config';
+import type { ProjectFilesPhase } from './timing';
+afterEach(() => vi.restoreAllMocks());
 const cfg: SharePointConfig = { tenantId: '11111111-1111-4111-8111-111111111111', clientId: '22222222-2222-4222-8222-222222222222', driveId: 'drive', enquiriesItemId: 'enquiries', hostname: 'fixture.sharepoint.com', siteUrl: 'https://fixture.sharepoint.com/sites/Jobs', binding: 'a'.repeat(64), provisionEnabled: true };
 const folder = (id: string, parent = 'root') => ({ id, name: id, folder: {}, parentReference: { id: parent, driveId: 'drive' } });
 const file = { id: 'file', name: 'design.3dm', file: { mimeType: 'application/octet-stream' }, parentReference: { id: 'root', driveId: 'drive' } };
@@ -10,6 +12,60 @@ function mock(...responses: (object | Response)[]) {
   return fetcher;
 }
 describe('Jobs Graph boundary', () => {
+  it('reuses only the bearer while freshly validating the library and source, invalidating on source denial', async () => {
+    const assertion = `header.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 7200 })).toString('base64url')}.signature`;
+    let tokens = 0, libraries = 0, deny = false;
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes('/oauth2/')) { tokens++; return Response.json({ access_token: 'opaque-provider-token', token_type: 'Bearer', expires_in: 3600 }); }
+      if (url.includes('/drive/root?')) {
+        libraries++; return deny ? new Response(null, { status: 403 }) : Response.json({ id: 'drive-root', name: 'Documents', folder: {}, parentReference: { driveId: 'drive' }, webUrl: cfg.siteUrl + '/Shared%20Documents' });
+      }
+      return Response.json(url.includes('/children') ? { value: [file] } : folder('root'));
+    }) as unknown as typeof fetch;
+    for (let i = 0; i < 2; i++) await (await createGraph(cfg, assertion, AbortSignal.timeout(5000), fetcher)).children('root', 'root');
+    expect(tokens).toBe(1); expect(libraries).toBe(2);
+    expect((fetcher as any).mock.calls.filter(([url]: [string]) => url.includes('/items/root?'))).toHaveLength(2);
+    deny = true;
+    await expect(createGraph(cfg, assertion, AbortSignal.timeout(5000), fetcher)).rejects.toMatchObject({ code: 'access_required' });
+    deny = false;
+    await createGraph(cfg, assertion, AbortSignal.timeout(5000), fetcher);
+    expect(tokens).toBe(2); expect(libraries).toBe(4);
+  });
+
+  it('keeps request order, options, results and cursor denial identical with optional observation', async () => {
+    const run = async (observed: boolean, cursor?: string) => {
+      const fetcher = mock(folder('leaf', 'middle'), folder('middle'), folder('root'), { value: [{ ...file, parentReference: { id: 'leaf', driveId: 'drive' } }] });
+      const phases: ProjectFilesPhase[] = [], signal = AbortSignal.timeout(1000);
+      const graph = await createGraph(cfg, 'oidc', signal, fetcher, observed ? phase => { phases.push(phase); throw new Error('unavailable observer'); } : undefined);
+      let result: unknown; try { result = await graph.children('root', 'leaf', cursor); } catch (error) { result = { code: (error as { code: string }).code, status: (error as { status: number }).status }; }
+      const calls = fetcher.mock.calls.map(([url, options]) => ({ url, ...options, signal: options.signal === signal, body: options.body?.toString() }));
+      return { result, calls, phases };
+    };
+    const plain = await run(false), observed = await run(true);
+    expect(observed.result).toEqual(plain.result); expect(observed.calls).toEqual(plain.calls);
+    expect(observed.calls.map(call => new URL(call.url).pathname)).toEqual([
+      `/${cfg.tenantId}/oauth2/v2.0/token`, '/v1.0/drives/drive/root', '/v1.0/drives/drive/items/leaf', '/v1.0/drives/drive/items/middle', '/v1.0/drives/drive/items/root', '/v1.0/drives/drive/items/leaf/children',
+    ]);
+    expect(observed.phases).toEqual(['token', 'library', 'ancestry', 'children']);
+    const cursor = Buffer.from('https://graph.microsoft.com/v1.0/drives/other/items/leaf/children').toString('base64url');
+    const denied = await run(false, cursor), deniedObserved = await run(true, cursor);
+    expect(deniedObserved.result).toEqual({ code: 'invalid_request', status: 400 });
+    expect(deniedObserved.result).toEqual(denied.result); expect(deniedObserved.calls).toEqual(denied.calls);
+    expect(deniedObserved.calls).toHaveLength(5);
+  });
+
+  it('includes JSON body reading in token, library, ancestry and children durations', async () => {
+    let clock = 0, index = 0; vi.spyOn(performance, 'now').mockImplementation(() => clock);
+    const bodies = [{ access_token: 'synthetic-token', token_type: 'Bearer' }, { id: 'drive-root', name: 'Documents', folder: {}, parentReference: { driveId: 'drive' }, webUrl: cfg.siteUrl + '/Shared%20Documents' }, folder('root'), { value: [file] }];
+    const fetcher = vi.fn(async () => {
+      const body = bodies[index], delay = ++index * 10; clock += 2;
+      return new Response(new ReadableStream({ pull(controller) { clock += delay; controller.enqueue(new TextEncoder().encode(JSON.stringify(body))); controller.close(); } }, { highWaterMark: 0 }));
+    }) as unknown as typeof fetch;
+    const phases: [ProjectFilesPhase, number][] = [];
+    const graph = await createGraph(cfg, 'oidc', AbortSignal.timeout(1000), fetcher, (phase, duration) => phases.push([phase, duration]));
+    await graph.children('root', 'root');
+    expect(phases).toEqual([['token', 12], ['library', 22], ['ancestry', 32], ['children', 42]]);
+  });
   it('checks ancestry and pages only within the configured drive and folder', async () => {
     const next = 'https://graph.microsoft.com/v1.0/drives/drive/items/root/children?$skiptoken=opaque';
     const fetcher = mock(folder('root'), { value: [file], '@odata.nextLink': next }, folder('root'), { value: [] });

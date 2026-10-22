@@ -15,6 +15,7 @@ import { DOCUMENT_CALLBACK_HEADER } from '@/lib/regionalDocumentAccess';
 import { hubFixture } from '@/app/qa/marketing-performance-fixture/hubFixtures';
 import type { HubReadResult } from '@/lib/marketingPerformance/initialHub';
 import { prepareProxyDocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
+import { expandReport } from '@/lib/marketingPerformance/columnarReports';
 const documentHeaders=()=>new Headers({accept:'text/html','sec-fetch-dest':'document',[DOCUMENT_CALLBACK_HEADER]:'/staff/marketing-performance?view=sales&start=2026-09-01&end=2026-09-22'});
 const owner={role:'staff',user:{email:'jordan@sanctuarypergolas.co.nz',email_confirmed_at:'2026-01-01'}};
 beforeEach(()=>{vi.unstubAllEnvs();vi.resetAllMocks();h.diagnostics.mockResolvedValue(null);h.headers.mockResolvedValue(new Headers());h.client.mockResolvedValue({rpc:vi.fn()});h.read.mockResolvedValue({ok:true,report:hubFixture});h.financial.mockResolvedValue({ok:false,status:503,error:'Unavailable'});});
@@ -40,7 +41,7 @@ it('starts a safe streamed read after authority without awaiting it or changing 
  expect(Object.keys(seed).sort()).toEqual(['end','result','start']);
  expect(page.props).not.toHaveProperty('initialFilters');
  let settled=false;void seed.result.then(()=>{settled=true;});await Promise.resolve();expect(settled).toBe(false);
- resolve({ok:true,report:hubFixture});expect(await seed.result).toEqual({ok:true,report:hubFixture});
+ resolve({ok:true,report:hubFixture});const value=await seed.result;expect(value.ok).toBe(true);expect(value.report.format).toBe('marketing-columns-v1');expect(expandReport('hub',value.report)).toEqual(hubFixture);
 });
 it('never starts the read before a staff/developer or preview denial',async()=>{
  h.headers.mockResolvedValue(documentHeaders());
@@ -100,14 +101,16 @@ it('times the complete client/read chains without awaiting or serializing the th
  expect(h.client).toHaveBeenCalledOnce();expect(h.read).toHaveBeenCalledOnce();expect(h.commercial).toHaveBeenCalledOnce();expect(h.designer).toHaveBeenCalledOnce();
  const failure={ok:false as const,status:503,error:'Safe unavailable result'};vi.advanceTimersByTime(20);commercialReady(failure);
  expect(await page.props.initialCommercialSeed.result).toBe(failure);
- const success={ok:true as const,report:hubFixture};hubReady(success);expect(await page.props.initialHubSeed.result).toBe(success);
+ const success={ok:true as const,report:hubFixture};hubReady(success);expect(expandReport('hub',(await page.props.initialHubSeed.result).report)).toEqual(hubFixture);
  expect(await page.props.initialDesignerSeed.result).toEqual({ok:false,status:503,error:'Unavailable'});
- const events=log.mock.calls.map(call=>call[1]);
+ const events=log.mock.calls.map(call=>call[1]).filter(event=>event.event==='portal.document.phase');
  expect(events).toEqual(expect.arrayContaining([
   expect.objectContaining({requestId:scope.id,phase:'marketing.hub',outcome:'complete',durationMs:60}),
   expect.objectContaining({requestId:scope.id,phase:'marketing.commercial',outcome:'error',durationMs:60}),
   expect.objectContaining({requestId:scope.id,phase:'marketing.designer',outcome:'error'}),
  ]));expect(events).toHaveLength(3);expect(JSON.stringify(events)).not.toMatch(/private connection|Safe unavailable|2026-09/);
+ const transport=log.mock.calls.map(call=>call[1]).filter(event=>event.event==='portal.document.transport');
+ expect(transport).toHaveLength(3);expect(transport).toEqual(expect.arrayContaining(['marketing.hub','marketing.commercial','marketing.designer'].map(operation=>expect.objectContaining({requestId:scope.id,operation,outcome:'not_observed'}))));
 });
 it('keeps public client-setup failures and results unchanged when diagnostic logging rejects',async()=>{
  observedOverview();vi.spyOn(console,'info').mockImplementation(()=>Promise.reject(new Error('logger failure')));
@@ -123,5 +126,5 @@ it('stops late Overview emits after expiry without retiring or rereading the rep
  let ready!:(result:HubReadResult)=>void;h.read.mockReturnValue(new Promise(yes=>{ready=yes;}));h.commercial.mockResolvedValue({ok:false,status:503});h.designer.mockResolvedValue({ok:false,status:503});
  const page=await Page();await Promise.all([page.props.initialCommercialSeed.result,page.props.initialDesignerSeed.result]);log.mockClear();
  vi.advanceTimersByTime(31);const result={ok:true as const,report:hubFixture};ready(result);
- expect(await page.props.initialHubSeed.result).toBe(result);expect(h.read).toHaveBeenCalledOnce();expect(log).not.toHaveBeenCalled();
+ expect(expandReport('hub',(await page.props.initialHubSeed.result).report)).toEqual(hubFixture);expect(h.read).toHaveBeenCalledOnce();expect(log).not.toHaveBeenCalled();
 });

@@ -1,5 +1,42 @@
 # Portal Production Readiness
 
+## Complete Work experiment (22 October 2026, local)
+
+The accepted local experiment starts the existing complete Work reads during
+the authenticated HTML request and shares command composition with snapshot only
+within that invocation. Its retained optimized `e267f583` baseline median is
+2,336 ms across five populated reloads, including enabled controls and completed
+snapshot data. The matched `f74c3fd2` candidate median is 1,379 ms (41.0% lower),
+with zero initial summary/snapshot/command/invoice browser GETs in all five runs.
+These are local warm-process staging data-delivery/control-readiness observations.
+All four streamed results finished before each candidate callback; the payment
+heading alone is not payment-value evidence. Separate ordinary and recovery
+checks verified values, independent errors, Retry, delayed tab choice, current-role
+denial and return. Nine compiled isolation/access/read-sharing checks and the
+independent local delivery review passed. The timing endpoint does not establish
+payment/history paint, hosted delivery or platform-cold performance.
+See the implementation map in
+`project-command-centre-architecture.md` and acceptance in `testing-and-qa.md`.
+Later integration retains this exact-source comparison as historical evidence;
+production release and the broader cold-start outcome remain open.
+
+## Saved Visits experiment (22 October 2026, local)
+
+The accepted local candidate starts the existing saved-calendar read after the
+Site Visits page's fresh staff gate, streaming it to the unchanged query owner
+without waiting to mount controls. The same API loader, polling, correction
+invalidation, scope filters, denial and recovery paths remain in use. It does not
+refresh Outlook or change provider/schema data. The optimized baseline is bound
+to `e267f583`; five comparable warm-process staging reloads reduced the populated
+agenda/enabled-controls median from 1,194 ms to 799 ms (33.1%). All five candidate
+loads made zero initial calendar API requests. Compiled delayed, denial, isolation,
+failure/Retry and scope-change checks and independent ordinary return review
+passed on runtime `906720df` (docs correction `c1abcf83`). This is not hosted or
+platform-cold evidence. See `schedule.md` for the
+implementation map and `testing-and-qa.md` for acceptance checks. Projects' prior
+results below remain bound to their original measurements; hosted/production and
+platform-cold outcomes remain open.
+
 ## First-load continuation (21 October 2026)
 
 PR233 released the request-local read optimization, expiring phase diagnostics
@@ -11,12 +48,40 @@ remained global despite correct generated single-region configuration. Earlier
 preview placement is not proof of production placement or a useful-load gain.
 The approved measurement windows are complete; no ongoing logging is implied.
 
-The next unreleased candidate under qualification moves session transport, not authority, for three
-canonical document routes. Root and explicit page gates retain fresh regional
-identity/current-role checks before private work. Compiled synthetic denial,
-refresh, streaming and concurrency proof must pass before protected qualification.
-See `staff-api-auth-contracts.md` and `testing-and-qa.md`. The original faster useful
-first-load outcome remains open; this candidate has not been released.
+PR241 released regional document verification for the three canonical routes.
+Root and explicit page gates retain fresh identity/current-role checks before
+private work. Compiled denial, refresh, streaming and concurrency checks passed;
+the closing independent review passed 56 checks. Retained ordinary production
+reload observations showed roughly 20–24% useful-load improvements on the measured
+journeys. These observations do not establish platform-cold startup performance.
+Current production was independently source-bound to main `ad7055b` on 21 October.
+
+The next local candidate starts the exact Projects index read on the verified
+server document path, then hands it to the mounted client query once. Current
+production request traces show the index API still starts after the document;
+this candidate targets that delay. It is not released. Controls must remain
+usable while the read is pending; filter changes, returns, retry and access loss
+retain ordinary fresh API behavior. See `projects-contacts-estimates-calculator.md`,
+`staff-api-auth-contracts.md` and `testing-and-qa.md`.
+
+The corrected local optimized candidate on base `ad7055b` reduced the same table-and-enabled-filter
+endpoint from a 1,614 ms baseline median to 956 ms across five reloads per version
+(40.8%). All five candidate reloads made zero initial index API requests. Both
+used the same authenticated staging identity/data, disabled HTTP cache and warm
+local processes. Eight compiled synthetic checks also passed for private-read
+ordering, delayed streaming, denial, isolation and avoiding RSC/prefetch reads.
+The first candidate failed this comparison because its native-Promise assumption
+did not match React Flight's thenable; its measurements were retained and the
+corrected adapter has a regression test. These are local mechanism and latency
+results, not production, platform-cold or all-route acceptance. The later local
+integration with main `70b8567` retains this evidence as historical comparison;
+its build and behavior checks do not establish a new integrated speed result.
+
+The broader faster first-load outcome remains open. Historical cold feedback
+measurements waited for document load before observing the shell and therefore
+did not identify its first paint. The 100 ms target is unchanged; correcting
+measurement alone cannot count as a speed gain. The accepted local Site Visits
+and Work evidence above does not establish hosted or platform-cold performance.
 
 
 Portal experience release completed through PR222 after Jordan requested "push

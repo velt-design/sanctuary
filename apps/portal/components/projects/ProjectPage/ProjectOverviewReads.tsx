@@ -1,7 +1,9 @@
 'use client';
 
 import { createContext, useContext, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
+import { projectWorkReadFunction } from './projectWorkInitialRead';
 import { projectCommandCentreQueryOptions } from '@/lib/queries/projects';
 import { qk } from '@/lib/queries/keys';
 import { loadProjectInvoiceSchedule } from '@/lib/repo/invoicesRepo';
@@ -18,16 +20,20 @@ function overviewProjectId(projectId: string): string {
 }
 
 /** One active observer per read, started before project metadata or lazy UI arrives. */
-export function useProjectOverviewReads(host: string, routeProjectId: string, enabled: boolean) {
+export function useProjectOverviewReads(host: string, routeProjectId: string, enabled: boolean, initial?: { read: ProjectWorkInitialRead; ownerId: string | null }) {
   // Raw UUID links and the returned snapshot must share the existing app-ID keys.
   const projectId = overviewProjectId(routeProjectId);
+  const client = useQueryClient();
+  const commandOptions = projectCommandCentreQueryOptions(host, projectId);
+  const paymentKey = qk.invoices.scheduleByProject(host, projectId);
   const commandQuery = useQuery({
-    ...projectCommandCentreQueryOptions(host, projectId),
+    ...commandOptions,
+    queryFn: projectWorkReadFunction(client, commandOptions.queryKey, 'command', host, routeProjectId, initial?.ownerId ?? null, commandOptions.queryFn!, initial?.read),
     enabled,
   });
   const paymentQuery = useQuery({
-    queryKey: qk.invoices.scheduleByProject(host, projectId),
-    queryFn: () => loadProjectInvoiceSchedule(projectId),
+    queryKey: paymentKey,
+    queryFn: projectWorkReadFunction(client, paymentKey, 'payment', host, routeProjectId, initial?.ownerId ?? null, () => loadProjectInvoiceSchedule(projectId), initial?.read),
     enabled,
   });
   useEffect(() => {

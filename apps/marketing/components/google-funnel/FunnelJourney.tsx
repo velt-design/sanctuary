@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { usePreviewDraft } from '../configurator-prototype/usePreviewDraft';
 import { buildContactDesignBrief } from '../../app/contact/contactDesignBrief';
 import ContactEnquiryForm from '../../app/contact/ContactEnquiryForm';
@@ -16,17 +16,8 @@ import { trackChannelAction } from '../../lib/channelDesignTracking';
 
 export default function FunnelJourney({ path, children, afterEnquiry, showPrivacyFooter = true }: { path: InlineFunnelPath; children: ReactNode; afterEnquiry?: ReactNode; showPrivacyFooter?: boolean }) {
   const state = usePreviewDraft();
-  const designer = useRef<HTMLElement>(null);
-  const [configuring, setConfiguring] = useState(false);
-  useEffect(() => {
-    const section = designer.current;
-    if (!section) return;
-    const observer = new IntersectionObserver(([entry]) => setConfiguring(entry.isIntersecting), { rootMargin: '-25% 0px -35% 0px' });
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
   const [attached, setAttached] = useState(false);
-  const { openBanner, consent, hasTrackingDecision } = useConsent();
+  const { openBanner, bannerOpen, consent, hasTrackingDecision } = useConsent();
   const allowed = hasTrackingDecision && consent.analytics;
   useEffect(() => {
     setAttached(state.hasChosenDraft);
@@ -42,7 +33,7 @@ export default function FunnelJourney({ path, children, afterEnquiry, showPrivac
   const meta = !isGoogleFunnelPath(path);
   function includeDesign() { setAttached(true); state.setRoof(state.roof); }
   return <>
-    <section ref={designer} className={styles.designer} data-configuring={configuring} id="your-design" aria-labelledby="design-title">
+    <section className={styles.designer} data-consent-open={bannerOpen} id="your-design" aria-labelledby="design-title">
       <header className={styles.designHeading}><h2 id="design-title">Explore your pergola.</h2><p>Choose a size and roof. See an installed estimate.</p></header>
       <div className={styles.designGrid}><FunnelControls state={state} onEdit={() => { setAttached(true); trackChannelAction('design_start', allowed); trackChannelAction('design_edit', allowed); }}>
         <div className={styles.priceAction}>

@@ -157,26 +157,20 @@ describe("ProjectWorkSection", () => {
     expect(rendered.container.textContent).not.toContain("Update follow-up tracking");
   });
 
-  it("keeps Work selected by default and opens Files inside the same card", () => {
+  it("keeps Overview work and links to the dedicated Files workspace", () => {
     const rendered = renderV2(projection());
-    const workTab = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
-      (tab) => tab.textContent === "Work",
-    ) as HTMLButtonElement;
-    const filesTab = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
-      (tab) => tab.textContent === "Files",
-    ) as HTMLButtonElement;
-
-    expect(workTab.getAttribute("aria-selected")).toBe("true");
-    expect(rendered.container.querySelector("#project-work-panel")).not.toBeNull();
-    expect(rendered.container.querySelector('[data-project-enquiry-files="true"]')).toBeNull();
-
-    act(() => filesTab.click());
-
-    expect(filesTab.getAttribute("aria-selected")).toBe("true");
-    expect(rendered.container.querySelector("#project-work-panel")).toBeNull();
-    expect(rendered.container.querySelector('[data-project-enquiry-files="true"]')?.textContent).toBe(
-      "Enquiry files",
-    );
+    const card = rendered.container.querySelector('[aria-label="Project Work"]')!;
+    const workTab = card.querySelector('[role="tab"][aria-controls="project-work-panel"]')!;
+    expect(workTab.getAttribute('aria-selected')).toBe('true');
+    expect(card.querySelector('#project-work-panel')).not.toBeNull();
+    expect(card.querySelector('[role="tab"][aria-controls="project-files-panel"]')).toBeNull();
+    expect(card.querySelector('#project-files-panel')).toBeNull();
+    const openFiles = card.querySelector<HTMLAnchorElement>('a[href="?tab=files"]')!;
+    const event = vi.spyOn(window, 'dispatchEvent');
+    act(() => openFiles.click());
+    expect(event).toHaveBeenCalled();
+    expect(card.getAttribute('data-project-work-panel')).toBe('work');
+    expect(card.querySelector('#project-work-panel')).not.toBeNull();
   });
 
   afterEach(() => {

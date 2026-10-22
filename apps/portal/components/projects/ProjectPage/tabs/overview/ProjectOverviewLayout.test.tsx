@@ -1,7 +1,12 @@
 import { act, useState } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../../test/reactHarness";
 import ProjectOverviewLayout from "./ProjectOverviewLayout";
+import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
+
+vi.mock("./ProjectSharePointFilesPanel", () => ({
+  default: () => <button type="button">Selected file preview</button>,
+}));
 
 describe("ProjectOverviewLayout", () => {
   afterEach(() => {
@@ -68,6 +73,31 @@ describe("ProjectOverviewLayout", () => {
       ),
     ).toBeNull();
 
+    rendered.unmount();
+  });
+
+  it("keeps Overview topology stable when opening the dedicated Files workspace", () => {
+    const rendered = renderIntoDocument(
+      <ProjectOverviewLayout
+        orientation={<input aria-label="Contact draft" defaultValue="Saved contact" />}
+        projectWork={<ProjectWorkFilesCard projectId="fixture" host="synthetic">Work actions</ProjectWorkFilesCard>}
+        commercial={<input aria-label="Commercial draft" defaultValue="Saved estimate" />}
+      />,
+    );
+    const contact = rendered.container.querySelector<HTMLInputElement>('[aria-label="Contact draft"]')!;
+    const commercial = rendered.container.querySelector<HTMLInputElement>('[aria-label="Commercial draft"]')!;
+    contact.value = "Unsaved contact edit";
+    commercial.value = "Unsaved estimate edit";
+    const card = rendered.container.querySelector('[data-project-work-panel]')!;
+    expect(card.querySelector('[role="tab"][aria-controls="project-files-panel"]')).toBeNull();
+    const filesShortcut = card.querySelector<HTMLAnchorElement>('a[href="?tab=files"]')!;
+    act(() => filesShortcut.click());
+    expect(card.getAttribute("data-project-work-panel")).toBe("work");
+    expect(card.textContent).toContain("Work actions");
+    expect(rendered.container.querySelector('[aria-label="Contact draft"]')).toBe(contact);
+    expect(rendered.container.querySelector('[aria-label="Commercial draft"]')).toBe(commercial);
+    expect(contact.value).toBe("Unsaved contact edit");
+    expect(commercial.value).toBe("Unsaved estimate edit");
     rendered.unmount();
   });
 

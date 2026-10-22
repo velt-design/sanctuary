@@ -31,6 +31,38 @@ Diagnostic export tools also follow the masthead. Current status, access-ending
 recovery and paused owner/commercial actions retain their existing contracts.
 This followup still requires actual protected-preview geometry verification.
 
+## Projects initial document read (local candidate, 21 October 2026)
+
+The Projects page starts the exact normalized index read after its existing
+verified staff gate and passes an unsettled result to the existing client query.
+It does not await rows at the route boundary. The toolbar, input, list status and
+URL owner remain mounted while data arrives. Ordinary RSC navigation/prefetch
+keeps the existing API path and does not duplicate the index read on the server.
+
+Implementation map:
+- `app/staff/projects/page.tsx` owns verified document scheduling;
+  `loadProjectsIndexInitialRead.ts` wraps the existing cookie-bound index reader
+  and returns safe, retryable failures.
+- `projectIndexView.ts` owns both URL parsing and the shared normalized query
+  mapping, including the existing stage/status alias. Unknown URL context remains
+  with the existing URL writer.
+- `projectsIndexInitialRead.ts` adapts one matching result to React Query. Its
+  QueryClient-scoped markers contain only consumed render IDs. A different user,
+  filter, existing data, invalidation or intervening update rejects the handoff.
+  The ordinary fallback receives the original query context without spreading it:
+  reading its lazy signal would cancel query state on observer removal while the
+  API transport continues, duplicating the request on remount. Matching pending
+  handoffs still consume the signal and preserve navigation cancellation.
+- `useProjectsIndexData.ts` retains the existing freshness, retry, access-ending
+  cleanup and mutation owners. Back, remount and manual refresh use the API once
+  the initial handoff has been consumed; stored-scroll restoration still waits
+  for the mounted rows.
+
+The candidate targets the observed document-to-index-API waterfall. It does not
+change lifecycle truth, counts, sorting, page sizes, server read dependencies,
+pricing, provider behavior or the broader cold-route targets. Compiled streaming,
+failure/retry and navigation evidence is required in addition to unit tests.
+
 ## Portal contact and return continuity (released 16 October 2026)
 
 Jordan's approved connected-workflow improvement explicitly requires ordinary contact
@@ -353,7 +385,7 @@ Do not bypass these rules with ad hoc estimate table writes. Use the estimate ro
 - `patchProjectCommandCentreCache` in `projectWorkCache.ts` is the sole complete command-centre response patch owner used by header-owner commands; V2 work commands use the projection patch owner.
 - `ProjectStageControl` uses the existing authoritative stage-correction mutation, requires explicit Apply, and requires `RESET` for rollback.
 
-The project header is fixed and sticky above the mobile breakpoint: project name with its current-status badge, global search, single owner, and project/workbench/admin actions are on its top row; Overview, Commercial, and conditional Job Packs are on its horizontally scrollable bottom row. Commercial owns Estimates, Quotes, and Invoices in that order. Mobile retains the same two-row information architecture in normal flow, with each row owning its horizontal containment. The project ID and old nine-stage pipeline visual are absent from this header. The old pipeline, rail sizing, panel drag/drop, collapsible header, Designs/Emails surfaces, layout-local-storage behavior, duplicate V2 sidebar, separate Tasks card, and empty workstreams slot are not part of the Overview V2 composition. The separate object-first Design Workbench route remains available from the header. Overview may render during the project `summary` state because its command-centre read is independent; snapshot-owned recent notes/events remain explicitly updating until the complete snapshot is ready.
+The project header is fixed and sticky above the mobile breakpoint: project name with its current-status badge, global search, single owner, and project/workbench/admin actions are on its top row; Overview, Files, Commercial, and conditional Job Packs are on its horizontally scrollable bottom row. Commercial owns Estimates, Quotes, and Invoices in that order. Mobile retains the same two-row information architecture in normal flow, with each row owning its horizontal containment. The project ID and old nine-stage pipeline visual are absent from this header. The old pipeline, rail sizing, panel drag/drop, collapsible header, Designs/Emails surfaces, layout-local-storage behavior, duplicate V2 sidebar, separate Tasks card, and empty workstreams slot are not part of the Overview V2 composition. The separate object-first Design Workbench route remains available from the header. Overview may render during the project `summary` state because its command-centre read is independent; snapshot-owned recent notes/events remain explicitly updating until the complete snapshot is ready.
 
 At and below 768 CSS pixels, Overview uses the mobile-priority single-column order: Project Work, current design/commercial, orientation, then recent notes/events. One failed command-centre read owns one Retry control for unavailable Project Work and commercial content; Orientation remains available from the protected project snapshot when possible.
 
@@ -559,4 +591,4 @@ baseline and error for retry.
 
 ## SharePoint project files (22 October 2026)
 
-The existing Files tab adds explicitly bound Jobs-library folders, multiple roots per project, safe PDF/photo previews and original downloads. Website enquiry attachments remain visible. New-project folder provisioning is dark by default and does not backfill historical projects. See [Project SharePoint files](project-sharepoint-files.md) for ownership, activation, recovery and acceptance limits.
+The dedicated main Files tab fills the available project width and viewport height, with explicitly bound Jobs-library folders, multiple roots per project, safe PDF/photo previews and original downloads. The selected Explorer keeps folder/list/selected preview together, preserves scoped return state and progressively finds within actual current-folder cursor pages. MIME metadata enables source-appropriate photo browsing; selected content uses the existing protected open route and lazy canvas PDF renderer. Website enquiry attachments remain available through the source chooser. This UI increment does not change provisioning enablement or backfill historical projects. See [Project SharePoint files](project-sharepoint-files.md) for ownership, activation, recovery and acceptance limits.

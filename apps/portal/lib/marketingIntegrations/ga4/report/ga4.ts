@@ -3,7 +3,7 @@ import { z } from "zod";
 import { boundedGoogleJson, during } from "./transport";
 import { websiteJourney } from "./journey";
 import { periodDays, shiftDate, validateQuery, validDate, type AnalyticsReport, type Measure, type PaneId, type ReportQuery } from "./report";
-import { acquisitionPlan, coreDiagnostics, DIAGNOSTIC_VERSION, parseAcquisition } from './diagnostics';
+import { acquisitionPlan, acquisitionValidationReason, coreDiagnostics, DIAGNOSTIC_VERSION, parseAcquisition } from './diagnostics';
 import { Ga4ReportFailure, validationReasons, type ReportFailureContext } from './failure';
 export { Ga4ReportFailure } from './failure';
 
@@ -218,7 +218,14 @@ export async function readGa4Report(accessToken: string, property: string, query
         raw = core.value; context = { ...core.owner, stage: 'core_response' }; phase.throwIfAborted();
         const now = new Date(), report = parseGa4Report(core.value, property, query, now, true);
         raw = acquisition.value; context = { ...acquisition.owner, stage: 'acquisition_response' };
-        report.diagnostics!.acquisition = parseAcquisition(acquisition.value, query, report.timezone, now);
+        try { report.diagnostics!.acquisition = parseAcquisition(acquisition.value, query, report.timezone, now); }
+        catch (error) {
+          const reason = acquisitionValidationReason(error);
+          if (!reason) throw error;
+          phase.throwIfAborted();
+          report.diagnostics!.acquisition = { status: 'unavailable', reason: 'compatibility_unproven' };
+          console.warn('sanctuary_ga4_acquisition_unavailable', { stage: 'acquisition_response', reason, status: acquisition.owner.status });
+        }
         context = { stage: 'normalization' };
         if (Buffer.byteLength(JSON.stringify(report)) > 245760) throw new Error('Report exceeds bound.');
         phase.throwIfAborted(); return report;

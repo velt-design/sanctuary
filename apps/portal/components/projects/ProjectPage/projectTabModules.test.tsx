@@ -14,9 +14,8 @@ vi.mock('next/dynamic', () => ({
 
 describe('project tab module preload', () => {
   it('labels the shared lazy shell as Commercial rather than a nested route', () => {
-    const loading = dynamicMock.mock.calls[1]?.[1]?.loading;
-
-    expect(loading?.().props['data-project-tab-loading']).toBe('commercial');
+    const labels = dynamicMock.mock.calls.map(call => call[1]?.loading?.().props['data-project-tab-loading']);
+    expect(labels).toEqual(['activity', 'files', 'commercial', 'job-packs']);
   });
 
   it('preloads the nested Estimates module for Commercial intent', async () => {

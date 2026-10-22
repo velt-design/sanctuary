@@ -1,5 +1,13 @@
 const KEY = 'sanctuary.configurator-return.v1';
 const RESTORE_KEY = 'sanctuary.configurator-scroll.v1';
+function pageScrollElement(): HTMLElement | null {
+  const body = document.body;
+  return body.scrollTop > 0 || (
+    /^(auto|scroll|overlay)$/.test(getComputedStyle(body).overflowY)
+    && body.scrollHeight > body.clientHeight + 1
+  ) ? body : null;
+}
+
 type ReturnEntry = { from: string; destination: string; created: number; scrollY: number };
 
 export function safeConfiguratorReturn(value: string | null, origin: string) {
@@ -17,7 +25,7 @@ export function rememberConfiguratorReturn(destination: URL) {
   const from = safeConfiguratorReturn(window.location.pathname + window.location.search + window.location.hash, window.location.origin);
   if (!from) return;
   try {
-    sessionStorage.setItem(KEY, JSON.stringify({ from, destination: destination.pathname + destination.search, created: Date.now(), scrollY: window.scrollY }));
+    sessionStorage.setItem(KEY, JSON.stringify({ from, destination: destination.pathname + destination.search, created: Date.now(), scrollY: pageScrollElement()?.scrollTop ?? window.scrollY }));
   } catch { /* The validated source path still provides a close destination. */ }
 }
 
@@ -39,18 +47,46 @@ export function prepareConfiguratorReturn(entry: ReturnEntry) {
 }
 
 export function restoreConfiguratorScroll() {
-  let frame = 0;
   try {
     const raw = sessionStorage.getItem(RESTORE_KEY);
     if (!raw) return;
     const entry = JSON.parse(raw) as ReturnEntry;
     if (entry.from !== window.location.pathname + window.location.search + window.location.hash) return;
-    sessionStorage.removeItem(RESTORE_KEY);
-    if (!Number.isFinite(entry.scrollY) || entry.scrollY < 0 || Date.now() - entry.created > 60_000) return;
-    // Run after route effects and the browser's default history/focus scrolling.
-    frame = requestAnimationFrame(() => {
-      frame = requestAnimationFrame(() => window.scrollTo({ top: entry.scrollY, behavior: 'instant' }));
-    });
+    if (!Number.isFinite(entry.scrollY) || entry.scrollY < 0 || Date.now() - entry.created > 60_000) {
+      sessionStorage.removeItem(RESTORE_KEY);
+      return;
+    }
+    let frame = 0;
+    let scheduled = false;
+    const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+    const cleanup = () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      inputs.forEach(type => window.removeEventListener(type, cancel));
+    };
+    const cancel = () => {
+      cleanup();
+      try { sessionStorage.removeItem(RESTORE_KEY); } catch { /* Storage is optional. */ }
+    };
+    const restoreWhenReady = () => {
+      if (scheduled || document.querySelector('[data-configurator-return-ready="false"]')) return;
+      scheduled = true;
+      observer.disconnect();
+      // Saved selections can change the source layout after hydration/API loading.
+      // Wait for their real readiness, then route effects and browser hash scrolling.
+      frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => {
+          const scroller = pageScrollElement();
+          if (scroller) scroller.scrollTo({ top: entry.scrollY, behavior: 'instant' });
+          else window.scrollTo({ top: entry.scrollY, behavior: 'instant' });
+          cancel();
+        });
+      });
+    };
+    const observer = new MutationObserver(restoreWhenReady);
+    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-configurator-return-ready'] });
+    inputs.forEach(type => window.addEventListener(type, cancel, { once: true, passive: true }));
+    restoreWhenReady();
+    return cleanup;
   } catch { /* Storage is optional. */ }
-  return () => cancelAnimationFrame(frame);
 }

@@ -1,4 +1,5 @@
 import type { InitialReport } from '@/lib/marketingPerformance/reportRead';
+import { expandReport, type ColumnarReport } from '@/lib/marketingPerformance/columnarReports';
 import { initialReportAttempt } from './initialReportAttempt';
 import { useEffect, useState } from 'react';
 import { designerReportSchema, type DesignerReport } from '@/lib/marketingPerformance/designerContract';
@@ -13,8 +14,8 @@ const loadDesigner: DesignerLoader = async (filters, signal) => {
   if (report.start !== filters.start || report.end !== filters.end) throw new Error('Designer period could not be verified.');
   return report;
 };
-export default function useDesigner(filters: Filters | null, revision: number, loader: DesignerLoader = loadDesigner, seed?:InitialReport<DesignerReport>, skipSeed=false) {
-  const [initial]=useState(()=>initialReportAttempt(seed,loader,report=>{const value=designerReportSchema.parse(report);if(seed?.key!==`${value.start}:${value.end}`)throw new Error('Report period could not be verified.');return value;},()=>new Error('Designer reporting unavailable. Retry.')));
+export default function useDesigner(filters: Filters | null, revision: number, loader: DesignerLoader = loadDesigner, seed?:InitialReport<DesignerReport|ColumnarReport>, skipSeed=false) {
+  const [initial]=useState(()=>initialReportAttempt(seed,loader,report=>{const value=designerReportSchema.parse(expandReport('designer',report));if(seed?.key!==`${value.start}:${value.end}`)throw new Error('Report period could not be verified.');return value;},()=>new Error('Designer reporting unavailable. Retry.')));
   const key = filters ? `${filters.start}:${filters.end}:${revision}` : '';
   const [state, setState] = useState<{ key: string; loader: DesignerLoader; report: DesignerReport | null; error: string; busy: boolean }>({ key, loader, report: null, error: '', busy: true });
   useEffect(() => {

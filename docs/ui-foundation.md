@@ -1,5 +1,20 @@
 # Staff Portal UI System
 
+## Project Files Explorer (22 October 2026 candidate)
+
+The selected Files direction keeps folders, compact list and selected preview
+together in a dedicated main project Files tab, alongside Overview, Commercial
+and conditional Job Packs. The browser fills the available width and remaining
+height below the stable project masthead; Overview cards stay in Overview.
+Foundation buttons, input,
+select, table and modal retain the Portal cream/ink/orange and square controls.
+Folder rail items use quiet line icons and a selected tint/edge rather than
+repeated outlined cards. At narrow container widths the list remains useful and
+the selected preview uses the native Foundation modal. Website files and multiple
+SharePoint roots remain explicit source choices. Source freshness, partial
+finding, retry and direct original download stay near the affected content.
+`project-sharepoint-files.md` owns data, return/privacy and verification limits.
+
 ## Outlook site-visit agenda (current)
 
 `components/site-visits` composes the existing Portal Foundation and cream/ink/

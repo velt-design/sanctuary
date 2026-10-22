@@ -6,6 +6,22 @@ type EntryReturn = { path: string; collection: CollectionReturn };
 let pendingReturn: EntryReturn | null = null;
 const currentPath = () => window.location.pathname + window.location.search;
 
+function collectionScrollElement(): HTMLElement | null {
+  const body = document.body;
+  // Some responsive layouts scroll BODY independently of the document viewport.
+  // Check its geometry too, so the same owner is found when returning at the top.
+  return body.scrollTop > 0 || (
+    /^(auto|scroll|overlay)$/.test(getComputedStyle(body).overflowY)
+    && body.scrollHeight > body.clientHeight + 1
+  ) ? body : null;
+}
+
+export function restoreCollectionScroll(top: number) {
+  const scroller = collectionScrollElement();
+  if (scroller) scroller.scrollTo({ top, behavior: 'instant' });
+  else window.scrollTo({ top, behavior: 'instant' });
+}
+
 function validCollection(value: unknown): value is CollectionReturn {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as CollectionReturn;
@@ -38,7 +54,7 @@ export function saveCollectionReturn(event: MouseEvent<HTMLElement>) {
   const target = new URL(anchor.href, window.location.origin);
   if (target.origin !== window.location.origin || !/^\/projects(?:\/[^/]+)?$/.test(target.pathname)) return;
   const collection = window.location.pathname === '/projects'
-    ? { href: currentPath(), scrollY: window.scrollY }
+    ? { href: currentPath(), scrollY: collectionScrollElement()?.scrollTop ?? window.scrollY }
     : entryReturn();
   pendingReturn = null;
   if (!collection) return;

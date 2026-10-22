@@ -1,3 +1,4 @@
+import {requireNativeAcceptance} from './native-acceptance';
 import { canonicalHash, type EffectKind, type ExecutionPlan, type ExecutorState } from './contract';
 export class ExecutorFailure extends Error {
   constructor(readonly code: 'http' | 'shape' | 'timeout' | 'scope' | 'unconfirmed', readonly httpStatus: number | null = null, readonly metaError: { code: number | null; subcode: number | null } = { code: null, subcode: null }) { super('Creative operation unconfirmed.'); }
@@ -33,6 +34,11 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
     if (!creative || object(state, arm)) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/ads`;
     body = { name, adset_id: plan.scope.adset, creative: JSON.stringify({ creative_id: creative }), tracking_specs: JSON.stringify(plan.adTracking), status: 'PAUSED' };
+    if(plan.purpose==='formal_experiment'){
+      if(plan.start*1000<=now)throw new ExecutorFailure('scope');
+      body.ad_schedule_start_time=new Date(plan.start*1000).toISOString();
+      body.ad_schedule_end_time=new Date(plan.end*1000).toISOString();
+    }
   } else if (kind === 'create_study') {
     const control = object(state, 'control'), challenger = object(state, 'challenger');
     if (plan.purpose !== 'formal_experiment' || !control || !challenger || object(state, 'study') || plan.start * 1000 <= now || plan.end <= plan.start) throw new ExecutorFailure('scope');
@@ -40,6 +46,13 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
     body = { name, type: 'SPLIT_TEST_V2', objectives: JSON.stringify([plan.nativeObjective]), creative_test_config: JSON.stringify({ daily_budget: plan.studyDailyMinor }),
       cells: JSON.stringify([{ name: 'control', treatment_percentage: 50, ads: [control] }, { name: 'challenger', treatment_percentage: 50, ads: [challenger] }]),
       start_time: String(plan.start), cooldown_start_time: String(plan.start), end_time: String(plan.end), observation_end_time: String(plan.end) };
+  } else if (kind === 'activate_control' || kind === 'activate_challenger') {
+    const arm=kind==='activate_control'?'control':'challenger';
+    target=object(state,arm)??null;
+    if(plan.purpose!=='formal_experiment'||!target||plan.originalAds.includes(target)||plan.start*1000<=now||!state.measurementReady||state.state!=='canary_ready'||!state.nativeAcceptance)throw new ExecutorFailure('scope');
+    if(state.effects.some(row=>row.kind===kind&&row.state!=='no_effect'))throw new ExecutorFailure('scope');
+    requireNativeAcceptance(plan,state.nativeAcceptance,now);
+    path=target;body={status:'ACTIVE'};
   } else if (kind === 'end_study') {
     target = object(state, 'study') ?? null; if (!target) throw new ExecutorFailure('scope');
     // Preserve start/cells. Future paired end is verified by readback. A provider
