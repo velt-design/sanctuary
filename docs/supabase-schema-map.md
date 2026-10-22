@@ -671,6 +671,14 @@ Migration source:
 - `supabase/migrations/20260811000001_commercial_internal_names.sql` adds bounded staff-only names to estimates and quote families without backfilling historical rows. It was exact-file applied to production on 2026-08-11; postflight verified both columns, constraints, PostgREST visibility, zero backfilled names, and the unique migration-ledger entry.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 
+The forward migration `20261022020001_acceptance_date_reconciliation.sql` replaces
+only `commercial_reconcile_paid_stage_trigger()`, retaining its security, grants
+and callers. A NULL-to-date fill on an already-ACCEPTED version skips financial
+reopening only when all other fields except `updated_at` are unchanged. Existing
+date edits/removal and real lifecycle/financial changes retain reconciliation.
+No schema, write permission or business-data backfill is added. See
+[historical date correction](quotes-invoices-job-packs.md#historical-acceptance-date-correction).
+
 ## Schedule, Site Visits, And Running Jobs
 
 `20260916000001_schedule_optional_command_payloads.sql` corrects optional JSON null conversion at `schedule_v2_guarded_command`; it replaces only the wrapper body, preserves its signature and service-role-only grant, and changes no stored Schedule rows. Apply this exact forward file after the September guarded-command migrations. See `docs/schedule.md` for the incident and executable payload contract.
