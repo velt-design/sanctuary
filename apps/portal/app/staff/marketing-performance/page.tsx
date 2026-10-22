@@ -11,6 +11,7 @@ import { readPortalFinancials, financialReadFailure } from '@/lib/xero/financial
 import { hubDocumentWindow } from '@/lib/marketingPerformance/hubDocumentSelection';
 import { readHub, hubReadFailure } from '@/lib/marketingPerformance/readHub.server';
 import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
+import { columnarRead } from '@/lib/marketingPerformance/columnarReports';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -28,9 +29,9 @@ export default async function MarketingPerformancePage() {
     diagnostics?diagnostics.measure(phase,read,result=>result.ok?'complete':'error'):read();
   const client=window?getSupabaseServerAuth():undefined;
   const initialHubSeed = window ? { ...window,
-    result: observe('marketing.hub',()=>client!.then(client => readHub(client, window.start, window.end)).catch(hubReadFailure)) } : undefined;
-  const initialCommercialSeed=overview?{key:`${overview.start}:${overview.end}`,result:observe('marketing.commercial',()=>client!.then(client=>readCommercial(client,overview.start,overview.end)).catch(()=>overviewFailure('Commercial')))}:undefined;
-  const initialDesignerSeed=overview?{key:`${overview.start}:${overview.end}`,result:observe('marketing.designer',()=>client!.then(client=>readDesigner(client,overview.start,overview.end)).catch(()=>overviewFailure('Designer')))}:undefined;
+    result: observe('marketing.hub',()=>client!.then(client => readHub(client, window.start, window.end)).then(result=>columnarRead('hub',result)).catch(hubReadFailure)) } : undefined;
+  const initialCommercialSeed=overview?{key:`${overview.start}:${overview.end}`,result:observe('marketing.commercial',()=>client!.then(client=>readCommercial(client,overview.start,overview.end)).then(result=>columnarRead('commercial',result)).catch(()=>overviewFailure('Commercial')))}:undefined;
+  const initialDesignerSeed=overview?{key:`${overview.start}:${overview.end}`,result:observe('marketing.designer',()=>client!.then(client=>readDesigner(client,overview.start,overview.end)).then(result=>columnarRead('designer',result)).catch(()=>overviewFailure('Designer')))}:undefined;
   const initialFinancialSeed=financial?{key:financialRequestKey(financial),result:readPortalFinancials(new URLSearchParams(financial),AbortSignal.timeout(45000),session.user.id).catch(financialReadFailure)}:undefined;
   return <MarketingPerformance staging={process.env.MARKETING_PERFORMANCE_PREVIEW === 'staging'} productionSnapshot={snapshot}
     initialHubSeed={initialHubSeed} initialCommercialSeed={initialCommercialSeed} initialDesignerSeed={initialDesignerSeed} initialFinancialSeed={initialFinancialSeed}
