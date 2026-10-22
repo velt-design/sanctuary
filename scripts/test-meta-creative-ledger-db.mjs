@@ -106,7 +106,24 @@ try{
  end loop;end$fixture$;`);
  const settlement=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_ambiguity_settlement.sql','utf8')).trim().split('\n').at(-1));
  writeFileSync('.local-evidence/ambiguity-native-analysis.json',JSON.stringify({cases:analysisCases,settlement}));
- process.stdout.write(JSON.stringify({ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
+ sql(readFileSync('supabase/migrations/20261022050013_creative_steady_inventory.sql','utf8'));
+ const inventory=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_steady_inventory.sql','utf8')).trim().split('\n').at(-1));
+ writeFileSync('.local-evidence/steady-native-inventory.json',JSON.stringify(inventory));
+ // Synthetic capacity-only cluster state: real trigger in parallel sessions,
+ // then real owned cleanup at the full bound. This is not provider inventory.
+ sql(`delete from public.acquisition_experiment_reservation;truncate public.meta_creative_plans cascade;
+ update public.meta_creative_control set enabled=true,cleanup_enabled=true,authority_current=true,global_stop=false;
+ select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'f3000000-0000-4000-8000-000000000001','reserve',${plan})from public.meta_creative_control;
+ insert into public.meta_creative_plans(id,plan,plan_hash)values('f3000000-0000-4000-8000-000000000002','{}',repeat('2',64));
+ do $capacity$declare cmd uuid;begin for n in 1..39 loop cmd:=gen_random_uuid();
+ insert into public.meta_creative_effects(command,experiment,command_hash,request_hash,kind,generation,pre_state_hash,state,object_id,evidence_hash)values(cmd,'f3000000-0000-4000-8000-000000000001',repeat('a',64),repeat('a',64),'create_paused_ad',1,repeat('a',64),'confirmed',(98000+n)::text,repeat('a',64));
+ insert into public.meta_creative_objects(object_id,experiment,kind,created_by,request_hash,evidence_hash)values((98000+n)::text,'f3000000-0000-4000-8000-000000000001','ad',cmd,repeat('a',64),repeat('a',64));
+ end loop;end$capacity$;`);
+ const capacity=await Promise.all([1,2].map(()=>concurrent("insert into public.meta_creative_effects(command,experiment,command_hash,request_hash,kind,generation,pre_state_hash)values(gen_random_uuid(),'f3000000-0000-4000-8000-000000000002',repeat('a',64),repeat('a',64),'create_paused_ad',1,repeat('a',64))")));
+ if(capacity.filter(Boolean).length!==1)throw new Error('Inventory capacity race did not admit exactly one');
+ sql(`do $capacity$begin begin perform public.meta_creative_executor_command(repeat('b',64),gen_random_uuid(),gen_random_uuid(),'prepare','{"plan":{"purpose":"formal_experiment"}}');raise exception 'capacity bypass';exception when others then if sqlerrm<>'Owned ad inventory capacity reached'then raise;end if;end;end$capacity$;
+ select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'f3000000-0000-4000-8000-000000000001','admit_cleanup',jsonb_build_object('kind','pause_ad','objectId','98001','requestHash',repeat('a',64),'generation',generation,'preStateHash',repeat('c',64),'observedAt',clock_timestamp()))from public.meta_creative_control;`);
+ process.stdout.write(JSON.stringify({steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
  if(dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('sanctuary-experiment-'))rmSync(directory,{recursive:true,force:true});

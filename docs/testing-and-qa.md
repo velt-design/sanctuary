@@ -2504,3 +2504,25 @@ post-Stop reconciliation, 24 normal plus three reserved terminal admissions,
 scoped-stop versus credential/global-Stop denial, exact never-dispatched proof,
 stale-fence denial and concurrent dispatch/no-effect exclusion. Disposable synthetic SQL is not a live
 schema/provider test. No Graph dispatcher or credential loader exists.
+
+## Steady retained-ad integration, local candidate (22 October 2026)
+
+The existing disposable PG17 creative-ledger harness now runs
+`supabase/tests/meta_creative_steady_inventory.sql` and exports only synthetic
+projections under ignored `.local-evidence/steady-native-inventory.json`. It
+composes real retention commands, signed-visit RPCs, canonical intake, outcomes
+and next-test cohorts through paused creation, activation, uncertain pause,
+restoration, replacement and superseded-abort denial. Missing, conflicting,
+expired, revoked and paused-gap receipts retain canonical enquiries as unknown;
+late valid receipts remain attributable. Existing two-arm and frozen-cohort
+contracts are preserved. Parallel capacity claims prove one slot cannot admit
+two creates and full inventory cannot prevent owned cleanup.
+
+Set SANCTUARY_NATIVE_STEADY_FIXTURE to that export when running
+`campaignMonitor/steady-native.test.ts`: actual SQL registry output feeds the
+real health reader, with only the fixed three Graph GET responses mocked. All
+known inventory states pass; unknown extras and wrong creative IDs fail. The
+public landing route suite checks the existing signed transport and rejects a
+steady receipt masquerading as a native arm. App typechecks, changed-file lint,
+architecture/docs guards and template generation check complete local proof.
+No synthetic fixture proves actual provider inventory or live attribution.

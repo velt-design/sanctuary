@@ -31,14 +31,15 @@ export function isExperimentPath(value: unknown): value is ExperimentPath {
 export function isLandingCopyKey(value: unknown): value is LandingCopyKey {
   return copyChoice(value)!==null;
 }
-export type LandingAssignment = { experiment: string; assignment: string; path: ExperimentPath; arm: 'control' | 'challenger'; copies: LandingCopies; receipt: string };
+export type LandingAssignment = { experiment: string; assignment: string; path: ExperimentPath; arm: 'control' | 'challenger' | null; kind?: 'steady'; copies: LandingCopies; receipt: string };
 export function parseLandingAssignment(value: unknown): LandingAssignment | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (Object.keys(row).sort().join(',') !== 'arm,assignment,copies,experiment,path,receipt' || !isExperimentPath(row.path)
+  const steady = row.kind === 'steady' && row.arm === null;
+  if (Object.keys(row).sort().join(',') !== (steady ? 'arm,assignment,copies,experiment,kind,path,receipt' : 'arm,assignment,copies,experiment,path,receipt') || !isExperimentPath(row.path)
     || typeof row.experiment !== 'string' || !uuid.test(row.experiment) || typeof row.assignment !== 'string' || !uuid.test(row.assignment)
-    || !['control', 'challenger'].includes(String(row.arm)) || !parseLandingCopies(row.copies)
+    || (!steady && !['control', 'challenger'].includes(String(row.arm))) || !parseLandingCopies(row.copies)
     || typeof row.receipt !== 'string' || !/^[a-zA-Z0-9_.-]{40,1500}$/.test(row.receipt)) return null;
   return row as LandingAssignment;
 }

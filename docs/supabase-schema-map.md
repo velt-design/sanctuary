@@ -1270,3 +1270,35 @@ fixtures exercise shared landing reservation, uncertain/no-effect fencing, one
 paused ad and reused creative reference cleanup. Service-only definer commands,
 empty search paths, explicit table/function revokes and immutable receipts remain
 mandatory. No production migration or capability is implied by fixture passes.
+
+## Steady creative inventory candidate (22 October 2026)
+
+Forward migration `20261022050013_creative_steady_inventory.sql` follows the
+formal retention and ambiguity migrations. It keeps the immutable two native arms
+and their historical windows intact. The existing reporting RPC gains version 2
+with separate experimental and steady arrays. Steady rows include every known
+owned retained ad, its original donor/creative/scope, current-winner flag and
+confirmed serving intervals. Paused, superseded and reverted objects remain in
+the inventory; an arbitrary provider extra still fails closed. The private
+helpers introduce no endpoint, credentials, provider calls or public table grants.
+
+Serving begins at confirmed activation (including restore_previous), ends at
+the first subsequent owned pause dispatch, and is unknown after an uncertain
+effect. Prepared-only pause admission does not close an interval. Exact ad
+identity spans predecessor/successor experiments. Under the existing global
+acquisition lock, new ad creates count confirmed plus in-flight objects against
+40 owned ads; formal prepare requires room for both arms and a possible winner.
+At capacity new preparation stops, while cleanup/reconciliation remains usable.
+At most four current winners remain separate from this all-owned bound.
+
+The existing consented visit table adds delivery_kind; only steady receipts have
+a null arm. Canonical enquiry intake is preserved even when attribution is
+missing, expired, revoked, conflicting or outside confirmed serving. A valid
+receipt may support a late return within 28 days after pause. Steady saved
+outcomes and proven outside-test cohort rows require exact raw/normalized tags,
+path and both consents. Frozen cohorts remain byte-identical.
+
+Deploy compatible Portal/Marketing and Velt consumers before installing 50013.
+The public transport dependency changes the generated landing template hash, so
+review serving compatibility before any later activation. This is local source
+work, not evidence of installed schema, provider acceptance or live delivery.

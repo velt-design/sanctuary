@@ -6,6 +6,7 @@ vi.mock('@/lib/supabaseService',()=>({getServiceSupabase:()=>db}));
 import {POST,maxDuration} from './route';
 import {POST as commandPost} from './command/route';
 import {EXPERIMENT_TEMPLATE,signAssignment} from '../../../lib/landingExperiment.server';
+import {parseLandingAssignment} from '../../../lib/landingExperiment';
 const path='/auckland-outdoor-living',key='fixture-key-'.repeat(4),origin='https://fixture.example.test';
 function request(body:unknown,headers:Record<string,string>={Origin:origin}){return new Request(origin+'/api/landing-experiment',{method:'POST',headers,body:JSON.stringify(body)});}
 const input={stage:'assign',path,consent:true,utm:{utm_source:'facebook',utm_medium:'paid_social',utm_campaign:'11001',utm_content:'11003',utm_term:'11002'}};
@@ -37,4 +38,13 @@ it('supports signed withdrawal when enrolment is disabled and withholds exposure
  expect((await POST(request(input))).status).toBe(200);expect(db.rpc).not.toHaveBeenCalled();
  const response=await POST(request({stage:'revoke',path,consent:false,receipt}));expect(response.status).toBe(200);expect(response.headers.get('set-cookie')).toContain('Max-Age=0');
  expect(db.rpc.mock.calls.at(-1)![1]).toMatchObject({p_stage:'revoke',p_id:'a2000000-0000-4000-8000-000000000001'});
+});
+it('signs and exposes a Source steady receipt without inventing an experimental arm',async()=>{
+ const row={kind:'steady',arm:null,path,assignment:'a2000000-0000-4000-8000-000000000099',experiment:'a1000000-0000-4000-8000-000000000099',copies:{}};
+ db.rpc.mockImplementation(name=>({abortSignal:()=>Promise.resolve({data:name==='marketing_public_rate_limit_take'?[{allowed:true}]:row,error:null})}));
+ const response=await POST(request(input)),body=await response.json();
+ expect(response.status).toBe(200);expect(parseLandingAssignment(body.assignment)).toMatchObject(row);
+ expect(parseLandingAssignment({...body.assignment,arm:'challenger'})).toBeNull();
+ expect((await POST(request({stage:'expose',path,consent:true,receipt:body.assignment.receipt}))).status).toBe(200);
+ expect(db.rpc.mock.calls.at(-1)![1]).toMatchObject({p_stage:'expose',p_id:row.assignment});
 });

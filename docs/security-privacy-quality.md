@@ -754,3 +754,14 @@ Sources: https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarit
 
 Mobile configured-design Review adds closed `design_enquiry_open`, `design_share_open`, `design_share` (native-share or clipboard success), and `design_share_link_ready` (manual-copy recovery) events through the same consent/source/staff gate. Native cancellation records only the user's open intent, never completion. Payloads retain only the existing closed funnel metadata; no design URL, dimensions, contact fields or free text. `contact_start/success/error` still describe actual valid submission attempts/outcomes, not form opening. Test submissions and analytics verification must intercept enquiry/vendor traffic rather than create real leads or conversions.
 The configured-design tracker stays mounted above the responsive layout switch, so rotating between mobile and desktop does not restart the funnel or duplicate review events.
+
+### Steady creative attribution candidate (22 October 2026)
+
+Retained ads reuse the existing signed, consent-gated public visit transport.
+A steady receipt is explicitly distinct from the two experimental arms. Both
+analytics and marketing consent, exact approved route/tags, unrevoked exposure
+inside confirmed serving and the existing 28-day receipt lifetime are required
+for reporting credit. Invalid attribution never deletes the canonical enquiry.
+No extra customer content, raw provider payload, credentials or arbitrary URLs
+are added to the public response or model projection. Source registry and
+serving helpers remain private; ownership never follows a provider-only ID.
