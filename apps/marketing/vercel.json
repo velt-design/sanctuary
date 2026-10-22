@@ -5,6 +5,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/marketing-transport-diagnostics-20261022": false,
+      "codex/projects-release-20261022": false,
       "codex/marketing-overview-diagnostics-20261022": false,
       "codex/sharepoint-project-files-20261022": false,
       "codex/portal-secret-transfer-20261022": false,

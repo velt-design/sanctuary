@@ -1,5 +1,85 @@
 # Marketing UI Foundation
 
+## Project stories rollout (22 October 2026)
+
+Jordan authorised the remaining 14 project pages to reach the quality of the
+accepted Warkworth page, in small reviewed batches. The original Projects overview
+and accepted Warkworth component/styles stay unchanged. After reviewing the
+complete preview, Jordan authorised release of all project pages: "Looks good.
+Do final checks and push all of the project pages live." Deployment verification
+remains a separate release step.
+
+All 14 stories now use `projectEditorialStories.ts` for their own brief and photo
+choices, and `PhotographicProjectContent.tsx` for the accepted Warkworth visual
+vocabulary. Warkworth retains its separate approved component and stylesheet.
+Story length follows the actual evidence: one or two design decisions, followed
+by concise facts and optional technical scope. Photographs used in the story are
+not repeated in the gallery; unused original photos remain available there.
+
+The case-study hero owner `getProjectCaseStudyHero` keeps rendering, preload,
+metadata and schema aligned. Finished-space heroes now lead St Heliers (02),
+Tindalls Bay (03), Waiheke (04), Muriwai (02), Good Home (06), Lilliput (02) and
+KiwiRail (03). Atelier retains its separately governed front-on02 hero. Original
+overview thumbnails and collection data remain unchanged. Related project cards
+use the case-study photograph; named navigation and finder continuation remain.
+
+St Heliers retains the existing 6 by 3 m gable designer entry and its limitations.
+Velskov retains its video and actual project brief. Commercial enquiry wording
+addresses the site/use rather than a residential room. Existing enquiry context
+continues to own audience, source and return. No pricing, contact form, global
+navigation, image assets or overview layout changes. No new project claims.
+
+Implementation map: `ProjectDetailContent` selects the approved Warkworth owner
+or each configured photographic story; the existing editorial fallback remains
+for an as-yet unconfigured future project. Technical bullets remain accessible,
+with paragraph-only sections retained. Original description facts are deliberately
+carried into each brief/story/details rather than sliced away.
+
+
+## Projects collection and Warkworth (22 October 2026)
+
+Jordan accepted Warkworth but rejected the overview restyle: "Okay I dont like
+the change to the projects overview page but I do like the change to the
+warkworth project". The overview therefore retains its prior visual design,
+portrait card ratio, type/form labels and original slim collection payload.
+All 15 projects, audience/form filters, view scale and shareable URLs remain.
+Only the rapid-filter and actual-scroll-owner return fixes apply to the overview;
+the accepted Warkworth presentation remains unchanged.
+
+`ProjectNavigator.tsx` owns filter controls. Each partial edit merges against the
+current browser URL synchronously and pushes native history. Next's
+`useSearchParams` remains the rendered URL source. This fixes rapid edits losing
+the first selection while a prior router navigation was unresolved, and keeps
+Back/Forward, reload, unrelated query fields and filtered project return intact.
+The detailed project switcher remains unchanged. The existing collection return
+owner now captures and restores the actual scroll container: an independently
+scrollable BODY when present, otherwise the document viewport. Return metadata
+and URL contracts remain unchanged.
+
+`WarkworthProjectContent.tsx` and `warkworth.module.css` own the new case study.
+The finished-space image 02 matches the existing hero/preload/SEO helper. The full
+original brief precedes three photographic decisions (01, 04 and 06), concise
+facts and an optional technical disclosure. The remaining 03, 05 and 07 images
+retain the accessible gallery. Related projects use photos and existing context
+links. Both enquiry actions retain the canonical project source and audience.
+No new image, customer claim, form, pricing or global theme is introduced.
+
+The duplicate Warkworth-only branches were retired from
+`EditorialProjectContent`; its other project branches remain the shared owner.
+The new presentation supersedes Warkworth's September reference-composition pixel
+parity only. The product reference and general project accessibility/navigation
+coverage remain. The original preview boundary was superseded by the explicit
+all-project release approval above.
+
+Implementation map: route selection stays in `ProjectDetailContent`; collection
+state stays in `ProjectNavigator`; Warkworth composition is a small separate
+owner. Further navigator modality extraction and collection stylesheet splitting
+are deferred to avoid expanding this race fix into a shared navigation rewrite.
+The next safe extraction is collection filter/view-scale controls with their
+existing URL and return tests. Existing long browser suites receive only changed
+assertions; the new connected regression lives in a separate focused spec.
+
+
 ## Photographic guide hub (22 October 2026)
 
 `app/pergola-guides/page.tsx`, `content.ts` and `guides.module.css` own the

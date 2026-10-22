@@ -1,5 +1,59 @@
 # Marketing Claims Register
 
+## Remaining project stories (22 October 2026)
+
+All 14 use existing public project records and inspected original photographs.
+Milford visibly credits Design with Rudi Landscapes and GGL Landscaping &
+Gardening; its shade/daylight concerns stay a homeowner brief, not a measured
+material claim. Mt Maunganui retains its elevated deck/hip roof; Riverhead its
+mixed aluminium/steel frame, timber, insulation and lighting. Tindalls retains
+the distinct insulated, opal and light-grey acrylic zones and mesh blind scope.
+Muriwai retains the footprint, with the new recorded height, not an assertion
+that its old height was retained. Ardmore keeps its internal gable/box frame.
+Waiheke keeps its concealed fall/gutters and screen coordination.
+
+Lilliput remains a historical consultant-led supply/install role, not a new
+general service promise. Atelier retains its governed front-on hero, aluminium,
+dark acrylic and visible integrated blinds. Good Home retains the matching
+25-degree twin gables and its steel/aluminium structure. Velskov puts the actual
+farm-space brief before its background and preserves the original video.
+KiwiRail credits JCY Architects; its case-study hero and story descriptions are
+workplace-neutral. The source's 115 square metre area conflicts with its recorded
+30 by 3 metre dimensions, so that area is omitted from this page's facts. No
+replacement area is inferred. Source records and overview are not rewritten.
+
+No new price, performance, compliance, warranty, installation deadline, customer
+quote or general operating-continuity claim is introduced. Optional technical
+scope keeps the original relevant bullets, or paragraphs where no bullets exist.
+
+## Dairy Flat and St Heliers project stories (22 October 2026)
+
+Both use only the existing `data/projects.ts` facts and original public photos.
+Dairy Flat continues the existing roof geometry in aluminium/acrylic, with the
+infilled gable end and open garden side. Its photos are01 exterior,03 garden
+outlook and02 roof/house detail. St Heliers preserves its open custom aluminium
+gable pattern and opal acrylic selected against the daylight/glare brief. Photo02
+shows the finished balcony;01 shows the exterior pattern. No measured daylight,
+glare, wind or thermal performance is claimed. Existing dimensions, area and year
+remain project-specific; absent pitch/technical data is not invented. The seeded
+St Heliers designer still discloses standard acrylic/end frame and default
+attachment/ridge/height rather than claiming an exact replica.
+
+
+## Projects editorial claim provenance (22 October 2026)
+
+The Projects overview retains its original type/form labels after the owner
+rejected the preview restyle.
+Warkworth's new presentation uses that project's original brief, gallery,
+structure, roofing, deck/fireplace/lighting and completion records. The mixed
+aluminium-and-steel frame remains explicit; clear acrylic is not renamed glass.
+Engineering PS1, frame finish reference and registered-electrician details remain
+project-specific in the accessible technical disclosure or story. These are not
+general service inclusions, new performance promises, prices or testimonials.
+Images 02, 01, 04 and 06 carry the story; 03, 05 and 07 remain in the gallery.
+Other project facts, canonical URLs and schema source are unchanged.
+
+
 ## Guide hub (22 October 2026)
 
 The hub summarises existing cost, outdoor-room, blind, material and roof-form

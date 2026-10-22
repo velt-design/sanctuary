@@ -1,5 +1,50 @@
 # Testing And QA
 
+## Project stories rollout coverage (22 October 2026)
+
+`PhotographicProjectContent.test.tsx` checks all 14 configured stories, complete
+photo provenance/coverage, actual briefs, concise non-empty facts, technical
+scope, commercial closing copy, Velskov video and St Heliers seeded designer.
+Specific assertions retain landscape/architect credits and keep the conflicting
+KiwiRail area out of the new page. Existing Projects and product-selection tests
+cover collection/navigation/return/SEO and designer contracts. Hero changes are
+owned by the same metadata/preload helper, with original collection data intact.
+
+The registered Projects browser suite checks every canonical project, actual
+hero and metadata, gallery, responsive layout and contextual actions. The
+editorial suite covers rapid filters/lower-card return, Warkworth, the first
+pair's direct/contact/designer/related/adjacent return and commercial context.
+These are authored browser checks; local CUA evidence is separate.
+
+
+## Projects editorial presentation and rapid filters (22 October 2026)
+
+Focused local contracts:
+
+```bash
+npx vitest run apps/marketing/app/projects
+npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false
+```
+
+`ProjectNavigator.test.tsx` dispatches two edits before a render settles, checks
+both URL filters, reset and restored URLs. `WarkworthProjectContent.test.tsx`
+checks the restored brief, early contextual action, distinct story photography,
+technical scope and photographic related links. `projectCollectionReturn.test.ts`
+checks BODY-scrolled capture/restore, window fallback and modified-link isolation;
+the browser suite covers lower-card All projects and Back at320/1440. Existing collection, navigation,
+return and SEO tests retain the shared contracts.
+
+`playwright/marketing.projects-editorial.spec.ts` is registered in the Marketing
+browser lane. It covers actual Next history integration, rapid edits, Back and
+Forward, reload, reset, filtered project return, readable Warkworth gutters,
+Warkworth enquiry context, gallery and related-project return. Existing
+Projects and Editorial website assertions now reflect the new Warkworth owner
+and its three non-repeated gallery images. This suite is authored coverage, not
+a claim that it ran locally. The approved CUA browser workflow supplies actual
+preview journey evidence; normal CI can execute the registered browser suite.
+No real enquiry submission is needed for this presentation/filter change.
+
+
 ## Finite Portal service-secret transfer
 
 Run `apps/portal/app/api/integrations/praxis/portal-service-transfer/route.test.ts`
