@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { readCollectionReturn, saveCollectionReturn } from './projectCollectionReturn';
+import { readCollectionReturn, restoreCollectionScroll, saveCollectionReturn } from './projectCollectionReturn';
 import {
   usePathname,
-  useRouter,
+  useSearchParams,
 } from 'next/navigation';
 import {
   useEffect,
@@ -67,7 +67,7 @@ export default function ProjectNavigator({
   buildProjectHref = (slug) => `/projects/${slug}`,
 }: ProjectNavigatorProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const liveSearchParams = useSearchParams();
   const [detailAudienceFilter, setDetailAudienceFilter] = useState<ProjectAudienceFilter>(
     ALL_PROJECT_FILTERS,
   );
@@ -83,8 +83,8 @@ export default function ProjectNavigator({
   const activeIndex = projects.findIndex((project) => project.slug === activeProject.slug);
   const formOptions = useMemo(() => getProjectFormOptions(projects), [projects]);
   const searchParams = useMemo(
-    () => new URLSearchParams(initialSearchParams),
-    [initialSearchParams],
+    () => new URLSearchParams(liveSearchParams?.toString() ?? initialSearchParams),
+    [liveSearchParams, initialSearchParams],
   );
   const urlFilters = useMemo(
     () => readProjectFilters(searchParams, projects),
@@ -176,21 +176,26 @@ export default function ProjectNavigator({
     if (!collectionMode || !isCardSizeReady) return;
     const saved = readCollectionReturn();
     if (!saved || saved.href !== window.location.pathname + window.location.search) return;
-    const frame = requestAnimationFrame(() => window.scrollTo({ top: saved.scrollY, behavior: 'instant' }));
+    const frame = requestAnimationFrame(() => restoreCollectionScroll(saved.scrollY));
     return () => cancelAnimationFrame(frame);
   }, [collectionMode, isCardSizeReady]);
 
-  const updateFilters = (nextFilters: ProjectFilters) => {
+  const updateFilters = (patch: Partial<ProjectFilters>) => {
     if (collectionMode) {
-      router.push(
-        buildProjectFilterHref(pathname || '/projects', searchParams, nextFilters),
-        { scroll: false },
-      );
+      // The browser URL commits synchronously. Compose each edit from that URL,
+      // not the last server render, so rapid edits cannot overwrite each other.
+      // Next integrates native history with useSearchParams and Back/Forward.
+      const current = new URLSearchParams(window.location.search);
+      const nextFilters = { ...readProjectFilters(current, projects), ...patch };
+      const href = buildProjectFilterHref(pathname || '/projects', current, nextFilters);
+      if (href !== window.location.pathname + window.location.search) {
+        window.history.pushState(null, '', href);
+      }
       return;
     }
 
-    setDetailAudienceFilter(nextFilters.audience);
-    setDetailFormFilter(nextFilters.form);
+    if (patch.audience !== undefined) setDetailAudienceFilter(patch.audience);
+    if (patch.form !== undefined) setDetailFormFilter(patch.form);
   };
   const resetFilters = () => updateFilters({
     audience: ALL_PROJECT_FILTERS,
@@ -249,7 +254,6 @@ export default function ProjectNavigator({
           aria-label="Filter by audience"
           value={filters.audience}
           onChange={(event) => updateFilters({
-            ...filters,
             audience: event.target.value as ProjectAudienceFilter,
           })}
         >
@@ -265,7 +269,6 @@ export default function ProjectNavigator({
           aria-label="Filter by roof form"
           value={filters.form}
           onChange={(event) => updateFilters({
-            ...filters,
             form: event.target.value,
           })}
         >

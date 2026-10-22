@@ -5,6 +5,9 @@ import { buildEnquiryHref } from '@/lib/enquiryContext';
 import { buildProjectFinderProjectHref, type ProjectFinderSelection } from '@/lib/projectFinderContinuation';
 import { PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE } from '@/lib/projectFinderContract';
 import EditorialProjectContent from '@/components/marketing-foundation/editorial/EditorialProjectContent';
+import WarkworthProjectContent from './WarkworthProjectContent';
+import PhotographicProjectContent from './PhotographicProjectContent';
+import { getProjectEditorialStory } from './projectEditorialStories';
 
 export type ProjectDetailContentProps = {
   nextProjectNavigation?: ReactNode;
@@ -42,5 +45,8 @@ export default function ProjectDetailContent({nextProjectNavigation, project, re
       )
     : `/projects/${slug}`;
 
-  return <EditorialProjectContent designStartingPoint={project.slug === 'st-heliers-townhouse' ? <ProjectDesignStartingPoint /> : undefined} nextProjectNavigation={nextProjectNavigation} project={project} enquiryHref={enquiryHref} relatedProjects={relatedProjects} projectHref={projectHref} />;
+  if (project.slug === 'warkworth-outdoor-room') return <WarkworthProjectContent nextProjectNavigation={nextProjectNavigation} project={project} enquiryHref={enquiryHref} relatedProjects={relatedProjects} projectHref={projectHref} />;
+  const story = getProjectEditorialStory(project);
+  if (story) return <PhotographicProjectContent story={story} designStartingPoint={project.slug === 'st-heliers-townhouse' ? <ProjectDesignStartingPoint /> : undefined} nextProjectNavigation={nextProjectNavigation} project={project} enquiryHref={enquiryHref} relatedProjects={relatedProjects} projectHref={projectHref} />;
+  return <EditorialProjectContent nextProjectNavigation={nextProjectNavigation} project={project} enquiryHref={enquiryHref} relatedProjects={relatedProjects} projectHref={projectHref} />;
 }
