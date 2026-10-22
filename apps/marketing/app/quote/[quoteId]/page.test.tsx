@@ -17,6 +17,24 @@ vi.mock("next/link", () => ({
 }));
 
 describe("public quote presentation", () => {
+  it.each([
+    ['not_required', 'Your existing payments are retained'],
+    ['not_prepared', 'will confirm your invoice and payment arrangements'],
+  ])('shows truthful accepted copy for %s without a delivery retry', async (delivery, expected) => {
+    loadPublicQuoteByToken.mockResolvedValue({ quote: {
+      id: 'qv_synthetic', status: 'ACCEPTED', quoteRef: 'Q-SYNTHETIC', versionNumber: 3,
+      projectName: 'Synthetic project', projectAddress: null, totalIncGstCents: 160000,
+      createdAt: '2026-01-01', expiresAt: null, tokenExpiresAt: null,
+      lineItems: [], attachments: [], depositInvoiceDelivery: delivery,
+    } });
+    const view = await QuotePage({ params: Promise.resolve({ quoteId: 'qv_synthetic' }), searchParams: Promise.resolve({ token: 'synthetic-token' }) });
+    const rendered = renderIntoDocument(view);
+    expect(rendered.container.textContent).toContain(expected);
+    expect(rendered.container.querySelector('form')).toBeNull();
+    expect(rendered.container.textContent).not.toContain('Retry invoice');
+    rendered.unmount();
+  });
+
   it("keeps the token-scoped acceptance contract inside the editorial hierarchy", async () => {
     loadPublicQuoteByToken.mockResolvedValue({
       quote: {
