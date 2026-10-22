@@ -10,6 +10,20 @@ well as application responses when testing this boundary. See
 [Project SharePoint files](project-sharepoint-files.md) for the contract and
 remaining first-open performance limits.
 
+## 2026-10-22: Reuse bounded technical continuation instead of per-failure retry ladders
+
+Forward140001 records at most three operator-issued technical continuations of
+one original paid proposal. Each has a distinct corrected release and failed
+predecessor, exact partial-probe snapshot, new probe, current control/template,
+private funding hash and a <=45-minute window on one explicitly funded Sydney
+date. No old expiry, counter or terminal row changes. A new calendar day does
+not unlock an unreceipted ordinary probe. The same candidate may continue only
+while unchanged; a template change or technical rollback requires the existing
+atomic terminal/prepare transaction and a separately linked candidate with the
+same copy, evidence and original generator. Genuine assignments, publication,
+review, Stop/config drift and uncertain prior outcomes fail closed. No receipt,
+model call, public-page change or live action is installed by the migration.
+
 ## 2026-10-22: Preserve paid proposal lineage across a changed landing template
 
 Forward130001 supports one private completion receipt for a never-published

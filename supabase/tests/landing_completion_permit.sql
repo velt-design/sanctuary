@@ -24,7 +24,7 @@ declare prior landing_experiment_receipts;original jsonb;previous jsonb;proof js
    'priorReceiptHash',encode(sha256(convert_to(to_jsonb(prior)::text,'UTF8')),'hex'),'originalExperiment',original,'previousControl',previous,
    'rollbackReceiptHash',(select encode(sha256(convert_to(to_jsonb(x)::text,'UTF8')),'hex')from landing_experiment_receipts x where experiment=e and stage='rollback'),
    'newExperiment',derivative,'newProbe',probe,'template',c.template,'candidateHash',candidate,'generation',c.generation,'controlHash',encode(sha256(convert_to(to_jsonb(c)::text,'UTF8')),'hex'),
-   'expiresAt',clock_timestamp()+interval '30 minutes','correction',repeat('a',40),'nextAttempt',5,'providerTerminalHash',repeat('b',64),'geometryHash',repeat('c',64),'originalExpiry',prior.result->>'expiresAt')into proof from landing_experiment_control c;
+   'expiresAt',least(clock_timestamp()+interval '30 minutes',date_trunc('day',clock_timestamp()at time zone 'Australia/Sydney')at time zone 'Australia/Sydney'+interval '1 day'-interval '1 second'),'correction',repeat('a',40),'nextAttempt',5,'providerTerminalHash',repeat('b',64),'geometryHash',repeat('c',64),'originalExpiry',prior.result->>'expiresAt')into proof from landing_experiment_control c;
   insert into landing_experiment_receipts(command,experiment,stage,request_hash,result)values(audit,e,'prepare_completion',encode(sha256(convert_to(proof::text,'UTF8')),'hex'),proof);
   perform pg_temp.assert(landing_completion_expiry(derivative,probe)is not null);
   payload:=jsonb_build_object('generation',(proof->>'generation')::bigint,'template',proof->>'template','candidateHash',candidate,'evidenceHash',original->>'evidence_hash','path',original->>'path','copy',original->>'copy','generator',original->>'generator','minimumExposures',100,'durationDays',14);
@@ -51,6 +51,7 @@ declare prior landing_experiment_receipts;original jsonb;previous jsonb;proof js
   perform pg_temp.assert(landing_experiment_command(previous->>'binding',probecmd,'probe',derivative,common)=result);
   perform pg_temp.reject(format('select landing_experiment_command(%L,gen_random_uuid(),''probe'',%L,%L::jsonb)',previous->>'binding',derivative,common||jsonb_build_object('probe',gen_random_uuid())));
   perform pg_temp.assert((select count(*)=5 from landing_experiment_probes));
+  perform pg_temp.exercise_technical_resume(derivative,probe);
   perform pg_temp.assert((select jsonb_agg(to_jsonb(x)order by id)=oldprobes from landing_experiment_probes x where id<>probe));
   perform pg_temp.assert((select to_jsonb(x)=oldrows from landing_experiments x where id=e));
   perform pg_temp.assert((select jsonb_agg(to_jsonb(x)order by command)=oldreceipts from landing_experiment_receipts x where command in(select (value->>'command')::uuid from jsonb_array_elements(oldreceipts))));
