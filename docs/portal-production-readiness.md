@@ -1,14 +1,29 @@
 # Portal Production Readiness
 
+## Complete Work experiment (22 October 2026, local)
+
+The current bounded experiment starts the existing complete Work reads during
+the authenticated HTML request and shares command composition with snapshot only
+within that invocation. Its retained optimized `e267f583` baseline median is
+2,336 ms across five populated reloads, including enabled controls and completed
+snapshot/history. Candidate measurement, compiled recovery and independent
+review remain required. See the implementation map in
+`project-command-centre-architecture.md` and acceptance in `testing-and-qa.md`.
+No Work gain, hosted delivery or platform-cold result is established by source.
+
 ## Saved Visits experiment (22 October 2026, local)
 
-The next bounded candidate starts the existing saved-calendar read after the
+The accepted local candidate starts the existing saved-calendar read after the
 Site Visits page's fresh staff gate, streaming it to the unchanged query owner
 without waiting to mount controls. The same API loader, polling, correction
 invalidation, scope filters, denial and recovery paths remain in use. It does not
 refresh Outlook or change provider/schema data. The optimized baseline is bound
-to `e267f583`; useful populated-agenda comparison and independent delivery review
-remain required before a gain or readiness claim. See `schedule.md` for the
+to `e267f583`; five comparable warm-process staging reloads reduced the populated
+agenda/enabled-controls median from 1,194 ms to 799 ms (33.1%). All five candidate
+loads made zero initial calendar API requests. Compiled delayed, denial, isolation,
+failure/Retry and scope-change checks and independent ordinary return review
+passed on runtime `906720df` (docs correction `c1abcf83`). This is not hosted or
+platform-cold evidence. See `schedule.md` for the
 implementation map and `testing-and-qa.md` for acceptance checks. Projects' prior
 results below remain bound to their original measurements; complete Work and
 platform-cold outcomes remain open.

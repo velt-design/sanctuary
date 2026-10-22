@@ -1,5 +1,22 @@
 # Testing And QA
 
+## Work initial read experiment (22 October 2026)
+
+Run the project page/loader, real query-owner integration, initial-read adapter,
+snapshot and command read-context tests with the existing auth/proxy and API
+contracts. Prove one full command composition shared with snapshot inside one
+verified client/project invocation, independent concurrent users, unchanged
+admin-only payment details, deferred Flight results, summary progress, snapshot
+failure despite successful command, ordinary Retry, cancellation, invalidation,
+denial and tab/project return. Keep complete commercial facts and full history.
+
+Compare optimized exact-source baseline/candidate using the same enabled Work
+controls and completed snapshot endpoint; Current/Payment/Open quote alone is
+insufficient. Count browser requests and actual server reads. Delayed, failed
+and denied compiled paths remain necessary evidence beyond unit mocks. Preserve
+all samples and distinguish local warm-process results from hosted/platform-cold
+performance. Do not change the 100 ms target or credit a timer correction.
+
 ## Saved Visits initial read verification (22 October 2026)
 
 Run `vitest run apps/portal/app/staff/site-visits apps/portal/components/site-visits

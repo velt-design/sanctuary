@@ -73,6 +73,19 @@ Mismatched or later requests and explicit retries retain the guarded API path;
 there is no session/client serialization or shared evidence cache. See
 `marketing-performance.md` for the per-mount lifecycle and verification limits.
 
+## Initial Work document reads
+
+The local Work document experiment likewise starts only after the fresh page
+identity/current-role gate. Its summary, snapshot and complete command use one
+cookie-bound client; the existing invoice schedule remains service-backed with
+the same current-admin payment-entry filter as its API. The complete command
+promise is shared with snapshot only inside that invocation and is bound to its
+client, project and verified viewer. Only owner/query identifiers and independent
+safe data/error promises cross Flight, never roles, credentials or clients.
+Ordinary RSC/prefetch starts no Work seed. One-use matching cannot override later
+query updates, cancellation or access-ending denial; retries keep independently
+authenticated APIs. No access, cookie-renewal or private/no-store policy changes.
+
 ## Outlook site visits
 
 The local initial-document candidate starts the same saved-calendar read only

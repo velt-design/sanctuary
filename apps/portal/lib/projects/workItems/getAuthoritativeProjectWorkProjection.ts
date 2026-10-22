@@ -22,8 +22,13 @@ export async function getAuthoritativeProjectWorkProjection(
 }
 
 /** Snapshot model detection and full composition share only this bound invocation. */
-export function createAuthoritativeProjectWorkRead(projectId: string, supabase: SupabaseClient) {
-  const reader = createProjectCommandCentreRead(projectId, supabase);
+export function createAuthoritativeProjectWorkRead(
+  projectId: string,
+  supabase: SupabaseClient,
+  commandRead?: ReturnType<typeof createProjectCommandCentreRead>,
+) {
+  if (commandRead && !commandRead.matches(projectId, supabase)) throw new Error('Project read scope mismatch');
+  const reader = commandRead ?? createProjectCommandCentreRead(projectId, supabase);
   return {
     readModel: reader.readModel,
     read: async (): Promise<ProjectWorkProjection | null> => {
