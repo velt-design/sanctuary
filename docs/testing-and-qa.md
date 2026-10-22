@@ -1,5 +1,16 @@
 # Testing And QA
 
+## Pergolas overview refinement (22 October 2026, release candidate)
+
+Existing product comparison contracts retain all 18 amounts, atomic offline size
+changes, coherent loading/failure/retry, streamed radio isolation and saved design
+entry. The overview browser suite now checks compact mobile image/price rows,
+all six accessory routes, real roof-finish evidence, Warkworth/Back and undecided
+enquiry/Back. Browser tests are authored coverage; actual CUA and independent
+preview checks are recorded separately. Product detail, homepage fallback and
+pricing-owner code are unchanged.
+
+
 ## Initial Marketing column representation (22 October 2026)
 
 Run `columnarReports.test.ts`, `columnarSeeds.test.tsx`, the Marketing page,

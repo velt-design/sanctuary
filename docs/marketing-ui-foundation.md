@@ -1010,14 +1010,26 @@ implementation. Verify click-to-select text, keyboard slider input, invalid and
 out-of-range values, stable panels, small/large furniture, same-design prices,
 and responsive transitions when extending these components.
 
-## Residential pergola overview (29 September 2026, preview)
+## Residential pergola overview (22 October 2026, release candidate)
 
-`ProductsHub` retains the `/products` metadata, catalogue schema and secondary
+Owner-approved preview is the release candidate; production verification follows
+the normal release. `ProductsHub` retains the `/products` metadata, catalogue schema and secondary
 bespoke, accessory, project and planning-guide paths. Its `PergolaSelection`
 opening compares Pitched, Gable and Box in three aligned desktop columns. Mobile
-first shows all three roofline anchors, then all three image-led options; no
-product is hidden behind tabs. Existing neutral-daylight illustrations describe
+uses three compact image/price rows, with the same six shared size choices; no
+product is hidden behind tabs or duplicated in a thumbnail navigation. Existing neutral-daylight illustrations describe
 the forms, not a live rendering of the selected dimensions.
+
+The compact opening includes an assisted enquiry for visitors who are undecided.
+`ProductHubDetails` owns the server-rendered remainder: three real roof-finish
+examples, visible blinds/screens/lighting details, all six existing accessory
+routes, bespoke enquiry and the cost guide. Dairy Flat shows acrylic, Riverhead
+shows timber lining, and Warkworth shows both; its project link is the single
+Warkworth proof placement. The copy explicitly separates these finishes from the
+acrylic/open-side comparison prices. Existing coastal mesh, Milford privacy-screen
+and Good Home LED photographs show the actual subjects. No new price, weather,
+engineering or service claims are introduced. Its scoped stylesheet and the
+hub-only comparison rules preserve the shared homepage fallback price styles.
 
 `PergolaSelection` owns only a shared 2 x 3 / 4 x 3 / 6 x 3 / 8 x 3 / 6 x 4 / 6 x 5 m
 comparison choice, defaulting to 6 x 3 m. Both width and projection identify
