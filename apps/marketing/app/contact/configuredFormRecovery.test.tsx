@@ -132,7 +132,11 @@ it('identifies an earlier receipt after a lost response and edited retry without
 });
 it.each([[false,false],[true,false],[true,true]])('shows the v2 Google and Meta notice for compact=%s mobile=%s',async(compactConfigured,mobileFinish)=>{
   await act(async()=>root.render(<ContactEnquiryForm compactConfigured={compactConfigured} mobileFinish={mobileFinish} configuredDesign={brief()} initialEnquiryType="residential" initialContext={{sourcePath:'/products'}}/>));
-  expect(host.textContent).toContain('Google Ads and Meta');expect(host.querySelector('a[href="/privacy#advertising-measurement"]')).not.toBeNull();
+  expect(host.textContent).toContain('Google Ads and Meta');
+  const policy = host.querySelector<HTMLAnchorElement>('a[href="/privacy#advertising-measurement"]')!;
+  expect(policy.target).toBe('_blank');
+  expect(policy.rel).toBe('noopener noreferrer');
+  expect(policy.textContent).toContain('opens in a new tab');
 });
 
 it.each([

@@ -25,7 +25,7 @@ export default function DesignWorkspace({ sourcePath }: { sourcePath: LandingSou
   const title = family === 'pitched' ? 'Pitched' : family === 'box' ? 'Box' : 'Gable';
   const width = saved?.input.widthMm ?? selection.widthMm;
   const projection = saved?.input.projectionMm ?? selection.projectionMm;
-  return <section className={styles.section} id="explore-options" aria-labelledby="workspace-title">
+  return <section data-configurator-return-ready={Boolean(state.ready && (design || state.failed))} className={styles.section} id="explore-options" aria-labelledby="workspace-title">
     <header className={styles.heading}><p className={styles.eyebrow}>01 / Shape your pergola</p><div><h2 id="workspace-title">A shape. A size.<br />An idea of cost.</h2><p>Choose a roofline, add a rough size and compare materials. Your installed estimate updates as you explore.</p></div></header>
     {state.recovery && <p role="status">{state.recovery}</p>}
     <div className={styles.workspace}>

@@ -50,6 +50,10 @@ it('retains neutral entry choices until the visitor chooses a pathway', async ()
   await click('#contact-pathway-help');
   expect(host.querySelector('#contact-name')).not.toBeNull();
   expect(host.querySelector('details.contact-form__pathway-choice')?.hasAttribute('open')).toBe(true);
+  const policy = host.querySelector<HTMLAnchorElement>('a[href="/privacy#advertising-measurement"]')!;
+  expect(policy.target).toBe('_blank');
+  expect(policy.rel).toBe('noopener noreferrer');
+  expect(policy.textContent).toContain('opens in a new tab');
 });
 
 it('changing pathway retains typed contact, brief and source while allowing business audience selection', async () => {

@@ -147,3 +147,26 @@ for (const width of [390, 1440]) test(`estimate actions stay in place through op
     await test.info().attach('estimate-position-samples', { body: JSON.stringify(samples, null, 2), contentType: 'application/json' });
   }
 });
+
+for (const width of [320, 1440]) test(`seeded designer Close restores the rendered source and scroll after a native fragment at ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/pergolas-auckland?utm_source=synthetic-return');
+  await page.getByRole('link', { name: 'Explore your pergola', exact: true }).click();
+  const heading = page.getByRole('heading', { level: 1 });
+  const title = await heading.innerText();
+  for (let round = 0; round < 2; round++) {
+    const open = page.getByRole('link', { name: /^(Customise in 3D|Continue your design)$/ });
+    await open.scrollIntoViewIfNeeded();
+    const before = await page.evaluate(() => Math.max(window.scrollY, document.body.scrollTop));
+    await open.click();
+    await expect(page.getByRole('dialog', { name: 'Design your pergola', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Close configurator', exact: true }).click();
+    await expect(page).toHaveURL('/pergolas-auckland?utm_source=synthetic-return#explore-options');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+    await expect.poll(async () => Math.abs(await page.evaluate(() => Math.max(window.scrollY, document.body.scrollTop)) - before)).toBeLessThan(4);
+  }
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+});
