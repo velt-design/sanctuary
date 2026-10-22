@@ -1,5 +1,19 @@
 # Marketing Claims Register
 
+## Professional collaboration presentation (22 October 2026)
+
+The September approved collaboration offer is unchanged. KiwiRail credits JCY
+Architects and the published architect-led canopy role. Lilliput's existing
+project description records design iterations with the architect/engineer around
+foundations, services and the clubhouse, followed by Sanctuary supply/installation
+within the wider renovation. This remains a historical project role, not a new
+supply-only offer. Good Home demonstrates its published twin-gable roof, mixed
+steel/aluminium frame, acrylic, screens and lighting without inventing a consultant
+role. Four original public photographs were inspected for the composition.
+Engineering design/sign-off remains visibly with the project engineer; consent
+and connected-trade responsibilities are project-specific. No KiwiRail area,
+new technical promise, performance claim, price or testimonial is introduced.
+
 ## Remaining project stories (22 October 2026)
 
 All 14 use existing public project records and inspected original photographs.

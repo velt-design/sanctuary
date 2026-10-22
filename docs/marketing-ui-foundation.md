@@ -1,5 +1,30 @@
 # Marketing UI Foundation
 
+## Professionals photographic presentation (22 October 2026)
+
+The owner approved the preview uplift of Architects, Designers & Builders, then
+authorised release: "Looks good. Do final checks and push the Architects,
+Designers & Builders page live." The
+existing "Bring us into the design." positioning and all metadata/form wording
+remain. This is a refinement of the September collaboration page, not a new
+supply-only or completed-drawings offer.
+
+The route now owns ProfessionalPresentation.tsx and professionals.module.css.
+The bounded opening gives KiwiRail03 more architectural presence and an olive
+brief action. Three substantial stories use distinct KiwiRail01, Lilliput02 and
+Good Home05 photographs with accurate project roles. Engineering sign-off stays
+visible; native optional disclosures hold materials, interfaces and coordination
+scope. The canonical SeoLandingPage continues to own schema, guided context and
+the existing professional form, optional brief fields, uploads and recovery.
+Enquiry anchors reuse EnquiryLink for first/repeated focus and Back compatibility.
+
+The now-unused AudienceLandingPage and its audience stylesheet are retired after
+consumer search. No shared form, Commercial or project-page owner changes. The
+existing headline, public photos and claims remain; no new services or numeric
+performance are introduced. Review actual phone/desktop crops, case-study Back,
+repeated brief entry and disclosure access. Preview acceptance and release
+verification remain separate evidence.
+
 ## Project stories rollout (22 October 2026)
 
 Jordan authorised the remaining 14 project pages to reach the quality of the
@@ -120,9 +145,10 @@ Guided commercial context retains precedence. There is no new pricing or enquiry
 implementation. Ordinary website chrome, Service schema and canonical URL remain.
 
 The now-unused Commercial branch and its exclusive CSS selectors were retired
-from `AudienceLandingPage`; that owner continues to render Professionals with the
-same markup, Figure/TextLink contracts and CSS declarations. No Professional
-route/content file changes. No new media assets or theme are introduced.
+from `AudienceLandingPage`. At that release, Professionals retained the same
+markup, Figure/TextLink contracts and CSS declarations, with no Professional
+route/content changes. The subsequent Professionals refresh is described above.
+No new media assets or theme were introduced.
 Jordan accepted the protected preview and authorised production release on
 21 October 2026. The release checks and production verification remain separate
 from that acceptance.
@@ -1469,10 +1495,10 @@ The residential `/pergolas-auckland` route uses six major regions before its fin
 
 The custom `/custom-pergolas-auckland` route adopts the same six-region budget without becoming a copy of residential. Three constrained-project examples and explicit site conditions explain why custom design is needed; a three-stage process leads to one `custom-planning-support` disclosure. The dominant guide-series navigation is disabled on both service routes while the useful canonical guide links remain. Custom enquiry links retain a residential audience with the custom source path.
 
-The professional route retains its scoped editorial composition in
-`components/seo-landing/AudienceLandingPage.tsx` and
-`audience-landing.module.css`. The Commercial composition has moved to its route
-owner described above, retaining the hospitality-first offer and scope.
+The professional route uses its scoped `ProfessionalPresentation.tsx` and
+`professionals.module.css` owners described above. The retired shared audience
+renderer has no remaining consumers. Commercial retains its separate route
+owner, hospitality-first offer and scope.
 Professionals leads with collaborative design development, verified roof and
 building-interface photography, and accurate historical project roles. These
 roles are not separate supply-only offers. The 30 September 2026 claim families
