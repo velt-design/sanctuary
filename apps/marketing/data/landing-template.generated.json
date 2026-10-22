@@ -1,5 +1,5 @@
 {
-  "hash": "7b5448958feff6f66a79c01abbb4d26aefc87649089bb5d169036e40b75f56a0",
+  "hash": "c27d49fafc419817c0b1e0a3eb20a87f347c2f65721a97427e5b19a3f969caf7",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -2004,7 +2004,7 @@
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.5.0",
     "@supabase/supabase-js": "2.90.1",
-    "next": "16.3.8",
+    "next": "16.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "0.0.1",

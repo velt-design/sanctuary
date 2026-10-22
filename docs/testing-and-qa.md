@@ -1,5 +1,14 @@
 # Testing And QA
 
+Next security maintenance (23 October 2026): root, Marketing and Portal require
+at least Next16.4.1 and the lock resolves that exact patched release for
+GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r and GHSA-673q-mjm6-r5xr.
+Keep `npm audit --omit=dev` unchanged. Dependency updates require both app builds
+and types plus the signed landing command/receipt checks. Regenerate the landing
+template manifest; a framework-version change changes its identity even when
+rendered-control source files are unchanged. Bind actual deployment proof before
+new experiment admission, preserving rejected-copy exclusion and old receipts.
+
 Owner-decision regression: `node scripts/test-landing-owner-decisions-db.mjs`
 with `SANCTUARY_DISPOSABLE_POSTGRES_BIN` set to an existing local PG17 bin.
 It uses only a disposable loopback database, including concurrent issuance,
