@@ -31,9 +31,9 @@ function client(id: string, role: string | null = 'staff') {
 
 it('shares one actual auth lookup within each simulated render context and isolates concurrent request carriers', async () => {
   const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
-  const reads = ['private-one', 'private-two'].map((id) => {
+  const reads = ['private-one', 'private-two'].map((id,index) => {
     const db = client(id);
-    const prepared = prepareProxyDocumentDiagnostics(new Request('https://portal.example/staff/projects', {
+    const prepared = prepareProxyDocumentDiagnostics(new Request(`https://portal.example${index?'/staff/marketing-performance':'/staff/projects'}`, {
       headers: { accept: 'text/html', 'sec-fetch-dest': 'document' },
     }));
     return context.run({ cache: new Map(), headers: prepared.requestHeaders!, client: db }, async () => {

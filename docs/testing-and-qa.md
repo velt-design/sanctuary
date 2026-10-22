@@ -468,6 +468,15 @@ installation, grants/RLS, invalid input, aggregate windows and exact retention
 cutoff. Its cron scheduler is explicitly a stub; actual extension/job state needs
 a separately bound catalogue read and installed-environment verification.
 
+For Marketing's diagnostic extension also run `app/layout.diagnostics.test.tsx`
+and `app/staff/marketing-performance/page.test.tsx`. These cover a delayed advisory
+finance call, unchanged null/error fallback, other-route phase preservation,
+parallel deferred client/read chains, safe failed-union classification, expiry
+and logger failure isolation. The document/proxy tests cover exact Marketing
+selection, snapshot and RSC/data/prefetch exclusions, signed carrier forwarding,
+cookie preservation and absent proxy identity/role phases. No database metric
+schema or retention behavior changes with this console-only extension.
+
 Use one optimized candidate build for a small disabled/enabled/expired read-only
 check. Correlate the browser's opaque response UUID with fixed server events;
 inspect that internal signed headers/configuration never reach final responses or
