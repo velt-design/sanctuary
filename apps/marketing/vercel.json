@@ -5,6 +5,8 @@
   "git": {
     "deploymentEnabled": {
       "codex/project-files-main-tab-20261022": false,
+      "codex/campaign-render-origin-20261022": false,
+      "codex/campaign-render-packaging-20261022": false,
       "codex/pergolas-overview-release-20261022": false,
       "codex/project-files-explorer-20261022": false,
       "codex/ga4-acquisition-recovery-20261022": false,

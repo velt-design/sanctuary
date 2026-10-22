@@ -1,6 +1,45 @@
 # Supabase Schema Map
 
-## One exact preparation-probe recovery (22 October 2026)
+## Exact same-candidate probe successor (22 October 2026)
+
+Forward20261022120001 extends only the existing private
+landing_packaging_recovery_expiry(uuid,jsonb), retaining its ACL/search path/UTC
+contract, and adds a unique prepare_successor_recovery receipt per experiment.
+The fixed ordinal4 proof binds the existing replacement, original expiry,
+correction release, complete previous recovery receipt and expired zero-visit
+third probe. All older probes must still match their original zero-visit hashes.
+The replacement must remain candidate, unreviewed/unpublished, under the same
+controls and global reservation with no genuine assignments. Existing signed
+probe atomically admits only the pinned new UUID, with normal idempotent receipt
+readback; fifth/changed/replayed new work denies. No prepare/new experiment,
+Origin/CSRF change, public endpoint, model allowance or credential is introduced.
+The migration appends no operational receipt. Native test composes through the
+earlier real three-probe/replacement history and preserves it after its rollback.
+
+## Historical packaging-probe continuation (22 October 2026)
+
+Forward20261022110001 adds private landing_packaging_recovery_expiry(uuid,jsonb)
+and landing_packaging_prepare(uuid,jsonb), patches the two existing recovery
+predicates plus exact prepare cadence/copy-exclusion exceptions in
+landing_experiment_command, and adds unique recovery/replacement receipt indexes. The exact third
+prepare probe requires both original probes expired, zero-visit, unenrolled and
+unverified; full native hashes bind both and the previous prepare_recovery receipt.
+Candidate, full control hash/generation/binding and original finite expiry agree.
+The prior experiment stays reverted, never published and without real assignments.
+Its complete row and guard rollback receipt are hashed. The receipt names exactly
+one new experiment; ordinary prepare copies the exact paid candidate/evidence/
+generator/settings and atomically reacquires the existing global reservation.
+No general cadence or exclusion changes; the original remains in exclusions.
+Trusted operator receipt+prepare is one transaction, with ordinary cloud render,
+independent review, publication and actual serving verification still separate.
+Only the trusted operator appends this receipt after proving the consumer package
+correction. No migration installs it, no service-role issuer/endpoint is added,
+and there is no Source HTTP, public renderer or customer-record change. Lost
+responses reconcile the same command receipt. A fourth probe remains denied.
+The first two probes and all earlier receipts remain unchanged. Stop revokes;
+rollback keeps forward schema/history and never resets counters or expiry.
+
+## Historical first preparation-probe recovery (22 October 2026)
 
 Forward20261022100001 adds private landing_prepare_recovery_expiry(uuid,jsonb)
 and patches only landing_experiment_command(text,uuid,text,uuid,jsonb). A unique
