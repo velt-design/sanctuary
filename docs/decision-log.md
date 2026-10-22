@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-22: Keep sticky state out of measured layout
+
+The inline mobile estimate observer watched a section whose height it changed
+by fixing a child and adding a guessed spacer. Ordinary scrolling could then
+oscillate across the same threshold. Native sticky positioning now preserves
+flow geometry; verification samples section height through both scroll directions.
+Related funnel consumers share the correction. Check ancestor overflow as well:
+mobile overflow-x:hidden can create an unintended sticky scroll container.
+
 ## 2026-10-22: Preserve query cancellation policy through initial-read adapters
 
 Reading TanStack Query's context signal marks the query as cancellable even when

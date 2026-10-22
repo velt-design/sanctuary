@@ -118,7 +118,7 @@ for (const width of [390, 2560]) test(`compact choices, same-section price and c
   expect(await page.evaluate(k => JSON.parse(sessionStorage.getItem(k)!).roof.acrylicTint, key)).toBeUndefined();
   await page.locator('#project-details').evaluate(el => el.scrollIntoView({ block: 'start' }));
   await page.locator('[name=name]').focus();
-  await expect(section).toHaveAttribute('data-configuring', 'false');
+  await expect(action).not.toBeInViewport();
   if (width === 390) expect(await action.evaluate(el => getComputedStyle(el.parentElement!).position)).not.toBe('fixed');
 });
 
@@ -214,7 +214,7 @@ for (const route of ['/auckland-outdoor-living', '/acrylic-roof-pergolas-aucklan
   await page.screenshot({ path: info.outputPath('design.png') });
   await expect(page.getByRole('link', { name: 'Explore your design in 3D' })).toBeVisible();
   await page.locator('#project-details').scrollIntoViewIfNeeded();
-  await expect(page.locator('#your-design')).toHaveAttribute('data-configuring', 'false');
+  await expect(page.locator('#your-design').getByRole('link', { name: 'Enquire about this design', exact: true })).not.toBeInViewport();
   const form = page.locator('form.acrylic-form[data-inline-enquiry]');
   await expect(form.locator('[name=phone]')).not.toHaveAttribute('required');
   await expect(form.locator('[name=enquiryType]')).toHaveValue('residential');

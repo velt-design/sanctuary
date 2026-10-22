@@ -274,6 +274,12 @@
 :global(html):has(.page), :global(body):has(.page){
   height:auto;min-height:100%;overflow-x:clip;overflow-y:visible;
 }
+/* The global mobile overflow-x:hidden rule would create a body scroll container
+   that never scrolls, trapping sticky children. Clip keeps document scrolling. */
+:global(html):has(.page):not(:global(.scroll-locked)):not(:global(.foundation-menu-open)),
+:global(body):has(.page):not(:global(.scroll-locked)):not(:global(.foundation-menu-open)):not(:global(.no-scroll)) {
+  overflow-x:clip!important;
+}
 .designer{
   max-width:1600px;padding-block:48px 58px;
 }
@@ -462,23 +468,26 @@
   .priceAction>.primary{
     margin-top:15px;
   }
-  .designer[data-configuring=true] .priceAction{
-    position:fixed;z-index:25;inset:auto 0 0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:13px 20px calc(13px + env(safe-area-inset-bottom));background:#eeeee9;box-shadow:0 -2px 16px #20251f0c;margin:0;
+  .priceAction{
+    position:sticky;z-index:25;bottom:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:12px;padding:13px 12px calc(13px + env(safe-area-inset-bottom));background:#eeeee9;box-shadow:0 -2px 16px #20251f0c;margin:0;
   }
-  .designer[data-configuring=true] .estimate>span{
+  .priceAction .estimate>span{
     font-size:10px;
   }
-  .designer[data-configuring=true] .estimate strong{
+  .priceAction .estimate strong{
     font-size:1.6rem;letter-spacing:-.04em;margin:4px 0 0;
   }
-  .designer[data-configuring=true] .estimate p{
+  .priceAction .estimate:not([data-estimate-state=priced]) strong {
+    font-size:1rem;line-height:1.3;letter-spacing:normal;overflow-wrap:anywhere;
+  }
+  .priceAction .estimate p{
     font-size:10px;line-height:1.3;max-width:190px;margin-top:4px;
   }
-  .designer[data-configuring=true] .estimate button{
-    font-size:10px;min-height:24px;
+  .priceAction .estimate button{
+    font-size:11px;min-height:44px;
   }
-  .designer[data-configuring=true] .priceAction>.primary{
-    font-size:11px;max-width:155px;min-height:49px;padding:10px 13px;gap:12px;margin:0;
+  .priceAction>.primary{
+    font-size:11px;min-width:0;min-height:49px;padding:10px 8px;gap:8px;margin:0;
   }
   .page[data-google-funnel=acrylic] .heroImage{
     object-position:50% 25%;
@@ -498,8 +507,11 @@
   .tintContent>p{
     font-size:13px;
   }
-  .designer[data-configuring=true] .controls{
-    padding-bottom:110px;
+  /* Keep the panel in normal flow. Fixing it used to resize its own observed
+     section, so scrolling across the boundary could repeatedly toggle it. */
+  .designer[data-consent-open=true] .priceAction,
+  .controls:has(input[inputmode=decimal]:focus) .priceAction {
+    position:static;
   }
 }
 
