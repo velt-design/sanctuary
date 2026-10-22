@@ -1,5 +1,17 @@
 # Testing And QA
 
+## Exact preparation recovery (22 October 2026)
+
+scripts/test-meta-creative-ledger-db.mjs installs the forward recovery migration
+and runs supabase/tests/landing_render_recovery.sql in disposable local PG17.
+It proves the former second-probe denial, one receipt-bound exception, unchanged
+original rows/candidate, idempotent lost-reply reconciliation, attempt3 denial,
+control/candidate/expiry/visit/hash drift, ordinary diagnostic cookie/exposure/
+reload behavior, no genuine assignments/enquiries, and no private issuer ACL.
+All fixtures are synthetic. Existing landing/intake/creative/cross-lane tests run
+against the same changed Source command. This is not live serving evidence.
+
+
 ## Work initial read experiment (22 October 2026)
 
 Run the project page/loader, real query-owner integration, initial-read adapter,
