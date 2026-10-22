@@ -20,9 +20,10 @@ try{
  sql(readFileSync('supabase/migrations/20261022110001_landing_packaging_recovery.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261022120001_landing_render_successor.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261022130001_landing_completion_permit.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261022140001_landing_technical_resume.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_render_recovery.sql','utf8'));
- sql(readFileSync('supabase/tests/landing_completion_permit.sql','utf8')+readFileSync('supabase/tests/landing_render_successor.sql','utf8')+readFileSync('supabase/tests/landing_packaging_recovery.sql','utf8'));
- sql(readFileSync('supabase/tests/landing_completion_permit.sql','utf8')+readFileSync('supabase/tests/landing_render_successor.sql','utf8').replaceAll('/auckland-outdoor-living','/acrylic-roof-pergolas-auckland')+readFileSync('supabase/tests/landing_packaging_recovery.sql','utf8').replaceAll('/auckland-outdoor-living','/acrylic-roof-pergolas-auckland').replaceAll('explore','action-first'));
+ sql(readFileSync('supabase/tests/landing_technical_resume.sql','utf8')+readFileSync('supabase/tests/landing_completion_permit.sql','utf8')+readFileSync('supabase/tests/landing_render_successor.sql','utf8')+readFileSync('supabase/tests/landing_packaging_recovery.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_technical_resume.sql','utf8')+readFileSync('supabase/tests/landing_completion_permit.sql','utf8')+readFileSync('supabase/tests/landing_render_successor.sql','utf8').replaceAll('/auckland-outdoor-living','/acrylic-roof-pergolas-auckland')+readFileSync('supabase/tests/landing_packaging_recovery.sql','utf8').replaceAll('/auckland-outdoor-living','/acrylic-roof-pergolas-auckland').replaceAll('explore','action-first'));
  sql(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_layout.sql','utf8'));
