@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
@@ -35,7 +35,7 @@ export default function RecentEstimatesCard({ items,pending=false }: { items: Da
           <ul className={dash.operationalList}>
             {items.map((item) => (
               <li key={item.estimateId}>
-                <Link className={`${dash.operationalRow} ${dash.estimateRow}`} href={item.href}>
+                <PortalIndexLink className={`${dash.operationalRow} ${dash.estimateRow}`} href={item.href}>
                   <span className={dash.rowPrimary}>
                     <strong>{item.projectName}</strong>
                     <small><Badge>{item.versionLabel}</Badge> <span>Draft</span></small>
@@ -44,7 +44,7 @@ export default function RecentEstimatesCard({ items,pending=false }: { items: Da
                     <strong>{item.customerPriceIncGst === null ? 'Price unavailable' : nzd.format(item.customerPriceIncGst)}</strong>
                     <time dateTime={item.updatedAt}>{updatedLabel(item.updatedAt)}</time>
                   </span>
-                </Link>
+                </PortalIndexLink>
               </li>
             ))}
           </ul>

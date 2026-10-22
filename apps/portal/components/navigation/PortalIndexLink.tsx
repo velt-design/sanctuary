@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ComponentProps } from 'react';
 import { ButtonLink, type ButtonVariant, type ControlSize } from '@/components/ui/foundation/FoundationControls';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
-import { shouldHandleRouteTransitionClick } from '@/components/page-state/PortalRouteTransition';
+import { shouldHandleRouteTransitionClick, shouldStartRouteTransitionForHref } from '@/components/page-state/PortalRouteTransition';
 import { openPortalIndexInstantly, portalIndexTarget, preloadPortalIndex } from '@/lib/queries/portalIndexNavigation';
 
 type PortalIndexLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
@@ -32,7 +32,17 @@ export default function PortalIndexLink({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { beginInstantRoute } = usePortalRouteTransition();
-  const prepare = () => preloadPortalIndex(queryClient, router, href);
+  const prepare = () => {
+    if (disabled || href.startsWith('#')) return;
+    if (preloadPortalIndex(queryClient, router, href)) return;
+    // Other destinations keep native navigation and warm only their route on
+    // intent. They do not borrow index API reads or the instant index URL path.
+    if ((props.target && props.target !== '_self') || (props.download != null && props.download !== false)) return;
+    if (!shouldStartRouteTransitionForHref(href)) return;
+    const path = new URL(href, window.location.href).pathname;
+    if (!path.startsWith('/staff/') || /^\/staff\/(?:api|auth|login|logout)(?:\/|$)/.test(path)) return;
+    router.prefetch(href);
+  };
 
   const linkProps = {
     ...props,

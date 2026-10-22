@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { CalendarDays, Calculator, FolderPlus } from 'lucide-react';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
@@ -43,10 +43,10 @@ export default function DashboardHero({ updatedAtIso }: { updatedAtIso: string }
                 {QUICK_ACTIONS.map((action) => {
                   const Icon = action.icon;
                   return (
-                    <Link key={action.href} href={action.href} className={dash.quickAction}>
+                    <PortalIndexLink key={action.href} href={action.href} className={dash.quickAction}>
                       <Icon aria-hidden="true" />
                       <span>{action.label}</span>
-                    </Link>
+                    </PortalIndexLink>
                   );
                 })}
               </div>

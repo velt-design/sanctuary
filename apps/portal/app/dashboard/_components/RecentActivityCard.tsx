@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import type { DashboardRecentActivityItem } from '@/lib/dashboard/types';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
 import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
@@ -43,7 +43,7 @@ export default function RecentActivityCard({ items,pending=false }: { items: Das
           <ul className={dash.activityList}>
             {items.slice(0, 6).map((item) => (
               <li key={item.id}>
-                <Link href={item.href} className={dash.activityItem}>
+                <PortalIndexLink href={item.href} className={dash.activityItem}>
                   <div className={dash.activityHeaderRow}>
                     <Badge tone="success" edge className={dash.activityTypePill}>Project note</Badge>
                     <span className={dash.activityTime}>{activityTimeLabel(item.at)}</span>
@@ -51,7 +51,7 @@ export default function RecentActivityCard({ items,pending=false }: { items: Das
                   <div className={dash.activityProject}>{item.projectName}</div>
                   <div className={dash.activityBody}>{item.body}</div>
                   <div className={dash.activityFooter}>Added by {authorLabel(item)}</div>
-                </Link>
+                </PortalIndexLink>
               </li>
             ))}
           </ul>

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { ProjectStageBadge } from '@/components/ui/foundation/SanctuaryStatus';
 import {
@@ -25,7 +25,7 @@ export default function ProjectWorkQueueCard({
           <h2 className={styles.sectionTitle}>Work Queue</h2>
           <div className={`${styles.muted} ${dash.cardSubheading}`}>One current obligation per active project.</div>
         </div>
-        <Link className={dash.queueOpenLink} href="/staff/projects/work-queue">Open queue</Link>
+        <PortalIndexLink className={dash.queueOpenLink} href="/staff/projects/work-queue">Open queue</PortalIndexLink>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody}`}>
         {pending?<div className={dash.emptyState} role="status">Reading the work queue…</div>:!available ? (
@@ -37,7 +37,7 @@ export default function ProjectWorkQueueCard({
               const stage = normalizePipelineStageKey(queueEntryStage(entry));
               return (
                 <li key={entry.projectId}>
-                  <Link className={dash.queueRow} href={entry.href}>
+                  <PortalIndexLink className={dash.queueRow} href={entry.href}>
                     <span className={dash.queueAction}>{entry.title}</span>
                     <span className={dash.queueProject}>
                       <strong>{entry.projectName}</strong>
@@ -48,7 +48,7 @@ export default function ProjectWorkQueueCard({
                       <span className={dash.queueOwner}>Owner: {effectiveAssigneeLabel(entry, [])}</span>
                       <span className={dash.queueDue} data-state={entry.group}>When: {queueDueLabel(entry)}</span>
                     </span>
-                  </Link>
+                  </PortalIndexLink>
                 </li>
               );
             })}

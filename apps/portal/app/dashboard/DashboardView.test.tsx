@@ -5,7 +5,7 @@ import type { DashboardData } from '@/lib/dashboard/types';
 
 vi.mock('@/components/site-visits/TodayVisits', () => ({default:()=> <section>Today’s site visits</section>}));
 
-vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+vi.mock('@/components/navigation/PortalIndexLink', () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
 
