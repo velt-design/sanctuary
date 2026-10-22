@@ -1,5 +1,27 @@
 # Testing And QA
 
+Next security maintenance (23 October 2026): root, Marketing and Portal require
+at least Next16.4.1 and the lock resolves that exact patched release for
+GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r and GHSA-673q-mjm6-r5xr.
+Keep `npm audit --omit=dev` unchanged. Dependency updates require both app builds
+and types plus the signed landing command/receipt checks. Regenerate the landing
+template manifest; a framework-version change changes its identity even when
+rendered-control source files are unchanged. Bind actual deployment proof before
+new experiment admission, preserving rejected-copy exclusion and old receipts.
+
+Owner-decision regression: `node scripts/test-landing-owner-decisions-db.mjs`
+with `SANCTUARY_DISPOSABLE_POSTGRES_BIN` set to an existing local PG17 bin.
+It uses only a disposable loopback database, including concurrent issuance,
+ordinary quota preservation, immutable rejected-copy exclusions across equivalent
+controls, distinct proposal/probe, no repeat after reject/null, signed receipt
+identity, genuine-delivery/cadence refusal and funded-day bounds. The same SQL
+fixture runs under PGlite in `test/landing-owner-decision-command.test.ts`; that
+file also covers the actual signed route and unchanged diagnostic capability.
+Lost-reply cases cover revoked/expired capacity and generation drift, exact
+prepare/probe replay, conflicting identities, unchanged native rows/counters,
+and signed probe receipt readback without capability renewal.
+
+
 ## Composed authored/native campaign layer (23 October 2026)
 
 The disposable PostgreSQL17 ledger harness installs the deployed landing
@@ -481,18 +503,22 @@ and streamed starts. It adds no simulated auth advantage. Verify actual Flight
 streaming, complete panel content, final data-to-content delay and retained
 recovery; unit promise tests do not establish hosted speed or access behavior.
 
-## PG17 CI registry recovery (21 October 2026)
+## PG17 CI registry recovery (23 October 2026)
 
-The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR
-mirror of the same 17.6.1.107 linux/amd64 manifest, pinned to
+The background-jobs and AI-foundation PG17 matrices use Supabase's official
+public ECR location for the same 17.6.1.107 linux/amd64 image, pinned to
 `sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`.
-Public ECR throttled before contract execution. Both registry manifests were
-read and matched byte-for-byte, including config and all layers; Supabase's own
+The earlier 21 October recovery used GHCR after ECR throttled. On 23 October,
+GHCR repeatedly throttled before SQL, including all three bounded AI pulls.
+Fresh ECR metadata hashes to the exact existing manifest digest: the same config
+and all 29 layer descriptors, also referenced by its 17.6.1.107 amd64 index entry.
+Supabase's own
 [mirror workflow](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml)
-publishes to both. This changes distribution only: PG17, PGMQ1.5.1, all contract
-assertions and the separate PG18 matrix remain unchanged. Local Docker was not
-running during verification, so metadata equality is not a container-test pass;
-the normal required CI jobs still execute the exact contracts.
+publishes to both. Only the registry hostname changes; PG17, PGMQ1.5.1, the
+separate PG18 matrices, pull bounds and single-run SQL assertions stay unchanged.
+No Docker pull/container run was performed for this metadata check. Matching
+content addresses do not establish current layer availability or a contract pass;
+the normal required CI jobs still download and execute the exact image.
 
 ## Paused creative capability candidate, 21 October 2026
 
@@ -1971,7 +1997,7 @@ Sanctuary AI contract changes should run `npm run test:ai`, `npm run packages:gu
 
 PR-AI-004/005 database changes additionally require `npm run test:ai:db`. `scripts/test-ai-task-ledger-db.mjs` starts and removes its own disposable database, applies the test-only bootstrap, runs each exact AI migration inside `BEGIN`/`ROLLBACK`, proves that its objects do not survive, reapplies the files in order, and executes the live task-ledger plus exact-approval contracts. Approval coverage includes cross-user reads, current admin role, request/decision replay, changed command identity, exact payload hash, rejection, expiry, task cancellation, explicit invalidation, duplicate consumption, decision preservation, append-only receipts, and frozen private envelopes. It reads no Supabase target credentials and must never run against a shared local, staging, or production database. The `AI Foundation` workflow runs the same harness on Supabase PostgreSQL 17 and upstream PostgreSQL 18. A missing Docker command or configured workflow is not a pass; wait for green executable evidence before deployment review.
 
-Before that single-run harness, AI Foundation explicitly pulls the unchanged matrix image with `node scripts/ci/pull-ai-db-image.mjs`. Only the exact `toomanyrequests: Rate exceeded` registry message permits another pull: at most three attempts, with 30/60-second backoff and a two-minute bound per attempt. Every failed response stays visible. Other failures, process errors, and exhausted attempts stop the job before database startup. The workflow never retries SQL or the harness. `npx vitest run test/ai-db-image-pull.test.ts` verifies this policy using synthetic command responses and no Docker, registry, or database access.
+Before their single-run database harnesses, AI Foundation and Background Jobs explicitly pull the unchanged matrix image with `node scripts/ci/pull-ai-db-image.mjs`. Only the anchored `toomanyrequests: Rate exceeded` message or the observed GHCR `toomanyrequests: retry-after: <finite decimal in microseconds>, allowed: <positive integer>/minute` format permits another pull, including Docker daemon prefixes. Both use at most three attempts, 30/60-second backoff and a two-minute bound per attempt; the microsecond hint never shortens that backoff. Every failed response stays visible. Other failures, malformed hints, process errors and exhausted attempts stop the job before database startup. Neither workflow retries SQL or the harness. `npx vitest run test/ai-db-image-pull.test.ts` verifies both workflow bindings and this policy using synthetic command responses and no Docker, registry or database access.
 
 PR-AI-007 additionally requires `npm run test:jobs`, `npm run test:worker`, `npm run typecheck:worker`, `npm run build:worker`, and `npm run test:jobs:db`. The package/worker suites prove the exact four-field synthetic payload, fixed fixture results, zero external-effect policy, worker-routed handler coverage, invalid-input quarantine, and legacy-kind fail-safe behavior. The live background-job harness applies the AI task and approval prerequisites, rehearses the exact synthetic-execution migration inside `BEGIN`/`ROLLBACK`, proves no execution objects remain, then applies it and executes real PGMQ claim/progress/completion, exact replay, linked-cancellation rejection, zero-cost usage, deterministic evaluation, RLS/grant, append-only, and atomic mismatch-rollback contracts on PostgreSQL 17 and 18. It must never target a shared environment.
 

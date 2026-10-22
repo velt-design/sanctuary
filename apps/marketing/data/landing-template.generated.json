@@ -1,5 +1,5 @@
 {
-  "hash": "44a86c7ffc3f0564b69fc552d47ae4b000c31a687a370aaf18a49af121d97025",
+  "hash": "d73e5192732f300616052c000657f06afb1f7f1feb7bcd594cf6f1b83ebe0ae0",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -1059,7 +1059,7 @@
     ],
     [
       "apps/marketing/lib/landingExperiment.server.ts",
-      "722312ad60c679abab01a626869769e08130320e4421397ba363369079a7b7ca"
+      "dab2a5d281234fcdac638fa9f2c845b1a141df80967b079c9e4e8b11593f218b"
     ],
     [
       "apps/marketing/lib/landingExperiment.ts",
@@ -2004,7 +2004,7 @@
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.5.0",
     "@supabase/supabase-js": "2.90.1",
-    "next": "16.3.8",
+    "next": "16.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "0.0.1",

@@ -1,5 +1,31 @@
 # Supabase Schema Map
 
+## Funded owner landing decisions (23 October 2026, local candidate)
+
+Forward `20261023010001_landing_owner_decisions.sql` adds no table or public
+endpoint. Four private helpers project prior/settled state, validate capacity,
+and expire only an unprepared decision reservation. The existing signed command
+wraps its previous implementation; three unique receipt indexes enforce one
+owner/Auckland-day decision, one preparation and one first prepare-probe. A
+null/reject consumes the decision. A lost dispatch is reconciled by its exact
+receipt, never refunded or repeated. Ordinary probe rows/counters remain intact.
+Exact committed prepare/probe replay precedes current-capacity validation, so
+expiry, Stop or generation changes cannot hide the saved result. Binding and
+the complete stage/experiment/payload digest still must match. Signed probe
+receipt reads return only the original saved fields, without a new capability
+or extended probe expiry; fresh commands still require current capacity.
+
+Capacity is acquired before Velt reserves collection/model work, under the same
+acquisition lock as ordinary landing and creative tests. It binds owner/request,
+funding receipt/day, current template/controls/generation, terminal predecessor,
+corrected Velt release and <=4h expiry within both Sydney and Auckland days.
+Preparation atomically transfers the one reservation to its new experiment.
+Genuine prior assignment, publication or unresolved active state denies issuance;
+seven-day cadence uses actual start time. Rejected canonical slot/text remains
+excluded for the same rendered control across implementation-template changes.
+Nothing in this migration revives a prior candidate or installs an admission.
+
+
 ## Composed authored/native campaign layer (23 October 2026, local only)
 
 Unreleased landing migration50009 patches only explicit copy-semantic anchors
