@@ -13,23 +13,29 @@ const operation = z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/);
 const common = { generation: z.number().int().positive(), candidateHash: hash };
 export const experimentPayloads = {
   read: z.object({}).strict(),
-  receipt: z.object({command:z.string().uuid(),stage:z.enum(['prepare','review','visual','publish','verify','evaluate','rollback']),payload:z.record(z.string(),z.unknown())}).strict(),
+  receipt: z.object({command:z.string().uuid(),stage:z.enum(['prepare','review','visual','publish','verify','evaluate','rollback','owner_decision','owner_end']),payload:z.record(z.string(),z.unknown())}).strict(),
+  owner_decision:z.object({owner:z.uuid(),request:z.uuid(),generation:common.generation,template:z.literal(EXPERIMENT_TEMPLATE),controls:z.record(z.string(),z.unknown()),
+    prior:z.object({id:z.uuid(),candidateHash:hash,state:z.enum(['rejected','reverted','inconclusive','retained'])}).strict().nullable(),
+    expiresAt:z.iso.datetime({offset:true}),day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),correction:z.string().regex(/^[a-f0-9]{40}$/),
+    funding:z.object({day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),receiptHash:hash,maximumModelUsd:z.literal(.14308)}).strict()}).strict(),
+  owner_end:z.object({ownerDecision:z.uuid(),result:z.enum(['no_candidate','no_landing_hypothesis','stopped'])}).strict(),
   prepare: z.object({ generation: common.generation, candidateHash: hash, evidenceHash: hash, template: z.literal(EXPERIMENT_TEMPLATE),
     path: z.enum(LANDING_EXPERIMENT_PATHS), copy: z.string().max(125).refine(value=>copyChoice(value)!==null), generator: operation,
-    minimumExposures: z.literal(100), durationDays: z.literal(14) }).strict(),
+    minimumExposures: z.literal(100), durationDays: z.literal(14),ownerDecision:z.uuid().optional(),ownerRequest:z.uuid().optional() }).strict(),
   review: z.object({ ...common, reviewer: operation, verdict: z.enum(['pass','reject']) }).strict(),
   visual: z.object({ ...common, visualHash: hash, template: z.literal(EXPERIMENT_TEMPLATE) }).strict(),
   publish: z.object(common).strict(),
-  probe: z.object({...common,template:z.literal(EXPERIMENT_TEMPLATE),mode:z.enum(['prepare','live']),probe:z.string().uuid()}).strict(),
+  probe: z.object({...common,template:z.literal(EXPERIMENT_TEMPLATE),mode:z.enum(['prepare','live']),probe:z.string().uuid(),ownerDecision:z.uuid().optional(),ownerRequest:z.uuid().optional()}).strict(),
   verify: z.object({ ...common, servedHash: hash,probe:z.string().uuid() }).strict(),
   renew: z.object({ ...common, servedHash: hash,probe:z.string().uuid() }).strict(),
   evaluate: z.object({ ...common, decision: z.enum(['retain','revert','inconclusive']), qualityGuard: z.enum(['pass','concern','unknown']), qualityHash: hash }).strict(),
   rollback: z.object({ ...common, reason: z.enum(['form','served_mismatch','unavailable','guard','owner_stop']) }).strict(),
 };
 export const experimentCommandSchema = z.object({ version: z.literal(1), command: z.string().uuid(), experiment: z.string().uuid().nullable(),
-  stage: z.enum(['read','receipt','prepare','review','visual','publish','probe','verify','renew','evaluate','rollback']), payload: z.unknown(),
+  stage: z.enum(['read','receipt','prepare','review','visual','publish','probe','verify','renew','evaluate','rollback','owner_decision','owner_end']), payload: z.unknown(),
   at: z.number().int().positive() }).strict().superRefine((row, ctx) => {
-  if (!experimentPayloads[row.stage].safeParse(row.payload).success || (row.stage !== 'read' && row.experiment === null)) ctx.addIssue({ code: 'custom', message: 'Invalid command payload' });
+  const noExperiment=['read','owner_decision','owner_end'].includes(row.stage)||row.stage==='receipt'&&['owner_decision','owner_end'].includes((row.payload as {stage:string})?.stage);
+  if (!experimentPayloads[row.stage].safeParse(row.payload).success || (!noExperiment && row.experiment === null)||(['owner_decision','owner_end'].includes(row.stage)&&row.experiment!==null)) ctx.addIssue({ code: 'custom', message: 'Invalid command payload' });
 });
 function key() {
   const secret = process.env.SANCTUARY_LANDING_EXPERIMENT_KEY;

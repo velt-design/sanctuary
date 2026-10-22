@@ -1,5 +1,15 @@
 # Testing And QA
 
+Owner-decision regression: `node scripts/test-landing-owner-decisions-db.mjs`
+with `SANCTUARY_DISPOSABLE_POSTGRES_BIN` set to an existing local PG17 bin.
+It uses only a disposable loopback database, including concurrent issuance,
+ordinary quota preservation, immutable rejected-copy exclusions across equivalent
+controls, distinct proposal/probe, no repeat after reject/null, signed receipt
+identity, genuine-delivery/cadence refusal and funded-day bounds. The same SQL
+fixture runs under PGlite in `test/landing-owner-decision-command.test.ts`; that
+file also covers the actual signed route and unchanged diagnostic capability.
+
+
 ## Composed authored/native campaign layer (23 October 2026)
 
 The disposable PostgreSQL17 ledger harness installs the deployed landing
