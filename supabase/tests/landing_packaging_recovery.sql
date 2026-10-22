@@ -75,6 +75,7 @@ do $$declare e uuid:='b1000000-0000-4000-8000-000000000001';firstprobe uuid:='b2
  perform pg_temp.assert((select to_jsonb(x)=oldcandidate from public.landing_experiments x where id=e));
  perform pg_temp.assert((select jsonb_agg(to_jsonb(r)order by command)=before_receipts from public.landing_experiment_receipts r where command not in(audit,cmd,preparecmd)));
  perform pg_temp.reject(format('select landing_experiment_command(repeat(''b'',64),gen_random_uuid(),''probe'',%L,%L::jsonb)',replacement,common||jsonb_build_object('probe',gen_random_uuid())));
+ perform pg_temp.exercise_render_successor(replacement,newprobe,common);
  perform public.landing_experiment_probe_visit(newprobe,'assign','/auckland-outdoor-living',repeat('t',64),g,repeat('c',64),'prepare',false,'11003','11001','11002');
  perform public.landing_experiment_probe_visit(newprobe,'expose','/auckland-outdoor-living',repeat('t',64),g,repeat('c',64),'prepare',true);
  perform public.landing_experiment_probe_visit(newprobe,'assign','/auckland-outdoor-living',repeat('t',64),g,repeat('c',64),'prepare',true,'11003','11001','11002');
