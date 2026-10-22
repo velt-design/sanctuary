@@ -1,4 +1,8 @@
 'use client';
+import type { InitialReport } from '@/lib/marketingPerformance/reportRead';
+import type { CommercialReport } from '@/lib/marketingPerformance/commercial';
+import type { DesignerReport } from '@/lib/marketingPerformance/designerContract';
+import type { FinancialEvidence } from '@/lib/xero/financials/contract';
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
@@ -37,8 +41,8 @@ import type { InitialHubSeed } from '@/lib/marketingPerformance/initialHub';
 
 const DataSources=dynamic(()=>import('./DataSources'),{loading:()=> <p role="status">Preparing report view…</p>});
 
-export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,initialHubSeed,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient,outcomeClient}: {
-  initialHubSeed?:InitialHubSeed;
+export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,initialHubSeed,initialCommercialSeed,initialDesignerSeed,initialFinancialSeed,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient,outcomeClient}: {
+  initialHubSeed?:InitialHubSeed;initialCommercialSeed?:InitialReport<CommercialReport>;initialDesignerSeed?:InitialReport<DesignerReport>;initialFinancialSeed?:InitialReport<FinancialEvidence>;
   financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;assignmentClient?:AssignmentClient;outcomeClient?:OutcomeClient;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {
@@ -46,8 +50,10 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   const [applied,setApplied]=useState<FiltersState|null>(null), [validation,setValidation]=useState(''), [revision,setRevision]=useState(0);
   const [eventKind,setEventKind]=useState(''),[info,setInfo]=useState(false),[sources,setSources]=useState(false);
   const [commercialRetry,setCommercialRetry]=useState(0),[designerRetry,setDesignerRetry]=useState(0);
-  const commercialEvidence=useCommercial(applied?.view==='overview'?applied:null,revision+commercialRetry,commercialLoader);
-  const designerEvidence=useDesigner(applied?.view==='overview'?applied:null,revision+designerRetry,designerLoader);
+  const [financialSeed,setFinancialSeed]=useState(initialFinancialSeed);
+  useEffect(()=>{if(applied&&applied.view!=='financials')setFinancialSeed(undefined);},[applied?.view]);
+  const commercialEvidence=useCommercial(applied?.view==='overview'?applied:null,revision+commercialRetry,commercialLoader,initialCommercialSeed,Boolean(applied&&applied.view!=='overview'));
+  const designerEvidence=useDesigner(applied?.view==='overview'?applied:null,revision+designerRetry,designerLoader,initialDesignerSeed,Boolean(applied&&applied.view!=='overview'));
   const {hub,previous,busy,error,comparisonError,comparisonBusy}=useHub(applied?.view==='financials'?null:applied,revision,loader,priorLoader,applied?.view==='enquiries',initialHubSeed,applied?.view==='financials');
   const prepared=usePreparedReportViews(applied?.view??null);
   const {overview:BusinessOverview,enquiries:EnquiryCharts,sales:SalesActivity,portfolio:PortfolioChart}=prepared.components;
@@ -75,7 +81,7 @@ export default function MarketingPerformance({loader=loadHub,priorLoader=loadRep
   return <PageLayout width="full" className={`${theme.theme} ${styles.page}`} data-marketing-report>
     <Header className={styles.reportHeader} variant="index" title="Marketing & Sales" right={draft.view!=='financials'?<HubToolbar filters={applied??draft} apply={apply} hub={hub}/>:undefined} subtitle={(synthetic||staging||previewDescription)?<span className={styles.environmentLabel}>{productionSnapshot?'Private preview · Real snapshot · 22 Sep 2026':synthetic?'Demo · Fictional records':staging?'Staging · Test records':'Preview'}</span>:undefined}/>
     <div ref={tabs} style={{minWidth:0}}><TabNavigation items={views.map(v=>({...v,controls:'hub-results'}))} selectedKey={draft.view} onSelect={view=>apply({...draft,view,inspect:'all'})} ariaLabel="Marketing and sales views"/></div>
-    {draft.view==='financials'?<div id="hub-results"><Financials loader={financialsLoader} synthetic={synthetic}/></div>:<>
+    {draft.view==='financials'?<div id="hub-results"><Financials initialSeed={financialSeed} loader={financialsLoader} synthetic={synthetic}/></div>:<>
     {validation&&<p role="alert">{validation}</p>}
     <div id="hub-results" ref={position.region} className={styles.results} style={{minHeight:position.height}} onClickCapture={position.remember} aria-busy={busy||prepared.preparing} data-comparison-pending={comparisonBusy||undefined}>
       {busy?<Card title="Loading evidence"><p role="status">Reading saved enquiries, projects and dated sales activity…</p></Card>:error?<AlertBanner tone="error" title="Hub unavailable" action={<Button variant="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</Button>}>{error} No partial totals are shown.</AlertBanner>:hub&&applied&&selected&&totals?<>

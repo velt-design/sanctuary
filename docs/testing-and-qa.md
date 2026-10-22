@@ -26,6 +26,53 @@ interaction stability must pass. Inspect saved candidate images independently;
 an optional-browser skip is not visual proof. Record exact template/renderer
 hashes. This is local synthetic acceptance, not a provider/model call, genuine
 enquiry, production measurement or proof the complete automatic loop is working.
+## Finite Portal service-secret transfer
+
+Run `apps/portal/app/api/integrations/praxis/portal-service-transfer/route.test.ts`
+with existing Praxis server/route regressions, Portal types/lint and changed-file
+architecture guards. Tests compose the real route and connector configuration
+with synthetic hosting replies: exact principal/projects/team/source identity,
+finite nonce/expiry, pre-write changes, absent-only production sensitive create,
+replay in every environment, metadata reconciliation after unknown outcomes,
+secret/raw-error privacy, body bounds and no caller-controlled destination.
+The actual document middleware matcher must exclude the independently authorized
+API. The version GET must expose only the exact production commit SHA before any
+secret is sent and deny missing SHA, wrong origin/project/environment or query.
+No SDK, database or real platform call is part of local proof. Fixed target
+IDs are nonsecret contract constants; all tokens and returned data are synthetic.
+Normal release build/review and private hosted operator verification are separate
+evidence; metadata presence alone cannot prove that the copied value matches.
+## Targeted Marketing latency verification (22 October 2026)
+
+Run report document selection/page/API, seed hooks and host return tests together
+with Financial panel/full/machine reader, provider/runtime, store/pilot and Portal
+auth suites. Verify realistic pending/fulfilled Flight thenables, Strict Mode,
+one matching read, section/basis/date A-to-B-to-A races, leave/return, loader
+replacement, rejection/retry, denial clearing and unmount. Verify exact full
+reports and unavailable metadata labels, all period identities, eight default
+P&L provider reads, peak two workers, queue refill and stop-on-revocation, final
+authority withholding and both-worker settlement before request cleanup.
+
+Store tests exercise concurrent access against serialized mock transactions,
+one rotation, current token rereads, per-use role checks, independent requests,
+connector identity change and idempotent close. This is not a live database or
+provider concurrency claim. Keep normal full Portal tests, types, scoped lint,
+docs/architecture guards, security/toolchain audits and optimized build/postbuild
+checks. Fictional optimized Flight journeys must cover full charts/tables and
+failure/retry without provider calls. Actual production before/after latency,
+ordinary date/basis/detail/return journeys and access denial remain separate
+release evidence. A partial report or skeleton never counts as complete.
+
+## Historical designer/test correction regression
+
+Run the existing `test/designer-performance-read.test.ts`, both project
+`sales-designer`/`sales-outcome` API tests, and Marketing Performance model/component
+tests. They exercise Steve credit without attendee/phase-owner invention, explicit
+TEST exclusion and clear, ordinary drawer recovery, real migration execution,
+existing-data/grant preservation, replay/conflict and owner denial. Existing native
+`scripts/test-sales-designer-concurrency.mjs` (with and without `--outcomes`) now
+also uses the widened enum values against disposable PostgreSQL17. Hosted schema,
+authenticated persistence and actual record corrections remain separate release checks.
 
 ## Photographic guide hub (22 October 2026)
 

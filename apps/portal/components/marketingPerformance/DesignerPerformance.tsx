@@ -8,7 +8,7 @@ import { Drawer } from './MarketingDrawer';
 import { AlertBanner } from '@/components/ui/foundation/FoundationAlert';
 import { selectHub,money,type HubReport,type HubFilters } from '@/lib/marketingPerformance/hub';
 import { designerPerformance,median,type DesignerSummary } from '@/lib/marketingPerformance/designer';
-import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
+import { salesDesignerOption } from '@/lib/marketingPerformance/salesDesigner';
 import type { DesignerReport } from '@/lib/marketingPerformance/designerContract';
 import useDesigner,{type DesignerLoader} from './useDesigner';
 import DesignerRecords from './DesignerRecords';
@@ -17,7 +17,7 @@ import type { AssignmentClient } from './SalesDesignerAssignment';
 import styles from './DesignerPerformance.module.css';
 
 export type DesignerMetric='assigned'|'attended'|'projects'|'customers'|'booked'|'provisional'|'notAttended'|'unrecorded'|'originals'|'quoted'|'accepted'|'paid'|'value'|'quoteDays'|'depositDays'|'coverage'|'originalVisits'|'measurement'|'followUp'|'unconfirmed';
-export const designerName=(id:string)=>id==='team'?'Team':id==='unassigned'?'Unassigned':projectOwnerOption(id)?.displayName??'Unrecognised staff identity';
+export const designerName=(id:string)=>id==='team'?'Team':id==='unassigned'?'Unassigned':salesDesignerOption(id)?.displayName??'Unrecognised staff identity';
 export const designerMetrics:[DesignerMetric,string][]=[['assigned','Designer projects'],['attended','Attended visits'],['projects','Projects visited'],['customers','Customers visited'],['originals','Original-visit projects'],['quoted','Quoted'],['accepted','Accepted'],['paid','Paid sales'],['value','Paid scope value'],['quoteDays','Days to quote'],['depositDays','Days to deposit']];
 export function designerMetricValue(row:DesignerSummary,key:DesignerMetric):string {
   if(key==='assigned')return String(new Set(row.assignedVisits.map(v=>v.projectId)).size);
@@ -43,7 +43,7 @@ export default function DesignerPerformance({hub,filters,apply,loader,synthetic=
   const ids=filtered?new Set(selectHub(hub,{...filters,inspect:'all'}).projects.map(p=>p.id)):null;
   const result=effective?designerPerformance(effective,ids,filters.designer):null;
   const undatedAttended=result?.coverage.filter(c=>!c.visit.day&&c.visit.status==='attended').length??0;
-  const recordedRoster=effective?[...effective.visits.flatMap(v=>v.staff),...effective.assignments.flatMap(a=>a.designerKey?[a.designerKey]:[])].filter(id=>projectOwnerOption(id)):[];
+  const recordedRoster=effective?[...effective.visits.flatMap(v=>v.staff),...effective.assignments.flatMap(a=>a.designerKey?[a.designerKey]:[])].filter(id=>salesDesignerOption(id)):[];
   // A selected zero-activity designer must stay visible through clear and refresh.
   const roster=[...new Set([...recordedRoster,...(filters.designer&&filters.designer!=='unassigned'?[filters.designer]:[])])].sort();
   const stale=report&&(!report.source.enabled||report.source.failed||!report.source.lastSuccess||Date.parse(report.asOf)-Date.parse(report.source.lastSuccess)>1800000);

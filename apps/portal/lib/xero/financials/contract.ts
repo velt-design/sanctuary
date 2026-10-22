@@ -98,9 +98,9 @@ export function yearToDate(end: {month: number; day: number}, now = new Date()):
   const lastEnd = endDate(year - (to <= endDate(year) ? 1 : 0));
   return { from: new Date(Date.parse(lastEnd) + 86400000).toISOString().slice(0, 10), to, basis: 'accrual' };
 }
-export function selectionFromUrl(params: URLSearchParams): FinancialSelection {
+export function selectionFromUrl(params: URLSearchParams, now = new Date()): FinancialSelection {
   const parsed = financialsQuery.safeParse({ from: params.get('financeFrom'), to: params.get('financeTo'), basis: params.get('financeBasis') });
-  const query = parsed.success && parsed.data.to <= nzDay() ? parsed.data : completedMonth();
+  const query = parsed.success && parsed.data.to <= nzDay(now) ? parsed.data : completedMonth(now);
   const section = params.get('financeSection');
   return { ...query, section: section === 'bank' || section === 'receivables' || section === 'payables' ? section : 'profit',
     comparison: params.get('financeCompare') === 'yearAgo' ? 'yearAgo' : 'previous', detail: (params.get('financeDetail') ?? '').slice(0, 200) };
@@ -111,3 +111,5 @@ export function selectionToUrl(params: URLSearchParams, selection: FinancialSele
   }
   return params;
 }
+
+export const financialRequestKey=(query:FinancialPanelQuery)=>`${query.section}:${query.from}:${query.to}:${query.basis}`;

@@ -1,7 +1,7 @@
 import { aucklandDay } from './contract';
 import type { DesignerReport,DesignerVisit,DesignerScope } from './designerContract';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
-import { projectSalesExclusion } from './designerSales';
+import { isTestSalesProject,projectSalesExclusion } from './designerSales';
 
 export const visitIssueLabels:Record<string,string>={date:'Date not recorded',future:'Attendance dated in the future',identity:'Attendee identity not verified',link:'Project not linked',purpose:'Original purpose not confirmed',source:'Source or review questions unresolved',originals:'Conflicting original visits',originalIncomplete:'Another original record needs verification',chronology:'Sale predates visit or ordering is unknown'};
 const periodVisit=(v:DesignerVisit,r:DesignerReport)=>Boolean(v.day&&v.day>=r.start&&v.day<=r.end);
@@ -35,6 +35,7 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
   for(const v of all)if(v.status==='attended'&&v.purpose==='initial'&&!v.cancelled&&v.projectId)originals.set(v.projectId,[...(originals.get(v.projectId)??[]),v]);
   const outcomes:DesignerOutcome[]=[];
   for(const [projectId,visits] of originals){
+    if(isTestSalesProject(report,projectId))continue;
     // Withheld Outlook history cannot support first-original attribution, even for manual rows.
     if(!report.source.enabled)continue;
     const ordered=[...visits].sort((a,b)=>(a.day??'').localeCompare(b.day??'')||(a.at??'').localeCompare(b.at??'')||a.id.localeCompare(b.id));

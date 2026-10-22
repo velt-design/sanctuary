@@ -85,3 +85,16 @@ describe('portal server auth', () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 });
+
+it('revalidates long-running finance reads outside the render cache with the same role resolver',async()=>{
+ vi.resetModules();getSupabaseServerAuth.mockReset();
+ const getUser=vi.fn().mockResolvedValue({data:{user:{id:'fresh',email:'ops@example.test'}},error:null});
+ const maybeSingle=vi.fn().mockResolvedValue({data:{role:'staff'},error:null});
+ getSupabaseServerAuth.mockResolvedValue({auth:{getUser},from:()=>({select:()=>({eq:()=>({maybeSingle})})})});
+ const auth=await import('./auth');
+ expect((await auth.getPortalSession())?.role).toBe('staff');
+ maybeSingle.mockResolvedValue({data:null,error:null});
+ expect(await auth.getFreshPortalSession()).toBeNull();
+ expect((await auth.getPortalSession())?.role).toBe('staff');
+ expect(getUser).toHaveBeenCalledTimes(2);
+});
