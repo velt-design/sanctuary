@@ -27,7 +27,6 @@ try{
  sql(readFileSync('supabase/tests/meta_creative_ledger.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050002_creative_executor.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050003_creative_measurement.sql','utf8'));
- sql(readFileSync('supabase/tests/landing_copy_identity.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8'));
  // Complete the shared minimal fixture with the established 20260917000003 columns.
@@ -42,6 +41,7 @@ try{
  sql(readFileSync('supabase/migrations/20261021050008_creative_formal_settlement.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050009_landing_authored_copy.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_authored_copy.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_copy_identity.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_activation.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_formal_settlement.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261022050010_creative_learning.sql','utf8'));

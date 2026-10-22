@@ -101,6 +101,20 @@ provider capability is implied by disposable native tests.
 
 # Testing And QA
 
+## Combined landing and creative contract (22 October 2026)
+
+Run the disposable PG17 creative-ledger harness on the exact integration checkout,
+with each migration once in order. It covers authored finite/text aliases and
+retained-current no-op, shared landing/creative claims, exact native cohorts,
+terminal history, retention replacement/restore/abort, ambiguity bounds and all
+owned steady inventory. Feed its synthetic ambiguity and steady exports through
+the paired Velt consumers and the real Source health/public receipt/intake tests.
+Canonical enquiries must survive missing/revoked/conflicting attribution. Run all
+marketing and campaignMonitor/metaCreatives suites, Marketing/Portal types, changed
+lint, docs/architecture guards and generated template `--check`. Preserve incoming
+main blobs and accepted rendered-closure evidence explicitly. Local composition
+does not prove a hosted experiment, actual media preservation or commercial gain.
+
 ## Professionals photographic presentation (22 October 2026)
 
 Focused route tests preserve canonical/config identity, optional professional
