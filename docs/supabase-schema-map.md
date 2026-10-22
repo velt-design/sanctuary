@@ -1,5 +1,21 @@
 # Supabase Schema Map
 
+## One exact preparation-probe recovery (22 October 2026)
+
+Forward20261022100001 adds private landing_prepare_recovery_expiry(uuid,jsonb)
+and patches only landing_experiment_command(text,uuid,text,uuid,jsonb). A unique
+prepare_recovery receipt per experiment authorizes one extra preparation probe
+for the exact expired zero-assignment/exposure/reload original. It binds current
+control JSONB hash, generation, binding, template, candidate and fresh probe UUID.
+The operator receipt is finite (at most4h, same Sydney/Auckland days) and its
+request_hash covers the exact result JSONB. No receipt is installed by migration.
+Existing signed HTTP payload, control checks, idempotency and live probe bounds
+remain unchanged. All old probes/candidates/receipts survive. The private helper
+and receipt table are not exposed to service-role issuance. There is no new
+runtime, endpoint, visitor ownership, customer mutation or Source hosting need.
+Stop revokes the exception; recovery never resets the ordinary daily counter.
+
+
 ## Historical designer and explicit test corrections
 
 `20261022010001_designer_history_support.sql` extends the existing private
