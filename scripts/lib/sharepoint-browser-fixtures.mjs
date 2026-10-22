@@ -21,7 +21,7 @@ export const files = {
 
 export async function buildSyntheticOpenHandler() {
   const mocks = {
-    '@/lib/api/staffApi': 'export async function requireStaffContext(){return {ok:true,supabase:{}}}',
+    '@/lib/supabase/serverClient': 'export async function getSupabaseServerAuth(){return {auth:{async getUser(){return {data:{user:{id:"synthetic-user"}},error:null}}}}}',
     '@/lib/api/routeDiagnostics': 'export function createRouteDiagnostics(){return {}};export function applyRouteDiagnostics(response){return response}',
     '@/lib/projects/sharePointFiles/server': 'export const inlineTypes=new Set(["application/pdf","image/png"]); export async function projectGraph(...args){return globalThis.__sharePointHarnessGraph(...args)}',
     'server-only': '',
