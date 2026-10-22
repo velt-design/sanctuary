@@ -78,13 +78,19 @@
       "codex/portal-cold-start-20261021": false,
       "codex/campaign-render-recovery-20261022": false,
       "codex/campaign-loop-continuation-20261023": false,
-      "codex/project-file-open-locality-20261023": false
+      "codex/project-file-open-locality-20261023": false,
+      "codex/project-file-open-auth-20261023": false
     }
   },
   "functions": {
     "middleware.ts": {
       "regions": [
         "bom1"
+      ]
+    },
+    "app/api/staff/v1/projects/*/files/*/open/route.ts": {
+      "regions": [
+        "sin1"
       ]
     }
   },

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { applyRouteDiagnostics, createRouteDiagnostics } from '@/lib/api/routeDiagnostics';
-import { requireStaffContext } from '@/lib/api/staffApi';
+import { projectFileOpenIdentity } from '@/lib/projects/sharePointFiles/openIdentity';
 import { graphId } from '@/lib/projects/sharePointFiles/config';
 import { inlineTypes, projectGraph } from '@/lib/projects/sharePointFiles/server';
-import { filesError, filesJson, privateResponse } from '@/lib/projects/sharePointFiles/http';
+import { filesError, filesJson } from '@/lib/projects/sharePointFiles/http';
 import { ProjectFilesError, projectFilesHeaders } from '@/lib/projects/sharePointFiles/types';
 import { measureProjectFilesPhase, projectFilesPhases, type ProjectFilesPhase, type ProjectFilesTimingObserver } from '@/lib/projects/sharePointFiles/timing';
 import { PREVIEW_VERSION_REQUEST_HEADER, type PreviewVerification } from '@/lib/projects/sharePointFiles/previewVerification';
@@ -20,8 +20,8 @@ export async function GET(request: Request, context: { params: Promise<{ project
     if (response.status === 200) for (const phase of projectFilesPhases) { const duration = timings.get(phase); if (duration !== undefined) response.headers.append('server-timing', `files_${phase};dur=${duration.toFixed(1)}`); }
     return response;
   };
-  const auth = await measureProjectFilesPhase('auth', observe, () => requireStaffContext(diagnostics));
-  if (!auth.ok) return privateResponse(auth.response);
+  const supabase = await measureProjectFilesPhase('auth', observe, projectFileOpenIdentity);
+  if (!supabase) return respond(filesJson({ error: 'Unauthorized' }, 401));
   const query = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   const params = await context.params;
   if (!query.success || !graphId.safeParse(params.itemId).success) return respond(filesJson({ error: 'Invalid request' }, 400));
@@ -29,7 +29,7 @@ export async function GET(request: Request, context: { params: Promise<{ project
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(50000)]);
     const conditionalVersion = query.data.mode === 'view' ? strongFileVersion(request.headers.get(PREVIEW_VERSION_REQUEST_HEADER)) : null;
     if (query.data.mode === 'view' && request.headers.has(PREVIEW_VERSION_REQUEST_HEADER) && (!conditionalVersion || request.headers.has('range'))) return respond(filesJson({ error: 'Invalid preview verification' }, 400));
-    const { graph, root } = await projectGraph(auth.supabase, params.projectId, query.data.rootId, request.headers.get('x-vercel-oidc-token') ?? '', signal, params.itemId, observe);
+    const { graph, root } = await projectGraph(supabase, params.projectId, query.data.rootId, request.headers.get('x-vercel-oidc-token') ?? '', signal, params.itemId, observe);
     const result = await graph.download(root.itemId, params.itemId, conditionalVersion ?? undefined);
     // Large originals go directly to Microsoft's ephemeral download URL. No token or signed URL is persisted.
     if (query.data.mode === 'download') {
