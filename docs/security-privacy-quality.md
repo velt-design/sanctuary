@@ -142,6 +142,35 @@ Pre-entry module initialization and later HTML/Flight delivery remain outside th
 measured operations. Correlate the opaque UUID within exact-deployment platform
 request records, retaining invocation/instance metadata privately.
 
+Exact Marketing documents may also emit `portal.document.transport` for the five
+fixed operations `rsc.identity`, `navigation.finance`, `marketing.hub`,
+`marketing.commercial` and `marketing.designer`. The fixed fields are event,
+opaque request UUID, route template, operation, ordinal, connection enum,
+dispatch/header-wait/body durations, null `connectMs`, outcome, build and region.
+No URL, request/response header, identity, body, raw request or error is logged.
+Only request/socket object identity and bounded numeric timing state are retained
+ephemerally; there is no cached session, token, response or business evidence.
+
+The native observer snapshots the admitted scope at request creation, then joins
+events through weak request/socket keys rather than the callback's ambient
+context. It never matches concurrent connections by connector or FIFO. New
+socket classification requires observed connection and first use in the same
+subscription generation; an unobserved coverage gap remains unknown unless an
+earlier serving use proves reuse. Dispatch includes setup/queue work, header wait
+includes network/service work, and neither is a pure database or connection time.
+Missing native coverage and unfinished bodies remain explicit. Diagnostics never
+read, clone, cancel or drain a response body to complete a measurement.
+
+Caps are four observations per operation, sixteen per document, thirty-two
+documents per window and sixty-four active operation contexts. Exceeding a cap
+only omits telemetry. Subscriptions start once while admitted operations overlap,
+stop when none remain, and expire through an unreferenced one-shot timer without
+polling. Weak socket coverage may survive an unsubscribed gap until window expiry
+but cannot establish a new connection across that gap. Current setting, nonce,
+snapshot and expiry are checked again before transport emission. Setup,
+subscriber, cleanup and synchronous/asynchronous emitter failures cannot replace
+the original result or error. Existing phase events and other routes are unchanged.
+
 The single private `PORTAL_DOCUMENT_DIAGNOSTICS` setting is absent/empty by default.
 When explicitly enabled it is JSON with exactly `until` (UTC ISO expiry no more
 than thirty minutes ahead) and `nonce` (32 random bytes encoded as 43 base64url

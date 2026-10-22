@@ -450,6 +450,20 @@ selection, snapshot and RSC/data/prefetch exclusions, signed carrier forwarding,
 cookie preservation and absent proxy identity/role phases. No database metric
 schema or retention behavior changes with this console-only extension.
 
+The native transport extension adds
+`lib/performance/documentTransportDiagnostics.test.ts`. Its fictional loopback
+native-fetch checks cover new/reused/unknown sockets, concurrent documents and
+out-of-order reads, setup/header/body timing separation, original response/error
+identity, incomplete bodies without extra consumption, per-operation/document/
+state caps, subscription rollback, expiry and rejected asynchronous emitters.
+Generation-gap coverage uses controlled diagnostic events; actual native overlap
+and subscription cleanup use real loopback reads. Run this with the signed
+`documentDiagnostics`, `documentRenderDiagnostics`, auth/regional/proxy and
+layout/page suites. The existing signed window, absent/removed/rotated setting,
+expiry, spoofing, snapshot and alternate-entry fences remain mandatory.
+HTTP loopback proves observer mechanics, not hosted TLS/DNS timing or actual
+native-event availability. Hosted `not_observed` coverage is not a zero-read claim.
+
 Use one optimized candidate build for a small disabled/enabled/expired read-only
 check. Correlate the browser's opaque response UUID with fixed server events;
 inspect that internal signed headers/configuration never reach final responses or
