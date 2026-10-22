@@ -1,5 +1,18 @@
 # Testing And QA
 
+## Initial Marketing column representation (22 October 2026)
+
+Run `columnarReports.test.ts`, `columnarSeeds.test.tsx`, the Marketing page,
+initial-Hub host/hook and report-seed tests plus Financial seed regression.
+Check every field/ordered row, empty arrays, optional own undefined versus
+absence, future fields and homogeneous-shape fallback; malformed dimensions,
+missing values, versions or families must never yield partial evidence.
+Model outputs and real host records/filter/return/retry stay identical. Include
+StrictMode and void-returning Flight thenables with no duplicate initial read.
+Actual optimized Flight decoding, bundle size and full-document encoded bytes
+remain separate evidence; offline JSON/whole-buffer compression is not a hosted
+speed measurement.
+
 ## GA4 acquisition validation recovery (22 October 2026)
 
 `report/acquisition-recovery.test.ts` exercises successful HTTP responses with
