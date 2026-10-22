@@ -81,9 +81,10 @@ Preview controls persist through expanded gallery selection; close returns
 focus without scrolling to the current Expand control or narrow selected row.
 This stays local to Files and reuses the shared Modal focus trap unchanged.
 
-The selected preview uses one protected body fetch. PDF code and its worker are
-prepared alongside the active project's metadata; PDF.js receives progressive
-copies from that same stream rather than issuing repeated protected range reads.
+The selected preview uses one protected body fetch. PDF parser code is prepared
+alongside the active project's metadata; its worker starts when a PDF preview opens.
+PDF.js receives progressive copies from that same stream rather than issuing
+repeated protected range reads.
 Documents without a reliable content length use the existing complete-byte
 renderer. Progressive first-page display depends on the PDF's structure; the
 local non-linearized fixture does not establish first paint before body completion.
