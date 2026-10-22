@@ -143,6 +143,9 @@ describe("public quote presentation", () => {
 
     const form = rendered.container.querySelector("form");
     expect(form?.getAttribute("action")).toBe("/api/quotes/qv_1/accept");
+    expect(rendered.container.textContent).toContain('If payments already fund this quote');
+    expect(rendered.container.textContent).toContain('will confirm any progress invoice separately. Otherwise, we will prepare');
+    expect(rendered.container.textContent).not.toContain('After acceptance, we will prepare your deposit invoice');
     expect(
       rendered.container.querySelector<HTMLInputElement>(
         'input[name="token"]',

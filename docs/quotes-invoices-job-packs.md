@@ -11,6 +11,12 @@ in the existing custom draft editor. Initial construction quotes without family
 funding keep their scheduled first invoice and normal delivery. A separately
 charged historical assessment does not fund that construction quote.
 
+Live pre-acceptance guidance in staff quote decisions, the invoice empty state
+and public quotes describes both funding paths. It does not promise a new invoice
+for funded revisions. PDF/email wording remains unchanged because ordinary
+artifact recovery can regenerate issued content; this copy correction does not
+rewrite issued artifacts or add a new artifact versioning boundary.
+
 `commercial_invoice_scope_assignments` records an explicit, audited economic
 relationship without rewriting invoice kind, number, content, status, payment
 allocations or provider identity. `QUOTE_PAYMENT` links a legacy invoice to one
