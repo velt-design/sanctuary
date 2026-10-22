@@ -10,6 +10,7 @@ import { financialRequestKey } from '@/lib/xero/financials/contract';
 import { readPortalFinancials, financialReadFailure } from '@/lib/xero/financials/readPortal.server';
 import { hubDocumentWindow } from '@/lib/marketingPerformance/hubDocumentSelection';
 import { readHub, hubReadFailure } from '@/lib/marketingPerformance/readHub.server';
+import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -22,11 +23,14 @@ export default async function MarketingPerformancePage() {
   const window = hubDocumentWindow(context);
   const overview=snapshot?null:overviewDocumentWindow(context);
   const financial=snapshot?null:financialDocumentQuery(context);
+  const diagnostics=overview?await getDocumentRenderDiagnostics():null;
+  const observe=<T extends {ok:boolean}>(phase:'marketing.hub'|'marketing.commercial'|'marketing.designer',read:()=>Promise<T>)=>
+    diagnostics?diagnostics.measure(phase,read,result=>result.ok?'complete':'error'):read();
   const client=window?getSupabaseServerAuth():undefined;
   const initialHubSeed = window ? { ...window,
-    result: client!.then(client => readHub(client, window.start, window.end)).catch(hubReadFailure) } : undefined;
-  const initialCommercialSeed=overview?{key:`${overview.start}:${overview.end}`,result:client!.then(client=>readCommercial(client,overview.start,overview.end)).catch(()=>overviewFailure('Commercial'))}:undefined;
-  const initialDesignerSeed=overview?{key:`${overview.start}:${overview.end}`,result:client!.then(client=>readDesigner(client,overview.start,overview.end)).catch(()=>overviewFailure('Designer'))}:undefined;
+    result: observe('marketing.hub',()=>client!.then(client => readHub(client, window.start, window.end)).catch(hubReadFailure)) } : undefined;
+  const initialCommercialSeed=overview?{key:`${overview.start}:${overview.end}`,result:observe('marketing.commercial',()=>client!.then(client=>readCommercial(client,overview.start,overview.end)).catch(()=>overviewFailure('Commercial')))}:undefined;
+  const initialDesignerSeed=overview?{key:`${overview.start}:${overview.end}`,result:observe('marketing.designer',()=>client!.then(client=>readDesigner(client,overview.start,overview.end)).catch(()=>overviewFailure('Designer')))}:undefined;
   const initialFinancialSeed=financial?{key:financialRequestKey(financial),result:readPortalFinancials(new URLSearchParams(financial),AbortSignal.timeout(45000),session.user.id).catch(financialReadFailure)}:undefined;
   return <MarketingPerformance staging={process.env.MARKETING_PERFORMANCE_PREVIEW === 'staging'} productionSnapshot={snapshot}
     initialHubSeed={initialHubSeed} initialCommercialSeed={initialCommercialSeed} initialDesignerSeed={initialDesignerSeed} initialFinancialSeed={initialFinancialSeed}
