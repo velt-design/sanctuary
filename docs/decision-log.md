@@ -45,6 +45,43 @@ isolated browser harness now clicks View/Download through the actual open handle
 with synthetic boundaries and verifies image pixels plus original filename/bytes.
 Synthetic transport and native/live provider acceptance remain separate claims.
 
+## 2026-10-22: Bound finite ambiguity without inventing attribution
+
+All-site unknown coverage can include ordinary unrelated website enquiries. Keep
+those unknowns and matched-CPE labels, but predeclare a finite sensitivity envelope
+that must remain decisive under every allowed adverse allocation. Retention also
+needs pessimistic observed-quality and concrete adverse guards; robust harm can
+revert independently of missing quality. This does not relabel Google traffic,
+remove join validity, force winners or reinterpret old immutable analyses. Shared
+Source/Velt v2 validation and v3 learning keep the denominator visible. The recorded
+finite pool cannot cover missing/unbounded evidence or unrecorded/offline outcomes.
+
+
+## 2026-10-22: Retained baselines keep donor lineage and shared reservation
+
+The owner outcome includes publishing variants and keeping or reverting them
+using recorded results. The local method retains one winner per original donor,
+at most four, while one acquisition experiment remains globally reserved. A new
+PAUSED owned ad avoids unproved expired-schedule clearing. Pause/readback the same
+donor's predecessor before activation; failed replacement pauses its challenger
+before a fenced restore. Rollback shares the reservation so it cannot silently
+change a later test's comparator. Retention proof includes actual PAUSED test ads,
+not just elapsed study time. Saved original metrics remain original context.
+Synthetic/native tests establish mechanics, not provider or whole-loop acceptance.
+
+## 2026-10-22: Separate learning summaries from duplicate authority
+
+A bounded display tail cannot be the durable exclusion list. Creative proposals
+read genuine scoped terminal facts and public hook prefixes; Source admission
+checks all matching rendered copies under the reservation lock. Coverage overflow
+fails closed instead of silently dropping an old experiment. An immutable plan
+replay keeps its existing identity, and a changed donor/control/media domain does
+not inherit unrelated exclusions. Carry all-saved coverage and unassigned outcome
+counts alongside matched/consented counts: an incomplete [0,0] cohort must not
+look like known zero or support all-enquiry CPE inference. Local synthetic proof
+is not live acceptance.
+
+
 ## 2026-10-22: Historical sales credit and explicit test exclusion
 
 Keep historical sales-design attribution separate from current project owners and

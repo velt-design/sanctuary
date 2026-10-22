@@ -1,9 +1,12 @@
+import {nativeAnalysisSchema,nativeDeliverySchema} from './analysis-contract';
+import {nativeAcceptanceSchema} from './native-acceptance';
 import { z } from 'zod';
 import { nativeWindowValid } from './window';
 import { createHash } from 'node:crypto';
 export const id = z.string().regex(/^[1-9]\d{0,19}$/);
 export const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const stamp = z.iso.datetime({ offset: true });
+export const retainedAdSchema=z.object({experiment:z.uuid(),planHash:hash,donor:id,ad:id,creative:id}).strict();
 export const path = z.enum(['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']);
 export const canonicalHash = (value: unknown): string => {
   const sorted = (v: unknown): unknown => Array.isArray(v) ? v.map(sorted) : v && typeof v === 'object'
@@ -69,7 +72,7 @@ export function creativeAssetHash(creative: Creative) {
 }
 export const executionPlanSchema = z.object({ version: z.literal(1), landingTemplate: hash, purpose: z.enum(['paused_capability', 'formal_experiment']), capabilityDiagnostics:z.object({pageRead:z.enum(['confirmed','unavailable']),studyInventory:z.enum(['complete','partial','unavailable']),nativeEligibility:z.literal('unverified')}).strict().optional(), experiment: z.uuid(),
   scope: z.object({ app: id, principal: id, business: id, account: id, page: id, campaign: id, adset: id }).strict(),
-  originalAds: z.array(id).length(4).refine(v => new Set(v).size === 4), controlAd: id,
+  originalAds: z.array(id).length(4).refine(v => new Set(v).size === 4), controlAd: id,retainedBaseline:retainedAdSchema.optional(),
   control: creativeSchema, adTracking: boundedJson, nativeObjective: z.object({ type: z.literal('CONVERSIONS'), is_primary: z.literal(true), name: z.literal('Website Lead'),
     adspixels: z.array(z.object({ id, event_names: z.tuple([z.literal('Lead')]) }).strict()).length(1) }).strict(), challengerPrimary: text, approvedAssetHash: hash, approvedCopyHash: hash,
   approvalHash: hash, evidenceHash: hash, generator: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/).nullable(),
@@ -78,12 +81,14 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
   dailyMinor: z.literal(40000), weeklyMinor: z.literal(280000), studyDailyMinor: z.literal(8000),
   currency: z.literal('NZD'), timezone: z.literal('Pacific/Auckland'),
   nativeContractHash: hash, preStateHash: hash,
-  evaluation: z.object({ primary: z.literal('genuine_saved_enquiries_per_actual_NZD'), interval: z.literal('exact_conditional_poisson_rate_ratio_95'), providerEvent: z.literal('website_lead'), durationDays: z.literal(14), maturationHours: z.literal(72),
-    formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.literal('inconclusive') }).strict(),
+  evaluation: z.object({ ambiguity:z.literal('finite_allocation_envelope_v1').optional(), primary: z.literal('genuine_saved_enquiries_per_actual_NZD'), interval: z.literal('exact_conditional_poisson_rate_ratio_95'), providerEvent: z.literal('website_lead'), durationDays: z.literal(14), maturationHours: z.literal(72),
+    formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.enum(['inconclusive','finite_pool_sensitivity_else_inconclusive']) }).strict(),
 }).strict().superRefine((p, ctx) => {
+  if((p.evaluation.ambiguity==='finite_allocation_envelope_v1')!==(p.evaluation.unknownMeans==='finite_pool_sensitivity_else_inconclusive'))ctx.addIssue({code:'custom',message:'Evaluation policy differs'});
   const validReview = p.purpose === 'formal_experiment' ? p.control.format!=='video_story' && (p.control.format!=='video_assets'||p.control.payload.media_sourcing_spec===undefined) && !!p.generator && !!p.reviewer && p.generator !== p.reviewer && p.challengerPrimary !== p.control.primary && nativeWindowValid(p.start,p.end) && Date.parse(p.approvalUntil)>=(p.end+72*3600)*1000
     : p.generator === null && p.reviewer === null && p.challengerPrimary === p.control.primary && p.end>p.start && p.end-p.start<=3600;
   if (!validReview || !p.originalAds.includes(p.controlAd) || p.control.page !== p.scope.page
+    ||p.retainedBaseline&&(p.retainedBaseline.donor!==p.controlAd||p.retainedBaseline.creative!==p.control.id||p.originalAds.includes(p.retainedBaseline.ad)||p.retainedBaseline.experiment===p.experiment)
     || p.end <= p.start
     || Date.parse(p.approvalUntil) <= Date.parse(p.approvedAt)
     || p.approvedCopyHash !== canonicalHash({ control: p.control.primary, challenger: p.challengerPrimary })
@@ -92,15 +97,15 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
   }
 });
 export type ExecutionPlan = z.infer<typeof executionPlanSchema>;
-export const effectKinds = ['create_creative', 'create_control', 'create_challenger', 'create_study', 'pause_control', 'pause_challenger', 'end_study'] as const;
+export const effectKinds = ['create_creative', 'create_control', 'create_challenger', 'create_study', 'activate_control', 'activate_challenger', 'pause_control', 'pause_challenger', 'end_study'] as const;
 export type EffectKind = typeof effectKinds[number];
 export const objectSchema = z.object({ kind: z.enum(['creative', 'control', 'challenger', 'study']), id, command: z.uuid(), requestHash: hash }).strict();
 export const wireSchema = z.object({ kind: z.enum(effectKinds), path: z.string().regex(/^[A-Za-z0-9_/]{1,80}$/), body: z.record(z.string(), z.string().max(6000)), target: id.nullable(), requestHash: hash, at: z.number().int().positive() }).strict();
 export const effectSchema = z.object({ command: z.uuid(), kind: z.enum(effectKinds), requestHash: hash,
   state: z.enum(['prepared', 'uncertain', 'confirmed', 'no_effect']), object: id.nullable(), evidenceHash: hash.nullable(), intent: wireSchema }).strict();
-export const stateSchema = z.object({ compatibility: z.object({status:z.literal('template_mismatch'),expected:hash.nullable(),current:hash,release:z.string().regex(/^[a-f0-9]{40}$/).nullable()}).strict().optional(), enabled: z.boolean(), cleanupEnabled: z.boolean(), stopped: z.boolean(), generation: z.number().int().positive(),
-  creativeReference:id.nullable().optional(),reserved:z.boolean().optional(),template:hash.nullable().optional(),nativeContractHash:hash.nullable().optional(),plan: executionPlanSchema.nullable(), objects: z.array(objectSchema).max(4), effects: z.array(effectSchema).max(32),
-  state: z.enum(['empty', 'prepared', 'canary_ready', 'cleanup', 'closed', 'uncertain']),
+export const stateSchema = z.object({ analysis:nativeAnalysisSchema.nullable().optional(),deliveryProof:nativeDeliverySchema.nullable().optional(),cleanupComplete:z.boolean().optional(), delivery:z.enum(['unconfirmed','scheduled','delivering','ended']).optional(), nativeAcceptance:nativeAcceptanceSchema.nullable().optional(), settledAds:z.array(id).max(20).nullable().optional(),capabilityReady:z.boolean().optional(), compatibility: z.object({status:z.literal('template_mismatch'),expected:hash.nullable(),current:hash,release:z.string().regex(/^[a-f0-9]{40}$/).nullable()}).strict().optional(), enabled: z.boolean(), cleanupEnabled: z.boolean(), stopped: z.boolean(), generation: z.number().int().positive(),
+  creativeReference:id.nullable().optional(),retainedAds:z.array(retainedAdSchema).max(4).refine(rows=>new Set(rows.map(r=>r.donor)).size===rows.length&&new Set(rows.map(r=>r.ad)).size===rows.length).optional(),reserved:z.boolean().optional(),template:hash.nullable().optional(),nativeContractHash:hash.nullable().optional(),plan: executionPlanSchema.nullable(), objects: z.array(objectSchema).max(4), effects: z.array(effectSchema).max(32),
+  state: z.enum(['empty', 'prepared', 'canary_ready', 'cleanup', 'maturing', 'analysed', 'closed', 'uncertain']),
   measurementReady: z.boolean(), activationReady: z.literal(false),
 }).strict();
 export type ExecutorState = z.infer<typeof stateSchema>;
