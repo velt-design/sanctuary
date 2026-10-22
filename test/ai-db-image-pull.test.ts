@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { pullAiDatabaseImage } from "../scripts/ci/pull-ai-db-image.mjs";
 
-const image = "ghcr.io/supabase/postgres@sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721";
+const image = "public.ecr.aws/supabase/postgres@sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721";
 const success = { status: 0, stdout: "Downloaded", stderr: "" };
 const throttle = { status: 1, stdout: "", stderr: "Error response from daemon: toomanyrequests: Rate exceeded\n" };
 

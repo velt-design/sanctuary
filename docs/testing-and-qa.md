@@ -500,18 +500,22 @@ and streamed starts. It adds no simulated auth advantage. Verify actual Flight
 streaming, complete panel content, final data-to-content delay and retained
 recovery; unit promise tests do not establish hosted speed or access behavior.
 
-## PG17 CI registry recovery (21 October 2026)
+## PG17 CI registry recovery (23 October 2026)
 
-The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR
-mirror of the same 17.6.1.107 linux/amd64 manifest, pinned to
+The background-jobs and AI-foundation PG17 matrices use Supabase's official
+public ECR location for the same 17.6.1.107 linux/amd64 image, pinned to
 `sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`.
-Public ECR throttled before contract execution. Both registry manifests were
-read and matched byte-for-byte, including config and all layers; Supabase's own
+The earlier 21 October recovery used GHCR after ECR throttled. On 23 October,
+GHCR repeatedly throttled before SQL, including all three bounded AI pulls.
+Fresh ECR metadata hashes to the exact existing manifest digest: the same config
+and all 29 layer descriptors, also referenced by its 17.6.1.107 amd64 index entry.
+Supabase's own
 [mirror workflow](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml)
-publishes to both. This changes distribution only: PG17, PGMQ1.5.1, all contract
-assertions and the separate PG18 matrix remain unchanged. Local Docker was not
-running during verification, so metadata equality is not a container-test pass;
-the normal required CI jobs still execute the exact contracts.
+publishes to both. Only the registry hostname changes; PG17, PGMQ1.5.1, the
+separate PG18 matrices, pull bounds and single-run SQL assertions stay unchanged.
+No Docker pull/container run was performed for this metadata check. Matching
+content addresses do not establish current layer availability or a contract pass;
+the normal required CI jobs still download and execute the exact image.
 
 ## Paused creative capability candidate, 21 October 2026
 
