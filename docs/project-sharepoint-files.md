@@ -201,6 +201,8 @@ folder/selection intent permits one further bounded neighbor batch; foreground
 inspection is never disabled by cumulative transfer volume. Memory remains
 32 MiB, and active selected bytes survive background eviction. Old LRU entries
 make room for new neighbors, including after more than 32 distinct selections.
+One in-flight batch temporarily retains its exact requested representations
+(at most 8 MiB) so a matching receipt remains verifiable through streamed eviction.
 
 Already recipient-authorized prepared bytes display locally on selection without
 another network gate. This is reuse of a response already delivered to that
@@ -216,8 +218,12 @@ page and at most two new originals per tick. A folder remains active 15 minutes
 after a batch. Initial working-set fill happens through bounded recipient batches,
 not one-file-per-cron-tick warmup. Reconciliation removes changed versions
 immediately and missing files only after a complete cursor scan; publications
-made after scan start survive an older scan. Failed source proof invalidates the
-folder. This is bounded bound-folder reconciliation, not a whole-drive delta
+made after scan start survive an older scan. Observed denied/missing/invalid
+folder proof invalidates its private variants; transient listing failures retain
+them privately while every new delivery still requires current proof. An isolated
+corrupt preparation leaves good variants intact. Missing candidates rotate, so
+two persistent bad files cannot stall later preparations. This is bounded
+bound-folder reconciliation, not a whole-drive delta
 permission scan, durable general worker or polling of every project.
 
 Logical copies expire after 24 hours. Global admission includes both published
