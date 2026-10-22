@@ -250,7 +250,7 @@ describe('PortalSidebarPanel', () => {
     });
 
     expect(transitionMocks.routerPrefetch).toHaveBeenCalledTimes(1);
-    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/schedule');
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/staff/schedule');
     expect(transitionMocks.prefetchQuery).toHaveBeenCalledTimes(1);
 
     rendered.unmount();

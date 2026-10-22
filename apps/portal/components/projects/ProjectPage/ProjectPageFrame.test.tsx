@@ -155,6 +155,7 @@ describe("ProjectPageFrame", () => {
   });
   afterEach(() => {
     mockSearchParams = "tab=activity";
+    act(() => window.history.replaceState(null, "", "/"));
     document.body.innerHTML = "";
   });
 
@@ -273,6 +274,7 @@ describe("ProjectPageFrame", () => {
     ).toBe("job-packs");
 
     mockSearchParams = "tab=estimates";
+    act(() => window.history.replaceState(null, "", "/staff/projects/proj_123?tab=estimates"));
     rendered.rerender(
       <ProjectPageFrame snapshot={snapshot} host="host" tab="activity" />,
     );

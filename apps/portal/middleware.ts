@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createProxySupabase } from '@/lib/supabase/proxyClient';
-import { isRegionalDocumentPath, prepareRegionalDocumentAccess } from '@/lib/regionalDocumentAccess';
+import { isRegionalDocumentPath, isRegionalNavigationPath, prepareRegionalPageAccess } from '@/lib/regionalDocumentAccess';
 import { DOCUMENT_ID_HEADER, prepareProxyDocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
 import type { PortalAccessTimingObserver } from '@/lib/portalAccess';
 import {
@@ -174,7 +174,7 @@ export async function middleware(req: NextRequest) {
   const startedAt = performance.now();
   const { requestHeaders, diagnostics } = prepareProxyDocumentDiagnostics(req);
   try {
-    const document = prepareRegionalDocumentAccess(req, requestHeaders);
+    const document = prepareRegionalPageAccess(req, requestHeaders);
     let response: NextResponse;
     if (document.eligible) {
       const transport = createProxySupabase(req);
@@ -186,7 +186,7 @@ export async function middleware(req: NextRequest) {
       response = await runProxy(req, document.headers, diagnostics?.accessObserver('proxy'));
     }
     // Denials and non-document variants of these private pages must not be cached.
-    if (isRegionalDocumentPath(req.nextUrl.pathname)) response.headers.set('Cache-Control', 'private, no-store');
+    if (isRegionalDocumentPath(req.nextUrl.pathname) || isRegionalNavigationPath(req.nextUrl.pathname)) response.headers.set('Cache-Control', 'private, no-store');
     diagnostics?.record('proxy.complete', startedAt, response.status >= 300 && response.status < 400 ? 'redirect' : 'complete');
     if (diagnostics) response.headers.set(DOCUMENT_ID_HEADER, diagnostics.id);
     return response;

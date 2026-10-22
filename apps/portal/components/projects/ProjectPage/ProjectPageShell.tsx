@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
-import type { ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
+import type { ProjectTabKey } from '@/lib/projects/projectTabs';
 import ProjectMainTabs from './ProjectMainTabs';
 import styles from './ProjectPage.module.css';
 
@@ -16,6 +16,7 @@ export default function ProjectPageShell({
   tab,
   calculatorWorkspace = false,
   optimisticTab,
+  onTabSelect,
   onProjectAccessEnding,
   statusPanel,
 }: {
@@ -27,7 +28,8 @@ export default function ProjectPageShell({
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
   calculatorWorkspace?: boolean;
-  optimisticTab?: ProjectNavigationTabKey | null;
+  optimisticTab?: ProjectTabKey | null;
+  onTabSelect?: (tab: ProjectTabKey) => void;
   onProjectAccessEnding?: (status: number) => void;
   statusPanel?: ReactNode;
 }) {
@@ -43,6 +45,7 @@ export default function ProjectPageShell({
         tab={tab}
         calculatorWorkspace={calculatorWorkspace}
         optimisticTab={optimisticTab}
+        onTabSelect={onTabSelect}
         onProjectAccessEnding={onProjectAccessEnding}
         statusPanel={statusPanel}
       />

@@ -40,7 +40,7 @@ export const NAV_ITEMS = [
   {
     key: 'schedule',
     label: 'Schedule',
-    href: '/schedule',
+    href: '/staff/schedule',
     Icon: CalendarDays,
     adminOnly: false,
     children: [

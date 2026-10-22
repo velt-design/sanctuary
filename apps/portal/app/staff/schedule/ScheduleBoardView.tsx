@@ -386,6 +386,7 @@ export default function ScheduleBoardView({
             <details className={styles.debugDetails}>
               <summary className={styles.debugSummary}>Debug: schedulable jobs</summary>
               <div className={styles.debugBody}>
+                {dataPending ? <p role="status">{dataError ? 'Schedule diagnostics unavailable.' : 'Reading schedule diagnostics...'}</p> : <>
                 <div className={styles.debugRow}>
                   <span className={styles.muted}>Projects</span>
                   <span>{schedulable.debug.totalProjects}</span>
@@ -434,6 +435,7 @@ export default function ScheduleBoardView({
                   <span className={styles.muted}>Estimate archived</span>
                   <span>{schedulable.debug.scheduleItems.estimateNotSchedulable}</span>
                 </div>
+                </>}
               </div>
             </details>
           ) : null}

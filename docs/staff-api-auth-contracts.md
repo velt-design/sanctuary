@@ -45,8 +45,10 @@ changed to staff retains staff access but not administrator access.
 
 The middleware overwrites the callback header from the actual path and full query,
 or strips it outside this lane. It is redirect and initial-read scheduling context, never identity or role
-authority. Ordinary browser RSC/prefetch use non-document fetch destinations and
-retain the full global path, as do action/POST, specialist and other routes. Next
+authority. Ordinary browser RSC/prefetch use non-document fetch destinations. The
+explicit navigation exception below moves only six selected leaves to the same
+fresh server verification; action/POST, specialist and other routes retain the
+full global path. Next
 normalizes Flight headers before middleware, so a deliberately forged document-
 shaped Flight request can enter the regional lane. It still requires fresh
 identity/current-role verification before private HTML or Flight output. Request
@@ -80,6 +82,38 @@ promise and date identity cross Flight, without suspending the client shell.
 Mismatched or later requests and explicit retries retain the guarded API path;
 there is no session/client serialization or shared evidence cache. See
 `marketing-performance.md` for the per-mount lifecycle and verification limits.
+
+## Selected page navigation authority (local correction, 23 October 2026)
+
+Only GET page fetches at `/dashboard`, `/staff/projects`, `/staff/contacts`,
+`/staff/schedule`, `/staff/projects/design-packages` and
+`/staff/projects/running-jobs`, with fetch destination `empty` and Accept `*/*`
+or `text/x-component`, use cookie-renewal transport followed by fresh server
+identity/current-role verification instead of repeating that pair in middleware.
+This includes normalized browser RSC/intent-prefetch and the same fetch-shaped
+page GET, not an assertion that a request is Flight. Installed Next strips its
+Flight headers before middleware and restores them afterwards; the surviving
+shape is only an untrusted placement hint. A distinct overwritten
+navigation callback cannot select document seeds. Both callback contexts are
+stripped/reconstructed from the actual request; neither supplies authority.
+
+Root verification still precedes identity props, theme and finance. Every
+selected leaf also awaits `requireStaffPageAccess` before its client or reads:
+partial Flight can skip matched ancestor layouts, so a root/layout gate alone
+is insufficient. These guards share only the existing request-local resolver;
+the next request verifies afresh. Cookie rotation and chunk removals reach both
+forwarded request and response. Responses remain private/no-store without
+replacing Next's Vary contract. Actions, other paths, admin capability, API
+read/command guards and document-only initial-read scheduling are unchanged.
+
+Actual installed-adapter to real-middleware tests replay the observed browser
+header shape and verify normalization, lane activation, exclusions and restored
+Flight headers. Source/leaf/proxy tests cover denial, request isolation, spoof
+stripping, retained router trees and cookie transport. The Schedule sidebar uses
+its canonical `/staff/schedule` target; aliases do not expand the allowlist.
+Optimized negative RSC and ordinary
+navigation timings remain required; eliminating a duplicate pair is not proof
+of a sub500ms destination or platform-cold performance.
 
 ## Initial Work document reads
 

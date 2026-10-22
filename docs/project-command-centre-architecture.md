@@ -1239,3 +1239,20 @@ remains unavailable in this Overview read model.
 ## SharePoint Files integration (22 October 2026)
 
 ProjectWorkFilesCard retains its Work, Files and Original enquiry navigation. The selected Explorer presents folder rail, compact list and adjacent selected preview, with the existing dialog at narrow widths. The source chooser retains website enquiry attachments and multiple SharePoint roots; attachment reads wait until selected. User/host/project-scoped session navigation restores Files/folder/selection/scroll without new URL query keys or changes to canonical project routing. The panel's cohesive navigation hook owns actual cursor pages, bounded complete-folder finding, freshness, cancellation and recovery without changing the Command Centre model or business actions. Fixture data still disables live reads. See [Project SharePoint files](project-sharepoint-files.md) for source/privacy boundaries, verification and live acceptance limits.
+
+
+Commercial nested selections reuse `useProjectTabSelection`, whose existing
+page-owned intent now accepts the full ProjectTabKey. The same guarded intent
+feeds primary navigation, actual body and Commercial subnavigation before Next's
+canonical search-parameter transition or a deferred lazy body settles. The
+existing dirty-draft guard runs before selection; URL adoption, Back and project
+identity retire optimistic intent. Same-path Back/Forward is adopted directly
+by that owner even before Next adopts the previous click; retired canonical
+updates cannot replace current history intent. This is real destination
+selection, not a readiness marker change. A local Suspense boundary below the
+existing toolbar contains selected-body code preparation; it cannot postpone the
+real Commercial navigation. Its status does not mean the Quotes/Invoices table
+or records are ready. The connected regression uses the installed Loadable
+factory with its actual boundary defaults and real Quotes/Invoices bodies, plus
+deferred code, guard, Back/Forward and project isolation. Optimized feedback and
+actual table readiness remain separate acceptance checks.

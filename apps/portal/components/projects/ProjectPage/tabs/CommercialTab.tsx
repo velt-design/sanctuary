@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import type { ProjectSnapshotLoadState } from '@/lib/projects/types';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
@@ -37,6 +37,8 @@ export default function CommercialTab({
   projectId,
   projectName = 'Project estimate',
   view,
+  optimisticView,
+  onViewSelect,
   calculatorWorkspace = false,
   statusPanel,
 }: {
@@ -47,6 +49,8 @@ export default function CommercialTab({
   projectId: string;
   projectName?: string;
   view: CommercialView;
+  optimisticView?: CommercialView | null;
+  onViewSelect?: (view: CommercialView) => void;
   calculatorWorkspace?: boolean;
   statusPanel?: ReactNode;
 }) {
@@ -61,7 +65,7 @@ export default function CommercialTab({
     : view;
   const quoteIdFromUrl = useMemo(() => searchParams.get('quoteId')?.trim() || null, [searchParams]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quoteIdFromUrl);
-  const activeView = canonicalView;
+  const activeView = optimisticView ?? canonicalView;
 
   useEffect(() => {
     setSelectedQuoteId(quoteIdFromUrl);
@@ -69,6 +73,8 @@ export default function CommercialTab({
 
   const setView = (nextView: CommercialView) => {
     if (!selectProjectView(nextView)) return;
+    // Reuse the page intent owner above lazy bodies after the existing draft guard.
+    onViewSelect?.(nextView);
     setSelectedQuoteId(null);
   };
 
@@ -141,6 +147,7 @@ export default function CommercialTab({
 
       {statusPanel}
       <CommercialProjectNotice projectId={projectId} view={activeView} />
+      <Suspense key={activeView} fallback={<p role="status" data-commercial-code-pending={activeView}>Preparing {activeView} tools...</p>}>
       <div inert={readOnly && projectReady} style={{ display: 'contents' }}>
       {!projectReady ? <p role={projectState === "pending" || projectState === "summary" ? "status" : undefined}>{projectState === "pending" || projectState === "summary" ? "Reading project details…" : "Project details unavailable. Retry the project read above."}</p> : null}
       {activeView === 'estimates' ? (
@@ -155,6 +162,7 @@ export default function CommercialTab({
       ) : (
         <InvoicesTab key={projectId} projectId={projectId} />
       )}</div>
+      </Suspense>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: vi.fn(async () => ({ user: { id: 'fixture' }, role: 'staff' })) }));
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { ReactElement } from 'react';

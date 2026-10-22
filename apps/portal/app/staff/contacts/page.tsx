@@ -1,3 +1,4 @@
+import { requireStaffPageAccess } from '@/lib/auth';
 import ContactsIndexClient from './ContactsIndexClient';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -7,6 +8,7 @@ export default async function ContactsPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
+  await requireStaffPageAccess('/staff/contacts');
   const resolved = await searchParams;
   const rawQuery = resolved?.q;
   const initialQuery = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery)?.trim() ?? '';

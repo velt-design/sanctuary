@@ -1,3 +1,4 @@
+import { requireStaffPageAccess } from '@/lib/auth';
 import DashboardClient from './DashboardClient';
 import { parseDashboardQueueMode } from '@/lib/dashboard/queueMode';
 
@@ -15,6 +16,7 @@ export default async function DashboardPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
+  await requireStaffPageAccess('/dashboard');
   const resolvedSearchParams = await searchParams;
   const queueMode = parseDashboardQueueMode(readFirst(resolvedSearchParams?.queue));
   return <DashboardClient queueMode={queueMode} />;

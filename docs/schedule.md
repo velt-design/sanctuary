@@ -714,3 +714,10 @@ Dormant Site Visits checks (only for direct compatibility QA or an approved reac
 
 - Site visit list loads without Board/Gantt data dependency.
 - Booking, confirming, rescheduling, and unscheduling route through staff APIs.
+
+
+The development-only Board diagnostics use the same pending/error ownership as
+the actual Board. Its real empty pending model has no diagnostic counts; the
+disclosure shows Reading or Unavailable until verified diagnostics exist, then
+retains the original genuine counts. It neither invents zero diagnostics nor
+dereferences missing nested debug fields while the initial read is pending.

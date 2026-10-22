@@ -1,3 +1,4 @@
+vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: vi.fn(async () => ({ user: { id: 'fixture' }, role: 'staff' })) }));
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ContactsPage from './page';

@@ -28,8 +28,8 @@ export default function ProjectTabNavigation({
   host: string;
   initialTab: string;
   projectId: string;
-  optimisticTab?: ProjectNavigationTabKey | null;
-  onTabSelect?: (tab: ProjectNavigationTabKey) => void;
+  optimisticTab?: ProjectTabKey | null;
+  onTabSelect?: (tab: ProjectTabKey) => void;
 }) {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();

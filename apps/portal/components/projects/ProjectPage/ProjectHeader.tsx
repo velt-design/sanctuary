@@ -1,5 +1,5 @@
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from "@/lib/projects/types";
-import type { ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
+import type { ProjectTabKey } from "@/lib/projects/projectTabs";
 import ProjectTabNavigation from "./ProjectTabNavigation";
 import ProjectHeaderActions from "./ProjectHeaderActions";
 import ProjectHeaderOwnerControl from "./ProjectHeaderOwnerControl";
@@ -33,8 +33,8 @@ export default function ProjectHeader({
   tab: string;
   ownerControlsPaused?: boolean;
   tabAvailabilityReady?: boolean;
-  optimisticTab?: ProjectNavigationTabKey | null;
-  onTabSelect?: (tab: ProjectNavigationTabKey) => void;
+  optimisticTab?: ProjectTabKey | null;
+  onTabSelect?: (tab: ProjectTabKey) => void;
 }) {
   const metadataPending = snapshotState === "pending" || snapshotState === "summary";
   return (

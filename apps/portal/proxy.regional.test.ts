@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { DOCUMENT_CALLBACK_HEADER } from './lib/regionalDocumentAccess';
+import { DOCUMENT_CALLBACK_HEADER, NAVIGATION_CALLBACK_HEADER, REGIONAL_NAVIGATION_PATHS } from './lib/regionalDocumentAccess';
 import { DOCUMENT_CARRIER_HEADER } from './lib/performance/documentDiagnostics';
 
 const h = vi.hoisted(() => ({ session: vi.fn(), user: vi.fn(), role: vi.fn(), cookies: [] as any[] }));
@@ -86,4 +86,53 @@ it('does not convert a transport failure or forged session role into authenticat
   expect(h.role).not.toHaveBeenCalled();
   h.session.mockRejectedValue(new Error('synthetic failure'));
   await expect(middleware(new NextRequest('https://portal.example/staff/projects', { headers: documentHeaders }))).rejects.toThrow('synthetic failure');
+});
+
+
+it.each(REGIONAL_NAVIGATION_PATHS)('moves only GET RSC %s to fresh leaf/root authority with separate context', async path => {
+  for (const prefetch of [false, true]) {
+    const response = await middleware(new NextRequest(`https://portal.example${path}?q=one&q=two`, { headers: {
+      rsc: '1', accept: 'text/x-component', 'sec-fetch-dest': 'empty',
+      ...(prefetch ? { 'next-router-prefetch': '1' } : {}),
+      [DOCUMENT_CALLBACK_HEADER]: '/staff/projects?spoof=1', [NAVIGATION_CALLBACK_HEADER]: '/admin?spoof=1',
+    } }));
+    expect(response.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBe(`${path}?q=one&q=two`);
+    expect(response.headers.get(`x-middleware-request-${DOCUMENT_CALLBACK_HEADER}`)).toBeNull();
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+  }
+  expect(h.session).toHaveBeenCalledTimes(2); expect(h.user).not.toHaveBeenCalled(); expect(h.role).not.toHaveBeenCalled();
+});
+it.each(['/admin', '/schedule', '/staff/projects/work-queue', '/staff/marketing-performance', '/staff/contacts/new', '/staff/projects/other', '/staff/projects/running-jobs/child'])('keeps RSC %s outside the navigation allowlist', async path => {
+  const response = await middleware(new NextRequest(`https://portal.example${path}`, { headers: { rsc: '1', [DOCUMENT_CALLBACK_HEADER]: '/staff/projects', [NAVIGATION_CALLBACK_HEADER]: '/dashboard' } }));
+  expect(h.user).toHaveBeenCalledOnce(); expect(h.session).not.toHaveBeenCalled(); expect(response.status).toBe(307);
+  expect(response.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
+  expect(response.headers.get(`x-middleware-request-${DOCUMENT_CALLBACK_HEADER}`)).toBeNull();
+});
+it.each(['POST', 'PUT', 'DELETE'])('never moves %s RSC or actions to navigation context', async method => {
+  const response = await middleware(new NextRequest('https://portal.example/staff/contacts', { method, headers: { rsc: '1', 'next-action': 'synthetic', [NAVIGATION_CALLBACK_HEADER]: '/dashboard' } }));
+  expect(h.user).toHaveBeenCalledOnce(); expect(h.session).not.toHaveBeenCalled(); expect(response.status).toBe(307);
+  expect(response.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
+});
+it('forwards RSC rotation/removal cookies without treating session claims or refresh errors as authority', async () => {
+  h.cookies = [{ name: 'session.0', value: '', options: { maxAge: 0, path: '/' } }, { name: 'session', value: 'rotated', options: { httpOnly: true, sameSite: 'lax', path: '/' } }];
+  const request = () => new NextRequest('https://portal.example/staff/contacts', { headers: { rsc: '1', accept: '*/*', 'sec-fetch-dest': 'empty', cookie: 'session.0=old; unrelated=keep' } });
+  h.session.mockResolvedValue({ data: { session: null }, error: { message: 'untrusted refresh' } });
+  const response = await middleware(request());
+  expect(response.headers.get('x-middleware-request-cookie')).toContain('session=rotated');
+  expect(response.headers.get('x-middleware-request-cookie')).toContain('unrelated=keep');
+  expect(response.headers.get('x-middleware-request-cookie')).not.toContain('session.0');
+  expect(response.cookies.get('session')?.value).toBe('rotated'); expect(response.cookies.get('session.0')?.maxAge).toBe(0);
+  expect(h.user).not.toHaveBeenCalled(); expect(h.role).not.toHaveBeenCalled();
+  h.session.mockRejectedValue(new Error('transport failed'));
+  await expect(middleware(request())).rejects.toThrow('transport failed');
+});
+
+it('does not move GET actions or API passthrough into navigation authority', async () => {
+  const action = await middleware(new NextRequest('https://portal.example/staff/contacts', { headers: { rsc: '1', 'next-action': 'synthetic', [NAVIGATION_CALLBACK_HEADER]: '/staff/contacts' } }));
+  expect(action.status).toBe(307); expect(h.user).toHaveBeenCalledOnce(); expect(h.session).not.toHaveBeenCalled();
+  expect(action.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
+  const api = await middleware(new NextRequest('https://portal.example/api/staff/v1/contacts', { headers: { rsc: '1', [DOCUMENT_CALLBACK_HEADER]: '/staff/projects', [NAVIGATION_CALLBACK_HEADER]: '/staff/contacts' } }));
+  expect(api.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
+  expect(api.headers.get(`x-middleware-request-${DOCUMENT_CALLBACK_HEADER}`)).toBeNull();
 });

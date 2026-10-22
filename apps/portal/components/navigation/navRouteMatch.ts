@@ -7,6 +7,7 @@ export function isNavParentActive(pathname: string, href: string) {
     '/staff/projects': ['/projects'],
     '/contacts': ['/staff/contacts'],
     '/schedule': ['/staff/schedule', '/staff/site-visits'],
+    '/staff/schedule': ['/schedule', '/staff/site-visits'],
     '/imports': ['/admin/imports'],
     '/pricebook': ['/admin/costing', '/admin/costs'],
   };

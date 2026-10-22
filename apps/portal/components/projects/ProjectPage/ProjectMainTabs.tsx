@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
-import { coerceProjectTab, type ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
+import { coerceProjectTab, type ProjectTabKey } from '@/lib/projects/projectTabs';
 import layout from './ProjectPage.module.css';
 import { ProjectEmailReadingProvider } from './tabs/overview/ProjectEmailReadingState';
 import {
@@ -23,6 +23,7 @@ export default function ProjectMainTabs({
   tab,
   calculatorWorkspace = false,
   optimisticTab,
+  onTabSelect,
   onProjectAccessEnding,
   statusPanel,
 }: {
@@ -34,7 +35,8 @@ export default function ProjectMainTabs({
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
   calculatorWorkspace?: boolean;
-  optimisticTab?: ProjectNavigationTabKey | null;
+  optimisticTab?: ProjectTabKey | null;
+  onTabSelect?: (tab: ProjectTabKey) => void;
   onProjectAccessEnding?: (status: number) => void;
   statusPanel?: ReactNode;
 }) {
@@ -80,6 +82,8 @@ export default function ProjectMainTabs({
             projectId={projectId}
             projectName={snapshot?.project.name}
             view={activeTab}
+            optimisticView={optimisticTab === "estimates" || optimisticTab === "quotes" || optimisticTab === "invoices" ? optimisticTab : null}
+            onViewSelect={onTabSelect}
             calculatorWorkspace={calculatorWorkspace}
             statusPanel={statusPanel}
           />

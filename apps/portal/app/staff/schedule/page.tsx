@@ -1,3 +1,4 @@
+import { requireStaffPageAccess } from '@/lib/auth';
 import ScheduleClient from './ScheduleClient';
 import SiteVisitsScheduleClient from './SiteVisitsScheduleClient';
 import { loadSchedulePageSeed } from '@/lib/scheduling/serverSchedulePageSeed';
@@ -9,6 +10,7 @@ export default async function StaffSchedulePage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
+  await requireStaffPageAccess('/staff/schedule');
   const resolvedSearchParams = await searchParams;
   const rawView = resolvedSearchParams?.view;
   const view = Array.isArray(rawView) ? rawView[0] : rawView;
