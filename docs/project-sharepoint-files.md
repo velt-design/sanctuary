@@ -1,6 +1,6 @@
 # Project SharePoint files
 
-Status: Dedicated Files workspace and protected recent-preview correction are live as of 23 October 2026. Actual `0de9bf77` acceptance verified recent photo/PDF 200 receipts and manual Refresh. First-new-file speed remains above target. The local open-route-only Sydney candidate is unproved and changes no authority or freshness policy; large original delivery retains its separate acceptance requirement. This work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover.
+Status: Dedicated Files workspace, protected recent-preview verification and open-route-only Sydney placement are live as of 23 October 2026. Actual acceptance verified recent photo/PDF 200 receipts, manual Refresh and unchanged placement of other functions. Sydney improved ordinary file delivery, but the owner's almost-instant first-open outcome remains unmet. The combined auth/Singapore change retains fresh session verification and current RPC/Graph authority, but Portal activation remains unverified after a missing workspace test dependency stopped its build. The dependency correction changes package ownership only; the combined latency gain remains unverified. Large original delivery retains its separate acceptance requirement. No runtime enablement, bindings, grants, provisioning or staff changeover changes.
 
 ## Outcome and ownership
 
@@ -18,6 +18,7 @@ Implementation map:
 | Protected recent-preview verification contract | `previewVerification.ts`, existing open route and `useProjectFilePreview` |
 | Selected PDF/raster content | `ProjectFilePreview`, `useProjectFilePreview`, bounded `projectFilePreviewCache`, `ProjectPdfStream`, existing `QuotePdfInlinePreview` renderer |
 | Current-project preparation and freshness | `useProjectFilesPreparation`, shared domain `query.ts`, existing authenticated-owner QueryClient |
+| Open identity and current staff proof | `openIdentity.ts` retains fresh `getUser`; the same user-bound client calls existing `project_files_read` for current staff/project/root authority |
 | Authenticated reads and file access | `apps/portal/app/api/staff/v1/projects/[projectId]/files` and `lib/projects/sharePointFiles/server.ts` |
 | Microsoft source and ancestry checks | `graph.ts`, `graphProtocol.ts`, `graphContainment.ts`; assertion-scoped `accessToken.ts` owns bearer reuse |
 | New enquiry folder job | `lib/projects/sharePointFiles/provision.ts`, `api/integrations/sharepoint-project-folders` |
@@ -166,25 +167,64 @@ aborted transport reporting does not establish native completion or exact paint.
 The first-new-file speed goal remains unmet. Prepared navigation avoided extra
 source reads. The receipt fix adds no new body prefetch, authority cache or durable copy.
 
-### Open-route locality candidate
+### Workspace dependency verification
 
-The 23 October local candidate assigns only
+The actor-bound open-access test imports PGlite to execute the actual SQL locally.
+Portal now declares that test tool as a development dependency at the exact
+existing repository version, `0.5.4`, with its workspace lock entry. Root/Marketing
+declarations do not make it a Portal dependency. A full-root development install
+can mask that error; verification must include a fresh Portal-selected workspace
+install outside ancestors containing a full dependency tree. Portal's existing
+Next TypeScript test inclusion remains intact. No production runtime import,
+auth/session behavior, SQL, grants, region or file content changes are required.
+
+### Open-route locality and combined auth candidate
+
+The 23 October release assigns only
 `app/api/staff/v1/projects/*/files/*/open/route.ts` to Sydney (`syd1`) through
-Portal's Vercel per-function configuration. Lists, children, middleware and other
-Portal functions retain their existing Mumbai/default placement. Node runtime,
-memory, duration, current staff/project/root/containment/version checks, original
-delivery, Graph request shape and five-minute policy remain unchanged.
+Portal's Vercel per-function configuration. Actual production artifacts verified
+that both open variants moved and all other functions, including middleware,
+retained their prior placement and resources. A paired protected control separated
+preview-only middleware placement from the production comparison.
 
-This is an unproved latency hypothesis: Sydney can reduce the client/source path
-while increasing the distance to authentication and binding data in Mumbai.
-Before promotion, inspect actual function artifacts to establish the open-only
-placement, then compare ordinary photo/PDF useful content, transport and existing
-phase timings. A local configuration or synthetic fixture cannot prove the gain.
-Remove only this override, or restore the previous accepted deployment, if the
-comparison regresses or does not materially improve the ordinary task. No broad
-Portal region move, extra services, body preparation or persistent file copies
-are part of this candidate. [Vercel per-function regions](https://vercel.com/docs/functions/configuring-functions/region)
-own this deployment setting; the deprecated Next `preferredRegion` export is not used.
+The representative photo/PDF delivered all observed decoded bytes in about
+2.47/2.44 seconds, compared with about 5.85/5.19 seconds before this change.
+Headers still took about 2.31/2.34 seconds. These observations establish a useful
+improvement, not exact native transport completion or useful-paint timing, and do
+not establish the owner's almost-instant outcome. Current Sydney authentication
+plus binding reads cost about 1.38/1.79 seconds; Graph metadata proof was about
+0.23/0.12 seconds. The identity/role split within authentication was not measured.
+
+The local open-only auth candidate obtains one existing cookie-bound Supabase
+client, performs fresh `auth.getUser()`, and passes that same client to unchanged
+`projectGraph`. The existing `project_files_read` RPC rechecks current staff/admin
+membership, confirmation, deletion and ban state before returning project roots.
+That current actor check replaces only the redundant generic `portal_users` role
+query. Other Portal authentication and Files listing owners remain unchanged.
+The existing SSR refresh/cookie path stays in use; no role, claims or authority
+cache is introduced. Server-ended session detection still requires fresh
+`getUser()` and is not replaced by `getClaims()` or the RPC alone.
+
+The combined local candidate also changes only the existing open override from
+Sydney to Singapore (`sin1`). Singapore is a midpoint hypothesis between the
+Mumbai authentication/binding data and the Australian source/client path. No
+prior Files timing establishes its performance. Lists and all other functions
+retain their existing placement. Removing one network operation is verified
+locally; the combined real latency saving is unverified and cannot be assumed
+to reach a numerical target or attributed solely to either change. Session denial,
+RPC denial/error, invalid roots or stale binding still stop before provider
+access, previews, verification receipts or original redirects. Node runtime,
+current Graph containment/type/size/version checks, original delivery and the
+five-minute metadata/recent-preview policy remain unchanged.
+
+If Singapore regresses, recovery changes only the open override back to the
+verified Sydney placement. An auth defect requires its own exact runtime revert,
+preserving other work and the protected receipt correction. Before promotion,
+actual artifact comparison must show only the two open variants moving from
+Sydney to Singapore, with all other functions and resources unchanged. No broad Portal
+region move, extra services, body preparation or persistent copies are included.
+[Vercel per-function regions](https://vercel.com/docs/functions/configuring-functions/region)
+own deployment placement; the deprecated Next `preferredRegion` export is not used.
 
 The separate private localhost harness executes the actual list/open handlers,
 Graph/token/containment owners and client workspace with synthetic auth/RPC and
@@ -199,7 +239,7 @@ acceptance must measure those ordinary tasks and the real version-header contrac
 
 ## Access and delivery contract
 
-Every staff request authenticates first and calls the user-bound `project_files_read` RPC. The RPC rechecks confirmed, active staff/admin membership. It exposes roots only for the requested existing project and configured drive. The service role is used only by the operator importer and the scoped provisioning command, never to bypass staff read checks.
+Every staff request authenticates first and calls the user-bound `project_files_read` RPC. Open requests retain fresh `getUser()` on the same request client; current staff access comes from the RPC actor rather than a duplicate Portal role read. The RPC rechecks confirmed, active staff/admin membership. It exposes roots only for the requested existing project and configured drive. The service role is used only by the operator importer and the scoped provisioning command, never to bypass staff read checks.
 
 Both privilege governance checks retain this boundary: `supabaseClient.boundaries.test.ts` inventories Portal runtime users, while `scripts/service-role-access-report.mjs` registers the exact cron adapter for the strict shared-impact gate and identifies the operator-only importer. Nearby SharePoint modules receive no privilege exception. The focused `serviceRole.test.ts` checks that the two reviewed entrypoints pass and neighbouring runtime files remain rejected.
 

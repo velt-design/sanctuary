@@ -1,5 +1,24 @@
 # Decision Log
 
+## 2026-10-23: Declare build-checked test tools in their workspace
+
+A Portal SQL-boundary test resolved PGlite through the full-root development
+install but failed Next type checking in the deployed workspace install. Declare
+the exact existing tool version in the importing workspace's development
+manifest and lock entry. Verify a fresh selected-workspace install without an
+ancestor dependency tree; do not exclude tests or add a runtime dependency.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
+## 2026-10-23: Reuse current RPC authority after fresh file identity
+
+The Sydney file-open path repeated a generic Portal role query before an RPC
+that already checks current staff/account state and project roots. Open now
+keeps fresh Supabase `getUser()` and its request client, while the existing
+actor-checked RPC supplies current staff authority. Reuse the refreshed client;
+do not substitute JWT claims or a cached role for live session/RPC checks.
+Verify denial before provider access and actual cookie refresh at the boundary.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
 ## 2026-10-22: Verify protected preview reuse through the platform
 
 A platform may rewrite a conditional response to304 and strip application
