@@ -38,7 +38,7 @@ function install({ prototype = http.Server.prototype, channels = dc, now = () =>
     if (event !== 'request') return Reflect.apply(originalEmit, this, [event, ...args]);
     const [request, response] = args;
     const loopbacks = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
-    if (request.socket?.localAddress !== '127.0.0.1' || !loopbacks.includes(request.socket?.remoteAddress) || request.socket?.localPort !== port) {
+    if (!loopbacks.includes(request.socket?.localAddress) || !loopbacks.includes(request.socket?.remoteAddress) || request.socket?.localPort !== port) {
       return Reflect.apply(originalEmit, this, [event, ...args]);
     }
     let route;
@@ -127,6 +127,8 @@ function safeRecord(input) {
       requests: (Array.isArray(input.requests) ? input.requests : []).slice(0, 128).map(row => ({
         ordinal: number(row.ordinal), category: categories.has(row.category) ? row.category : 'other',
         resourceKind: kinds.has(row.resourceKind) ? row.resourceKind : 'other', observedAtEpochMs: number(row.observedAtEpochMs),
+        responseObservedAtEpochMs: number(row.responseObservedAtEpochMs), finishedObservedAtEpochMs: number(row.finishedObservedAtEpochMs),
+        failedObservedAtEpochMs: number(row.failedObservedAtEpochMs),
         startAtEpochMs: number(row.startAtEpochMs), headersMs: number(row.headersMs), endMs: number(row.endMs),
         status: number(row.status), failed: row.failed === true,
       })) };

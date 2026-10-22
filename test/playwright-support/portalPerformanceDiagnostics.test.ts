@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { EventEmitter } from 'node:events';
+import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -70,14 +71,21 @@ it('records native timing/status/failure categories without URL, query, headers,
   const response = { request: () => request, status: () => 200,
     body: () => { throw new Error('Must not read private body'); } } as unknown as Response;
   const trace = createPortalNetworkTrace(page as unknown as Page, 'http://127.0.0.1:3011', value => rows.push(value));
-  page.emit('request', request); page.emit('response', response); page.emit('requestfailed', request);
+  const now = vi.spyOn(Date, 'now');
+  now.mockReturnValue(1000); page.emit('request', request);
+  now.mockReturnValue(1100); page.emit('response', response);
+  now.mockReturnValue(1200); page.emit('requestfailed', request);
+  now.mockRestore();
   trace.finish('dashboard-to-contacts');
   expect(rows).toEqual([expect.objectContaining({ event: 'network-journey', journey: 'dashboard-to-contacts', requests: [expect.objectContaining({
     ordinal: 1, category: 'contacts', resourceKind: 'fetch', startAtEpochMs: 1000, headersMs: 230, endMs: 340, status: 200, failed: true,
+    observedAtEpochMs: 1000, responseObservedAtEpochMs: 1100, failedObservedAtEpochMs: 1200, finishedObservedAtEpochMs: null,
   })] })]);
   expect(JSON.stringify(rows)).not.toMatch(/PRIVATE_VALUE|http:|"headers"|"body"|errorText|q=/);
   expect(page.eventNames()).toEqual([]);
   trace.finish('dashboard-to-contacts'); expect(rows).toHaveLength(1);
+  page.emit('requestfinished', request);
+  expect(rows[0]).toMatchObject({ requests: [expect.objectContaining({ finishedObservedAtEpochMs: null })] });
 });
 
 it('bounds requests, handles incomplete/disposed metadata, redacts unknown names and retires repeated captures', () => {
@@ -147,8 +155,56 @@ it('observes real Node callback/stream/backpressure/error contracts without wrap
     ignored.emit('request', { ...request, socket: { ...request.socket, localPort: 3214 } }, new ServerResponse());
     ignored.emit('request', { ...request, socket: { ...request.socket, localAddress: '0.0.0.0' } }, new ServerResponse());
     expect(records).toHaveLength(count);
+    for (const address of ['::ffff:127.0.0.1', '::1']) {
+      const loopback = new Server(); loopback.on('request', () => {});
+      loopback.emit('request', { ...request, socket: { localAddress: address, remoteAddress: address, localPort: 3011 } }, new ServerResponse());
+      expect(records.at(-1)).toMatchObject({ event: 'request-start', route: 'contacts' });
+    }
+    const acceptedCount = records.length;
+    for (const socket of [
+      { localAddress: '::', remoteAddress: '::1', localPort: 3011 },
+      { localAddress: '::1', remoteAddress: '2001:db8::1', localPort: 3011 },
+      { localAddress: '::ffff:192.0.2.1', remoteAddress: '::ffff:127.0.0.1', localPort: 3011 },
+      { localAddress: '::ffff:127.0.0.1', remoteAddress: '::ffff:127.0.0.1', localPort: 3214 },
+    ]) {
+      const ignoredSocket = new Server(); ignoredSocket.on('request', () => {});
+      ignoredSocket.emit('request', { ...request, socket }, new ServerResponse());
+    }
+    expect(records).toHaveLength(acceptedCount);
   } finally { unsubscribe(); }
   expect(Server.prototype.emit).toBe(originalEmit); expect(channels.size).toBe(0);
+});
+
+it('observes the actual default native listener through an IPv4 loopback client without changing the listener', async () => {
+  const records: any[] = [];
+  const originalEmit = http.Server.prototype.emit;
+  const server = http.createServer((_request, response) => { response.end('fictional'); });
+  await new Promise<void>(resolve => server.listen(0, resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Native test listener unavailable');
+  const unsubscribe = install({ port: address.port, write: (row: object) => records.push(row), channels: {
+    subscribe() {}, unsubscribe() {},
+  } });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const request = http.get({ hostname: '127.0.0.1', port: address.port, path: '/staff/contacts' }, response => {
+        expect(response.statusCode).toBe(200);
+        response.resume(); response.once('end', resolve);
+      });
+      request.once('error', reject);
+    });
+    expect(records.filter(row => row.event === 'request-start')).toEqual([
+      expect.objectContaining({ route: 'contacts', kind: 'other' }),
+    ]);
+    expect(records.filter(row => row.event === 'request-finish')).toEqual([
+      expect.objectContaining({ status: 200, operations: {} }),
+    ]);
+    expect(records.filter(row => row.event === 'body-first-write')).toHaveLength(1);
+  } finally {
+    unsubscribe();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+  expect(http.Server.prototype.emit).toBe(originalEmit);
 });
 
 it('emits only fixed allowlisted JSON fields inside bounded log markers, never raw file content', () => {
@@ -164,6 +220,10 @@ it('emits only fixed allowlisted JSON fields inside bounded log markers, never r
     expect(lines.join('\n')).not.toMatch(/PRIVATE_VALUE|"url"|"headers"|"body"|"private"/);
     expect(JSON.parse(lines[2]).operations).toEqual({ identity: 1 });
     expect(safeRecord({ event: 'PRIVATE_VALUE', data: 'PRIVATE_VALUE' })).toBeNull();
+    expect(safeRecord({ event: 'network-journey', requests: [{ responseObservedAtEpochMs: 1000,
+      finishedObservedAtEpochMs: Infinity, failedObservedAtEpochMs: 'PRIVATE_VALUE' }] }).requests[0]).toMatchObject({
+      responseObservedAtEpochMs: 1000, finishedObservedAtEpochMs: null, failedObservedAtEpochMs: null,
+    });
   } finally {
     expect(path.dirname(directory)).toBe(path.resolve(os.tmpdir()));
     fs.rmSync(directory, { recursive: true, force: true });

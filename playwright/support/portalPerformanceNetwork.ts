@@ -36,6 +36,9 @@ type NetworkRow = {
   category: string;
   resourceKind: string;
   observedAtEpochMs: number;
+  responseObservedAtEpochMs: number | null;
+  finishedObservedAtEpochMs: number | null;
+  failedObservedAtEpochMs: number | null;
   startAtEpochMs: number | null;
   headersMs: number | null;
   endMs: number | null;
@@ -67,19 +70,24 @@ export function createPortalNetworkTrace(page: Page, origin: string, write: (rec
     requests.set(request, {
       ordinal: requests.size + 1, category: requestCategory,
       resourceKind: resourceKinds.has(kind) ? kind : 'other', observedAtEpochMs: Date.now(),
+      responseObservedAtEpochMs: null, finishedObservedAtEpochMs: null, failedObservedAtEpochMs: null,
       startAtEpochMs: null, headersMs: null, endMs: null, status: null, failed: false,
     });
     snapshot(request);
   };
   const onResponse = (response: Response) => {
     const row = requests.get(response.request());
-    if (row) row.status = response.status();
+    if (row) { row.status = response.status(); row.responseObservedAtEpochMs ??= Date.now(); }
     snapshot(response.request());
   };
-  const onFinished = (request: Request) => snapshot(request);
+  const onFinished = (request: Request) => {
+    const row = requests.get(request);
+    if (row) row.finishedObservedAtEpochMs ??= Date.now();
+    snapshot(request);
+  };
   const onFailed = (request: Request) => {
     const row = requests.get(request);
-    if (row) row.failed = true;
+    if (row) { row.failed = true; row.failedObservedAtEpochMs ??= Date.now(); }
     snapshot(request);
   };
   page.on('request', onRequest);

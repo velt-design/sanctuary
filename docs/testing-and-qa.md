@@ -2184,7 +2184,13 @@ The performance job additionally records bounded test-only transport diagnostics
 They do not alter the existing DOM clock, assertions, five schema-v2 samples,
 p75 aggregation or 100/500/50 ms targets. Native Playwright request events/timing
 record fixed route/API/static/external categories, ordinals, status, absolute
-start/observation times, headers/end offsets and failure booleans. Queries,
+start/observation times, headers/end offsets and failure booleans. Response,
+finished and failed callbacks also record their own Date.now observation epochs,
+with null for events not observed. These are driver event receipts, not exact
+native network completion. Installed Playwright can replace startTime using
+Chromium response timing while responseEnd uses the original request timestamp;
+do not infer an absolute end by blindly adding that mixed-base tuple. Raw native
+values and the separate event observations remain unchanged evidence. Queries,
 record IDs, raw URLs/headers/bodies and error text are excluded. A diagnostic-only
 snapshot projects the matching existing DOM capture's start/completion into
 absolute time using performance.timeOrigin. It never recalculates, moves or
@@ -2201,7 +2207,9 @@ and complete useful facts. This is diagnostic evidence, not a runtime improvemen
 Diagnostics require the explicit CI production-timing loopback target. The
 existing server command/hostname is preserved, since changing Next's hostname
 can change URL normalization; observation still requires the configured loopback
-origin and matching loopback socket/port. They use
+origin and matching loopback socket/port. The fixed socket allowlist accepts only
+127.0.0.1, ::1 and ::ffff:127.0.0.1 on both ends, including the IPv4-mapped loopback
+accepted by Next's default dual-stack listener. They use
 separate local JSONL: at most128 network requests per warm journey,128 scoped
 page requests per server process,2 MiB per network-run file and512 KiB per server
 file. The existing job log emits only reconstructed allowlisted records between

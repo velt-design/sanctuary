@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Request, type Response } from '@playwright/test';
 import {
   beginPortalVisibleDestination,
   portalVisibleDestinationMs,
@@ -242,6 +242,11 @@ test('captures native Playwright request metadata separately without recording U
     contentType: 'application/json', body: JSON.stringify({ fictional: 'PRIVATE_VALUE' }),
   }));
   const records: any[] = [];
+  const responseObserved = new Map<Request, number>();
+  const finishedObserved = new Map<Request, number>();
+  const onResponse = (response: Response) => responseObserved.set(response.request(), Date.now());
+  const onFinished = (request: Request) => finishedObserved.set(request, Date.now());
+  page.on('response', onResponse); page.on('requestfinished', onFinished);
   const capture = await beginPortalVisibleDestination(page, {
     pathname: '/dashboard', conditions: [{ selector: 'h1', text: 'Contacts' }],
   });
@@ -260,6 +265,11 @@ test('captures native Playwright request metadata separately without recording U
     startAtEpochMs: timing.startTime > 0 ? timing.startTime : null,
     headersMs: timing.responseStart >= 0 ? timing.responseStart : null,
     endMs: timing.responseEnd >= 0 ? timing.responseEnd : null });
+  expect(Math.abs(row.responseObservedAtEpochMs - responseObserved.get(request)!)).toBeLessThan(20);
+  expect(Math.abs(row.finishedObservedAtEpochMs - finishedObserved.get(request)!)).toBeLessThan(20);
+  expect(row.failedObservedAtEpochMs).toBeNull();
+  expect(row.finishedObservedAtEpochMs).toBeGreaterThanOrEqual(row.responseObservedAtEpochMs);
+  page.off('response', onResponse); page.off('requestfinished', onFinished);
   expect(JSON.stringify(records)).not.toMatch(/PRIVATE_VALUE|portal-clock|https:|q=/);
   expect(Math.round(records[0].clock.firstVisibleAtEpochMs - records[0].clock.startedAtEpochMs)).toBe(elapsed);
   expect(records[0].coverage).toBe('requests-starting-after-listener');
