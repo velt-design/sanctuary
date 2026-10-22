@@ -1,5 +1,22 @@
 # Decision Log
 
+## 2026-10-22: Compose project filters from the current URL
+
+Rapid audience and roof-form changes could each spread the same stale server
+search-parameter props while the first router navigation was unresolved. The
+second edit then silently removed the first selection. Collection filter events
+now carry partial patches and synchronously merge against the current browser
+URL. Native history integrates with Next `useSearchParams`, making URL, rendered
+controls and Back/Forward share one source. Reset preserves unrelated query
+parameters. Existing project-return metadata and detail switching are unchanged. Independent
+review additionally found the mobile BODY scroll container was ignored by the
+return capture/restore path. Both now resolve the same current scroll owner; a
+BODY-scrolled lower-card regression protects All projects and browser Back.
+A component regression exercises two events before rerender; the focused browser
+journey covers real history, reload and project return. Do not reintroduce
+independent optimistic filter state or await navigation between ordinary edits.
+
+
 ## 2026-10-22: project file relationships must preserve project deletion
 
 Independent review found that new SharePoint binding/job/audit foreign keys would

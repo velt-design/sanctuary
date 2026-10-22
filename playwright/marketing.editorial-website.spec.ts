@@ -33,13 +33,14 @@ test('real pages carry the approved reference composition and roof state',async(
  await expect(page.getByRole('radio',{name:/03 Combination/})).toBeChecked();
  await page.goto('/projects/warkworth-outdoor-room');
  await expect(page.getByRole('heading',{name:'A room beside the house.'})).toBeVisible();
- await expect(page.getByRole('heading',{name:'How it comes together.'})).toBeVisible();
- await expect(page.getByRole('heading',{name:'Why a gable?'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'The details.'})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Explore gable pergolas/})).toBeVisible();
 });
 
 for(const width of [390,1440]) test('approved reference and real composition at '+width,async({page})=>{
  await page.setViewportSize({width,height:900});
- for(const family of ['product','project']){
+ // Warkworth has its own approved 22 October composition, covered by marketing.projects-editorial.spec.ts.
+ for(const family of ['product']){
   const reference='/__foundation/marketing/evolution/'+family+'?composition=editorial&motion=quiet';
   test.skip((await page.request.get(reference)).status()===404, 'Internal reference is intentionally gated in this production build; comparison runs on the development preview.');
   const real=family==='product'?'/products/pergolas/gable':'/projects/warkworth-outdoor-room';
@@ -60,7 +61,8 @@ for(const width of [390,1440]) test('approved reference and real composition at 
 
 for(const width of [390,1440]) test('approved body hierarchy and gallery composition at '+width,async({page})=>{
  await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});
- for(const family of ['product','project']){
+ // Warkworth has its own approved 22 October composition, covered by marketing.projects-editorial.spec.ts.
+ for(const family of ['product']){
   const inspect=async(route:string)=>{
    await page.goto(route);const main=page.locator('main').filter({visible:true}).last();
    const headings=await main.locator('h2').evaluateAll(items=>items.map(el=>({text:el.textContent?.replace(/\s+/g,' ').trim(),font:getComputedStyle(el).fontSize})));
