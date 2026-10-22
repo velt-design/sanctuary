@@ -46,6 +46,15 @@ export function validateDiagnosticComparisons(value: Diagnostics, query: { compa
     throw new Error('Diagnostic comparison coverage differs.');
 }
 type Quality = Diagnostics['stagesQuality'];
+const acquisitionReasons = ['profile', 'dimension_count', 'unsafe_dimension', 'range', 'duplicate_row', 'invalid_metric', 'row_count', 'incomplete_rows'] as const;
+class AcquisitionValidationFailure extends Error {
+  constructor(readonly reason: typeof acquisitionReasons[number]) { super('Acquisition validation failed.'); }
+}
+/** Closed classifications only; never expose Zod issues or provider values. */
+export function acquisitionValidationReason(error: unknown): string | null {
+  if (error instanceof z.ZodError) return 'response_schema';
+  return error instanceof AcquisitionValidationFailure && acquisitionReasons.includes(error.reason) ? error.reason : null;
+}
 
 export function safeLabel(value: string): boolean {
   return ![...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)
@@ -56,7 +65,7 @@ export function safePath(value: string): boolean {
   return value === '(not set)' || (value.startsWith('/') && !value.startsWith('//') && safeLabel(decoded)
     && !/[?#\\]/.test(decoded) && !/^\/(api|staff|admin|auth|login|quote|quotes|invoice|invoices)(\/|$)/i.test(decoded));
 }
-const observed = (value: string) => { if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error('Invalid diagnostic count.'); return Number(value); };
+const observed = (value: string) => { if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new AcquisitionValidationFailure('invalid_metric'); return Number(value); };
 const metadata = z.object({ timeZone: z.string().min(1).max(80), subjectToThresholding: z.boolean().default(false), dataLossFromOtherRow: z.boolean().default(false),
   samplingMetadatas: z.array(z.object({ samplesReadCount: z.string().regex(/^\d+$/), samplingSpaceSize: z.string().regex(/^\d+$/) })).max(2).optional(),
   emptyReason: z.string().max(512).optional(), schemaRestrictionResponse: z.object({ activeMetricRestrictions: z.array(z.unknown()).max(10).optional() }).optional() });
@@ -86,31 +95,33 @@ const response = z.object({ dimensionHeaders: z.array(z.object({ name: z.string(
   rowCount: z.number().int().nonnegative().safe().default(0), metadata });
 export function parseAcquisition(raw: unknown, query: ReportQuery, timezone: string, now: Date): Acquisition {
   const batch = z.object({ reports: z.array(response).length(2), kind: z.literal('analyticsData#batchRunReports').optional() }).parse(raw);
+  if (batch.reports.some(report => report.metadata.timeZone !== timezone)) throw new AcquisitionValidationFailure('profile');
   const rows = new Map<string, z.infer<typeof cohort>>(); let overflow = false;
   const qualities = batch.reports.map(report => flags(report.metadata, query, now));
   batch.reports.forEach((report, index) => {
     const dimensions = ['sessionSourceMedium', 'landingPage', 'deviceCategory', ...(index ? ['eventName'] : []), ...(query.comparison ? ['dateRange'] : [])];
     const headers = report.dimensionHeaders.map(header => header.name);
     if (JSON.stringify([...headers].sort()) !== JSON.stringify([...dimensions].sort()) || report.metricHeaders[0].name !== (index ? 'eventCount' : 'sessions')
-      || report.metadata.timeZone !== timezone || report.metadata.emptyReason || report.metadata.schemaRestrictionResponse?.activeMetricRestrictions?.length) throw new Error('Diagnostic profile unavailable.');
+      || report.metadata.timeZone !== timezone || report.metadata.emptyReason || report.metadata.schemaRestrictionResponse?.activeMetricRestrictions?.length) throw new AcquisitionValidationFailure('profile');
     const groups = new Set<string>(), pairs = new Set<string>();
     for (const row of report.rows) {
-      if (row.dimensionValues.length !== dimensions.length) throw new Error('Diagnostic dimensions differ.');
+      if (row.dimensionValues.length !== dimensions.length) throw new AcquisitionValidationFailure('dimension_count');
       const cell = (name: string) => row.dimensionValues[headers.indexOf(name)]?.value;
+      if (!safeLabel(cell('sessionSourceMedium') ?? '') || !safePath(cell('landingPage') ?? '') || !safeLabel(cell('deviceCategory') ?? '')) throw new AcquisitionValidationFailure('unsafe_dimension');
       const sourceMedium = label(128).parse(cell('sessionSourceMedium')), landingPath = path.parse(cell('landingPage')), deviceCategory = label(32).parse(cell('deviceCategory'));
       const event = index ? z.enum(STAGES).parse(cell('eventName')) : null, range = query.comparison ? cell('dateRange') : 'selected';
-      if (range !== 'selected' && range !== 'prior') throw new Error('Diagnostic range differs.');
+      if (range !== 'selected' && range !== 'prior') throw new AcquisitionValidationFailure('range');
       const group = JSON.stringify([sourceMedium, landingPath, deviceCategory, event]), identity = JSON.stringify([group, range]);
-      if (pairs.has(identity)) throw new Error('Duplicate diagnostic row.'); pairs.add(identity); groups.add(group);
+      if (pairs.has(identity)) throw new AcquisitionValidationFailure('duplicate_row'); pairs.add(identity); groups.add(group);
       const number = observed(row.metricValues[0].value), key = JSON.stringify([sourceMedium, landingPath, deviceCategory]);
       const empty = () => ({ value: null, previous: null });
       const result = rows.get(key) ?? { sourceMedium, landingPath, deviceCategory, sessions: empty(), firstEdits: empty(), submitAttempts: empty(), acceptedSuccesses: empty() };
       const measure = index ? event === STAGES[0] ? result.firstEdits : event === STAGES[1] ? result.submitAttempts : result.acceptedSuccesses : result.sessions;
       measure[range === 'selected' ? 'value' : 'previous'] = number; rows.set(key, result);
     }
-    if (groups.size > report.rowCount || (report.rowCount > 0 && !report.rows.length)) throw new Error('Diagnostic row count differs.');
+    if (groups.size > report.rowCount || (report.rowCount > 0 && !report.rows.length)) throw new AcquisitionValidationFailure('row_count');
     if (report.rowCount > 200) { overflow = true; return; }
-    if (groups.size !== report.rowCount || report.rows.length !== report.rowCount * (query.comparison ? 2 : 1)) throw new Error('Diagnostic rows incomplete.');
+    if (groups.size !== report.rowCount || report.rows.length !== report.rowCount * (query.comparison ? 2 : 1)) throw new AcquisitionValidationFailure('incomplete_rows');
   });
   if (overflow || rows.size > 200) return { status: 'unavailable', reason: 'row_limit' };
   const quality = Object.fromEntries(['sampled', 'thresholded', 'otherRowLoss', 'provisional'].map(key => [key, qualities.some(value => value[key as keyof Quality])])) as Omit<Quality, 'comparisonsAllowed'>;

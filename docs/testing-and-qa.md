@@ -49,6 +49,15 @@ Actual optimized Flight decoding, bundle size and full-document encoded bytes
 remain separate evidence; offline JSON/whole-buffer compression is not a hosted
 speed measurement.
 
+## GA4 acquisition validation recovery (22 October 2026)
+
+`report/acquisition-recovery.test.ts` exercises successful HTTP responses with
+malformed/unsafe acquisition, exact retained core/stages and fixed redacted
+limitation logs. Run alongside diagnostic/failure tests, GA4 HTTP tests and
+`test/sanctuary-ga4-http-sql.test.ts` for persisted partial-report return. Network,
+JSON decoding, abort, authority, core and normalization remain fatal. These are
+synthetic local checks, not proof of the historical field or another live refresh.
+
 ## Professionals photographic presentation (22 October 2026)
 
 Focused route tests preserve canonical/config identity, optional professional

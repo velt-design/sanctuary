@@ -28,7 +28,8 @@ it('does not borrow a successful sibling status for an acquisition transport fai
   catch (error) { expect(reportFailureLog(error, 'collection')).toEqual({ stage: 'acquisition_request', reason: 'transport_or_response' }); }
 });
 
-it.each(['core', 'acquisition'] as const)('identifies %s response validation separately from transport', async batch => {
+it('keeps core response validation fatal', async () => {
+  const batch = 'core';
   const fetcher = vi.fn<typeof fetch>().mockImplementation(async (_url, init) => {
     const core = JSON.parse(String(init?.body)).requests.length === 5;
     return Response.json(core === (batch === 'core') ? { PRIVATE_PROVIDER_BODY: true } : core ? coreFixture(query) : acquisitionFixture(query));
