@@ -6494,3 +6494,13 @@ The same review found a new quote-version name field that the existing family
 contract ignored. Named families now show their shared name and direct changes
 to Rename; optimistic creation uses the same name. New/unnamed/manual scopes
 retain the optional field.
+
+
+## 2026-10-22 - Verify specialist layouts inside the real project parent
+
+The Files Explorer passed an isolated actual-card fixture but its production
+Overview parent constrained the card to one of two columns. This hid the
+adjacent preview even on a wide desktop. Selected Files now spans the project
+row; Work and neighboring owners retain their existing layout and state.
+Responsive acceptance must include the actual containing layout and its width,
+not only viewport width or the leaf component. Owner: `project-sharepoint-files.md`.
