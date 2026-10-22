@@ -1,5 +1,11 @@
 # Testing And QA
 
+The owner-decision PG17 harness includes `landing_observed_context.sql`: original
+capacity/end/history preservation, exact receipt/control drift, duplicate denial,
+one reservation, scoped estimate preparation, null termination and unchanged
+digest replay after Stop. It uses disposable local state only. The Source HTTP
+contract and rendered page are unchanged by this migration.
+
 Next security maintenance (23 October 2026): root, Marketing and Portal require
 at least Next16.4.1 and the lock resolves that exact patched release for
 GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r and GHSA-673q-mjm6-r5xr.

@@ -39,7 +39,8 @@ it('reads the exact saved probe receipt without minting or extending a capabilit
 
 it('runs owner admission, immutable rejection, additive probe and genuine-delivery denials against SQL in CI',async()=>{
  const db=new PGlite();try{await db.exec(landingExperimentTestBootstrap(process.cwd()));
- for(const name of['20261021020002_landing_experiments','20261021050001_creative_effect_ledger','20261022100001_landing_render_recovery','20261022110001_landing_packaging_recovery','20261022120001_landing_render_successor','20261022130001_landing_completion_permit','20261022140001_landing_technical_resume','20261021050009_landing_authored_copy','20261023010001_landing_owner_decisions'])await db.exec(readFileSync(`supabase/migrations/${name}.sql`,'utf8'));
+ for(const name of['20261021020002_landing_experiments','20261021050001_creative_effect_ledger','20261022100001_landing_render_recovery','20261022110001_landing_packaging_recovery','20261022120001_landing_render_successor','20261022130001_landing_completion_permit','20261022140001_landing_technical_resume','20261021050009_landing_authored_copy','20261023010001_landing_owner_decisions','20261023020001_landing_corrected_reassessment'])await db.exec(readFileSync(`supabase/migrations/${name}.sql`,'utf8'));
  await db.exec(readFileSync('supabase/tests/landing_owner_decisions.sql','utf8'));
+ await db.exec(readFileSync('supabase/tests/landing_corrected_reassessment.sql','utf8'));
  }finally{await db.close();}
 },30000);

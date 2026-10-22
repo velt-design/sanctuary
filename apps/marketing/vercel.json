@@ -88,7 +88,8 @@
       "codex/project-file-open-locality-20261023": false,
       "codex/project-file-open-auth-20261023": false,
       "codex/project-file-build-dependency-20261023": false,
-      "codex/campaign-test-entry-rubric-20261023": false
+      "codex/campaign-test-entry-rubric-20261023": false,
+      "codex/campaign-clarity-support-20261023": false
     }
   },
   "crons": [
