@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-10-22: Preserve paid proposal lineage across a changed landing template
+
+Forward130001 supports one private completion receipt for a never-published
+candidate whose browser diagnostic partially completed before a provider timeout.
+The existing locked control/rollback/prepare operations close the old candidate
+and prepare one derivative on the current template atomically. Original author,
+evidence, copy and hypothesis remain exact; the candidate hash changes honestly
+with the template. The old row, partial probe and model accounting remain intact.
+The matching Velt proof supplies fresh geometry and independent review, one
+additional render and a fixed completion window. No public route, Origin policy,
+customer attribution or ordinary retry rule changes. The private receipt is an
+operator-installed exception, not an automatic admission or a production result.
+
 ## 2026-10-22: Keep sticky state out of measured layout
 
 The inline mobile estimate observer watched a section whose height it changed
@@ -8,6 +21,16 @@ oscillate across the same threshold. Native sticky positioning now preserves
 flow geometry; verification samples section height through both scroll directions.
 Related funnel consumers share the correction. Check ancestor overflow as well:
 mobile overflow-x:hidden can create an unintended sticky scroll container.
+
+## 2026-10-22: Give Files a route-owned workspace
+
+Embedding Files in Overview changed the parent column topology and pushed
+commercial/contact content downward. Jordan approved a main Files tab filling
+the available screen below the stable project header. The route registry and
+lazy FilesTab now own entry/layout; existing explorer controllers, protected
+reads and return state remain unchanged. Verify the real frame and outer layout
+constraints, including entry from a scrolled Overview and direct reload, rather
+than accepting an isolated file-card fixture as integration evidence.
 
 ## 2026-10-22: Preserve query cancellation policy through initial-read adapters
 

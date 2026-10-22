@@ -32,6 +32,7 @@ declare proof jsonb;old public.landing_experiment_receipts;newprobe uuid:=gen_ra
   perform pg_temp.assert(result->>'probe'=newprobe::text);
   perform pg_temp.assert(landing_experiment_command(repeat('b',64),cmd,'probe',e,common)=result);
   perform pg_temp.assert((select count(*)=4 from landing_experiment_probes));
+  perform pg_temp.exercise_completion(e,newprobe);
   perform pg_temp.assert((select expires_at<=(proof->>'expiresAt')::timestamptz from landing_experiment_probes where id=newprobe));
   perform pg_temp.assert(before_rows=jsonb_build_array((select jsonb_agg(to_jsonb(x)order by id)from landing_experiments x),(select jsonb_agg(to_jsonb(x)order by id)from landing_experiment_probes x where id<>newprobe),(select jsonb_agg(to_jsonb(x)order by command)from landing_experiment_receipts x where command not in(audit,cmd))));
   perform pg_temp.reject(format('select landing_experiment_command(repeat(''b'',64),gen_random_uuid(),''probe'',%L,%L::jsonb)',e,common||jsonb_build_object('probe',gen_random_uuid())));

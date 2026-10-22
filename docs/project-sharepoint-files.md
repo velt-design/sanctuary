@@ -1,10 +1,10 @@
 # Project SharePoint files
 
-Status: Explorer UI candidate implemented locally on 22 October 2026. This incremental UI work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover. Live source performance and large original delivery require approved runtime acceptance.
+Status: Dedicated Files workspace and bounded performance candidate implemented locally on 22 October 2026. Runtime source latency, origin-version compatibility and large original delivery still require actual-source acceptance. This work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover.
 
 ## Outcome and ownership
 
-The owner's request is to link SharePoint files to their Portal projects and automatically prepare project folders for new enquiries, while leaving staff changeover for later. The existing Project Work **Files** tab now includes verified SharePoint roots and preserves website enquiry attachments. Multiple roots can belong to one project. Runtime/import requires an explicit project UUID and verified SharePoint item identity; there is no runtime name-based auto-matching. Private preparation records the evidence used for each proposed identity, which may include a unique exact full-name match in its dated context rather than an independently confirmed street address.
+The owner's request is to link SharePoint files to their Portal projects and automatically prepare project folders for new enquiries, while leaving staff changeover for later. The main project **Files** tab includes verified SharePoint roots and preserves website enquiry attachments. Multiple roots can belong to one project. Runtime/import requires an explicit project UUID and verified SharePoint item identity; there is no runtime name-based auto-matching. Private preparation records the evidence used for each proposed identity, which may include a unique exact full-name match in its dated context rather than an independently confirmed street address.
 
 SharePoint remains the file authority. Portal stores explicit drive/item/project bindings and provisioning state, not copies or public links. Staff can navigate folders, page through results, open PDF and raster image previews, and download originals including Rhino. Files beyond the 50 MB inline preview limit remain downloadable. SVG and HTML are download-only. This does not merge the historical unassigned files, copy website attachments into SharePoint, or move current folders when a project changes stage.
 
@@ -12,11 +12,13 @@ Implementation map:
 
 | Surface | Owner |
 | --- | --- |
-| Staff project Files UI | `ProjectSharePointFilesPanel`, inside existing `ProjectWorkFilesCard` |
+| Main Files route and available-screen layout | `projectTabs`, `ProjectMainTabs`, `tabs/FilesTab` |
+| Staff project Files UI | Existing `ProjectSharePointFilesPanel`, in workspace mode |
 | Folder reads, finding and continuity | `useProjectFilesExplorer`, `useProjectFilesListPosition`, `projectFilesNavigation`, domain `client.ts` |
-| Selected PDF/raster content | `ProjectFilePreview`, lazy existing `QuotePdfInlinePreview` canvas renderer |
+| Selected PDF/raster content | `ProjectFilePreview`, `useProjectFilePreview`, bounded `projectFilePreviewCache`, `ProjectPdfStream`, existing `QuotePdfInlinePreview` renderer |
+| Current-project preparation and freshness | `useProjectFilesPreparation`, shared domain `query.ts`, existing authenticated-owner QueryClient |
 | Authenticated reads and file access | `apps/portal/app/api/staff/v1/projects/[projectId]/files` and `lib/projects/sharePointFiles/server.ts` |
-| Microsoft source and ancestry checks | `lib/projects/sharePointFiles/graph.ts` |
+| Microsoft source and ancestry checks | `graph.ts`, `graphProtocol.ts`, `graphContainment.ts`; assertion-scoped `accessToken.ts` owns bearer reuse |
 | New enquiry folder job | `lib/projects/sharePointFiles/provision.ts`, `api/integrations/sharepoint-project-folders` |
 | Private state, grants and atomic enqueue | `supabase/migrations/20261022090001_project_sharepoint_files.sql` |
 | Verified existing-folder import | `scripts/sharepoint-project-files.ts`, domain `import.ts` |
@@ -24,11 +26,17 @@ Implementation map:
 ## Explorer interaction and finding
 
 Jordan selected folders, list and preview together after the local exploration.
+On 22 October he approved Files as its own main project tab. The dedicated
+`?tab=files` view fills the available width and remaining viewport height below
+the project masthead. Overview retains Work and Original enquiry plus a Files
+shortcut; it never expands its columns to host the browser. List and selected
+preview scroll within the workspace, including after snapshot notices change
+height. Narrow layouts retain the existing expanded preview dialog.
 The project Files tab now has a persistent folder rail, compact file list and
 adjacent selected-file actions/preview. Narrow containers retain the list and use
 the existing Foundation dialog. The source chooser retains multiple verified
 roots and website enquiry files; website attachment reads wait until selected.
-Folder links and breadcrumbs read only that folder. Source MIME metadata permits
+Folder links and breadcrumbs navigate one folder; bounded preparation described below may already have read its first page. Source MIME metadata permits
 photo next/previous among the loaded folder's previewable images. There is no
 thumbnail index or whole-project crawl.
 
@@ -43,8 +51,9 @@ broader permission is introduced. Refresh revalidates the current loaded pages
 and root navigation. Very large folders can require repeated continuation and
 the provider's listing is not an atomic snapshot across pages.
 
-The existing authenticated-owner QueryClient retains metadata for five minutes
-with a 30-second freshness window. Initial default-root data seeds the equivalent
+The authenticated-owner QueryClient retains metadata with a five-minute
+freshness window, approved by the owner on 22 October. Manual Refresh bypasses
+this lease. Initial default-root data seeds the equivalent
 explicit-root key, avoiding a needless return request. Fresh returns reuse data;
 stale returns revalidate. Abort signals, scope/scan guards and selection-tagged
 preview results keep late folder/file responses from replacing current content.
@@ -52,7 +61,8 @@ Denied or failed reads hide cached file actions and offer truthful recovery.
 
 User/host/project-scoped session navigation stores only bounded root/trail IDs
 and names, selected ID, current finding text, loaded-page counts and scroll
-positions. Work/Files choice is scoped the same way. No document bytes, signed
+positions. The main Files/Overview choice is URL-owned; Overview stores only its
+Work/Original enquiry choice. Earlier saved nested Files choices resolve to Work. No document bytes, signed
 URLs, tokens or provider cursors enter durable storage. Reload reads fresh source
 metadata and restores up to ten saved pages automatically; deeper positions need
 continuation. Same-URL history entries preserve existing Next state and support
@@ -71,23 +81,86 @@ Preview controls persist through expanded gallery selection; close returns
 focus without scrolling to the current Expand control or narrow selected row.
 This stays local to Files and reuses the shared Modal focus trap unchanged.
 
-Only the selected preview body is held in memory. PDF code/worker load lazily,
-and inspector/dialog reuse the same bytes. Selection changes abort the prior
+The selected preview uses one protected body fetch. PDF parser code is prepared
+alongside the active project's metadata; its worker starts when a PDF preview opens.
+PDF.js receives progressive copies from that same stream rather than issuing
+repeated protected range reads.
+Documents without a reliable content length use the existing complete-byte
+renderer. Progressive first-page display depends on the PDF's structure; the
+local non-linearized fixture does not establish first paint before body completion.
+Inspector and dialog share the same request. Selection changes abort the prior
 read and revoke its object URL. Actual response MIME and the 50 MB byte cap are
-checked before rendering. The existing canvas renderer copies PDF bytes before
-worker transfer. Download remains an authenticated native link to the original
-redirect route, including large Rhino. There is no large-original fetch/buffer
-or simulated completion message in the production UI.
+checked before rendering. Download remains an authenticated native link to the
+original redirect route, including large Rhino. No original is fetched in the
+background or given a simulated completion message.
 
-The actual Overview parent gives selected Files the full project row on wide
-compositions. Commercial facts and contact/correspondence retain their two
-columns below; Work restores the existing independent-column arrangement.
-This is a scoped CSS composition using the Work card's selected-panel marker,
-without moving or remounting neighboring editors. At narrower project widths,
-the existing list/modal layout remains in use. Responsive evidence must mount
-`ProjectOverviewLayout`, not only a full-width isolated Work card: the ordinary
-Overview column is narrower than the Explorer inspector breakpoint even on a
-wide desktop viewport.
+Files is a dedicated main project view beneath the shared masthead. It fills
+the available project width and remaining viewport height, while commercial,
+contact and correspondence cards remain in Overview. The old selected-panel
+CSS that expanded the Overview row is removed. Narrower widths retain the
+existing list/modal layout. Responsive evidence must include the actual
+`ProjectPageFrame`, main-tab routing and outer `PageLayout`/Portal shell sizing,
+including entry from a scrolled Overview, history return and reload. The local
+fixture mounts those component owners and production sizing CSS with synthetic
+file/source boundaries and surrounding context; it does not establish live
+Microsoft delivery or performance. Earlier Overview-row receipts describe the
+superseded embedded arrangement, not acceptance of this main-tab layout.
+
+## Prepared browsing and recent previews
+
+The target is prepared lists in 100–300 ms, useful ordinary new PDF/photo content
+in 0.5–1 second and effectively immediate recent-file return. These are task
+acceptance targets, not measured production claims. SharePoint remains authoritative.
+The approved five-minute allowance applies to prepared lists and previously
+opened previews, not new downloads or a new file's first content read.
+
+Preparation starts with an authenticated staff/admin route project ID alongside
+the snapshot. It reads at most that project's root, saved folder and first two
+root folders' first pages, sharing exact owner/host/project/root/folder query
+keys with Files. Root/saved reads can overlap; the two child reads start after
+the root response. Folder pointer/focus intent is debounced 120 ms and cancels a
+previous unobserved speculative read. Project/owner/access changes cancel owned
+preparation; list/open request cancellation propagates to request-owned Graph
+and content fetches. A shared bounded token exchange may finish independently.
+There is no all-project polling, whole-tree traversal or background body download.
+
+An instance-local bearer map reuses only an exact assertion already accepted by
+Entra, scoped to source binding/tenant/client and bounded to eight entries.
+Expiry is the earlier assertion expiry or supported token `expires_in`, less a
+one-minute margin. Missing usable lifetimes preserve direct exchange behavior.
+Concurrent identical exchanges coalesce; failures and Graph 401/403 invalidate
+the relevant generation. Every server request still performs current staff,
+project and source-binding checks. No decoded assertion grants first-time access.
+
+Recent complete preview bytes live only in the current QueryClient's memory:
+at most eight files and 32 MiB total, with a five-minute lease. They are scoped
+to owner/host/project/root/item and a strong source version. No bytes, tokens or
+signed URLs enter durable browser storage or another service. A body enters this
+memory only if its actual origin strong ETag exactly matches the fresh Graph
+eTag/cTag. Weak/missing/mismatched origin tags still permit fresh rendering but
+prevent reuse. This also covers a source change between metadata and transfer.
+Actual SharePoint origin/Graph ETag compatibility remains unverified locally.
+
+A recent preview displays immediately while its protected route checks current
+authorization, root containment, type, size and source version. Only then may the
+route return 304 without resolving another transport URL or transferring bytes.
+Changed versions replace content; observed deletion, missing root, failed read
+or lost access hides/purges affected previews and offers retry. Any failed body
+recheck clears that project's recent memory, including source access errors
+mapped to 503. Logout/owner change clears the owner store. Refresh rechecks both
+metadata and the selected body; stale responses cannot replace another selection.
+Original downloads always perform current checks and retain native delivery.
+
+The separate private localhost harness executes the actual list/open handlers,
+Graph/token/containment owners and client workspace with synthetic auth/RPC and
+provider responses. It models source/network delays and valid synthetic 2.9 MB
+photo and 687 KB two-page PDF bytes, records prepared/unprepared/useful-paint
+cases separately, and exercises change/deny/retry. It is not checked-in production
+behavior or evidence of live source timing. No new storage service, region, provider permissions or periodic worker is
+introduced. Preparation uses the existing request/runtime budget and adds at most four bounded metadata requests per project visit before query reuse,
+plus explicit intent/navigation. Cold/unprepared entry and folders outside the
+bounded preparation still wait for current source/network work. Production
+acceptance must measure those ordinary tasks and the real version-header contract.
 
 ## Access and delivery contract
 
@@ -97,7 +170,7 @@ Both privilege governance checks retain this boundary: `supabaseClient.boundarie
 
 Microsoft uses a **separate** app registration with application `Sites.Selected` and an explicit Jobs-site write assignment for folder creation. Consent alone is insufficient. The existing mailbox-only Outlook app is not reused. Configure a narrowly bound Vercel OIDC federated identity for the approved Portal environment; do not grant broad site, directory or administrative permissions to the runtime app. The credential resolver accepts only the supplied assertion and does not prompt or discover desktop credentials.
 
-Every Graph session verifies the configured drive's root URL is exactly the configured Jobs site's `Shared Documents` library. The importer additionally requires the manifest's exact site URL and Documents library. Remote shortcuts, foreign drives, non-descendant file IDs and cross-folder pagination URLs fail closed. Provisioning verifies the configured intake item resolves to `02 Enquiries and quotes` before writing.
+Every Graph session verifies the configured Jobs site's `Shared Documents` library. Scoped runtime requests first read the current DB-bound project folder and requested item, deduplicated when identical and otherwise in one Graph batch. A current folder URL with exact decoded site/library segments, matching current folder name and drive identity proves the library; unusable optional URL data falls back to the existing fresh drive-root read. Fresh provider parent paths use decoded segment containment, with direct-parent ID proof or the existing bounded fresh ancestry walk when paths cannot prove membership. Every batch subresponse must succeed; no cross-request library or item-authority cache is introduced. The importer additionally requires the manifest's exact site URL and Documents library. Remote shortcuts, foreign drives, non-descendant file IDs and cross-folder pagination URLs fail closed. Provisioning verifies the configured intake item resolves to `02 Enquiries and quotes` before writing.
 
 Original downloads authenticate and verify ancestry, then redirect to Microsoft's short-lived preauthenticated URL. It must be HTTPS on the exact configured tenant host at a `/_layouts/15/download.aspx` path. No Graph bearer is forwarded to that endpoint. This lets large Rhino downloads bypass function response size/duration limits. URLs are not stored or logged; responses use private/no-store and no-referrer. The link itself remains a temporary bearer capability until Microsoft expires it. Microsoft controls attachment filename and expiry. The provider's actual download behavior still needs a live acceptance probe.
 
@@ -138,7 +211,7 @@ The importer does not overwrite or unbind a disputed match. Correcting an errone
 
 Successful authenticated list responses retain the existing `Server-Timing`
 total and append numeric `files_auth`, `files_bindings_rpc`, `files_token`,
-`files_library`, `files_ancestry` and `files_children` phases when reached.
+`files_library`, `files_source_batch`, `files_ancestry` and `files_children` phases when reached.
 Token/Graph phases include JSON body reads; ancestry covers all required hops.
 Only fixed phase labels/durations enter this header, with no file/project names,
 IDs, URLs, assertions or cursors and no new logs/settings. The optional observer
@@ -146,14 +219,14 @@ cannot change results/errors, ordering, validation, no-store or timeouts.
 Non-200 responses retain existing behavior and do not emit these phases;
 successful unready states emit only reached phases. Cursor pages are ordinary
 successful reads with the same phase measurements.
-This is measurement only, not a latency improvement or permission/cache change.
+The timing header itself is observational; the bounded performance arrangement below changes request work and browser preparation.
 Focused tests verify finite headers, body-read timing and request/error parity.
 
 Local checks: `node scripts/test-project-sharepoint-files-pglite.mjs`; `node scripts/test-project-sharepoint-files-browser.mjs`; `vitest run apps/portal/lib/projects/sharePointFiles apps/portal/components/projects/ProjectPage/tabs/overview/ProjectSharePointFilesPanel.test.tsx apps/portal/components/projects/ProjectPage/tabs/overview/projectFilesNavigation.test.ts`; Portal TypeScript, focused ESLint, documentation impact and changed architecture checks. The disposable PostgreSQL test exercises the real migration, rollback, dark defaults, no backfill, leases, retries, multi-root replay/conflicts and grants. It also deletes imported, completed, pending and running projects through the existing quote-then-project request sequence, checks retained audit identity and rejects stale worker completion/failure. Actual React/TanStack observer tests cover request deduplication, equivalent-root keys, wrapper Work/project remount, selection/scroll return, bounded cursor finding, root/file races, cancellation, denial/retry, unsafe MIME, owner isolation and current-preview body reuse/refresh.
 
 The isolated headless Chromium harness builds the actual Files component **and actual open-route handler**, substituting authentication/Graph boundaries and a local provider. It selects a synthetic PNG, retries an injected preview failure, clicks Download and checks the received original filename, exact binary bytes and SHA-256. Those original bytes are a transport fixture with a `.3dm` filename, not a valid Rhino document. It checks valid synthetic PDF response bytes/MIME and actual canvas rendering, then verifies expansion does not read the body again. Desktop/mobile action visibility, folder return and list recovery are included. Bundles remain in memory; screenshots go under ignored `test-results/sharepoint-files`. It uses a fresh browser context with no real session or screen control. Both disposable database and browser checks are included in Portal Quality CI.
 
-The private local actual-card comparison uses the same synthetic source and
+The earlier private local actual-card comparison used the same synthetic source and
 controlled 80 ms metadata delay for old/new wrappers. First Files entry changes
 from one metadata plus one website attachment request to one metadata request;
 the attachment read is deferred, not removed. Immediate Work return makes zero
@@ -163,4 +236,4 @@ latency, production cold-start improvement or a general percentage speed gain.
 
 Live Graph timing, real source changes/denial, provider filename behavior and full-size valid Rhino delivery are not established by these local tests. Existing mapping/provisioning acceptance remains with its owning activation record. The local component harness is synthetic and does not establish integrated live authenticated Portal rendering. Production identity is bound to deployed production OIDC; no broader local/staging trust or impersonation is introduced for measurement.
 
-Microsoft references: [selected permissions](https://learn.microsoft.com/en-us/graph/permissions-selected-overview), [drive item downloads](https://learn.microsoft.com/en-us/graph/api/driveitem-get-content?view=graph-rest-1.0), [SharePoint IDs](https://learn.microsoft.com/en-us/graph/api/resources/sharepointids?view=graph-rest-1.0).
+Microsoft references: [token lifetime and client assertions](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow), [Vercel OIDC](https://vercel.com/docs/oidc), [Graph batching](https://learn.microsoft.com/en-us/graph/json-batching), [provider parent paths](https://learn.microsoft.com/en-us/graph/api/resources/itemreference?view=graph-rest-1.0), [drive item versions](https://learn.microsoft.com/en-us/graph/api/resources/driveitem?view=graph-rest-1.0), [selected permissions](https://learn.microsoft.com/en-us/graph/permissions-selected-overview), [drive item downloads](https://learn.microsoft.com/en-us/graph/api/driveitem-get-content?view=graph-rest-1.0), [SharePoint IDs](https://learn.microsoft.com/en-us/graph/api/resources/sharepointids?view=graph-rest-1.0).

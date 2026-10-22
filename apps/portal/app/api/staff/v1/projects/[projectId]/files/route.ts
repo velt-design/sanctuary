@@ -26,6 +26,6 @@ export async function GET(request: Request, context: { params: Promise<{ project
   if (!auth.ok) return privateResponse(auth.response);
   const query = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!query.success) return respond(filesJson({ error: 'Invalid request' }, 400));
-  try { return respond(filesJson(await listProjectFiles(auth.supabase, (await context.params).projectId, query.data, request.headers.get('x-vercel-oidc-token') ?? '', observe))); }
+  try { return respond(filesJson(await listProjectFiles(auth.supabase, (await context.params).projectId, query.data, request.headers.get('x-vercel-oidc-token') ?? '', observe, request.signal))); }
   catch (error) { return respond(filesError(error)); }
 }
