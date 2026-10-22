@@ -39,7 +39,7 @@ describe('Projects first read handoff', () => {
         queryFn: projectsIndexReadFunction(client, request, reason === 'owner mismatch' ? 'staff-b' : 'staff-a', reason === 'absent' ? undefined : initial) };
       if (reason === 'cached') client.setQueryData(options.queryKey, data());
       if (reason === 'invalidated') {
-        client.getQueryCache().build(client, options);
+        client.getQueryCache().build(client, { queryKey: options.queryKey });
         await client.invalidateQueries({ queryKey: options.queryKey });
       }
       let finish!: (value: ProjectsIndexResponse) => void;

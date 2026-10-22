@@ -1,6 +1,7 @@
 import type { QueryClient, QueryFunctionContext } from '@tanstack/react-query';
 import { ApiError } from '@/lib/repo/apiClient';
 import { projectsIndexQueryOptions } from '@/lib/queries/projectsIndex';
+import type { qk } from '@/lib/queries/keys';
 import type { ProjectsIndexParams, ProjectsIndexResponse } from '@/lib/projects/projectsIndexContract';
 
 export type ProjectsIndexInitialResult =
@@ -25,7 +26,7 @@ export function projectsIndexReadFunction(
   initial?: ProjectsIndexInitialRead,
 ) {
   const options = projectsIndexQueryOptions(params.archive, params);
-  return async (context: QueryFunctionContext<typeof options.queryKey>): Promise<ProjectsIndexResponse> => {
+  return async (context: QueryFunctionContext<ReturnType<typeof qk.projects.index>>): Promise<ProjectsIndexResponse> => {
     const fallback = () => {
       if (typeof options.queryFn !== 'function') throw new Error('Projects index read function is unavailable');
       // Preserve lazy signal access: spreading the context opts into cancellation
