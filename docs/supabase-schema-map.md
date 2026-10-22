@@ -1471,7 +1471,7 @@ mandatory. No production migration or capability is implied by fixture passes.
 
 Migration 20261022090001_project_sharepoint_files adds private project_files_control, project_file_roots, project_folder_provisions and project_file_events. RLS and revoked direct grants preserve the boundary. User-bound project_files_read rechecks active confirmed staff/admin membership; service-only project_files_admin imports explicit evidence-backed roots and project_files_provision manages leased attempts. A dark insert trigger queues only future projects atomically. See [Project SharePoint files](project-sharepoint-files.md).
 
-Candidate migration `20261023020001_project_private_preview_cache` adds the private
+Candidate migration `20261023100715_project_private_preview_cache` adds the private
 `project-file-previews` Storage bucket (JPEG/PDF only, 5 MiB/object), versioned
 preview manifest, active-folder scans, fenced build leases and durable object
 cleanup reservations. All four private tables enable RLS and revoke browser and

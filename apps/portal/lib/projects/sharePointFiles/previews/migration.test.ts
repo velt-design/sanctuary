@@ -20,7 +20,7 @@ beforeAll(async () => {
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit integer,allowed_mime_types text[]);
     insert into public.projects values('${project}','Synthetic project');`);
   await db.exec(readFileSync('supabase/migrations/20261022090001_project_sharepoint_files.sql', 'utf8'));
-  await db.exec(readFileSync('supabase/migrations/20261023020001_project_private_preview_cache.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/20261023100715_project_private_preview_cache.sql', 'utf8'));
   await db.exec("set request.jwt.claim.role='service_role'");
   await db.query('select public.project_files_admin($1,$2::jsonb)', ['configure', JSON.stringify({ binding, driveId: 'drive', enquiriesItemId: 'enquiries', enabled: true })]);
   await db.query('select public.project_files_admin($1,$2::jsonb)', ['import', JSON.stringify({ binding, projectId: project, itemId: 'root', label: 'Synthetic root', evidenceSha256: binding })]);

@@ -20,7 +20,7 @@ Implementation map:
 | Current-project preparation and freshness | `useProjectFilesPreparation`, shared domain `query.ts`, existing authenticated-owner QueryClient |
 | Private variant transport, preparation and memory admission | `previews/contracts`, `client`, `batch`; `projectFilePreviewPreparation` and `projectFilePreviewCache` |
 | Version-bound conversion and private Storage adapter | `previews/source`, `cache`, `repository`; existing Sharp and PDF.js facilities |
-| Active-folder reconciliation and finite cleanup | `previews/sync`, `api/integrations/sharepoint-project-previews`, `20261023020001_project_private_preview_cache.sql` |
+| Active-folder reconciliation and finite cleanup | `previews/sync`, `api/integrations/sharepoint-project-previews`, `20261023100715_project_private_preview_cache.sql` |
 | Open identity and current staff proof | `openIdentity.ts` retains fresh `getUser`; the same user-bound client calls existing `project_files_read` for current staff/project/root authority |
 | Authenticated reads and file access | `apps/portal/app/api/staff/v1/projects/[projectId]/files` and `lib/projects/sharePointFiles/server.ts` |
 | Microsoft source and ancestry checks | `graph.ts`, `graphProtocol.ts`, `graphContainment.ts`; assertion-scoped `accessToken.ts` owns bearer reuse |
