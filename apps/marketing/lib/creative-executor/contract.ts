@@ -81,9 +81,10 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
   dailyMinor: z.literal(40000), weeklyMinor: z.literal(280000), studyDailyMinor: z.literal(8000),
   currency: z.literal('NZD'), timezone: z.literal('Pacific/Auckland'),
   nativeContractHash: hash, preStateHash: hash,
-  evaluation: z.object({ primary: z.literal('genuine_saved_enquiries_per_actual_NZD'), interval: z.literal('exact_conditional_poisson_rate_ratio_95'), providerEvent: z.literal('website_lead'), durationDays: z.literal(14), maturationHours: z.literal(72),
-    formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.literal('inconclusive') }).strict(),
+  evaluation: z.object({ ambiguity:z.literal('finite_allocation_envelope_v1').optional(), primary: z.literal('genuine_saved_enquiries_per_actual_NZD'), interval: z.literal('exact_conditional_poisson_rate_ratio_95'), providerEvent: z.literal('website_lead'), durationDays: z.literal(14), maturationHours: z.literal(72),
+    formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.enum(['inconclusive','finite_pool_sensitivity_else_inconclusive']) }).strict(),
 }).strict().superRefine((p, ctx) => {
+  if((p.evaluation.ambiguity==='finite_allocation_envelope_v1')!==(p.evaluation.unknownMeans==='finite_pool_sensitivity_else_inconclusive'))ctx.addIssue({code:'custom',message:'Evaluation policy differs'});
   const validReview = p.purpose === 'formal_experiment' ? p.control.format!=='video_story' && (p.control.format!=='video_assets'||p.control.payload.media_sourcing_spec===undefined) && !!p.generator && !!p.reviewer && p.generator !== p.reviewer && p.challengerPrimary !== p.control.primary && nativeWindowValid(p.start,p.end) && Date.parse(p.approvalUntil)>=(p.end+72*3600)*1000
     : p.generator === null && p.reviewer === null && p.challengerPrimary === p.control.primary && p.end>p.start && p.end-p.start<=3600;
   if (!validReview || !p.originalAds.includes(p.controlAd) || p.control.page !== p.scope.page

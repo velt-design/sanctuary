@@ -1,3 +1,32 @@
+## Native finite ambiguity (uninstalled local layer)
+
+20261022050012_creative_ambiguity.sql versions the existing cohort and analysis
+contracts without a table, endpoint, permission or schedule expansion. The existing
+2000-record immutable window includes every website enquiry; Google/cpc or route
+labels are never outside-test proof. U is the disjoint unknown-attribution plus
+unresolved-late pool. Both native arms and all-site coverage remain explicit.
+400 shared quality keys plus omitted counts and aggregate canonical concerns bound
+quality evidence. Contradictory native joins prevent any commercial conclusion.
+
+New plans predeclare the finite-allocation policy. Native validation independently
+recomputes exact rate extrema at all-U-control/all-U-challenger using fixed actual
+positive spend. Retain requires lower>1 and every O(U) pessimistic quality allocation
+to pass; revert needs finite upper<1. Observed assessment minimum5, coverage1/2,
+gap1/5 and unsuitable guards use integer comparisons. Concrete unassigned adverse
+signals veto retention. Zero control concerns with U>0 cannot retain. Missing or
+unbounded pools, invalid joins, incomplete delivery or overlapping bounds abstain.
+No records are assigned to a cell by these hypothetical sensitivity calculations.
+
+Receipt v2 binds its exact frozen source pool/conflicts/quality availability;
+legacy v1 remains readable and immutable. History v3 retains coverage, matched
+counts, null spend and the new sensitivity interval separately from CPE. Existing
+latest4/all64 exclusion limits and admission locks remain. Paired Velt015 accepts
+this same aggregate contract. These migrations depend on all prior unpublished
+formal/retention layers; operator review and current-main integration remain.
+The independent-enquiry/rate-per-dollar assumptions are unchanged. Unrecorded
+outcomes and latent adverse events are not established absent. Steady retained-ad
+inventory/reporting/attribution integration remains a separate release requirement.
+
 ## Retained creative serving (uninstalled local continuation)
 
 `20261022050011_creative_retention.sql` extends the existing private intent and
@@ -19,7 +48,7 @@ Rollback cannot change a comparator beneath a dependent reservation. The native
 fixture's old proposal expiry demonstrates that maturation creates no renewal gate;
 current Source/global/generation/template/native admission still governs effects.
 Actual provider schedule representation/allocation, full approved video mapping,
-and the conservative cross-channel ambiguity correction remain separate gaps.
+and steady retained-ad inventory/reporting integration remain separate gaps.
 
 ## Creative terminal learning (uninstalled local continuation)
 

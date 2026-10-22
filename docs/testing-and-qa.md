@@ -1,3 +1,21 @@
+## Finite ambiguity tests (local)
+
+Use the existing disposable PG17 bin with SANCTUARY_DISPOSABLE_POSTGRES_BIN and
+run node scripts/test-meta-creative-ledger-db.mjs. It applies actual50012 after all
+prior native/concurrency checks. meta_creative_ambiguity_cohort.sql proves a genuine
+synthetic ordinary Google-labelled website enquiry stays unknown without altering
+the two native arms, disjoint late records, late valid joins, contradictory joins,
+canonical adverse signals, overflow, freeze and private ACLs. Snapshot fixtures
+return actual frozen native results inside isolated rollback subtransactions.
+
+meta_creative_ambiguity_settlement.sql persists a robust revert with one unknown
+website enquiry, then checks immutable replay/ack and current history3. The helper
+scripts/meta-creative-ambiguity-fixtures.ts generates485 synthetic JS receipts for
+independent PostgreSQL endpoint/quality verification. Ignored exports feed paired
+Velt composed and native save/read tests. Run creative-executor and signed creative
+route Vitest tests as well. No model/provider/SDK or hosted database action occurs.
+The fixtures do not prove real media, native delivery or whole-loop acceptance.
+
 ## Retained serving (local)
 
 Run `apps/marketing/lib/creative-executor` and the creative route tests. The

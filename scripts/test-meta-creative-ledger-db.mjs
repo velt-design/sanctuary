@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync,readFileSync,rmSync } from 'node:fs';
+import { mkdtempSync,readFileSync,rmSync,writeFileSync,mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join,resolve,dirname,basename } from 'node:path';
@@ -93,7 +93,20 @@ try{
  sql(`select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'${experiment}','cleanup',jsonb_build_object('evidenceHash',repeat('f',64)))`);
  if((await Promise.all([concurrent(creative),concurrent(landing)])).filter(Boolean).length!==1)throw new Error('Cross-lane concurrent reservation did not admit exactly one');
  if(sql('select count(*) from public.acquisition_experiment_reservation').trim()!=='1')throw new Error('Missing global reservation');
- process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
+ sql(readFileSync('supabase/migrations/20261022050012_creative_ambiguity.sql','utf8'));
+ const ambiguityCohorts=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_ambiguity_cohort.sql','utf8')).trim().split('\n').at(-1));
+ mkdirSync('.local-evidence',{recursive:true});writeFileSync('.local-evidence/ambiguity-native-cohorts.json',JSON.stringify(ambiguityCohorts));
+ const generated=spawnSync(process.execPath,['--require','tsx/cjs','scripts/meta-creative-ambiguity-fixtures.ts'],{encoding:'utf8',windowsHide:true,input:JSON.stringify(ambiguityCohorts),maxBuffer:2e6});
+ if(generated.status!==0)throw new Error(generated.stderr);
+ const analysisCases=JSON.parse(generated.stdout);
+ sql(`do $fixture$declare a jsonb;begin for a in select value from jsonb_array_elements('${JSON.stringify(analysisCases).replaceAll("'","''")}'::jsonb)loop
+ if public.meta_creative_analysis_valid(a)is distinct from true then raise exception 'Cross-runtime native sensitivity differs: %',a;end if;
+ if public.meta_creative_analysis_valid(a||'{"private":"synthetic-canary"}')then raise exception 'Private field accepted';end if;
+ if public.meta_creative_analysis_valid(jsonb_set(a,'{sensitivity,pool}','2001'))then raise exception 'Unbounded pool accepted';end if;
+ end loop;end$fixture$;`);
+ const settlement=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_ambiguity_settlement.sql','utf8')).trim().split('\n').at(-1));
+ writeFileSync('.local-evidence/ambiguity-native-analysis.json',JSON.stringify({cases:analysisCases,settlement}));
+ process.stdout.write(JSON.stringify({ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
  if(dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('sanctuary-experiment-'))rmSync(directory,{recursive:true,force:true});

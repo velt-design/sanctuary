@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-22: Bound finite ambiguity without inventing attribution
+
+All-site unknown coverage can include ordinary unrelated website enquiries. Keep
+those unknowns and matched-CPE labels, but predeclare a finite sensitivity envelope
+that must remain decisive under every allowed adverse allocation. Retention also
+needs pessimistic observed-quality and concrete adverse guards; robust harm can
+revert independently of missing quality. This does not relabel Google traffic,
+remove join validity, force winners or reinterpret old immutable analyses. Shared
+Source/Velt v2 validation and v3 learning keep the denominator visible. The recorded
+finite pool cannot cover missing/unbounded evidence or unrecorded/offline outcomes.
+
+
 ## 2026-10-22: Retained baselines keep donor lineage and shared reservation
 
 The owner outcome includes publishing variants and keeping or reverting them
