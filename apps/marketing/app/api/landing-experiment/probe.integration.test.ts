@@ -6,11 +6,11 @@ import {createHmac} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {afterAll,beforeAll,expect,it,vi} from 'vitest';
 import {landingExperimentTestBootstrap} from '../../../../../scripts/lib/landing-experiment-test-bootstrap.mjs';
-const seam=vi.hoisted(()=>({rpc:vi.fn()}));
+const seam=vi.hoisted(()=>({rpc:vi.fn(),errors:[] as string[]}));
 vi.mock('@/lib/supabaseService',()=>({getServiceSupabase:()=>seam}));
 import {POST} from './route';
 import {POST as commandPost} from './command/route';
-import {EXPERIMENT_TEMPLATE,readAssignment,signAssignment,signProbeReceipt} from '../../../lib/landingExperiment.server';
+import {EXPERIMENT_TEMPLATE,experimentHash,readAssignment,signAssignment,signProbeReceipt} from '../../../lib/landingExperiment.server';
 const origin='https://www.sanctuarypergolas.co.nz',path='/auckland-outdoor-living',key='synthetic-probe-'.repeat(4),id='c1000000-0000-4000-8000-000000000001',probe='c2000000-0000-4000-8000-000000000001';
 const utm={utm_source:'facebook',utm_medium:'paid_social',utm_campaign:'11001',utm_content:'11003',utm_term:'11002'};
 let database:PGlite,capability:string;
@@ -24,14 +24,26 @@ async function registerProbe(mode:'prepare'|'live'='prepare',probeId=probe){
 beforeAll(async()=>{
  vi.stubEnv('SANCTUARY_LANDING_EXPERIMENT_ENABLED','true');vi.stubEnv('SANCTUARY_LANDING_EXPERIMENT_KEY',key);vi.stubEnv('SANCTUARY_LANDING_EXPERIMENT_BINDING','b'.repeat(64));
  database=new PGlite();await database.exec(landingExperimentTestBootstrap(process.cwd()));await database.exec(readFileSync('supabase/migrations/20261021020002_landing_experiments.sql','utf8'));
+ for(const file of ['20261021050001_creative_effect_ledger.sql','20261021050002_creative_executor.sql','20261021050003_creative_measurement.sql','20261021050009_landing_authored_copy.sql'])await database.exec(readFileSync(`supabase/migrations/${file}`,'utf8'));
  await database.query(`insert into landing_experiment_control(binding,template,campaign,adset,ads,admitted_until,enabled) values($1,$2,'11001','11002',array['11003'],'infinity',true)`,['b'.repeat(64),EXPERIMENT_TEMPLATE]);
  await database.query(`insert into landing_experiments(id,path,template,copy,control_copy,state,candidate_hash,evidence_hash,generator,minimum_exposures,duration_days) values($1,$2,$3,'explore','{}','candidate',$4,$5,'resp_fixture',100,14)`,[id,path,EXPERIMENT_TEMPLATE,'c'.repeat(64),'e'.repeat(64)]);
  seam.rpc.mockImplementation((name:string,args:Record<string,unknown>)=>({abortSignal:async()=>{
   if(name==='marketing_public_rate_limit_take')return{data:[{allowed:true}],error:null};
   if(!['landing_experiment_command','landing_experiment_probe_visit','landing_experiment_visit'].includes(name))throw new Error('Unexpected RPC');
-  try{const result=await database.query(`select public.${name}(${Object.keys(args).map((key,index)=>`${key}=>$${index+1}`).join(',')}) result`,Object.values(args));return{data:(result.rows[0] as {result:unknown}).result,error:null};}catch{return{data:null,error:{code:'denied'}};}
+  try{const result=await database.query(`select public.${name}(${Object.keys(args).map((key,index)=>`${key}=>$${index+1}`).join(',')}) result`,Object.values(args));return{data:(result.rows[0] as {result:unknown}).result,error:null};}catch(error){seam.errors.push(error instanceof Error?error.message:'Unknown synthetic database error');return{data:null,error:{code:'denied'}};}
  }}));
  await registerProbe();
+});
+it('passes authored copy through the actual signed command and source SQL without widening claims',async()=>{
+ await database.exec('begin');
+ try{
+  await database.query("update landing_experiments set state='rejected',created_at=clock_timestamp()-interval '8 days'");
+  const experiment='c1000000-0000-4000-8000-000000000009',copy='copy:design:Plan your outdoor space';
+  const body={version:1,command:'c2000000-0000-4000-8000-000000000009',experiment,stage:'prepare',payload:{generation:1,candidateHash:experimentHash({path,copy,template:EXPERIMENT_TEMPLATE,evidenceHash:'e'.repeat(64)}),evidenceHash:'e'.repeat(64),template:EXPERIMENT_TEMPLATE,path,copy,generator:'resp_authored',minimumExposures:100,durationDays:14},at:Date.now()};
+  const send=()=>commandPost(new Request(origin+'/api/landing-experiment/command',{method:'POST',headers:{'x-landing-signature':createHmac('sha256',key).update('command\n'+JSON.stringify(body)).digest('base64url')},body:JSON.stringify(body)}));
+  const response=await send();expect(response.status,seam.errors.join('; ')).toBe(200);expect((await database.query('select copy from landing_experiments where id=$1',[experiment])).rows).toEqual([{copy}]);
+  body.payload.copy='copy:design:Free guaranteed pergola';body.command='c2000000-0000-4000-8000-000000000010';expect((await send()).status).toBe(503);
+ }finally{await database.exec('rollback');}
 });
 afterAll(async()=>{await database?.close();vi.unstubAllEnvs();});
 function post(body:unknown,headers:Record<string,string>={}){return POST(new Request(origin+'/api/landing-experiment',{method:'POST',headers:{origin,'x-landing-probe':capability,...headers},body:JSON.stringify(body)}));}
@@ -75,13 +87,14 @@ it.skipIf(!localOrigin||!rendererModule||!browser)('runs the actual renderer, lo
     // length into Chromium's fulfilled local-fixture response.
     return{status:response.status,contentType:response.headers.get('content-type')??'application/octet-stream',headers:cookie?{'set-cookie':cookie}:{},body:new Uint8Array(await response.arrayBuffer())};
    };
- for(const target of ['/auckland-outdoor-living','/acrylic-roof-pergolas-auckland'])for(const copy of ['explore','project','estimate',...(target==='/acrylic-roof-pergolas-auckland'?['action-first']:[])]){
+ for(const target of ['/auckland-outdoor-living','/acrylic-roof-pergolas-auckland'])for(const copy of ['explore','project','estimate','copy:design:Explore your outdoor space and plan your pergola','copy:help:Plan your outdoor living space','copy:support:Choose your pergola size and roof. Plan your outdoor space with help for your home.',...(target==='/acrylic-roof-pergolas-auckland'?['action-first']:[])]){
  await database.exec('truncate landing_experiment_receipts,landing_experiment_probes');
  await database.query('update landing_experiments set path=$1,copy=$2,state=$3',[target,copy,'candidate']);await registerProbe();trace('probe registered');
  const experiment=(await database.query('select * from landing_experiments where id=$1',[id])).rows[0];
+ const filename=`${target.slice(1)}-${copy.replace(/[^a-z0-9-]/gi,'-')}`;
  const receipt=await renderLandingCandidate({experiment,renderer,probe:grant,signal:AbortSignal.timeout(65000),checkpoint:async()=>{trace('renderer checkpoint');},executablePath:browser,readResourceForTest,
-   store:async(width:number,_hash:string,bytes:Uint8Array)=>writeFileSync(resolve(directory,`${target.slice(1)}-${copy}-${width}.jpg`),bytes)});
- writeFileSync(resolve(directory,`${target.slice(1)}-${copy}.json`),JSON.stringify(receipt,null,2));expect(receipt.status).toBe('pass');
+   store:async(width:number,_hash:string,bytes:Uint8Array)=>writeFileSync(resolve(directory,`${filename}-${width}.jpg`),bytes)});
+ writeFileSync(resolve(directory,`${filename}.json`),JSON.stringify(receipt,null,2));expect(receipt.status).toBe('pass');
  expect((await database.query('select assignments,exposures,reloads from landing_experiment_probes')).rows).toEqual([{assignments:6,exposures:6,reloads:5}]);
  expect((await database.query('select count(*)::int n from landing_experiment_assignments')).rows).toEqual([{n:0}]);
  }

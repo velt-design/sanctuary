@@ -1,3 +1,20 @@
+## Authored landing continuation, local checks
+
+`landingCopyContract.test`, `LandingExperiment.test` and the actual
+`probe.integration.test` command/SQL composition cover authored copy admission,
+unsupported-claim rejection, consent, control restoration and diagnostic isolation.
+The optional browser case needs a credential-free compiled marketing page,
+`IMPROVEMENT_RENDER_FIXTURE_ORIGIN` on localhost, the bundled Velt renderer module
+and an existing local Chromium executable. It saves screenshots for all three
+authored slots on both pages and proves cookie/reload/exposure with zero genuine
+assignments or enquiries. A skipped browser case leaves rendered proof unverified.
+No model/provider request is part of these tests.
+
+The disposable native ledger harness applies actual50009 and
+`landing_authored_copy.sql` alongside the existing lifecycle/authority tests.
+Its local PostgreSQL directory is created and removed by the harness; no hosted
+database URL is accepted. Do not infer hosted acceptance from synthetic fixtures.
+
 ## Native account receipt proof, local continuation
 
 Additive50006 records immutable operator-only account/method acceptance and
@@ -12,15 +29,16 @@ Native disposable tests exercise registry identity, independently changed scope
 and method, immutability/revocation, missing allocation evidence and surviving
 owned cleanup. These are storage/security tests, not actual Meta acceptance.
 Deploy optional read consumers before50006; root's guarded operator alone may
-provision the actual receipt after real evidence. No ACTIVE effect exists yet.
+provision the actual receipt after real evidence. Separate delivery gates admit
+the locally connected activation path only with fresh acceptance/dispatch proof.
 
 ## Formal preparation boundary, local only
 
 Creative authority tests prove the separate absent-by-default preparation flag,
 exact signed future reviewed plan, stale/future review rejection, current generation
-and Stop, and rejection of any ACTIVE intent. Existing capability behavior remains.
-This enables a future reviewed PAUSED account proof, not commercial activation or
-actual native eligibility. No live flag or provider effect was exercised locally.
+and Stop. Preparation alone rejects ACTIVE intents; paired delivery authority and
+Source50007 require fresh exact activation proof. Existing capability behavior
+remains. These local tests do not establish actual native eligibility or delivery.
 
 ## Formal creative registry continuation, unpublished (21 October 2026)
 

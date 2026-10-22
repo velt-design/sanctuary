@@ -1,5 +1,5 @@
 {
-  "hash": "ba618b35ebd3204ea2977415a16e155f34cecf9dcd2d72285eb7699ffb777669",
+  "hash": "906602e8815968273296de9f3ba141393bc70081d604d5db8c5200df2d0b059e",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -851,7 +851,7 @@
     ],
     [
       "apps/marketing/components/landing-experiment/LandingExperiment.tsx",
-      "7f5174c3aabdfbeadd7d45ec03a646cb577e3aa42f9591cba78cc558e232cf54"
+      "016825e341667694412862bddb613cfefe951dc89c87f1097c3b2da853525a44"
     ],
     [
       "apps/marketing/components/marketing-foundation/ArrowIcon.tsx",
@@ -1054,12 +1054,16 @@
       "d2d150ea56e1ed82debb303f3cf41b587c5bb0afbbb3720e72042b44029a3abb"
     ],
     [
+      "apps/marketing/lib/landingCopyContract.ts",
+      "7dcc51c4b8807df325410339156902bdf36bd40e2056df9fe09a901bc6f34a0e"
+    ],
+    [
       "apps/marketing/lib/landingExperiment.server.ts",
-      "d610e62e0288467d401c2f238ac28c42318784c99f7e31bfaea5b426de2e9049"
+      "722312ad60c679abab01a626869769e08130320e4421397ba363369079a7b7ca"
     ],
     [
       "apps/marketing/lib/landingExperiment.ts",
-      "b90b99683acaca3c6041451dc051f83e42909348ab731e2897b2f334fa9fc63f"
+      "96c63eae0e21c8aedda060f1b6e7de984200b2ced926a053b5a36a61db7c3e74"
     ],
     [
       "apps/marketing/lib/landingExperimentConsent.ts",

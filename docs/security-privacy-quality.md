@@ -1,3 +1,13 @@
+## Authored landing copy boundary, local continuation
+
+New plain text is limited by shared approved vocabulary, slot and length checks
+in browser, server and actual SQL. No HTML, links, prices or technical claims are
+accepted. Original controls, global experiment reservation, both consents and
+diagnostic-versus-genuine attribution remain unchanged. Velt's independent review
+uses only the three exact candidate screenshots and cited bounded facts, with no
+customer records or public screenshot URLs. Local fixtures are synthetic and do
+not establish actual model, hosted or native advertising acceptance.
+
 ## Native account acceptance, local continuation
 
 Additive50006 records immutable operator-only account/method acceptance and
@@ -12,15 +22,16 @@ Native disposable tests exercise registry identity, independently changed scope
 and method, immutability/revocation, missing allocation evidence and surviving
 owned cleanup. These are storage/security tests, not actual Meta acceptance.
 Deploy optional read consumers before50006; root's guarded operator alone may
-provision the actual receipt after real evidence. No ACTIVE effect exists yet.
+provision the actual receipt after real evidence. Separate delivery authority and
+fresh proof gate the locally connected ACTIVE effects.
 
 # Security, Privacy, And Quality
 
 The unpublished formal preparation continuation adds a separate default-off
 `SANCTUARY_META_CREATIVE_PREPARATION_ENABLED` flag. It admits only signed, fresh,
 independently reviewed future plans and the existing PAUSED creative/ad/study
-intents under current template/control/Stop fences. It does not add an ACTIVE
-intent or alter credential scope, budget, targeting, original ads or consent.
+intents under current template/control/Stop fences. Preparation does not authorize
+ACTIVE delivery or alter credential scope, budget, targeting, original ads or consent.
 Absent flag preserves the released capability-only boundary. Cleanup remains
 available under its existing narrowly scoped authority.
 

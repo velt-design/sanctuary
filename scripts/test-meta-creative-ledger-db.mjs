@@ -39,6 +39,8 @@ try{
  sql(readFileSync('supabase/tests/meta_creative_native_acceptance.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050007_creative_activation_fence.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050008_creative_formal_settlement.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050009_landing_authored_copy.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_authored_copy.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_activation.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_formal_settlement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_outcomes.sql','utf8'));

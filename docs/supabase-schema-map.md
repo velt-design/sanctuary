@@ -1,3 +1,18 @@
+## Authored landing copy (uninstalled continuation)
+
+`20261021050009_landing_authored_copy.sql` extends the existing command, copy-map
+constraints and private text helpers for bounded approved-vocabulary plain text
+in design/help/support slots. It preserves original controls and immutable
+command identities. Authored capacity is limited to32 distinct failed alternatives
+per baseline, exposed with bounded exclusions to prevent forgotten repeats.
+Helpers revoke application execution; the established command remains the only
+service boundary. Compatible Source/Velt consumers and exact reviewed template
+binding precede installation. Deployed50001-50003 are unchanged.
+
+Formal local50007 gates activation proofs and50008 freezes72-hour mature analysis
+and acknowledgment. This is local implementation, not production schema evidence;
+creative retained serving remains unfinished.
+
 ## Creative native account proof (uninstalled continuation)
 
 `20261021050006_creative_native_acceptance.sql` adds RLS-protected, immutable

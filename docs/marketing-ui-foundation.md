@@ -1,5 +1,22 @@
 # Marketing UI Foundation
 
+## Authored landing experiment slots (local continuation)
+
+`landingCopyContract` validates bounded plain text in the existing design/help/
+support slots. `LandingExperiment` paints only server-assigned validated copy
+after both tracking consents and the existing interaction-safe paint gate; links,
+control content, pricing and enquiry behavior remain owned by the current pages.
+`landingExperiment.server` exposes authored-copy availability only when Source
+migration50009 confirms its bounded history capacity. No arbitrary HTML/CSS, new
+claims, offers, targeting or customer communication is admitted.
+
+The local browser acceptance composes both compiled landing pages, actual signed
+diagnostic handlers/SQL and Velt's renderer. It exercises authored text in each
+slot at320/390/1440 widths, cookie reload and exposure, plus layout interaction and
+return behavior. Screenshots are private review evidence. Local fixture success,
+independent rendered review, protected preview and live measurements are distinct;
+this continuation is not yet a published experiment or the full automatic loop.
+
 ## Commercial photographic composition (21 October 2026)
 
 The Commercial page uses route-owned `CommercialPresentation.tsx` and

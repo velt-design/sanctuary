@@ -7,7 +7,7 @@ import { EXPERIMENT_TEMPLATE, readAssignment, requestAssignment, signAssignment,
 export const runtime = 'nodejs';
 export const maxDuration = 5;
 // Shared across the limiter and visit RPC, never two independent waits.
-export const VISIT_DEADLINE_MS = 1500;
+const VISIT_DEADLINE_MS = 1500;
 const inputSchema = z.object({ stage: z.enum(['assign','expose','revoke']), path: z.enum(LANDING_EXPERIMENT_PATHS),
   consent: z.boolean(), receipt: z.string().max(1500).optional(),
   display:z.object({mobile:z.boolean(),actionFirst:z.boolean()}).strict().optional(),
