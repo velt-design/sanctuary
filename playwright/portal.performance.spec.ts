@@ -20,6 +20,7 @@ import {
   retirePortalVisibleDestination,
   type PortalVisibleDestination,
 } from './support/portalVisibleMilestone';
+import { beginPortalNetworkTrace } from './support/portalPerformanceNetwork';
 
 type RouteBudget = {
   name: string;
@@ -225,12 +226,15 @@ async function measureWarmJourney(
   const budget = warmBudget(name);
   // Arm before both journey setup and the action; never subtract driver overhead.
   const capture = await beginPortalVisibleDestination(page, destination);
+  let networkTrace: ReturnType<typeof beginPortalNetworkTrace>;
   try {
+    networkTrace = beginPortalNetworkTrace(page);
     const probe = await beginPortalJourney(page);
     await action();
     await feedbackReady();
     const feedbackMs = elapsedJourneyMs(probe);
     await usefulContentReady();
+    await networkTrace?.captureDestinationClock(capture);
     const usefulContentMs = await portalVisibleDestinationMs(page, capture);
     await backgroundReady?.();
     const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
@@ -253,9 +257,11 @@ async function measureWarmJourney(
       journey.longestTaskMs <= budgets.productTargets.longestTaskMsMax &&
       !journey.blockingOverlaySeen;
     recordJourney(journey);
+    networkTrace?.finish(name);
     assertRegressionBudget(journey, budget);
   } finally {
-    await retirePortalVisibleDestination(page, capture);
+    try { networkTrace?.finish(name); }
+    finally { await retirePortalVisibleDestination(page, capture); }
   }
 }
 

@@ -2180,6 +2180,47 @@ identity, delayed retrieval, timeout and repeated capture cleanup. It needs no
 provider, account, production QA route or business mutation. Cold-route,
 interaction and project-tab clocks are unchanged.
 
+The performance job additionally records bounded test-only transport diagnostics.
+They do not alter the existing DOM clock, assertions, five schema-v2 samples,
+p75 aggregation or 100/500/50 ms targets. Native Playwright request events/timing
+record fixed route/API/static/external categories, ordinals, status, absolute
+start/observation times, headers/end offsets and failure booleans. Queries,
+record IDs, raw URLs/headers/bodies and error text are excluded. A diagnostic-only
+snapshot projects the matching existing DOM capture's start/completion into
+absolute time using performance.timeOrigin. It never recalculates, moves or
+retires the latch. Missing, replaced or not-yet-completed captures stay null;
+the unchanged metric wait may complete later. Requests/prefetch already started
+before the listener are outside this trace's coverage and must not be inferred
+absent. The CI loopback
+Next-start preload passively observes native undici operations for identity,
+role, theme, schedule and other reads, correlated to incoming request ordinals;
+it preserves fetch/Response objects, errors, callbacks and response streams.
+First Flight write and full HTTP completion remain distinct from committed UI
+and complete useful facts. This is diagnostic evidence, not a runtime improvement.
+
+Diagnostics require the explicit CI production-timing loopback target. The
+existing server command/hostname is preserved, since changing Next's hostname
+can change URL normalization; observation still requires the configured loopback
+origin and matching loopback socket/port. They use
+separate local JSONL: at most128 network requests per warm journey,128 scoped
+page requests per server process,2 MiB per network-run file and512 KiB per server
+file. The existing job log emits only reconstructed allowlisted records between
+`PORTAL_PERFORMANCE_DIAGNOSTICS_BEGIN` and `PORTAL_PERFORMANCE_DIAGNOSTICS_END`,
+bounded to32 files,4096 rows and2 MiB, with explicit limit records. Existing five
+baseline JSON uploads and retention settings are unchanged; diagnostic files are
+not uploaded as extra artifacts. Absolute timestamps/categories allow phase
+comparison without public diagnostic headers or private paths. A local HTTP
+reconstruction cannot establish browser cache, DOM readiness or CI latency.
+
+`test:portal:browser` explicitly includes `portal.performance-clock.spec.ts` so
+all21 existing clock cases and the new native-event case run in the required
+fixture gate. The performance job explicitly runs
+`npx vitest run test/playwright-support/portalPerformanceDiagnostics.test.ts` for
+privacy, native metadata, callback/error/backpressure preservation, retirement,
+loopback exclusion and output bounds. That root test file is not included by the
+app-only Portal Vitest command. No app bundle, provider refresh, business write,
+new source/authority cache or production diagnostic route is introduced.
+
 `npm run portal:search-readiness` safely probes `portal_search_v1()` and the `portal_search_bigrams()` helper with the anonymous role, then makes a zero-row schema probe for the materialized Projects search document. A ready database must report that anonymous function execution is denied and that the generated column exists; missing function/column responses fail immediately with the exact migration path. The preflight never uses the service-role key, returns search data, or treats anonymous function execution as success. The authenticated performance gate remains the deployment proof for the policy-only init-plan migration because the anonymous preflight cannot inspect `pg_policies`.
 
 `npm run test:portal:search-performance` is the focused authenticated global-search gate and starts with that migration preflight. Its deterministic delayed-response case proves a cached repeat renders without a second request and previous results remain visible while a different query refreshes. Its live case samples five real no-store API reads, requires API wall-clock p75 plus the 50 ms debounce to stay at or below 400 ms, measures the first rendered result/empty state at or below 400 ms, then repeats the same normalized query and requires an in-memory cached result within 75 ms with no second request. It writes `artifacts/portal-search-performance.json` with raw API/server timings and rendered-result measurements. Apply the ordered `20260722_000001_portal_search_v1.sql`, `20260722_000002_portal_search_bigram_indexes.sql`, `20260722_000003_portal_search_materialized_columns.sql`, and `20260722_000004_portal_search_rls_initplan.sql` migrations before running it; a missing RPC, helper, generated-column, or policy migration is a failed prerequisite, not a skipped test.

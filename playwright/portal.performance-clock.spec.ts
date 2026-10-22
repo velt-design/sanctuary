@@ -4,6 +4,7 @@ import {
   portalVisibleDestinationMs,
   retirePortalVisibleDestination,
 } from './support/portalVisibleMilestone';
+import { createPortalNetworkTrace } from './support/portalPerformanceNetwork';
 
 test.beforeEach(async ({ page }) => {
   // A fully local document, with no app, credentials, server or outbound request.
@@ -234,4 +235,34 @@ test('replacement and explicit cleanup cannot reuse or retire another journey ca
   await retirePortalVisibleDestination(page, third);
   await expect(portalVisibleDestinationMs(page, third)).rejects.toThrow('replaced or retired');
   expect(await page.evaluate(() => window.__portalVisibleDestination)).toBeUndefined();
+});
+
+test('captures native Playwright request metadata separately without recording URL or payload values', async ({ page }) => {
+  await page.route('https://portal-clock.example.test/api/contacts?*', route => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ fictional: 'PRIVATE_VALUE' }),
+  }));
+  const records: any[] = [];
+  const capture = await beginPortalVisibleDestination(page, {
+    pathname: '/dashboard', conditions: [{ selector: 'h1', text: 'Contacts' }],
+  });
+  const trace = createPortalNetworkTrace(page, 'https://portal-clock.example.test', record => records.push(record));
+  const finished = page.waitForEvent('requestfinished', request => request.url().includes('/api/contacts?'));
+  await page.evaluate(async () => { await (await fetch('/api/contacts?q=PRIVATE_VALUE')).json(); });
+  const request = await finished;
+  await page.evaluate(() => { document.body.innerHTML = '<h1>Contacts</h1>'; });
+  await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible();
+  await trace.captureDestinationClock(capture);
+  const elapsed = await portalVisibleDestinationMs(page, capture);
+  trace.finish('dashboard-to-contacts');
+  const timing = request.timing();
+  const row = records[0].requests.find((candidate: { category: string }) => candidate.category === 'api');
+  expect(row).toMatchObject({ resourceKind: 'fetch', status: 200, failed: false,
+    startAtEpochMs: timing.startTime > 0 ? timing.startTime : null,
+    headersMs: timing.responseStart >= 0 ? timing.responseStart : null,
+    endMs: timing.responseEnd >= 0 ? timing.responseEnd : null });
+  expect(JSON.stringify(records)).not.toMatch(/PRIVATE_VALUE|portal-clock|https:|q=/);
+  expect(Math.round(records[0].clock.firstVisibleAtEpochMs - records[0].clock.startedAtEpochMs)).toBe(elapsed);
+  expect(records[0].coverage).toBe('requests-starting-after-listener');
+  trace.finish('dashboard-to-contacts');
+  expect(records).toHaveLength(1);
 });

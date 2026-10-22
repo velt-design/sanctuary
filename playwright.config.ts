@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 const DEFAULT_PORTAL_PLAYWRIGHT_PORT = 3011;
@@ -11,6 +12,17 @@ const portalStaffStorageState = process.env.PORTAL_STAFF_STORAGE_STATE?.trim() |
 const portalVercelProtectionBypass = process.env.PORTAL_VERCEL_PROTECTION_BYPASS?.trim();
 const fixtureSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || 'http://127.0.0.1:1';
 const fixtureSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || 'portal-fixture-anon-key';
+const performanceDiagnostics = process.env.PORTAL_PERF_DIAGNOSTICS === '1';
+if (performanceDiagnostics) {
+  let target: URL;
+  try { target = new URL(baseURL); } catch { throw new Error('Performance diagnostics require the CI loopback production-timing target.'); }
+  if (process.env.CI !== 'true' || !useProductionPortal || !Number.isInteger(port) || port < 1024 || port > 65535 ||
+    !['127.0.0.1', 'localhost'].includes(target.hostname) || target.protocol !== 'http:' || Number(target.port) !== port ||
+    target.username || target.password || target.pathname !== '/' || target.search || target.hash) {
+    throw new Error('Performance diagnostics require the CI loopback production-timing target.');
+  }
+}
+const diagnosticPreload = path.resolve(__dirname, 'playwright/support/portalPerformanceServer.cjs');
 
 export default defineConfig({
   testDir: './playwright',
@@ -48,6 +60,13 @@ export default defineConfig({
           NEXT_PUBLIC_SUPABASE_URL: fixtureSupabaseUrl,
           NEXT_PUBLIC_SUPABASE_ANON_KEY: fixtureSupabaseAnonKey,
           PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir,
+          ...(performanceDiagnostics ? {
+            NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${JSON.stringify(diagnosticPreload)}`].filter(Boolean).join(' '),
+            PORTAL_PERF_DIAGNOSTICS: '1',
+            PORTAL_PERF_SERVER_OBSERVER: '1',
+            PORTAL_PLAYWRIGHT_PRODUCTION: '1',
+            PORTAL_PLAYWRIGHT_PORT: String(port),
+          } : {}),
         },
         url: baseURL,
         reuseExistingServer: false,
