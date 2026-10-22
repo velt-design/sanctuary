@@ -320,6 +320,54 @@ Never commit real env files. `.env*` is ignored.
 
 ## Praxis Read Connector Setup
 
+### Finite hosted Portal bearer transfer (22 October 2026)
+
+The default-closed `POST /api/integrations/praxis/portal-service-transfer` installs
+the existing `PRAXIS_SANCTUARY_READ_TOKEN` into the fixed Velt project as
+`VELT_PORTAL_SERVICE_TOKEN`, sensitive and production only. It does not create or
+rotate a credential. The Source bearer stays in hosted memory and travels only to
+the fixed Vercel environment API. Clarity, Meta and Outlook storage are unchanged.
+
+`PRAXIS_PORTAL_SERVICE_TRANSFER_ADMISSION` is server-only JSON with exactly
+`nonceSha256`, `issuedAt` and `expiresAt` (ISO UTC, at most 15 minutes apart).
+Stage it immediately before the reviewed Source deployment; leave it absent
+otherwise. The request contains exactly `nonce` (64 lowercase hex characters)
+and `platformToken`. The operator token exists only in that HTTPS request and
+outbound Vercel authorization headers, never environment/configuration, URLs,
+logs, SQL or replies. No browser cookie or Portal impersonation is required.
+The integration API lies outside document middleware and authenticates the exact
+configured Vercel principal independently of the bearer being transferred.
+
+Before the sole write, the handler checks admission expiry/hash, production
+project, fixed Source identity, Vercel principal and both project/team metadata,
+the exact existing Source secret metadata, and absence of the target key in every
+environment. Its create omits upsert and accepts no destination/value overrides.
+All identity/config checks remain current at the effect boundary. Existing keys
+refuse transfer; concurrent creates rely on Vercel's no-upsert conflict fence.
+
+The operator journals the attempt privately before dispatch and never repeats an
+uncertain request. This finite admission is not a durable consumed-nonce ledger.
+Immediately before dispatch, use the same fixed-origin route's GET to verify
+`releaseSha` equals the independently reviewed deployed commit. This GET returns
+only the platform commit SHA, requires the exact production project/origin and no
+query, and fails closed if the SHA is absent/malformed. It needs no admission,
+credential, database or platform request, so neither secret is sent to verify code.
+The handler performs no automatic retry: an ambiguous POST gets only a destination
+metadata read. `installed` requires a confirmed create ID matching production
+sensitive metadata; `present_unconfirmed` means presence without that confirmation,
+and `unconfirmed` cannot establish whether a write occurred. Neither metadata state
+proves value equality. Reconcile metadata read-only and verify an ordinary
+authenticated Source read after Velt promotion before claiming recovery. Never
+overwrite/remove a destination to make an uncertain transfer retryable.
+
+Install before promoting the Velt consumer. On failure retain audit evidence,
+stop and correct within the same scoped authority. Clear the finite admission
+after completion; expiry fails closed without any platform call. Remove this
+temporary handler in the follow-up once hosted verification is recorded. Rolling
+back Source leaves its original bearer and ordinary APIs unchanged; rolling back
+Velt restores the former vault dependency, which may still be rate limited. No
+SQL, source grant, polling cadence or customer/advertising change accompanies it.
+
 The local `/api/integrations/praxis/v1/specialist-workload` candidate reads
 installation and drafting records through the reviewed, unapplied
 `20260922053001_praxis_specialist_workload.sql` reporting view. Existing reporting

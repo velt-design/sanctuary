@@ -1,5 +1,38 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Targeted P&L and Overview latency follow-up (22 October 2026)
+
+Initial full-document Overview reads now start Commercial and Designer alongside
+Hub after the existing staff, confirmed-developer and preview gates. The two API
+routes and document promises share guarded, fully validated readers; every RPC
+retains its own current authority. Private snapshot previews retain their old
+behavior and do not start live Overview/Financial seeds. Other report views do
+not request those families. No Suspense boundary or chart animation was added.
+
+Eligible Financial document entries start only their selected complete report,
+with exact accounting dates, basis, section and Auckland defaults. The same
+server owner serves the existing API, including its no-section legacy contract.
+Long-running caller/role/finance rechecks use the existing access resolver outside
+React's render cache. Every provider page and final publication still rechecks
+caller and delegated authority. The two independent checks overlap; neither alone
+allows a provider read. The document duration is explicitly 60 seconds, retaining
+the 40-second provider and 45-second outer budgets.
+
+Each seed has one initial matching opportunity. Native Promise normalization
+supports Flight's void-returning thenables. Date, basis, section, loader, refresh,
+view departure or settlement retires that opportunity. Later reads use the API;
+late seeds cannot replace current evidence. Client URL/default restoration stays
+authoritative, including a server/client Auckland-midnight mismatch. Failures,
+unavailable coverage, denied access and ordinary retries stay explicit.
+
+The implementation owners are `readOverview.server`, `financials/readPortal.server`,
+`reportDocumentSelection`, `initialReportAttempt` and the existing report hooks.
+P&L's provider scheduling and connection lifetime are described in
+[xero-connection.md](xero-connection.md). No SQL population, private shared cache,
+credential serialization, provider refresh or business write is introduced.
+Local checks and fictional Flight journeys do not establish a live speed gain.
+
+
 ## Fresh-entry performance candidate (21 October 2026)
 
 The server-started hub candidate begins one full report read during an eligible
@@ -120,6 +153,29 @@ protected Marketing fixture, including representative populations, all tabs,
 small screens, drawers, filters and incomplete/unavailable evidence. Current
 rendered evidence and independent review remain in the private owning work record;
 local styling and tests alone do not establish production or owner acceptance.
+
+## Historical designer and test-record corrections (22 October 2026)
+
+The existing sales-designer command now accepts Steve as historical sales credit.
+`salesDesigner.ts` owns the sales roster; phase-owner options and verified visit
+attendee identities are unchanged. Steve can be selected, read back and filtered
+without implying that he attended a visit or currently owns the project.
+
+The existing report-only outcome command accepts `test`. Test records are omitted
+from accepted-sales gross/net/excluded totals, undated-business coverage and the
+visit-conversion cohort. Their original scopes and visit facts remain unchanged.
+A labelled **Test records** inventory, across acceptance dates and within the
+selected designer/project filters, retains details and the audited clear action.
+Clearing restores normal eligibility; independent cancellation/lost evidence still
+wins. A test is never falsely recorded as a cancellation or financial refund.
+Other operational/financial reports and advertising delivery are unaffected.
+
+Forward migration `20261022010001_designer_history_support.sql` widens only the
+existing assignment/outcome constraints and command validators. It preserves actor
+locks, grants, command identity, optimistic revision and immutable audit receipts.
+Ship schema and compatible Portal code before saving new enum values: old clients
+will reject those values rather than silently misreport them. Recovery is an
+explicit audited clear/reassignment through the existing APIs, not row deletion.
 
 ## Accepted jobs by designer (21 October 2026)
 

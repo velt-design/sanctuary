@@ -29,12 +29,12 @@ export default function ProjectSalesOutcome({value,onChange,client=liveClient,re
       else setError('The save result is uncertain. Retry the same request to reconcile it before editing.');
     }finally{setBusy(false);}
   };
-  return <section className={styles.assignment} aria-label="Sales outcome"><p><strong>Sales outcome: {value.outcome==='cancelled'?'Cancelled':value.outcome==='refunded'?'Refunded':'No report-only exclusion'}</strong></p>
+  return <section className={styles.assignment} aria-label="Sales outcome"><p><strong>Sales outcome: {value.outcome==='test'?'Test record (excluded)':value.outcome==='cancelled'?'Cancelled':value.outcome==='refunded'?'Refunded':'No report-only exclusion'}</strong></p>
     {value.updatedAt&&<p className={styles.note}>Recorded {new Date(value.updatedAt).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'})}</p>}
     {value.basis&&<p>Outcome reason: {value.basis}</p>}
     {!editing?<Button variant="quiet" disabled={readOnly} onClick={()=>{setKey(value.outcome??'');setEditing(true);setError('');}}>Record sales outcome{readOnly?' (fixture read only)':''}</Button>:<>
-    <p className={styles.note}>Applies to the whole job. A partial scope refund or payment adjustment is not a whole-job refund. Owner-confirmed reporting only; payments and operational work stay unchanged. Clearing this cannot remove an independent cancellation.</p>
-      <Select label="Sales outcome" value={key} disabled={busy||!!pending} onChange={e=>setKey(e.target.value)}><option value="">Clear report-only exclusion</option><option value="cancelled">Cancelled</option><option value="refunded">Refunded</option></Select>
+    <p className={styles.note}>Applies to the whole job. A partial scope refund or payment adjustment is not a whole-job refund. Owner-confirmed reporting only; payments and operational work stay unchanged. Test record excludes synthetic data from sales figures without cancelling the job. Clearing restores reporting eligibility but cannot remove an independent cancellation.</p>
+      <Select label="Sales outcome" value={key} disabled={busy||!!pending} onChange={e=>setKey(e.target.value)}><option value="">Clear report-only exclusion</option><option value="cancelled">Cancelled</option><option value="refunded">Refunded</option><option value="test">Test record (exclude from sales)</option></Select>
       <label>Reason for outcome<textarea maxLength={500} value={basis} disabled={busy||!!pending} onChange={e=>setBasis(e.target.value)} rows={2}/></label>
       <div className={styles.assignmentActions}><Button disabled={busy||conflict||(!pending&&basis.trim().length<3)} onClick={save}>{busy?'Saving…':pending?'Retry same save':'Save outcome'}</Button>{conflict?<Button variant="secondary" disabled={busy} onClick={reload}>Reload outcome</Button>:!pending&&<Button variant="quiet" disabled={busy} onClick={()=>setEditing(false)}>Cancel</Button>}</div>
     </>}{error&&<p role="alert">{error}</p>}</section>;

@@ -1,6 +1,7 @@
 import { useState,act } from 'react';
 import { it,expect,vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
+import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
 import { unassignedDesigner,type SalesDesigner } from '@/lib/marketingPerformance/salesDesigner';
 import SalesDesignerAssignment,{AssignmentError,type AssignmentClient} from './SalesDesignerAssignment';
 const projectId='77777777-7777-4777-8777-777777777777',empty=unassignedDesigner(projectId);
@@ -26,4 +27,10 @@ it('does not write on cancel, denied access, or a read-only synthetic fixture',a
  const client={assign:vi.fn().mockRejectedValue(new AssignmentError(403)),read:vi.fn()};const view=renderIntoDocument(<Harness client={client}/>);edit(view.container);click(view.container,'Cancel');expect(client.assign).not.toHaveBeenCalled();
  edit(view.container);click(view.container,'Save assignment');await flush();expect(view.container.textContent).toContain('Owner access is required');expect(client.read).not.toHaveBeenCalled();view.unmount();
  const demo=renderIntoDocument(<SalesDesignerAssignment value={empty} onChange={vi.fn()} readOnly client={client}/>);expect(demo.container.querySelector('button')!.disabled).toBe(true);demo.unmount();
+});
+
+it('offers historical Steve attribution without adding a current project-owner role',async()=>{
+ const steve={...saved,designerKey:'steve' as const};const client={assign:vi.fn().mockResolvedValue(steve),read:vi.fn().mockResolvedValue(steve)};
+ const view=renderIntoDocument(<Harness client={client}/>);edit(view.container);act(()=>{const select=view.container.querySelector('select')!;select.value='steve';select.dispatchEvent(new Event('change',{bubbles:true}));});click(view.container,'Save assignment');await flush();
+ expect(client.assign.mock.calls[0][1]).toMatchObject({designerKey:'steve'});expect(view.container.textContent).toContain('Sales designer: Steve');expect(projectOwnerOption('steve')).toBeNull();view.unmount();
 });

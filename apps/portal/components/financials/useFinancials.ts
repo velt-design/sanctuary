@@ -1,3 +1,6 @@
+import { initialReportAttempt } from '@/components/marketingPerformance/initialReportAttempt';
+import type { InitialReport } from '@/lib/marketingPerformance/reportRead';
+import { financialRequestKey } from '@/lib/xero/financials/contract';
 import { useEffect, useRef, useState } from 'react';
 import { financialPanelSchema, type FinancialEvidence, type FinancialsQuery, type FinancialPanelQuery, type FinancialSection } from '@/lib/xero/financials/contract';
 
@@ -12,7 +15,8 @@ const loadFinancials: FinancialsLoader = async (query, signal) => {
   return report;
 };
 export class FinancialAccessError extends Error {}
-export default function useFinancials(query: FinancialsQuery & {section?:FinancialSection}, revision: number, loader = loadFinancials) {
+export default function useFinancials(query: FinancialsQuery & {section?:FinancialSection}, revision: number, loader = loadFinancials, seed?:InitialReport<FinancialEvidence>) {
+  const [initial]=useState(()=>initialReportAttempt(seed,loader,report=>{const value=financialPanelSchema.parse(report);if(financialRequestKey({...value.position.query,section:value.requestedSection})!==seed?.key)throw new Error('The source returned different report dates or basis. Retry.');return value;},()=>new Error('Xero is unavailable. Retry.')));
   const [report, setReport] = useState<FinancialEvidence | null>(null), [busy, setBusy] = useState(true), [error, setError] = useState('');
   const [retained, setRetained] = useState<FinancialEvidence | null>(null);
   const [profitEvidence, setProfitEvidence] = useState<FinancialEvidence | null>(null);
@@ -20,7 +24,8 @@ export default function useFinancials(query: FinancialsQuery & {section?:Financi
   useEffect(() => {
     const seq = ++sequence.current, controller = new AbortController();
     setBusy(true); setError('');
-    loader({from:query.from,to:query.to,basis:query.basis,section:query.section??'profit'}, controller.signal).then(report => {
+    const request={from:query.from,to:query.to,basis:query.basis,section:query.section??'profit'};
+    (initial.take(financialRequestKey(request),revision,loader)??loader(request, controller.signal)).then(report => {
       if (!controller.signal.aborted && sequence.current === seq) {
         if('requestedSection' in report && report.requestedSection!==(query.section??'profit'))throw new Error('The source returned a different financial section. Retry.');
         setReport(report);
@@ -36,11 +41,11 @@ export default function useFinancials(query: FinancialsQuery & {section?:Financi
       }
     }).catch(error => {
       if (!controller.signal.aborted && sequence.current === seq) {
-        if (error instanceof FinancialAccessError) { setReport(null); setRetained(null); setProfitEvidence(null); }
+        if (error instanceof FinancialAccessError || error?.status===401 || error?.status===403) { setReport(null); setRetained(null); setProfitEvidence(null); }
         setError(error instanceof Error ? error.message : 'Xero is unavailable. Retry.');
       }
     }).finally(() => { if (!controller.signal.aborted && sequence.current === seq) setBusy(false); });
     return () => controller.abort();
-  }, [query.from, query.to, query.basis, query.section, revision, loader]);
+  }, [query.from, query.to, query.basis, query.section, revision, loader, initial]);
   return { report, retained, profitEvidence, busy, error };
 }
