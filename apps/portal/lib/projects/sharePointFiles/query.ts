@@ -17,12 +17,16 @@ export async function prepareProjectFiles(client: QueryClient, host: string, own
   async function prepare(options: ReturnType<typeof projectFilesQueryOptions>) {
     // A scheduled renewal must reach the source before the five-minute lease.
     // Ordinary preparation still reuses fresh data and concurrent reads coalesce.
-    await client.prefetchInfiniteQuery({ ...options, staleTime: renew ? 0 : options.staleTime, pages: 1 });
-    const page = client.getQueryData(options.queryKey)?.pages[0];
-    if (!signal?.aborted && client.getQueryState(options.queryKey)?.status === 'success' && page) onPage?.(page, client.getQueryState(options.queryKey)?.dataUpdatedAt ?? 0);
+    const extent = client.getQueryData(options.queryKey)?.pages.length ?? 1;
+    await client.prefetchInfiniteQuery({ ...options, staleTime: renew ? 0 : options.staleTime, pages: extent });
+    const pages = client.getQueryData(options.queryKey)?.pages, first = pages?.[0];
+    if (!signal?.aborted && client.getQueryState(options.queryKey)?.status === 'success' && first) {
+      const items = [...new Map(pages!.flatMap(page => page.items).map(item => [item.id, item])).values()];
+      onPage?.({ ...first, items, cursor: pages!.at(-1)!.cursor }, client.getQueryState(options.queryKey)?.dataUpdatedAt ?? 0);
+    }
   }
-  // Only this project's root, saved folder and first two root folders. The bound
-  // covers an ordinary first folder visit without traversing the tree or polling.
+  // Only this project's root, saved folder and first two root folders. New
+  // queries prepare one page; revalidation preserves the already loaded extent.
   const rootOptions = projectFilesQueryOptions(host, ownerId, projectId, rootId);
   const rootPreparation = prepare(rootOptions).then(async () => {
     if (client.getQueryState(rootOptions.queryKey)?.status !== 'success') return;
@@ -31,7 +35,8 @@ export async function prepareProjectFiles(client: QueryClient, host: string, own
     const preparedRootId = page.rootId;
     // Normalise the same authorized default-root result without another source read.
     const explicitKey = projectFilesQueryOptions(host, ownerId, projectId, preparedRootId).queryKey;
-    if (!rootId && (client.getQueryState(explicitKey)?.dataUpdatedAt ?? 0) <= (client.getQueryState(rootOptions.queryKey)?.dataUpdatedAt ?? 0)) client.setQueryData<InfiniteData<ProjectFilesPage>>(explicitKey, client.getQueryData<InfiniteData<ProjectFilesPage>>(rootOptions.queryKey), { updatedAt: client.getQueryState(rootOptions.queryKey)?.dataUpdatedAt });
+    const prepared = client.getQueryData(rootOptions.queryKey), existing = client.getQueryData<InfiniteData<ProjectFilesPage>>(explicitKey);
+    if (!rootId && (existing?.pages.length ?? 0) <= (prepared?.pages.length ?? 0) && (client.getQueryState(explicitKey)?.dataUpdatedAt ?? 0) <= (client.getQueryState(rootOptions.queryKey)?.dataUpdatedAt ?? 0)) client.setQueryData<InfiniteData<ProjectFilesPage>>(explicitKey, prepared, { updatedAt: client.getQueryState(rootOptions.queryKey)?.dataUpdatedAt });
     const likely = page.items.filter(item => item.kind === 'folder' && item.id !== folderId).slice(0, 2);
     await Promise.all(likely.map(item => prepare(projectFilesQueryOptions(host, ownerId, projectId, preparedRootId, item.id))));
   });

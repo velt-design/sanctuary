@@ -213,6 +213,10 @@ The fixed project timer reads the latest saved folder/source/selection on each
 pass and forces that bounded metadata pass through the fresh-query lease. Initial
 preparation still reuses fresh data; concurrent exact-key requests coalesce.
 Selection changes cannot postpone renewal, including after leaving website files.
+Renewal preserves and refreshes the already loaded page extent, without loading
+further pages. Reconciliation uses all retained refreshed items and the final
+page's cursor; a shorter completed source listing may legitimately remove files.
+Default-root seeding cannot overwrite a longer explicit-root page set.
 Logout/owner/project changes cancel owned work; logout/owner switch purges memory.
 Observed deletion, version change, root removal or failed proof purges affected
 bytes. Refresh bypasses leases. Late responses cannot undo newer observations.

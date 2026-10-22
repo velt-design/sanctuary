@@ -3,9 +3,9 @@ import { act } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { prepareProjectFiles, projectFilesQueryOptions } from '@/lib/projects/sharePointFiles/query';
-import { readPreview, retainPreview } from './tabs/overview/projectFilePreviewCache';
+import { readPreview, retainPreview, setPreviewOwner } from './tabs/overview/projectFilePreviewCache';
 import { useProjectFilesPreparation } from './useProjectFilesPreparation';
-import { emptyFilesNavigation, filesNavigationKey, writeFilesNavigation } from './tabs/overview/projectFilesNavigation';
+import { emptyFilesNavigation, filesNavigationKey, readFilesNavigation, writeFilesNavigation } from './tabs/overview/projectFilesNavigation';
 const session = vi.hoisted(() => ({ user: { id: 'staff-a' }, role: 'staff', status: 'authenticated' }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => session }));
 vi.mock('./tabs/QuotePdfInlinePreview', () => ({ preloadQuotePdfPreview: async () => undefined }));
@@ -106,4 +106,58 @@ it('coalesces overlapping forced renewal passes without restarting the same quer
   await prepareProjectFiles(client, 'host','staff-a','project-a');
   await Promise.all([0,1].map(() => prepareProjectFiles(client, 'host','staff-a','project-a',undefined,undefined,undefined,undefined,true)));
   expect(requests).toEqual(['root','folder0','folder1','root','folder0','folder1']);
+});
+
+it('renews the loaded three-page extent and later-page selected preview without advancing or resetting navigation', async () => {
+  vi.useFakeTimers();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
+  const selectedId = 'late-selected', ids = ['first','second',selectedId], metadataRequests: string[] = [], previewRequests: string[][] = [];
+  let shortened = false;
+  const roots = [{ id: rootId, itemId: 'root', label: 'Project' }];
+  const rootPage = { state: 'ready', rootId, folderId: 'root', roots, items: [], cursor: null };
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/previews')) {
+      const input = JSON.parse(init!.body as string); previewRequests.push(input.items.map((item: { id: string }) => item.id));
+      const packets = [{ kind: 'project-preview-batch-v1', projectId: 'project-a', rootId, folderId: 'deep-folder' },
+        ...input.items.map((item: { id: string; known: { version: string; profile: string; hash: string } }) => ({ kind: 'preview', item: { id: item.id, name: item.id+'.pdf', ...item.known, mime: 'application/pdf', size: 3 } })), { kind: 'complete', unavailable: [] }];
+      return new Response(packets.map(packet => JSON.stringify(packet)).join('\n')+'\n', { headers: { 'content-type': 'application/x-ndjson' } });
+    }
+    const query = new URL(url, 'https://fixture').searchParams;
+    if (!query.has('folderId')) return Response.json(rootPage);
+    const cursor = query.get('cursor') ?? 'page1'; metadataRequests.push(cursor);
+    const index = cursor === 'page1' ? 0 : cursor === 'page2' ? 1 : 2;
+    return Response.json({ state: 'ready', rootId, folderId: 'deep-folder', roots, items: [{ id: ids[index], name: ids[index]+'.pdf', kind: 'file', size: 3, contentType: 'application/pdf', modifiedAt: null, viewable: true, eTag: '"v1"' }], cursor: shortened ? null : 'page'+(index+2) });
+  }));
+  const options = projectFilesQueryOptions('host','staff-a','project-a',rootId,'deep-folder');
+  await client.prefetchInfiniteQuery({ ...options, pages: 3 });
+  client.setQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey, { pages: [rootPage], pageParams: [undefined] });
+  const owner = JSON.stringify(['host','staff-a']); setPreviewOwner(client, owner);
+  const scope = (itemId: string) => ({ owner, projectId: 'project-a', rootId, folderId: 'deep-folder', itemId });
+  for (const id of [...ids,'unseen-next-page']) retainPreview(client, scope(id), { bytes: new Uint8Array([1,2,3]), version: '"v1"', name: id+'.pdf', mime: 'application/pdf', profile: 'pdf-v1', hash: '1'.repeat(64) }, true);
+  const key = filesNavigationKey('host','staff-a','project-a');
+  const navigation = { ...emptyFilesNavigation(), rootId, trail: [{ id: 'deep-folder', name: 'Photos' }], selectedId, pageCounts: { [rootId+':deep-folder']: 3 }, scrolls: { [rootId+':deep-folder']: 950 } };
+  writeFilesNavigation(key, navigation);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0);
+  await tick(4 * 60_000);
+  expect(metadataRequests).toEqual(['page1','page2','page3','page1','page2','page3']);
+  expect(client.getQueryData(options.queryKey)?.pages).toHaveLength(3);
+  expect(client.getQueryData(options.queryKey)?.pages.flatMap(page => page.items).some(item => item.id === selectedId)).toBe(true);
+  expect(previewRequests).toEqual([[selectedId,'first','second']]);
+  expect(readPreview(client, scope('unseen-next-page'), [], false)).not.toBeNull();
+  expect(readFilesNavigation(key)).toEqual(navigation);
+  await tick(61_000);
+  expect(readPreview(client, scope(selectedId), [], false)).not.toBeNull();
+  expect(readFilesNavigation(key)).toEqual(navigation);
+  shortened = true; await tick(3 * 60_000 - 1_000);
+  expect(metadataRequests).toEqual(['page1','page2','page3','page1','page2','page3','page1']);
+  expect(client.getQueryData(options.queryKey)?.pages).toHaveLength(1);
+  expect(readPreview(client, scope(selectedId), [], false)).toBeNull();
+});
+
+it('does not overwrite a longer explicit-root page set while normalizing a first-page default-root preparation', async () => {
+  const { client } = renewalFixture(), explicit = projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey;
+  const page = { state: 'ready', rootId, folderId: 'root', roots: [{ id: rootId, itemId: 'root', label: 'Project' }], items: [], cursor: 'next' };
+  client.setQueryData(explicit, { pages: [page,page,page], pageParams: [undefined,'second','third'] }, { updatedAt: Date.now()-60_000 });
+  await prepareProjectFiles(client,'host','staff-a','project-a');
+  expect(client.getQueryData(explicit)?.pages).toHaveLength(3);
 });
