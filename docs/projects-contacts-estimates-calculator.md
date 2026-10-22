@@ -49,6 +49,10 @@ Implementation map:
 - `projectsIndexInitialRead.ts` adapts one matching result to React Query. Its
   QueryClient-scoped markers contain only consumed render IDs. A different user,
   filter, existing data, invalidation or intervening update rejects the handoff.
+  The ordinary fallback receives the original query context without spreading it:
+  reading its lazy signal would cancel query state on observer removal while the
+  API transport continues, duplicating the request on remount. Matching pending
+  handoffs still consume the signal and preserve navigation cancellation.
 - `useProjectsIndexData.ts` retains the existing freshness, retry, access-ending
   cleanup and mutation owners. Back, remount and manual refresh use the API once
   the initial handoff has been consumed; stored-scroll restoration still waits

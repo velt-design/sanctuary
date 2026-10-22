@@ -7,9 +7,12 @@ the underlying API ignores it. The Work initial-read adapter did this before
 checking for an eligible handoff, so observer remounts cancelled query state and
 started a second ordinary GET while the first transport continued. Consume the
 signal only for the pending handoff; let each fallback retain its existing
-policy. Real QueryObserver detach/remount tests cover absent, mismatched, consumed,
+policy. The Projects adapter had the same cause through an enumerable context
+spread, so it now forwards the typed context unchanged. Visits already passes
+its signal to the actual transport. Real QueryObserver detach/remount tests cover absent, mismatched, consumed,
 cached and invalidated handoffs, alongside the unchanged shell single-GET browser
-assertion. Owner: `project-command-centre-architecture.md`.
+assertion. Owners: `project-command-centre-architecture.md` and
+`projects-contacts-estimates-calculator.md`.
 
 ## 2026-10-22: project file relationships must preserve project deletion
 

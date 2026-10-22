@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { apiJson, ApiError } from '@/lib/repo/apiClient';
 import { defaultProjectsIndexParams, projectsIndexQueryOptions } from '@/lib/queries/projectsIndex';
 import { projectsIndexReadFunction, type ProjectsIndexInitialRead, type ProjectsIndexInitialResult } from './projectsIndexInitialRead';
@@ -27,6 +27,38 @@ function query(client: QueryClient, initial: ProjectsIndexInitialRead, search = 
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(apiJson).mockResolvedValue(data('', 'API current')); });
 
 describe('Projects first read handoff', () => {
+  it.each(['absent', 'consumed', 'owner mismatch', 'filter mismatch', 'cached', 'invalidated'])(
+    'keeps one pending API request across observer remount when the handoff is %s', async (reason) => {
+      const client = new QueryClient(), { initial, resolve } = deferred();
+      if (reason === 'consumed') {
+        resolve({ ok: true, data: data() });
+        await client.fetchQuery(query(client, initial));
+      }
+      const request = { ...params, search: reason === 'filter mismatch' ? 'changed' : '' };
+      const options = { ...projectsIndexQueryOptions('active', request), refetchOnMount: 'always' as const, retry: false,
+        queryFn: projectsIndexReadFunction(client, request, reason === 'owner mismatch' ? 'staff-b' : 'staff-a', reason === 'absent' ? undefined : initial) };
+      if (reason === 'cached') client.setQueryData(options.queryKey, data());
+      if (reason === 'invalidated') {
+        client.getQueryCache().build(client, options);
+        await client.invalidateQueries({ queryKey: options.queryKey });
+      }
+      let finish!: (value: ProjectsIndexResponse) => void;
+      vi.mocked(apiJson).mockImplementation(() => new Promise(done => { finish = done; }));
+      const observer = new QueryObserver(client, options);
+      const unsubscribe = observer.subscribe(() => {});
+      unsubscribe();
+      const returned = observer.subscribe(() => {});
+      try {
+        expect(apiJson).toHaveBeenCalledTimes(1);
+        finish(data(request.search));
+        await vi.waitFor(() => expect(observer.getCurrentResult().fetchStatus).toBe('idle'));
+        expect(observer.getCurrentResult().data).toEqual(data(request.search));
+      } finally {
+        returned();
+        client.clear();
+      }
+    },
+  );
   it('consumes one matching streamed read without a browser duplicate; refresh uses the API', async () => {
     const client = new QueryClient(), { initial, resolve } = deferred();
     const pending = client.fetchQuery(query(client, initial));

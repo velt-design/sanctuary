@@ -25,10 +25,12 @@ export function projectsIndexReadFunction(
   initial?: ProjectsIndexInitialRead,
 ) {
   const options = projectsIndexQueryOptions(params.archive, params);
-  return async (context: QueryFunctionContext): Promise<ProjectsIndexResponse> => {
+  return async (context: QueryFunctionContext<typeof options.queryKey>): Promise<ProjectsIndexResponse> => {
     const fallback = () => {
       if (typeof options.queryFn !== 'function') throw new Error('Projects index read function is unavailable');
-      return options.queryFn({ ...context, queryKey: options.queryKey });
+      // Preserve lazy signal access: spreading the context opts into cancellation
+      // even though the ordinary index transport does not consume that signal.
+      return options.queryFn(context);
     };
     if (!initial) return fallback();
     const consumed = consumedReads.get(client) ?? new Set<string>();
