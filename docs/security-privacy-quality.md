@@ -112,7 +112,8 @@ The root layout records its own completion before descendant rendering, not TTFB
 or document completion. Nested totals must not be summed.
 
 Only normal GET document requests for Projects, a canonical project UUID route,
-and Site Visits qualify. API, client RSC and prefetch requests do not. The proxy
+Site Visits and exact Marketing Performance qualify. Marketing snapshot previews,
+child/API paths, RSC/data/router-state variants and prefetch requests do not. The proxy
 strips/overwrites the two dedicated diagnostic headers, then signs the fixed
 UUID/template/window carrier with a temporary diagnostic-only nonce. Render
 verification establishes that this carrier was issued by the proxy; it does not
@@ -122,12 +123,24 @@ No diagnostic field participates in authorization. The signed carrier is an
 internal forwarded request header; only the opaque UUID is echoed to the browser.
 Existing request cookies and refreshed response cookies retain their original paths.
 
-At most eleven fixed phase events contain a random request UUID, fixed route and
+At most fifteen fixed phase events contain a random request UUID, fixed route and
 phase/outcome enums, finite duration, validated commit hash and actual
 `VERCEL_REGION` (or null). No raw route/query, identity, payload, header, error or
 configuration value is logged. Synchronous logging failures and rejected promises
 are isolated with no awaited transport. Denied, failed, skipped and fallback
 outcomes remain explicit; incomplete phase sets are not fast successes.
+
+The Marketing extension measures the existing advisory navigation-finance call
+before its unchanged catch-to-null fallback, and the full client-promise/reader
+chains for Hub, Commercial and Designer on eligible Overview entry. Safe failed
+report unions record an error outcome. The reads remain parallel and streamed;
+there are no additional auth, grant, RPC or provider calls. Other measured routes
+retain their original phase set. Marketing's regional proxy emits transport
+completion without proxy identity/role phases; RSC retains actual access checks.
+Nested layout/access/navigation spans and concurrent read spans must not be added.
+Pre-entry module initialization and later HTML/Flight delivery remain outside the
+measured operations. Correlate the opaque UUID within exact-deployment platform
+request records, retaining invocation/instance metadata privately.
 
 The single private `PORTAL_DOCUMENT_DIAGNOSTICS` setting is absent/empty by default.
 When explicitly enabled it is JSON with exactly `until` (UTC ISO expiry no more
