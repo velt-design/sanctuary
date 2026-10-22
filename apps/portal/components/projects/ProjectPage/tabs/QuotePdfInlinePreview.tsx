@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styles from './QuotesTab.module.css';
+import type { ProjectPdfStream } from './overview/ProjectPdfStream';
 
 type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 type PdfDocumentProxy = import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentProxy;
@@ -52,7 +53,9 @@ async function destroyLoadingTask(task: PdfLoadingTask | null): Promise<void> {
   }
 }
 
-export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
+export async function preloadQuotePdfPreview() { await import('pdfjs-dist/legacy/build/pdf.mjs'); }
+
+export default function QuotePdfInlinePreview({ data, source }: { data?: Uint8Array; source?: ProjectPdfStream }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pdfRef = useRef<PdfDocumentProxy | null>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
@@ -82,10 +85,12 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
   useEffect(() => {
     let cancelled = false;
     let loadingTask: PdfLoadingTask | null = null;
+    let releaseStream: (() => void) | undefined;
 
     setPageCount(0);
     setRenderError(null);
-    setStatusMessage(data.byteLength ? 'Loading PDF preview...' : null);
+    const byteLength = source?.length ?? data?.byteLength ?? 0;
+    setStatusMessage(byteLength ? 'Loading PDF preview...' : null);
     canvasRefs.current = [];
 
     const previousPdf = pdfRef.current;
@@ -95,7 +100,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
     }
 
     const run = async () => {
-      if (!data.byteLength) {
+      if (!byteLength) {
         setStatusMessage(null);
         return;
       }
@@ -111,9 +116,12 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
             await pdfjs.PDFWorker._setupFakeWorkerGlobal;
           }
 
-          const task = pdfjs.getDocument({
-            data: new Uint8Array(data),
-          });
+          releaseStream?.();
+          const transport = source ? new pdfjs.PDFDataRangeTransport(source.length, new Uint8Array(), false) : null;
+          const task = transport ? pdfjs.getDocument({ range: transport, disableRange: true }) : pdfjs.getDocument({ data: new Uint8Array(data!) });
+          // PDF.js receives copies because worker transfer detaches TypedArrays.
+          // No custom range callback is installed: the single stream is authoritative.
+          if (source && transport) releaseStream = source.subscribe(bytes => transport.onDataProgressiveRead(bytes), () => transport.onDataProgressiveDone());
           loadingTask = task;
 
           try {
@@ -136,7 +144,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
           console.warn('[quote_preview] worker load failed, retrying with fake worker', {
             error: workerError,
             diagnostics: previewDiagnostics(),
-            byteLength: data.byteLength,
+            byteLength,
           });
           setStatusMessage('Retrying PDF preview with fallback renderer...');
           pdf = await loadPdf('fake');
@@ -156,7 +164,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
         console.error('[quote_preview] document load failed', {
           error,
           diagnostics: previewDiagnostics(),
-          byteLength: data.byteLength,
+          byteLength,
         });
         setRenderError(formatPhaseError('PDF load', error));
         setStatusMessage(null);
@@ -167,6 +175,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
 
     return () => {
       cancelled = true;
+      releaseStream?.();
       if (loadingTask) {
         void destroyLoadingTask(loadingTask);
       }
@@ -176,7 +185,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
         void activePdf.destroy();
       }
     };
-  }, [data]);
+  }, [data, source]);
 
   useEffect(() => {
     const pdf = pdfRef.current;
@@ -251,7 +260,7 @@ export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
         }
       }
     };
-  }, [containerWidth, pageCount, data]);
+  }, [containerWidth, pageCount, data, source]);
 
   return (
     <div ref={containerRef} className={styles.quotePreviewDocument}>

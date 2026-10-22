@@ -22,15 +22,15 @@ async function readFileRoots(db: SupabaseClient, projectId: string, observer?: P
   if (!parsed.success) throw new ProjectFilesError('source_invalid');
   return parsed.data;
 }
-export async function projectGraph(db: SupabaseClient, projectId: string, rootId: string | undefined, assertion: string, signal: AbortSignal) {
+export async function projectGraph(db: SupabaseClient, projectId: string, rootId: string | undefined, assertion: string, signal: AbortSignal, itemId?: string) {
   const snapshot = await readFileRoots(db, projectId);
   const cfg = sharePointConfig();
   if (snapshot.state !== 'ready' || snapshot.binding !== cfg.binding) throw new ProjectFilesError('not_configured');
   const root = rootId ? snapshot.roots.find(value => value.id === rootId) : snapshot.roots[0];
   if (!root) throw new ProjectFilesError('not_found', 404);
-  return { snapshot, root, cfg, graph: await createGraph(cfg, assertion, signal) };
+  return { snapshot, root, cfg, graph: await createGraph(cfg, assertion, signal, undefined, undefined, itemId ? { rootId: root.itemId, itemId, download: true } : undefined) };
 }
-export async function listProjectFiles(db: SupabaseClient, projectId: string, input: { rootId?: string; folderId?: string; cursor?: string }, assertion: string, observer?: ProjectFilesTimingObserver): Promise<ProjectFilesPage> {
+export async function listProjectFiles(db: SupabaseClient, projectId: string, input: { rootId?: string; folderId?: string; cursor?: string }, assertion: string, observer?: ProjectFilesTimingObserver, requestSignal?: AbortSignal): Promise<ProjectFilesPage> {
   const snapshot = await readFileRoots(db, projectId, observer);
   const empty = { roots: snapshot.roots, rootId: null, folderId: null, items: [], cursor: null };
   if (snapshot.state !== 'ready') return { ...empty, state: snapshot.state };
@@ -38,9 +38,9 @@ export async function listProjectFiles(db: SupabaseClient, projectId: string, in
   if (snapshot.binding !== cfg.binding) throw new ProjectFilesError('not_configured');
   const root = input.rootId ? snapshot.roots.find(value => value.id === input.rootId) : snapshot.roots[0];
   if (!root) throw new ProjectFilesError('not_found', 404);
-  const graph = await createGraph(cfg, assertion, AbortSignal.timeout(45000), undefined, observer);
   const folderId = input.folderId ?? root.itemId;
+  const graph = await createGraph(cfg, assertion, requestSignal ? AbortSignal.any([requestSignal, AbortSignal.timeout(45000)]) : AbortSignal.timeout(45000), undefined, observer, { rootId: root.itemId, itemId: folderId });
   const page = await graph.children(root.itemId, folderId, input.cursor);
   return { state: 'ready', roots: snapshot.roots, rootId: root.id, folderId, cursor: page.cursor,
-    items: page.items.map(item => ({ id: item.id, name: item.name, kind: item.folder ? 'folder' : 'file', size: item.size ?? 0, contentType: item.file?.mimeType ?? null, modifiedAt: item.lastModifiedDateTime ?? null, viewable: !!item.file && inlineTypes.has(item.file.mimeType ?? '') && (item.size ?? Infinity) <= 50_000_000 })) };
+    items: page.items.map(item => ({ id: item.id, name: item.name, kind: item.folder ? 'folder' : 'file', size: item.size ?? 0, contentType: item.file?.mimeType ?? null, modifiedAt: item.lastModifiedDateTime ?? null, eTag: item.eTag ?? null, cTag: item.cTag ?? null, viewable: !!item.file && inlineTypes.has(item.file.mimeType ?? '') && (item.size ?? Infinity) <= 50_000_000 })) };
 }

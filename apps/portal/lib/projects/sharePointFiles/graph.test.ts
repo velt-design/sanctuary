@@ -12,6 +12,26 @@ function mock(...responses: (object | Response)[]) {
   return fetcher;
 }
 describe('Jobs Graph boundary', () => {
+  it('reuses only the bearer while freshly validating the library and source, invalidating on source denial', async () => {
+    const assertion = `header.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 7200 })).toString('base64url')}.signature`;
+    let tokens = 0, libraries = 0, deny = false;
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.includes('/oauth2/')) { tokens++; return Response.json({ access_token: 'opaque-provider-token', token_type: 'Bearer', expires_in: 3600 }); }
+      if (url.includes('/drive/root?')) {
+        libraries++; return deny ? new Response(null, { status: 403 }) : Response.json({ id: 'drive-root', name: 'Documents', folder: {}, parentReference: { driveId: 'drive' }, webUrl: cfg.siteUrl + '/Shared%20Documents' });
+      }
+      return Response.json(url.includes('/children') ? { value: [file] } : folder('root'));
+    }) as unknown as typeof fetch;
+    for (let i = 0; i < 2; i++) await (await createGraph(cfg, assertion, AbortSignal.timeout(5000), fetcher)).children('root', 'root');
+    expect(tokens).toBe(1); expect(libraries).toBe(2);
+    expect((fetcher as any).mock.calls.filter(([url]: [string]) => url.includes('/items/root?'))).toHaveLength(2);
+    deny = true;
+    await expect(createGraph(cfg, assertion, AbortSignal.timeout(5000), fetcher)).rejects.toMatchObject({ code: 'access_required' });
+    deny = false;
+    await createGraph(cfg, assertion, AbortSignal.timeout(5000), fetcher);
+    expect(tokens).toBe(2); expect(libraries).toBe(4);
+  });
+
   it('keeps request order, options, results and cursor denial identical with optional observation', async () => {
     const run = async (observed: boolean, cursor?: string) => {
       const fetcher = mock(folder('leaf', 'middle'), folder('middle'), folder('root'), { value: [{ ...file, parentReference: { id: 'leaf', driveId: 'drive' } }] });

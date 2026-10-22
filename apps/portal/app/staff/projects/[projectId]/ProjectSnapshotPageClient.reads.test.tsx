@@ -15,6 +15,7 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
   preloadProjectOverviewModule: state.preload,
   OverviewTab: () => <div data-testid="overview-tab" />,
   CommercialTab: () => <div data-testid="commercial-tab" />,
+  FilesTab: () => <div data-testid="files-tab" />,
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
 }));
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'host', supabaseRuntimeUrl: () => 'https://host.supabase.co' }));
@@ -157,6 +158,23 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     // The existing payment freshness policy remains unchanged.
     expect(count('invoice-schedule')).toBe(1);
     expect(view.container.querySelector('[data-command-fetching="true"]')).not.toBeNull();
+  });
+
+  it('keeps a direct Files entry independent of Overview reads through snapshot failure and Retry', async () => {
+    state.search = 'tab=files';
+    view = renderIntoDocument(element('proj_1', 'files'));
+    await answer('summary');
+    expect(view.container.querySelector('[data-testid="files-tab"]')).not.toBeNull();
+    await answer('snapshot', 500);
+    expect(view.container.querySelector('[data-project-active-tab="files"]')).not.toBeNull();
+    expect(count('command-centre')).toBe(0);
+    expect(count('invoice-schedule')).toBe(0);
+    expect(state.preload).not.toHaveBeenCalled();
+    act(() => [...view!.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!.click());
+    await answer('snapshot');
+    expect(view.container.querySelector('[data-testid="files-tab"]')).not.toBeNull();
+    expect(count('command-centre')).toBe(0);
+    expect(count('invoice-schedule')).toBe(0);
   });
 
   it('resolves unknown Job Packs availability without speculative Overview reads', async () => {

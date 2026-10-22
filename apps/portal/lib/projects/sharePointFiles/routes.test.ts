@@ -79,3 +79,33 @@ it('rejects unknown query fields before Graph and sanitizes provider failures', 
   const response = await open(request(), ctx);
   expect(response.status).toBe(503); expect(await response.text()).not.toContain('secret');
 });
+
+it('forwards request cancellation to list and to the entire open provider path', async () => {
+  const controller = new AbortController();
+  mocks.list.mockResolvedValue({ state: 'unlinked', roots: [], items: [] });
+  const listing = new Request('https://portal.test/api/files', { signal: controller.signal });
+  await list(listing, ctx);
+  expect(mocks.list.mock.calls[0][5]).toBe(listing.signal);
+  await open(new Request(request().url, { signal: controller.signal }), ctx);
+  const signal = mocks.graph.mock.calls[0][4] as AbortSignal;
+  expect(signal.aborted).toBe(false); controller.abort(); expect(signal.aborted).toBe(true);
+});
+it('returns a verified conditional result only after current item MIME and size proof, without content transport', async () => {
+  mocks.download.mockResolvedValue({ item: { name: 'Current name.pdf', size: 123, file: { mimeType: 'application/pdf' }, eTag: '"v1"' }, url: null, notModified: true });
+  const response = await open(request('view', { 'if-none-match': '"v1"' }), ctx);
+  expect(mocks.download).toHaveBeenCalledWith('root', 'file', '"v1"');
+  expect(response.status).toBe(304); expect(response.headers.get('x-project-file-verified-version')).toBe('"v1"');
+  expect(response.headers.get('content-disposition')).toContain('Current%20name.pdf');
+  expect(response.headers.get('cache-control')).toBe('private, no-store'); expect(mocks.fetch).not.toHaveBeenCalled();
+  mocks.download.mockResolvedValue({ item: { name: 'now-large.pdf', size: 50000001, file: { mimeType: 'application/pdf' } }, url: null, notModified: true });
+  expect((await open(request('view', { 'if-none-match': '"v1"' }), ctx)).status).toBe(400);
+  mocks.graph.mockRejectedValue(new ProjectFilesError('access_required'));
+  expect((await open(request('view', { 'if-none-match': '"v1"' }), ctx)).status).toBe(503);
+});
+it.each(['"v1"', '"changed-during-transfer"', 'W/"v1"', null])('binds reusable bytes only to the exact strong current origin version %s', async origin => {
+  mocks.download.mockResolvedValue({ item: { name: 'design.pdf', size: 3, file: { mimeType: 'application/pdf' }, eTag: '"v1"' }, url: 'https://fixture.sharepoint.com/_layouts/15/download.aspx?ephemeral=current', notModified: false });
+  mocks.fetch.mockResolvedValue(new Response('pdf', { headers: { 'content-length': '3', ...(origin ? { ETag: origin } : {}) } }));
+  const response = await open(request('view'), ctx);
+  expect(await response.text()).toBe('pdf');
+  expect(response.headers.get('x-project-file-verified-version')).toBe(origin === '"v1"' ? origin : null);
+});

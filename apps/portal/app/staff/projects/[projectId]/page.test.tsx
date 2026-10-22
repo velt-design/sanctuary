@@ -84,7 +84,7 @@ describe('ProjectDetailPage', () => {
     expect(markup).toContain('data-calculator-workspace="true"');
   });
 
-  it('coerces removed files tabs back to activity', async () => {
+  it('preserves a direct Files workspace entry', async () => {
     const ui = (await ProjectDetailPage({
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ tab: 'files' }),
@@ -92,7 +92,7 @@ describe('ProjectDetailPage', () => {
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('data-project-id="proj_1"');
-    expect(markup).toContain('data-tab="activity"');
+    expect(markup).toContain('data-tab="files"');
   });
 
   it('coerces the retired Emails tab back to activity', async () => {

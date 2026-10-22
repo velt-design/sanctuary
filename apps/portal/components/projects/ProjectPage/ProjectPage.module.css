@@ -45,6 +45,10 @@
   gap: 0;
 }
 
+.pageFrame:has([data-project-files-workspace]) {
+  overflow-anchor: none;
+}
+
 .pageFrameMastheadSlot {
   min-width: 0;
 }
