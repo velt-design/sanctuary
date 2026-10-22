@@ -23,7 +23,7 @@ export default function CostEstimator() {
   const width = saved?.input.widthMm ?? selection.widthMm;
   const projection = saved?.input.projectionMm ?? selection.projectionMm;
 
-  return <section id="explore-options" className={styles.section} aria-label="Pergola cost estimator">
+  return <section data-configurator-return-ready={Boolean(state.ready && (design || state.failed))} id="explore-options" className={styles.section} aria-label="Pergola cost estimator">
     {state.recovery && <p role="status">{state.recovery}</p>}
     <div className={styles.calculator} data-cost-calculator>
       <div className={styles.result}>

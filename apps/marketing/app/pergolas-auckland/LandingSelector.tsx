@@ -14,7 +14,7 @@ export default function LandingSelector() {
   const state = useLandingSelection();
   const { type, selection, design, update, resume } = state;
   const selected = PRODUCT_DESIGNS[type];
-  return <section id="explore-options" className={styles.section} aria-labelledby="landing-options-title" data-service-major-section="selector">
+  return <section data-configurator-return-ready={Boolean(state.ready && (design || state.failed))} id="explore-options" className={styles.section} aria-labelledby="landing-options-title" data-service-major-section="selector">
     <Container width="wide">
       <header className={styles.heading}><div><Eyebrow>Start with your space</Eyebrow><Heading id="landing-options-title">Find your roofline.</Heading></div><p>Three ways to cover your outdoors.<br />Choose a starting point, then make it yours.</p></header>
       {state.recovery && <p role="status">{state.recovery}</p>}

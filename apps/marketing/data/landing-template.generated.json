@@ -1,5 +1,5 @@
 {
-  "hash": "db4d953881aba71bee6fbc7014d1dbf6fda316c35a38deeaa4ec259e7f7186e8",
+  "hash": "048aa7d70ba702d243159be21b87c3f44e4ac9239c0e64c39956cf090cdb8e8a",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -7,7 +7,7 @@
     ],
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css",
-      "58f8062362df94c1039390ac284eee7568580ab30afc031924ec7339c9f7c0ab"
+      "6fee38e6338a86808373940401bbbd9f379d01e491d3a3e52f3e9555de41af22"
     ],
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/AcrylicPergolaPage.tsx",
@@ -207,7 +207,7 @@
     ],
     [
       "apps/marketing/components/configurator-prototype/configuratorReturn.ts",
-      "f88a5d84e77c3f5c78013eed707625d76732c1b40875bccb7bc89e8edb7c8d71"
+      "cae451c9e0998e7dc30e5e8c9617d0522689f9194ef0cc1abdf5dafb7b835c1d"
     ],
     [
       "apps/marketing/components/configurator-prototype/ContextBoxMesh.tsx",
