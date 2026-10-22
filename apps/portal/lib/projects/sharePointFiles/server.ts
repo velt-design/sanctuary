@@ -41,5 +41,5 @@ export async function listProjectFiles(db: SupabaseClient, projectId: string, in
   const folderId = input.folderId ?? root.itemId;
   const page = await graph.children(root.itemId, folderId, input.cursor);
   return { state: 'ready', roots: snapshot.roots, rootId: root.id, folderId, cursor: page.cursor,
-    items: page.items.map(item => ({ id: item.id, name: item.name, kind: item.folder ? 'folder' : 'file', size: item.size ?? 0, modifiedAt: item.lastModifiedDateTime ?? null, viewable: !!item.file && inlineTypes.has(item.file.mimeType ?? '') && (item.size ?? Infinity) <= 50_000_000 })) };
+    items: page.items.map(item => ({ id: item.id, name: item.name, kind: item.folder ? 'folder' : 'file', size: item.size ?? 0, contentType: item.file?.mimeType ?? null, modifiedAt: item.lastModifiedDateTime ?? null, viewable: !!item.file && inlineTypes.has(item.file.mimeType ?? '') && (item.size ?? Infinity) <= 50_000_000 })) };
 }
