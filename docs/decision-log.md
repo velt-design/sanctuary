@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-10-22: Preserve paid proposal lineage across a changed landing template
+
+Forward130001 supports one private completion receipt for a never-published
+candidate whose browser diagnostic partially completed before a provider timeout.
+The existing locked control/rollback/prepare operations close the old candidate
+and prepare one derivative on the current template atomically. Original author,
+evidence, copy and hypothesis remain exact; the candidate hash changes honestly
+with the template. The old row, partial probe and model accounting remain intact.
+The matching Velt proof supplies fresh geometry and independent review, one
+additional render and a fixed completion window. No public route, Origin policy,
+customer attribution or ordinary retry rule changes. The private receipt is an
+operator-installed exception, not an automatic admission or a production result.
+
 ## 2026-10-22: Keep sticky state out of measured layout
 
 The inline mobile estimate observer watched a section whose height it changed
