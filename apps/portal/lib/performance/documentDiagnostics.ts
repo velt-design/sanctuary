@@ -2,13 +2,18 @@ import 'server-only';
 
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { PortalAccessTimingObserver } from '@/lib/portalAccess';
+import { prepareRegionalDocumentAccess } from '@/lib/regionalDocumentAccess';
 
 export const DOCUMENT_CARRIER_HEADER = 'x-portal-document-carrier';
 export const DOCUMENT_ID_HEADER = 'x-portal-document-id';
 const WINDOW_MS = 30 * 60 * 1_000;
-const routes = ['/staff/projects', '/staff/projects/[projectId]', '/staff/site-visits'] as const;
+const routes = ['/staff/projects', '/staff/projects/[projectId]', '/staff/site-visits', '/staff/marketing-performance'] as const;
 type DocumentRoute = (typeof routes)[number];
-const phases = ['proxy.identity', 'proxy.role', 'proxy.complete', 'rsc.identity', 'rsc.role', 'rsc.access', 'theme.settings', 'theme.preset', 'theme.fallback', 'theme.total', 'layout.complete'] as const;
+const phases = [
+  'proxy.identity', 'proxy.role', 'proxy.complete', 'rsc.identity', 'rsc.role', 'rsc.access',
+  'theme.settings', 'theme.preset', 'theme.fallback', 'theme.total', 'layout.complete',
+  'navigation.finance', 'marketing.hub', 'marketing.commercial', 'marketing.designer',
+] as const;
 type Phase = (typeof phases)[number];
 export type DocumentOutcome = 'complete' | 'error' | 'empty' | 'skipped' | 'missing_relation' | 'authenticated' | 'unauthenticated' | 'no_access' | 'lookup_failed' | 'redirect';
 const outcomes: DocumentOutcome[] = ['complete', 'error', 'empty', 'skipped', 'missing_relation', 'authenticated', 'unauthenticated', 'no_access', 'lookup_failed', 'redirect'];
@@ -30,8 +35,12 @@ function config(): Config | null {
 export function documentDiagnosticsEnabled(): boolean { return config() !== null; }
 
 function documentRoute(pathname: string): DocumentRoute | null {
-  if (pathname === '/staff/projects' || pathname === '/staff/site-visits') return pathname;
+  if (pathname === '/staff/projects' || pathname === '/staff/site-visits' || pathname === '/staff/marketing-performance') return pathname;
   return /^\/staff\/projects\/(?:proj_)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname) ? '/staff/projects/[projectId]' : null;
+}
+
+function routeEnabled(route: DocumentRoute): boolean {
+  return route !== '/staff/marketing-performance' || process.env.MARKETING_PERFORMANCE_PREVIEW !== 'production-snapshot';
 }
 
 function isDocument(headers: Headers, method: string): boolean {
@@ -66,6 +75,7 @@ export class DocumentDiagnostics {
   private readonly emitted = new Set<Phase>();
   constructor(private readonly carrier: Carrier) {}
   get id() { return this.carrier.id; }
+  get routeTemplate() { return this.carrier.route; }
   record(phase: Phase, startedAt: number, outcome: DocumentOutcome): void {
     const duration = performance.now() - startedAt;
     if (Date.now() >= this.carrier.until || !config() || this.emitted.has(phase) || !phases.includes(phase) || !outcomes.includes(outcome) || !Number.isFinite(duration) || duration < 0 || duration > WINDOW_MS) return;
@@ -96,8 +106,11 @@ export function prepareProxyDocumentDiagnostics(request: Request): { requestHead
   const headers = new Headers(request.headers);
   const hadCarrier = headers.has(DOCUMENT_CARRIER_HEADER) || headers.has(DOCUMENT_ID_HEADER);
   headers.delete(DOCUMENT_CARRIER_HEADER); headers.delete(DOCUMENT_ID_HEADER);
-  const value = config(), route = documentRoute(new URL(request.url).pathname);
-  if (!value || !route || !isDocument(headers, request.method)) return { requestHeaders: hadCarrier ? headers : undefined, diagnostics: null };
+  const url = new URL(request.url), value = config(), route = documentRoute(url.pathname);
+  if (!value || !route || !routeEnabled(route) || !isDocument(headers, request.method)
+    || (route === '/staff/marketing-performance' && (!prepareRegionalDocumentAccess(request).eligible
+      || headers.has('next-router-state-tree') || headers.has('x-nextjs-data') || url.searchParams.has('_rsc'))))
+    return { requestHeaders: hadCarrier ? headers : undefined, diagnostics: null };
   try {
     const carrier: Carrier = { id: randomUUID(), route, issued: Date.now(), until: value.until };
     headers.set(DOCUMENT_CARRIER_HEADER, encode(carrier, value));
@@ -109,5 +122,5 @@ export function readDocumentDiagnostics(headers: Headers): DocumentDiagnostics |
   const value = config();
   if (!value || !isDocument(headers, 'GET')) return null;
   const carrier = decode(headers.get(DOCUMENT_CARRIER_HEADER), value);
-  return carrier ? new DocumentDiagnostics(carrier) : null;
+  return carrier && routeEnabled(carrier.route) ? new DocumentDiagnostics(carrier) : null;
 }

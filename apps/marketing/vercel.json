@@ -5,6 +5,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/ga4-pretoken-recovery-20261022": false,
+      "codex/marketing-overview-diagnostics-20261022": false,
       "codex/sharepoint-project-files-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
       "codex/designer-history-support-20261022": false,

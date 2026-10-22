@@ -10,6 +10,34 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-21T00:
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('bounded document diagnostics', () => {
+  it('selects only the exact Marketing document and keeps the unchanged private event shape',()=>{
+    const log=vi.spyOn(console,'info').mockImplementation(()=>undefined);
+    const prepared=prepareProxyDocumentDiagnostics(request('/staff/marketing-performance'));
+    const scope=readDocumentDiagnostics(prepared.requestHeaders!)!;
+    scope.record('marketing.hub',performance.now(),'complete');
+    expect(scope.routeTemplate).toBe('/staff/marketing-performance');
+    expect(log.mock.calls[0][1]).toMatchObject({routeTemplate:'/staff/marketing-performance',requestId:prepared.diagnostics!.id});
+    expect(Object.keys(log.mock.calls[0][1] as object).sort()).toEqual(['build','durationMs','event','outcome','phase','region','requestId','routeTemplate']);
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/customer|existing-session|nonce|carrier|secret/);
+    enable(30*60_000+1);expect(prepareProxyDocumentDiagnostics(request('/staff/marketing-performance')).diagnostics).toBeNull();
+  });
+  it.each([
+    ['/staff/marketing-performance/child',{}],['/api/staff/v1/marketing-performance/hub',{}],
+    ['/staff/marketing-performance',{rsc:'1'}],['/staff/marketing-performance',{'next-router-prefetch':'1'}],
+    ['/staff/marketing-performance',{'next-router-segment-prefetch':'1'}],['/staff/marketing-performance',{purpose:'prefetch'}],
+    ['/staff/marketing-performance',{'next-router-state-tree':'private'}],['/staff/marketing-performance',{'x-nextjs-data':'1'}],
+    ['/staff/marketing-performance',{'next-action':'private'}],['/staff/marketing-performance?_rsc=private',{}],
+  ] as const)('excludes alternate Marketing entry %s %s',(path,headers)=>{
+    expect(prepareProxyDocumentDiagnostics(request(path,headers)).diagnostics).toBeNull();
+  });
+  it('excludes POST and snapshot Marketing entries, including an already-created scope carrier',()=>{
+    const original=request('/staff/marketing-performance');
+    expect(prepareProxyDocumentDiagnostics(new Request(original,{method:'POST'})).diagnostics).toBeNull();
+    const prepared=prepareProxyDocumentDiagnostics(original);
+    vi.stubEnv('MARKETING_PERFORMANCE_PREVIEW','production-snapshot');
+    expect(prepareProxyDocumentDiagnostics(original).diagnostics).toBeNull();
+    expect(readDocumentDiagnostics(prepared.requestHeaders!)).toBeNull();
+  });
   it.each([undefined, '', '{}', 'false', JSON.stringify({ until:'2099-01-01T00:00:00Z',nonce }), JSON.stringify({ until:'2026-10-20T23:59:00Z',nonce })])('fails closed for absent/invalid/expired configuration %s', value => {
     vi.stubEnv('PORTAL_DOCUMENT_DIAGNOSTICS', value);
     const log=vi.spyOn(console,'info');

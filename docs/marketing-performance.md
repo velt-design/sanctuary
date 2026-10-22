@@ -1,5 +1,24 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Bounded hosted Overview attribution (22 October 2026)
+
+`documentDiagnostics.ts` adds the exact Marketing document to the existing signed,
+default-disabled, at-most-thirty-minute diagnostic window. The root layout times
+only Marketing's existing advisory finance-navigation call, including its safe
+failure fallback. The Marketing page times the three complete Overview seed
+chains, including client setup, guarded RPC and report validation. All three
+start together and the page still returns without awaiting them. API, Financial,
+other-view and snapshot read behavior is unchanged. Alternate RSC/data/prefetch
+entries do not create Marketing diagnostic scopes.
+
+The fixed phases contain no report dates, filters, identity, record data or errors.
+The existing auth/role/theme/layout spans and opaque request UUID can be joined
+with private platform invocation records. Missing phases remain missing, not zero;
+nested and concurrent durations are not a summed critical path. This prepares
+hosted attribution, not a latency fix or proof of the cause. Module work before
+the measured functions and later delivery/serialization can remain unattributed.
+The window/privacy owner is [security-privacy-quality.md](security-privacy-quality.md).
+
 ## Targeted P&L and Overview latency follow-up (22 October 2026)
 
 Initial full-document Overview reads now start Commercial and Designer alongside
