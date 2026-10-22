@@ -1,6 +1,9 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/accepted-date-reconciliation-20261022": false,
+      "codex/marketing-overview-diagnostics-20261022": false,
+      "codex/sharepoint-project-files-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
       "codex/designer-history-support-20261022": false,
       "codex/meta-video-donor-20261022": false,
@@ -60,6 +63,10 @@
     }
   },
   "crons": [
+    {
+      "path": "/api/integrations/sharepoint-project-folders",
+      "schedule": "* * * * *"
+    },
     {
       "path": "/api/integrations/outlook-calendar",
       "schedule": "*/15 * * * *"

@@ -1183,3 +1183,7 @@ Payment breakdown. Project details follow work, correspondence and commercial
 information while retaining mounted editor state across layout changes. No booked
 visit/install date is inferred from a work-item deadline; that bounded projection
 remains unavailable in this Overview read model.
+
+## SharePoint Files integration (22 October 2026)
+
+ProjectWorkFilesCard retains its Work, Files and Original enquiry navigation. Files now includes the project-bound SharePoint browser before website enquiry attachments. Reads start only when Files is selected; fixture data disables the live SharePoint query. The new panel owns folder/root/page navigation and recovery without changing the Command Centre model or business actions. See [Project SharePoint files](project-sharepoint-files.md) for source boundaries, local acceptance and later activation.

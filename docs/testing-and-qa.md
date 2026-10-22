@@ -441,6 +441,15 @@ installation, grants/RLS, invalid input, aggregate windows and exact retention
 cutoff. Its cron scheduler is explicitly a stub; actual extension/job state needs
 a separately bound catalogue read and installed-environment verification.
 
+For Marketing's diagnostic extension also run `app/layout.diagnostics.test.tsx`
+and `app/staff/marketing-performance/page.test.tsx`. These cover a delayed advisory
+finance call, unchanged null/error fallback, other-route phase preservation,
+parallel deferred client/read chains, safe failed-union classification, expiry
+and logger failure isolation. The document/proxy tests cover exact Marketing
+selection, snapshot and RSC/data/prefetch exclusions, signed carrier forwarding,
+cookie preservation and absent proxy identity/role phases. No database metric
+schema or retention behavior changes with this console-only extension.
+
 Use one optimized candidate build for a small disabled/enabled/expired read-only
 check. Correlate the browser's opaque response UUID with fixed server events;
 inspect that internal signed headers/configuration never reach final responses or
@@ -2382,3 +2391,9 @@ post-Stop reconciliation, 24 normal plus three reserved terminal admissions,
 scoped-stop versus credential/global-Stop denial, exact never-dispatched proof,
 stale-fence denial and concurrent dispatch/no-effect exclusion. Disposable synthetic SQL is not a live
 schema/provider test. No Graph dispatcher or credential loader exists.
+
+## Project SharePoint file checks
+
+Run node scripts/test-project-sharepoint-files-pglite.mjs for the disposable real-migration contract and vitest run apps/portal/lib/projects/sharePointFiles plus the ProjectSharePointFilesPanel component test for source boundaries and ordinary file tasks. Fixtures do not establish live Graph coverage or real-provider browser/download acceptance. Activation checks are in [Project SharePoint files](project-sharepoint-files.md).
+
+The isolated browser harness now clicks the real component's View/Download actions through the real open handler with synthetic auth/Graph boundaries. It verifies a PNG renders, an action failure can be retried, and a synthetic original arrives with its expected filename/bytes/hash. PDF bytes and MIME are checked separately; native PDF viewing and actual SharePoint/Rhino acceptance remain outstanding. Database regression coverage includes linked, queued, running and completed project deletion, audit retention and stale completion rejection.

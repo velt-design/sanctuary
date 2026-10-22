@@ -13,7 +13,7 @@ import { getPortalAccessState, requireRegionalDocumentAccess } from '@/lib/auth'
 import { initialPortalAuthStateFromAccess } from '@/lib/portalAccess';
 import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
 import PortalVitalsReporter from '@/components/performance/PortalVitalsReporter';
-import { getPaymentPilotSession } from '@/lib/xero/pilotAccess';
+import { getPaymentPilotSession, paymentPilotEnabled } from '@/lib/xero/pilotAccess';
 import SupabaseEnvHydrator from '@/components/diagnostics/SupabaseEnvHydrator';
 import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
 
@@ -40,7 +40,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // can enter the root shell. Descendant layout redirects can run in parallel.
     await requireRegionalDocumentAccess();
     // Navigation is advisory; finance routes and commands recheck the current grant.
-    const financeSession = await getPaymentPilotSession().catch(() => null);
+    const financeSession = await (diagnostics?.routeTemplate === '/staff/marketing-performance'
+      ? diagnostics.measure('navigation.finance', () => getPaymentPilotSession(), result =>
+        result ? 'complete' : paymentPilotEnabled() ? 'empty' : 'skipped')
+      : getPaymentPilotSession()).catch(() => null);
     let cssVars: CSSProperties = {} as CSSProperties;
     const accessState = await getPortalAccessState();
 

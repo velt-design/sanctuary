@@ -135,6 +135,12 @@ jobs:
       - name: Schedule guarded database command contracts
         run: npm run test:schedule:db:fast
 
+      - name: SharePoint project-file database contracts
+        run: node scripts/test-project-sharepoint-files-pglite.mjs
+
+      - name: SharePoint Files isolated browser journey
+        run: node scripts/test-project-sharepoint-files-browser.mjs
+
       - name: Geometry Vitest suite
         run: npm run test:geometry
 
