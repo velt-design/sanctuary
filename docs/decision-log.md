@@ -8,6 +8,9 @@ without granting neighboring modules access. A clean worktree check does not
 cover committed PR changes: set both architecture base/head and worktree
 base/head references to the actual PR comparison before reporting guard coverage.
 The transfer's nonce, source, install-intent and SQL authority checks are unchanged.
+The separate Portal boundary suite also inventories every service-role user with
+an exact allowlist. Register the same reviewed path there and run that suite
+alongside the strict changed-file guard; neither check substitutes for the other.
 
 ## 2026-10-22: Compose project filters from the current URL
 
