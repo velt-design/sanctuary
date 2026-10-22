@@ -1,0 +1,10 @@
+.workspace {
+  width: 100%;
+  min-width: 0;
+  height: var(--project-files-height, calc(100dvh - 220px));
+  min-height: 280px;
+}
+
+@media (max-width: 550px) {
+  .workspace { min-height: 360px; }
+}

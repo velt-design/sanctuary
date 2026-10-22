@@ -10,6 +10,7 @@ import { ProjectEmailReadingProvider } from './tabs/overview/ProjectEmailReading
 import {
   CommercialTab,
   OverviewTab,
+  FilesTab,
   JobPacksTab,
 } from './projectTabModules';
 
@@ -64,6 +65,7 @@ export default function ProjectMainTabs({
             onAccessEnding={onProjectAccessEnding}
           />
         ) : null}
+        {activeTab === 'files' ? <FilesTab projectId={snapshot.project.id} host={host} /> : null}
         {activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices' ? (
           <CommercialTab
             host={host}

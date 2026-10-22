@@ -15,12 +15,12 @@ const states = {
   pending: ['Project folder is being prepared', 'Refresh shortly to see the new project folders.'],
   needs_attention: ['Project folder needs attention', 'Folder setup has not finished. Existing files remain safe.'],
 } as const;
-export default function ProjectSharePointFilesPanel(props: { projectId: string; host: string; disabled?: boolean; websiteFiles?: ReactNode }) {
+export default function ProjectSharePointFilesPanel(props: { projectId: string; host: string; disabled?: boolean; websiteFiles?: ReactNode; workspace?: boolean }) {
   const auth = useContext(PortalAuthContext);
   // Production uses the existing authenticated-owner QueryClient boundary. Isolated fixtures may omit the context; HTTP authorization is never bypassed.
   return <Explorer key={`${props.host}:${auth?.user?.id ?? 'fixture'}:${props.projectId}`} {...props} ownerId={auth?.user?.id ?? null} allowed={!auth || (auth.status === 'authenticated' && (auth.role === 'staff' || auth.role === 'admin'))} />;
 }
-function Explorer({ projectId, host, disabled = false, websiteFiles, ownerId, allowed }: { projectId: string; host: string; disabled?: boolean; websiteFiles?: ReactNode; ownerId: string | null; allowed: boolean }) {
+function Explorer({ projectId, host, disabled = false, websiteFiles, ownerId, allowed, workspace = false }: { projectId: string; host: string; disabled?: boolean; websiteFiles?: ReactNode; ownerId: string | null; allowed: boolean; workspace?: boolean }) {
   const model = useProjectFilesExplorer(projectId, host, ownerId, !disabled && allowed);
   const { navigation: nav, query, roots, first, rootPage, allItems, rootFolders, scope } = model;
   const [expanded, setExpanded] = useState(false);
@@ -65,7 +65,7 @@ function Explorer({ projectId, host, disabled = false, websiteFiles, ownerId, al
   const readError = query.error instanceof Error ? query.error.message : 'Try again. Your folder position is kept.';
   const unavailable = denied || query.isError || first?.state !== 'ready';
   const visibleRoots = denied ? [] : rootPage?.roots ?? [];
-  return <section ref={panelRef} className={styles.panel} aria-label="SharePoint project files">
+  return <section ref={panelRef} className={`${styles.panel} ${workspace ? styles.workspace : ''}`} aria-label="SharePoint project files">
     <header className={styles.header}><div><h3>Files</h3><p className={styles.metadata}>{nav.source === 'website' ? 'Website enquiry attachments' : 'SharePoint'}{query.isFetching ? ' · Updating…' : query.dataUpdatedAt ? ` · Checked ${new Date(query.dataUpdatedAt).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}` : ''}</p></div><div className={styles.headerControls}>
       <Select aria-label="Project folder" value={nav.source === 'website' ? 'website' : nav.rootId ?? rootPage?.rootId ?? ''} onChange={event => { if (event.target.value === 'website') { setExpanded(false); model.update(value => ({ ...value, source: 'website' })); } else navigate([], event.target.value); }}>
         {!visibleRoots.length && <option value={nav.rootId ?? ''}>Project folder</option>}{visibleRoots.map(root => <option key={root.id} value={root.id}>{root.label}</option>)}{websiteFiles && <option value="website">Website enquiry files</option>}

@@ -50,13 +50,13 @@ describe('ProjectTabNavigation', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows the three navigation owners with conditional Job Packs', () => {
+  it('shows the four navigation owners with conditional Job Packs', () => {
     const rendered = renderIntoDocument(
       <ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1" />,
     );
     const labels = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent?.trim());
 
-    expect(labels).toEqual(['Overview', 'Commercial', 'Job Packs']);
+    expect(labels).toEqual(['Overview', 'Files', 'Commercial', 'Job Packs']);
     expect(rendered.container.querySelector('[aria-selected="true"]')?.textContent).toContain('Overview');
     rendered.unmount();
   });

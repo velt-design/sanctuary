@@ -76,7 +76,7 @@ describe("ProjectOverviewLayout", () => {
     rendered.unmount();
   });
 
-  it("exposes selected Files to the parent without remounting neighboring editors", () => {
+  it("keeps Overview topology stable when opening the dedicated Files workspace", () => {
     const rendered = renderIntoDocument(
       <ProjectOverviewLayout
         orientation={<input aria-label="Contact draft" defaultValue="Saved contact" />}
@@ -89,13 +89,9 @@ describe("ProjectOverviewLayout", () => {
     contact.value = "Unsaved contact edit";
     commercial.value = "Unsaved estimate edit";
     const card = rendered.container.querySelector('[data-project-work-panel]')!;
-    const workTab = card.querySelector<HTMLButtonElement>('[role="tab"][aria-controls="project-work-panel"]')!;
-    const filesTab = card.querySelector<HTMLButtonElement>('[role="tab"][aria-controls="project-files-panel"]')!;
-    act(() => filesTab.click());
-    expect(card.getAttribute("data-project-work-panel")).toBe("files");
-    expect(rendered.container.querySelector('[data-project-overview-region="project-work"] [data-project-work-panel="files"]')).toBe(card);
-    expect(card.textContent).toContain("Selected file preview");
-    act(() => workTab.click());
+    expect(card.querySelector('[role="tab"][aria-controls="project-files-panel"]')).toBeNull();
+    const filesShortcut = card.querySelector<HTMLAnchorElement>('a[href="?tab=files"]')!;
+    act(() => filesShortcut.click());
     expect(card.getAttribute("data-project-work-panel")).toBe("work");
     expect(card.textContent).toContain("Work actions");
     expect(rendered.container.querySelector('[aria-label="Contact draft"]')).toBe(contact);

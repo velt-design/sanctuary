@@ -66,12 +66,12 @@ desktop columns group work with commercial facts, and contact details with
 correspondence. They stack in that same reading and keyboard order on narrow
 screens. Independent column height prevents long correspondence from creating
 blank space between work and price, and keeps ordinary desktop customer messages
-within the first screen. Editors remain mounted through resizing. Selected Files spans the full project
-row on wide compositions so its folder rail, list and adjacent preview fit;
-commercial and contact/correspondence continue in their existing columns below.
-Returning to Work restores the independent-column layout without remounting
-neighboring editors. See `project-sharepoint-files.md` for the responsive Files
-contract and actual-parent verification. It does not invent tasks, completion or
+within the first screen. Editors remain mounted through resizing. Files now owns
+its own main project tab and available-screen workspace below the same masthead.
+Overview retains Work and Original enquiry plus an Open project files shortcut;
+opening files no longer rearranges its columns or places commercial cards beneath
+the file browser. See `project-sharepoint-files.md` for the responsive Files
+contract and route/frame verification. It does not invent tasks, completion or
 a new ranking. Empty site visits use a compact
 disclosure; source errors and stale-source
 notices remain visible. Needs review shows the specific unanswered questions before

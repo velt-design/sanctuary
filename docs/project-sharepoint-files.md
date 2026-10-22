@@ -4,7 +4,7 @@ Status: Explorer UI candidate implemented locally on 22 October 2026. This incre
 
 ## Outcome and ownership
 
-The owner's request is to link SharePoint files to their Portal projects and automatically prepare project folders for new enquiries, while leaving staff changeover for later. The existing Project Work **Files** tab now includes verified SharePoint roots and preserves website enquiry attachments. Multiple roots can belong to one project. Runtime/import requires an explicit project UUID and verified SharePoint item identity; there is no runtime name-based auto-matching. Private preparation records the evidence used for each proposed identity, which may include a unique exact full-name match in its dated context rather than an independently confirmed street address.
+The owner's request is to link SharePoint files to their Portal projects and automatically prepare project folders for new enquiries, while leaving staff changeover for later. The main project **Files** tab includes verified SharePoint roots and preserves website enquiry attachments. Multiple roots can belong to one project. Runtime/import requires an explicit project UUID and verified SharePoint item identity; there is no runtime name-based auto-matching. Private preparation records the evidence used for each proposed identity, which may include a unique exact full-name match in its dated context rather than an independently confirmed street address.
 
 SharePoint remains the file authority. Portal stores explicit drive/item/project bindings and provisioning state, not copies or public links. Staff can navigate folders, page through results, open PDF and raster image previews, and download originals including Rhino. Files beyond the 50 MB inline preview limit remain downloadable. SVG and HTML are download-only. This does not merge the historical unassigned files, copy website attachments into SharePoint, or move current folders when a project changes stage.
 
@@ -12,7 +12,8 @@ Implementation map:
 
 | Surface | Owner |
 | --- | --- |
-| Staff project Files UI | `ProjectSharePointFilesPanel`, inside existing `ProjectWorkFilesCard` |
+| Main Files route and available-screen layout | `projectTabs`, `ProjectMainTabs`, `tabs/FilesTab` |
+| Staff project Files UI | Existing `ProjectSharePointFilesPanel`, in workspace mode |
 | Folder reads, finding and continuity | `useProjectFilesExplorer`, `useProjectFilesListPosition`, `projectFilesNavigation`, domain `client.ts` |
 | Selected PDF/raster content | `ProjectFilePreview`, lazy existing `QuotePdfInlinePreview` canvas renderer |
 | Authenticated reads and file access | `apps/portal/app/api/staff/v1/projects/[projectId]/files` and `lib/projects/sharePointFiles/server.ts` |
@@ -24,6 +25,12 @@ Implementation map:
 ## Explorer interaction and finding
 
 Jordan selected folders, list and preview together after the local exploration.
+On 22 October he approved Files as its own main project tab. The dedicated
+`?tab=files` view fills the available width and remaining viewport height below
+the project masthead. Overview retains Work and Original enquiry plus a Files
+shortcut; it never expands its columns to host the browser. List and selected
+preview scroll within the workspace, including after snapshot notices change
+height. Narrow layouts retain the existing expanded preview dialog.
 The project Files tab now has a persistent folder rail, compact file list and
 adjacent selected-file actions/preview. Narrow containers retain the list and use
 the existing Foundation dialog. The source chooser retains multiple verified
@@ -52,7 +59,8 @@ Denied or failed reads hide cached file actions and offer truthful recovery.
 
 User/host/project-scoped session navigation stores only bounded root/trail IDs
 and names, selected ID, current finding text, loaded-page counts and scroll
-positions. Work/Files choice is scoped the same way. No document bytes, signed
+positions. The main Files/Overview choice is URL-owned; Overview stores only its
+Work/Original enquiry choice. Earlier saved nested Files choices resolve to Work. No document bytes, signed
 URLs, tokens or provider cursors enter durable storage. Reload reads fresh source
 metadata and restores up to ten saved pages automatically; deeper positions need
 continuation. Same-URL history entries preserve existing Next state and support
@@ -79,15 +87,17 @@ worker transfer. Download remains an authenticated native link to the original
 redirect route, including large Rhino. There is no large-original fetch/buffer
 or simulated completion message in the production UI.
 
-The actual Overview parent gives selected Files the full project row on wide
-compositions. Commercial facts and contact/correspondence retain their two
-columns below; Work restores the existing independent-column arrangement.
-This is a scoped CSS composition using the Work card's selected-panel marker,
-without moving or remounting neighboring editors. At narrower project widths,
-the existing list/modal layout remains in use. Responsive evidence must mount
-`ProjectOverviewLayout`, not only a full-width isolated Work card: the ordinary
-Overview column is narrower than the Explorer inspector breakpoint even on a
-wide desktop viewport.
+Files is a dedicated main project view beneath the shared masthead. It fills
+the available project width and remaining viewport height, while commercial,
+contact and correspondence cards remain in Overview. The old selected-panel
+CSS that expanded the Overview row is removed. Narrower widths retain the
+existing list/modal layout. Responsive evidence must include the actual
+`ProjectPageFrame`, main-tab routing and outer `PageLayout`/Portal shell sizing,
+including entry from a scrolled Overview, history return and reload. The local
+fixture mounts those component owners and production sizing CSS with synthetic
+file/source boundaries and surrounding context; it does not establish live
+Microsoft delivery or performance. Earlier Overview-row receipts describe the
+superseded embedded arrangement, not acceptance of this main-tab layout.
 
 ## Access and delivery contract
 

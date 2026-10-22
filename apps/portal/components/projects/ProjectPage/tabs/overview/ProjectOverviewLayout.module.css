@@ -21,24 +21,6 @@
 .commercial { display: grid; gap: var(--ui-grid-gutter); }
 .recent { display: grid; gap: var(--ui-grid-gutter); }
 .admin { grid-area: admin; }
-/* Files needs the whole project row for rail, list and selected preview.
-   Keep owners in place; Work restores the independent columns unchanged. */
-.layout[data-overview-composition="wide"]:has(.projectWork [data-project-work-panel="files"]) {
-  grid-template-areas: "exception exception" "files files" "primary context" "admin admin";
-}
-.layout[data-overview-composition="wide"]:not([data-has-exception]):has(.projectWork [data-project-work-panel="files"]) {
-  grid-template-areas: "files files" "primary context" "admin admin";
-}
-.layout[data-overview-composition="wide"]:has(.projectWork [data-project-work-panel="files"]) > .primary {
-  display: contents;
-}
-.layout[data-overview-composition="wide"]:has(.projectWork [data-project-work-panel="files"]) .projectWork {
-  grid-area: files;
-}
-.layout[data-overview-composition="wide"]:has(.projectWork [data-project-work-panel="files"]) .commercial {
-  grid-area: primary;
-}
-
 .layout[data-overview-composition="stacked"],
 .layout[data-overview-composition="mobile"] {
   grid-template-areas: "exception" "primary" "context" "admin";

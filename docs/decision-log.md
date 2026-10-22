@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-22: Give Files a route-owned workspace
+
+Embedding Files in Overview changed the parent column topology and pushed
+commercial/contact content downward. Jordan approved a main Files tab filling
+the available screen below the stable project header. The route registry and
+lazy FilesTab now own entry/layout; existing explorer controllers, protected
+reads and return state remain unchanged. Verify the real frame and outer layout
+constraints, including entry from a scrolled Overview and direct reload, rather
+than accepting an isolated file-card fixture as integration evidence.
+
 ## 2026-10-22: Preserve query cancellation policy through initial-read adapters
 
 Reading TanStack Query's context signal marks the query as cancellable even when

@@ -10,3 +10,5 @@
   min-width: 0;
   flex-wrap: wrap;
 }
+
+.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--ui-space-2); }

@@ -3,7 +3,10 @@
 ## Project Files Explorer (22 October 2026 candidate)
 
 The selected Files direction keeps folders, compact list and selected preview
-together inside the existing Project Work card. Foundation buttons, input,
+together in a dedicated main project Files tab, alongside Overview, Commercial
+and conditional Job Packs. The browser fills the available width and remaining
+height below the stable project masthead; Overview cards stay in Overview.
+Foundation buttons, input,
 select, table and modal retain the Portal cream/ink/orange and square controls.
 Folder rail items use quiet line icons and a selected tint/edge rather than
 repeated outlined cards. At narrow container widths the list remains useful and

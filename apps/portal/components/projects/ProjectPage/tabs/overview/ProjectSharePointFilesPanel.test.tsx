@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, createContext } from 'react';
+import { act, createContext, useState } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../../test/reactHarness';
 import ProjectSharePointFilesPanel from './ProjectSharePointFilesPanel';
-import ProjectWorkFilesCard from './ProjectWorkFilesCard';
+import FilesTab from '../FilesTab';
 import { PortalAuthContext } from '@/components/auth/PortalAuthProvider';
 import { emptyFilesNavigation, filesNavigationKey, readFilesNavigation, writeFilesNavigation } from './projectFilesNavigation';
 vi.mock('next/link', () => ({ default: ({ children, href, prefetch: _prefetch, ...props }: any) => <a href={href} {...props}>{children}</a> }));
@@ -34,7 +34,8 @@ beforeEach(() => {
 afterEach(() => { mounted?.unmount(); mounted = undefined; client.clear(); vi.useRealTimers(); vi.unstubAllGlobals(); if (width) Object.defineProperty(HTMLElement.prototype, 'clientWidth', width); for (const [key, descriptor] of Object.entries(originalGeometry)) if (descriptor) Object.defineProperty(HTMLElement.prototype, key, descriptor); });
 async function flush() { await act(async () => { await vi.advanceTimersByTimeAsync(20); }); }
 const wrap = (ui: React.ReactNode) => <QueryClientProvider client={client}>{ui}</QueryClientProvider>;
-async function render(wrapper = false) { mounted = renderIntoDocument(wrap(wrapper ? <ProjectWorkFilesCard projectId="proj_fixture" host="fixture"><p>Work context</p></ProjectWorkFilesCard> : <ProjectSharePointFilesPanel projectId="proj_fixture" host="fixture" websiteFiles={<p>Website attachments preserved</p>} />)); await flush(); return mounted.container; }
+function WorkspaceReturnFixture() { const [files, setFiles] = useState(true); return <><button onClick={() => setFiles(false)}>Work</button><button onClick={() => setFiles(true)}>Files</button>{files ? <FilesTab projectId="proj_fixture" host="fixture" /> : <p>Work context</p>}</>; }
+async function render(wrapper = false) { mounted = renderIntoDocument(wrap(wrapper ? <WorkspaceReturnFixture /> : <ProjectSharePointFilesPanel projectId="proj_fixture" host="fixture" websiteFiles={<p>Website attachments preserved</p>} />)); await flush(); return mounted.container; }
 function button(container: ParentNode, text: string) { const found = [...container.querySelectorAll('button')].find(b => b.textContent?.trim() === text); expect(found, text).toBeTruthy(); return found!; }
 async function click(container: ParentNode, text: string) { await act(async () => button(container, text).click()); await flush(); }
 async function selectFile(container: ParentNode, name: string) { const found = [...container.querySelectorAll('button')].find(b => b.className.includes('filename') && b.textContent?.includes(name)); expect(found, name).toBeTruthy(); await act(async () => found!.click()); await flush(); }
@@ -46,7 +47,7 @@ it('deduplicates initial observers and equivalent explicit-root return without a
   expect(c.textContent).toContain('Original.3dm'); expect(c.querySelector('a[aria-label="Download Original.3dm"]')?.getAttribute('href')).toContain(`/Rhino/open?rootId=${rootId}&mode=download`);
   await click(c, 'Back to project folder'); expect(fetcher).toHaveBeenCalledTimes(2); await selectFile(c, '3 CAD'); expect(fetcher).toHaveBeenCalledTimes(2);
 });
-it('retains actual wrapper Files tab, folder, selection and scroll across Work, project remount and fresh cache return', async () => {
+it('retains the dedicated Files workspace folder, selection and scroll across Work, project remount and fresh cache return', async () => {
   fetcher.mockImplementation(async (url: string) => normalSource(url)); const c = await render(true); await click(c, 'Files'); await selectFile(c, '3 CAD'); await selectFile(c, 'Design.pdf');
   expect(c.textContent).toContain('ACTUAL SELECTED PDF'); const list = c.querySelector('[aria-label="Files list"]') as HTMLDivElement;
   await act(async () => { list.scrollTop = 146; list.dispatchEvent(new Event('scroll')); });

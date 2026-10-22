@@ -2,10 +2,8 @@
 
 import { useContext, useEffect, useState, type ReactNode } from "react";
 import { PortalAuthContext } from '@/components/auth/PortalAuthProvider';
-import { Card, TabNavigation } from "@/components/ui/foundation";
-import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
-import ProjectEnquiryFilesPanel from "./ProjectEnquiryFilesPanel";
-import ProjectSharePointFilesPanel from "./ProjectSharePointFilesPanel";
+import { ButtonLink, Card, TabNavigation } from "@/components/ui/foundation";
+import { selectProjectView } from '../../projectViewNavigation';
 import ProjectEnquiryReceiptPanel from "./ProjectEnquiryReceiptPanel";
 import styles from "./ProjectWorkFilesCard.module.css";
 
@@ -14,31 +12,26 @@ export default function ProjectWorkFilesCard({
   host,
   children,
   className,
-  initialAttachments,
-  disableFileActions = false,
   positionLabel,
 }: {
   projectId: string;
   host: string;
   children: ReactNode;
   className?: string;
-  initialAttachments?: ProjectEnquiryAttachment[];
-  disableFileActions?: boolean;
   positionLabel?: string;
 }) {
-  const [selectedPanel, setSelectedPanel] = useState<"work" | "files" | "enquiry">("work");
+  const [selectedPanel, setSelectedPanel] = useState<"work" | "enquiry">("work");
   const auth = useContext(PortalAuthContext);
   const panelKey = auth?.user?.id ? `sanctuary:project-work-panel:v1:${host}:${auth.user.id}:${projectId}` : null;
   useEffect(() => {
     let saved: string | null = null;
     try { saved = panelKey ? sessionStorage.getItem(panelKey) : null; } catch { /* Optional return state. */ }
-    setSelectedPanel(saved === 'files' || saved === 'enquiry' ? saved : 'work');
+    setSelectedPanel(saved === 'enquiry' ? saved : 'work');
   }, [panelKey]);
-  const selectPanel = (panel: "work" | "files" | "enquiry") => {
+  const selectPanel = (panel: "work" | "enquiry") => {
     setSelectedPanel(panel);
     try { if (panelKey) sessionStorage.setItem(panelKey, panel); } catch { /* Optional return state. */ }
   };
-  const enquiryFiles = <ProjectEnquiryFilesPanel projectId={projectId} host={host} initialAttachments={initialAttachments} disableActions={disableFileActions} />;
   return (
     <Card
       className={[styles.card, className].filter(Boolean).join(" ")}
@@ -47,25 +40,23 @@ export default function ProjectWorkFilesCard({
       title={positionLabel ?? "Project Work"}
       eyebrow="Project position"
       action={
+        <div className={styles.actions}>
+        <ButtonLink href={`?tab=files`} prefetch={false} variant="quiet" size="small" onClick={(event) => { event.preventDefault(); selectProjectView('files'); }}>Open project files</ButtonLink>
         <TabNavigation
           className={styles.tabs}
           ariaLabel="Project Work sections"
           items={[
             { key: "work", label: "Work", controls: "project-work-panel" },
-            { key: "files", label: "Files", controls: "project-files-panel" },
             { key: "enquiry", label: "Original enquiry", controls: "project-enquiry-panel" },
           ]}
           selectedKey={selectedPanel}
           onSelect={selectPanel}
         />
+        </div>
       }
       padding="compact"
     >
-      {selectedPanel === "files" ? (
-        <div id="project-files-panel" role="tabpanel" aria-label="Files">
-          {disableFileActions || initialAttachments !== undefined ? enquiryFiles : <ProjectSharePointFilesPanel key={projectId} projectId={projectId} host={host} websiteFiles={enquiryFiles} />}
-        </div>
-      ) : selectedPanel === "enquiry" ? (
+      {selectedPanel === "enquiry" ? (
         <div id="project-enquiry-panel" role="tabpanel" aria-label="Original enquiry">
           <ProjectEnquiryReceiptPanel projectId={projectId} host={host} />
         </div>
