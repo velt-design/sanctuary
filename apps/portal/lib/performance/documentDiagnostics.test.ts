@@ -10,6 +10,59 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-21T00:
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('bounded document diagnostics', () => {
+  it('joins only fixed transport fields to the verified Marketing carrier and isolates async logging rejection', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const prepared = prepareProxyDocumentDiagnostics(request('/staff/marketing-performance', { [DOCUMENT_ID_HEADER]: 'hostile', [DOCUMENT_CARRIER_HEADER]: 'hostile' }));
+    const scope = readDocumentDiagnostics(prepared.requestHeaders!)!;
+    const value = {};
+    await expect(scope.measureTransport('marketing.hub', () => value)).resolves.toBe(value);
+    const event = log.mock.calls[0][1] as Record<string, unknown>;
+    expect(event).toMatchObject({ event: 'portal.document.transport', requestId: prepared.diagnostics!.id, operation: 'marketing.hub', connection: 'unknown', outcome: 'not_observed', connectMs: null });
+    expect(Object.keys(event).sort()).toEqual(['event', 'requestId', 'routeTemplate', 'operation', 'ordinal', 'connection', 'dispatchMs', 'headersWaitMs', 'bodyMs', 'connectMs', 'outcome', 'build', 'region'].sort());
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/hostile|customer|existing-session|nonce|carrier|secret/);
+    log.mockImplementation(() => Promise.reject(new Error('logging')));
+    await expect(scope.measureTransport('marketing.designer', () => value)).resolves.toBe(value);
+    await Promise.resolve();
+  });
+  it.each([
+    ['/staff/projects', {}], ['/staff/site-visits', {}], ['/staff/marketing-performance/child', {}],
+    ['/api/staff/v1/marketing-performance/hub', {}], ['/staff/marketing-performance', { rsc: '1' }],
+    ['/staff/marketing-performance', { 'next-router-prefetch': '1' }], ['/staff/marketing-performance', { 'next-router-segment-prefetch': '1' }],
+    ['/staff/marketing-performance', { purpose: 'prefetch' }], ['/staff/marketing-performance', { 'next-router-state-tree': 'private' }],
+    ['/staff/marketing-performance', { 'x-nextjs-data': '1' }], ['/staff/marketing-performance', { 'next-action': 'private' }],
+    ['/staff/marketing-performance?_rsc=private', {}],
+  ] as const)('does not widen transport observation to %s %s', async (path, extra) => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const prepared = prepareProxyDocumentDiagnostics(request(path, extra));
+    const scope = prepared.requestHeaders ? readDocumentDiagnostics(prepared.requestHeaders) : null;
+    const work = vi.fn(() => ({}));
+    if (scope) await scope.measureTransport('marketing.hub', work); else work();
+    expect(work).toHaveBeenCalledTimes(1); expect(log).not.toHaveBeenCalled();
+  });
+  it('keeps transport off for absent, forged, removed, replaced, expired and snapshot scopes', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const prepared = prepareProxyDocumentDiagnostics(request('/staff/marketing-performance'));
+    const scope = readDocumentDiagnostics(prepared.requestHeaders!)!;
+    const forged = new Headers(prepared.requestHeaders); forged.set(DOCUMENT_CARRIER_HEADER, 'forged');
+    expect(readDocumentDiagnostics(forged)).toBeNull();
+    const value = {}, work = vi.fn(() => value);
+    vi.stubEnv('PORTAL_DOCUMENT_DIAGNOSTICS', ''); expect(scope.measureTransport('rsc.identity', work)).toBe(value);
+    enable(); vi.stubEnv('MARKETING_PERFORMANCE_PREVIEW', 'production-snapshot'); expect(scope.measureTransport('marketing.hub', work)).toBe(value);
+    vi.stubEnv('MARKETING_PERFORMANCE_PREVIEW', '');
+    vi.stubEnv('PORTAL_DOCUMENT_DIAGNOSTICS', JSON.stringify({ until: new Date(Date.now() + 60_000).toISOString(), nonce: 'B'.repeat(43) }));
+    expect(scope.measureTransport('navigation.finance', work)).toBe(value);
+    enable(); await vi.advanceTimersByTimeAsync(60_001); expect(scope.measureTransport('marketing.designer', work)).toBe(value);
+    expect(work).toHaveBeenCalledTimes(4); expect(log).not.toHaveBeenCalled();
+  });
+  it('suppresses an admitted in-flight observation after its setting is removed without replacing its value', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const prepared = prepareProxyDocumentDiagnostics(request('/staff/marketing-performance'));
+    const scope = readDocumentDiagnostics(prepared.requestHeaders!)!;
+    let finish!: (value: object) => void;
+    const pending = scope.measureTransport('marketing.hub', () => new Promise<object>(resolve => { finish = resolve; }));
+    vi.stubEnv('PORTAL_DOCUMENT_DIAGNOSTICS', '');
+    const value = {}; finish(value); await expect(pending).resolves.toBe(value); expect(log).not.toHaveBeenCalled();
+  });
   it('selects only the exact Marketing document and keeps the unchanged private event shape',()=>{
     const log=vi.spyOn(console,'info').mockImplementation(()=>undefined);
     const prepared=prepareProxyDocumentDiagnostics(request('/staff/marketing-performance'));
