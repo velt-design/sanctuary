@@ -1,11 +1,12 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest';
+import { AuthExpiredError, RateLimitExceededError } from '@1password/sdk';
 import { ga4Google, ga4Vault, type Ga4VaultSdk } from './providers';
 import { GA4_READ_SCOPE } from './lifecycle';
 
 const token = { access_token: 'synthetic-access', refresh_token: 'synthetic-rotation', scope: GA4_READ_SCOPE, token_type: 'Bearer', expires_in: 3600 };
 const parameters = () => new URLSearchParams({ grant_type: 'refresh_token', refresh_token: 'synthetic-old' });
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 it('uses fixed bounded token/property reads and preserves rotated credentials', async () => {
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(token)).mockResolvedValueOnce(Response.json({ name: 'properties/123' }));
@@ -46,6 +47,18 @@ function fixture() {
   const sdk: Ga4VaultSdk = { createClient, apiCredentialsCategory: 'ApiCredentials', concealedFieldType: 'Concealed' };
   return { item, get, put, createClient, vault: ga4Vault({ vaultId: 'vault', itemId: 'item', vaultToken: 'synthetic-sdk-auth' }, sdk) };
 }
+it.each(['auth', 'read', 'item'])('logs the actual adapter %s failure without exposing SDK/item details', async mode => {
+  const f = fixture(), warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  if (mode === 'auth') f.createClient.mockRejectedValue(new AuthExpiredError('SYNTHETIC-PRIVATE'));
+  if (mode === 'read') f.get.mockRejectedValue(new RateLimitExceededError('SYNTHETIC-PRIVATE'));
+  if (mode === 'item') f.get.mockResolvedValue({ ...f.item, category: 'SYNTHETIC-PRIVATE' });
+  await expect((async () => { await f.vault.authenticate(); await f.vault.read(); })()).rejects.toThrow();
+  expect(warn.mock.calls).toEqual([[{ event: 'sanctuary_ga4_vault_failure',
+    stage: mode === 'auth' ? 'vault_auth' : mode === 'read' ? 'vault_read' : 'item_validation',
+    code: mode === 'auth' ? 'auth_expired' : mode === 'read' ? 'rate_limited' : 'invalid_item' }]]);
+  expect(f.put).not.toHaveBeenCalled();
+  expect(JSON.stringify(warn.mock.calls)).not.toContain('SYNTHETIC-PRIVATE');
+});
 it('preserves item metadata, exact prior version and unrelated fields when rotating', async () => {
   const f = fixture(); await f.vault.authenticate(); expect(await f.vault.read()).toEqual({ refreshToken: 'synthetic-old', version: 3 });
   expect(await f.vault.write('synthetic-new')).toEqual({ version: 4 });
