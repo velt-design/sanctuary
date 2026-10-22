@@ -45,6 +45,7 @@ beforeAll(async()=>{
   await db.exec(file('20261021030002_designer_visit_detail_transaction'));
   await db.exec(file('20261021040001_project_sales_designer'));
   await db.exec(file('20261021100001_designer_accepted_sales'));
+  await db.exec(file('20261022010001_designer_history_support'));
   await db.exec(`update private.outlook_calendar_control set enabled=true,binding='${binding}',last_success=now(),range_start='2026-10-01',range_end='2026-12-31' where singleton;
     insert into private.site_visit_staff_identities values('${binding}','designer@example.test','jordan');`);
   const payload={subject:'Private title',startsAt:'2026-09-03T00:00:00Z',endsAt:'2026-09-03T01:00:00Z',kind:'visit',staff:[{name:'Private staff alias',email:'designer@example.test'}],customerEmails:['private@example.test'],address:'Private address',cancelled:false,duplicate:false,reviewReasons:[],isAllDay:false};
@@ -194,4 +195,29 @@ it('enforces assignment owner access, write transaction mode, validation and dir
  const modes=(await db.query<{provolatile:string}>("select provolatile from pg_proc where oid in ('public.project_sales_designer_read(uuid)'::regprocedure,'public.project_sales_designer_assign(uuid,uuid,integer,text,text)'::regprocedure)")).rows;
  expect(modes.map(r=>r.provolatile)).toEqual(['v','v']);
  await db.exec('begin read only;set local role authenticated');try{await expect(assignment()).rejects.toMatchObject({code:'25006'});}finally{await db.exec('rollback');}
+});
+
+it('supports historical Steve credit and a reversible test exclusion without changing source facts',async()=>{
+ await db.exec('begin');try{
+  const before=await read(),financial=(await db.query('select * from project_payment_entries')).rows;
+  await db.exec('set local role authenticated');const saved=await assignment(120,0,'steve');expect(saved).toMatchObject({designerKey:'steve',revision:1});expect(await assignment(120,0,'steve')).toEqual(saved);
+  let report=await read();expect(designerSales(report,null,'steve').total.jobs).toHaveLength(1);expect(designerPerformance(report,null,'steve').total.outcomes).toHaveLength(1);expect(designerPerformance(report,null,'steve').total.attended).toHaveLength(0);
+  const marked=await outcome(121,0,'test');expect(marked).toMatchObject({outcome:'test',revision:1});expect(await outcome(121,0,'test')).toEqual(marked);
+  await denied(()=>outcome(122,0,null),'40001');await denied(()=>outcome(121,0,'cancelled'),'40001');await denied(()=>outcome(123,1,'unknown'),'22023');
+  report=await read();expect(report.visits).toEqual(before.visits);expect(report.scopes).toEqual(before.scopes);expect(report.salesProjects).toEqual(before.salesProjects);
+  const sales=designerSales(report);expect(sales.total.jobs).toEqual([]);expect(sales.total.goingAhead).toEqual([]);expect(sales.total.excluded).toEqual([]);expect(sales.total.tests).toHaveLength(1);expect(sales.total.tests[0].scopes).toHaveLength(2);
+  expect(designerPerformance(report).total.outcomes).toEqual([]);expect(designerPerformance(report).total.attended).toHaveLength(1);
+  await outcome(124,1,null);report=await read();expect(designerSales(report).total.jobs).toHaveLength(1);expect(designerSales(report).total.tests).toEqual([]);expect(designerPerformance(report).total.outcomes).toHaveLength(1);
+  await db.exec('reset role');expect((await db.query('select * from project_payment_entries')).rows).toEqual(financial);expect((await db.query('select * from private.project_sales_outcome_commands')).rows).toHaveLength(2);expect((await db.query('select * from private.project_sales_designer_commands')).rows).toHaveLength(1);
+ }finally{await db.exec('rollback');}
+});
+
+it('preserves prior assignments, outcomes, audits and grants when widening the two correction enums',async()=>{
+ await db.exec('begin');try{
+  await assignment();await outcome();
+  const tables=['private.project_sales_designers','private.project_sales_designer_commands','private.project_sales_outcomes','private.project_sales_outcome_commands','quotes','quote_versions','project_payment_entries','private.site_visit_details'];
+  const snapshot=async()=>Promise.all(tables.map(async t=>(await db.query(`select * from ${t}`)).rows));const before=await snapshot();
+  const acl=async()=>(await db.query("select proname,proacl,provolatile,prosecdef,proconfig from pg_proc where oid in ('public.project_sales_designer_assign(uuid,uuid,integer,text,text)'::regprocedure,'public.project_sales_outcome_record(uuid,uuid,integer,text,text)'::regprocedure) order by proname")).rows;
+  const authority=await acl();await db.exec(file('20261022010001_designer_history_support'));expect(await snapshot()).toEqual(before);expect(await acl()).toEqual(authority);
+ }finally{await db.exec('rollback');}
 });

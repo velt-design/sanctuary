@@ -31,3 +31,14 @@ it('retains withdrawn scopes in gross acceptance and avoids unknown value zero o
   expect(result.total.goingAhead[0].goingAhead).toHaveLength(1);expect(salesScopeValue(result.total.jobs.flatMap(j=>j.scopes))).toBeNull();
   report.scopes[3].accepted=false;expect(designerSales(report).total.excluded[0].exclusion).toBe('acceptance_withdrawn');
 });
+
+it('keeps test records outside both dated and undated business totals, respecting filters and independent cancellation',()=>{
+ const report=designerFixture(),projectId=report.scopes[0].projectId;report.salesOutcomes=[{projectId,outcome:'test',revision:1,updatedAt:report.asOf,basis:'Synthetic test'}];report.scopes[0].lastAcceptedAt=null;
+ const result=designerSales(report);expect(result.total.jobs.some(j=>j.projectId===projectId)).toBe(false);expect(result.total.undated.some(j=>j.projectId===projectId)).toBe(false);expect(result.total.tests.map(j=>j.projectId)).toEqual([projectId]);expect(designerSales(report,new Set()).total.tests).toEqual([]);
+ report.salesProjects[0].closedOutcome='CANCELLED';report.salesOutcomes[0].outcome=null;expect(projectSalesExclusion(report,projectId)).toBe('cancelled');expect(designerSales(report,null,'',true).total.goingAhead.some(j=>j.projectId===projectId)).toBe(false);
+});
+
+it('retains test recovery even when no accepted scope remains or the selected period is empty',()=>{
+ const report=designerFixture(),projectId=report.scopes[0].projectId;report.salesOutcomes=[{projectId,outcome:'test',revision:1,updatedAt:report.asOf,basis:'Synthetic test'}];report.scopes=[];
+ const result=designerSales(report);expect(result.total.jobs).toEqual([]);expect(result.total.tests).toMatchObject([{projectId,scopes:[],exclusion:'test'}]);expect(designerSales(report,null,'joe').total.tests).toEqual([]);
+});

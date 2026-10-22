@@ -121,6 +121,29 @@ small screens, drawers, filters and incomplete/unavailable evidence. Current
 rendered evidence and independent review remain in the private owning work record;
 local styling and tests alone do not establish production or owner acceptance.
 
+## Historical designer and test-record corrections (22 October 2026)
+
+The existing sales-designer command now accepts Steve as historical sales credit.
+`salesDesigner.ts` owns the sales roster; phase-owner options and verified visit
+attendee identities are unchanged. Steve can be selected, read back and filtered
+without implying that he attended a visit or currently owns the project.
+
+The existing report-only outcome command accepts `test`. Test records are omitted
+from accepted-sales gross/net/excluded totals, undated-business coverage and the
+visit-conversion cohort. Their original scopes and visit facts remain unchanged.
+A labelled **Test records** inventory, across acceptance dates and within the
+selected designer/project filters, retains details and the audited clear action.
+Clearing restores normal eligibility; independent cancellation/lost evidence still
+wins. A test is never falsely recorded as a cancellation or financial refund.
+Other operational/financial reports and advertising delivery are unaffected.
+
+Forward migration `20261022010001_designer_history_support.sql` widens only the
+existing assignment/outcome constraints and command validators. It preserves actor
+locks, grants, command identity, optimistic revision and immutable audit receipts.
+Ship schema and compatible Portal code before saving new enum values: old clients
+will reject those values rather than silently misreport them. Recovery is an
+explicit audited clear/reassignment through the existing APIs, not row deletion.
+
 ## Accepted jobs by designer (21 October 2026)
 
 The owner asked for all accepted jobs to receive explicit designer attribution,
