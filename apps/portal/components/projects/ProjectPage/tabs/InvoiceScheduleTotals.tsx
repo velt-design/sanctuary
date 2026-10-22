@@ -14,10 +14,10 @@ export default function InvoiceScheduleTotals({ schedule }: { schedule: ProjectI
             ariaLabel="Accepted project quote payment totals"
             columns={4}
             items={[
-              { label: closed ? 'Recorded contract value' : 'Job total', value: formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quotes and issued standalone work' },
+              { label: closed ? 'Recorded contract value' : 'Job total', value: formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quotes and separate invoiced work' },
               ...((schedule.standaloneTotalIncGstCents ?? 0) > 0 ? [
                 { label: 'Accepted quote value', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
-                { label: 'Standalone invoice value', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Issued, non-void standalone work' },
+                { label: 'Other invoiced work', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Separate charges outside current quotes' },
               ] : []),
               { label: 'Recorded payments', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Net project payment ledger' },
               { label: 'Open invoice balance', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid; excludes work still to invoice' },

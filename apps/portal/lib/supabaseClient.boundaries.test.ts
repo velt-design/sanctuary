@@ -28,6 +28,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/invoices/paymentMatchReview.ts',
   'apps/portal/lib/invoices/restoreInvoice.ts', // Admin-gated restore command; SQL checks the void episode, commercial scope and payment/provider evidence.
   'apps/portal/lib/invoices/server.ts',
+  'apps/portal/lib/invoices/scopeFunding.ts', // Server-only read adapter for staff-gated invoice history/schedules; no mutations or provider access.
   'apps/portal/lib/invoices/xeroInvoiceTransferRepository.ts', // Canonical current job lease and frozen provider effect commands.
   'apps/portal/lib/invoices/xeroMatchRepository.ts',
   'apps/portal/lib/marketingAttribution/server.ts',

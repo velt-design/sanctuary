@@ -1418,13 +1418,13 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   }
   return {
     quoteVersion: updated,
-    invoice: {
+    invoice: accepted.invoice ? {
       id: appIdFromUuid('inv', accepted.invoice.id),
       invoiceRef: accepted.invoice.invoiceRef,
       sent: accepted.invoice.sent,
       sendError: accepted.invoice.sendError,
       deliveryState: accepted.invoice.deliveryState,
-    },
+    } : null,
     alreadyAccepted: accepted.alreadyAccepted,
   };
 }

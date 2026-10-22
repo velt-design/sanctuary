@@ -249,6 +249,29 @@ POST commands remain VOLATILE with the same locked owner guard. The Portal read
 model retains test records for inspection while excluding them from business sales
 and conversion populations.
 
+## Revised quote funding (22 October 2026 candidate)
+
+`20261022000001_revised_quote_funding.sql` adds staff-readable, command-write-only
+`commercial_invoice_scope_assignments` and inaccessible private acceptance billing
+receipts. `commercial_reconcile_invoice_scope` is service-only, project-locked,
+fingerprint/revision guarded and audited. Invoice/payment/provider rows remain
+unchanged. `commercial_quote_scope_funding` is the canonical staff/service family
+funding read; internal effective-scope/value/term helpers have no direct grants.
+The existing financial truth, admin issuance and restoration owners consume those
+helpers, preserving their installed authorization and partial-Xero balance code.
+Dynamic source anchors fail the migration if an existing owner changed.
+
+`commercial_accept_quote_with_project_lock_v2` opts new server adapters into a
+nullable invoice for funded families. One canonical acceptance command implements
+both v2 and the existing invoice-guaranteed legacy wrapper. A private receipt
+freezes manual/scheduled choice and acceptance time, including replay after a
+custom invoice. Manual acceptance preserves existing OPEN obligations and exposes
+any overcommitment through the same balance reader; new invoices still enforce
+both project and effective-family limits. No direct table repair is supported.
+See [commercial workflow](quotes-invoices-job-packs.md#revised-quotes-with-existing-funding-22-october-2026-candidate)
+for release order and recovery.
+
+
 ## Designer accepted sales outcomes (21 October 2026)
 
 `20261021100001_designer_accepted_sales.sql` adds private

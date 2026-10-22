@@ -441,7 +441,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
 
       {commercial.actionsAvailable && schedule && !schedule.acceptedQuoteVersionId && !schedule.standaloneTotalIncGstCents && !invoices.length ? (
         <Card title="Prepare the first invoice" headingLevel={4} padding="compact">
-          <p>Accept the customer's quote to create the first scheduled invoice. For work without a quote, use a standalone invoice draft.</p>
+          <p>Accept the customer's quote before preparing a progress invoice. If no payments already fund the quote, acceptance prepares the first scheduled invoice and attempts email delivery. For work without a quote, use a standalone invoice draft.</p>
           <ButtonLink href={`/staff/projects/${encodeURIComponent(projectId)}?tab=quotes`} variant="secondary">Open quotes</ButtonLink>
         </Card>
       ) : null}
@@ -598,6 +598,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                 <TableCell data-label="Quote">
                   <div className={styles.meta}>
                     {invoice.quoteVersionId ? <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(projectId)}?tab=quotes&quoteId=${encodeURIComponent(invoice.quoteVersionId)}`}>{invoice.quoteRef} v{invoice.quoteVersionNumber}</ButtonLink> : <strong>Standalone invoice</strong>}
+                    {invoice.scopeAssignment ? <span className={styles.muted}>{invoice.scopeAssignment.treatment === 'QUOTE_PAYMENT'
+                      ? `Deposit applied to ${invoice.scopeAssignment.quoteRef || 'quoted work'}` : 'Separate assessment or additional charge'}</span> : null}
                     <span className={styles.muted}>{invoice.reference || invoice.projectName || '-'}</span>
                   </div>
                 </TableCell>

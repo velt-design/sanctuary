@@ -463,6 +463,33 @@ existing-data/grant preservation, replay/conflict and owner denial. Existing nat
 also uses the widened enum values against disposable PostgreSQL17. Hosted schema,
 authenticated persistence and actual record corrections remain separate release checks.
 
+## Revised quote funding verification (22 October 2026 candidate)
+
+`test/revised-quote-funding.integration.test.ts` is included in
+`npm run test:commercial:db`. It applies the real migration and production command
+bodies to synthetic PGlite prerequisites, then tests separate assessment plus
+family deposit reconciliation, immutable financial history, old/new acceptance
+compatibility, no-invoice replay, custom draft/issue/reload, scope limits, split
+allocations and authority. Recovery coverage reverses and repays a separate fee,
+settles partial bank and invoice-payment receipts, corrects those matches, and
+rejects moving their money to construction. The existing native invoice harness runs
+real competing PostgreSQL sessions for reconciliation and acceptance replay.
+Local PGlite is not concurrent-session or complete deployed-schema evidence.
+
+`npm run preview:revised-quote` starts the disposable localhost SQL adapter on
+3155. Run Portal development on 3154 with `ENABLE_PORTAL_QA_FIXTURES=1` and
+`INVOICE_DRAFTS_ENABLED=true`; open `/qa/revised-quote-fixture`. Both QA routes are
+unavailable in production. The fixture composes the production Invoices tab and
+draft editor against actual production SQL with synthetic money. Its Accept
+control is a harness command, not the entire Quotes tab. Focused
+`useQuoteLifecycleActions.test.tsx` and `acceptQuote.test.ts` separately exercise
+the actual staff success/cache and server side-effect boundaries. No email or
+provider action is available. Reset discards the disposable scenario; browser
+reload retains it while the adapter remains running. A successful synthetic
+journey does not establish production deployment, real quote acceptance or a
+customer invoice amount. Run normal auth/staging release verification separately.
+
+
 ## Photographic guide hub (22 October 2026)
 
 The hub server-render unit proves all ten existing destinations remain reachable,
