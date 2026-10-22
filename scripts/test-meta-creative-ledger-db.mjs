@@ -18,8 +18,9 @@ try{
  sql(readFileSync('supabase/migrations/20261021050001_creative_effect_ledger.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261022100001_landing_render_recovery.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261022110001_landing_packaging_recovery.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261022120001_landing_render_successor.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_render_recovery.sql','utf8'));
- sql(readFileSync('supabase/tests/landing_packaging_recovery.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_render_successor.sql','utf8')+readFileSync('supabase/tests/landing_packaging_recovery.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiments.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_probes.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_experiment_layout.sql','utf8'));
