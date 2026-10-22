@@ -1,3 +1,24 @@
+# Supabase Schema Map
+
+## Composed campaign loop candidate (22 October 2026)
+
+The isolated integration branch preserves current main and composes the accepted
+landing50009 canonical-copy correction with formal creative50004-50008 and
+learning/retention/ambiguity/steady inventory50010-50013. Apply the actual ordered
+migration history, once each; the native harness checks50009 after50008 and before
+the later creative layers. This does not install any migration or change live
+controls. Current main's unrelated SharePoint/date/project changes remain intact.
+
+The paired Velt consumer also preserves the separate Outlook001 and diagnostic002
+contracts. Compatible readers precede any new Source registry version. The new
+template/native/renderer hashes are local candidates until reviewed deployment,
+schema equality and guarded binding establish compatibility. Keep the live finite
+landing lane separate, preserve current controls/history and use existing Stop,
+owned cleanup and uncertain-effect reconciliation for recovery. No test fixture
+establishes actual Meta media, study scheduling/allocation or retained delivery.
+
+The inherited stage notes below retain their original scope and evidence. The combined local candidate now includes authored-copy aliases, terminal history, retention, bounded ambiguity and steady inventory. Statements that a later local layer remains unfinished describe that earlier checkpoint; actual hosted compatibility, provider/media acceptance and the whole live loop remain unverified.
+
 ## Native finite ambiguity (uninstalled local layer)
 
 20261022050012_creative_ambiguity.sql versions the existing cohort and analysis
@@ -91,25 +112,6 @@ application roles; the existing authenticated executor read returns only the
 matching current unrevoked proof. No identity sequence or provider-effect route
 is added. Consumer-before-migration ordering and separately reviewed operator
 provisioning are required. Existing capability migrations remain unchanged.
-
-# Supabase Schema Map
-
-## Composed campaign loop candidate (22 October 2026)
-
-The isolated integration branch preserves current main and composes the accepted
-landing50009 canonical-copy correction with formal creative50004-50008 and
-learning/retention/ambiguity/steady inventory50010-50013. Apply the actual ordered
-migration history, once each; the native harness checks50009 after50008 and before
-the later creative layers. This does not install any migration or change live
-controls. Current main's unrelated SharePoint/date/project changes remain intact.
-
-The paired Velt consumer also preserves the separate Outlook001 and diagnostic002
-contracts. Compatible readers precede any new Source registry version. The new
-template/native/renderer hashes are local candidates until reviewed deployment,
-schema equality and guarded binding establish compatibility. Keep the live finite
-landing lane separate, preserve current controls/history and use existing Stop,
-owned cleanup and uncertain-effect reconciliation for recovery. No test fixture
-establishes actual Meta media, study scheduling/allocation or retained delivery.
 
 ## Authored landing copy (22 October 2026)
 
