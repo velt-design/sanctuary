@@ -1,7 +1,6 @@
 {
   "git": {
     "deploymentEnabled": {
-      "codex/revised-quote-deposits-20261022": false,
       "codex/designer-history-support-20261022": false,
       "codex/meta-video-donor-20261022": false,
       "codex/portal-marketing-hub-speed-20261021": false,
@@ -30,6 +29,7 @@
       "codex/aluminium-seo-20261020": false,
       "codex/custom-seo-20261020": false,
       "codex/portal-workflow-20261020": false,
+      "codex/revised-quote-deposits-20261022": false,
       "codex/portal-usability-20261021": false,
       "codex/portal-first-load-20261021": false,
       "codex/portal-first-load-followup-20261021": false,
