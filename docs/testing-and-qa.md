@@ -2124,6 +2124,52 @@ For a protected Vercel Preview, set `PORTAL_VERCEL_PROTECTION_BYPASS` only in th
 
 `npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Project Detail, Contacts, and Schedule; warm Dashboard to Projects/Contacts/Schedule/Work Queue/Drafting Queue/Running Jobs, Projects to project/Dashboard, browser back, and the current Overview, Commercial Estimates/Quotes/Invoices, and conditional Job Packs project tabs; and Schedule/Calculator interactions. The cold Project Detail journey discovers a real project in a separate authenticated context, then opens the canonical detail URL in a new context with no project-list or persisted-query cache so PROJECT-01 has a truthful cold-read signal. Each tab's feedback marker is its immediate selected state; useful content is the new tab's owned workflow or truthful local loading shell, while its URL, specialist bundle, and data may continue in the background. Independent project-tab selected-state and useful-content conditions are installed before the click and timestamped inside Chromium when the matching DOM state first becomes visible. The shared Commercial module's loading shell is scoped to the active tab body so Estimates can accept that truthful shell without matching stale content elsewhere. The following Playwright assertions still verify the semantic state, but driver polling and command round trips do not define the recorded elapsed time. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Dashboard-to-Projects and Dashboard-to-Contacts feedback ends when the canonical index URL reaches the browser, useful content requires that index's heading, controls, truthful list region, and state marker, and background completion requires its fresh authenticated index response. Project-opening background completion still requires both the fresh snapshot and active tab workflow. Portal Performance CI builds once and runs all five authenticated repetitions against `next start`; development compilation time must never be recorded as product latency. CI rejects missing journeys and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
 
+Warm-navigation useful-content clocks are armed inside Chromium before journey setup
+and the action. They latch the first simultaneous visible match of every original
+destination condition at its exact destination pathname. Original Playwright
+assertions and background waits still run. Installed Playwright expect retries
+can otherwise return at cumulative 100/350/850/1850 ms after an immediate check;
+that polling completion is not the DOM commit time. The capture uses ancestor
+visibility and nonzero rendered boxes, checks CSS/history-only changes, and retires
+on completion, timeout, replacement or failed assertions. Delayed retrieval does
+not move the timestamp. For display:contents direct text, installed Playwright
+can report a Range box despite visibility:hidden or content-visibility:hidden.
+Capture deliberately rejects those own/ancestor hidden styles while retaining
+visible direct text and span children; it is stricter than that locator quirk.
+This corrects measurement accuracy only: it credits no
+runtime improvement and does not establish that any CI journey meets its ceiling.
+All 16 enforced gates, five captures, p75 aggregation, raw samples and limits remain
+unchanged. These legacy interface markers remain separate from first complete
+useful facts and full data completion.
+
+The original warm assertion-to-capture mapping is:
+
+| Journey | Original useful assertion and capture conditions |
+| --- | --- |
+| Dashboard to Projects | Exact Projects level-1 heading, Filter this project list region, Projects list region, visible index-state marker |
+| Dashboard to Contacts | Exact Contacts heading, Search contacts region, Contacts list region, visible index-state marker |
+| Projects to project | Ready project shell and Project sections navigation, at the selected project's exact path |
+| Project Back to Projects | Projects list region at the Projects index path |
+| Projects to Dashboard | Exact Dashboard heading at the selected link's path |
+| Dashboard to Schedule | Exact Schedule heading at the selected link's path |
+| Dashboard to Work Queue | Original exact Work Queue heading, plus destination level-1 heading and actual queue owner; the retained Dashboard's Work Queue level-2 card must not satisfy destination readiness |
+| Dashboard to Drafting Queue | Exact Drafting Queue heading at the selected link's path |
+| Dashboard to Running Jobs | Exact Running Jobs heading at the selected link's path |
+
+Current headings come from PageHeader's plain string title, with accessories
+outside the heading. Native labelled sections and navigation supply the original
+region/navigation names. Capture selectors preserve those roles and labels and
+fail closed on name/role overrides; heading text is not a general accessible-name
+replacement. Hidden accessible ancestors cannot satisfy capture. The original
+getByRole assertions remain authoritative checks of the semantic names/levels.
+`playwright/portal.performance-clock.spec.ts` runs in the existing portal-fixture
+project with a locally fulfilled fictional document. It compares the real browser
+capture with actual commit and later assertion completion, including staggered and
+disappearing conditions, hidden/zero boxes, accessible-name overrides, history-only
+identity, delayed retrieval, timeout and repeated capture cleanup. It needs no
+provider, account, production QA route or business mutation. Cold-route,
+interaction and project-tab clocks are unchanged.
+
 `npm run portal:search-readiness` safely probes `portal_search_v1()` and the `portal_search_bigrams()` helper with the anonymous role, then makes a zero-row schema probe for the materialized Projects search document. A ready database must report that anonymous function execution is denied and that the generated column exists; missing function/column responses fail immediately with the exact migration path. The preflight never uses the service-role key, returns search data, or treats anonymous function execution as success. The authenticated performance gate remains the deployment proof for the policy-only init-plan migration because the anonymous preflight cannot inspect `pg_policies`.
 
 `npm run test:portal:search-performance` is the focused authenticated global-search gate and starts with that migration preflight. Its deterministic delayed-response case proves a cached repeat renders without a second request and previous results remain visible while a different query refreshes. Its live case samples five real no-store API reads, requires API wall-clock p75 plus the 50 ms debounce to stay at or below 400 ms, measures the first rendered result/empty state at or below 400 ms, then repeats the same normalized query and requires an in-memory cached result within 75 ms with no second request. It writes `artifacts/portal-search-performance.json` with raw API/server timings and rendered-result measurements. Apply the ordered `20260722_000001_portal_search_v1.sql`, `20260722_000002_portal_search_bigram_indexes.sql`, `20260722_000003_portal_search_materialized_columns.sql`, and `20260722_000004_portal_search_rls_initplan.sql` migrations before running it; a missing RPC, helper, generated-column, or policy migration is a failed prerequisite, not a skipped test.

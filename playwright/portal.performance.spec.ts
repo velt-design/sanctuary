@@ -14,6 +14,12 @@ import {
   type PortalPerformanceJourney,
   type PortalPerformanceRun,
 } from './support/portalPerformance';
+import {
+  beginPortalVisibleDestination,
+  portalVisibleDestinationMs,
+  retirePortalVisibleDestination,
+  type PortalVisibleDestination,
+} from './support/portalVisibleMilestone';
 
 type RouteBudget = {
   name: string;
@@ -210,40 +216,47 @@ async function measureColdProjectDetail(page: Page, route: string) {
 async function measureWarmJourney(
   page: Page,
   name: string,
+  destination: PortalVisibleDestination,
   action: () => Promise<unknown>,
   feedbackReady: () => Promise<unknown>,
   usefulContentReady: () => Promise<unknown>,
   backgroundReady?: () => Promise<unknown>,
 ) {
   const budget = warmBudget(name);
-  const probe = await beginPortalJourney(page);
-  await action();
-  await feedbackReady();
-  const feedbackMs = elapsedJourneyMs(probe);
-  await usefulContentReady();
-  const usefulContentMs = elapsedJourneyMs(probe);
-  await backgroundReady?.();
-  const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
-  const regressionBudgetMet =
-    feedbackMs <= budget.feedbackMsMax && usefulContentMs <= budget.usefulContentMsMax;
-  const productFeedbackMsMax = budget.productFeedbackMsMax ?? budgets.productTargets.feedbackMsMax;
-  const journey = await finishPortalJourney(page, probe, {
-    name,
-    kind: 'warm-navigation',
-    feedbackMs,
-    usefulContentMs,
-    backgroundSettledMs,
-    productTargetMet:
-      feedbackMs <= productFeedbackMsMax &&
-      usefulContentMs <= budgets.productTargets.cachedContentMsMax,
-    regressionBudgetMet,
-  });
-  journey.productTargetMet =
-    journey.productTargetMet &&
-    journey.longestTaskMs <= budgets.productTargets.longestTaskMsMax &&
-    !journey.blockingOverlaySeen;
-  recordJourney(journey);
-  assertRegressionBudget(journey, budget);
+  // Arm before both journey setup and the action; never subtract driver overhead.
+  const capture = await beginPortalVisibleDestination(page, destination);
+  try {
+    const probe = await beginPortalJourney(page);
+    await action();
+    await feedbackReady();
+    const feedbackMs = elapsedJourneyMs(probe);
+    await usefulContentReady();
+    const usefulContentMs = await portalVisibleDestinationMs(page, capture);
+    await backgroundReady?.();
+    const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
+    const regressionBudgetMet =
+      feedbackMs <= budget.feedbackMsMax && usefulContentMs <= budget.usefulContentMsMax;
+    const productFeedbackMsMax = budget.productFeedbackMsMax ?? budgets.productTargets.feedbackMsMax;
+    const journey = await finishPortalJourney(page, probe, {
+      name,
+      kind: 'warm-navigation',
+      feedbackMs,
+      usefulContentMs,
+      backgroundSettledMs,
+      productTargetMet:
+        feedbackMs <= productFeedbackMsMax &&
+        usefulContentMs <= budgets.productTargets.cachedContentMsMax,
+      regressionBudgetMet,
+    });
+    journey.productTargetMet =
+      journey.productTargetMet &&
+      journey.longestTaskMs <= budgets.productTargets.longestTaskMsMax &&
+      !journey.blockingOverlaySeen;
+    recordJourney(journey);
+    assertRegressionBudget(journey, budget);
+  } finally {
+    await retirePortalVisibleDestination(page, capture);
+  }
 }
 
 async function measureInteraction(
@@ -358,6 +371,16 @@ async function measurePortalShellNavigation(
   await measureWarmJourney(
     page,
     input.name,
+    {
+      pathname: new URL(String(await input.link.getAttribute('href')), page.url()).pathname,
+      conditions: [
+        { selector: 'h1:not([role]), h2:not([role]), h3:not([role]), h4:not([role]), h5:not([role]), h6:not([role]), [role="heading"]', text: input.heading },
+        ...(input.name === 'dashboard-to-work-queue' ? [
+          { selector: 'h1:not([role]), [role="heading"][aria-level="1"]', text: 'Work Queue' },
+          { selector: '[data-project-work-queue-state]' },
+        ] : []),
+      ],
+    },
     () => input.link.dispatchEvent('click'),
     () => expect(
       page.locator('[data-portal-route-progress="true"], [data-portal-instant-shell]').first(),
@@ -406,6 +429,12 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   await measureWarmJourney(
     page,
     'dashboard-to-projects',
+    { pathname: '/staff/projects', conditions: [
+      { selector: 'h1:not([role]), [role="heading"][aria-level="1"]', text: 'Projects' },
+      { selector: 'section:not([role]):not([aria-labelledby])[aria-label="Filter this project list"], [role="region"]:not([aria-labelledby])[aria-label="Filter this project list"]' },
+      { selector: 'section:not([role]):not([aria-labelledby])[aria-label="Projects list"], [role="region"]:not([aria-labelledby])[aria-label="Projects list"]' },
+      { selector: '[data-projects-index-state]' },
+    ] },
     () => projectsNavLink.dispatchEvent('click'),
     () => page.waitForURL(/\/staff\/projects(?:\?|$)/),
     async () => {
@@ -422,6 +451,10 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   await measureWarmJourney(
     page,
     'projects-to-project',
+    { pathname: new URL(String(await firstOpen.getAttribute('href')), page.url()).pathname, conditions: [
+      { selector: '[data-project-shell-ready="true"]' },
+      { selector: 'nav:not([role]):not([aria-labelledby])[aria-label="Project sections"], [role="navigation"]:not([aria-labelledby])[aria-label="Project sections"]' },
+    ] },
     () => firstOpen.dispatchEvent('click'),
     () => page.waitForURL(/\/staff\/projects\/[^/?]+(?:\?|$)/),
     async () => {
@@ -438,6 +471,9 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   await measureWarmJourney(
     page,
     'project-back-to-projects',
+    { pathname: '/staff/projects', conditions: [
+      { selector: 'section:not([role]):not([aria-labelledby])[aria-label="Projects list"], [role="region"]:not([aria-labelledby])[aria-label="Projects list"]' },
+    ] },
     () => page.goBack(),
     () => page.waitForURL(/\/projects(?:\?|$)/),
     () => expect(page.getByRole('region', { name: 'Projects list' })).toBeVisible(),
@@ -521,6 +557,12 @@ test('captures warm Contacts navigation', async ({ page }) => {
   await measureWarmJourney(
     page,
     'dashboard-to-contacts',
+    { pathname: '/staff/contacts', conditions: [
+      { selector: 'h1:not([role]), h2:not([role]), h3:not([role]), h4:not([role]), h5:not([role]), h6:not([role]), [role="heading"]', text: 'Contacts' },
+      { selector: 'section:not([role]):not([aria-labelledby])[aria-label="Search contacts"], [role="region"]:not([aria-labelledby])[aria-label="Search contacts"]' },
+      { selector: 'section:not([role]):not([aria-labelledby])[aria-label="Contacts list"], [role="region"]:not([aria-labelledby])[aria-label="Contacts list"]' },
+      { selector: '[data-contacts-index-state]' },
+    ] },
     () => contactsNavLink.dispatchEvent('click'),
     () => page.waitForURL(/\/staff\/contacts(?:\?|$)/),
     async () => {
