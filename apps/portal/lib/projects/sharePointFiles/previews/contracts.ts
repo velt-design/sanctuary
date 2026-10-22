@@ -12,7 +12,7 @@ export const PREVIEW_LEASE_MS = 5 * 60_000;
 export const previewProfile = z.enum(['photo-v1', 'pdf-v1']);
 const version = z.string().min(1).max(1024).regex(/^"[^"\r\n\x00-\x1f]+"$/);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
-export const previewKnown = z.object({ version, hash, profile: previewProfile }).strict();
+const previewKnown = z.object({ version, hash, profile: previewProfile }).strict();
 export const previewBatchRequest = z.object({
   rootId: z.uuid(), folderId: graphId,
   items: z.array(z.object({ id: graphId, known: previewKnown.optional() }).strict()).min(1).max(PREVIEW_BATCH_ITEMS),
