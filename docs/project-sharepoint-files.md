@@ -126,6 +126,19 @@ The importer does not overwrite or unbind a disputed match. Correcting an errone
 
 ## Verification
 
+Successful authenticated list responses retain the existing `Server-Timing`
+total and append numeric `files_auth`, `files_bindings_rpc`, `files_token`,
+`files_library`, `files_ancestry` and `files_children` phases when reached.
+Token/Graph phases include JSON body reads; ancestry covers all required hops.
+Only fixed phase labels/durations enter this header, with no file/project names,
+IDs, URLs, assertions or cursors and no new logs/settings. The optional observer
+cannot change results/errors, ordering, validation, no-store or timeouts.
+Non-200 responses retain existing behavior and do not emit these phases;
+successful unready states emit only reached phases. Cursor pages are ordinary
+successful reads with the same phase measurements.
+This is measurement only, not a latency improvement or permission/cache change.
+Focused tests verify finite headers, body-read timing and request/error parity.
+
 Local checks: `node scripts/test-project-sharepoint-files-pglite.mjs`; `node scripts/test-project-sharepoint-files-browser.mjs`; `vitest run apps/portal/lib/projects/sharePointFiles apps/portal/components/projects/ProjectPage/tabs/overview/ProjectSharePointFilesPanel.test.tsx apps/portal/components/projects/ProjectPage/tabs/overview/projectFilesNavigation.test.ts`; Portal TypeScript, focused ESLint, documentation impact and changed architecture checks. The disposable PostgreSQL test exercises the real migration, rollback, dark defaults, no backfill, leases, retries, multi-root replay/conflicts and grants. It also deletes imported, completed, pending and running projects through the existing quote-then-project request sequence, checks retained audit identity and rejects stale worker completion/failure. Actual React/TanStack observer tests cover request deduplication, equivalent-root keys, wrapper Work/project remount, selection/scroll return, bounded cursor finding, root/file races, cancellation, denial/retry, unsafe MIME, owner isolation and current-preview body reuse/refresh.
 
 The isolated headless Chromium harness builds the actual Files component **and actual open-route handler**, substituting authentication/Graph boundaries and a local provider. It selects a synthetic PNG, retries an injected preview failure, clicks Download and checks the received original filename, exact binary bytes and SHA-256. Those original bytes are a transport fixture with a `.3dm` filename, not a valid Rhino document. It checks valid synthetic PDF response bytes/MIME and actual canvas rendering, then verifies expansion does not read the body again. Desktop/mobile action visibility, folder return and list recovery are included. Bundles remain in memory; screenshots go under ignored `test-results/sharepoint-files`. It uses a fresh browser context with no real session or screen control. Both disposable database and browser checks are included in Portal Quality CI.

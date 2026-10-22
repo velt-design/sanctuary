@@ -2,6 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { graphId, type SharePointConfig } from './config';
 import { ProjectFilesError } from './types';
+import { measureProjectFilesPhase, type ProjectFilesTimingObserver } from './timing';
 
 const itemSchema = z.object({
   id: graphId, name: z.string().min(1).max(400), size: z.number().int().nonnegative().optional(),
@@ -20,22 +21,24 @@ async function boundedJson(response: Response): Promise<Record<string, unknown>>
   while (true) { const part = await reader.read(); if (part.done) break; bytes += part.value.length; if (bytes > 2_000_000) { await reader.cancel(); throw new ProjectFilesError('source_invalid'); } chunks.push(part.value); }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>; } catch { throw new ProjectFilesError('source_invalid'); }
 }
-export async function createGraph(cfg: SharePointConfig, assertion: string, signal: AbortSignal, fetcher: typeof fetch = fetch) {
+export async function createGraph(cfg: SharePointConfig, assertion: string, signal: AbortSignal, fetcher: typeof fetch = fetch, observer?: ProjectFilesTimingObserver) {
   if (!assertion || assertion.length > 20000) throw new ProjectFilesError('access_required');
-  const token = await boundedJson(await fetcher(`https://login.microsoftonline.com/${cfg.tenantId}/oauth2/v2.0/token`, {
+  const token = await measureProjectFilesPhase('token', observer, async () => boundedJson(await fetcher(`https://login.microsoftonline.com/${cfg.tenantId}/oauth2/v2.0/token`, {
     method: 'POST', redirect: 'error', cache: 'no-store', signal, headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: cfg.clientId, client_assertion: assertion, client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer', grant_type: 'client_credentials', scope: 'https://graph.microsoft.com/.default' }),
-  }));
+  })));
   if (typeof token.access_token !== 'string' || !token.access_token || token.token_type !== 'Bearer') throw new ProjectFilesError('source_invalid');
   const base = `https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(cfg.driveId)}/items/`;
   const request = (url: string, init?: RequestInit) => fetcher(url, { ...init, redirect: 'error', cache: 'no-store', signal, headers: { authorization: `Bearer ${token.access_token}`, ...(init?.headers ?? {}) } });
-  const drive = await boundedJson(await request(`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(cfg.driveId)}/root?$select=id,name,webUrl,folder,parentReference,sharepointIds,remoteItem`));
-  const root = itemSchema.safeParse(drive);
-  if (!root.success || !root.data.folder || root.data.remoteItem || root.data.parentReference?.driveId !== cfg.driveId || typeof drive.webUrl !== 'string') throw new ProjectFilesError('source_invalid');
-  const driveUrl = new URL(drive.webUrl), siteUrl = new URL(cfg.siteUrl);
-  if (driveUrl.origin !== siteUrl.origin || decodeURIComponent(driveUrl.pathname).replace(/\/$/, '') !== siteUrl.pathname + '/Shared Documents' || driveUrl.username || driveUrl.password || driveUrl.hash || driveUrl.search) throw new ProjectFilesError('source_invalid');
-  const ids = drive.sharepointIds as { siteUrl?: unknown } | undefined;
-  if (ids?.siteUrl !== undefined && ids.siteUrl !== cfg.siteUrl) throw new ProjectFilesError('source_invalid');
+  await measureProjectFilesPhase('library', observer, async () => {
+    const drive = await boundedJson(await request(`https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(cfg.driveId)}/root?$select=id,name,webUrl,folder,parentReference,sharepointIds,remoteItem`));
+    const root = itemSchema.safeParse(drive);
+    if (!root.success || !root.data.folder || root.data.remoteItem || root.data.parentReference?.driveId !== cfg.driveId || typeof drive.webUrl !== 'string') throw new ProjectFilesError('source_invalid');
+    const driveUrl = new URL(drive.webUrl), siteUrl = new URL(cfg.siteUrl);
+    if (driveUrl.origin !== siteUrl.origin || decodeURIComponent(driveUrl.pathname).replace(/\/$/, '') !== siteUrl.pathname + '/Shared Documents' || driveUrl.username || driveUrl.password || driveUrl.hash || driveUrl.search) throw new ProjectFilesError('source_invalid');
+    const ids = drive.sharepointIds as { siteUrl?: unknown } | undefined;
+    if (ids?.siteUrl !== undefined && ids.siteUrl !== cfg.siteUrl) throw new ProjectFilesError('source_invalid');
+  });
   const item = async (id: string): Promise<DriveItem> => {
     graphId.parse(id); const parsed = itemSchema.safeParse(await boundedJson(await request(base + encodeURIComponent(id) + '?$select=' + SELECT)));
     if (!parsed.success || parsed.data.id !== id || parsed.data.remoteItem || parsed.data.parentReference?.driveId && parsed.data.parentReference.driveId !== cfg.driveId) throw new ProjectFilesError('source_invalid');
@@ -61,7 +64,7 @@ export async function createGraph(cfg: SharePointConfig, assertion: string, sign
       return parsed.data;
     },
     async children(root: string, folder: string, cursor?: string) {
-      const parent = await within(root, folder); if (!parent.folder) throw new ProjectFilesError('not_found', 404);
+      const parent = await measureProjectFilesPhase('ancestry', observer, () => within(root, folder)); if (!parent.folder) throw new ProjectFilesError('not_found', 404);
       const path = base + encodeURIComponent(folder) + '/children';
       let url = path + '?$top=100&$select=' + SELECT;
       if (cursor) {
@@ -71,7 +74,7 @@ export async function createGraph(cfg: SharePointConfig, assertion: string, sign
         try { parsed = new URL(url); } catch { throw new ProjectFilesError('invalid_request', 400); }
         if (parsed.origin !== 'https://graph.microsoft.com' || parsed.pathname !== new URL(path).pathname || parsed.username || parsed.password || parsed.hash) throw new ProjectFilesError('invalid_request', 400);
       }
-      const page = await boundedJson(await request(url));
+      const page = await measureProjectFilesPhase('children', observer, async () => boundedJson(await request(url)));
       if (!Array.isArray(page.value) || page.value.length > 200) throw new ProjectFilesError('source_invalid');
       const items = page.value.map(value => { const parsed = itemSchema.safeParse(value); if (!parsed.success || parsed.data.remoteItem || parsed.data.parentReference?.driveId !== cfg.driveId || parsed.data.parentReference?.id !== folder) throw new ProjectFilesError('source_invalid'); return parsed.data; });
       const next = page['@odata.nextLink'];
