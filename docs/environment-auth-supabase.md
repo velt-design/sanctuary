@@ -906,3 +906,7 @@ rehearsal compared all 39 existing project rows before/after and found zero
 business-data changes and zero historical dates assigned. Staging installation
 completed; production installation/release remain unauthorised. Existing staff
 sessions and grants remain the access authority.
+
+## SharePoint project-file activation (22 October 2026)
+
+The dedicated Jobs-only Sites.Selected app and explicit site assignment are separate from Outlook. Source configuration, database control and provisioning flags are dark by default; the reviewed migration, explicit import and cron activation are separate operator steps. No interactive credential discovery is used. See [Project SharePoint files](project-sharepoint-files.md) for exact environment names, disable/retry procedure and unverified live prerequisites.

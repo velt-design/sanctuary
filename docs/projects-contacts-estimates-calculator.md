@@ -556,3 +556,7 @@ save returns successfully. Optimistic list/cache writes still happen immediately
 through the existing queue, but they cannot change an open confirmation to
 "Inputs unchanged" midway through its command. Failures retain the original
 baseline and error for retry.
+
+## SharePoint project files (22 October 2026)
+
+The existing Files tab adds explicitly bound Jobs-library folders, multiple roots per project, safe PDF/photo previews and original downloads. Website enquiry attachments remain visible. New-project folder provisioning is dark by default and does not backfill historical projects. See [Project SharePoint files](project-sharepoint-files.md) for ownership, activation, recovery and acceptance limits.

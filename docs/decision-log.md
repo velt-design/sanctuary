@@ -1,5 +1,21 @@
 # Decision Log
 
+## 2026-10-22: project file relationships must preserve project deletion
+
+Independent review found that new SharePoint binding/job/audit foreign keys would
+reject the existing administrator project delete after its preceding quote-delete
+request. The unreleased migration now cascades local bindings/jobs and retains
+historical audit identity plus a deletion snapshot independently of the live row.
+It never deletes provider originals. Completion takes the parent lock before the
+job and cannot revive a deleted project. Owner: `project-sharepoint-files.md`;
+regression: `scripts/test-project-sharepoint-files-pglite.mjs` covers imported,
+completed, pending and running deletion and late worker completion.
+
+The same review distinguished file-action links from delivery acceptance. The
+isolated browser harness now clicks View/Download through the actual open handler
+with synthetic boundaries and verifies image pixels plus original filename/bytes.
+Synthetic transport and native/live provider acceptance remain separate claims.
+
 ## 2026-10-22: Historical sales credit and explicit test exclusion
 
 Keep historical sales-design attribution separate from current project owners and

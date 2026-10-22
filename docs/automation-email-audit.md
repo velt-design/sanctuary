@@ -507,3 +507,7 @@ $18,338 total and extras; exact HTTP replay reused its receipt. See
 `customer-configurator-launch-review.md` for deployment, database/provider proof,
 rollback and the distinction between this verified local producer and the pending
 public website release. No v2.9 pricebook publication occurred in this email pass.
+
+## Project folder provisioning (22 October 2026)
+
+Future project inserts can atomically enqueue a Jobs-folder task after explicit activation. A scoped RPC leases one attempt, freezes its folder identity, retries partial provider work and records private audit events. No historic-project backfill or generic-worker activation is included. See [Project SharePoint files](project-sharepoint-files.md).
