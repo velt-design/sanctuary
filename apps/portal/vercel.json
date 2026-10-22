@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/campaign-render-deadline-20261022": false,
       "codex/meta-mobile-20261022": false,
       "codex/campaign-render-origin-20261022": false,
       "codex/campaign-render-packaging-20261022": false,
