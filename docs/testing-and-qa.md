@@ -1,5 +1,17 @@
 # Testing And QA
 
+## Landing completion lineage (22 October 2026)
+
+`scripts/test-meta-creative-ledger-db.mjs` includes130001 and the completion
+fixture in the same disposable PostgreSQL session as the prior probe chain.
+It exercises the actual four-probe history, partial assign/expose without reload,
+atomic control-template transition and terminal close, exact derivative prepare,
+single fresh probe, immutable old history, shared reservation and later derivative
+rollback. Expiry, control, candidate, genuine visitor, receipt and ordinal drift
+deny. Both the original finite case and acrylic action-first case run through
+the existing harness. All identities and paid model receipts in tests are synthetic.
+Public application and CSRF code are unchanged by this migration-only correction.
+
 ## Facebook mobile sticky estimate repair (22 October 2026)
 
 The Facebook browser suite exercises both actual /ads/facebook destinations and
