@@ -13,7 +13,7 @@ const operation = z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/);
 const common = { generation: z.number().int().positive(), candidateHash: hash };
 export const experimentPayloads = {
   read: z.object({}).strict(),
-  receipt: z.object({command:z.string().uuid(),stage:z.enum(['prepare','review','visual','publish','verify','evaluate','rollback','owner_decision','owner_end']),payload:z.record(z.string(),z.unknown())}).strict(),
+  receipt: z.object({command:z.string().uuid(),stage:z.enum(['prepare','probe','review','visual','publish','verify','evaluate','rollback','owner_decision','owner_end']),payload:z.record(z.string(),z.unknown())}).strict(),
   owner_decision:z.object({owner:z.uuid(),request:z.uuid(),generation:common.generation,template:z.literal(EXPERIMENT_TEMPLATE),controls:z.record(z.string(),z.unknown()),
     prior:z.object({id:z.uuid(),candidateHash:hash,state:z.enum(['rejected','reverted','inconclusive','retained'])}).strict().nullable(),
     expiresAt:z.iso.datetime({offset:true}),day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),correction:z.string().regex(/^[a-f0-9]{40}$/),

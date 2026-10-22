@@ -9,6 +9,11 @@ wraps its previous implementation; three unique receipt indexes enforce one
 owner/Auckland-day decision, one preparation and one first prepare-probe. A
 null/reject consumes the decision. A lost dispatch is reconciled by its exact
 receipt, never refunded or repeated. Ordinary probe rows/counters remain intact.
+Exact committed prepare/probe replay precedes current-capacity validation, so
+expiry, Stop or generation changes cannot hide the saved result. Binding and
+the complete stage/experiment/payload digest still must match. Signed probe
+receipt reads return only the original saved fields, without a new capability
+or extended probe expiry; fresh commands still require current capacity.
 
 Capacity is acquired before Velt reserves collection/model work, under the same
 acquisition lock as ordinary landing and creative tests. It binds owner/request,

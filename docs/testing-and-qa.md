@@ -17,6 +17,9 @@ controls, distinct proposal/probe, no repeat after reject/null, signed receipt
 identity, genuine-delivery/cadence refusal and funded-day bounds. The same SQL
 fixture runs under PGlite in `test/landing-owner-decision-command.test.ts`; that
 file also covers the actual signed route and unchanged diagnostic capability.
+Lost-reply cases cover revoked/expired capacity and generation drift, exact
+prepare/probe replay, conflicting identities, unchanged native rows/counters,
+and signed probe receipt readback without capability renewal.
 
 
 ## Composed authored/native campaign layer (23 October 2026)

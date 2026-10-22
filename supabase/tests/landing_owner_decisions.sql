@@ -12,7 +12,7 @@ $$;
 create function pg_temp.prepare_payload(copy text,decision uuid default null,request uuid default null)returns jsonb language sql as $$
  select jsonb_build_object('generation',generation,'template',template,'candidateHash',repeat('d',64),'evidenceHash',repeat('e',64),'path','/acrylic-roof-pergolas-auckland','copy',copy,'generator','resp_fresh','minimumExposures',100,'durationDays',14)||case when decision is null then '{}'::jsonb else jsonb_build_object('ownerDecision',decision,'ownerRequest',request)end from public.landing_experiment_control
 $$;
-do $$declare owner uuid:=gen_random_uuid();decision uuid:=gen_random_uuid();request uuid:=gen_random_uuid();experiment uuid:=gen_random_uuid();cmd uuid:=gen_random_uuid();probe_cmd uuid:=gen_random_uuid();p jsonb;r jsonb;prep jsonb;probe jsonb;old jsonb;before_count int;begin
+do $$declare owner uuid:=gen_random_uuid();decision uuid:=gen_random_uuid();request uuid:=gen_random_uuid();experiment uuid:=gen_random_uuid();cmd uuid:=gen_random_uuid();probe_cmd uuid:=gen_random_uuid();p jsonb;r jsonb;prep jsonb;probe jsonb;old jsonb;before_count int;change text;prepared jsonb;observed jsonb;begin
  select to_jsonb(e)into old from public.landing_experiments e where id='a1000000-0000-4000-8000-000000000001';
  r:=public.landing_experiment_command(repeat('b',64),gen_random_uuid(),'read',null);
  perform pg_temp.ok(r#>'{excluded,/acrylic-roof-pergolas-auckland}'?'action-first','same rendered control remains excluded across template release');
@@ -38,6 +38,35 @@ do $$declare owner uuid:=gen_random_uuid();decision uuid:=gen_random_uuid();requ
  perform pg_temp.ok(r->>'ownerDecision'=decision::text and(select count(*)from public.landing_experiment_probes)=before_count+1,'one additive probe retains ordinary usage');
  perform pg_temp.ok(public.landing_experiment_command(repeat('b',64),probe_cmd,'probe',experiment,probe)=r,'probe replay is exact receipt only');
  perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),gen_random_uuid(),''probe'',%L,%L::jsonb)',experiment,probe),'no second probe');
+ select result into prepared from public.landing_experiment_receipts where command=cmd;
+ -- Lost replies remain reconcilable after capacity is revoked. Each test change
+ -- rolls back locally; receipts, probe expiry/counters and reservation stay exact.
+ select jsonb_build_array((select jsonb_agg(to_jsonb(t)order by t.command)from public.landing_experiment_receipts t),
+  (select jsonb_agg(to_jsonb(t)order by t.id)from public.landing_experiment_probes t),
+  (select jsonb_agg(to_jsonb(t)order by t.id)from public.landing_experiments t),
+  (select jsonb_agg(to_jsonb(t)order by t.experiment)from public.acquisition_experiment_reservation t))into observed;
+ foreach change in array array['publishing=true','enabled=false','admitted_until=clock_timestamp()-interval ''1 second''']loop
+  begin
+   execute 'update public.landing_experiment_control set '||change;
+   perform pg_temp.ok(public.landing_owner_decision(decision)is null,'current owner capacity unavailable');
+   perform pg_temp.ok(public.landing_experiment_command(repeat('b',64),cmd,'prepare',experiment,prep)=prepared,'revoked preparation replay');
+   perform pg_temp.ok(public.landing_experiment_command(repeat('b',64),probe_cmd,'probe',experiment,probe)=r,'revoked probe replay preserves expiry');
+   perform pg_temp.ok(public.landing_experiment_command(repeat('b',64),gen_random_uuid(),'receipt',experiment,jsonb_build_object('stage','probe','command',probe_cmd,'payload',probe))=r,'receipt-only probe readback');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),%L,''probe'',%L,%L::jsonb)',probe_cmd,experiment,probe||jsonb_build_object('ownerRequest',gen_random_uuid())),'changed owner request');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),%L,''probe'',gen_random_uuid(),%L::jsonb)',probe_cmd,probe),'changed experiment');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),%L,''prepare'',%L,%L::jsonb)',probe_cmd,experiment,probe),'changed stage');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),%L,''prepare'',%L,%L::jsonb)',cmd,experiment,prep||jsonb_build_object('copy','project')),'changed preparation');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''0'',64),%L,''probe'',%L,%L::jsonb)',probe_cmd,experiment,probe),'wrong binding replay');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),gen_random_uuid(),''probe'',%L,%L::jsonb)',experiment,probe),'no fresh probe under revoked capacity');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),gen_random_uuid(),''prepare'',gen_random_uuid(),%L::jsonb)',prep),'no fresh preparation under revoked capacity');
+   perform pg_temp.denied(format('select public.landing_experiment_command(repeat(''b'',64),gen_random_uuid(),''receipt'',%L,%L::jsonb)',experiment,jsonb_build_object('stage','probe','command',probe_cmd,'payload',probe||jsonb_build_object('probe',gen_random_uuid()))),'receipt payload conflict');
+   perform pg_temp.ok(observed=jsonb_build_array((select jsonb_agg(to_jsonb(t)order by t.command)from public.landing_experiment_receipts t),
+    (select jsonb_agg(to_jsonb(t)order by t.id)from public.landing_experiment_probes t),
+    (select jsonb_agg(to_jsonb(t)order by t.id)from public.landing_experiments t),
+    (select jsonb_agg(to_jsonb(t)order by t.experiment)from public.acquisition_experiment_reservation t)),'readback has no effects');
+   raise no_data_found;
+  exception when no_data_found then null;end;
+ end loop;
  perform public.landing_experiment_command(repeat('b',64),gen_random_uuid(),'review',experiment,jsonb_build_object('generation',(select generation from public.landing_experiment_control),'candidateHash',repeat('d',64),'verdict','reject','reviewer','resp_independent_reject'));
  perform pg_temp.ok((select state='rejected'from public.landing_experiments where id=experiment),'genuine reject terminal');
  perform pg_temp.ok(not exists(select 1 from public.acquisition_experiment_reservation),'reservation released on rejection');

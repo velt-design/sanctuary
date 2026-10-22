@@ -61,6 +61,12 @@ begin
  perform pg_advisory_xact_lock(819421,1);
  select * into c from public.landing_experiment_control where singleton for update;
  if c.singleton is null or c.binding is distinct from p_binding then raise exception 'Experiment authority unavailable';end if;
+ -- Reconcile committed effects before current capacity checks. The underlying
+ -- command still requires the exact stage/experiment/payload digest; this cannot
+ -- create another probe or extend its original expiry after Stop or expiry.
+ if p_stage in('prepare','probe') and exists(select 1 from public.landing_experiment_receipts where command=p_command) then
+  return public.landing_experiment_without_owner_decision(p_binding,p_command,p_stage,p_experiment,p_payload);
+ end if;
  perform public.landing_owner_decision_expire();
  if p_stage='receipt' and p_payload->>'stage' in('owner_decision','owner_end') then
   if p_experiment is not null then raise exception 'Owner receipt scope differs';end if;

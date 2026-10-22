@@ -27,6 +27,15 @@ it('signs only unchanged probe capability fields while retaining private owner r
  rpc.mockReturnValue({abortSignal:async()=>({data:{probe:uuid(4),experiment:uuid(7),state:'candidate',path:'/acrylic-roof-pergolas-auckland',expires:new Date(Date.now()+90000).toISOString(),ownerDecision:uuid(5),ownerRequest:uuid(6)},error:null})});
  const response=await POST(new Request('http://localhost/api/landing-experiment/command',{method:'POST',body:value.body,headers:{'content-type':'application/json','x-landing-signature':value.signature}}));expect(response.status).toBe(200);const result=await response.json();expect(result.ownerDecision).toBe(uuid(5));const capability=readProbe(result.capability);expect(capability).toMatchObject({probe:uuid(4),experiment:uuid(7),candidateHash:payload.candidateHash});expect(capability).not.toHaveProperty('ownerDecision');expect(capability).not.toHaveProperty('ownerRequest');
 });
+it('reads the exact saved probe receipt without minting or extending a capability',async()=>{
+ const payload={generation:7,template:EXPERIMENT_TEMPLATE,candidateHash:'a'.repeat(64),probe:uuid(4),mode:'prepare',ownerDecision:uuid(5),ownerRequest:uuid(6)};
+ const saved={probe:uuid(4),experiment:uuid(7),path:'/acrylic-roof-pergolas-auckland',expires:new Date(Date.now()-1000).toISOString(),ownerDecision:uuid(5),ownerRequest:uuid(6)};
+ const value=signed('receipt',{command:uuid(8),stage:'probe',payload},uuid(7));
+ rpc.mockReturnValue({abortSignal:async()=>({data:saved,error:null})});
+ const response=await POST(new Request('http://localhost/api/landing-experiment/command',{method:'POST',body:value.body,headers:{'content-type':'application/json','x-landing-signature':value.signature}}));
+ expect(response.status).toBe(200);expect(await response.json()).toEqual(saved);expect(rpc).toHaveBeenCalledOnce();
+ expect(rpc.mock.calls[0]?.[1]).toMatchObject({p_stage:'receipt',p_experiment:uuid(7),p_payload:{command:uuid(8),stage:'probe',payload}});
+});
 
 it('runs owner admission, immutable rejection, additive probe and genuine-delivery denials against SQL in CI',async()=>{
  const db=new PGlite();try{await db.exec(landingExperimentTestBootstrap(process.cwd()));
