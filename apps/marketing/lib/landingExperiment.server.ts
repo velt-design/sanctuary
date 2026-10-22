@@ -3,6 +3,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { LANDING_EXPERIMENT_PATHS, LANDING_EXPERIMENT_VERSION, LANDING_COPY,experimentCookieName,type ExperimentPath } from './landingExperiment';
 import template from '../data/landing-template.generated.json';
+import {copyChoice} from './landingCopyContract';
 
 export const experimentHash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export const EXPERIMENT_TEMPLATE = experimentHash({ version: LANDING_EXPERIMENT_VERSION, paths: LANDING_EXPERIMENT_PATHS, slots: LANDING_COPY,
@@ -14,7 +15,7 @@ export const experimentPayloads = {
   read: z.object({}).strict(),
   receipt: z.object({command:z.string().uuid(),stage:z.enum(['prepare','review','visual','publish','verify','evaluate','rollback']),payload:z.record(z.string(),z.unknown())}).strict(),
   prepare: z.object({ generation: common.generation, candidateHash: hash, evidenceHash: hash, template: z.literal(EXPERIMENT_TEMPLATE),
-    path: z.enum(LANDING_EXPERIMENT_PATHS), copy: z.enum(['explore','project','estimate','action-first']), generator: operation,
+    path: z.enum(LANDING_EXPERIMENT_PATHS), copy: z.string().max(125).refine(value=>copyChoice(value)!==null), generator: operation,
     minimumExposures: z.literal(100), durationDays: z.literal(14) }).strict(),
   review: z.object({ ...common, reviewer: operation, verdict: z.enum(['pass','reject']) }).strict(),
   visual: z.object({ ...common, visualHash: hash, template: z.literal(EXPERIMENT_TEMPLATE) }).strict(),

@@ -1,3 +1,4 @@
+import { canonicalTemplateFiles } from './landing-template-paths.mjs';
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { resolve, dirname, relative } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -7,6 +8,7 @@ const output = resolve(marketing, 'data/landing-template.generated.json');
 const require = createRequire(resolve(marketing, 'package.json'));
 const files = new Map(), dependencies = new Map(), assets = new Map();
 function read(path) {
+  path = resolve(path);
   if (path === output || files.has(path) || !existsSync(path)) return;
   const source = readFileSync(path, 'utf8'); files.set(path, source.replaceAll('\r\n', '\n'));
   // Public photographs/icons referenced by the relevant source closure are part
@@ -37,7 +39,7 @@ function read(path) {
 }
 for (const name of ['app/layout.tsx','app/auckland-outdoor-living/page.tsx','app/acrylic-roof-pergolas-auckland/page.tsx']) read(resolve(marketing, name));
 read(resolve(root, 'scripts/marketing/generate-landing-template.mjs'));
-const entries = [...files].map(([path, source]) => [relative(root, path).replaceAll('\\','/'), createHash('sha256').update(source).digest('hex')]).sort((a,b) => a[0].localeCompare(b[0]));
+const entries = [...canonicalTemplateFiles(root,files)].map(([path, source]) => [path, createHash('sha256').update(source).digest('hex')]).sort((a,b) => a[0].localeCompare(b[0]));
 const versions = Object.fromEntries([...dependencies].sort());
 const publicAssets=Object.fromEntries([...assets].sort());
 const hash = createHash('sha256').update(JSON.stringify({ entries, versions, publicAssets })).digest('hex');

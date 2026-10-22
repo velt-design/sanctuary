@@ -1,5 +1,20 @@
 # Testing And QA
 
+## Composed authored/native campaign layer (23 October 2026)
+
+The disposable PostgreSQL17 ledger harness installs the deployed landing
+recovery migrations before authored50009, then executes the real recovery and
+technical-resume fixtures on a separate disposable clone. This proves the
+authored patch retains the current protected command. The main database keeps
+the full authored, canonical-copy, formal cohort, learning, ambiguity, retention,
+steady inventory and concurrency tests. Clone-only synthetic fixture cleanup is
+not a production migration or permission to reset campaign history.
+
+Reuse unchanged UI/source evidence where the dependency closure is identical.
+Regenerate the composed renderer manifest against the owned current workspace.
+A local generated fingerprint is not the deployed fingerprint, and local
+fixtures do not prove native media, provider delivery or actual publication.
+
 ## Technical landing continuation (22 October 2026)
 
 The existing disposable PG17 harness includes140001 and the technical-resume
@@ -114,6 +129,123 @@ limitation logs. Run alongside diagnostic/failure tests, GA4 HTTP tests and
 JSON decoding, abort, authority, core and normalization remain fatal. These are
 synthetic local checks, not proof of the historical field or another live refresh.
 
+## Combined landing and creative contract (22 October 2026)
+
+Run the disposable PG17 creative-ledger harness on the exact integration checkout,
+with each migration once in order. It covers authored finite/text aliases and
+retained-current no-op, shared landing/creative claims, exact native cohorts,
+terminal history, retention replacement/restore/abort, ambiguity bounds and all
+owned steady inventory. Feed its synthetic ambiguity and steady exports through
+the paired Velt consumers and the real Source health/public receipt/intake tests.
+Canonical enquiries must survive missing/revoked/conflicting attribution. Run all
+marketing and campaignMonitor/metaCreatives suites, Marketing/Portal types, changed
+lint, docs/architecture guards and generated template `--check`. Preserve incoming
+main blobs and accepted rendered-closure evidence explicitly. Local composition
+does not prove a hosted experiment, actual media preservation or commercial gain.
+
+The inherited stage notes below retain their original scope and evidence. The combined local candidate now includes authored-copy aliases, terminal history, retention, bounded ambiguity and steady inventory. Statements that a later local layer remains unfinished describe that earlier checkpoint; actual hosted compatibility, provider/media acceptance and the whole live loop remain unverified.
+
+## Finite ambiguity tests (local)
+
+Use the existing disposable PG17 bin with SANCTUARY_DISPOSABLE_POSTGRES_BIN and
+run node scripts/test-meta-creative-ledger-db.mjs. It applies actual50012 after all
+prior native/concurrency checks. meta_creative_ambiguity_cohort.sql proves a genuine
+synthetic ordinary Google-labelled website enquiry stays unknown without altering
+the two native arms, disjoint late records, late valid joins, contradictory joins,
+canonical adverse signals, overflow, freeze and private ACLs. Snapshot fixtures
+return actual frozen native results inside isolated rollback subtransactions.
+
+meta_creative_ambiguity_settlement.sql persists a robust revert with one unknown
+website enquiry, then checks immutable replay/ack and current history3. The helper
+scripts/meta-creative-ambiguity-fixtures.ts generates485 synthetic JS receipts for
+independent PostgreSQL endpoint/quality verification. Ignored exports feed paired
+Velt composed and native save/read tests. Run creative-executor and signed creative
+route Vitest tests as well. No model/provider/SDK or hosted database action occurs.
+The fixtures do not prove real media, native delivery or whole-loop acceptance.
+
+## Retained serving (local)
+
+Run `apps/marketing/lib/creative-executor` and the creative route tests. The
+disposable PG17 ledger harness applies 50011 and exercises first/other donor
+retention, same-donor replacement recovery, shared reservation denial, Stop/resume,
+stale proof, original/extra-budget target denial, final/no-effect replay and late
+confirmation. Separate native sessions prove parallel admission and dispatch versus
+no-effect exclusion. Historical acceptance rows in the synthetic fixture are
+explicit setup, never evidence of Meta capabilities or a production schema install.
+
+## Creative history and durable exclusion (local)
+
+The existing disposable PG17 ledger harness now applies 20261022050010 and the
+synthetic meta_creative_learning.sql regression. It proves cross-language
+JSON-string UTF8 hash identity, a prior copy beyond the latest-four display tail,
+160 unrelated rows, exact donor/media/control/scope/native-method isolation,
+64-copy coverage overflow, different-copy admission and exact immutable replay.
+Original terminal rows and helper ACLs are preserved. The signed existing route
+also rejects changed template/expanded scope/private extra response fields.
+Native equal-zero arm fixtures distinguish complete all-saved coverage from
+unassigned outcomes; signed-route tests preserve null spend and reject missing
+or inconsistent coverage. Paired model composition labels matched counts and
+prohibits all-enquiry CPE inference when coverage is incomplete.
+No customer content, real credentials, model calls or provider effects are used.
+
+## Authored landing continuation, local checks
+
+`landingCopyContract.test`, `LandingExperiment.test` and the actual
+`probe.integration.test` command/SQL composition cover authored copy admission,
+unsupported-claim rejection, consent, control restoration and diagnostic isolation.
+The optional browser case needs a credential-free compiled marketing page,
+`IMPROVEMENT_RENDER_FIXTURE_ORIGIN` on localhost, the bundled Velt renderer module
+and an existing local Chromium executable. It saves screenshots for all three
+authored slots on both pages and proves cookie/reload/exposure with zero genuine
+assignments or enquiries. A skipped browser case leaves rendered proof unverified.
+No model/provider request is part of these tests.
+
+The disposable native ledger harness applies actual50009 and
+`landing_authored_copy.sql` alongside the existing lifecycle/authority tests.
+Its local PostgreSQL directory is created and removed by the harness; no hosted
+database URL is accepted. Do not infer hosted acceptance from synthetic fixtures.
+
+## Native account receipt proof, local continuation
+
+Additive50006 records immutable operator-only account/method acceptance and
+revocation, separately from candidate approval and the reviewed method hash.
+It requires an existing formal example study/canary and both registered owned
+ad/cell identities. Distinct evidence hashes cover actual unit, inside-campaign
+allocation, unchanged originals and intended objective proof. Numeric echo or
+UI80 alone cannot establish allocation. Missing actual proof means no receipt.
+The latest revoked proof cannot silently fall back to an older acceptance.
+Application roles cannot write either table or call the private lookup/wrapper.
+Native disposable tests exercise registry identity, independently changed scope
+and method, immutability/revocation, missing allocation evidence and surviving
+owned cleanup. These are storage/security tests, not actual Meta acceptance.
+Deploy optional read consumers before50006; root's guarded operator alone may
+provision the actual receipt after real evidence. Separate delivery gates admit
+the locally connected activation path only with fresh acceptance/dispatch proof.
+
+## Formal preparation boundary, local only
+
+Creative authority tests prove the separate absent-by-default preparation flag,
+exact signed future reviewed plan, stale/future review rejection, current generation
+and Stop. Preparation alone rejects ACTIVE intents; paired delivery authority and
+Source50007 require fresh exact activation proof. Existing capability behavior
+remains. These local tests do not establish actual native eligibility or delivery.
+
+## Formal creative registry continuation, unpublished (21 October 2026)
+
+The additive50005 wrapper exposes only authenticated exact closed-owned ad IDs
+and matching paused-capability proof from existing immutable records. No new
+provider effects or activation are enabled. Native proof exercises a real synthetic
+capability sequence, then a null-experiment read after reservation release. It
+preserves the previous proof without assuming the current active-plan pointer
+still contains it. Changed principal/account/native contract cannot inherit the
+capability. The consumer must recheck every listed ad is currently PAUSED with
+its exact Page; unknown/absent objects are not silently dropped.
+
+Deploy compatible optional read fields before50005. Its private wrapped function
+is revoked from public, anon, authenticated and service_role; only the existing
+service-only outer command exposes this bounded history. No live schema or
+provider capability is implied by disposable native tests.
+
 ## Professionals photographic presentation (22 October 2026)
 
 Focused route tests preserve canonical/config identity, optional professional
@@ -201,6 +333,64 @@ a claim that it ran locally. The approved CUA browser workflow supplies actual
 preview journey evidence; normal CI can execute the registered browser suite.
 No real enquiry submission is needed for this presentation/filter change.
 
+
+## Formal creative cohort continuation (local only)
+
+The native ledger harness now verifies an immutable plan/registry-bound formal
+cohort. It restricts saved dates to delivery plus72hours, requires prior eligible
+exposure for late arrivals, deduplicates canonical projects, rejects contradictory
+UTMs and excludes post-cutoff qualification. Delayed CRM records remain intact.
+Counts explicitly cover consented attributable records; all-saved coverage stays
+unknown. This additive continuation is not installed or an activation proof.
+
+The continuation's coverage diagnostic counts canonical first-project WEBSITE
+requests in the matched delivery/maturation window, including unlinked requests
+(one saved record per ID), and retains both launch-test exclusions. Only exact
+current-test registry joins enter the native arms. Verified original-ad or other
+activated registered-test joins are separately counted; arbitrary other-campaign
+claims, missing consent, inconsistent tags and missing attribution remain unknown.
+The counts reconcile to the whole declared website domain. Unknown attribution or
+unresolved late enrolment prevents a commercial winner. Native fixtures include
+unlinked records, known-other versus invented other source, incomplete and complete
+coverage scenarios, and unchanged frozen reads. No additional personal data or
+consent is collected; ordinary CRM records and capability-release SQL are unchanged.
+
+Formal PAUSED-ad intents now include exact `ad_schedule_start_time` and
+`ad_schedule_end_time` from the frozen Auckland delivery window. The writer
+requires matching returned dates before confirmation; missing/changed schedules
+remain unconfirmed and do not trigger a repeated create. The capability path
+still creates an unchanged PAUSED ad without delivery dates. Synthetic composed
+readback is not proof of actual Meta scheduling support or enforcement. ACTIVE
+publication and formal continuation remain disabled pending their connected gates.
+
+
+
+## Authored landing acceptance (22 October 2026)
+
+Run `landingCopyContract.test.ts`, `LandingExperiment.test.tsx`, landing-experiment
+route/probe tests and `test/marketing-template-paths.test.ts`. The native
+`scripts/test-meta-creative-ledger-db.mjs` harness applies Source50009 directly
+after the existing 50001-50003 contract, without unfinished formal migrations,
+and runs `supabase/tests/landing_authored_copy.sql`. Its synthetic fixtures prove
+slot validation, prepare/review/publish/rollback, preserved retained controls,
+scoped exclusion beyond a display tail, and no diagnostic enquiry/assignment.
+The existing cross-lane concurrency check must still admit exactly one owner.
+
+`landing_copy_identity.sql` adds native admission/history regressions for both
+finite/authored alias directions, retained-current no-op, exact authored reuse,
+equivalent and omitted-original control maps, and a 160-row unrelated history
+tail. It asserts the exact rejection, preserved original records, private helper
+ACLs and continued eligibility for different permitted text.
+
+For actual rendered proof, compile Marketing with credential-free local flags,
+then run `probe.integration.test.ts` with `IMPROVEMENT_RENDER_FIXTURE_ORIGIN`,
+`IMPROVEMENT_RENDER_MODULE` and `IMPROVEMENT_RENDER_EXECUTABLE` pointing to the
+local page server, bundled exact Velt renderer and local Chromium. All finite
+choices, all authored slots on both pages, mobile layout, reload, consent and
+interaction stability must pass. Inspect saved candidate images independently;
+an optional-browser skip is not visual proof. Record exact template/renderer
+hashes. This is local synthetic acceptance, not a provider/model call, genuine
+enquiry, production measurement or proof the complete automatic loop is working.
 
 ## Finite Portal service-secret transfer
 
@@ -598,7 +788,7 @@ tail can evict a formal result after160 ordinary continuations while these sourc
 exclusions still prevent a paid generation request.
 Independent catalogue review and hosted execution remain separate acceptance.
 The compiled-page matrix covers both pages' three wording choices plus acrylic
-`action-first`. Local layout checks include320×568,390×740,390×844 and1440×960,
+`action-first`. Local layout checks include320Ã—568,390Ã—740,390Ã—844 and1440Ã—960,
 first-visit consent/acceptance, reduced motion, held pointer/focus stability,
 unchanged links/desktop geometry and design-anchor return. Native layout assertions
 retain first-exposure mobile/treatment values across reload/resize; mobile is only
@@ -1204,7 +1394,7 @@ Automatic payment recording: `node scripts/test-xero-automatic-payments.mjs` run
 
 Automatic invoice approval: the Xero database harness applies `20260915000005_xero_automatic_approval.sql` and runs `supabase/tests/xero_automatic_approval.sql` for approved request freezing, lease/dispatch/finalisation, replay and preservation after the rollout switch changes. Transfer unit cases verify approved creation and refusal to accept a draft as the completed approved result. These checks do not prove a hosted Xero write; demo verification and production activation remain separate.
 
-Automatic payment Finance status: migration08 and `supabase/tests/xero_payment_finance_status.sql` extend the PostgreSQL jobs harness to verify clean → review → current queue transitions. Focused Finance tests cover approved-transfer labels, automatic exceptions and stale checks. Hosted rendered evidence is still required.
+Automatic payment Finance status: migration08 and `supabase/tests/xero_payment_finance_status.sql` extend the PostgreSQL jobs harness to verify clean â†’ review â†’ current queue transitions. Focused Finance tests cover approved-transfer labels, automatic exceptions and stale checks. Hosted rendered evidence is still required.
 
 Finance view regression: `supabase/tests/xero_finance_views.sql`, run by the existing background-jobs database harness, checks 55 historical payment exceptions plus60 ordinary historical invoices, filtering before pagination, legacy reader parity, revoked access and browser denial. Focused page/repository tests distinguish an empty queue from an unavailable read. Hosted migration and responsive browser evidence remain separate.
 
@@ -2036,7 +2226,7 @@ The 2026-08-06 instant-shell completion repeated the five newly covered warm jou
 
 After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. When Next records a stale missing JavaScript hash, the analyser accepts only one unambiguous emitted loader group with the exact same module id; missing CSS, no match, an ambiguous match, or an exact-module missing artifact still fails closed. Unrelated global loaders are filtered by module id before their artifacts are read. Turbopack may repeat route/layout CSS in a dynamic entry; CSS explicitly listed in the route manifest's `entryCSSFiles` is already loaded and is de-duplicated from lazy totals while the established initial-JavaScript baseline remains unchanged. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
-At the Overview V2 handoff on 2026-07-30, a clean current build and an isolated clean `060bea19` build with the same analyser both exceeded only the Contacts and Calculator initial ceilings; Project Detail remained within its unchanged allowance, and those aggregate baseline failures were not authority to raise unrelated budgets. A later isolated `.next-route-optimization` production build closed the Contacts and Calculator debt without changing any ceiling. Contacts measured 550.8/154.6 KiB raw/gzip initial against 588/168 KiB limits, with 8.8/3.4 KiB lazy. Calculator measured 1158.5/302.4 KiB initial against 1182/312 KiB limits, with no lazy group. The independent Turbopack analysis confirmed the shared `PortalFloatingPanel` owner on both routes, no `@radix-ui/react-dropdown-menu`, and only the two material-catalogue JSON sources—not the full costing manifest, rules, overhead, hardware, or install-action inputs—in Calculator's route graph. The aggregate assertion then passed every monitored route.
+At the Overview V2 handoff on 2026-07-30, a clean current build and an isolated clean `060bea19` build with the same analyser both exceeded only the Contacts and Calculator initial ceilings; Project Detail remained within its unchanged allowance, and those aggregate baseline failures were not authority to raise unrelated budgets. A later isolated `.next-route-optimization` production build closed the Contacts and Calculator debt without changing any ceiling. Contacts measured 550.8/154.6 KiB raw/gzip initial against 588/168 KiB limits, with 8.8/3.4 KiB lazy. Calculator measured 1158.5/302.4 KiB initial against 1182/312 KiB limits, with no lazy group. The independent Turbopack analysis confirmed the shared `PortalFloatingPanel` owner on both routes, no `@radix-ui/react-dropdown-menu`, and only the two material-catalogue JSON sourcesâ€”not the full costing manifest, rules, overhead, hardware, or install-action inputsâ€”in Calculator's route graph. The aggregate assertion then passed every monitored route.
 
 Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. The activity-key Overview is the default workflow and joins Commercial and conditional Job Packs as truthful local lazy boundaries; the embedded Calculator loads only after explicit estimate, duplicate/revision, or create intent inside Commercial. The project frame and tabs stay initial. Project details and stage correction live in Overview at every width, while the retired Details rail/tab and Emails UI have no runtime boundary. The Calculator drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
 
@@ -2471,11 +2661,11 @@ The initial expanded Docker command stopped at missing docker ENOENT. That local
 blocker was subsequently resolved; see the Docker verification evidence below.
 Syntax checks and PGlite results alone do not satisfy the PostgreSQL/PGMQ gate.
 
-Mobile enquiry journey check (2026-09-14): at 390 × 844 in the in-app browser,
+Mobile enquiry journey check (2026-09-14): at 390 Ã— 844 in the in-app browser,
 Help me choose exposed optional location/brief/timing/budget/uploads without
 requiring dimensions; Commercial / Professional exposed the audience choice and
 business fields without budget. The configured contact journey retained its
-6.0 × 3.0 m design and scrolled to site-measure details inside the mobile layout.
+6.0 Ã— 3.0 m design and scrolled to site-measure details inside the mobile layout.
 Plan remained selected when entering/leaving Lighting, and a temporary preferred-
 timing value survived that section change. The fixture text was cleared and the
 viewport reset. No files, contact details or enquiries were submitted. This is a
@@ -2483,8 +2673,8 @@ local responsive interaction check, not device performance, live upload/provider
 verification or numeric published-pricing approval.
 
 Configured proposal regression (2026-09-14): 44 of the 45 historical proposal
-cases still match exactly. The 6 × 3 m pitched combination case originally used
-`area_override` (3.5760679331494534 m²), which explicitly omitted acrylic/joiner
+cases still match exactly. The 6 Ã— 3 m pitched combination case originally used
+`area_override` (3.5760679331494534 mÂ²), which explicitly omitted acrylic/joiner
 installation labour. Replaying that input reproduces $17,900.50 including GST.
 The current two-acrylic-bay takeoff produces $18,128 rounded including GST and no
 costing warnings; material quantities, installation and operational overhead all
@@ -2548,9 +2738,9 @@ The harness owner `scripts/test-background-jobs-db.mjs` remains large. This pass
 
 Finance access tests also execute migration09 against isolated capability prerequisites and verify grant/revocation/regrant events, append-only history and role denial. The jobs DB harness runs `xero_finance_access.sql` after the invoice contract. Session tests cover Ellen/Jordan active grants, revocation, unconfirmed identity and ordinary-admin denial.
 
-The finance workflow SQL harness now applies migration10–12 after minimal commercial prerequisites and the existing grant-check owner. `xero_finance_workflow.sql` checks stopped-job mapping, audited save replay, canonical retry queue identity, payment double-count prevention and grant revocation. Lightweight `xero-finance-resume.test.ts` uses a recording retry adapter and is not proof of queue delivery.
+The finance workflow SQL harness now applies migration10â€“12 after minimal commercial prerequisites and the existing grant-check owner. `xero_finance_workflow.sql` checks stopped-job mapping, audited save replay, canonical retry queue identity, payment double-count prevention and grant revocation. Lightweight `xero-finance-resume.test.ts` uses a recording retry adapter and is not proof of queue delivery.
 
-Finance workflow run34836432934 at face622 passed both PostgreSQL/PGMQ matrix database jobs, covering forward Xero migrations05–12 plus the existing grant-check function, through the new mapping/retry/read contracts and earlier isolated transfer contracts. The harness uses minimal commercial table prerequisites, not the complete historical portal migration chain. It makes no Xero network writes.
+Finance workflow run34836432934 at face622 passed both PostgreSQL/PGMQ matrix database jobs, covering forward Xero migrations05â€“12 plus the existing grant-check function, through the new mapping/retry/read contracts and earlier isolated transfer contracts. The harness uses minimal commercial table prerequisites, not the complete historical portal migration chain. It makes no Xero network writes.
 
 The real finance workflow now applies migration13, prepares/finalises after the tax-mapping guard, and verifies persisted observations and fresh-target exclusion. Isolated tests additionally prove stale-generation and changed-portal-status refusal, audit immutability, unavailable provider reads, scheduler authentication and strict manual-check bodies.
 
@@ -2647,3 +2837,25 @@ schema/provider test. No Graph dispatcher or credential loader exists.
 Run node scripts/test-project-sharepoint-files-pglite.mjs for the disposable real-migration contract and vitest run apps/portal/lib/projects/sharePointFiles plus the ProjectSharePointFilesPanel component test for source boundaries and ordinary file tasks. Fixtures do not establish live Graph coverage or real-provider browser/download acceptance. Activation checks are in [Project SharePoint files](project-sharepoint-files.md).
 
 The isolated browser harness now clicks the real component's View/Download actions through the real open handler with synthetic auth/Graph boundaries. It verifies a PNG renders, an action failure can be retried, and a synthetic original arrives with its expected filename/bytes/hash. PDF bytes and MIME are checked separately; native PDF viewing and actual SharePoint/Rhino acceptance remain outstanding. Database regression coverage includes linked, queued, running and completed project deletion, audit retention and stale completion rejection.
+
+## Steady retained-ad integration, local candidate (22 October 2026)
+
+The existing disposable PG17 creative-ledger harness now runs
+`supabase/tests/meta_creative_steady_inventory.sql` and exports only synthetic
+projections under ignored `.local-evidence/steady-native-inventory.json`. It
+composes real retention commands, signed-visit RPCs, canonical intake, outcomes
+and next-test cohorts through paused creation, activation, uncertain pause,
+restoration, replacement and superseded-abort denial. Missing, conflicting,
+expired, revoked and paused-gap receipts retain canonical enquiries as unknown;
+late valid receipts remain attributable. Existing two-arm and frozen-cohort
+contracts are preserved. Parallel capacity claims prove one slot cannot admit
+two creates and full inventory cannot prevent owned cleanup.
+
+Set SANCTUARY_NATIVE_STEADY_FIXTURE to that export when running
+`campaignMonitor/steady-native.test.ts`: actual SQL registry output feeds the
+real health reader, with only the fixed three Graph GET responses mocked. All
+known inventory states pass; unknown extras and wrong creative IDs fail. The
+public landing route suite checks the existing signed transport and rejects a
+steady receipt masquerading as a native arm. App typechecks, changed-file lint,
+architecture/docs guards and template generation check complete local proof.
+No synthetic fixture proves actual provider inventory or live attribution.
