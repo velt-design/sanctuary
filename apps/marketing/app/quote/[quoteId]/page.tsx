@@ -324,8 +324,10 @@ function QuotePrimaryAction({
       <div className={styles.acceptCopy}>
         <p>Ready to proceed?</p>
         <span>
-          After acceptance, we will prepare your deposit invoice and attempt
-          email delivery. This page will confirm the outcome.
+          If payments already fund this quote, acceptance retains them and we
+          will confirm any progress invoice separately. Otherwise, we will prepare
+          your first scheduled invoice and attempt email delivery. This page will
+          confirm the outcome.
         </span>
       </div>
       <form action={`/api/quotes/${encodeURIComponent(quoteId)}/accept`} method="post">
