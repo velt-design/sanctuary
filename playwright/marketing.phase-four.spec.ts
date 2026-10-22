@@ -619,20 +619,21 @@ test('professional capability route is discoverable, governed and source aware',
     await expect(
       main.getByRole('heading', {
         level: 1,
-        name: 'Pergola delivery for architects, designers and builders.',
+        name: 'Bring us into the design.',
       }),
     ).toBeVisible();
     await expect(
-      main.locator('#professional-projects .acrylic-project-card h3'),
+      main.locator('#professional-projects article a'),
     ).toHaveText([
-      'KiwiRail Head Office',
-      'Lilliput Mini Golf',
-      'The Good Home Takanini',
+      'Explore KiwiRail Head Office',
+      'Explore Lilliput Mini Golf',
+      'Explore The Good Home',
     ]);
-    await expect(main.locator('#professional-inputs article')).toHaveCount(3);
-    await expect(
-      main.locator('details[data-seo-landing-disclosure]'),
-    ).toHaveCount(2);
+    await expect(main.locator('details[data-disclosure=manual] summary')).toHaveText([
+      'Roof form, materials and building connections',
+      'Screens, lighting and connected trades',
+      'Engineering, consent and responsibilities',
+    ]);
     await expect(main.locator('#acrylic-enquiry-type')).toHaveValue(
       'professional',
     );
