@@ -12,7 +12,18 @@ for React Flight thenables, matched by view, Auckland day and Gantt range, then
 retired. An unavailable initial read uses normal authenticated API recovery; schema
 not-ready keeps the legacy fallback. No shared evidence cache is added.
 
-`ScheduleBoardView` and `ScheduleGanttView` own their pending values. Gantt dates,
+The current actual-frame split gives ScheduleFrame, ScheduleBoardSurface and
+ScheduleGanttSurface one stable public DOM owner. Pure date-axis calculation is
+in ScheduleGanttCalendarModel; the complete ScheduleGanttModel reuses it and adds
+verified crew/work rows. ScheduleSurfaceContext separates public viewport controls
+from source-owned evidence. Private Board/Gantt runtimes portal rows/empty evidence
+into those existing slots; one DndContext still spans unscheduled and lane rows.
+The public provider reads neutral density/label-width settings only; crew visibility
+and record state remain guarded. Old-source publications and cleanup cannot change
+a newer source's slots. ScheduleFrameOutput alone imports the private renderers;
+legacy ssr:false behavior is retained. Fresh bundle and browser proof is pending.
+
+`ScheduleBoardView` and `ScheduleGanttView` supply their verified pending values. Gantt dates,
 calendar lines, scale and density controls are real before crews/work arrive.
 Crew rows come from actual known crew data. Missing active-view records never
 become zero totals or an empty-business claim. Board/Gantt switches retain real

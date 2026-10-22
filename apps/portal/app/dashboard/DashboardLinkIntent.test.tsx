@@ -14,7 +14,7 @@ const nativeClick = vi.fn();
 // Inspect the prefetch contract passed to Next. Browser viewport scheduling and
 // ordinary navigation remain separate optimized-build checks, not this DOM test.
 vi.mock('next/link', () => ({
-  default: ({ children, prefetch, onClick, ...props }: any) => <a
+  default: ({ children, prefetch, onClick, onNavigate: _onNavigate, ...props }: any) => <a
     {...props} data-next-prefetch={String(prefetch)}
     onClick={(event) => {
       onClick?.(event);
@@ -99,9 +99,9 @@ it('keeps all five real Dashboard link owners intent-only while complete indepen
     expect(prefetchQuery).not.toHaveBeenCalled();
     const schedule = links.find(link => link.getAttribute('href') === '/staff/schedule')!;
     act(() => schedule.click());
-    expect(nativeClick).toHaveBeenLastCalledWith('/staff/schedule', false);
-    expect(routerReplace).not.toHaveBeenCalled();
-    expect(window.location.pathname).toBe('/dashboard');
+    expect(nativeClick).toHaveBeenLastCalledWith('/staff/schedule', true);
+    expect(routerReplace).toHaveBeenCalledExactlyOnceWith('/staff/schedule', { scroll: false });
+    expect(window.location.pathname).toBe('/staff/schedule');
     expect(cancelQueries).not.toHaveBeenCalled();
     expect(readSignal?.aborted).toBe(false);
     expect(loader).toHaveBeenCalledTimes(1);

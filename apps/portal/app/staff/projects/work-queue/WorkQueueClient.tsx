@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import PaginatedProjectWorkQueueList from '@/components/projects/workQueue/PaginatedProjectWorkQueueList.client';
@@ -17,7 +17,9 @@ import { ApiError } from '@/lib/repo/apiClient';
 import { qk } from '@/lib/queries/keys';
 import { projectWorkQueueQueryOptions } from '@/lib/queries/projectWorkQueue';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import WorkQueueFrame from './WorkQueueFrame';
 import styles from './workQueuePage.module.css';
+import {useWorkQueueWorkspace} from './WorkQueueWorkspace';
 import InactiveEnquiryReview from './InactiveEnquiryReview.client';
 
 function isAccessEndingError(error: unknown): boolean {
@@ -25,16 +27,19 @@ function isAccessEndingError(error: unknown): boolean {
 }
 
 export default function WorkQueueClient({
-  canReviewInactiveEnquiries = false,
+  canReviewInactiveEnquiries = false,queueLoader,staffLoader,readOnly=false,
 }: {
   canReviewInactiveEnquiries?: boolean;
+  queueLoader?:()=>Promise<import('@/lib/queries/projectWorkQueue').ProjectWorkQueueResponse>;
+  staffLoader?:typeof fetchProjectStaffDirectory;readOnly?:boolean;
 }) {
+  const workspace=useWorkQueueWorkspace();
   const host = useMemo(
     () => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown',
     [],
   );
   const queue = useQuery({
-    ...projectWorkQueueQueryOptions(host),
+    ...projectWorkQueueQueryOptions(host),...(queueLoader?{queryFn:queueLoader}:{}),
     refetchOnMount: 'always',
     retry: (failureCount, error) => (
       !isAccessEndingError(error)
@@ -44,7 +49,7 @@ export default function WorkQueueClient({
   });
   const staffQuery = useQuery({
     queryKey: qk.staff.directory(host),
-    queryFn: fetchProjectStaffDirectory,
+    queryFn: staffLoader??fetchProjectStaffDirectory,
     staleTime: 5 * 60 * 1_000,
     retry: 1,
   });
@@ -68,24 +73,9 @@ export default function WorkQueueClient({
           ? 'cached'
           : 'fresh';
 
-  return (
-    <PageLayout
-      width="full"
-      density="compact"
-      className={styles.page}
-      data-project-work-queue-state={state}
-      data-project-work-queue-background-ready={state === 'fresh' ? 'true' : 'false'}
-    >
-      <StaffPageHeader
-        title="Work Queue"
-        variant="index"
-        description="One server-confirmed operational obligation per project."
-        count={queue.data && !notReady ? `${entries.length} projects` : undefined}
-      />
-
-      {canReviewInactiveEnquiries ? <InactiveEnquiryReview host={host} /> : null}
-
-      {state === 'cached' ? (
+  const page={state,count:queue.data&&!notReady&&!unavailable?`${entries.length} projects`:undefined,
+    admin:!readOnly&&canReviewInactiveEnquiries?<InactiveEnquiryReview host={host}/>:null,
+    notices:<>      {state === 'cached' ? (
         <div className={styles.refreshing} role="status">Updating the queue...</div>
       ) : null}
       {state === 'refresh-failed' ? (
@@ -105,13 +95,15 @@ export default function WorkQueueClient({
         </AlertBanner>
       ) : null}
 
-      <PaginatedProjectWorkQueueList
+</>};
+  useLayoutEffect(()=>{workspace?.publishPage(page);});
+  useLayoutEffect(()=>()=>workspace?.publishPage(null),[workspace?.publishPage]);
+  const content=(      <PaginatedProjectWorkQueueList
         entries={entries} staff={staffQuery.data??[]} host={host}
-        mutationsEnabled={state==='fresh'} reassignmentEnabled={staffQuery.isSuccess}
+        mutationsEnabled={!readOnly&&state==='fresh'} reassignmentEnabled={!readOnly&&staffQuery.isSuccess}
         pending={state==='pending'}
         statusPanel={state==='not-ready'?<DataStatePanel state="unavailable" title="Work Queue not ready" description="Project Work is not available in this environment. No unconfirmed work is shown." onRetry={()=>void queue.refetch()}/>:state==='error'||state==='unavailable'?<DataStatePanel state={state==='unavailable'?'unavailable':'error'} onRetry={state==='error'?()=>void queue.refetch():undefined}/>:undefined}
       />
-
-    </PageLayout>
-  );
+);
+  return workspace?content:<WorkQueueFrame {...page}>{content}</WorkQueueFrame>;
 }

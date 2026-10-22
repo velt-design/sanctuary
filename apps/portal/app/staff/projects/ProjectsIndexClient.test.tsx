@@ -9,6 +9,11 @@ import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { ApiError } from '@/lib/repo/apiClient';
 import { PROJECTS_INDEX_QUERY_SCOPE } from '@/lib/queries/projectsIndex';
 
+let publishedPager:((page:number)=>void)|undefined;
+vi.mock('@/components/ui/foundation/FoundationPagination',async original=>{
+ const actual=await original<typeof import('@/components/ui/foundation/FoundationPagination')>();
+ return {...actual,Pagination:(props:Parameters<typeof actual.Pagination>[0])=>{publishedPager=props.onPageChange;return <actual.Pagination {...props}/>;}};
+});
 const replace = vi.fn();
 const prefetch = vi.fn();
 const openProject = vi.fn();
@@ -466,6 +471,23 @@ describe('ProjectsIndexClient', () => {
     expect(openProject).toHaveBeenCalledWith('proj_1');
 
     rendered.unmount();
+  });
+
+  it('publishes the genuine pager and rejects a saved callback after its selection or owner retires',async()=>{
+    useQueryMock.mockImplementation(options=>{
+      const data=matchingIndexData(options);data.projects.totalCount=100;data.projects.totalPages=2;
+      return {data,error:null,isFetching:false,isPlaceholderData:false,refetch:vi.fn()};
+    });
+    const rendered=renderIntoDocument(<ProjectsIndexClient initialFilters={ALL_FILTERS}/>);
+    const table=rendered.container.querySelector('table'),body=rendered.container.querySelector('tbody');
+    const history=vi.spyOn(window.history,'replaceState');
+    const first=publishedPager!;expect(first).toBeTypeOf('function');
+    act(()=>first(2));expect(new URLSearchParams(window.location.search).get('page')).toBe('2');
+    const previous=publishedPager!;const input=rendered.container.querySelector<HTMLInputElement>('#projectSearch')!;
+    act(()=>changeInputValue(input,'Different selection'));await act(async()=>{await Promise.resolve();});
+    history.mockClear();act(()=>previous(1));expect(history).not.toHaveBeenCalled();
+    expect(rendered.container.querySelector('table')).toBe(table);expect(rendered.container.querySelector('tbody')).toBe(body);
+    const retired=publishedPager!;rendered.unmount();history.mockClear();act(()=>retired(1));expect(history).not.toHaveBeenCalled();history.mockRestore();
   });
 
   it('closes an inline editor immediately and shows background save state before the request settles', async () => {

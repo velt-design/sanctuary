@@ -1,5 +1,7 @@
 'use client';
 
+import StaffPageHeader from '../layout/StaffPageHeader';
+
 import {
   useCallback,
   useEffect,
@@ -10,9 +12,12 @@ import {
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import StaffPageHeader from '../layout/StaffPageHeader';
+import {createPortal} from 'react-dom';
+import SpreadsheetSurface from './SpreadsheetSurface';
+import {SpreadsheetSurfaceProvider,useSpreadsheetSurface} from './SpreadsheetSurfaceContext';
+import type {useSpreadsheetViewport} from './useSpreadsheetViewport';
 import { editingSessionKey, focusEditorForTrigger } from './editorFocus';
-import { useSpreadsheetShell, type SharedSpreadsheetEditingCell } from './useSpreadsheetShell';
+import { useSpreadsheetRows, type SharedSpreadsheetEditingCell } from './useSpreadsheetShell';
 import { useSpreadsheetOptimisticEditing } from './useSpreadsheetOptimisticEditing';
 import type {
   SpreadsheetActiveCell,
@@ -48,7 +53,7 @@ function maybeOpenPicker(node: SpreadsheetEditorElement | null, trigger: Spreads
   }
 }
 
-export default function SpreadsheetPageTemplate<
+function SpreadsheetRuntime<
   TRow,
   TKey extends string,
   TEditableKey extends TKey,
@@ -63,7 +68,10 @@ export default function SpreadsheetPageTemplate<
   embedded?: boolean;
   zoomDockPlacement?: 'sheet' | 'viewport';
 }) {
-  const shell = useSpreadsheetShell({
+  const surface=useSpreadsheetSurface()!;
+  const mounted=useRef(true);
+  useLayoutEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  const shell = useSpreadsheetRows({
     columns: adapter.columns,
     groups: adapter.groups,
     rowNumberRows: adapter.rowNumberRows,
@@ -71,7 +79,7 @@ export default function SpreadsheetPageTemplate<
     defaultActiveKey: adapter.defaultActiveKey,
     getRowId: adapter.getRowId,
     isRowSelectable: adapter.isRowSelectable,
-  });
+  },surface.viewport as ReturnType<typeof useSpreadsheetViewport<TKey>>);
 
   const [editing, setEditing] = useState<SharedSpreadsheetEditingCell<TEditableKey, TEditorValue> | null>(null);
   const optimisticEditing = useSpreadsheetOptimisticEditing(adapter);
@@ -81,9 +89,6 @@ export default function SpreadsheetPageTemplate<
   const editingTriggerRef = useRef<SpreadsheetActivationTrigger | null>(null);
   const pendingPointerCellRef = useRef<PendingPointerCell<TKey> | null>(null);
   const skipBlurCommitRef = useRef(false);
-  const sectionRef = useRef<HTMLElement | null>(null);
-  const [viewportZoomDockVisible, setViewportZoomDockVisible] = useState(zoomDockPlacement !== 'viewport');
-
   const allCellKeys = useMemo(() => adapter.columns.map((column) => column.key), [adapter.columns]);
   const rowsById = useMemo(() => new Map(adapter.allRows.map((row) => [adapter.getRowId(row), row])), [adapter.allRows, adapter.getRowId]);
   const visibleRowIds = useMemo(
@@ -91,7 +96,6 @@ export default function SpreadsheetPageTemplate<
     [adapter.getRowId, shell.visibleRows],
   );
   const activeEditingSessionKey = editingSessionKey(editing);
-  const useViewportZoomDock = zoomDockPlacement === 'viewport';
   const savingCells = optimisticEditing?.savingCells ?? adapter.savingCells ?? {};
   const conflictCells = optimisticEditing?.conflictCells ?? adapter.conflictCells ?? {};
   const commitCellEdit = optimisticEditing?.commitEdit ?? adapter.commitEdit;
@@ -106,30 +110,6 @@ export default function SpreadsheetPageTemplate<
     setEditing(null);
   }, [editing, shell.visibleRows.length, visibleRowIds]);
 
-  useEffect(() => {
-    if (!useViewportZoomDock) {
-      setViewportZoomDockVisible(true);
-      return;
-    }
-
-    const node = sectionRef.current;
-    if (!node) return;
-    if (typeof IntersectionObserver === 'undefined') {
-      setViewportZoomDockVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setViewportZoomDockVisible(Boolean(entry?.isIntersecting));
-      },
-      { threshold: [0, 0.05, 0.1] },
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [useViewportZoomDock]);
-
   useLayoutEffect(() => {
     if (!activeEditingSessionKey) return;
     const node = editorRef.current;
@@ -140,6 +120,7 @@ export default function SpreadsheetPageTemplate<
 
   const beginEdit = useCallback(
     (row: TRow, key: TEditableKey, trigger: SpreadsheetActivationTrigger, seeded?: TEditorValue) => {
+      if(!mounted.current)return;
       const rowId = adapter.getRowId(row);
       const initialValue = seeded !== undefined ? seeded : adapter.getEditorValue(row, key);
       editingTriggerRef.current = trigger;
@@ -163,6 +144,7 @@ export default function SpreadsheetPageTemplate<
 
   const commitEditing = useCallback(
     async (nextSelection?: SpreadsheetActiveCell<TKey> | null): Promise<boolean> => {
+      if(!mounted.current)return false;
       if (!editing) return true;
       const row = rowsById.get(editing.rowId);
       if (!row) {
@@ -175,6 +157,7 @@ export default function SpreadsheetPageTemplate<
       if (!commitCellEdit) return false;
       const nextValue = editingValueRef.current !== undefined ? editingValueRef.current : editing.value;
       const ok = await commitCellEdit(row, editing.key, nextValue);
+      if(!mounted.current)return false;
       if (ok) {
         editingTriggerRef.current = null;
         editingValueRef.current = undefined;
@@ -210,7 +193,7 @@ export default function SpreadsheetPageTemplate<
           beginEdit(row, key, trigger, seeded);
         },
         commitValue: async (committedValue) => {
-          if (!adapter.isEditableKey(key) || !commitCellEdit) return false;
+          if (!mounted.current || !adapter.isEditableKey(key) || !commitCellEdit) return false;
           return commitCellEdit(row, key, committedValue);
         },
       });
@@ -221,7 +204,7 @@ export default function SpreadsheetPageTemplate<
   const keepEditingWithinCell = useCallback(() => {
     pendingPointerCellRef.current = null;
     window.requestAnimationFrame(() => {
-      editorRef.current?.focus();
+      if(mounted.current)editorRef.current?.focus();
     });
   }, []);
 
@@ -279,6 +262,7 @@ export default function SpreadsheetPageTemplate<
       }
 
       const ok = await commitEditing(nextSelection);
+      if(!mounted.current)return;
       if (!ok) {
         window.requestAnimationFrame(() => {
           editorRef.current?.focus();
@@ -344,61 +328,9 @@ export default function SpreadsheetPageTemplate<
     [editing, handleCellActivation, moveActiveCell, rowsById, shell],
   );
 
-  return (
-    <main className={`${styles.page} ${embedded ? styles.pageEmbedded : ''}`} data-ui-foundation-consumer="spreadsheet">
-      {embedded ? null : <StaffPageHeader title={adapter.title} />}
-
-      <div className={styles.stack}>
-        <section ref={sectionRef} className={styles.section}>
-          {adapter.toolbar}
-
-            <div ref={shell.sheetViewportRef} className={styles.sheetViewport} {...shell.viewportProps}>
-              <div ref={shell.gridRef} className={styles.tableScroller} style={shell.sheetVars} tabIndex={0} onKeyDown={handleGridKeyDown}>
-                <table className={styles.table}>
-                  <colgroup>
-                    <col style={{ width: shell.rowNumberWidthPx }} />
-                    {shell.displayColumns.map((column) => (
-                      <col key={column.kind === 'actual' ? column.column.key : column.key} style={{ width: shell.scaledPixels(column.widthPx) }} />
-                    ))}
-                  </colgroup>
-                  <thead>
-                    <tr className={styles.letterRow}>
-                      <th className={`${styles.cornerCell} ${styles.rowNumberBandCell}`} />
-                      {shell.displayColumns.map((column) => (
-                        <th
-                          key={column.kind === 'actual' ? `${column.column.key}_letter` : `${column.key}_letter`}
-                          className={`${styles.letterCell} ${column.kind === 'actual' && column.column.frozen ? styles.frozenLetterCell : ''}`}
-                          style={column.kind === 'actual' ? shell.cellStyle(column.column, column.actualIndex) : undefined}
-                          scope="col"
-                        >
-                          {column.letter}
-                        </th>
-                      ))}
-                    </tr>
-                    <tr className={styles.labelsRow}>
-                      <th className={`${styles.rowNumberHeaderCell} ${styles.rowNumberBandCell}`} />
-                      {shell.displayColumns.map((column) => (
-                        <th
-                          key={column.kind === 'actual' ? `${column.column.key}_header` : `${column.key}_header`}
-                          className={
-                            column.kind === 'actual'
-                              ? `${styles.headerCell} ${column.column.frozen ? styles.frozenHeaderCell : ''}`
-                              : styles.fillerHeaderCell
-                          }
-                          style={column.kind === 'actual' ? shell.cellStyle(column.column, column.actualIndex) : undefined}
-                          scope="col"
-                        >
-                          {column.kind === 'actual' ? (
-                            <>
-                              <span className={styles.headerLabel}>{column.column.label}</span>
-                              {column.column.sourceLabel ? <span className={styles.headerSource}>{column.column.sourceLabel}</span> : null}
-                            </>
-                          ) : null}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+  useLayoutEffect(()=>{surface.publish({toolbar:adapter.toolbar,onKeyDown:handleGridKeyDown});});
+  useLayoutEffect(()=>()=>surface.publish(null),[surface.publish]);
+  return surface.body?createPortal(<>
                     {!shell.visibleRows.length && <tr><td colSpan={shell.displayColumns.length+1} className={styles.emptyTable} role={adapter.loading?'status':adapter.hasError?'alert':undefined}>{adapter.loading?adapter.loadingMessage:adapter.hasError?adapter.errorMessage:adapter.emptyMessage}</td></tr>}
                     {(shell.visibleRows.length?shell.displayRows:[]).map((displayRow) => {
                       if (displayRow.kind === 'group') {
@@ -523,55 +455,18 @@ export default function SpreadsheetPageTemplate<
                         </tr>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-              <div
-                className={`${styles.zoomDockLayer} ${useViewportZoomDock ? styles.zoomDockLayerViewport : ''}`}
-                data-active={shell.zoom.dockActive ? 'true' : 'false'}
-                data-visible={viewportZoomDockVisible ? 'true' : 'false'}
-              >
-                <div className={`${styles.zoomDock} ${useViewportZoomDock ? styles.zoomDockViewport : ''}`} aria-label="Sheet zoom controls">
-                  <button type="button" className={styles.zoomButton} onClick={() => shell.zoom.stepBy(-1)} aria-label="Zoom out">
-                    -
-                  </button>
-                  <input
-                    className={styles.zoomSlider}
-                    type="range"
-                    min={shell.zoom.min}
-                    max={shell.zoom.max}
-                    step={shell.zoom.step}
-                    value={shell.zoom.value}
-                    onChange={(event) => shell.zoom.setValue(Number.parseInt(event.target.value, 10))}
-                    aria-label="Sheet zoom"
-                  />
-                  <button type="button" className={styles.zoomButton} onClick={() => shell.zoom.stepBy(1)} aria-label="Zoom in">
-                    +
-                  </button>
-                  <select
-                    className={styles.zoomPreset}
-                    value={shell.zoom.presetValue}
-                    onChange={(event) => shell.zoom.setValue(Number.parseInt(event.target.value, 10))}
-                    aria-label="Zoom preset"
-                  >
-                    {shell.zoom.presets.map((preset) => (
-                      <option key={preset} value={preset}>
-                        {preset}%
-                      </option>
-                    ))}
-                    {!shell.zoom.presets.includes(shell.zoom.value as (typeof shell.zoom.presets)[number]) ? (
-                      <option value={shell.zoom.value}>{shell.zoom.value}%</option>
-                    ) : null}
-                  </select>
-                  <button type="button" className={styles.fitButton} onClick={shell.zoom.fitVisibleColumns}>
-                    Fit visible columns
-                  </button>
-                  <span className={styles.zoomValue}>{shell.zoom.value}%</span>
-                </div>
-              </div>
-            </div>
-        </section>
-      </div>
-    </main>
-  );
+</>,surface.body):null;
+}
+
+export default function SpreadsheetPageTemplate<TRow,TKey extends string,TEditableKey extends TKey,TEditorValue,TOptimisticModel=never>(props:{
+  adapter:SpreadsheetAdapter<TRow,TKey,TEditableKey,TEditorValue,TOptimisticModel>;embedded?:boolean;zoomDockPlacement?:'sheet'|'viewport';
+}){
+  const existing=useSpreadsheetSurface();const owner=useRef({});
+  const {adapter}=props;
+  if(existing)return <SpreadsheetRuntime {...props}/>;
+  return <SpreadsheetSurfaceProvider owner={owner.current} config={{title:adapter.title,columns:adapter.columns,zoomStorageKey:adapter.zoomStorageKey}}>
+    <SpreadsheetSurface header={<StaffPageHeader title={adapter.title}/>} toolbar={adapter.toolbar} loading={adapter.loading} hasError={adapter.hasError} loadingMessage={adapter.loadingMessage}
+      errorMessage={adapter.errorMessage} emptyMessage={adapter.emptyMessage} embedded={props.embedded} zoomDockPlacement={props.zoomDockPlacement}/>
+    <SpreadsheetRuntime {...props}/>
+  </SpreadsheetSurfaceProvider>;
 }

@@ -2,7 +2,6 @@ import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import type { DashboardRecentActivityItem } from '@/lib/dashboard/types';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
 import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
 
@@ -29,18 +28,9 @@ function activityTimeLabel(value: string): string {
   }).format(date);
 }
 
-export default function RecentActivityCard({ items,pending=false }: { items: DashboardRecentActivityItem[]|null;pending?:boolean }) {
-  return (
-    <section className={`${styles.section} ${dash.card} ${dash.activityCard}`} aria-label="Recent Activity">
-      <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
-        <div>
-          <h2 className={styles.sectionTitle}>Recent Activity</h2>
-          <div className={`${styles.muted} ${dash.cardSubheading}`}>Latest project notes.</div>
-        </div>
-      </div>
-      <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {items===null?<div className={dash.emptyState} role={pending?'status':undefined}>{pending?'Reading recent activity…':'This section is unavailable.'}</div>:items.length ? (
-          <ul className={dash.activityList}>
+import {RecentActivitySurface} from './DashboardCardSurfaces';
+
+export function RecentActivityCardRows({items}:{items:DashboardRecentActivityItem[]}){return (          <ul className={dash.activityList}>
             {items.slice(0, 6).map((item) => (
               <li key={item.id}>
                 <PortalIndexLink href={item.href} className={dash.activityItem}>
@@ -54,11 +44,8 @@ export default function RecentActivityCard({ items,pending=false }: { items: Das
                 </PortalIndexLink>
               </li>
             ))}
-          </ul>
-        ) : (
-          <div className={dash.emptyState}>No project notes yet.</div>
-        )}
-      </div>
-    </section>
-  );
+          </ul>);}
+
+export default function RecentActivityCard({items,pending=false}:{items: DashboardRecentActivityItem[]|null;pending?:boolean;}){
+ return <RecentActivitySurface rows={items?.length?<RecentActivityCardRows items={items}/>:undefined} hasItems={Boolean(items?.length)} known={items!==null} pending={pending}/>;
 }

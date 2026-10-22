@@ -18,6 +18,7 @@ vi.mock('next/navigation', () => ({
     replace: replaceMock,
   }),
   usePathname: () => mockPathname,
+  useSelectedLayoutSegments: () => mockPathname.split('/').filter(Boolean),
   useSearchParams: () => mockSearchParams,
 }));
 

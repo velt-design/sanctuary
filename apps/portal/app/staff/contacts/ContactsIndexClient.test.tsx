@@ -1,3 +1,5 @@
+import GuardedContactsIndexClient from './GuardedContactsIndexClient';
+import {ContactsIndexWorkspace,useContactsIndexWorkspace} from './ContactsIndexWorkspace';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ContactsIndexClient from './ContactsIndexClient';
@@ -76,6 +78,34 @@ describe('ContactsIndexClient', () => {
   });
 
   afterEach(() => { document.body.innerHTML = ''; });
+
+  it('keeps the actual frame while private code arrives and retires old record/pager callbacks',async()=>{
+    const ownerA={},ownerB={};const results=new Map<string,ReturnType<typeof indexResult>>();
+    useContactsIndexData.mockImplementation((params)=>{
+      const key=JSON.stringify(params);if(!results.has(key)){
+        const result=indexResult('fresh',[{...contact,displayName:`Verified ${params.search||'A'}`}],params.search);
+        result.data!.contacts.totalCount=100;result.data!.contacts.totalPages=2;result.data!.contacts.page=params.page;
+        results.set(key,result);
+      }return results.get(key);
+    });
+    let pager:((page:number)=>void)|undefined;
+    function Observe(){const workspace=useContactsIndexWorkspace();pager=(workspace?.evidence?.pagination as any)?.props.onPageChange;return null;}
+    const root=(owner:object|null,denied=false)=><ContactsIndexWorkspace owner={owner} entryIdentity="same-entry" unavailable={denied}><GuardedContactsIndexClient readOnly/><Observe/></ContactsIndexWorkspace>;
+    const view=renderIntoDocument(root(ownerA));const table=view.container.querySelector('table'),body=view.container.querySelector('tbody'),head=view.container.querySelector('thead'),input=view.container.querySelector<HTMLInputElement>('#contactSearch')!;
+    expect(useContactsIndexData).not.toHaveBeenCalled();expect(view.container.textContent).toContain('Reading contacts');
+    act(()=>changeInputValue(input,'Beta'));input.focus();
+    await act(async()=>{await new Promise(resolve=>setTimeout(resolve,230));});
+    expect(view.container.textContent).toContain('Verified Beta');expect(document.activeElement).toBe(input);
+    expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('thead')).toBe(head);expect(view.container.querySelector('tbody')).toBe(body);
+    const firstPager=pager!;expect(firstPager).toBeTypeOf('function');act(()=>firstPager(2));await act(async()=>{await Promise.resolve();});
+    expect(useContactsIndexData.mock.calls.at(-1)![0].page).toBe(2);
+    view.rerender(root(null,true));const reads=useContactsIndexData.mock.calls.length;
+    act(()=>firstPager(1));expect(useContactsIndexData).toHaveBeenCalledTimes(reads);expect(view.container.textContent).not.toContain('Verified Beta');
+    view.rerender(root(ownerB));await act(async()=>{await Promise.resolve();});
+    const secondPager=pager;act(()=>firstPager(1));await act(async()=>{await Promise.resolve();});
+    expect(useContactsIndexData.mock.calls.at(-1)![0].page).toBe(2);expect(pager).toBe(secondPager);expect(input.value).toBe('Beta');
+    expect(view.container.querySelector('tbody')).toBe(body);expect(view.container.textContent).toContain('Verified Beta');view.unmount();
+  });
 
   it('keeps real columns and typed search across a pending-to-complete read',()=>{
     let pending=true;useContactsIndexData.mockImplementation(params=>indexResult(pending?'pending':'fresh',[contact],params.search));

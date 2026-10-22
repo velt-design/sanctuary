@@ -1,5 +1,7 @@
 # Project Operational Command Centre V1
 
+
+The actual Work Queue frame/filter/list surface is shared across pending and guarded reads. Its public controller contains neutral filter/page state; genuine derived staff/stage options, rows, row commands and admin review remain inside the selected fresh guarded leaf. Existing command/cache/retry policies remain unchanged. Connected early-controls/denial/recovery coverage does not establish compiled bundle fit or CI latency.
 Status: Historical V1 product baseline. Non-conflicting design/commercial truth rules remain active.
 Current implementation authority: `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`
 Programme stage: Overview V2 is implemented and verified in `20a8adee`, entered production in the controlled 2026-07-30 Project Work cutover, and this file remains the historical V1 baseline

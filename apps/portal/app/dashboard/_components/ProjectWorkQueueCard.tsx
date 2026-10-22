@@ -1,5 +1,4 @@
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { ProjectStageBadge } from '@/components/ui/foundation/SanctuaryStatus';
 import {
   effectiveAssigneeLabel,
@@ -11,27 +10,9 @@ import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import dash from '../dashboard.module.css';
 
-export default function ProjectWorkQueueCard({
-  items,
-  available,pending=false,
-}: {
-  items: ProjectWorkQueueEntry[];
-  available: boolean;pending?:boolean;
-}) {
-  return (
-    <section className={`${styles.section} ${dash.card} ${dash.queueCard}`} aria-label="Work Queue">
-      <div className={`${styles.sectionHeader} ${dash.cardHeader} ${dash.queueHeader}`}>
-        <div>
-          <h2 className={styles.sectionTitle}>Work Queue</h2>
-          <div className={`${styles.muted} ${dash.cardSubheading}`}>One current obligation per active project.</div>
-        </div>
-        <PortalIndexLink className={dash.queueOpenLink} href="/staff/projects/work-queue">Open queue</PortalIndexLink>
-      </div>
-      <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {pending?<div className={dash.emptyState} role="status">Reading the work queue…</div>:!available ? (
-          <div className={dash.emptyState}>The Work Queue is temporarily unavailable.</div>
-        ) : items.length ? (
-          <ul className={dash.queueList}>
+import {ProjectWorkQueueSurface} from './DashboardCardSurfaces';
+
+export function ProjectWorkQueueCardRows({items}:{items:ProjectWorkQueueEntry[]}){return (          <ul className={dash.queueList}>
             {items.map((rawEntry) => {
               const entry = rawEntry as WorkQueueEntryView;
               const stage = normalizePipelineStageKey(queueEntryStage(entry));
@@ -52,11 +33,8 @@ export default function ProjectWorkQueueCard({
                 </li>
               );
             })}
-          </ul>
-        ) : (
-          <div className={dash.emptyState}>No project work needs attention.</div>
-        )}
-      </div>
-    </section>
-  );
+          </ul>);}
+
+export default function ProjectWorkQueueCard({items,available,pending=false}:{items: ProjectWorkQueueEntry[];available:boolean;pending?:boolean;}){
+ return <ProjectWorkQueueSurface rows={items?.length?<ProjectWorkQueueCardRows items={items}/>:undefined} hasItems={Boolean(items?.length)} available={available} pending={pending}/>;
 }

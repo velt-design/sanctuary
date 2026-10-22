@@ -1,9 +1,16 @@
 import {notFound} from 'next/navigation';
 import Fixture from './Fixture';
 import {fictionalCosting,fictionalInvoice,type OperationalReads} from './operationalData';
+import GuardedFrameFixture, { type Route,type FictionalFrameGuard } from './GuardedFrameFixture';
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   if(process.env.ENABLE_PORTAL_QA_FIXTURES?.trim()!=='1'||(process.env.NODE_ENV==='production'&&process.env.VERCEL_ENV!=='preview'))notFound();
   const query=await searchParams;
+  if(query.fixture==='guarded-frames') {
+    const guard:Promise<FictionalFrameGuard>=new Promise(resolve=>setTimeout(()=>resolve({
+      unavailable:query.guard==='denied',completion:{},
+    }),1800));
+    return <GuardedFrameFixture route={typeof query.route==='string'&&['contacts','schedule','dashboard','projects','work-queue','drafting','running'].includes(query.route)?query.route as Route:'contacts'} guard={guard}/>;
+  }
   const reads:OperationalReads={};const failure=query.operationalFailure==='1';
   if(query.view==='costing')reads.costing=new Promise(resolve=>setTimeout(()=>resolve(failure?null:fictionalCosting()),1800));
   if(query.view==='mapping')reads.mapping=new Promise(resolve=>setTimeout(()=>resolve(fictionalInvoice),700));

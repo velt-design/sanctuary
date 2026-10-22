@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import RunningJobsToolbar,{type RunningJobsFilters} from './RunningJobsToolbar';
+import {useSpreadsheetWorkspace} from '@/components/spreadsheet/SpreadsheetWorkspace';
+import RunningJobsToolbar,{DEFAULT_RUNNING_JOBS_FILTERS,type RunningJobsFilters} from './RunningJobsToolbar';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -31,14 +32,7 @@ import { ApiError } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 
-const DEFAULT_FILTERS: RunningJobsFilters = {
-  search: '',
-  year: 'all',
-  crewId: 'all',
-  stage: 'all',
-  overdueOnly: false,
-  showCompleted: false,
-};
+
 
 const TODAY_YMD = new Date().toISOString().slice(0, 10);
 
@@ -166,7 +160,10 @@ export function useRunningJobsSpreadsheetAdapter({loader,readOnly=false}:{loader
   const queryKey = qk.runningJobs.list(host);
   const query = useQuery({...runningJobsQueryOptions(host),...(loader?{queryFn:loader}:{})});
 
-  const [filters, setFilters] = useState<RunningJobsFilters>(DEFAULT_FILTERS);
+  const workspace=useSpreadsheetWorkspace();
+  const [localFilters,setLocalFilters] = useState<RunningJobsFilters>(DEFAULT_RUNNING_JOBS_FILTERS);
+  const filters=workspace?.kind==='running'?workspace.runningFilters:localFilters;
+  const setFilters=workspace?.kind==='running'?workspace.setRunningFilters:setLocalFilters;
 
   useEffect(() => {
     if (!query.error) return;

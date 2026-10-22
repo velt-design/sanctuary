@@ -1,5 +1,7 @@
 # Running Jobs
 
+
+Running Jobs shares the actual SpreadsheetSurface and neutral filter/zoom controller with its guarded SpreadsheetRuntime. Genuine adapter rows/editors portal into the same tbody after selected fresh authority. Staff/crew options, local-first state, optimistic saves, locks and conflicts stay guarded. Early zoom/filter choices survive adoption; retired callbacks cannot focus a new viewport. Connected coverage is not current compiled/budget/CI acceptance.
 ## Actual spreadsheet before records (22 October 2026 candidate)
 
 The actual shared spreadsheet viewport, column letters/labels and zoom remain

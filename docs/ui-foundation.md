@@ -2,16 +2,16 @@
 
 ## Actual progressive Portal interfaces (22 October 2026 candidate)
 
-Active Portal journeys are implemented and locally verified. Candidate18 normal
-and protected builds, all unchanged route budgets, whole-repository types/lint,
-five strict changed-file gates and the complete Portal suite pass (896 files,
-5701 tests; one pre-existing skipped file and 13 skipped tests). Independent
-scoped delivery review passed with the limits below. Current required CI and
-Sanctuary production approval remain; local proof is not a production release.
+Earlier active Portal journeys retain their local implementation and verification
+evidence. The current seven-route follow-on has compiled Contacts/Schedule proof
+and connected source coverage for the remaining five frames. Its combined fresh
+build, unchanged budgets, actual held-route journeys and current required CI are
+still required. Sanctuary production approval remains separate; no local result
+is production release authority.
 
-The shared route-transition owner keeps the current actual page visible until
-Next commits its destination. It no longer hides that page under Projects,
-Contacts or generic imitation frames. Clicked-control progress, timeout, history
+The shared route-transition owner retains Next's outlet while the accepted
+selection mounts its actual public controls. Private clients await the matching
+fresh guarded leaf. It no longer uses Projects, Contacts or generic imitation frames. Clicked-control progress, timeout, history
 and route-completion ownership remain. Keeping the old page visible is not proof
 that the destination itself renders progressively; its actual owner must do that.
 The global Blueprint screen and all decorative route loading files are retired.
@@ -19,6 +19,45 @@ The now-unused Project/Contact/generic pending-frame family is removed after a
 complete consumer search. Project route data is started without awaiting it after
 the necessary fresh staff gate; deleting a fallback does not prove other clients
 progressive. Existing authentication and route grants remain the boundary.
+
+The Contacts/Schedule split now passes both local production builds and unchanged
+route budgets, including Calculator's zero-lazy requirement. Actual held Flight,
+denial/recovery, history and all eleven original Schedule interaction cases pass.
+These are local observations, not current CI latency or production evidence.
+
+The seven-route source candidate extends the same selected-frame owner to
+Dashboard, Projects, Work Queue, Drafting Queue and Running Jobs. It reuses the
+actual card/form/table/viewport components. Public controllers hold neutral input,
+URL filters and zoom; only a selected fresh guarded leaf mounts private queries,
+per-user position reads, adapters, mutations and record controls. The opaque
+completion remains correlation, never authority. No root/leaf access check,
+query key, API or performance ceiling changes. ContactsFrame stays static;
+Schedule's guarded rows still portal into its original public calendar slots,
+with one private DndContext. Private controller and evidence contexts are separate.
+
+DashboardFrame keeps the real cards, task composer and TodayVisitsSurface mounted
+while independent guarded producers fill complete sections. Public card/body owners
+consume source-bound row slots; record formatting, portfolio derivation, visit
+freshness and task rows stay in the guarded producer. Public Work Queue selection
+has no record-filtering/presentation dependency. The full seven-route initial
+payload exceeded the unchanged ceilings before this ownership correction; a fresh
+compiled fit remains required.
+
+ProjectsIndexFrame owns the actual toolbar/table; its public URL view survives held entry adoption,
+while saved per-user positions are consulted only by the guarded reader and yield
+to explicit early filters. WorkQueueFrame/Surface retain actual filters/groups;
+derived staff options and command/admin owners remain guarded. The shared
+SpreadsheetSurface owns actual headers, columns, viewport and neutral zoom for
+both operational sheets. The guarded SpreadsheetRuntime portals genuine rows and
+editors into that same table, preserving the existing adapter/save/lock/conflict
+owners. Job Packs uses the same standalone composition. Retired publications,
+composer completions and sheet activation/save callbacks cannot replace, clear or
+focus a newer public surface. No unknown count is presented as zero.
+
+This five-route extension has connected source coverage; fresh aggregate bundle
+fit, actual Next held adoption/history and current CI/long-task ceilings remain
+unverified until the composed artifact is checked. It is not whole-Portal or
+production acceptance.
 
 DashboardClient mounts the same DashboardView and actual card owners before any
 records exist. Its seven existing reads now feed complete sections independently:
@@ -198,7 +237,25 @@ the snapshot client owns load/error state.
 Fixture geometry covers summary, failure, retry and fresh rendering at desktop
 and phone widths; actual early return-click verification remains a release check.
 
-`GlobalPortalSearch.client` only exposes selectable results whose normalized response
+`GlobalPortalSearchSurface` owns the same actual input, query, focus and shortcut
+controller. The selected public frames import that surface without the private
+reader. After fresh selected-leaf adoption, `GuardedGlobalPortalSearch` registers
+a source-specific existing Loadable reader; no private query, cache read or result
+client mounts while that source is pending or denied. Input evidence and callbacks
+are qualified by both registration identity and typed query. Explicit Search
+API401/403 taints Search cache evidence for that identity-owned QueryClient until
+a genuine allowed read; transient503 retains truthful same-query cached results.
+No page invalidation or query cancellation is added. Retired publications
+and cleanup cannot restore old results or clear a newer owner. Default nonframe
+headers retain the same private reader and search behavior; standalone Job Packs
+continues through that header. Exact primitive-owner imports at the demonstrated
+public edges avoid evaluating unrelated foundation exports. The rejected all-five
+server-layout composition is removed; fresh complete bundle and browser evidence
+remain required, with no claimed saving from source-only attribution.
+
+The Schedule crew disclosure keeps its same public details, summary and panel container. Guarded Board/Gantt owners supply the original roster/hidden-preference panel children; pending or unavailable evidence disables the same trigger without inventing crew options. Standalone views compose that same surface with the same panel. The Dashboard date label imports only locale/timezone constants; formatter implementations and their existing re-exports retain their behavior. Search source ownership and its proven loader are unchanged by these record-presentation boundaries.
+
+`GlobalPortalSearchRead` only exposes selectable results whose normalized response
 query exactly matches the current input. Same-query cached results remain useful;
 changing query clears old links immediately while the pending read is announced.
 Errors offer a real retry. `GlobalPortalSearchState` owns the active overlay instance

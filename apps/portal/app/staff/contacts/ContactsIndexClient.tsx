@@ -1,35 +1,58 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import HeaderActions from '@/components/layout/HeaderActions';
-import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
-import { ButtonLink, Input, Select } from '@/components/ui/foundation/FoundationControls';
-import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
-import {
-  Card,
-  PageLayout,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/foundation/FoundationSurfaces';
-import { Pagination } from '@/components/ui/foundation/FoundationPagination';
-import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
-import { formatPortalDateTime } from '@/lib/format/portalDateTime';
+import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import ContactsImportAction from './ContactsImportAction';
-import styles from './contacts.module.css';
-import { useContactsIndexData } from './useContactsIndexData';
+import ContactsIndexFrame from './ContactsIndexFrame';
+import {contactsRecordSlots} from './contactsRecordSlots';
+import { useContactsIndexWorkspace } from './ContactsIndexWorkspace';
+import { useContactsIndexData, type ContactsIndexLoader } from './useContactsIndexData';
 import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
-import type {
-  ContactsIndexPageSize,
-  ContactsIndexSort,
-} from '@/lib/contacts/contactsIndexContract';
+import type { ContactsIndexPageSize, ContactsIndexSort } from '@/lib/contacts/contactsIndexContract';
 
-export default function ContactsIndexClient({ initialQuery = '' }: { initialQuery?: string }) {
+/** Mounted by the selected guarded leaf, never by public code preparation. */
+export function ContactsIndexReadOwner({ readLoader, readOnly = false }: { readLoader?: ContactsIndexLoader; readOnly?: boolean } = {}) {
+  const workspace = useContactsIndexWorkspace();
+  return workspace?.owner ? <ContactsIndexPrivateRead workspace={workspace} readLoader={readLoader} readOnly={readOnly} /> : null;
+}
+
+function ContactsIndexPrivateRead({ workspace, readLoader, readOnly }: {
+  workspace: NonNullable<ReturnType<typeof useContactsIndexWorkspace>>;
+  readLoader?: ContactsIndexLoader;
+  readOnly: boolean;
+}) {
+  const { owner, params, selection, publish } = workspace;
+  const result = useContactsIndexData(params, readLoader);
+  const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const read = useMemo(() => ({ state: result.state, data: result.data,
+    retry: result.retry, backgroundReady: result.backgroundReady }),
+  [result.state, result.data, result.retry, result.backgroundReady]);
+  const current=useRef({owner,selection});current.current={owner,selection};
+  const alive=useRef(true);useLayoutEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
+  const setPage=workspace.setPage;
+  const onPageChange=useCallback((page:number)=>{if(alive.current&&current.current.owner===owner&&current.current.selection===selection)setPage(page);},[owner,selection,setPage]);
+  const slots=useMemo(()=>contactsRecordSlots(read,params.page,params.pageSize,onPageChange),[read,params.page,params.pageSize,onPageChange]);
+  const actions = useMemo(() => readOnly || read.state === 'unavailable' ? null : <HeaderActions>
+    <ContactsImportAction contacts={read.data?.contacts.rows ?? []} host={host} />
+    <ButtonLink href="/staff/contacts/new">New Contact</ButtonLink>
+  </HeaderActions>, [readOnly, read.state, read.data, host]);
+  useLayoutEffect(() => {
+    if (!owner) return;
+    publish({ owner, selection, read, actions, ...slots });
+    return () => publish(current => current?.owner === owner && current.selection === selection ? null : current);
+  }, [owner, selection, read, actions, slots, publish]);
+  return null;
+}
+
+export default function ContactsIndexClient(props: { initialQuery?: string; readLoader?: ContactsIndexLoader; readOnly?: boolean }) {
+  const workspace = useContactsIndexWorkspace();
+  return workspace ? <ContactsIndexReadOwner readLoader={props.readLoader} readOnly={props.readOnly} /> : <StandaloneContactsIndexClient {...props} />;
+}
+
+function StandaloneContactsIndexClient({ initialQuery = '' }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<ContactsIndexPageSize>(50);
@@ -62,106 +85,21 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
     if (totalPages && page > totalPages) setPage(totalPages);
   }, [contactsIndex.data?.contacts.totalPages, page]);
 
-  const totalCount = contactsIndex.data?.contacts.totalCount ?? 0;
-  const rangeStart = totalCount ? (page - 1) * pageSize + 1 : 0;
-  const rangeEnd = Math.min(page * pageSize, totalCount);
-
-  return (
-    <PageLayout
-      className={styles.page}
-      data-contacts-index-state={contactsIndex.state}
-      data-contacts-index-background-ready={contactsIndex.backgroundReady ? 'true' : 'false'}
-    >
-      <StaffPageHeader
-        variant="index"
-        title="Contacts"
-        description="Search customer records, review linked projects, or add a new enquiry contact."
-        count={contactsIndex.data?.contacts.totalCount ?? undefined}
-        right={
-          <HeaderActions>
-            <ContactsImportAction contacts={contacts} host={host} />
-            <ButtonLink href="/staff/contacts/new">New Contact</ButtonLink>
-          </HeaderActions>
-        }
-      />
-
-      <ListCountBanner
-        totalCount={contactsIndex.data?.contacts.totalCount ?? null}
-        visibleCount={contacts.length}
-        entityLabelSingular="contact"
-        entityLabelPlural="contacts"
-        truncated={contactsIndex.data?.contacts.truncated ?? false}
-      />
-
-      <div className={styles.stack}>
-        <Card title="Find contacts" aria-label="Search contacts" padding="compact">
-          <div role="search" aria-label="Search and filter" className={styles.listControls}>
-            <Input
-              id="contactSearch"
-              label="Search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Name, email, phone..."
-            />
-            <Select
-              id="contactSort"
-              label="Sort"
-              value={sort}
-              onChange={(event) => setSort(event.target.value as ContactsIndexSort)}
-            >
-              <option value="name_asc">Name A–Z</option>
-              <option value="name_desc">Name Z–A</option>
-              <option value="created_desc">Newest first</option>
-              <option value="created_asc">Oldest first</option>
-            </Select>
-            <Select
-              id="contactPageSize"
-              label="Rows per page"
-              value={String(pageSize)}
-              onChange={(event) => setPageSize(Number(event.target.value) as ContactsIndexPageSize)}
-            >
-              <option value="25">25 rows</option>
-              <option value="50">50 rows</option>
-              <option value="100">100 rows</option>
-            </Select>
-          </div>
-        </Card>
-
-        <Card
-          title="All contacts"
-          action={(
-            <span className={styles.muted}>
-              {contactsIndex.state === 'pending' || contactsIndex.state === 'cached'
-                ? 'Updating...'
-                : contactsIndex.state === 'refresh-failed'
-                  ? contacts.length ? `Refresh failed · ${rangeStart}–${rangeEnd} of ${totalCount}` : 'Refresh failed'
-                  : contactsIndex.state==='unavailable'?'Access unavailable':`${rangeStart}–${rangeEnd} of ${totalCount}`}
-            </span>
-          )}
-          aria-label="Contacts list"
-          aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}
-          padding="none"
-        >
-          {contactsIndex.state==='refresh-failed'?<DataStatePanel state="stale" title="Could not refresh contacts" description={contacts.length?'Showing the last saved list.':'No saved list is available. Retry the request.'} onRetry={()=>void contactsIndex.retry()}/>:null}
-                  <Table className={styles.responsiveTable}>
-                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {contacts.map((contact) => (
-                        <TableRow key={contact.id}>
-                          <TableCell><strong>{contact.displayName}</strong></TableCell>
-                          <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.email || '\u2014'}</TableCell>
-                          <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.phone || '\u2014'}</TableCell>
-                          <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{formatPortalDateTime(contact.createdAt)}</TableCell>
-                          <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
-                        </TableRow>
-                      ))}
-                      {!contacts.length&&<TableRow><TableCell colSpan={5}>{contactsIndex.state==='pending'||contactsIndex.state==='cached'?<p role="status">Reading contacts…</p>:contactsIndex.state==='unavailable'?<DataStatePanel state="unavailable" title="Contacts unavailable" description="Your current session cannot access the Contacts list."/>:contactsIndex.state==='fresh'?<DataStatePanel state={debouncedQuery.trim()?'filtered-empty':'empty'} title={debouncedQuery.trim()?'No contacts match your search.':'No contacts found.'} description={debouncedQuery.trim()?'Clear or adjust the search.':'Create the first contact to begin.'} onClear={debouncedQuery.trim()?()=>setQuery(''):undefined}/>:null}</TableCell></TableRow>}
-                    </TableBody>
-                  </Table>
-          {contacts.length>0&&<Pagination currentPage={page} totalPages={contactsIndex.data?.contacts.totalPages??1} itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} contacts`} onPageChange={setPage}/>}
-
-        </Card>
-      </div>
-    </PageLayout>
-  );
+  return <ContactsIndexFrame
+    query={query}
+    debouncedQuery={debouncedQuery}
+    page={page}
+    pageSize={pageSize}
+    sort={sort}
+    setQuery={setQuery}
+    setPage={setPage}
+    setPageSize={setPageSize}
+    setSort={setSort}
+    {...contactsRecordSlots(contactsIndex,page,pageSize,setPage)}
+    contactsIndex={contactsIndex}
+    actions={<HeaderActions>
+      <ContactsImportAction contacts={contacts} host={host} />
+      <ButtonLink href="/staff/contacts/new">New Contact</ButtonLink>
+    </HeaderActions>}
+  />;
 }

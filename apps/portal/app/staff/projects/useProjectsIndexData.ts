@@ -33,11 +33,12 @@ export function projectsIndexResponseMatchesRequest(
 export function useProjectsIndexData(params: ProjectsIndexParams, initial?: {
   ownerId: string | null;
   initialRead?: ProjectsIndexInitialRead;
+  loader?:(params:ProjectsIndexParams)=>Promise<ProjectsIndexResponse>;
 }) {
   const client = useQueryClient();
   const query = useQuery({
     ...projectsIndexQueryOptions(params.archive, params),
-    queryFn: projectsIndexReadFunction(client, params, initial?.ownerId ?? null, initial?.initialRead),
+    queryFn: initial?.loader?()=>initial.loader!(params):projectsIndexReadFunction(client, params, initial?.ownerId ?? null, initial?.initialRead),
     placeholderData: keepPreviousData,
     refetchOnMount: 'always',
     retry: (failureCount, error) => !isAccessEndingError(error) && failureCount < 2,

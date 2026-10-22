@@ -1,19 +1,24 @@
-import { act } from 'react';
+import { act,type ReactNode } from 'react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PortalInstantRouteContent,
-  PortalRouteTransitionProvider,
+  PortalRouteTransitionProvider as ActualPortalRouteTransitionProvider,
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from './PortalRouteTransition';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
+let client:QueryClient;
+function PortalRouteTransitionProvider({children}:{children:ReactNode}){return <QueryClientProvider client={client}><ActualPortalRouteTransitionProvider>{children}</ActualPortalRouteTransitionProvider></QueryClientProvider>;}
 let mockPathname = '/dashboard';
 let mockSearchParams = new URLSearchParams();
 
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
   useSearchParams: () => mockSearchParams,
+  useSelectedLayoutSegments: () => mockPathname.split('/').filter(Boolean),
+  useRouter: () => ({ replace: vi.fn() }),
 }));
 
 function Trigger({ href, initiallyBusy = false }: { href: string; initiallyBusy?: boolean }) {
@@ -67,6 +72,7 @@ function CompetingInstantRouteTrigger() {
 
 describe('PortalRouteTransitionProvider', () => {
   beforeEach(() => {
+    client=new QueryClient();
     vi.useFakeTimers();
     mockPathname = '/dashboard';
     mockSearchParams = new URLSearchParams();
@@ -74,6 +80,7 @@ describe('PortalRouteTransitionProvider', () => {
   });
 
   afterEach(() => {
+    client.clear();
     document.body.innerHTML = '';
     window.history.replaceState({}, '', '/');
     vi.runOnlyPendingTimers();

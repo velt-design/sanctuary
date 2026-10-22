@@ -1,4 +1,5 @@
-import { Badge, ProjectStageBadge } from '@/components/ui/foundation';
+import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+import { ProjectStageBadge } from '@/components/ui/foundation/SanctuaryStatus';
 import { projectCurrentStatus, type ProjectStatusFacts } from '@/lib/projects/projectCurrentStatus';
 import type { PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 

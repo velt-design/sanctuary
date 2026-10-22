@@ -16,6 +16,15 @@ export function formatStatusLabel(value: DesignRequestStatus): string {
   return value.replace(/_/g, ' ');
 }
 
+export const DEFAULT_DRAFTING_QUEUE_FILTERS: DraftingQueueFilters = {
+  search: '',
+  year: 'all',
+  designerId: 'all',
+  status: 'all',
+  overdueOnly: false,
+  showCompleted: false,
+};
+
 export default function DraftingQueueToolbar({
   filters,
   onChange,
@@ -29,8 +38,8 @@ export default function DraftingQueueToolbar({
   onChange: (patch: Partial<DraftingQueueFilters>) => void;
   years: string[];
   designers: DesignPackagesResponse['lookups']['designers'];
-  totalRows: number;
-  visibleRows: number;
+  totalRows: number|null;
+  visibleRows: number|null;
   generatedAt: string | null;readState?:'pending'|'unavailable';onRetry?:()=>void;
 }) {
   return (

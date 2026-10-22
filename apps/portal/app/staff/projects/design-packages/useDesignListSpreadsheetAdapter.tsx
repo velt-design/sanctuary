@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import DraftingQueueToolbar,{type DraftingQueueFilters,DESIGN_LIST_STATUSES,formatStatusLabel} from './DraftingQueueToolbar';
+import {useSpreadsheetWorkspace} from '@/components/spreadsheet/SpreadsheetWorkspace';
+import DraftingQueueToolbar,{DEFAULT_DRAFTING_QUEUE_FILTERS,type DraftingQueueFilters,DESIGN_LIST_STATUSES,formatStatusLabel} from './DraftingQueueToolbar';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -33,14 +34,7 @@ import { mutateDesignListCell } from '@/lib/repo/designPackagesRepo';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 
-const DEFAULT_FILTERS: DraftingQueueFilters = {
-  search: '',
-  year: 'all',
-  designerId: 'all',
-  status: 'all',
-  overdueOnly: false,
-  showCompleted: false,
-};
+
 
 
 const DESIGN_LIST_PRIORITY_TIERS: readonly DesignRequestPriorityTier[] = ['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'];
@@ -154,7 +148,7 @@ function replaceResponseRow(prev: DesignPackagesResponse, updatedRow: DesignList
 }
 
 
-export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
+export function useDesignListSpreadsheetAdapter({loader,readOnly=false}:{loader?:()=>Promise<DesignPackagesResponse>;readOnly?:boolean}={}): SpreadsheetAdapter<
   DesignListRow,
   DesignListCellKey,
   DesignListEditableCellKey,
@@ -165,9 +159,12 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   const queryClient = useQueryClient();
   const host = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const queryKey = qk.designPackages.list(host);
-  const query = useQuery(designPackagesQueryOptions(host));
+  const query = useQuery({...designPackagesQueryOptions(host),...(loader?{queryFn:loader}:{})});
 
-  const [filters, setFilters] = useState<DraftingQueueFilters>(DEFAULT_FILTERS);
+  const workspace=useSpreadsheetWorkspace();
+  const [localFilters,setLocalFilters] = useState<DraftingQueueFilters>(DEFAULT_DRAFTING_QUEUE_FILTERS);
+  const filters=workspace?.kind==='design'?workspace.designFilters:localFilters;
+  const setFilters=workspace?.kind==='design'?workspace.setDesignFilters:setLocalFilters;
 
   useEffect(() => {
     if (!query.error) return;
@@ -499,6 +496,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         setDisplayedDesignListRow(queueKey, model);
       },
       prepareEdit: ({ row, key, value, confirmedModel }) => {
+        if(readOnly)return {kind:'error',message:'This fictional preview is read-only.'};
         const normalized = normalizeDesignListCellInput(key, value);
         if (!normalized.ok) {
           return { kind: 'error', message: normalized.error } as const;
@@ -530,6 +528,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
       },
     },
     onCellActivated: async ({ trigger, key, beginEdit, seed }) => {
+      if(readOnly)return 'noop';
       if (key !== 'designer' && key !== 'design_ready' && key !== 'priority' && key !== 'notes') {
         return 'noop';
       }

@@ -1,7 +1,7 @@
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { CalendarDays, Calculator, FolderPlus } from 'lucide-react';
-import StaffPageHeader from '@/components/layout/StaffPageHeader';
-import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
+import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
+import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateConstants';
 import dash from '../dashboard.module.css';
 
 const QUICK_ACTIONS = [

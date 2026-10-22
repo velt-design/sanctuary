@@ -1,6 +1,7 @@
 'use client';
+import type {ReactNode} from 'react';
 
-import ScheduleCrewFilter, { type ScheduleCrewFilterOption } from './ScheduleCrewFilter';
+import ScheduleCrewFilter, { type ScheduleCrewFilterOption } from './ScheduleCrewFilterSurface';
 import sharedStyles from './schedule.module.css';
 import ganttStyles from './scheduleGantt.module.css';
 import timelineStyles from './scheduleTimeline.module.css';
@@ -22,6 +23,7 @@ type ScheduleGanttToolbarProps = {
   attentionCount: number | null;
   readState?: 'pending' | 'unavailable';
   controlsDisabled: boolean;
+  crewPanel?: ReactNode;
   crews: ScheduleCrewFilterOption[];
   hiddenCrewIds: ReadonlySet<string>;
   hiddenItemCount: number;
@@ -58,6 +60,7 @@ export default function ScheduleGanttToolbar({
   hiddenCrewIds,
   hiddenItemCount,
   emptyCrewIds,
+  crewPanel,
   onZoomWeeksChange,
   onDensityChange,
   onShowCompletedChange,
@@ -125,6 +128,7 @@ export default function ScheduleGanttToolbar({
         </div>
 
         <ScheduleCrewFilter
+          panel={crewPanel}
           readState={readState}
           crews={crews}
           hiddenCrewIds={hiddenCrewIds}

@@ -6690,3 +6690,15 @@ seed's view/day/range before it enters a query cache. A source denial clears pri
 report values; a failed read never becomes a zero or empty-business claim.
 Owners: `schedule.md`, `marketing-performance.md`; focused actual-client/query and
 report-control continuity tests. Hosted performance remains unverified.
+
+## 2026-10-23: Keep actual public search separate from guarded evidence
+
+The seven-frame shared root exposed the foundation barrel evaluator and search
+query/result responsibilities. Replace only the demonstrated public barrel edges
+with existing primitive owners. Keep the same input/controller public; register
+its reader only from the matching freshly guarded leaf. Registration and input
+evidence carry source/query identity, so denial, late publication or cleanup cannot
+rebind old results. Default nonframe behavior remains. The attempted all-five
+server-layout composition added recurring Flight payload without enough JS relief
+and is removed. Source closure tests are not a bundle or latency pass; the unchanged
+compiled limits and connected browser checks remain required.

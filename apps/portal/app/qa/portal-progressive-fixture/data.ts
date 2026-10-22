@@ -21,3 +21,15 @@ export function sheetFixture():RunningJobsResponse{
  state:{workModelVersion:2,projectCreatedAt:now,hasSiteVisit:false,hasSchedule:false,hasCrewAssigned:false,hasEstimatedStartDate:false,hasLatestEstimate:false,tasks:{materialsOrdered:false,roofingOrdered:false,jobComplete:false},siteVisit:{salespersonId:null,status:null,updatedAt:null},schedule:{crewId:null,plannedStart:null,forecastStart:null,plannedDurationDays:null,forecastDurationDays:null,actualStart:null,actualFinish:null,status:null,updatedAt:null},meta:{rowVersion:1,lightsStatus:null,materialsOrderedAt:null,materialsOrderedBy:null,roofingOrderedAt:null,roofingOrderedBy:null,updatedAt:now}}};
  return {generatedAt:now,lookups:{crews:[],salesPeople:[]},groups:[{year:2026,rows:[row]}]};
 }
+
+export function projectsFixture(params:import('@/lib/projects/projectsIndexContract').ProjectsIndexParams):import('@/lib/projects/projectsIndexContract').ProjectsIndexResponse{
+ const now='2026-10-23T00:00:00Z';
+ const rows=['Alpha','Beta'].map((name,index)=>({id:'proj_fictional_'+index,projectName:'Fixture '+name,createdAt:now,updatedAt:now,status:'NEW' as const,isArchived:false}))
+   .filter(row=>row.projectName.toLowerCase().includes(params.search.trim().toLowerCase())&&(params.status==='all'||params.status==='NEW'));
+ const {archive,page,pageSize,...query}=params;
+ return {archive,query,generatedAt:now,projects:{rows,totalCount:rows.length,truncated:false,page,pageSize,totalPages:1},contacts:{rows:[],totalCount:0,truncated:false}};
+}
+export function draftingFixture():import('@/lib/designPackages/types').DesignPackagesResponse{
+ const now='2026-10-23T00:00:00Z';
+ return {generatedAt:now,lookups:{designers:[]},rows:[{requestId:'fictional-request',projectId:'proj_fictional_alpha',estimateId:null,estimateVersionLabel:null,requestVersion:1,status:'OPEN',priorityTier:'TIER_1',priceTotalIncGstCents:null,requestSource:'legacy_backfill',requestedAt:now,dueAt:null,startedAt:null,completedAt:null,cancelledAt:null,updatedAt:now,rowVersion:'fictional-1',quoteName:'Fixture Alpha',projectName:'Fixture Alpha',clientName:'Fictional household',siteAddress:'Fictional site',siteVisitRep:null,sentAt:null,sentQuoteRef:null,visitStatus:null,visitCompletedAt:null,notes:'Fictional read-only request.',requestNote:null,designerNote:null,assignedDesignerId:null}]};
+}

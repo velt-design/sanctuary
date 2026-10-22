@@ -11,6 +11,15 @@ export type RunningJobsFilters = {
   showCompleted: boolean;
 };
 
+export const DEFAULT_RUNNING_JOBS_FILTERS: RunningJobsFilters = {
+  search: '',
+  year: 'all',
+  crewId: 'all',
+  stage: 'all',
+  overdueOnly: false,
+  showCompleted: false,
+};
+
 export default function RunningJobsToolbar({
   filters,
   onChange,
@@ -26,8 +35,8 @@ export default function RunningJobsToolbar({
   years: string[];
   crews: RunningJobsResponse['lookups']['crews'];
   stages: string[];
-  totalRows: number;
-  visibleRows: number;
+  totalRows: number|null;
+  visibleRows: number|null;
   generatedAt: string | null;readState?:'pending'|'unavailable';onRetry?:()=>void;
 }) {
   return (

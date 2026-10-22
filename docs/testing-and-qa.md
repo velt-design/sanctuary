@@ -1,5 +1,57 @@
 # Testing And QA
 
+## Guarded actual-frame handoff candidate
+
+The Contacts/Schedule split passes both local production builds, unchanged bundle
+limits (including Calculator zero-lazy), held-Flight/history/denial recovery and
+all eleven original Schedule ops cases. Connected harnesses keep the installed
+Board Loadable and real Dnd. Only the dev-only Diagnostics loader is isolated by
+its actual static component after an installed lazy/React act stall; this is not
+production lazy-module evidence. Diagnostics is included when
+`NODE_ENV !== 'production'`: `[aria-label="Schedule diagnostics"]` contains
+`Diagnostics (dev only)` and its Show/Hide disclosure. A focused fictional
+actual-development check can exercise that loader; production cannot.
+
+The composed seven-route source tests additionally cover actual Dashboard cards,
+Projects, Work Queue and both operational sheets before any guarded private hooks,
+with prior QueryClient/staff cache present. A runtime-import closure regression
+keeps guarded Dashboard row/portfolio/visit presenters and Work Queue record
+derivation out of the shared public frame. Same card/body nodes persist when
+private row slots fill; this is not a bundle-size assertion. They check the same controls through
+fresh adoption, denial and recovery; complete independent Dashboard sections
+survive secondary failure. Projects early filters survive restoration of the
+original Flight URL in field, URL and first query, while later same-path history
+search remains effective. Saved per-user row anchors are not read before guard
+and cannot override early filters. Spreadsheet cases retain genuine editing,
+commit/keyboard/zoom, and reject late save/activation focus from a retired runtime.
+Job Packs retains its standalone adapter/composition tests. Actual compiled Next,
+combined bundle fit and all locked performance/long-task checks remain required;
+source tests do not establish browser timings.
+
+The existing gated fictional lane is
+`/qa/portal-progressive-fixture?fixture=guarded-frames&route=contacts&q=Alpha`.
+Use `route=schedule&view=gantt`, or `route=dashboard|projects|work-queue|drafting|running`
+(each is a separate value). `guard=denied` denies the selected fictional source;
+`readFailure=1` exhausts the selected loader's automatic retry budget before its
+manual Retry can recover. Use Projects with `q=Fixture` and type while its guard
+is held. Scenario buttons request a genuine new fixture Flight; Retry never
+synthesizes local ready state. Guard1800ms/records700ms are controlled delays;
+Dashboard uses its existing bounded streamed fixture parts. The QA pathname is
+not the production destination latch. Projects, Dashboard, Work Queue and sheet
+commands are read-only; there is no synthetic business-write backend. Do not
+invoke guarded Schedule record commands. Its original ops fixture uses only the
+existing in-memory callbacks. Production/disabled-fixture denials stay unchanged.
+
+The same guarded fixture aligns its existing QueryClient scope with its own
+provider. Search checks may intercept only GET '/api/staff/v1/search' with coherent
+fictional responses and block unrelated API traffic. Type in the actual header
+search during a denied/held source, then adopt a fresh source: the input/text/focus
+persist and no cached results or search request appear before adoption. Same-query
+A/pending/B and denial/new-owner cases must not revive old ARIA or callbacks.
+The controlled-reader unit case isolates code arrival only; separate original
+search cases exercise the actual reader/default behavior. Production Loadable,
+full bundle fit and actual connected UI proof remain separate checks.
+
 ## Composed authored/native campaign layer (23 October 2026)
 
 The disposable PostgreSQL17 ledger harness installs the deployed landing

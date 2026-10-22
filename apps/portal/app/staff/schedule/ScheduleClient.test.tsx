@@ -7,6 +7,13 @@ import { qk } from '@/lib/queries/keys';
 import type { ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { renderIntoDocument as renderHarness } from '../../../../../test/reactHarness';
 
+// This command/query suite already substitutes the private Board/Gantt renderer
+// below. Its substitute owns the test rows; do not add a second public viewport
+// alongside it. Actual surface/portal ownership is covered by the real renderer
+// and connected Workspace suites, without these substitutions.
+vi.mock('./ScheduleBoardSurface', () => ({ default: () => null }));
+vi.mock('./ScheduleGanttSurface', () => ({ default: () => null }));
+
 // Failed assertions must not leave query observers and mutation listeners alive.
 const renderIntoDocument: typeof renderHarness = (ui) => {
   const rendered = renderHarness(ui);

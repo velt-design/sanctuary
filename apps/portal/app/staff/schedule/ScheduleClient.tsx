@@ -16,6 +16,8 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from 'react';
 import styles from './schedule.module.css';
+import { useScheduleWorkspace } from './ScheduleWorkspace';
+import ScheduleFrameOutput, { ScheduleLegacyOutput, prepareScheduleRenderer } from './ScheduleFrameOutput';
 import {
   ackClientUpdate,
   adjustJob,
@@ -48,10 +50,7 @@ import { resolveDefaultScheduleGanttRange } from '@/lib/scheduling/scheduleGantt
 import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
-import StaffPageHeader from '@/components/layout/StaffPageHeader';
-import HeaderActions from '@/components/layout/HeaderActions';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
@@ -61,8 +60,7 @@ import { useQuery, useQueryClient, type QueryFunctionContext } from '@tanstack/r
 import { runScheduleDiagnostics } from '@/lib/queries/scheduleDiagnostics';
 import ScheduleActionModals, { type ScheduleModalState } from './ScheduleActionModals';
 import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
-import type { ScheduleBoardDrop, ScheduleBoardMenuAction, ScheduleBoardViewProps } from './ScheduleBoardView';
-import type { ScheduleGanttViewProps } from './ScheduleGanttView';
+import type { ScheduleBoardDrop, ScheduleBoardMenuAction } from './ScheduleBoardView';
 import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
 import type { ScheduleLegacyFallbackClientProps } from './ScheduleLegacyFallbackClient';
 import { getScheduleSupabaseHost } from './scheduleRuntime';
@@ -115,20 +113,6 @@ import {
   resolveScheduleCommitmentType as resolveCommitmentType,
   resolveScheduleFlexDays as resolvePlannedFlexDays,
 } from './ScheduleOperationalPresentation';
-
-const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
-  () => import('./ScheduleBoardView'),
-  {
-    ssr: true,
-  },
-);
-
-const LazyScheduleGanttView = dynamic<ScheduleGanttViewProps>(
-  () => import('./ScheduleGanttView'),
-  {
-    ssr: true,
-  },
-);
 
 const LazyScheduleLegacyFallbackClient = dynamic<ScheduleLegacyFallbackClientProps>(
   () => import('./ScheduleLegacyFallbackClient'),
@@ -230,10 +214,6 @@ function scheduleStatusLabel(status: ScheduleItemStatus): string {
 
 function isLockedScheduleStatus(status: ScheduleItemStatus): boolean {
   return status === 'CONFIRMED' || status === 'IN_PROGRESS' || status === 'COMPLETED';
-}
-
-function cx(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(' ');
 }
 
 function parseYmd(ymd: string): Date | null {
@@ -444,8 +424,9 @@ export default function ScheduleClient({
   initialV2Snapshot?: ScheduleV2Snapshot | null;
   initialSeed?: Promise<SchedulePageSeed | null>;
   snapshotLoaders?: { board: (signal: AbortSignal) => Promise<ScheduleV2Snapshot>; gantt: (signal: AbortSignal) => Promise<ScheduleV2Snapshot> };
-  navigationPath?: '/staff/schedule' | '/qa/schedule-progressive-fixture';
+  navigationPath?: '/staff/schedule' | '/qa/schedule-progressive-fixture' | '/qa/portal-progressive-fixture';
 }) {
+  const publicWorkspace = useScheduleWorkspace();
   const toast = useToast();
   const router = useRouter();
   const { beginRouteTransition } = usePortalRouteTransition();
@@ -462,14 +443,14 @@ export default function ScheduleClient({
   const installersRef = useRef<Installer[]>([]);
   const projectsRef = useRef<ScheduleProjectSummary[]>([]);
 
-  const initialView = (() => {
+  const initialView = publicWorkspace?.view ?? (() => {
     const raw = (searchParams.get('view') || '').trim().toLowerCase();
     if (raw === 'site-visits') return 'site_visits' as const;
     if (raw === 'gantt') return 'gantt' as const;
     return 'board' as const;
   })();
 
-  const today = useMemo(() => resolveScheduleTodayYmd(), []);
+  const today = useMemo(() => publicWorkspace?.today ?? resolveScheduleTodayYmd(), [publicWorkspace?.today]);
 
   const supabaseHost = useMemo(() => getScheduleSupabaseHost(), []);
   const hostKey = supabaseHost || 'unknown';
@@ -613,10 +594,18 @@ export default function ScheduleClient({
     note: string;
   } | null>(null);
 
-  const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(initialView);
-  const [query, setQuery] = useState('');
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [unscheduledCollapsed, setUnscheduledCollapsed] = useState<boolean>(() => !mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs).length);
+  const [localView, setLocalView] = useState<'board' | 'gantt' | 'site_visits'>(initialView);
+  const [localQuery, setLocalQuery] = useState('');
+  const [localShowCompleted, setLocalShowCompleted] = useState(false);
+  const [localUnscheduledCollapsed, setLocalUnscheduledCollapsed] = useState<boolean>(() => !mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs).length);
+  const view = publicWorkspace?.view ?? localView;
+  const setView = publicWorkspace?.setView ?? setLocalView;
+  const query = publicWorkspace?.query ?? localQuery;
+  const setQuery = publicWorkspace?.setQuery ?? setLocalQuery;
+  const showCompleted = publicWorkspace?.showCompleted ?? localShowCompleted;
+  const setShowCompleted = publicWorkspace?.setShowCompleted ?? setLocalShowCompleted;
+  const unscheduledCollapsed = publicWorkspace?.unscheduledCollapsed ?? localUnscheduledCollapsed;
+  const setUnscheduledCollapsed = publicWorkspace?.setUnscheduledCollapsed ?? setLocalUnscheduledCollapsed;
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
   const [diagnostics, setDiagnostics] = useState<ScheduleDiagnosticsResult | null>(null);
@@ -1287,15 +1276,14 @@ export default function ScheduleClient({
       ) {
         return;
       }
+      void prepareScheduleRenderer(next);
       if (next === 'gantt') {
-        void import('./ScheduleGanttView');
         void queryClient.prefetchQuery({
           ...scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange),
           queryFn: loadTrackedGanttSnapshot,
         });
         return;
       }
-      void import('./ScheduleBoardView');
       void queryClient.prefetchQuery({
         ...scheduleV2SnapshotQueryOptions(hostKey, today),
         queryFn: loadTrackedBoardSnapshot,
@@ -1789,8 +1777,12 @@ export default function ScheduleClient({
 
   useEffect(() => {
     if (view !== 'board') return;
+    if (publicWorkspace?.preserveCollapseOnAdoption.current) {
+      if (hydrated) publicWorkspace.preserveCollapseOnAdoption.current = false;
+      return;
+    }
     setUnscheduledCollapsed(unscheduledEmpty);
-  }, [unscheduledEmpty, view]);
+  }, [hydrated, publicWorkspace?.preserveCollapseOnAdoption, setUnscheduledCollapsed, unscheduledEmpty, view]);
 
   const unscheduledJobs = boardModel.unscheduledJobs;
   const ganttLaneItems = useMemo(
@@ -4203,11 +4195,11 @@ export default function ScheduleClient({
 
   if (scheduleMode === 'legacy') {
     return (
-      <LazyScheduleLegacyFallbackClient
+      <ScheduleLegacyOutput><LazyScheduleLegacyFallbackClient
         initialReason={legacyFallbackReason}
         today={today}
         initialView={view === 'gantt' ? 'gantt' : 'board'}
-      />
+      /></ScheduleLegacyOutput>
     );
   }
 
@@ -4218,28 +4210,18 @@ export default function ScheduleClient({
     </AlertBanner>
   ) : null;
 
-  return (
-    <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-      <StaffPageHeader
-        title="Schedule"
-        right={
-          <HeaderActions>
-            {view === 'gantt' ? (
-              <span
+  return <ScheduleFrameOutput
+    view={view}
+    tabs={scheduleTabs}
+    saveStatus={<span
                 className={styles.saveStatus}
                 data-state={scheduleTrust.status}
                 role="status"
                 aria-live="polite"
               >
                 {scheduleTrustLabel}
-              </span>
-            ) : null}
-            {scheduleTabs}
-          </HeaderActions>
-        }
-      />
-
-      <div className={cx(styles.stack, styles.stackLocked)}>
+              </span>}
+    notices={<>
         {loadFailure}
         {loadError ? <button type="button" className={styles.buttonSecondary} onClick={() => refreshSchedule({ authoritative: true })}>Retry</button> : null}
         {!loadError && (scheduleTrust.status === 'failed' || scheduleTrust.status === 'stale')
@@ -4268,93 +4250,84 @@ export default function ScheduleClient({
           </AlertBanner>
         ) : null}
 
-        <SchedulePendingChanges items={scheduleItems} installers={installers} projectsById={projectsById} onReview={(id, request) => {
+    </>}
+    pendingChanges={<SchedulePendingChanges items={scheduleItems} installers={installers} projectsById={projectsById} onReview={(id, request) => {
           const item = scheduleItems.find((row) => row.id === id);
           if (!item) return;
           if (request.path.endsWith('/set-duration') && typeof request.input.forecast_duration_days === 'number') setDurationEdit({ id, durationDays: String(request.input.forecast_duration_days) });
           else if (request.path.endsWith('/set-days-remaining') && typeof request.input.days_remaining === 'number') setDaysRemainingEdit({ id, daysRemaining: String(request.input.days_remaining) });
           else if (typeof request.input.requested_start_date === 'string') handleGanttOpenPinEdit(id, request.input.requested_start_date);
           else handleGanttOpenProject(item.projectId);
-        }} onRefresh={() => { void refreshSchedule({ authoritative: true }); }} />
-
-        <ScheduleIssuesPanel issues={schedulingIssues} items={scheduleItems} installers={installers} disabled={boardActionDisabled}
+        }} onRefresh={() => { void refreshSchedule({ authoritative: true }); }} />}
+    issues={<ScheduleIssuesPanel issues={schedulingIssues} items={scheduleItems} installers={installers} disabled={boardActionDisabled}
           onEdit={openPinEdit}
           onMove={(id, crewId) => handleBoardDrop(id, { kind: 'lane', laneId: crewId, insertionIndex: 0, placement: 'before', overId: null })}
           onKeep={(id, overlapKey) => {
             const item = scheduleItemById.get(id);
             const crewId = item ? safeUuidFromAppId('crew', item.installerId) : null;
             if (crewId) void runWithCommitConfirmation(() => keepScheduleOverlap({ crew_id: crewId, overlap_key: overlapKey }), { expectedCrewId: crewId, successToast: 'Overlap kept for these dates.' });
-          }} />
-
-        {diagnosticsPanel}
-
-        {view === 'gantt' ? (
-          <div className={styles.panels}>
-            <section className={styles.mainPanel} aria-label="Installer lanes">
-              <LazyScheduleGanttView
-                dataPending={scheduleDataPending}
-                dataError={scheduleViewError}
-                today={today}
-                scheduleMode={scheduleMode}
-                installers={installers}
-                laneItems={scheduleDataPending ? new Map() : laneItems}
-                visibleScheduleItems={scheduleDataPending ? [] : visibleScheduleItems}
-                projectsById={projectsById}
-                estimatesById={emptyEstimatesById}
-                scheduleBars={scheduleDataPending ? [] : schedule.bars}
-                scheduleIssues={scheduleDataPending ? [] : schedule.issues}
-                holidays={ganttHolidays}
-                showCompleted={showCompleted}
-                onShowCompletedChange={handleShowCompletedChange}
-                onOpenUnscheduled={handleOpenUnscheduledJobs}
-                onOpenProject={handleGanttOpenProject}
-                onOpenProjectPack={handleGanttOpenProjectPack}
-                onOpenCommitmentEdit={openCommitmentEdit}
-                onOpenPinEdit={handleGanttOpenPinEdit}
-                onUnpinScheduleItem={handleGanttUnpinScheduleItem}
-                onAckClientUpdate={handleGanttAckClientUpdate}
-                onMovePin={handleGanttMovePin}
-                onResizePin={handleGanttResizePin}
-              />
-            </section>
-          </div>
-        ) : (
-          <LazyScheduleBoardView
-            dataPending={scheduleDataPending}
-            dataError={scheduleViewError}
-            today={today}
-            scheduleMode={scheduleMode}
-            installers={installers}
-            schedulable={schedulable}
-            unscheduledJobs={scheduleDataPending ? [] : unscheduledJobs}
-            unscheduledJobsAll={scheduleDataPending ? [] : unscheduledJobsAll}
-            laneItems={scheduleDataPending ? new Map() : laneItems}
-            scheduleItemById={scheduleItemById}
-            barsByScheduleId={barsByScheduleId}
-            issueLevelByScheduleId={issueLevelByScheduleId}
-            nextAvailableByInstallerId={nextAvailableByInstallerId}
-            unscheduledCollapsed={unscheduledCollapsed}
-            query={query}
-            showCompleted={showCompleted}
-            onQueryChange={setQuery}
-            onToggleUnscheduledCollapsed={handleToggleUnscheduledCollapsed}
-            onShowCompletedChange={handleShowCompletedChange}
-            onDrop={handleBoardDrop}
-            interaction={{
+          }} />}
+    diagnostics={diagnosticsPanel}
+    board={{
+      dataPending: scheduleDataPending,
+      dataError: scheduleViewError,
+      today: today,
+      scheduleMode: scheduleMode,
+      installers: installers,
+      schedulable: schedulable,
+      unscheduledJobs: scheduleDataPending ? [] : unscheduledJobs,
+      unscheduledJobsAll: scheduleDataPending ? [] : unscheduledJobsAll,
+      laneItems: scheduleDataPending ? new Map() : laneItems,
+      scheduleItemById: scheduleItemById,
+      barsByScheduleId: barsByScheduleId,
+      issueLevelByScheduleId: issueLevelByScheduleId,
+      nextAvailableByInstallerId: nextAvailableByInstallerId,
+      unscheduledCollapsed: unscheduledCollapsed,
+      query: query,
+      showCompleted: showCompleted,
+      onQueryChange: setQuery,
+      onToggleUnscheduledCollapsed: handleToggleUnscheduledCollapsed,
+      onShowCompletedChange: handleShowCompletedChange,
+      onDrop: handleBoardDrop,
+      interaction: {
               moveDisabled: boardMoveDisabled,
               actionDisabled: boardActionDisabled,
               moveDisabledReason: boardMoveDisabledReason,
               actionDisabledReason: boardActionDisabledReason,
               blockedLaneIds: blockedBoardLaneIds,
               blockedProjectIds: blockedBoardProjectIds,
-            }}
-            mutationNotice={boardMutationNotice.notice}
-            mutationNotices={boardMutationNotice.notices}
-            buildJobMenuActions={buildJobMenuActions}
-            buildDowntimeMenuActions={buildDowntimeMenuActions}
-          />
-        )}
-
+            },
+      mutationNotice: boardMutationNotice.notice,
+      mutationNotices: boardMutationNotice.notices,
+      buildJobMenuActions: buildJobMenuActions,
+      buildDowntimeMenuActions: buildDowntimeMenuActions
+    }}
+    gantt={{
+      dataPending: scheduleDataPending,
+      dataError: scheduleViewError,
+      today: today,
+      scheduleMode: scheduleMode,
+      installers: installers,
+      laneItems: scheduleDataPending ? new Map() : laneItems,
+      visibleScheduleItems: scheduleDataPending ? [] : visibleScheduleItems,
+      projectsById: projectsById,
+      estimatesById: emptyEstimatesById,
+      scheduleBars: scheduleDataPending ? [] : schedule.bars,
+      scheduleIssues: scheduleDataPending ? [] : schedule.issues,
+      holidays: ganttHolidays,
+      showCompleted: showCompleted,
+      onShowCompletedChange: handleShowCompletedChange,
+      onOpenUnscheduled: handleOpenUnscheduledJobs,
+      onOpenProject: handleGanttOpenProject,
+      onOpenProjectPack: handleGanttOpenProjectPack,
+      onOpenCommitmentEdit: openCommitmentEdit,
+      onOpenPinEdit: handleGanttOpenPinEdit,
+      onUnpinScheduleItem: handleGanttUnpinScheduleItem,
+      onAckClientUpdate: handleGanttAckClientUpdate,
+      onMovePin: handleGanttMovePin,
+      onResizePin: handleGanttResizePin
+    }}
+    dialogs={<>
       {hasOpenActionModal ? (
         <ScheduleActionModals
           state={actionModalState}
@@ -4380,7 +4353,6 @@ export default function ScheduleClient({
         />
       ) : null}
       {scheduleConfirmationDialog}
-      </div>
-    </PageLayout>
-  );
+    </>}
+  />;
 }

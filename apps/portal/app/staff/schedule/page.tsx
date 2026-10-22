@@ -1,9 +1,11 @@
+import GuardedGlobalPortalSearch from '@/components/layout/GuardedGlobalPortalSearch';
 import { requireStaffPageAccess } from '@/lib/auth';
 import ScheduleClient from './ScheduleClient';
 import SiteVisitsScheduleClient from './SiteVisitsScheduleClient';
 import { loadSchedulePageSeed } from '@/lib/scheduling/serverSchedulePageSeed';
 import { headers } from 'next/headers';
 import { NAVIGATION_CALLBACK_HEADER, regionalNavigationCallback } from '@/lib/regionalDocumentAccess';
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -18,7 +20,10 @@ export default async function StaffSchedulePage({
   const view = Array.isArray(rawView) ? rawView[0] : rawView;
 
   if ((view ?? '').trim().toLowerCase() === 'site-visits') {
-    return <SiteVisitsScheduleClient />;
+    return <PortalGuardedPage pathname="/staff/schedule" completion={{}} publicFrame={false}>
+    <GuardedGlobalPortalSearch/>
+      <SiteVisitsScheduleClient />
+    </PortalGuardedPage>;
   }
 
   const scheduleView = (view ?? '').trim().toLowerCase() === 'gantt' ? 'gantt' : 'board';
@@ -31,9 +36,10 @@ export default async function StaffSchedulePage({
     ? undefined
     : loadSchedulePageSeed({ view: scheduleView }).catch(() => null);
   return (
-    <ScheduleClient
+    <PortalGuardedPage pathname="/staff/schedule" completion={{}}>
+    <GuardedGlobalPortalSearch/><ScheduleClient
       initialSeedKind={scheduleView}
       initialSeed={seed}
-    />
+    /></PortalGuardedPage>
   );
 }

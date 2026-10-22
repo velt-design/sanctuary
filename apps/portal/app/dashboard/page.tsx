@@ -1,6 +1,8 @@
+import GuardedGlobalPortalSearch from '@/components/layout/GuardedGlobalPortalSearch';
 import { requireStaffPageAccess } from '@/lib/auth';
 import DashboardClient from './DashboardClient';
 import { parseDashboardQueueMode } from '@/lib/dashboard/queueMode';
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,5 +21,8 @@ export default async function DashboardPage({
   await requireStaffPageAccess('/dashboard');
   const resolvedSearchParams = await searchParams;
   const queueMode = parseDashboardQueueMode(readFirst(resolvedSearchParams?.queue));
-  return <DashboardClient queueMode={queueMode} />;
+  return <PortalGuardedPage pathname="/dashboard" completion={{}}>
+    <GuardedGlobalPortalSearch/>
+    <DashboardClient queueMode={queueMode} />
+  </PortalGuardedPage>;
 }
