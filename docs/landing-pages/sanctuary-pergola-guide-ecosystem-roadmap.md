@@ -1,5 +1,28 @@
 # Sanctuary Pergolas Guide Ecosystem Implementation Roadmap
 
+## Guide hub accepted direction (22 October 2026)
+
+After accepting Commercial, Jordan authorised the next recommended page. The
+accepted page updates `/pergola-guides`: four photographic planning decisions,
+three frame/roof-form guides, then General, Custom and Commercial service links.
+All ten existing destinations remain reachable. First decisions appear beneath a
+short opening instead of a viewport-sized image and separate jump section.
+
+Jordan accepted this direction and authorised production on 22 October.
+This deliberately varies the historical G07 recipe of eight guides and two
+services. Commercial now explicitly offers design/build services in the accepted
+21 October page. Seven guide cards and three service paths therefore describe the
+current visible roles more accurately. The hub's own ItemList follows those seven
+cards. Shared `data/pergolaGuides.ts`, individual-page schema/breadcrumbs and global
+navigation remain unchanged. G04-G06 are not completed by this local grouping.
+
+G07/G08 below remain the historical broader specification. This accepted direction advances
+their hierarchy, early-choice and photographic goals without claiming that exact
+eight-guide taxonomy or the wider ecosystem migration is complete. The source,
+focused tests, independent review, owner preview and publication remain distinct
+stages. Current implementation owners are recorded in the marketing foundation
+and testing docs.
+
 ## G14 comparison-page implementation (21 October 2026)
 
 The implemented source replaces the historical generic G14 block presentation with
@@ -585,7 +608,7 @@ redirect following disabled.
 **Likely files and components:**
 
 - `apps/marketing/app/pergola-guides/page.tsx`
-- `apps/marketing/app/pergola-guides/pergola-guides.css`
+- `apps/marketing/app/pergola-guides/guides.module.css`
 - the typed ecosystem registry
 - `playwright/marketing.guide-hub.spec.ts`
 - `playwright/marketing.hero-navigation.spec.ts`
@@ -1490,7 +1513,7 @@ Visible page context accurately distinguishes service-only pages from guide-libr
 ### G07 - Rebuild the hub around core, secondary, and service pathways
 
 **Phase:** Phase 4 - Curated guide-hub restructuring  
-**Status:** Not started  
+**Status:** Route-level direction accepted; broader historical taxonomy not completed
 **Relative effort:** Medium  
 **Implementation risk:** Medium  
 **Dependencies:** G04, G05, and G06
@@ -1517,7 +1540,7 @@ Update hub tests to assert the target groups, service separation, ItemList, cano
 **Context Codex must inspect**
 
 - `apps/marketing/app/pergola-guides/page.tsx`
-- `apps/marketing/app/pergola-guides/pergola-guides.css`
+- `apps/marketing/app/pergola-guides/guides.module.css`
 - The ecosystem profile
 - `playwright/marketing.guide-hub.spec.ts`
 - `apps/marketing/app/sitemap.ts` and `robots.ts` for no-change verification
@@ -1532,7 +1555,7 @@ Update hub tests to assert the target groups, service separation, ItemList, cano
 **Likely files**
 
 - `apps/marketing/app/pergola-guides/page.tsx`
-- `apps/marketing/app/pergola-guides/pergola-guides.css`
+- `apps/marketing/app/pergola-guides/guides.module.css`
 - The ecosystem data owner if selectors are needed
 - `playwright/marketing.guide-hub.spec.ts`
 - Possibly `playwright/marketing.seo-copy-hygiene.spec.ts` for updated hub copy
@@ -1588,7 +1611,7 @@ The public hub reflects the target classification and guide-only ItemList, with 
 ### G08 - Refine guide-hub hierarchy and mobile density
 
 **Phase:** Phase 4 - Curated guide-hub restructuring  
-**Status:** Not started  
+**Status:** Photographic direction accepted; production verification separate
 **Relative effort:** Medium  
 **Implementation risk:** Low to medium  
 **Dependencies:** G07
@@ -1611,7 +1634,7 @@ Do not rewrite hub copy, reorder guides, change the ItemList, add a carousel, ad
 
 - `docs/marketing-ui-foundation.md`
 - `apps/marketing/app/pergola-guides/page.tsx` after G07
-- `apps/marketing/app/pergola-guides/pergola-guides.css`
+- `apps/marketing/app/pergola-guides/guides.module.css`
 - `playwright/marketing.guide-hub.spec.ts`
 - Existing visual evidence under `artifacts/marketing-seo-landing/pergola-guides/`
 
@@ -1624,7 +1647,7 @@ Do not rewrite hub copy, reorder guides, change the ItemList, add a carousel, ad
 
 **Likely files**
 
-- `apps/marketing/app/pergola-guides/pergola-guides.css`
+- `apps/marketing/app/pergola-guides/guides.module.css`
 - `apps/marketing/app/pergola-guides/page.tsx` only for presentation hooks
 - `playwright/marketing.guide-hub.spec.ts`
 - Visual evidence artifacts if the repository retains them
@@ -2357,10 +2380,18 @@ The Gable page is a focused secondary guide to form suitability, with exact prod
 ### G16 - Refine the Pitched secondary guide
 
 **Phase:** Phase 6 - Retained-guide content refinement  
-**Status:** Not started  
+**Status:** Photographic redesign accepted; production release authorised (21 October 2026)
 **Relative effort:** Medium  
 **Implementation risk:** Medium  
 **Dependencies:** G09 and G10
+
+The accepted page uses an existing residential pitched photograph, a full Velskov
+roof photograph labelled at its visible high and low edges, a second house-
+connection image and the distinct Tindalls Bay application. Short notes retain
+height, depth, fall and site-specific drainage decisions. Optional existing Pitched product/designer continuation
+and the canonical enquiry remain. KiwiRail evidence is omitted. No source,
+local-check or reviewer statement alone establishes hosted preview acceptance or
+production release; the owning delivery record retains those outcomes.
 
 **Ready-to-use Codex goal prompt**
 
@@ -2544,10 +2575,18 @@ The Aluminium guide has a precise material role, accurate handoffs, and no unsup
 ### G18 - Refine the Commercial secondary guide
 
 **Phase:** Phase 6 - Retained-guide content refinement  
-**Status:** Not started  
+**Status:** Photographic redesign accepted; production release authorised (21 October 2026), building on the existing 30 September commercial audience page
 **Relative effort:** Medium  
 **Implementation risk:** Medium to high  
 **Dependencies:** G09 and G10
+
+The accepted page moves the existing hospitality-first offer to a route-owned
+photographic presentation, preserving the optional commercial brief, operating
+constraints and agreed consultant responsibilities. Good Home and Atelier Shu
+lead; the existing KiwiRail workplace and Lilliput recreation roles remain
+secondary evidence without dimensions or new performance claims. The shared
+Professional presentation and canonical enquiry implementation remain unchanged.
+Production verification remains separate from the accepted preview.
 
 **Ready-to-use Codex goal prompt**
 

@@ -1,5 +1,78 @@
 # Marketing UI Foundation
 
+## Photographic guide hub (22 October 2026)
+
+`app/pergola-guides/page.tsx`, `content.ts` and `guides.module.css` own the
+page's short opening, four planning choices (cost, outdoor rooms, blinds and
+roof comparison), three frame/form guides and three separate service links.
+Questions precede the photographs so visitors can choose without scrolling past
+a decorative hero. Existing subject-specific photographs include an actually
+lowered mesh blind. Full-card links have a single destination, visible keyboard
+focus and stable geometry. The 1440px outer canvas bounds wide layouts.
+
+The page uses the existing responsive `--header-height` offset for ordinary
+fixed navigation. Its two enquiry actions use `buildAssistedEnquiryHref` with
+the existing help intent and hub source context. The canonical Contact owner
+continues to own the form, audiences, optional files, native fallback and retry.
+No new enquiry or configurator implementation is introduced.
+
+All ten destinations remain visible. Only the hub's ItemList now describes its
+seven guide cards; the three service links sit beneath a design/build heading.
+Shared registry, individual-route schema, global navigation and sitemap are not
+migrated. The retired route stylesheet and its unused shared card-hover overrides
+are removed. Jordan accepted the protected preview and authorised production on 22 October.
+Operational publication and production verification remain separate release checks.
+
+## Commercial photographic composition (21 October 2026)
+
+The Commercial page uses route-owned `CommercialPresentation.tsx` and
+`commercial.module.css` under `app/commercial-pergolas-auckland`. A bounded
+headline/action row precedes a large Good Home courtyard photograph. Good Home
+and Atelier Shu stories lead the offer; KiwiRail and Lilliput show the existing
+workplace and recreation roles. The operations and agreed-scope sections retain
+use, access, exposure, building interfaces and consultant responsibilities.
+The existing-building note offers a contextual handoff to Custom pergola design.
+
+`page.tsx` passes the visual slots and validated enquiry context to the existing
+`SeoLandingPage`. The same canonical form owns all three audiences, required phone,
+optional site/stage/team/operating brief, roof, files, native fallback and retry.
+Guided commercial context retains precedence. There is no new pricing or enquiry
+implementation. Ordinary website chrome, Service schema and canonical URL remain.
+
+The now-unused Commercial branch and its exclusive CSS selectors were retired
+from `AudienceLandingPage`; that owner continues to render Professionals with the
+same markup, Figure/TextLink contracts and CSS declarations. No Professional
+route/content file changes. No new media assets or theme are introduced.
+Jordan accepted the protected preview and authorised production release on
+21 October 2026. The release checks and production verification remain separate
+from that acceptance.
+
+## Pitched form guide (21 October 2026)
+
+`/pitched-pergolas-auckland` has a route-owned presentation in `page.tsx`,
+`content.ts`, `pitched.module.css` and `PitchedSection`, which owns a complete
+Velskov profile photograph with restrained high/low-edge labels. Existing
+residential installed photography leads into this real freestanding roof, house
+connection and daylight decisions, then the distinct Tindalls application.
+The earlier schematic was rejected by Jordan as visually weak; increasing its
+label size had not solved that problem. The replacement uses existing photography
+and shorter notes about height, roof depth and water, with no invented dimensions.
+Its 1440px canvas and capped heading avoid viewport
+growth inside a fixed-width text column. No new photo asset is introduced.
+
+The shared `SeoLandingPage` still owns schema and the canonical required-phone,
+all-audience enquiry form. Shared `EnquiryLink` owns first/repeat focus and history;
+validated source/project/guided attribution remains in `parseEnquiryContext`.
+The Pitched product and full designer remain optional existing continuations,
+without a second selector, pricing owner or new engineering specification.
+This page no longer uses the generic first-layer blocks. Its dedicated route
+tests replace that obsolete presentation assumption; shared renderer tests retain
+coverage for the remaining generated Gable configuration.
+
+Local fixture, independent review, preview and owner acceptance are separate
+checks. Jordan accepted the photographic page and authorised release; operational
+publication and live verification remain recorded separately.
+
 ## Gable form guide (21 October 2026)
 
 The existing `/gable-pergolas-auckland` route uses its page/content/CSS and a
@@ -1316,11 +1389,10 @@ The residential `/pergolas-auckland` route uses six major regions before its fin
 
 The custom `/custom-pergolas-auckland` route adopts the same six-region budget without becoming a copy of residential. Three constrained-project examples and explicit site conditions explain why custom design is needed; a three-stage process leads to one `custom-planning-support` disclosure. The dominant guide-series navigation is disabled on both service routes while the useful canonical guide links remain. Custom enquiry links retain a residential audience with the custom source path.
 
-The commercial and professional routes use a scoped editorial composition in
+The professional route retains its scoped editorial composition in
 `components/seo-landing/AudienceLandingPage.tsx` and
-`audience-landing.module.css`. The Commercial page leads with a hospitality
-courtyard and Good Home / Atelier Shu proof, then the covered-space package,
-operating-site considerations and smaller workplace/recreation examples.
+`audience-landing.module.css`. The Commercial composition has moved to its route
+owner described above, retaining the hospitality-first offer and scope.
 Professionals leads with collaborative design development, verified roof and
 building-interface photography, and accurate historical project roles. These
 roles are not separate supply-only offers. The 30 September 2026 claim families

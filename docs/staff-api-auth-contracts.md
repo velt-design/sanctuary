@@ -2,8 +2,10 @@
 
 ## Initial document access (released in PR241, 21 October 2026)
 
-For canonical HTML document GETs at `/staff/projects`, `/staff/site-visits` and
-`/staff/projects/(proj_)?<uuid>`, middleware renews session transport without using
+PR241 covers canonical HTML document GETs at `/staff/projects`, `/staff/site-visits`
+and `/staff/projects/(proj_)?<uuid>`. The later Marketing hub change adds its exact
+`/staff/marketing-performance` route with the additional gates described below.
+For these selected documents, middleware renews session transport without using
 session contents as authority. `regionalDocumentAccess.ts` owns the exact request
 eligibility and sanitized callback context. `supabase/proxyClient.ts` forwards the
 same cookie rotation and chunk removals attached to the response. The root layout,
@@ -39,6 +41,17 @@ only for the same verified user, normalized query and empty, uninvalidated query
 state. Later cache changes, cancellation, filters, returns and retry use the
 existing independently authorized API. This does not give the initial result
 authority over current access-ending API failures.
+
+The local Marketing hub scheduling candidate starts a report only after the
+page's existing staff, confirmed-developer and preview gates. The overwritten
+document callback selects its date window, never its actor. RSC/prefetch,
+Financials and invalid windows do not start this read. The API and seed share
+`marketingPerformance/readHub.server`, retaining the same auth-bound RPC,
+snapshot, complete schema/date checks and safe public errors. Only a safe result
+promise and date identity cross Flight, without suspending the client shell.
+Mismatched or later requests and explicit retries retain the guarded API path;
+there is no session/client serialization or shared evidence cache. See
+`marketing-performance.md` for the per-mount lifecycle and verification limits.
 
 ## Outlook site visits
 
@@ -84,6 +97,18 @@ do not contact Microsoft. Errors are fixed safe strings; all responses are
 private/no-store, nosniff and no-referrer. See `schedule.md` and
 `environment-auth-supabase.md` for source and federation boundaries.
 
+## Designer sales outcome correction
+
+`GET` / `PUT /api/staff/v1/projects/[projectId]/sales-outcome` require confirmed
+owner staff access. PUT additionally requires same origin, JSON and a bounded
+strict body: commandId, expectedRevision, outcome (`cancelled`, `refunded` or null)
+and a 3–500 character basis. The auth-bound RPC independently locks/verifies the
+actor, locks the project and enforces exact replay and optimistic revision.
+400/403/404/409/503 distinguish input, authority, missing source, conflict and
+uncertain results without raw database errors. Responses are private/no-store,
+validated and pinned to the requested project. There is no service-role client.
+This records a report-only whole-job fact, not a finance refund or operational close.
+
 ## Designer performance candidate
 
 Designer performance at `/api/staff/v1/marketing-performance/designers` uses the
@@ -121,7 +146,13 @@ is lease/generation fenced. See [google-ads-connection.md](google-ads-connection
 
 `GET /api/staff/v1/marketing-performance/financials` requires current staff
 context, confirmed developer identity and the same identity's current finance
-grant before source access. It accepts exactly one from/to/basis query; future,
+grant before source access. It accepts exactly one from/to/basis/section query;
+section is profit, bank, receivables or payables. Only Organisation and the
+requested financial family are read. The strict response identifies that section;
+omitted families are explicitly not requested, never failed or zero. The full
+machine finance-position wire remains unchanged. Already-open clients omitting
+section keep the original full Financials wire under the same authority checks.
+Future,
 invalid, unknown and repeated fields are denied. The server-selected source
 actor/tenant and existing source binding are rechecked before provider reads and
 publication, together with the interactive finance identity. This does not grant

@@ -15,12 +15,12 @@ export default function HubRecords({hub,filters,synthetic,eventKind,apply,produc
   const date=(value:string)=>new Date(value).toLocaleDateString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium'});
   const link=(id:string,enquiry:string|null)=>synthetic ? `/qa/marketing-performance-fixture/project?project=${id}&enquiry=${enquiry??''}&return=${encodeURIComponent(typeof window==='undefined'?'':window.location.search)}` : `${productionSnapshot?'https://portal.sanctuarypergolas.co.nz':''}/staff/projects/proj_${id}?tab=${filters.view==='sales'?'quotes':'activity'}`;
   const entries=filters.view==='enquiries' ? selected.enquiries.map(r=>({
-    id:r.enquiryId,projectId:r.projectId,enquiry:r.enquiryId,name:r.projectName??'Unlinked enquiry',date:date(r.receivedAt),source:r.source,campaign:r.campaign,
+    id:r.enquiryId,projectId:r.projectId,enquiry:r.enquiryId,name:r.projectName??'Unlinked enquiry',date:r.receivedAt,source:r.source,campaign:r.campaign,
     detail:r.origin?'Origin enquiry':r.projectId?'Repeat submission; outcome credited to origin':'No linked project',
     evidence:[r.qualification==='unreviewed'?'Awaiting assessment':r.qualification==='ineligible'?'Outside configured qualification criteria':r.qualification==='unavailable'?'Assessment unavailable':r.qualification.replaceAll('_',' '),
       r.origin&&r.visit?'Recorded confirmation':null,r.origin&&r.quote?'Sent quote':null,r.origin&&r.accepted?'Current accepted scope':null,r.origin&&r.won?'Payment verified':null].filter(Boolean).join(' · '),
   })) : filters.view==='portfolio' ? [...selected.projects].sort((a,b)=>filters.age?a.createdAt.localeCompare(b.createdAt):0).map(p=>({
-    id:p.id,projectId:p.id,enquiry:p.originId,name:p.name??'Unnamed project',date:date(p.createdAt),source:p.source,campaign:p.campaign,
+    id:p.id,projectId:p.id,enquiry:p.originId,name:p.name??'Unnamed project',date:p.createdAt,source:p.source,campaign:p.campaign,
     detail:`${p.state.toLowerCase()} · ${p.owner??'unassigned'} · ${p.receiptCount} saved receipt${p.receiptCount===1?'':'s'}`,
     evidence:`${resolveProjectJourney(normalizePipelineStageKey(p.stage)).stageLabel} · ${p.paymentVerified?'Payment verified':'No qualifying payment evidence'}${p.knownTest?' · Known test':p.testCandidate?' · Possible test; review required':''}`,
   })) : selected.events.filter(e=>!eventKind||e.kind===eventKind||(eventKind==='receipts'&&['payment','reversal'].includes(e.kind))).map(e=>{
@@ -40,7 +40,7 @@ export default function HubRecords({hub,filters,synthetic,eventKind,apply,produc
       <Table><TableHeader><TableRow><TableHead>Project / record</TableHead><TableHead>{filters.view==='enquiries'?'Received':filters.view==='sales'?'Event date':'Project created'} (NZ)</TableHead><TableHead>Observed source / campaign</TableHead><TableHead>Recorded evidence</TableHead></TableRow></TableHeader>
         <TableBody>{entries.slice(current*25,(current+1)*25).map(r=><TableRow key={r.id}>
           <TableHead scope="row" className={styles.source}>{r.projectId?<a href={link(r.projectId,r.enquiry)}>{r.name}</a>:r.name}<span>{r.detail}</span><span className={styles.recordId} title={r.id}>{r.id}</span></TableHead>
-          <TableCell>{r.date}</TableCell><TableCell className={styles.source}>{r.source??UNKNOWN_SOURCE}<span>{r.campaign??NO_CAMPAIGN}</span></TableCell><TableCell>{r.evidence}</TableCell>
+          <TableCell>{filters.view==='sales'?r.date:date(r.date)}</TableCell><TableCell className={styles.source}>{r.source??UNKNOWN_SOURCE}<span>{r.campaign??NO_CAMPAIGN}</span></TableCell><TableCell>{r.evidence}</TableCell>
         </TableRow>)}</TableBody></Table>
       {!entries.length&&<p>No matching records. Clear filters or choose another view. Projects without receipts are available in Project portfolio.</p>}
     </div>

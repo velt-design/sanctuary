@@ -1,5 +1,19 @@
 # Supabase Schema Map
 
+## Designer accepted sales outcomes (21 October 2026)
+
+`20261021100001_designer_accepted_sales.sql` adds private
+`project_sales_outcomes` and append-only `project_sales_outcome_commands`.
+Only owner-authenticated `project_sales_outcome_read(uuid)` and
+`project_sales_outcome_record(uuid,uuid,integer,text,text)` may access them;
+VOLATILE preserves the existing actor locks. Command identity/revision and row
+locks protect replay/concurrent updates. RLS/direct grants deny public, anon,
+authenticated and service role table access. Clear retains revision/audit.
+The report adds `salesOutcomes`, `salesProjects` and historical accepted-family
+fields without changing assignments, source visits or financial/provider facts.
+No operational-close or advertising trigger consumes this report-only outcome.
+See [Marketing Performance](marketing-performance.md#accepted-jobs-by-designer-21-october-2026).
+
 ## Designer performance read candidate (21 October 2026)
 
 `20261021030001_designer_performance.sql` adds no business tables or writes.
@@ -1070,6 +1084,17 @@ The install-only 20260914062002 migration adds marketing_enquiry_staff_receipts(
 
 ## Xero private connection storage
 
+### Local GA4 v3 forward candidate
+
+Migration 20261021082853_ga4_v3_diagnostics.sql extends only the private GA4
+operation requested_report_version (default v2), private strict diagnostic
+validators and existing service-only sanctuary_ga4_command. Completion and saved
+read associate v3 shape/version/hash with the frozen operation, including three
+occurrence stages and the closed available/limited/unavailable acquisition union.
+No grant, enabled control, retention period, daily job or provider budget changes.
+All existing update/delete predicates and deletion/generation fences remain.
+This migration is a local candidate, not a claim of production installation.
+
 Migration `20260914000001_xero_connection.sql` adds xero_private.connection, oauth_attempts and events. Only a separately provisioned restricted connector LOGIN receives access; anon/authenticated receive none. Audit grants are insert-only. No business or payment tables are changed. See [Xero connection](xero-connection.md).
 
 Migrations `20260914000002` through `20260914000004` add the separately gated payment pilot: `xero_payment_approvers`, immutable `xero_deposit_matches`, append-only `xero_deposit_review_notes`, `xero_deposit_review_context`, `xero_approve_deposit_match` and `xero_record_deposit_review_note`. Service-role receives bounded reads and command execution, not direct table writes; anon/authenticated receive no access. Approval uses the existing payment ledger and allocation commands under the canonical project lock, plus a global receipt lock and unique active source constraint. Existing ledger reversal synchronizes match history and invoice reopening. Grants start empty. These migrations are implementation artifacts until hosted rollout evidence is recorded in `docs/xero-connection.md`.
@@ -1119,3 +1144,25 @@ acceptance, first send and earliest enquiry dates, plus all-dates known send evi
 without timestamps. The forward reader requires the exact 000002 baseline. Stored GST-inclusive quote amounts
 are the sole value source. No backfill or writes. See the metric/coverage contract in
 [Marketing Performance](marketing-performance.md#owner-commercial-overview-candidate-8-october-2026).
+
+### Local creative ledger candidate (21 October 2026)
+
+`20261021050001_creative_effect_ledger.sql` adds service-only/RLS cross-lane
+reservation, default-off creative control, immutable plan/object/receipt tables
+and bounded effect journal. Prepared admission is not dispatch permission; the
+one-use dispatch fence becomes uncertain, while exact never-claimed evidence can
+resolve no effect. Three terminal cleanup admissions are separate from 24 normal
+admissions. Cleanup/publication flags remain subordinate to current authority and
+global Stop, with generation fencing. `meta_creative_command` is the service RPC;
+landing reservation uses the existing advisory lock and a trigger. No sequence,
+public grant, provider call or installed production capability. See
+`meta-offline-sales.md` for remaining writer/reporting/cleanup requirements.
+
+## Creative capability candidate, 21 October 2026
+
+`20261021050001` through `20261021050003` add the private creative effect ledger,
+executor/registered-ad/outcome projection and consented visit/intake joins. Native
+fixtures exercise shared landing reservation, uncertain/no-effect fencing, one
+paused ad and reused creative reference cleanup. Service-only definer commands,
+empty search paths, explicit table/function revokes and immutable receipts remain
+mandatory. No production migration or capability is implied by fixture passes.

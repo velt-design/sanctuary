@@ -1,5 +1,144 @@
 # Testing And QA
 
+## Photographic guide hub (22 October 2026)
+
+The hub server-render unit proves all ten existing destinations remain reachable,
+the seven-guide ItemList matches its visual cards, topic photographs exist, and
+both enquiry links retain source context while selecting the canonical help brief.
+`marketing.guide-hub.spec.ts` covers 320/390/820/1265/1440/2560 layouts, the real
+shared header clearing the opening copy, an early first decision, loaded photos,
+overflow, keyboard/reduced-motion navigation, cost/blinds/form Back returns and
+repeated help-brief entry. Canonical/indexation, sitemap, footer discovery and
+the retained brochure redirect are included. Existing density, phase-four and
+preload assertions follow this route's new composition. The old overlay-hero
+contract no longer includes the hub. Authored browser contracts are separate
+from actual supported-browser evidence and do not establish production delivery.
+
+
+## Video donor compatibility verification (22 October 2026)
+
+Exercise signed preparation and exact intent validation with a synthetic two-media
+video_story and six-key tracking; changed media intent must fail. Run the existing
+native ledger harness with representative/full-size synthetic plan and intent
+round trips and oversize denial. Source fixtures and local renderer closure hashes
+are not real Meta preservation or provider proof. The paired Velt v2 diagnostic
+must precede any remaining actual PAUSED attempt.
+
+## Initial Marketing hub scheduling (21 October 2026)
+
+Run `hubDocumentSelection`, `readHub.server`, the hub API/page tests,
+`useHub.initial`, and `MarketingPerformance.initialHub` with the existing hub,
+regional authority and report suites. Cover deferred page return, staff/developer
+and preview denial, exact/default Auckland dates, RSC/prefetch/Financial exclusions,
+one initial read, StrictMode, date/loader races, unmount, unavailable evidence,
+API retry, filters and record return. Use Flight-shaped thenables in hook/host
+tests, including a void-returning
+`then` and synchronous fulfillment; native promises alone miss that boundary.
+The neutral optimized scheduling experiment
+uses identical full fictional reports, assets and availability delays for client
+and streamed starts. It adds no simulated auth advantage. Verify actual Flight
+streaming, complete panel content, final data-to-content delay and retained
+recovery; unit promise tests do not establish hosted speed or access behavior.
+
+## PG17 CI registry recovery (21 October 2026)
+
+The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR
+mirror of the same 17.6.1.107 linux/amd64 manifest, pinned to
+`sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`.
+Public ECR throttled before contract execution. Both registry manifests were
+read and matched byte-for-byte, including config and all layers; Supabase's own
+[mirror workflow](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml)
+publishes to both. This changes distribution only: PG17, PGMQ1.5.1, all contract
+assertions and the separate PG18 matrix remain unchanged. Local Docker was not
+running during verification, so metadata equality is not a container-test pass;
+the normal required CI jobs still execute the exact contracts.
+
+## Paused creative capability candidate, 21 October 2026
+
+The native outcome regression retains both existing launch-verification enquiry
+and project exclusions. A genuine later enquiry on an ordinary project still
+owns its confirmed visit/quote when an excluded test was first. Counts, sampled
+correspondence and opaque references exclude both tests; null-project records
+remain visible as unlinked. This is synthetic preservation proof, not live data.
+
+Template-drift recovery keeps authenticated exact registry state readable with
+finite compatibility metadata. Exercise pending readback, owned pause and final
+cleanup through the actual Velt adapter and signed Source handler; new preparation
+and non-cleanup effects still require the current compiled template. No rebind or
+provider proof is implied by these synthetic cases.
+
+Run `node scripts/test-meta-creative-ledger-db.mjs` with the existing disposable
+PostgreSQL path, creative authority/intent/contract tests, campaign report/registry
+contracts and affected intake tests. Verify old canonical intake preservation,
+consent and retry joins, uncertain dispatch locking, reused creative reference
+and retained-PAUSED cleanup. Signed formal preparation is refused; compiled
+template mismatch blocks new effects while exact owned cleanup remains available.
+Run current app types/lint, architecture/docs guards and Marketing optimized build.
+Replay `probe.integration.test.ts` against that compiled local build and the actual
+Velt renderer for seven catalogue combinations at three widths plus short/tall
+mobile/banner/focus/designer-return cases. Local fixtures intercept provider and
+submission effects; they never prove live Meta capability or real delivery.
+
+## Commercial photographic presentation (21 October 2026)
+
+`marketing.commercial-guide.spec.ts` is registered in the Marketing browser lane.
+Its authored contracts cover 320/390/820/1440/2560, five meaningful photographs,
+early enquiry action, bounded wide layout, repeated focus/project return,
+professional source attribution, optional commercial brief and retry, required
+phone, native form action, schema/canonical and the adjacent Professional route.
+The Custom handoff sits beside the existing-building note. First and repeated
+enquiry focus respects the shared form's Call, Email, then Project type tab order.
+The audience suite retains upload failure/removal coverage on both audiences.
+Commercial-specific programme and preload assertions follow the new presentation;
+the obsolete overlay-hero expectation is replaced by the dedicated guide suite.
+
+Run the Commercial server-page handoff unit with canonical form, context,
+attachments, fallback, guided context and project/product claims suites. Run
+Marketing types, scoped lint, docs guard/impact and changed-file architecture.
+Source tests, authored browser contracts and actual permitted-browser journeys
+are separate evidence. Local populated tests need persistent intake, upload and
+vendor fences; fixture success does not establish production delivery.
+
+## Designer accepted-sales correction (21 October 2026)
+
+Run the marketingPerformance model/component suite, actual source projection
+`test/designer-performance-read.test.ts`, and the sales-outcome route tests.
+They cover accepted jobs without retained visits, selected Auckland dates versus
+all recorded dates, add-on deduplication, missing attribution, unknown dates,
+withdrawn scopes, whole-job refund exclusion and current cancelled-source priority.
+Ordinary UI proof inspects exact accepted scopes, records an outcome, retains gross
+history and removes positive visit credit. Editor tests retain immutable retries
+and require conflict reload. `node scripts/test-sales-designer-concurrency.mjs
+--outcomes` uses disposable native PostgreSQL 17 to prove concurrent revisions,
+simultaneous replay and revoked authority; it requires the existing
+`PRAXIS_DISPOSABLE_POSTGRES_BIN` runtime and sends no provider requests.
+
+The protected `designerScenario=accepted` fixture uses consistent synthetic
+commercial/accepted scope values and in-memory assignment/outcome clients.
+`acceptedDates=all` is URL-backed for reload and project return. Local proof is not
+a hosted save/readback or production migration result; those remain separate
+release evidence. No synthetic business record may be installed in production.
+
+## Pitched form guide (21 October 2026)
+
+`marketing.pitched-guide.spec.ts` covers 320/390/820/1440/2560 layouts, actual
+roof-photo loading, the labelled real high/low profile, canonical/schema/sitemap, keyboard FAQ,
+enquiry focus, project return, required phone and optional house-brief retry.
+The Pitched entries in `marketing.seo-programme.spec.ts` and responsive-preload
+hygiene use the new presentation. These are authored regression contracts;
+execution evidence belongs in the delivery record, not inferred from this list.
+The dedicated Pitched suite is registered in the Marketing browser config and
+replaces its old overlay-hero and generated-first-layer assertions. The audience
+suite still checks the Pitched hero and shared embedded form.
+
+Run `page.test.tsx` beside the canonical form/context/attachment/fallback,
+product selection, product/project claims and SEO view-model suites. Run Marketing
+TypeScript, scoped lint and changed-file/document guards. Browser evidence must
+use the permitted browser tool. Populated local journeys need persistent mocked
+intake/native/upload/vendor routes before input. Fixture success does not prove
+delivery or production pricing. The optional product/designer return and fresh
+consent should be inspected as connected journeys before handover.
+
 ## Sales designer responsibility (21 October 2026)
 
 The designer SQL suite executes the actual assignment migration and existing
@@ -155,6 +294,16 @@ an API request triggered a Git checkout or GitHub delivered a webhook: these are
 distinct triggers, and an API-triggered Git build does not prove webhook parity.
 Even passing generated output does not prove the provider deployed it unchanged.
 Production regional acceptance remains failed.
+## Creative policy preparation (21 October 2026, local only)
+
+`metaCreatives/policy.test.ts` validates exact intent/approval/catalogue/pre-state
+bindings, forbidden control fields, wrong assets/scopes/claims, budgets, exclusive
+reservation evidence, uncertain creation and registered-object status effects.
+Run it with `metaCredentials/renewal.test.ts` to preserve reporting/sales isolation.
+These pure fixtures exercise no provider, credential, SQL, ad or customer effect.
+They prove neither API eligibility nor durable reservation/idempotency, and every
+accepted plan still reports execution disabled. See the bounded implementation
+map in `meta-offline-sales.md` before any later credential or executor work.
 
 ## Meta landing experiment candidate (21 October)
 
@@ -462,6 +611,15 @@ controlled.
 
 ## Portal Financials candidate
 
+Fresh-entry performance regressions additionally cover
+`marketingPerformance/MarketingPerformance.loading.test.tsx`, independently
+settled current/comparison hooks, and `xero/financials/panel.test.ts` selected-family
+read counts, full-reader equivalence and authority changes. Financial section
+switch/race tests exercise explicit requested-family identity. Compare optimized
+baseline/candidate artifacts using identical fictional data/delays and distinguish
+primary content from all requested evidence settled. Local simulated provider
+latency is not production page timing; real source reconciliation remains needed.
+
 Focused checks: `npx vitest run apps/portal/lib/xero/financials
 apps/portal/lib/xero/financePositionRuntime.test.ts apps/portal/components/financials
 apps/portal/app/api/staff/v1/marketing-performance/financials
@@ -489,14 +647,76 @@ comparative retrieval or protected staff-route access; verify both separately.
 
 ## Sanctuary-owned GA4 candidate
 
+The v3 tests apply the exact existing 20260923070001 body plus forward candidate
+20261021082853. Fixed provider fixtures compose actual HTTP, parser, SQL
+completion and retained read for available, limited and validated row-limit
+outcomes. Tests retain first edit when keyEvents is zero, suppress comparisons,
+reject unavailable-with-metrics and unexpected failures, enforce shared byte and
+45-second phase bounds, and distinguish signed v2/v3 delegation and plan hashes.
+Portal's DataSources link test proves only dates enter the fixed Analytics URL.
+
+For native proof, set PRAXIS_DISPOSABLE_POSTGRES_BIN to an existing local PG17
+bin directory and run node test/sanctuary-ga4-native.mjs. This creates and
+disposes a new synthetic loopback cluster using the repository's existing native
+harness pattern. Exact base+forward DDL, v2/v3 lifecycle, roles, strict available
+and unavailable shapes, null/zero, hash/retention and delete/control fences passed
+on PG17.11. This historical local proof uses synthetic auth/source prerequisites
+and a cron stub, not the whole Sanctuary chain, PostgREST, real pg_cron or
+providers. That installed distribution has no safeupdate, so that local result
+did not verify the new migration with the real extension. The optional
+existing-image Docker substrate never pulls, mounts host paths or publishes
+ports; its local engine failed during startup before SQL. No reset or fake
+extension was used.
+
+The dedicated `.github/workflows/ga4-native.yml` runs the real-safeupdate
+substrate on the standard Ubuntu runner with Node22 and read-only
+repository permissions. Its PR/main triggers cover only that workflow, the
+committed native harness and the two exact GA4 migration bodies; manual dispatch
+has no inputs. A separate single-attempt180-second provisioning step pulls the
+official GHCR 17.6.1.167 linux/amd64 image by immutable manifest digest
+`sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4`,
+then associates the harness's fixed local ECR tag with that exact image and prints
+its resolved ID/registry digests. ECR and official GHCR tag indexes and child
+manifests were verified byte-identical on21October2026. The first published ECR
+provisioning attempt failed with Data limit exceeded before image/SQL execution.
+The subsequent GHCR transport correction passed in
+[native run 39552027487](https://github.com/velt-design/sanctuary/actions/runs/39552027487)
+at Source revision `357f8a057204bb989ecd430952bff46251297ffe`: official PG17.6,
+real safeupdate and 11 disposable synthetic databases. The run verified the
+exact committed 20260923070001 and then-20261021040001 SQL-body hashes, v2/v3 lifecycle,
+roles, strict shapes, association/hash, retention, deletion and control fences.
+The byte-identical GA4 candidate now uses 20261021082853 because installed
+20261021040001 belongs to sales-designer storage. Normal native CI must verify
+the renamed path; the historical run does not establish that newer revision.
+The ECR tag is only a local alias,
+not a second pull or fallback. No image was pulled locally.
+The unchanged harness still never pulls, runs its disposable container with
+network none and no host mounts/ports, loads real safeupdate in every SQL
+session and requires the unsafe-delete negative assertion. Job maximum15minutes;
+no dependency install, app build/tests, secrets, provider/remote database call
+or artifact upload. Only synthetic status and revision/image/SQL hashes reach
+stdout. This native receipt does not prove the whole historical Sanctuary chain,
+PostgREST transaction behavior, real pg_cron, provider compatibility, live data,
+shared schema installation or production release.
+
+Both Vercel project configs suppress Git deployment only for branch
+`codex/ga4-diagnostics-20261021` for paired CI; both branch entries remain false.
+Other branch entries, production settings, regions, functions and crons retain
+their existing values. The successful synthetic native proof does not authorize
+an application deployment or a Vercel service mutation.
+
 Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4
 test/sanctuary-ga4-sql.test.ts test/sanctuary-ga4-http-sql.test.ts`, Portal
 typecheck and scoped lint. These use synthetic provider/vault data and the actual
 `20260923070001` SQL body. Coverage includes rotated/nonrotated tokens, exact
 scope/property/item versions, unknown effects, lease expiry, disable/re-enable,
 query/hash association, seven-day retention, deletion races and delivery fencing.
-The six HTTP-to-SQL regressions preserve end-to-end composition proof rather than
-mocking the database's lifecycle decisions.
+The HTTP-to-SQL regressions preserve composition proof rather than mocking the
+database's lifecycle decisions. Retained-authority cases also prove the metadata
+envelope, existing read/deliver audit, disable/expiry/staff/quarantine denial and
+deletion between read and delivery. They use PGlite and synthetic identities;
+they are separate from native PostgreSQL and live provider evidence. HTTP tests
+reject corrupt hash/shape/final delivery and verify zero Google/vault access.
 
 On 23 September the 21 SQL/HTTP cases also passed native PostgreSQL 17.6 with
 safeupdate loaded, including explicit rejection of an unqualified delete. That
@@ -2113,3 +2333,17 @@ recovers through the Retry button. Verify period/source filters, weekly/monthly 
 keyboard record inspection, previous-period missingness, responsive layout and
 return context. Production project inspection opens a labelled new tab; fixture
 navigation uses its existing synthetic return journey.
+
+### Creative source ledger candidate (21 October 2026)
+
+Run `metaCreatives/*.test.ts` with existing credential renewal tests, Portal types,
+focused lint and docs/architecture guards. Set local
+`SANCTUARY_DISPOSABLE_POSTGRES_BIN` and run
+`node scripts/test-meta-creative-ledger-db.mjs` for native PostgreSQL proof. It
+loads actual landing SQL plus additive creative ledger and reuses landing/probe/
+layout/learning/intake tests. Creative cases cover default-off, RLS/ACL, shared
+reservation, immutable registry, no-repeat uncertainty, original-ad denial,
+post-Stop reconciliation, 24 normal plus three reserved terminal admissions,
+scoped-stop versus credential/global-Stop denial, exact never-dispatched proof,
+stale-fence denial and concurrent dispatch/no-effect exclusion. Disposable synthetic SQL is not a live
+schema/provider test. No Graph dispatcher or credential loader exists.

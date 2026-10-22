@@ -42,9 +42,9 @@ export function evidenceForView(view:HubView) {
   return evidenceOptions.filter(([key]) => view==='enquiries' ? key!=='no_receipt'
     : !['qualified','unreviewed','visit','quote','accepted','unlinked'].includes(key));
 }
-export type HubFilters = Filters & { view: HubView; owner: string; stage: string; state: string; evidence: string; created: boolean; kind:string; inspect:string; chartMetric:string; chartScale:string; salesBucket: 'week' | 'month'; age:string; designer?:string };
+export type HubFilters = Filters & { view: HubView; owner: string; stage: string; state: string; evidence: string; created: boolean; kind:string; inspect:string; chartMetric:string; chartScale:string; salesBucket: 'week' | 'month'; age:string; designer?:string; acceptedDates?:'selected'|'all' };
 export function hubDefaults(filters: Filters): HubFilters {
-  return { ...filters, view: 'enquiries', owner: '', stage: '', state: '', evidence: 'all', created: false, kind:'', inspect:'all', chartMetric:'enquiries', chartScale:'count', salesBucket:'month', age:'', designer:'' };
+  return { ...filters, view: 'enquiries', owner: '', stage: '', state: '', evidence: 'all', created: false, kind:'', inspect:'all', chartMetric:'enquiries', chartScale:'count', salesBucket:'month', age:'', designer:'', acceptedDates:'selected' };
 }
 export function parseHubFilters(query: URLSearchParams, fallback: Filters): HubFilters {
   const base = hubDefaults(fallback);
@@ -61,6 +61,7 @@ export function parseHubFilters(query: URLSearchParams, fallback: Filters): HubF
   const inspect=query.get('inspect'); if(base.view!=='sales' && inspect && (evidenceForView(base.view).some(([key])=>key===inspect)||(base.view==='portfolio'&&inspect==='paid'))) base.inspect=inspect;
   const age=query.get('age'); if(ageBands.some(b=>b.key===age))base.age=age!;
   const designer=query.get('designer'); if(designer && /^[a-z][a-z0-9_-]{0,49}$/.test(designer))base.designer=designer;
+  if(query.get('acceptedDates')==='all')base.acceptedDates='all';
   base.created = query.get('created') === 'true';
   return base;
 }

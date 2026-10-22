@@ -1,5 +1,51 @@
 # Marketing Claims Register
 
+## Guide hub (22 October 2026)
+
+The hub summarises existing cost, outdoor-room, blind, material and roof-form
+guides using already published installation photographs. The cost photograph
+illustrates a built scope, not a priced package. The blinds card uses the visibly
+lowered coastal mesh blind. The comparison card immediately states that Sanctuary
+does not supply louvre roofs and describes the louvre proposal as external.
+No price, numeric performance, technical specification, consent or warranty claim
+is introduced. General, Custom and current Commercial design/build pages are
+separate service pathways. This is a route-level presentation choice, not a
+reclassification of shared guide records or individual-route schema.
+
+## Commercial photographic refresh (21 October 2026)
+
+The Commercial page retains the approved 30 September hospitality-first
+covered-space package and July design-and-build scope below. Existing Good Home
+06/05 and Atelier Shu 01 photographs lead the page. KiwiRail 01 and Tamaki Drive
+01 retain the current published workplace-canopy and Lilliput project identities
+and exact historical consultant-led roles. No project dimensions, numerical
+performance, location expansion or stronger accessory claim is introduced.
+
+The full package remains an agreed scope. Engineering sign-off stays with the
+project engineer; approvals and operating access remain site-specific. Furniture,
+landscaping and unrelated building work are separately agreed. The photo refresh
+is not approval of uninterrupted operation, deadlines, general compliance or
+structural guarantees, nor a new supply-only offer. The unresolved KiwiRail
+area/legacy material details are not used.
+
+## Pitched form evidence (21 October 2026)
+
+The Pitched guide reuses existing public installed references `simple-pergolas/
+pitched-01.webp` and `pitched-06.webp`, already present in the Pitched product
+record. Captions describe visible framing, acrylic and house relationship, with
+no invented location, customer identity or outcome. Tindalls Bay 03 and Velskov
+02 use their governed project records: mixed insulated/acrylic roof zones and
+timber sarking/battens at Tindalls; a separate working shelter within forest at
+Velskov. Bespoke/commercial scope is distinguished from the standard designer.
+
+The complete Velskov 02 photograph shows its actual high-left and low-right roof
+profile. Labels identify those visible edges without inventing dimensions or
+adding an illustrative water route. Supporting copy discusses roof depth and
+site-specific drainage, not a pitch/span/clearance/drainage guarantee.
+No numeric specification or unresolved KiwiRail proof is
+published on this guide. Existing photos are unchanged and introduce no new
+claims of product performance or measured daylight outcomes.
+
 ## Gable form evidence (21 October 2026)
 
 The Gable guide uses existing public installation photographs and governed

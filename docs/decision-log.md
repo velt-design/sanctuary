@@ -1,5 +1,61 @@
 # Decision Log
 
+## 2026-10-21: Preserve safe collector diagnostics before lifecycle redaction
+
+The GA4 collector classified failures, but the lifecycle replaced that diagnostic
+with a generic unavailable error before runtime logging. Parallel report batches
+also shared one last-response status. Keep batch-local stage/status ownership and
+project only fixed reason/stage codes and a bounded HTTP status into the private
+runtime log before redaction. Do not log raw errors or provider data, relax parser
+privacy rules, alter the durable ledger or infer a historical cause from a later
+diagnostic. Synthetic collector-to-HTTP/lifecycle tests cover both completion
+orders, unavailable recording and log redaction. Owner: the Sanctuary-owned GA4
+section in `environment-auth-supabase.md`.
+
+## 2026-10-21: select an initial report read without moving its authority boundary
+
+A server-started report can overlap document delivery and hydration, but the
+document callback only selects work. Keep current staff/developer and preview
+checks before creating the auth-bound read; share the API's complete reader and
+safe errors. Stream a result promise without suspending the client shell. Match
+only the first restored client request, retire mismatches and departures, and
+retain API retries. Independent client defaults must remain correct across an
+Auckland midnight. Measure complete content and transport separately from local
+promise plumbing. Owner: `marketing-performance.md` and its initial hub helpers.
+
+Flight thenables can inherit `Promise.prototype` while their own `then` returns
+void. Normalize through native `Promise.resolve` before chaining; `instanceof`
+is insufficient. Use that shape in pending, synchronous fulfillment, rejection,
+StrictMode and host recovery tests, then verify the compiled stream itself.
+
+## 2026-10-21: prepare selected report components before their first visible mount
+
+A raw dynamic import can finish while React.lazy still has an uninitialized
+payload. First mounting the wrapper after data arrives then suspends again,
+even though no download remains. Resolve only the selected report component into
+stable typed state during its data wait, and render that component directly.
+Keep honest loading/error/retry states, selection and unmount guards, and stable
+component identity. Test both completion orders and superseded failures; verify
+the final data-to-chart interval in an optimized browser with complete content.
+Owner: `marketing-performance.md` and `usePreparedReportViews`.
+
+## 2026-10-21: Attribute accepted jobs independently of visits
+
+Owner instruction: "Go ahead and update the report so all accepted jobs are
+attributed to designers, keep site visit conversion separate and exclude cancelled
+or refunded jobs from the going ahead figures." The accepted-family source covers
+jobs without retained original visits. Net accepted jobs retain completed sales,
+exclude recorded whole-job cancellation/refund and withdrawn acceptance, and
+separately expose gross history, add-on scope values and Unassigned projects.
+
+No structured refund classification exists in the payment ledger. A narrow,
+audited owner correction records the reporting fact without changing finance,
+operational work or provider eligibility. Partial adjustments/notes are not
+inferred refunds; independent operational cancellation cannot be cleared through
+the correction. Same command/revision safeguards as designer assignment apply.
+See [accepted designer sales](marketing-performance.md#accepted-jobs-by-designer-21-october-2026)
+for date semantics, implementation ownership and verification limits.
+
 ## 2026-10-21: prove access boundaries through the compiled framework
 
 Next normalizes Flight headers before middleware, so header mocks alone cannot
@@ -56,6 +112,16 @@ valid measurement/follow-up workload. Joint participation is non-additive across
 people and deduplicated for the team. Empty conversion cohorts remain unavailable.
 The read-only projection and exact correction links are owned by
 [Marketing Performance](marketing-performance.md#designer-visits-and-conversion-candidate-21-october-2026).
+
+## 2026-10-21: Revalidate retained evidence without repeating the full transport
+
+Repeated full GA4 reads exhausted the consumer's shared hourly allowance. The
+source authority action reuses the existing saved-payload validation and final
+delivery fence, returning only its revision metadata. Do not replace those
+checks with a settings-row cache or move the display deadline to response time.
+The paired consumer owns a separate finite metadata allowance; the existing
+full-read and provider limits stay in force. Owner: the GA4 source section in
+`environment-auth-supabase.md`; regressions: GA4 HTTP and HTTP-to-SQL tests.
 
 ## 2026-10-21: keep public directional icons independent of emoji fonts
 

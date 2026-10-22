@@ -2,15 +2,13 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+// Normal-chrome Pitched, Commercial and Guide Hub have dedicated suites.
 const routes = [
   '/pergolas-auckland',
   '/custom-pergolas-auckland',
   '/aluminium-pergolas-auckland',
   '/gable-pergolas-auckland',
-  '/pitched-pergolas-auckland',
   '/outdoor-rooms-auckland',
-  '/commercial-pergolas-auckland',
-  '/pergola-guides',
 ] as const;
 
 const viewports = [
@@ -44,8 +42,8 @@ for (const viewport of viewports) {
       await page.goto(route);
       const header = page.locator('header.site');
       const brand = header.locator('.site-brand');
-      const hero = page.locator(route === '/pergola-guides' ? '.guide-hub-hero' : '.acrylic-hero').last();
-      const heroImage = page.locator(route === '/pergola-guides' ? '.guide-hub-hero__figure' : '.acrylic-hero__image').last();
+      const hero = page.locator('.acrylic-hero').last();
+      const heroImage = page.locator('.acrylic-hero__image').last();
 
       await expect(header).toBeVisible();
       await expect(hero).toBeVisible();
@@ -55,9 +53,8 @@ for (const viewport of viewports) {
       const topState = await page.evaluate(() => {
         const headerElement = document.querySelector<HTMLElement>('header.site');
         const brandElement = headerElement?.querySelector<HTMLElement>('.site-brand');
-        const guideRoute = window.location.pathname === '/pergola-guides';
-        const heroElements = document.querySelectorAll<HTMLElement>(guideRoute ? '.guide-hub-hero' : '.acrylic-hero');
-        const imageElements = document.querySelectorAll<HTMLElement>(guideRoute ? '.guide-hub-hero__figure' : '.acrylic-hero__image');
+        const heroElements = document.querySelectorAll<HTMLElement>('.acrylic-hero');
+        const imageElements = document.querySelectorAll<HTMLElement>('.acrylic-hero__image');
         const heroElement = heroElements.item(heroElements.length - 1);
         const imageElement = imageElements.item(imageElements.length - 1);
         const productsLink = headerElement?.querySelector<HTMLElement>('a[href="/products"]');
@@ -85,9 +82,6 @@ for (const viewport of viewports) {
         expect(topState!.image.top, `${route} image should extend beneath the navigation`).toBeLessThanOrEqual(1);
         expect(topState!.header.bottom, `${route} header should overlap its hero`).toBeGreaterThan(topState!.hero.top);
         expect(Math.abs(topState!.navGapMidpoint - topState!.viewportCenter), `${route} Products/Commercial gap should be centred`).toBeLessThanOrEqual(1);
-        if (route === '/pergola-guides') {
-          expect(Math.abs(topState!.image.left - topState!.viewportCenter), 'guide hero split should share the navigation centreline').toBeLessThanOrEqual(1);
-        }
         expect(topState!.backgroundColor).toBe('rgba(0, 0, 0, 0)');
         expect(topState!.brandColor).toBe('rgb(255, 255, 255)');
         expect(topState!.backdropFilter).toBe('none');
@@ -110,7 +104,7 @@ for (const viewport of viewports) {
         await expect(page.locator('header.site .desktop-nav')).toBeHidden();
       }
 
-      if (capture && (route === '/outdoor-rooms-auckland' || route === '/pergola-guides')) {
+      if (capture && route === '/outdoor-rooms-auckland') {
         await mkdir(evidenceDirectory, { recursive: true });
         await page.evaluate(() => window.scrollTo(0, 0));
         await expect(header).toHaveAttribute('data-hero-navigation', 'overlay');

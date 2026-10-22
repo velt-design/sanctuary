@@ -75,12 +75,12 @@ const pages: ProgrammePage[] = [
     route: '/pitched-pergolas-auckland',
     title: 'Pitched Pergolas Auckland | Mono-Pitch Roof Guide',
     description: 'Plan a pitched pergola around the house connection, available height, roof fall and drainage.',
-    h1: 'Pitched pergolas for Auckland homes.',
-    submitLabel: 'Send project brief',
-    faqCount: 4,
+    h1: 'Pitched pergolas. One clean roofline.',
+    submitLabel: 'Send your enquiry',
+    faqCount: 7,
     role: 'product-guide',
     briefFieldName: 'highEdgeContext',
-    projectCount: 3,
+    projectCount: 1,
     captureId: 'pitched-projects',
     comparisonId: 'pitched-decisions-title',
     comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland'],
@@ -91,15 +91,15 @@ const pages: ProgrammePage[] = [
     route: '/commercial-pergolas-auckland',
     title: 'Commercial Pergolas Auckland | Design & Build',
     description: 'Sanctuary designs and builds commercial pergolas in Auckland, coordinating engineering, consent and trades where required from venue brief to installation.',
-    h1: 'Commercial pergolas, designed and installed.',
+    h1: 'Commercial pergolas. Built around your business.',
     submitLabel: 'Send project brief',
-    faqCount: 4,
+    faqCount: 0,
     role: 'service',
     briefFieldName: 'operatingConstraints',
-    projectCount: 3,
+    projectCount: 4,
     captureId: 'commercial-projects',
-    comparisonId: 'commercial-capability-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds', '/acrylic-pergolas-vs-louvre-roofs'],
+    comparisonId: 'commercial-scope',
+    comparisonReferences: ['/architects-designers-builders', '/pergola-cost-auckland'],
     showGuideNavigation: false,
   },
 ];
@@ -139,6 +139,9 @@ async function getEditorialCopy(main: Locator) {
 }
 
 for (const programmePage of pages) {
+  const isPitched = programmePage.marker === 'pitched-pergolas-auckland';
+  const projectImages = programmePage.marker === 'commercial-pergolas-auckland' ? 'article img' : isPitched ? '#pitched-projects article img' : programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects img' : '.acrylic-project-card img';
+  const projectFacts = programmePage.marker === 'commercial-pergolas-auckland' ? 'article' : isPitched ? '#pitched-projects article' : programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects article' : '.seo-landing__project-facts';
   for (const viewport of viewports) {
     test(`Page ${programmePage.order} ${programmePage.marker} is publish-ready at ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -152,8 +155,8 @@ for (const programmePage of pages) {
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
       await expect(page.getByRole('heading', { level: 1, name: programmePage.h1 })).toBeVisible();
       await expect(main.locator('h1')).toHaveCount(1);
-      await expect(main.locator(programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects img' : '.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
-      await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
+      await expect(main.locator(projectImages)).toHaveCount(programmePage.projectCount);
+      await expect(main.locator(isPitched ? '#pitched-faq details' : '.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
       const guideNavigation = main.getByRole('navigation', {
         name: 'Related planning decisions',
       });
@@ -176,7 +179,7 @@ for (const programmePage of pages) {
           '22 July 2026',
         );
       }
-      await expect(main.locator(programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects article' : '.seo-landing__project-facts')).toHaveCount(programmePage.projectCount);
+      await expect(main.locator(projectFacts)).toHaveCount(programmePage.projectCount);
       const optionalProjectDetails = main.locator('details.acrylic-form__optional');
       await expect(optionalProjectDetails).toBeAttached();
       if ((await optionalProjectDetails.getAttribute('open')) === null) {
@@ -196,31 +199,12 @@ for (const programmePage of pages) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
       if (programmePage.marker === 'commercial-pergolas-auckland') {
-        await expect(main.getByRole('heading', { level: 2, name: 'Three projects. Three delivery roles.' })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 2, name: 'From brief to installation.' })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 3, name: 'Coordinate the project' })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 3, name: 'Install and hand over' })).toBeVisible();
-        const planningSupport = main.locator(
-          'details[data-seo-landing-disclosure="commercial-planning-support"]',
-        );
-        if (viewport.width <= 720) {
-          await planningSupport.locator(':scope > summary').click();
+        await expect(main.getByRole('heading', { level: 2, name: 'One project. Agreed responsibilities.' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'Workplaces and recreation.' })).toBeVisible();
+        for (const name of ['Explore The Good Home', 'Explore Atelier Shu', 'Explore the workplace canopy', 'Explore Lilliput Mini Golf']) {
+          await expect(main.getByRole('link', { name, exact: true })).toBeVisible();
         }
-        const consentFaq = main.locator('.acrylic-faq-list > details').filter({
-          hasText: 'Can Sanctuary coordinate engineering and building consent?',
-        });
-        await consentFaq.locator(':scope > summary').click();
-        await expect(consentFaq.getByText(/Requirements and decisions remain project-specific/)).toBeVisible();
-        await expect(main.getByRole('heading', { level: 2, name: 'Tell us about the project.' })).toBeVisible();
-        await expect(main.getByRole('link', { name: 'Call 022 854 5633' })).toHaveAttribute('href', 'tel:+64228545633');
-        await expect(main.getByRole('link', { name: 'Email Sanctuary' })).toHaveAttribute('href', 'mailto:info@sanctuarypergolas.co.nz');
-        await expect(main.locator('#commercial-projects .acrylic-project-card h3')).toHaveText([
-          'The Good Home Takanini',
-          'Lilliput Mini Golf',
-          'KiwiRail Head Office',
-        ]);
       }
-
       if (viewport.width <= 900) {
         await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
         await expect(page.locator('header.site .desktop-nav')).toBeHidden();
@@ -242,7 +226,7 @@ for (const programmePage of pages) {
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-top.png`) });
         await main.locator(`#${programmePage.captureId}`).scrollIntoViewIfNeeded();
         if (programmePage.projectCount) {
-          await expect.poll(() => main.locator(programmePage.marker === 'pergola-cost-auckland' ? '#cost-projects img' : '.acrylic-project-card img').evaluateAll((images) => images.filter((image) => (image as HTMLImageElement).naturalWidth > 0).length)).toBe(programmePage.projectCount);
+          await expect.poll(() => main.locator(projectImages).evaluateAll((images) => images.filter((image) => (image as HTMLImageElement).naturalWidth > 0).length)).toBe(programmePage.projectCount);
         }
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-proof.png`) });
         await main.locator(`#${programmePage.comparisonId}`).scrollIntoViewIfNeeded();
@@ -361,7 +345,8 @@ for (const programmePage of pages) {
     const service = jsonLd.find((node) => node['@type'] === 'Service');
     if (programmePage.role === 'service') expect(service).toBeDefined();
     else expect(service).toBeUndefined();
-    expect(jsonLd.find((node) => node['@type'] === 'FAQPage')).toBeUndefined();
+    if (isPitched) expect(jsonLd.find((node) => node['@type'] === 'FAQPage')?.mainEntity).toHaveLength(programmePage.faqCount);
+    else expect(jsonLd.find((node) => node['@type'] === 'FAQPage')).toBeUndefined();
     expect(jsonLd.find((node) => node['@type'] === 'BreadcrumbList')).toBeDefined();
     expect(jsonLd.find((node) => node['@type'] === 'WebPage')).toMatchObject({ dateModified: '2026-07-22', reviewedBy: { name: 'Sanctuary Pergolas' } });
   });

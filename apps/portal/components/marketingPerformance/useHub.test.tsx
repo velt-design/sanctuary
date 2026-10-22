@@ -12,6 +12,17 @@ function Harness({filters,loader,prior}:{filters:Filters;loader:HubLoader;prior:
   const state=useHub(filters,0,loader,prior);
   return <div>{JSON.stringify({busy:state.busy,start:state.hub?.start,error:state.error,comparisonError:state.comparisonError})}</div>;
 }
+it('publishes current rows before a delayed comparison, and aborts a superseded comparison',async()=>{
+ const pending:Array<{signal:AbortSignal;resolve:(value:typeof fixtureReport)=>void}>=[];
+ const prior:ReportLoader=(_,signal)=>new Promise(resolve=>pending.push({signal,resolve}));
+ const loader:HubLoader=async()=>hubFixture;
+ const view=renderIntoDocument(<Harness filters={fixtureFilters} loader={loader} prior={prior}/>);await act(async()=>{});
+ expect(JSON.parse(view.container.textContent!)).toMatchObject({busy:false,start:fixtureFilters.start});
+ view.rerender(<Harness filters={{...fixtureFilters,start:'2026-09-16'}} loader={loader} prior={prior}/>);
+ expect(pending[0].signal.aborted).toBe(true);
+ await act(async()=>pending[0].resolve(fixtureReport));
+ expect(JSON.parse(view.container.textContent!).comparisonError).toBe('');view.unmount();
+});
 it('ignores stale hub reads and reuses a complete snapshot for local filters',async()=>{
   const pending:Array<{signal:AbortSignal;resolve:(hub:HubReport)=>void}>=[];
   const loader=vi.fn<HubLoader>((_,signal)=>new Promise(resolve=>pending.push({signal,resolve})));

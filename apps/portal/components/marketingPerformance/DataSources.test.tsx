@@ -20,6 +20,10 @@ it('shows a separate provider period, exact campaign figures and unmatched acqui
   expect(view.container.textContent).toContain('Not reported');
   expect(view.container.textContent).toContain('Spend is not matched to enquiry cohorts');
   expect(view.container.querySelectorAll('[data-campaign]').length).toBe(2);
+  const analytics = new URL(view.container.querySelector<HTMLAnchorElement>('a[href*="velt.systems/analytics"]')!.href);
+  expect([...analytics.searchParams.keys()]).toEqual(['start', 'end']);
+  expect(analytics.searchParams.get('start')).toBe(hubFixture.start);
+  expect(analytics.searchParams.get('end')).toBe(hubFixture.end);
   view.unmount();
 });
 it('clears stale figures during retry and shows failures without turning spend into zero', async () => {

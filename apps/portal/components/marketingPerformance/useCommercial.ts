@@ -11,16 +11,17 @@ export const loadCommercial: CommercialLoader = async (filters, signal) => {
   if (report.start !== filters.start || report.end !== filters.end) throw new Error('Commercial period could not be verified.');
   return report;
 };
-export default function useCommercial(filters: Filters, revision: number, loader: CommercialLoader = loadCommercial) {
-  const key = `${filters.start}:${filters.end}:${revision}`;
+export default function useCommercial(filters: Filters | null, revision: number, loader: CommercialLoader = loadCommercial) {
+  const key = filters ? `${filters.start}:${filters.end}:${revision}` : '';
   const [state, setState] = useState<{ key: string; loader: CommercialLoader; report: CommercialReport | null; error: string; busy: boolean }>({ key, loader, report: null, error: '', busy: true });
   useEffect(() => {
+    if (!filters) { setState({key,loader,report:null,error:'',busy:true}); return; }
     const controller = new AbortController();
     setState({ key, loader, report: null, error: '', busy: true });
     loader(filters, controller.signal).then(report => {
       if (!controller.signal.aborted) setState({ key, loader, report, error: '', busy: false });
     }, error => { if (!controller.signal.aborted) setState({ key, loader, report: null, error: error instanceof Error ? error.message : 'Commercial reporting unavailable.', busy: false }); });
     return () => controller.abort();
-  }, [filters.start, filters.end, revision, loader]);
-  return state.key === key && state.loader === loader ? state : { report: null, error: '', busy: true };
+  }, [filters?.start, filters?.end, revision, loader]);
+  return filters && state.key === key && state.loader === loader ? state : { report: null, error: '', busy: true };
 }

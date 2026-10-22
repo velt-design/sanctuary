@@ -7,7 +7,9 @@ import { ga4Store, ga4LifecycleStore, Ga4StoreFailure } from './store';
 import { refreshGa4Report, type Ga4Vault } from './lifecycle';
 import { ga4Google } from './providers';
 import { ga4Delegation } from './delegation';
-import { readGa4Report, reportHash, reportIntent } from './report/ga4';
+import { readGa4Report, reportHash, reportIntent, REPORT_VERSION } from './report/ga4';
+import { DIAGNOSTIC_VERSION } from './report/diagnostics';
+import { reportFailureLog } from './report/failure';
 import { parseReportResponse } from './report/response';
 import { businessOutcomes, type BusinessEvidence } from './report/outcomes';
 
@@ -30,20 +32,22 @@ async function emptyBody(request: Request) {
 }
 
 export async function sanctuaryGa4Response(request: Request, dependencies: Dependencies): Promise<Response> {
+  // Authority begins before the first source check, never after network work.
+  const checkedAt = new Date().toISOString();
   const requestId = praxisRequestId(), headers = praxisResponseHeaders(requestId);
   let stage = 'authorize';
   let failOperation: (() => Promise<unknown>) | undefined;
   try {
     const source = dependencies.source(); authorizePraxisRequest(request, source);
     const url = new URL(request.url), action = url.searchParams.get('action');
-    const allowed = ['action', ...(action === 'refresh' ? ['start', 'end', 'comparisonStart', 'comparisonEnd', 'retain'] : [])];
-    if (!['refresh', 'read', 'delete'].includes(action ?? '') || request.method !== (action === 'delete' ? 'DELETE' : 'GET')
+    const allowed = ['action', ...(action === 'refresh' ? ['start', 'end', 'comparisonStart', 'comparisonEnd', 'retain', 'reportVersion'] : [])];
+    if (!['refresh', 'read', 'delete', 'authority'].includes(action ?? '') || request.method !== (action === 'delete' ? 'DELETE' : 'GET')
       || !(await emptyBody(request)) || [...url.searchParams.keys()].some(key => !allowed.includes(key) || url.searchParams.getAll(key).length !== 1)) {
       return Response.json({ error: 'invalid_ga4_request' }, { status: 400, headers });
     }
     const control = dependencies.control(process.env, action === 'delete');
     const command = dependencies.store(control, source);
-    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(110000)]);
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(action === 'authority' ? 15000 : 110000)]);
     const current = () => {
       signal.throwIfAborted();
       if (JSON.stringify(dependencies.control(process.env, action === 'delete')) !== JSON.stringify(control)) throw new Error('Control changed.');
@@ -54,6 +58,7 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
     const envelope = (value: object) => ({ schemaVersion: 'sanctuary.praxis.ga4.v1', requestId,
       source: { sourceKey: source.sourceKey, connectionId: source.connectionId, environment: source.environment,
         authority: 'canonical', propertyId: control.property, retrievedAt: new Date().toISOString() }, ...value });
+    const authorityEnvelope = (value: object) => ({ ...envelope(value), schemaVersion: 'sanctuary.praxis.ga4.authority.v1', checkedAt });
     if (action === 'delete') {
       stage = 'delete';
       const result = z.object({ status: z.literal('deleted') }).strict().parse(await command('delete', null, signal));
@@ -63,42 +68,56 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
     if (action === 'refresh') {
       stage = 'query';
       if (url.searchParams.get('retain') !== 'true') return Response.json({ error: 'invalid_ga4_request' }, { status: 400, headers });
-      const queryUrl = new URL(url); queryUrl.searchParams.delete('action'); queryUrl.searchParams.delete('retain');
+      const requestedVersion = url.searchParams.get('reportVersion');
+      if (requestedVersion !== null && requestedVersion !== DIAGNOSTIC_VERSION) return Response.json({ error: 'invalid_ga4_request' }, { status: 400, headers });
+      const version = requestedVersion ?? REPORT_VERSION;
+      const queryUrl = new URL(url); queryUrl.searchParams.delete('action'); queryUrl.searchParams.delete('retain'); queryUrl.searchParams.delete('reportVersion');
       const query = parseMarketingQuery(queryUrl);
-      delegation = dependencies.delegation(request, query, signal, dependencies.fetcher);
+      delegation = dependencies.delegation(request, query, signal, dependencies.fetcher, requestedVersion ?? undefined);
       await delegation(); current();
       const config = dependencies.credentials();
       if (config.actor !== control.actor || config.propertyId !== control.property || config.binding !== control.binding) throw new Error('Credentials changed.');
       stage = 'claim';
-      const claim = z.object({ operation: z.uuid(), generation: z.number().int().positive() }).strict().parse(await command('claim', null, signal, { query }));
+      const claim = z.object({ operation: z.uuid(), generation: z.number().int().positive() }).strict().parse(await command('claim', null, signal,
+        { query, ...(requestedVersion ? { evidence: { reportVersion: version } } : {}) }));
       refreshed = claim.operation;
       const store = ga4LifecycleStore(command, claim.operation, signal);
       failOperation = () => store.finish('uncertain');
       const guarded = { ...store, before: async (...args: Parameters<typeof store.before>) => {
         current(); await delegation!(); await store.before(...args);
       } };
-      const intent = reportIntent(control.property, query);
+      const intent = reportIntent(control.property, query, version);
       stage = 'collect';
       const report = await refreshGa4Report({ config, vault: dependencies.vault(config), google: dependencies.google(dependencies.fetcher, signal),
         store: guarded, signal, intent,
         read: async token => {
-          const ga4 = await dependencies.read(token, control.property, query, signal, dependencies.fetcher);
-          let business: BusinessEvidence;
+          let failureStage: 'collection' | 'normalization' = 'collection';
           try {
-            current(); await delegation!();
-            const evidence = await dependencies.business(query, source, requestId);
-            if (evidence.timezone !== ga4.timezone) throw new Error('Business timezone differs.');
-            business = { status: 'available', binding: reportHash({ sourceKey: source.sourceKey, connectionId: source.connectionId,
-              environment: source.environment, propertyId: control.property }), operations: [claim.operation], report: businessOutcomes(evidence) };
-          } catch { business = { status: 'unavailable', reason: 'complete_snapshot_unavailable' }; }
-          return parseReportResponse({ ...ga4, business }, query);
+            const ga4 = await dependencies.read(token, control.property, query, signal, dependencies.fetcher,
+              { version, beforeRequest: async () => { current(); await delegation!(); current(); } });
+            failureStage = 'normalization';
+            if ((version === DIAGNOSTIC_VERSION) !== Boolean(ga4.diagnostics)) throw new Error('Report version differs.');
+            let business: BusinessEvidence;
+            try {
+              current(); await delegation!();
+              const evidence = await dependencies.business(query, source, requestId);
+              if (evidence.timezone !== ga4.timezone) throw new Error('Business timezone differs.');
+              business = { status: 'available', binding: reportHash({ sourceKey: source.sourceKey, connectionId: source.connectionId,
+                environment: source.environment, propertyId: control.property }), operations: [claim.operation], report: businessOutcomes(evidence) };
+            } catch { business = { status: 'unavailable', reason: 'complete_snapshot_unavailable' }; }
+            return parseReportResponse({ ...ga4, business }, query);
+          } catch (error) {
+            console.warn('sanctuary_ga4_report_failure', reportFailureLog(error, failureStage));
+            throw error;
+          }
         },
-        evidence: value => ({ ...intent, resultHash: reportHash(value), rowCount: value.traffic.length + value.channels.length + value.landing.length + value.events.length,
+        evidence: value => ({ ...intent, resultHash: reportHash(value), rowCount: value.traffic.length + value.channels.length + value.landing.length + value.events.length
+          + (value.diagnostics ? 3 + (value.diagnostics.acquisition.status === 'unavailable' ? 0 : value.diagnostics.acquisition.rows.length) : 0),
           warningCount: value.warnings.length, timezone: value.timezone }),
       });
       stage = 'complete'; current(); await delegation();
       const payload = JSON.stringify(report);
-      if (Buffer.byteLength(payload) > 262144) throw new Error('Report exceeds bound.');
+      if (Buffer.byteLength(payload) > (version === DIAGNOSTIC_VERSION ? 245760 : 262144)) throw new Error('Report exceeds bound.');
       z.object({ status: z.literal('completed'), operation: z.literal(claim.operation) }).strict()
         .parse(await command('complete', claim.operation, signal, { payload }));
       failOperation = undefined;
@@ -107,7 +126,7 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
     const raw = await command('read', null, signal); current();
     if (z.object({ status: z.literal('missing') }).strict().safeParse(raw).success) {
       if (refreshed) throw new Error('Completed report missing.');
-      return Response.json(envelope({ status: 'missing' }), { headers });
+      return Response.json(action === 'authority' ? authorityEnvelope({ status: 'missing' }) : envelope({ status: 'missing' }), { headers });
     }
     const saved = available.parse(raw);
     if (refreshed && saved.operation !== refreshed) throw new Error('Report superseded.');
@@ -118,6 +137,12 @@ export async function sanctuaryGa4Response(request: Request, dependencies: Depen
       || Date.parse(saved.expiresAt) !== Date.parse(report.fetchedAt) + 7 * 86400000) throw new Error('Report association unavailable.');
     stage = 'deliver';
     await command('deliver', saved.operation, signal); current(); if (delegation) await delegation();
+    if (action === 'authority') {
+      const metadata = authorityEnvelope({ status: 'available', operation: saved.operation, generation: saved.generation,
+        resultHash: saved.resultHash, expiresAt: new Date(saved.expiresAt).toISOString() });
+      if (Buffer.byteLength(JSON.stringify(metadata)) > 4096) throw new Error('Authority exceeds bound.');
+      return Response.json(metadata, { headers });
+    }
     const response = envelope({ status: 'available', retained: true, operation: saved.operation, generation: saved.generation,
       resultHash: saved.resultHash, expiresAt: new Date(saved.expiresAt).toISOString(), report });
     if (Buffer.byteLength(JSON.stringify(response)) > 262144) throw new Error('Response exceeds bound.');
