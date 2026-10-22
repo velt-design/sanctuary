@@ -1,5 +1,15 @@
 # Testing And QA
 
+## Technical landing continuation (22 October 2026)
+
+The existing disposable PG17 harness includes140001 and the technical-resume
+fixture within the genuine earlier completion chain. It checks past-day partial
+probe history plus explicit current-day funding, unchanged prior snapshots,
+same-candidate and two current-template derivatives, exact command replay,
+wrong-probe denial even when daily counts are zero, Stop/binding/expiry drift,
+three distinct corrections and no fourth. Ordinary Source UI/CSRF/runtime code
+is unchanged. Local receipts do not establish hosted rendering or publication.
+
 ## Landing completion lineage (22 October 2026)
 
 `scripts/test-meta-creative-ledger-db.mjs` includes130001 and the completion

@@ -1,5 +1,16 @@
 # Supabase Schema Map
 
+## Finite technical landing continuation (22 October 2026)
+
+Forward20261022140001 adds private `landing_technical_resume_expiry(uuid,uuid)`
+and two unique indexes over existing `landing_experiment_receipts` (predecessor
+and corrected release per original admission). It extends existing
+`landing_packaging_recovery_expiry`, `landing_packaging_prepare` and
+`landing_experiment_command`; no table, public endpoint or grant is added.
+Existing control/global-reservation locks, signature, Origin, consent, genuine
+assignment and cleanup behavior remain. The operator receipt is private and
+requires exact native UTC row hashes; it does not install itself or infer funding.
+
 ## Exact same-candidate probe successor (22 October 2026)
 
 Forward20261022120001 extends only the existing private
