@@ -38,11 +38,12 @@ import usePreparedReportViews from './usePreparedReportViews';
 import type { loadAdsStatus } from '@/lib/marketingIntegrations/googleAds/contract';
 import type { loadMetaSaleStatus } from '@/lib/marketingIntegrations/metaSales/contract';
 import type { InitialHubSeed } from '@/lib/marketingPerformance/initialHub';
+import type { ColumnarReport } from '@/lib/marketingPerformance/columnarReports';
 
 const DataSources=dynamic(()=>import('./DataSources'),{loading:()=> <p role="status">Preparing report view…</p>});
 
 export default function MarketingPerformance({loader=loadHub,priorLoader=loadReport,synthetic=false,initialFilters,initialHubSeed,initialCommercialSeed,initialDesignerSeed,initialFinancialSeed,staging=false,previewDescription,productionSnapshot=false,metaLoader,googleLoader,metaSaleLoader,financialsLoader,commercialLoader,designerLoader,assignmentClient,outcomeClient}: {
-  initialHubSeed?:InitialHubSeed;initialCommercialSeed?:InitialReport<CommercialReport>;initialDesignerSeed?:InitialReport<DesignerReport>;initialFinancialSeed?:InitialReport<FinancialEvidence>;
+  initialHubSeed?:InitialHubSeed;initialCommercialSeed?:InitialReport<CommercialReport|ColumnarReport>;initialDesignerSeed?:InitialReport<DesignerReport|ColumnarReport>;initialFinancialSeed?:InitialReport<FinancialEvidence>;
   financialsLoader?:FinancialsLoader;commercialLoader?:CommercialLoader;designerLoader?:DesignerLoader;assignmentClient?:AssignmentClient;outcomeClient?:OutcomeClient;googleLoader?:typeof loadAdsStatus;metaSaleLoader?:typeof loadMetaSaleStatus;
   metaLoader?:MetaEvidenceLoader;loader?:HubLoader;priorLoader?:ReportLoader;synthetic?:boolean;initialFilters?:Filters;staging?:boolean;previewDescription?:string;productionSnapshot?:boolean;
 }) {

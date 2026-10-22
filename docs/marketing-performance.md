@@ -1,5 +1,22 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Lossless initial report representation (22 October 2026)
+
+`columnarReports.ts` owns a versioned, Marketing-only initial-document wire
+representation. The same small codec handles projects, events and enquiries in
+Hub, Commercial rows and Designer's five evidence arrays. Ordered field names
+are stored once per array; every value, row, null and explicit undefined stays
+present. New or heterogeneous row shapes retain the original complete report.
+Malformed columns fail visibly rather than producing partial totals.
+
+The page applies this representation only after the existing guarded readers
+validate evidence. Initial Hub/Commercial/Designer consumers expand it before
+their unchanged full report/date schemas run. APIs, Financials, snapshot rules,
+read scheduling, one-shot matching, refresh/retry and access remain unchanged.
+`initialReportAttempt` separates its input/output types without changing its
+lifecycle. No report data is cached, deferred or pruned. This is a local size
+candidate; hosted latency and actual delivery-step improvements are unverified.
+
 ## Bounded hosted Overview attribution (22 October 2026)
 
 `documentDiagnostics.ts` adds the exact Marketing document to the existing signed,

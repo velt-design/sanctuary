@@ -1,6 +1,6 @@
 import type { InitialReport } from '@/lib/marketingPerformance/reportRead';
 /** One matching opportunity, shared by Strict Mode effect replay, never revived. */
-export function initialReportAttempt<T>(seed:InitialReport<T>|undefined,owner:unknown,verify:(report:T)=>T,failure:()=>Error) {
+export function initialReportAttempt<T, Input=T>(seed:InitialReport<Input>|undefined,owner:unknown,verify:(report:Input)=>T,failure:()=>Error) {
   let retired=!seed;
   let pending:Promise<T>|undefined;
   return {
