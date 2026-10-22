@@ -1,7 +1,8 @@
 /** Source-owned refresh lifecycle. Consent and reconnection are operator work. */
 export const GA4_READ_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
-export type Ga4Step = 'vault_auth' | 'vault_read' | 'token_refresh' | 'property_read' | 'vault_write' | 'report_read';
+export type Ga4Step = 'vault_auth' | 'vault_read' | 'credential_read' | 'token_refresh' | 'property_read' | 'vault_write' | 'report_read';
 export type Ga4Evidence = {
+  credentialStore?: 'vercel'; credentialBinding?: string;
   vaultId?: string; itemId?: string; beforeVersion?: number; afterVersion?: number;
   scope?: string; expiresIn?: number; property?: string; refreshRotated?: boolean;
   queryHash?: string; startDate?: string; endDate?: string;
@@ -9,9 +10,9 @@ export type Ga4Evidence = {
   reportVersion?: string; resultHash?: string; rowCount?: number;
   warningCount?: number; timezone?: string; reportOutcome?: 'complete' | 'unavailable';
 };
-export interface Ga4CredentialConfig {
-  propertyId: string; clientId: string; clientSecret: string; vaultId: string; itemId: string;
-}
+export type Ga4CredentialConfig = { propertyId: string; clientId: string; clientSecret: string } & (
+  { credentialStore?: 'vault'; vaultId: string; itemId: string }
+  | { credentialStore: 'vercel'; credentialBinding: string; refreshToken: string });
 export interface Ga4Vault {
   authenticate(): Promise<void>;
   read(): Promise<{ refreshToken: string | null; version: number }>;
@@ -29,7 +30,7 @@ export interface Ga4LifecycleStore {
 }
 
 export async function refreshGa4Report<T>(input: {
-  config: Ga4CredentialConfig; vault: Ga4Vault; google: Ga4Google; store: Ga4LifecycleStore;
+  config: Ga4CredentialConfig; vault?: Ga4Vault; google: Ga4Google; store: Ga4LifecycleStore;
   signal: AbortSignal; intent: Ga4Evidence; read(accessToken: string): Promise<T>;
   evidence(value: T): Ga4Evidence;
 }): Promise<T> {
@@ -49,23 +50,42 @@ export async function refreshGa4Report<T>(input: {
   }
   try {
     if (!/^[1-9]\d{0,19}$/.test(config.propertyId)) throw new Error('Invalid property.');
-    await effect('vault_auth', () => vault.authenticate());
-    const reference = { vaultId: config.vaultId, itemId: config.itemId };
-    const saved = await effect('vault_read', () => vault.read(), reference,
-      value => ({ ...reference, afterVersion: value.version }));
-    if (!saved.refreshToken || !Number.isSafeInteger(saved.version) || saved.version < 1) throw new Error('Credential unavailable.');
+    let refreshToken: string, version = 0;
+    if (config.credentialStore === 'vercel') {
+      const reference = { credentialStore: 'vercel' as const, credentialBinding: config.credentialBinding };
+      refreshToken = await effect('credential_read', async () => {
+        if (!config.refreshToken || config.refreshToken.length > 16384) throw new Error('Credential unavailable.');
+        return config.refreshToken;
+      }, reference);
+    } else {
+      if (!vault) throw new Error('Vault unavailable.');
+      await effect('vault_auth', () => vault.authenticate());
+      const reference = { vaultId: config.vaultId, itemId: config.itemId };
+      const saved = await effect('vault_read', () => vault.read(), reference,
+        value => ({ ...reference, afterVersion: value.version }));
+      if (!saved.refreshToken || !Number.isSafeInteger(saved.version) || saved.version < 1) throw new Error('Credential unavailable.');
+      refreshToken = saved.refreshToken; version = saved.version;
+    }
     const parameters = new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret,
-      grant_type: 'refresh_token', refresh_token: saved.refreshToken });
+      grant_type: 'refresh_token', refresh_token: refreshToken });
     const token = await effect('token_refresh', () => google.token(parameters), {}, value => {
       if (value.scope !== GA4_READ_SCOPE || !value.accessToken || !Number.isInteger(value.expiresIn)
         || value.expiresIn < 1 || value.expiresIn > 86400 || value.refreshToken === '') throw new Error('Unexpected provider authority.');
-      return { scope: value.scope, expiresIn: value.expiresIn, refreshRotated: Boolean(value.refreshToken) };
+      return { scope: value.scope, expiresIn: value.expiresIn,
+        refreshRotated: Boolean(value.refreshToken && value.refreshToken !== refreshToken) };
     });
+    const rotated = token.refreshToken && token.refreshToken !== refreshToken;
+    if (rotated && config.credentialStore === 'vercel') {
+      // Durable token result already requires credential recovery. No report,
+      // vault fallback or invented persistence acknowledgement is permitted.
+      try { console.warn('sanctuary_ga4_credential_failure', { reason: 'rotation_requires_recovery' }); } catch { /* Logging grants no authority. */ }
+      throw new Error('Credential recovery required.');
+    }
     await effect('property_read', () => google.property(token.accessToken, config.propertyId), { property: config.propertyId });
-    if (token.refreshToken) await effect('vault_write', () => vault.write(token.refreshToken!),
-      { ...reference, beforeVersion: saved.version }, value => {
-        if (!Number.isSafeInteger(value.version) || value.version <= saved.version) throw new Error('Credential write unconfirmed.');
-        return { ...reference, beforeVersion: saved.version, afterVersion: value.version };
+    if (rotated && config.credentialStore !== 'vercel') await effect('vault_write', () => vault!.write(token.refreshToken!),
+      { vaultId: config.vaultId, itemId: config.itemId, beforeVersion: version }, value => {
+        if (!Number.isSafeInteger(value.version) || value.version <= version) throw new Error('Credential write unconfirmed.');
+        return { vaultId: config.vaultId, itemId: config.itemId, beforeVersion: version, afterVersion: value.version };
       });
     signal.throwIfAborted();
     await store.before('report_read', input.intent);
@@ -82,8 +102,8 @@ export async function refreshGa4Report<T>(input: {
     signal.throwIfAborted();
     return report;
   } catch {
-    // report_failed is accepted only when the durable store proves credential
-    // steps settled. Otherwise quarantine; never turn lease expiry into a retry.
+    // SQL atomically fences this executor when no token intent began, or when
+    // credential effects settled. Otherwise quarantine; expiry is never a retry.
     await store.finish('report_failed').catch(async () => {
       await store.finish('uncertain').catch(() => undefined);
     });

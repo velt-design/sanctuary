@@ -43,6 +43,18 @@ full valid large Rhino delivery remain unverified without an approved runtime
 access route. Owner/security details and focused checks live in
 `project-sharepoint-files.md`; local private evidence is not deployment payload.
 
+## 2026-10-22: Check committed service-role additions against the PR base
+
+The finite GA4 credential transfer used the reviewed service-only RPC but lacked
+its exact-file declaration in the service-role guard. Register that server owner
+without granting neighboring modules access. A clean worktree check does not
+cover committed PR changes: set both architecture base/head and worktree
+base/head references to the actual PR comparison before reporting guard coverage.
+The transfer's nonce, source, install-intent and SQL authority checks are unchanged.
+The separate Portal boundary suite also inventories every service-role user with
+an exact allowlist. Register the same reviewed path there and run that suite
+alongside the strict changed-file guard; neither check substitutes for the other.
+
 ## 2026-10-22: Compose project filters from the current URL
 
 Rapid audience and roof-form changes could each spread the same stale server
@@ -59,6 +71,30 @@ A component regression exercises two events before rerender; the focused browser
 journey covers real history, reload and project return. Do not reintroduce
 independent optimistic filter state or await navigation between ordinary edits.
 
+
+## 2026-10-22: separate credential storage from retained report authority
+
+Moving an existing Google refresh token to production Vercel secrets must not
+simulate vault events or erase an unchanged report. Explicit credential mode and
+frozen binding now govern the single lifecycle, while report authority remains
+stable across a guarded same-credential cutover. A finite cloud transfer records
+install intent before writing: proven pre-install failure may settle, but uncertain
+writes never replay or expire into permission. Unexpected genuine Google rotation
+quarantines before reporting and requires secure recovery; same-token echo is not
+rotation. Owner: GA4 in `environment-auth-supabase.md`. Regression evidence: Vercel
+configuration/lifecycle/transfer, SQL/HTTP and native transition tests.
+
+## 2026-10-22: Separate pre-token read failure from credential-write uncertainty
+
+A failed vault read quarantined GA4 even though no Google token intent existed,
+also denying an unchanged saved report. Settle proven pre-token working failures
+under the existing command lock and terminal-status fence, preserving pending
+evidence. Never treat expiry alone as permission to replay a credential effect.
+Existing uncertain work needs exact operator evidence; token/write uncertainty
+stays quarantined. Closed SDK-class and item-validation diagnostics observe only
+existing calls. SQL/HTTP and native tests cover stale continuation, cancellation,
+Stop and preserved token/write quarantine. Owner: Sanctuary-owned GA4 in
+`environment-auth-supabase.md`.
 
 ## 2026-10-22: project file relationships must preserve project deletion
 

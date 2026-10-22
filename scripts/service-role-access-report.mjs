@@ -114,6 +114,10 @@ function isApprovedServerFlow(file) {
   // Machine-authenticated GA4 source lifecycle; SQL pins actor/source/property,
   // serializes credential intents and retained delivery. No direct table access.
   if (file === 'apps/portal/lib/marketingIntegrations/ga4/store.ts') return true;
+  // Fixed server-only credential transfer has no staff cookie. Its sole RPC
+  // rechecks finite nonce admission, actor/source identity and install-intent
+  // fencing; no direct table access. See docs/staff-api-auth-contracts.md.
+  if (file === 'apps/portal/lib/marketingIntegrations/ga4/credential-transfer.ts') return true;
   // Server-only Google advertising commands; two RPCs recheck actor, binding,
   // generation, consent and canary scope. No direct table or credential access.
   if (file === 'apps/portal/lib/marketingIntegrations/googleAds/store.ts') return true;
