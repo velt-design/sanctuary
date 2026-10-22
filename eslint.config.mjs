@@ -6,6 +6,7 @@ const config = [
   {
     ignores: [
       '**/node_modules/**',
+      '.local-evidence/**',
       '**/.next/**',
       'apps/*/.next-*/**',
       '**/.turbo/**',
