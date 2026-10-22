@@ -25,10 +25,10 @@ export type PortalSession = {
 // React cache is scoped to the current server render. It prevents nested layouts
 // and pages from repeating the same auth and portal-role lookup without creating
 // a process-wide cache that could cross users or requests.
-const getRequestPortalAccess = cache(async (): Promise<{
+async function readPortalAccess(): Promise<{
   accessState: PortalAccessState;
   authenticatedUser: User | null;
-}> => {
+}> {
   const diagnostics = await getDocumentRenderDiagnostics();
   const startedAt = performance.now();
   try {
@@ -52,7 +52,9 @@ const getRequestPortalAccess = cache(async (): Promise<{
     diagnostics?.record('rsc.access', startedAt, 'error');
     throw error;
   }
-});
+}
+
+const getRequestPortalAccess = cache(readPortalAccess);
 
 export async function getPortalAccessState(): Promise<PortalAccessState> {
   return (await getRequestPortalAccess()).accessState;
@@ -60,6 +62,13 @@ export async function getPortalAccessState(): Promise<PortalAccessState> {
 
 export async function getPortalSession(): Promise<PortalSession | null> {
   const { accessState, authenticatedUser } = await getRequestPortalAccess();
+  if (accessState.kind !== 'authenticated' || !authenticatedUser) return null;
+  return { user: authenticatedUser, role: accessState.session.role };
+}
+
+/** Long-running reads revalidate the same resolver outside the render cache. */
+export async function getFreshPortalSession(): Promise<PortalSession | null> {
+  const { accessState, authenticatedUser } = await readPortalAccess();
   if (accessState.kind !== 'authenticated' || !authenticatedUser) return null;
   return { user: authenticatedUser, role: accessState.session.role };
 }

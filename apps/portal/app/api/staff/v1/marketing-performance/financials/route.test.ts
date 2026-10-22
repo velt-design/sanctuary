@@ -1,15 +1,15 @@
 import { beforeEach,expect,it,vi } from 'vitest';
-const mocks=vi.hoisted(()=>({staff:vi.fn(),developer:vi.fn(),finance:vi.fn(),runtime:vi.fn(),read:vi.fn(),legacy:vi.fn()}));
+const mocks=vi.hoisted(()=>({staff:vi.fn(),developer:vi.fn(),finance:vi.fn(),runtime:vi.fn(),read:vi.fn(),legacy:vi.fn(),close:vi.fn()}));
 vi.mock('@/lib/api/staffApi',()=>({requireStaffContext:mocks.staff,jsonOk:(body:unknown)=>Response.json(body),jsonError:(error:string,status:number)=>Response.json({error},{status})}));
 vi.mock('@/lib/developerAccess',()=>({isDeveloper:mocks.developer}));
-vi.mock('@/lib/xero/pilotAccess',()=>({getPaymentPilotSession:mocks.finance}));
+vi.mock('@/lib/xero/pilotAccess',()=>({getFreshPaymentPilotSession:mocks.finance}));
 vi.mock('@/lib/xero/financePositionRuntime',()=>({positionRuntime:mocks.runtime}));
 vi.mock('@/lib/xero/financials/panel',()=>({readFinancialPanel:mocks.read}));
 vi.mock('@/lib/xero/financials/read',()=>({readFinancials:mocks.legacy}));
 import { GET } from './route';
 const user={id:'owner',email:'synthetic@example.test'},query='from=2026-09-01&to=2026-09-30&basis=accrual&section=profit';
 const request=(params=query)=>new Request(`https://portal.example.test/api/staff/v1/marketing-performance/financials?${params}`);
-beforeEach(()=>{vi.resetAllMocks();mocks.staff.mockResolvedValue({ok:true,session:{user}});mocks.finance.mockResolvedValue({user});mocks.developer.mockReturnValue(true);mocks.runtime.mockReturnValue({deps:{},deadline:new AbortController().signal});mocks.read.mockResolvedValue({synthetic:true});});
+beforeEach(()=>{vi.resetAllMocks();mocks.staff.mockResolvedValue({ok:true,session:{user}});mocks.finance.mockResolvedValue({user});mocks.developer.mockReturnValue(true);mocks.runtime.mockReturnValue({deps:{},deadline:new AbortController().signal,close:mocks.close});mocks.read.mockResolvedValue({synthetic:true});});
 it('requires staff, developer identity and the current matching finance grant before provider access',async()=>{
   mocks.staff.mockResolvedValueOnce({ok:false,response:Response.json({error:'Sign in'},{status:401})});expect((await GET(request())).status).toBe(401);
   mocks.developer.mockReturnValueOnce(false);expect((await GET(request())).status).toBe(403);
@@ -38,4 +38,11 @@ it('preserves the full report contract for an already-open client without sectio
  await GET(request());expect(mocks.read).toHaveBeenCalledOnce();
  expect((await GET(request(query+'&section=bank'))).status).toBe(400);
  expect((await GET(request(query.replace('section=profit','section=unknown')))).status).toBe(400);
+});
+
+it('closes the request-owned connector on success, source failure and access loss',async()=>{
+ await GET(request());expect(mocks.close).toHaveBeenCalledTimes(1);
+ mocks.read.mockRejectedValueOnce(new Error('source failure'));await GET(request());expect(mocks.close).toHaveBeenCalledTimes(2);
+ mocks.read.mockRejectedValueOnce(new Error('FINANCIALS_ACCESS_CHANGED'));await GET(request());expect(mocks.close).toHaveBeenCalledTimes(3);
+ expect(mocks.runtime.mock.calls[0][3]).toBe(true);
 });

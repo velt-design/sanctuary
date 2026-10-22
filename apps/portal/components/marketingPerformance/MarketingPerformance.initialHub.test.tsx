@@ -1,3 +1,5 @@
+import {sampleFinancialPanel} from '@/app/qa/marketing-performance-fixture/financialFixtures';
+import {financialRequestKey} from '@/lib/xero/financials/contract';
 import { act, type ReactNode } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
@@ -59,4 +61,19 @@ it('shows a failed seed without partial records and recovers through the ordinar
   expect(view.loader).toHaveBeenCalledTimes(1); expect(view.records()).not.toBeNull(); expect(view.container.querySelector('[role="alert"]')).toBeNull();
   expect(window.location.search).toBe(query); expect(view.source()).toContain('google');
   expect(view.prior).not.toHaveBeenCalled(); expect(view.commercial).not.toHaveBeenCalled(); expect(view.designer).not.toHaveBeenCalled(); view.unmount();
+});
+
+it('does not reuse a pending Financial seed after leaving and returning to the Financial tab',async()=>{
+ const query={from:'2026-09-01',to:'2026-09-30',basis:'accrual' as const,section:'profit' as const};
+ window.history.replaceState(null,'','/?view=financials&financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=accrual&financeSection=profit');vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ let resolve!:(value:{ok:true;report:ReturnType<typeof sampleFinancialPanel>})=>void;
+ const initialFinancialSeed={key:financialRequestKey(query),result:new Promise<{ok:true;report:ReturnType<typeof sampleFinancialPanel>}>(yes=>{resolve=yes;})};
+ const financials=vi.fn(async()=>sampleFinancialPanel(query));
+ const view=renderIntoDocument(<MarketingPerformance synthetic initialFilters={fixtureFilters} initialFinancialSeed={initialFinancialSeed} financialsLoader={financials} loader={async()=>hubFixture}/>);
+ expect(financials).not.toHaveBeenCalled();
+ const tab=(text:string)=>[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent===text)!;
+ await act(async()=>tab('Sales activity').click());
+ await act(async()=>tab('Financials').click());
+ await act(async()=>resolve({ok:true,report:sampleFinancialPanel(query)}));
+ expect(financials).toHaveBeenCalledOnce();expect(window.location.search).toContain('financeFrom=2026-09-01');expect(view.container.textContent).toContain('Profit & loss');view.unmount();
 });

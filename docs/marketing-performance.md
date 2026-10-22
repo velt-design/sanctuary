@@ -1,5 +1,38 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Targeted P&L and Overview latency follow-up (22 October 2026)
+
+Initial full-document Overview reads now start Commercial and Designer alongside
+Hub after the existing staff, confirmed-developer and preview gates. The two API
+routes and document promises share guarded, fully validated readers; every RPC
+retains its own current authority. Private snapshot previews retain their old
+behavior and do not start live Overview/Financial seeds. Other report views do
+not request those families. No Suspense boundary or chart animation was added.
+
+Eligible Financial document entries start only their selected complete report,
+with exact accounting dates, basis, section and Auckland defaults. The same
+server owner serves the existing API, including its no-section legacy contract.
+Long-running caller/role/finance rechecks use the existing access resolver outside
+React's render cache. Every provider page and final publication still rechecks
+caller and delegated authority. The two independent checks overlap; neither alone
+allows a provider read. The document duration is explicitly 60 seconds, retaining
+the 40-second provider and 45-second outer budgets.
+
+Each seed has one initial matching opportunity. Native Promise normalization
+supports Flight's void-returning thenables. Date, basis, section, loader, refresh,
+view departure or settlement retires that opportunity. Later reads use the API;
+late seeds cannot replace current evidence. Client URL/default restoration stays
+authoritative, including a server/client Auckland-midnight mismatch. Failures,
+unavailable coverage, denied access and ordinary retries stay explicit.
+
+The implementation owners are `readOverview.server`, `financials/readPortal.server`,
+`reportDocumentSelection`, `initialReportAttempt` and the existing report hooks.
+P&L's provider scheduling and connection lifetime are described in
+[xero-connection.md](xero-connection.md). No SQL population, private shared cache,
+credential serialization, provider refresh or business write is introduced.
+Local checks and fictional Flight journeys do not establish a live speed gain.
+
+
 ## Fresh-entry performance candidate (21 October 2026)
 
 The server-started hub candidate begins one full report read during an eligible
