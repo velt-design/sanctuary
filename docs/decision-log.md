@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-22: Check committed service-role additions against the PR base
+
+The finite GA4 credential transfer used the reviewed service-only RPC but lacked
+its exact-file declaration in the service-role guard. Register that server owner
+without granting neighboring modules access. A clean worktree check does not
+cover committed PR changes: set both architecture base/head and worktree
+base/head references to the actual PR comparison before reporting guard coverage.
+The transfer's nonce, source, install-intent and SQL authority checks are unchanged.
+
 ## 2026-10-22: Compose project filters from the current URL
 
 Rapid audience and roof-form changes could each spread the same stale server
