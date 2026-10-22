@@ -103,7 +103,7 @@ it.each(REGIONAL_NAVIGATION_PATHS)('moves only GET RSC %s to fresh leaf/root aut
   }
   expect(h.session).toHaveBeenCalledTimes(2); expect(h.user).not.toHaveBeenCalled(); expect(h.role).not.toHaveBeenCalled();
 });
-it.each(['/admin', '/schedule', '/staff/projects/work-queue', '/staff/marketing-performance', '/staff/contacts/new', '/staff/projects/other', '/staff/projects/running-jobs/child'])('keeps RSC %s outside the navigation allowlist', async path => {
+it.each(['/admin', '/schedule', '/staff/projects/work-queue/child', '/staff/marketing-performance', '/staff/contacts/new', '/staff/projects/other', '/staff/projects/running-jobs/child'])('keeps RSC %s outside the navigation allowlist', async path => {
   const response = await middleware(new NextRequest(`https://portal.example${path}`, { headers: { rsc: '1', [DOCUMENT_CALLBACK_HEADER]: '/staff/projects', [NAVIGATION_CALLBACK_HEADER]: '/dashboard' } }));
   expect(h.user).toHaveBeenCalledOnce(); expect(h.session).not.toHaveBeenCalled(); expect(response.status).toBe(307);
   expect(response.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
@@ -114,9 +114,9 @@ it.each(['POST', 'PUT', 'DELETE'])('never moves %s RSC or actions to navigation 
   expect(h.user).toHaveBeenCalledOnce(); expect(h.session).not.toHaveBeenCalled(); expect(response.status).toBe(307);
   expect(response.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
 });
-it('forwards RSC rotation/removal cookies without treating session claims or refresh errors as authority', async () => {
+it.each(['/staff/contacts', '/staff/projects/work-queue'])('forwards RSC rotation/removal cookies for %s without treating session claims or refresh errors as authority', async path => {
   h.cookies = [{ name: 'session.0', value: '', options: { maxAge: 0, path: '/' } }, { name: 'session', value: 'rotated', options: { httpOnly: true, sameSite: 'lax', path: '/' } }];
-  const request = () => new NextRequest('https://portal.example/staff/contacts', { headers: { rsc: '1', accept: '*/*', 'sec-fetch-dest': 'empty', cookie: 'session.0=old; unrelated=keep' } });
+  const request = () => new NextRequest(`https://portal.example${path}`, { headers: { rsc: '1', accept: '*/*', 'sec-fetch-dest': 'empty', cookie: 'session.0=old; unrelated=keep' } });
   h.session.mockResolvedValue({ data: { session: null }, error: { message: 'untrusted refresh' } });
   const response = await middleware(request());
   expect(response.headers.get('x-middleware-request-cookie')).toContain('session=rotated');

@@ -263,6 +263,7 @@ test('captures native Playwright request metadata separately without recording U
   const row = records[0].requests.find((candidate: { category: string }) => candidate.category === 'api');
   expect(row).toMatchObject({ resourceKind: 'fetch', status: 200, failed: false,
     startAtEpochMs: timing.startTime > 0 ? timing.startTime : null,
+    requestStartMs: timing.requestStart >= 0 ? timing.requestStart : null,
     headersMs: timing.responseStart >= 0 ? timing.responseStart : null,
     endMs: timing.responseEnd >= 0 ? timing.responseEnd : null });
   expect(Math.abs(row.responseObservedAtEpochMs - responseObserved.get(request)!)).toBeLessThan(20);

@@ -38,14 +38,17 @@ it.each(REGIONAL_NAVIGATION_PATHS)('activates the fresh-server lane for adapter-
 const exclusions: Array<{ path: string; extra: Record<string, string> }> = [
   { path: '/staff/contacts', extra: { 'sec-fetch-dest': 'document', accept: 'text/html' } },
   { path: '/staff/contacts', extra: { 'next-action': 'fictional' } },
-  { path: '/schedule', extra: {} }, { path: '/admin', extra: {} }, { path: '/staff/projects/work-queue', extra: {} },
+  { path: '/staff/projects/work-queue', extra: { 'sec-fetch-dest': 'document', accept: 'text/html' } },
+  { path: '/staff/projects/work-queue', extra: { 'next-action': 'fictional' } },
+  { path: '/staff/projects/work-queue', extra: { accept: 'application/json' } },
+  { path: '/schedule', extra: {} }, { path: '/admin', extra: {} }, { path: '/staff/projects/work-queue/child', extra: {} },
 ];
 it.each(exclusions)('retains original middleware authority outside the selected fetch shape: $path $extra', async ({ path, extra }) => {
   const { response } = await throughAdapter(path, extra);
   expect(h.session).not.toHaveBeenCalled(); expect(h.user).toHaveBeenCalledOnce(); expect(response.status).toBe(307);
   expect(response.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
 });
-it('keeps actions outside the lane after real adapter normalization', async () => {
-  const { response } = await throughAdapter('/staff/contacts', { 'next-action': 'fictional' }, 'POST');
+it.each(['/staff/contacts', '/staff/projects/work-queue'])('keeps %s actions outside the lane after real adapter normalization', async path => {
+  const { response } = await throughAdapter(path, { 'next-action': 'fictional' }, 'POST');
   expect(h.session).not.toHaveBeenCalled(); expect(h.user).toHaveBeenCalledOnce(); expect(response.status).toBe(307);
 });

@@ -64,7 +64,7 @@ it('records native timing/status/failure categories without URL, query, headers,
   const rows: object[] = [];
   const request = {
     url: () => 'http://127.0.0.1:3011/staff/contacts?q=PRIVATE_VALUE', resourceType: () => 'fetch',
-    timing: () => ({ startTime: 1000, responseStart: 230, responseEnd: 340 }),
+    timing: () => ({ startTime: 1000, requestStart: 15, responseStart: 230, responseEnd: 340 }),
     headers: () => { throw new Error('Must not read private headers'); },
     failure: () => ({ errorText: 'PRIVATE_VALUE' }),
   } as unknown as Request;
@@ -78,7 +78,7 @@ it('records native timing/status/failure categories without URL, query, headers,
   now.mockRestore();
   trace.finish('dashboard-to-contacts');
   expect(rows).toEqual([expect.objectContaining({ event: 'network-journey', journey: 'dashboard-to-contacts', requests: [expect.objectContaining({
-    ordinal: 1, category: 'contacts', resourceKind: 'fetch', startAtEpochMs: 1000, headersMs: 230, endMs: 340, status: 200, failed: true,
+    ordinal: 1, category: 'contacts', resourceKind: 'fetch', startAtEpochMs: 1000, requestStartMs: 15, headersMs: 230, endMs: 340, status: 200, failed: true,
     observedAtEpochMs: 1000, responseObservedAtEpochMs: 1100, failedObservedAtEpochMs: 1200, finishedObservedAtEpochMs: null,
   })] })]);
   expect(JSON.stringify(rows)).not.toMatch(/PRIVATE_VALUE|http:|"headers"|"body"|errorText|q=/);
@@ -97,10 +97,19 @@ it('bounds requests, handles incomplete/disposed metadata, redacts unknown names
   trace.finish('PRIVATE_VALUE'); trace.stop();
   expect(rows[0]).toMatchObject({ journey: 'other', omittedRequests: 12, requestLimit: 128 });
   expect(rows[0].requests).toHaveLength(128);
-  expect(rows[0].requests[0]).toMatchObject({ category: 'external', resourceKind: 'other', headersMs: null, endMs: null });
+  expect(rows[0].requests[0]).toMatchObject({ category: 'external', resourceKind: 'other', requestStartMs: null, headersMs: null, endMs: null });
   expect(JSON.stringify(rows)).not.toContain('PRIVATE_VALUE');
   const next = createPortalNetworkTrace(page as unknown as Page, 'http://127.0.0.1:3011', value => rows.push(value));
   next.stop(); expect(page.eventNames()).toEqual([]);
+});
+
+it.each([undefined, -1, NaN, Infinity])('keeps an unavailable native request-start offset unknown: %s', requestStart => {
+  const page = new EventEmitter(); const rows: any[] = [];
+  const trace = createPortalNetworkTrace(page as unknown as Page, 'http://127.0.0.1:3011', row => rows.push(row));
+  page.emit('request', { url: () => 'http://127.0.0.1:3011/staff/contacts', resourceType: () => 'fetch',
+    timing: () => ({ startTime: 1000, requestStart, responseStart: -1, responseEnd: -1 }) });
+  trace.finish('dashboard-to-contacts');
+  expect(rows[0].requests[0]).toMatchObject({ startAtEpochMs: 1000, requestStartMs: null, headersMs: null, endMs: null });
 });
 
 it('observes real Node callback/stream/backpressure/error contracts without wrapping fetch or Response', async () => {
@@ -221,9 +230,11 @@ it('emits only fixed allowlisted JSON fields inside bounded log markers, never r
     expect(JSON.parse(lines[2]).operations).toEqual({ identity: 1 });
     expect(safeRecord({ event: 'PRIVATE_VALUE', data: 'PRIVATE_VALUE' })).toBeNull();
     expect(safeRecord({ event: 'network-journey', requests: [{ responseObservedAtEpochMs: 1000,
-      finishedObservedAtEpochMs: Infinity, failedObservedAtEpochMs: 'PRIVATE_VALUE' }] }).requests[0]).toMatchObject({
-      responseObservedAtEpochMs: 1000, finishedObservedAtEpochMs: null, failedObservedAtEpochMs: null,
+      finishedObservedAtEpochMs: Infinity, failedObservedAtEpochMs: 'PRIVATE_VALUE', requestStartMs: 'PRIVATE_VALUE' }] }).requests[0]).toMatchObject({
+      responseObservedAtEpochMs: 1000, finishedObservedAtEpochMs: null, failedObservedAtEpochMs: null, requestStartMs: null,
     });
+    expect(safeRecord({ event: 'network-journey', requests: [{ requestStartMs: 0 }, { requestStartMs: 15 },
+      { requestStartMs: Infinity }, {}] }).requests.map((row: { requestStartMs: number | null }) => row.requestStartMs)).toEqual([0, 15, null, null]);
   } finally {
     expect(path.dirname(directory)).toBe(path.resolve(os.tmpdir()));
     fs.rmSync(directory, { recursive: true, force: true });

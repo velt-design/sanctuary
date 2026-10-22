@@ -40,6 +40,7 @@ type NetworkRow = {
   finishedObservedAtEpochMs: number | null;
   failedObservedAtEpochMs: number | null;
   startAtEpochMs: number | null;
+  requestStartMs: number | null;
   headersMs: number | null;
   endMs: number | null;
   status: number | null;
@@ -58,6 +59,7 @@ export function createPortalNetworkTrace(page: Page, origin: string, write: (rec
     try {
       const timing = request.timing();
       row.startAtEpochMs = Number.isFinite(timing.startTime) && timing.startTime > 0 ? timing.startTime : null;
+      row.requestStartMs = Number.isFinite(timing.requestStart) && timing.requestStart >= 0 ? timing.requestStart : null;
       row.headersMs = Number.isFinite(timing.responseStart) && timing.responseStart >= 0 ? timing.responseStart : null;
       row.endMs = Number.isFinite(timing.responseEnd) && timing.responseEnd >= 0 ? timing.responseEnd : null;
     } catch { /* Disposed/incomplete requests stay explicitly unknown. */ }
@@ -71,7 +73,7 @@ export function createPortalNetworkTrace(page: Page, origin: string, write: (rec
       ordinal: requests.size + 1, category: requestCategory,
       resourceKind: resourceKinds.has(kind) ? kind : 'other', observedAtEpochMs: Date.now(),
       responseObservedAtEpochMs: null, finishedObservedAtEpochMs: null, failedObservedAtEpochMs: null,
-      startAtEpochMs: null, headersMs: null, endMs: null, status: null, failed: false,
+      startAtEpochMs: null, requestStartMs: null, headersMs: null, endMs: null, status: null, failed: false,
     });
     snapshot(request);
   };

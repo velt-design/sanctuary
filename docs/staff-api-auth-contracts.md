@@ -46,7 +46,7 @@ changed to staff retains staff access but not administrator access.
 The middleware overwrites the callback header from the actual path and full query,
 or strips it outside this lane. It is redirect and initial-read scheduling context, never identity or role
 authority. Ordinary browser RSC/prefetch use non-document fetch destinations. The
-explicit navigation exception below moves only six selected leaves to the same
+explicit navigation exception below moves only seven selected leaves to the same
 fresh server verification; action/POST, specialist and other routes retain the
 full global path. Next
 normalizes Flight headers before middleware, so a deliberately forged document-
@@ -86,8 +86,9 @@ there is no session/client serialization or shared evidence cache. See
 ## Selected page navigation authority (local correction, 23 October 2026)
 
 Only GET page fetches at `/dashboard`, `/staff/projects`, `/staff/contacts`,
-`/staff/schedule`, `/staff/projects/design-packages` and
-`/staff/projects/running-jobs`, with fetch destination `empty` and Accept `*/*`
+`/staff/schedule`, `/staff/projects/design-packages`,
+`/staff/projects/running-jobs` and `/staff/projects/work-queue`, with fetch
+destination `empty` and Accept `*/*`
 or `text/x-component`, use cookie-renewal transport followed by fresh server
 identity/current-role verification instead of repeating that pair in middleware.
 This includes normalized browser RSC/intent-prefetch and the same fetch-shaped
@@ -101,7 +102,12 @@ Root verification still precedes identity props, theme and finance. Every
 selected leaf also awaits `requireStaffPageAccess` before its client or reads:
 partial Flight can skip matched ancestor layouts, so a root/layout gate alone
 is insufficient. These guards share only the existing request-local resolver;
-the next request verifies afresh. Cookie rotation and chunk removals reach both
+the next request verifies afresh. Work Queue's leaf verifies current access before
+deriving its administrator-review prop; a retained ancestor is insufficient.
+Schedule omits its extra server report only for its valid navigation callback,
+retaining document seeds and the independently guarded client query/cache.
+These bounded changes do not establish that warm-route latency meets its target.
+Cookie rotation and chunk removals reach both
 forwarded request and response. Responses remain private/no-store without
 replacing Next's Vary contract. Actions, other paths, admin capability, API
 read/command guards and document-only initial-read scheduling are unchanged.

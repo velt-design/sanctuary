@@ -5,8 +5,11 @@ import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import StaffSchedulePage from './page';
+import { NAVIGATION_CALLBACK_HEADER } from '@/lib/regionalDocumentAccess';
 
 const loadSchedulePageSeedMock = vi.fn();
+const requestHeaders = vi.hoisted(() => ({ value: new Headers() }));
+vi.mock('next/headers', () => ({ headers: async () => requestHeaders.value }));
 
 vi.mock('@/lib/scheduling/serverSchedulePageSeed', () => ({
   loadSchedulePageSeed: (...args: unknown[]) => loadSchedulePageSeedMock(...args),
@@ -30,6 +33,30 @@ vi.mock('./SiteVisitsScheduleClient', () => ({
 describe('StaffSchedulePage', () => {
   beforeEach(() => {
     loadSchedulePageSeedMock.mockReset();
+    requestHeaders.value = new Headers();
+  });
+
+  it.each(['board', 'gantt'] as const)('keeps the %s navigation client/query path without starting another server report', async view => {
+    requestHeaders.value.set(NAVIGATION_CALLBACK_HEADER, `/staff/schedule?view=${view}`);
+    const ui = await StaffSchedulePage({ searchParams: Promise.resolve({ view }) }) as ReactElement<{ initialSeed?: Promise<unknown>; initialSeedKind: string }>;
+    expect(renderToStaticMarkup(ui)).toContain('data-testid="schedule-client"');
+    expect(ui.props.initialSeedKind).toBe(view);
+    expect(ui.props.initialSeed).toBeUndefined();
+    expect(loadSchedulePageSeedMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['/dashboard', '/staff/schedule/child', '/admin', 'https://outside.invalid'])('does not omit the ordinary seed for an unrelated or invalid context %s', async context => {
+    requestHeaders.value.set(NAVIGATION_CALLBACK_HEADER, context);
+    loadSchedulePageSeedMock.mockResolvedValue(null);
+    await StaffSchedulePage({ searchParams: Promise.resolve({ view: 'board' }) });
+    expect(loadSchedulePageSeedMock).toHaveBeenCalledOnce();
+  });
+
+  it('keeps failed document seed recovery on the normal client query path', async () => {
+    loadSchedulePageSeedMock.mockRejectedValue(new Error('Synthetic document read unavailable'));
+    const ui = await StaffSchedulePage({ searchParams: Promise.resolve({ view: 'board' }) }) as ReactElement<{ initialSeed: Promise<unknown> }>;
+    expect(renderToStaticMarkup(ui)).toContain('data-testid="schedule-client"');
+    await expect(ui.props.initialSeed).resolves.toBeNull();
   });
 
   it('loads the Board server schedule seed for board and passes it into the client entrypoint', async () => {

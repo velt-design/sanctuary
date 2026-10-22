@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
-const throttleLine = /^(?:docker: |Error response from daemon: )?toomanyrequests: Rate exceeded$/;
+const throttleLine = /^(?:docker: |Error response from daemon: )?toomanyrequests: (?:Rate exceeded|retry-after: \d+(?:\.\d+)?(?:ns|µs|ms|s), allowed: [1-9]\d*\/minute)$/;
+const imageProgressLine = /^[a-zA-Z0-9@_.:/-]+: Pulling from [a-z0-9._/-]+$/;
+const layerProgressLine = /^[a-f0-9]{12}: (?:Pulling fs layer|Waiting|Downloading|Verifying Checksum|Download complete|Extracting|Pull complete|Already exists|Retrying in \d+ seconds)(?: \[[=> ]+\]\s+[\d.]+[kMGT]?B(?:\/[\d.]+[kMGT]?B)?)?$/;
 const backoffMs = [30_000, 60_000];
 
 // Pull only: database startup and SQL remain in the subsequent, single-run harness.
@@ -25,7 +27,9 @@ export async function pullAiDatabaseImage(image, {
     if (result.error) throw new Error(`AI database image pull could not complete: ${result.error.message}`);
     if (result.status === 0) return;
 
-    const throttled = output.split(/\r?\n/).some((line) => throttleLine.test(line));
+    const lines = output.split(/\r?\n/).filter((line) => line.trim());
+    const throttled = lines.some((line) => throttleLine.test(line)) &&
+      lines.every((line) => throttleLine.test(line) || imageProgressLine.test(line) || layerProgressLine.test(line));
     if (!throttled || result.status === null || attempt === 3) {
       throw new Error(`AI database image pull failed on attempt ${attempt}/3 (exit ${result.status}).`);
     }

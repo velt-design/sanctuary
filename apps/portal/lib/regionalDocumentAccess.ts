@@ -35,6 +35,7 @@ export const NAVIGATION_CALLBACK_HEADER = 'x-portal-navigation-callback';
 export const REGIONAL_NAVIGATION_PATHS = [
   '/dashboard', '/staff/projects', '/staff/contacts', '/staff/schedule',
   '/staff/projects/design-packages', '/staff/projects/running-jobs',
+  '/staff/projects/work-queue',
 ] as const;
 export function isRegionalNavigationPath(path: string): boolean {
   return (REGIONAL_NAVIGATION_PATHS as readonly string[]).includes(path);

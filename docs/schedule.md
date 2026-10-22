@@ -2,8 +2,11 @@
 
 ## Progressive real interface candidate (22 October 2026)
 
-The Schedule page starts its request-owned seed without awaiting the full Board
-or Gantt report. The real client and selected view render independently. The seed
+For ordinary document entry, the Schedule page starts its request-owned seed
+without awaiting the full Board or Gantt report. A valid, overwritten Schedule
+navigation callback omits that extra report after the same fresh leaf access gate;
+navigation and intent-prefetch retain the client's guarded query/prefetched cache.
+The real client and selected view render independently. The document seed
 is consumed through the existing tracked query, normalized with `Promise.resolve`
 for React Flight thenables, matched by view, Auckland day and Gantt range, then
 retired. An unavailable initial read uses normal authenticated API recovery; schema

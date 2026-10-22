@@ -1,9 +1,9 @@
 import WorkQueueClient from './WorkQueueClient';
-import { getPortalSession } from '@/lib/auth';
+import { requireStaffPageAccess } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProjectWorkQueuePage() {
-  const session = await getPortalSession();
-  return <WorkQueueClient canReviewInactiveEnquiries={session?.role === 'admin'} />;
+  const session = await requireStaffPageAccess('/staff/projects/work-queue');
+  return <WorkQueueClient canReviewInactiveEnquiries={session.role === 'admin'} />;
 }

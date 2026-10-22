@@ -62,10 +62,10 @@ it.each(['missing','revoked','lookup_failed'] as const)('verifies Marketing docu
  expect(h.user).toHaveBeenCalledOnce();
 });
 
-it('shares one fresh navigation verification across root and leaf, then verifies a new request afresh', async () => {
-  h.headers = new Headers({ [NAVIGATION_CALLBACK_HEADER]: '/staff/contacts?q=one', rsc: '1' });
+it.each(['/staff/contacts', '/staff/projects/work-queue'])('shares one fresh %s navigation verification across root and leaf, then verifies a new request afresh', async path => {
+  h.headers = new Headers({ [NAVIGATION_CALLBACK_HEADER]: `${path}?q=one`, rsc: '1' });
   const auth = await import('./auth');
-  await Promise.all([auth.requireRegionalDocumentAccess(), auth.requireStaffPageAccess('/staff/contacts'), auth.getPortalAccessState()]);
+  await Promise.all([auth.requireRegionalDocumentAccess(), auth.requireStaffPageAccess(path), auth.getPortalAccessState()]);
   expect(h.user).toHaveBeenCalledOnce(); expect(h.role).toHaveBeenCalledOnce();
   vi.resetModules(); h.role.mockResolvedValue({ data: null, error: null });
   const nextRequest = await import('./auth');

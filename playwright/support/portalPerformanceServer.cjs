@@ -129,7 +129,7 @@ function safeRecord(input) {
         resourceKind: kinds.has(row.resourceKind) ? row.resourceKind : 'other', observedAtEpochMs: number(row.observedAtEpochMs),
         responseObservedAtEpochMs: number(row.responseObservedAtEpochMs), finishedObservedAtEpochMs: number(row.finishedObservedAtEpochMs),
         failedObservedAtEpochMs: number(row.failedObservedAtEpochMs),
-        startAtEpochMs: number(row.startAtEpochMs), headersMs: number(row.headersMs), endMs: number(row.endMs),
+        startAtEpochMs: number(row.startAtEpochMs), requestStartMs: number(row.requestStartMs), headersMs: number(row.headersMs), endMs: number(row.endMs),
         status: number(row.status), failed: row.failed === true,
       })) };
   }

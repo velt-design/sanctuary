@@ -16,10 +16,12 @@ vi.mock('@/app/staff/schedule/ScheduleClient', () => ({ default: () => <div>Actu
 vi.mock('@/app/staff/schedule/SiteVisitsScheduleClient', () => ({ default: () => <div>Actual client boundary</div> }));
 vi.mock('@/app/staff/projects/design-packages/DesignPackagesClient', () => ({ default: () => <div>Actual client boundary</div> }));
 vi.mock('@/app/staff/projects/running-jobs/RunningJobsClient', () => ({ default: () => <div>Actual client boundary</div> }));
+vi.mock('@/app/staff/projects/work-queue/WorkQueueClient', () => ({ default: ({ canReviewInactiveEnquiries }: { canReviewInactiveEnquiries: boolean }) => <div data-admin-review={String(canReviewInactiveEnquiries)}>Actual client boundary</div> }));
 vi.mock('@/app/staff/projects/loadProjectsIndexInitialRead', () => ({ loadProjectsIndexInitialRead: h.initial }));
 vi.mock('@/lib/scheduling/serverSchedulePageSeed', () => ({ loadSchedulePageSeed: h.seed }));
 const loaders = [() => import('../app/dashboard/page'), () => import('../app/staff/projects/page'), () => import('../app/staff/contacts/page'),
-  () => import('../app/staff/schedule/page'), () => import('../app/staff/projects/design-packages/page'), () => import('../app/staff/projects/running-jobs/page')];
+  () => import('../app/staff/schedule/page'), () => import('../app/staff/projects/design-packages/page'), () => import('../app/staff/projects/running-jobs/page'),
+  () => import('../app/staff/projects/work-queue/page')];
 beforeEach(() => { vi.resetModules(); vi.clearAllMocks(); h.seed.mockResolvedValue(null); h.user.mockResolvedValue({ data: { user: { id: 'synthetic-user', email: 'private@example.invalid' } }, error: null }); h.role.mockResolvedValue({ data: { role: 'staff' }, error: null }); });
 const states = ['staff', 'admin', 'anonymous', 'disabled', 'revoked', 'unrecognized', 'lookup_failed'] as const;
 it.each(REGIONAL_NAVIGATION_PATHS.flatMap((path, index) => states.map(state => ({ path, index, state }))))('gates selected leaf $path ($state) without relying on a matched ancestor', async ({ path, index, state }) => {
@@ -45,9 +47,11 @@ it.each(REGIONAL_NAVIGATION_PATHS.flatMap((path, index) => states.map(state => (
     await vi.waitFor(() => expect(h.role).toHaveBeenCalledOnce());
     expect(finished).toBe(false); expect(h.seed).not.toHaveBeenCalled(); expect(h.initial).not.toHaveBeenCalled();
     release({ data: { role: state }, error: null });
-    expect(renderToStaticMarkup(await pending)).toContain('Actual client boundary');
+    const markup = renderToStaticMarkup(await pending);
+    expect(markup).toContain('Actual client boundary');
+    if (path === '/staff/projects/work-queue') expect(markup).toContain(`data-admin-review="${state === 'admin'}"`);
     expect(h.initial).not.toHaveBeenCalled(); // Navigation context cannot select a document seed.
-    if (path === '/staff/schedule') expect(h.seed).toHaveBeenCalledOnce(); else expect(h.seed).not.toHaveBeenCalled();
+    expect(h.seed).not.toHaveBeenCalled();
   }
   expect(h.user).toHaveBeenCalledOnce();
 });
