@@ -429,9 +429,17 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
           </QuoteNotice>
         ) : null}
         {displayStatus === 'ACCEPTED' ? (
-          quote.depositInvoiceDelivery === 'sent' ? (
+          quote.depositInvoiceDelivery === 'not_required' ? (
+            <QuoteNotice tone="info">
+              Revised quote accepted. Your existing payments are retained. Sanctuary Pergolas will confirm the next progress payment.
+            </QuoteNotice>
+          ) : quote.depositInvoiceDelivery === 'sent' ? (
             <QuoteNotice tone="info">
               Quote accepted. Your deposit invoice has been emailed to you.
+            </QuoteNotice>
+          ) : quote.depositInvoiceDelivery === 'not_prepared' ? (
+            <QuoteNotice tone="info">
+              Quote accepted. Sanctuary Pergolas will confirm your invoice and payment arrangements.
             </QuoteNotice>
           ) : quote.depositInvoiceDelivery === 'needs_attention' ? (
             <QuoteNotice tone="error">

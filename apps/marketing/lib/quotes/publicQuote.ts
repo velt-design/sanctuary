@@ -38,6 +38,7 @@ export type PublicQuote = {
   lineItems: PublicQuoteLineItem[];
   attachments: PublicQuoteAttachment[];
   depositInvoiceDelivery:
+    | 'not_required'
     | 'not_prepared'
     | 'prepared'
     | 'sent'
@@ -54,7 +55,7 @@ type AcceptPublicQuoteResult =
   | {
       ok: true;
       alreadyAccepted: boolean;
-      invoiceDelivery: 'sent' | 'retry_available' | 'needs_attention';
+      invoiceDelivery: 'sent' | 'retry_available' | 'needs_attention' | 'not_required';
     }
   | { ok: false; code: 'invalid' | 'expired' | 'invalid_status' | 'server'; message: string };
 
@@ -307,6 +308,9 @@ async function loadDepositInvoiceDelivery(
   quoteVersionUuid: string,
 ): Promise<PublicQuote['depositInvoiceDelivery']> {
   const supabase = getServiceSupabase();
+  const billing = await supabase.rpc('commercial_quote_acceptance_billing_mode', { p_quote_version_id: quoteVersionUuid });
+  if (billing.error) return 'not_prepared';
+  if (billing.data === 'manual') return 'not_required';
   const invoice = await supabase
     .from('deposit_invoices')
     .select('id,sent_at')
@@ -470,7 +474,7 @@ export async function acceptPublicQuoteByToken(params: {
     return {
       ok: true,
       alreadyAccepted: accepted.alreadyAccepted,
-      invoiceDelivery: accepted.invoice.sent
+      invoiceDelivery: !accepted.invoice ? 'not_required' : accepted.invoice.sent
         ? 'sent'
         : accepted.invoice.deliveryState,
     };

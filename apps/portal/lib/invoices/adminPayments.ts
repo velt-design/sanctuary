@@ -8,6 +8,7 @@ import { appIdFromUuid, uuidFromAppId } from '../supabase/mappers';
 import { supabaseServiceRole } from '../supabaseClient';
 import { loadProjectPaymentLedger } from './paymentLedger';
 import { projectInvoiceSchedule } from './paymentScheduleProjection';
+import { loadQuoteScopeFunding } from './scopeFunding';
 import { listDepositInvoicesForProject, sendDepositInvoiceNow } from './server';
 import type {
   AdminInvoiceCreateInput,
@@ -119,7 +120,8 @@ export async function getProjectInvoiceSchedule(
   const primary = acceptedQuotes.find((accepted) => !(accepted.quote as any).commercial_scope_id) ?? acceptedQuotes[0];
   const versionUuid = String(primary.version.id);
   const versionId = appIdFromUuid('qv', versionUuid);
-  const acceptedScheduleQuotes = acceptedQuotes.map((accepted) => {
+  const acceptedScheduleQuotes = await Promise.all(acceptedQuotes.map(async (accepted) => {
+    const funding = await loadQuoteScopeFunding(String(accepted.version.id));
     const total = Number(accepted.version.total_inc_gst_cents ?? 0) || 0;
     const terms = normalizeStoredQuotePaymentSchedule(
       accepted.version.payment_terms,
@@ -128,6 +130,7 @@ export async function getProjectInvoiceSchedule(
     );
     return {
       quoteVersionId: appIdFromUuid('qv', String(accepted.version.id)),
+      funding,
       quoteRef: String(accepted.quote.quote_ref ?? ''),
       quoteVersionNumber: Number(accepted.version.version_number ?? 0) || 0,
       commercialScopeKind: accepted.quote.commercial_scope_id ? 'add_on' as const : 'base' as const,
@@ -138,7 +141,7 @@ export async function getProjectInvoiceSchedule(
         amountIncGstCents: term.resolvedAmountIncGstCents,
       })),
     };
-  });
+  }));
   const primarySchedule = acceptedScheduleQuotes.find((quote) => quote.quoteVersionId === versionId)!;
   return projectInvoiceSchedule({
     acceptedQuotes: acceptedScheduleQuotes,
