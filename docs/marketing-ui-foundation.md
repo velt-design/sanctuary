@@ -16,6 +16,28 @@ slot at320/390/1440 widths, cookie reload and exposure, plus layout interaction 
 return behavior. Screenshots are private review evidence. Local fixture success,
 independent rendered review, protected preview and live measurements are distinct;
 this continuation is not yet a published experiment or the full automatic loop.
+## Photographic guide hub (22 October 2026)
+
+`app/pergola-guides/page.tsx`, `content.ts` and `guides.module.css` own the
+page's short opening, four planning choices (cost, outdoor rooms, blinds and
+roof comparison), three frame/form guides and three separate service links.
+Questions precede the photographs so visitors can choose without scrolling past
+a decorative hero. Existing subject-specific photographs include an actually
+lowered mesh blind. Full-card links have a single destination, visible keyboard
+focus and stable geometry. The 1440px outer canvas bounds wide layouts.
+
+The page uses the existing responsive `--header-height` offset for ordinary
+fixed navigation. Its two enquiry actions use `buildAssistedEnquiryHref` with
+the existing help intent and hub source context. The canonical Contact owner
+continues to own the form, audiences, optional files, native fallback and retry.
+No new enquiry or configurator implementation is introduced.
+
+All ten destinations remain visible. Only the hub's ItemList now describes its
+seven guide cards; the three service links sit beneath a design/build heading.
+Shared registry, individual-route schema, global navigation and sitemap are not
+migrated. The retired route stylesheet and its unused shared card-hover overrides
+are removed. Jordan accepted the protected preview and authorised production on 22 October.
+Operational publication and production verification remain separate release checks.
 
 ## Commercial photographic composition (21 October 2026)
 
