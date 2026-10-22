@@ -2862,6 +2862,17 @@ schema/provider test. No Graph dispatcher or credential loader exists.
 
 Run node scripts/test-project-sharepoint-files-pglite.mjs for the disposable real-migration contract and vitest run apps/portal/lib/projects/sharePointFiles plus the ProjectSharePointFilesPanel component test for source boundaries and ordinary file tasks. Fixtures do not establish live Graph coverage or real-provider browser/download acceptance. Activation checks are in [Project SharePoint files](project-sharepoint-files.md).
 
+Private-preview checks live in `sharePointFiles/previews` and the existing
+`projectFilePreviewCache`/`projectFilePreviewPreparation` tests. They execute the
+actual cache migration, actor denial, lease/rebind/expiry/cleanup, strong-version
+conversion and bounded NDJSON parser, including a 5 MiB PDF above the buffered
+hosting limit. Local actual-frame evidence must start with an empty cache and
+include initial warmup, at least 20 distinct selections across folders, fixed
+cadence beyond 32 entries, cumulative transfers above 32 MiB, renewal, Refresh,
+source/access failure and owner cancellation. Prepared-only timing with a hidden
+readiness wait is not sustained browsing evidence. Native Storage denial and
+hosted streaming/source acceptance remain separate required activation checks.
+
 The isolated browser harness now clicks the real component's View/Download actions through the real open handler with synthetic auth/Graph boundaries. It verifies a PNG renders, an action failure can be retried, and a synthetic original arrives with its expected filename/bytes/hash. PDF bytes and MIME are checked separately; native PDF viewing and actual SharePoint/Rhino acceptance remain outstanding. Database regression coverage includes linked, queued, running and completed project deletion, audit retention and stale completion rejection.
 
 ## Steady retained-ad integration, local candidate (22 October 2026)

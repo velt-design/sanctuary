@@ -6,7 +6,7 @@ import { graphAccessToken } from './accessToken';
 import { batchBodies, boundedJson, currentProjectLibrary, itemSchema, ITEM_SELECT as SELECT, LIBRARY_SELECT, parseItem, validateLibrary, type DriveItem } from './graphProtocol';
 import { currentGraphContainment } from './graphContainment';
 
-export async function createGraph(cfg: SharePointConfig, assertion: string, signal: AbortSignal, fetcher: typeof fetch = fetch, observer?: ProjectFilesTimingObserver, scope?: { rootId: string; itemId: string; download?: boolean }) {
+export async function createGraph(cfg: SharePointConfig, assertion: string, signal: AbortSignal, fetcher: typeof fetch = fetch, observer?: ProjectFilesTimingObserver, scope?: { rootId: string; itemId: string; download?: boolean; additionalItemIds?: string[] }) {
   if (!assertion || assertion.length > 20000) throw new ProjectFilesError('access_required');
   const token = await measureProjectFilesPhase('token', observer, () => graphAccessToken(cfg, assertion, signal, fetcher, async exchangeSignal => boundedJson(await fetcher(`https://login.microsoftonline.com/${cfg.tenantId}/oauth2/v2.0/token`, {
     method: 'POST', redirect: 'error', cache: 'no-store', signal: exchangeSignal, headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -22,8 +22,10 @@ export async function createGraph(cfg: SharePointConfig, assertion: string, sign
   const currentItems = new Map<string, DriveItem>();
   if (scope) {
     graphId.parse(scope.rootId); graphId.parse(scope.itemId);
-    const ids = [...new Set([scope.rootId, scope.itemId])];
-    const requests = ids.map((id, index) => ({ id: `item${index}`, method: 'GET', url: (base + encodeURIComponent(id) + '?$select=' + SELECT + (scope.download && id === scope.itemId ? ',@microsoft.graph.downloadUrl' : '')).replace('https://graph.microsoft.com/v1.0', '') }));
+    const ids = [...new Set([scope.rootId, scope.itemId, ...(scope.additionalItemIds ?? [])])];
+    if (ids.length > 10) throw new ProjectFilesError('invalid_request', 400);
+    ids.forEach(id => graphId.parse(id));
+    const requests = ids.map((id, index) => ({ id: `item${index}`, method: 'GET', url: (base + encodeURIComponent(id) + '?$select=' + SELECT + (scope.download && (id === scope.itemId || scope.additionalItemIds?.includes(id)) ? ',@microsoft.graph.downloadUrl' : '')).replace('https://graph.microsoft.com/v1.0', '') }));
     const proof = await measureProjectFilesPhase('source_batch', observer, async () => requests.length === 1
       ? new Map([['item0', await boundedJson(await request('https://graph.microsoft.com/v1.0' + requests[0].url))]])
       : batchBodies(await boundedJson(await request('https://graph.microsoft.com/v1.0/$batch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ requests }) })), requests.map(value => value.id), token.invalidate));

@@ -2,8 +2,9 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { ProjectFilesError } from './types';
+import { graphId } from './ids';
+export { graphId } from './ids';
 
-export const graphId = z.string().min(1).max(240).regex(/^[a-zA-Z0-9_!.-]+$/);
 export function sharePointConfig() {
   try {
     if (process.env.SANCTUARY_SHAREPOINT_ENABLED !== 'true') throw new Error();

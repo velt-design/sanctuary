@@ -1448,6 +1448,20 @@ mandatory. No production migration or capability is implied by fixture passes.
 
 Migration 20261022090001_project_sharepoint_files adds private project_files_control, project_file_roots, project_folder_provisions and project_file_events. RLS and revoked direct grants preserve the boundary. User-bound project_files_read rechecks active confirmed staff/admin membership; service-only project_files_admin imports explicit evidence-backed roots and project_files_provision manages leased attempts. A dark insert trigger queues only future projects atomically. See [Project SharePoint files](project-sharepoint-files.md).
 
+Candidate migration `20261023020001_project_private_preview_cache` adds the private
+`project-file-previews` Storage bucket (JPEG/PDF only, 5 MiB/object), versioned
+preview manifest, active-folder scans, fenced build leases and durable object
+cleanup reservations. All four private tables enable RLS and revoke browser and
+service direct grants. Only service-role `project_file_preview_cache` can command
+them; no Storage policy grants direct authenticated/anonymous access. Cache
+commands validate current binding/project/root identity, but are not a recipient
+or SharePoint authorization substitute. Byte routes must first prove fresh user
+session, current staff/project roots and current Graph source identity/version.
+Global 512 MiB/4096-object admission includes abandoned uploads, copies expire
+logically after 24 hours, and finite queued cleanup survives feature disablement.
+Native PostgreSQL/Storage policy and API verification remain activation checks;
+the PGlite tests establish SQL command behavior, not hosted Storage enforcement.
+
 Project deletion cascades only local bindings/provisioning rows. A private deletion trigger snapshots root/job evidence before cleanup; audit project UUIDs intentionally survive without a live-project FK. No provider file deletion is dispatched. Late completion cannot resurrect deleted project metadata, and completion locks parent before job to match deletion order. The disposable migration contract covers imported, completed, pending and running deletion.
 
 ## Steady creative inventory candidate (22 October 2026)

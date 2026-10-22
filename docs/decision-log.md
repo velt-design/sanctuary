@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-23: Prepare private representations without caching access authority
+
+Every new preview batch retains fresh recipient session/RPC and current app-only
+SharePoint containment/version proof before private bytes leave the server.
+Already delivered recipient bytes can display locally on selection; a second
+per-selection authority round trip defeats preloading without protecting a new
+disclosure. Bind derived MIME/size/hash to a variant receipt rather than an
+original-file receipt. Bound memory, work, abandoned uploads and cleanup, then
+verify sustained browsing without hiding waits behind readiness probes.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
 ## 2026-10-23: Recover file locality using the complete ordinary task
 
 The Singapore canary lowered authentication time but regressed both matched
