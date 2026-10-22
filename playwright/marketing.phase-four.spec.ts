@@ -781,17 +781,16 @@ test('professional form submits canonical context without personal analytics pro
   expect(JSON.stringify(leadEvent)).not.toContain('Example Architects');
 });
 
-test('guide hub keeps all ten distinctions visible without repeated controls', async ({
+test('guide hub separates seven guides and three services without repeated controls', async ({
   page,
 }) => {
   for (const viewport of targetViewports) {
     await page.setViewportSize(viewport);
     await page.goto('/pergola-guides', { waitUntil: 'networkidle' });
     const main = page.locator('main[data-pergola-guide-hub]');
-    await expect(main.locator('[data-guide-card]')).toHaveCount(10);
-    await expect(main.locator('.guide-hub-card__summary:visible')).toHaveCount(
-      10,
-    );
+    await expect(main.locator('[data-guide-card]')).toHaveCount(7);
+    await expect(main.locator('[data-service-link]')).toHaveCount(3);
+    await expect(main.locator('[data-guide-card] p:visible')).toHaveCount(7);
     await expect(main.locator('details[data-guide-description]')).toHaveCount(0);
     await expect(main).not.toContainText('About this guide');
     expect(
