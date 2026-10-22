@@ -1,6 +1,7 @@
-import { act } from 'react';
+import { act, useLayoutEffect, useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
+import type { DashboardPersonalTask } from '@/lib/dashboard/types';
 import DashboardTasksCard from './DashboardTasksCard.client';
 
 describe('DashboardTasksCard', () => {
@@ -11,6 +12,25 @@ describe('DashboardTasksCard', () => {
   afterEach(() => {
     document.body.innerHTML = '';
     vi.restoreAllMocks();
+  });
+
+  it.each([true,false])('commits a truthful ready task source directly (nonempty=%s), retaining the actual input',nonempty=>{
+    const commits:string[]=[];
+    function Probe({source}:{source:DashboardPersonalTask[]|null}){
+      const ref=useRef<HTMLDivElement>(null);
+      useLayoutEffect(()=>{commits.push(ref.current?.textContent??'');},[source]);
+      return <div ref={ref}><DashboardTasksCard initialTasks={source} pending={source===null}/></div>;
+    }
+    const view=renderIntoDocument(<Probe source={null}/>);
+    const field=view.container.querySelector('[aria-label="New dashboard task"]');
+    expect(commits.at(-1)).toContain('Reading personal tasks');
+    expect(commits.at(-1)).not.toContain('No personal tasks yet');
+    const tasks=nonempty?[{id:'fictional-task',title:'Review fictional plan',completedAt:null,createdAt:'2026-10-22T00:00:00Z',updatedAt:'2026-10-22T00:00:00Z'}]:[];
+    view.rerender(<Probe source={tasks}/>);
+    expect(view.container.querySelector('[aria-label="New dashboard task"]')).toBe(field);
+    expect(commits.at(-1)).toContain(nonempty?'Review fictional plan':'No personal tasks yet');
+    if(nonempty)expect(commits.at(-1)).not.toContain('No personal tasks yet');
+    view.unmount();
   });
 
   it('crosses out a task when checked', async () => {

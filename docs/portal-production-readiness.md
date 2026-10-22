@@ -1,5 +1,20 @@
 # Portal Production Readiness
 
+## Progressive Portal current local status (22 October 2026)
+
+Active journeys are implemented and locally verified on candidate18, including
+canonical Files integration and identity-safe Workbench recovery. Normal and
+protected builds, unchanged route budgets, whole-repository types/lint, five
+strict changed-file gates and the complete Portal suite pass (896 files and 5701
+tests; one pre-existing skipped file and 13 skipped tests). Independent scoped
+review passed. Production dependency audit reports zero vulnerabilities; the
+toolchain retains only its two approved existing xlsx exceptions. Current
+required CI and Sanctuary production approval remain. No provider or business
+writes were performed. Real provider speed and protected saved geometry remain unverified. The approved
+staging Files source returned403, so actual protected provider/stream browser
+evidence was not obtained; this is a proof limit, not an inferred defect. See
+`ui-foundation.md`, `design-workbench-architecture.md` and `testing-and-qa.md`.
+
 ## Complete Work experiment (22 October 2026, local)
 
 The accepted local experiment starts the existing complete Work reads during

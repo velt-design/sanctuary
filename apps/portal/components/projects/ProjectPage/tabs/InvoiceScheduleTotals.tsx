@@ -7,21 +7,22 @@ function formatMoneyFromCents(value: number): string {
 }
 
 /** Read-only presentation of the authoritative schedule; never sums quote versions. */
-export default function InvoiceScheduleTotals({ schedule }: { schedule: ProjectInvoiceSchedule }) {
+export default function InvoiceScheduleTotals({ schedule,pending=false }: { schedule: ProjectInvoiceSchedule|null;pending?:boolean }) {
   const { closed } = useProjectCommercialContext();
+  const unknown=pending?'Reading…':'Unavailable';
   return (
 <MetricGrid
             ariaLabel="Accepted project quote payment totals"
             columns={4}
             items={[
-              { label: closed ? 'Recorded contract value' : 'Job total', value: formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quotes and issued standalone work' },
-              ...((schedule.standaloneTotalIncGstCents ?? 0) > 0 ? [
-                { label: 'Accepted quote value', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
-                { label: 'Standalone invoice value', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Issued, non-void standalone work' },
+              { label: closed ? 'Recorded contract value' : 'Job total', value: schedule?formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents):unknown, detail: 'Accepted quotes and issued standalone work' },
+              ...((schedule?.standaloneTotalIncGstCents ?? 0) > 0 ? [
+                { label: 'Accepted quote value', value: formatMoneyFromCents(schedule!.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
+                { label: 'Standalone invoice value', value: formatMoneyFromCents(schedule!.standaloneTotalIncGstCents ?? 0), detail: 'Issued, non-void standalone work' },
               ] : []),
-              { label: 'Recorded payments', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Net project payment ledger' },
-              { label: 'Open invoice balance', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid; excludes work still to invoice' },
-              { label: closed ? 'Uncovered contract value' : 'Still to invoice', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: closed ? 'A recorded difference, not an instruction to bill. Review the closure agreement.' : 'Agreed work not yet covered by payments or open invoices' },
+              { label: 'Recorded payments', value: schedule?formatMoneyFromCents(schedule.paidIncGstCents):unknown, detail: schedule&&schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Net project payment ledger' },
+              { label: 'Open invoice balance', value: schedule?formatMoneyFromCents(schedule.outstandingIncGstCents):unknown, detail: 'Issued and unpaid; excludes work still to invoice' },
+              { label: closed ? 'Uncovered contract value' : 'Still to invoice', value: schedule?formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents):unknown, detail: closed ? 'A recorded difference, not an instruction to bill. Review the closure agreement.' : 'Agreed work not yet covered by payments or open invoices' },
             ]}
           />
   );

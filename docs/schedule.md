@@ -1,5 +1,44 @@
 # Schedule
 
+## Progressive real interface candidate (22 October 2026)
+
+The Schedule page starts its request-owned seed without awaiting the full Board
+or Gantt report. The real client and selected view render independently. The seed
+is consumed through the existing tracked query, normalized with `Promise.resolve`
+for React Flight thenables, matched by view, Auckland day and Gantt range, then
+retired. An unavailable initial read uses normal authenticated API recovery; schema
+not-ready keeps the legacy fallback. No shared evidence cache is added.
+
+`ScheduleBoardView` and `ScheduleGanttView` own their pending values. Gantt dates,
+calendar lines, scale and density controls are real before crews/work arrive.
+Crew rows come from actual known crew data. Missing active-view records never
+become zero totals or an empty-business claim. Board/Gantt switches retain real
+view controls; incomplete view data cannot be moved or edited. Errors and Retry
+stay within the interface. Initial read failures do not claim an unsaved command;
+Schema diagnostics remain with the established V2 schema-not-ready legacy
+fallback. Unreachable table/code repair markup was retired from generic V2 read
+errors; the only assignments to that state carry a message, never table facts. The decorative Schedule route fallback is removed.
+
+Focused component coverage includes the deferred server seed through the real
+query client under StrictMode and a void-returning Flight thenable, no duplicate
+initial browser read, and existing Board/Gantt mutation/trust regressions.
+Pending attention counts and crew membership read as pending, never zero; roster
+controls remain disabled until real crew data exists. Calendar date/scale/density
+controls remain usable. The gated fixture keeps Board/Gantt navigation inside its
+fictional route; normal Schedule navigation retains its canonical path. Its
+controlled failure consumes both automatic attempts before explicit Retry recovers.
+
+`/qa/schedule-progressive-fixture` is separately gated fictional proof of the same
+client/server-promise path, with delayed read-only loaders and no provider access.
+It does not establish hosted timing or successful production mutations.
+
+The12 lazy-budget regression came only from CSS chunk coalescing; Schedule lazy
+JavaScript sizes/hashes were unchanged. Twelve orphan Gantt presentation classes
+for retired popover/column/text owners were removed after all-consumer and dynamic
+reference searches. Actual Gantt/route regressions pass; the unchanged84,000-byte
+gzip gate remains unresolved until the next canonical compilation.
+
+
 Schedule V2 owns install planning. The Outlook site-visit agenda is a separate
 source-backed workflow at `/staff/site-visits`, available under Schedule navigation.
 

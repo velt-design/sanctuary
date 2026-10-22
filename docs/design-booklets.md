@@ -37,6 +37,26 @@ Project Detail route, and autosaves booklet choices after edits.
 Opening `/staff/design-booklets` without a project ID preserves the session-only
 Toni fixture behavior for safe standalone and QA use.
 
+## Project read ownership (22 October 2026 candidate)
+
+The actual header, details fields, page heading/navigation and preview viewport
+mount while the one project-booklet GET is pending. Unknown customer/title/select
+values are blank/Reading and locked; unknown page count and printed content are
+withheld. A failed initial read is Project booklet unavailable, with Retry inside
+the same workspace, rather than an unsaved-change claim. The loaded snapshot must
+match the selected project before draft/asset edits, uploads, PDF preparation or
+autosave can run. The keyed client isolates A/B project changes and ignores late
+reads. A genuine saved draft retains its existing edits/save recovery; confirmed
+absence starts the existing approved new-project defaults/autosave behavior.
+Standalone Toni behavior, complete render model, media/PDF geometry and publication
+contracts are unchanged. Pure source-to-preview asset restoration now lives with
+its types in previewAssets.ts; the controller retains read/save/upload lifecycle.
+Focused actual-client tests cover deferred/error/Retry, same field/viewport nodes,
+no pending default writes/PDF publication, A/B isolation and existing autosave/PDF
+contracts. Optimized13 gated fictional browser review passed the same fields and
+viewport through failure/Retry/A/B selection, Next and source return. No live
+booklet mutation or generated-customer-output proof is claimed for this UI change.
+
 ## Page Model
 
 Customer-document quality is governed by the

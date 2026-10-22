@@ -1,5 +1,8 @@
 "use client";
 
+import ProjectRecentNotesEvents from "./overview/ProjectRecentNotesEvents";
+import ProjectWorkFilesCard from "./overview/ProjectWorkFilesCard";
+import workStyles from "./overview/ProjectWorkSection.module.css";
 import ProjectCommercialDetails from './overview/ProjectCommercialDetails';
 import ProjectNextVisit from '@/components/site-visits/ProjectNextVisit';
 
@@ -28,19 +31,15 @@ import { CommercialProjectNotice } from '../ProjectCommercialContext';
 const overviewModules = {
   commercial: () => import("./overview/ProjectCurrentDesignCommercialCard"),
   orientation: () => import("./overview/ProjectOrientationBand"),
-  history: () => import("./overview/ProjectRecentNotesEvents"),
   work: () => import("./overview/ProjectWorkSection"),
   payment: () => import("./overview/ProjectPaymentPositionQuery"),
   correspondence: () => import("./overview/ProjectCorrespondenceQuery"),
-  files: () => import("./overview/ProjectWorkFilesCard"),
 };
 const ProjectCurrentDesignCommercialCard = lazy(overviewModules.commercial);
 const ProjectOrientationBand = lazy(overviewModules.orientation);
-const ProjectRecentNotesEvents = lazy(overviewModules.history);
 const ProjectWorkSection = lazy(overviewModules.work);
 const ProjectPaymentPositionQuery = lazy(overviewModules.payment);
 const ProjectCorrespondenceQuery = lazy(overviewModules.correspondence);
-const ProjectWorkFilesCard = lazy(overviewModules.files);
 
 export async function preloadOverviewModules(): Promise<void> {
   await Promise.all(Object.values(overviewModules).map((load) => load()));
@@ -114,39 +113,25 @@ function orientationFreshness(
   };
 }
 
-function ProjectWorkState({
-  children,
-  model = "unavailable",
-}: {
-  children: ReactNode;
-  model?: string;
-}) {
-  return (
-    <section
-      aria-label="Project Work"
-      data-project-work-section="true"
-      data-project-work-model={model}
-    >
-      {children}
-    </section>
-  );
-}
-
 export default function OverviewTab({
   snapshot,
+  projectId = snapshot?.project.id ?? "",
   snapshotContentReady,
   snapshotState,
   host,
+  readOnly = false,
   onAccessEnding,
 }: {
-  snapshot: ProjectPageSnapshot;
+  snapshot: ProjectPageSnapshot | null;
+  projectId?: string;
   snapshotContentReady: boolean;
   snapshotState: ProjectSnapshotLoadState;
   host: string;
+  readOnly?: boolean;
   onAccessEnding?: (status: number) => void;
 }) {
   const queryClient = useQueryClient();
-  const { commandQuery } = useActiveProjectOverviewReads(host, snapshot.project.id);
+  const { commandQuery } = useActiveProjectOverviewReads(host, projectId);
   const accessEndingStatus =
     commandQuery.error instanceof ApiError &&
     [401, 403, 404].includes(commandQuery.error.status)
@@ -155,7 +140,7 @@ export default function OverviewTab({
   const workModelMismatch =
     accessEndingStatus === null &&
     Boolean(
-      commandQuery.data && commandQuery.data.workModel !== snapshot.workModel,
+      snapshot && commandQuery.data && commandQuery.data.workModel !== snapshot.workModel,
     );
   const commandCentreState: CommandCentreState =
     accessEndingStatus !== null
@@ -172,10 +157,10 @@ export default function OverviewTab({
                 ? "pending"
                 : "failed";
   const projectWorkControlsStale =
-    commandCentreState !== "ready" || snapshotState !== "fresh";
-  const orientationProjection = currentProjectWork(snapshot, commandQuery.data);
+    readOnly || commandCentreState !== "ready" || snapshotState !== "fresh";
+  const orientationProjection = snapshot ? currentProjectWork(snapshot, commandQuery.data) : undefined;
   const refreshProjectWorkModel = () => {
-    void invalidateProjectWorkReads(queryClient, host, snapshot.project.id);
+    void invalidateProjectWorkReads(queryClient, host, projectId);
   };
 
   useEffect(() => {
@@ -201,177 +186,62 @@ export default function OverviewTab({
     ) : null;
 
   let projectWork: ReactNode;
-  let commercial: ReactNode;
-
   if (accessEndingStatus !== null) {
-    projectWork = (
-      <ProjectWorkState>
-        <DataStatePanel
-          state="unavailable"
-          title="Project access unavailable"
-          description="Your access changed while this Overview was open."
-        />
-      </ProjectWorkState>
-    );
-    commercial = (
-      <DataStatePanel
-        state="unavailable"
-        title="Commercial state unavailable"
-        description="Your access changed while this Overview was open."
-      />
-    );
-  } else if (commandQuery.data) {
-    commercial = (
-      <>
-      <Suspense
-        fallback={
-          <Card padding="compact">
-            <LoadingSkeleton
-              rows={4}
-              columns={2}
-              label="Loading commercial summary"
-            />
-          </Card>
-        }
-      >
-        <ProjectCommercialDetails data={commandQuery.data.currentDesign}>
-        <ProjectCurrentDesignCommercialCard
-          data={commandQuery.data.currentDesign}
-          projectId={snapshot.project.id}
-        />
-        </ProjectCommercialDetails>
-        <ProjectPaymentPositionQuery
-          projectId={snapshot.project.id}
-          host={host}
-          onAccessEnding={onAccessEnding}
-        />
+    projectWork = <DataStatePanel state="unavailable" title="Project access unavailable"
+      description="Your access changed while this Overview was open." />;
+  } else if (workModelMismatch) {
+    projectWork = <DataStatePanel state="error" title="Project work is updating"
+      description="No project-work action is available until the latest server reads agree."
+      onRetry={refreshProjectWorkModel} />;
+  } else if (commandQuery.data && snapshot) {
+    projectWork = commandQuery.data.workModel === "v2" ? (
+      <Suspense fallback={<p role="status">Reading project work controls…</p>}>
+        <ProjectWorkSection embedded workModel="v2" projectId={projectId} host={host}
+          projectWork={orientationProjection ?? commandQuery.data.projectWork}
+          ownerLabel={commandQuery.data.owner.owner?.displayName}
+          pipelineStage={snapshot.project.stage} stale={projectWorkControlsStale}
+          onRefresh={() => void commandQuery.refetch()} />
       </Suspense>
-      </>
-    );
-
-    if (workModelMismatch) {
-      projectWork = (
-        <ProjectWorkState model="mismatch">
-          <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
-            <DataStatePanel
-              state="error"
-              title="Project work is updating"
-              description="No project-work action is available until the latest server reads agree."
-              onRetry={refreshProjectWorkModel}
-            />
-          </ProjectWorkFilesCard>
-        </ProjectWorkState>
-      );
-    } else {
-      projectWork = (
-        <Suspense
-          fallback={
-            <ProjectWorkState model={commandQuery.data.workModel}>
-              <Card padding="compact">
-                <LoadingSkeleton rows={5} label="Loading Project Work" />
-              </Card>
-            </ProjectWorkState>
-          }
-        >
-          {commandQuery.data.workModel === "v2" ? (
-            <ProjectWorkSection
-              workModel="v2"
-              projectId={snapshot.project.id}
-              host={host}
-              projectWork={orientationProjection ?? commandQuery.data.projectWork}
-              ownerLabel={commandQuery.data.owner.owner?.displayName}
-              positionLabel={projectPositionLabel(snapshot.project.stage, (orientationProjection ?? commandQuery.data.projectWork).effectiveState, commandQuery.data.currentDesign, (orientationProjection ?? commandQuery.data.projectWork).closedOutcome)}
-              pipelineStage={snapshot.project.stage}
-              stale={projectWorkControlsStale}
-              onRefresh={() => void commandQuery.refetch()}
-            />
-          ) : (
-            <ProjectWorkState model="unavailable">
-              <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
-                <DataStatePanel
-                  state="unavailable"
-                  title="Project Work is not ready"
-                  description="No project-work action is available until the portfolio rollout is complete."
-                />
-              </ProjectWorkFilesCard>
-            </ProjectWorkState>
-          )}
-        </Suspense>
-      );
-    }
-  } else if (commandQuery.isPending) {
-    projectWork = (
-      <ProjectWorkState model="pending">
-        <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
-          <LoadingSkeleton rows={5} label="Loading Project Work" />
-        </ProjectWorkFilesCard>
-      </ProjectWorkState>
-    );
-    commercial = (
-      <Card padding="compact">
-        <LoadingSkeleton
-          rows={4}
-          columns={2}
-          label="Loading current design and commercial state"
-        />
-      </Card>
-    );
+    ) : <DataStatePanel state="unavailable" title="Project Work is not ready"
+      description="No project-work action is available until the portfolio rollout is complete." />;
+  } else if (commandQuery.isPending || (!snapshot && !commandQuery.isError)) {
+    projectWork = <p role="status">{!snapshot && snapshotState === "refresh-failed" ? "Project work needs verified project details. Retry the project read above." : "Reading project work…"}</p>;
   } else {
-    projectWork = (
-      <ProjectWorkState model="failed">
-        <ProjectWorkFilesCard projectId={snapshot.project.id} host={host}>
-          <DataStatePanel
-            state="error"
-            title="Could not load the Project Overview"
-            description="No next action or commercial position is available until the server view loads."
-            onRetry={() => void commandQuery.refetch()}
-          />
-        </ProjectWorkFilesCard>
-      </ProjectWorkState>
-    );
-    commercial = null;
+    projectWork = <DataStatePanel state="error" title="Could not load the Project Overview"
+      description="No next action is available until the server view loads."
+      onRetry={() => void commandQuery.refetch()} />;
   }
+  const commercial = accessEndingStatus === null ? (
+    <>
+      <ProjectCommercialDetails data={commandQuery.data?.currentDesign ?? null} pending={commandQuery.isPending}>
+        {commandQuery.data ? (
+          <Suspense fallback={<p role="status">Reading commercial details…</p>}>
+            <ProjectCurrentDesignCommercialCard previewOnly={readOnly} data={commandQuery.data.currentDesign} projectId={projectId} />
+          </Suspense>
+        ) : commandQuery.isPending ? <p role="status">Reading current design and commercial state…</p> : (
+          <DataStatePanel state="error" title="Commercial state unavailable"
+            description="The current design and price could not be loaded. Use the Project Overview retry." />
+        )}
+      </ProjectCommercialDetails>
+      <Suspense fallback={<p role="status">Reading payment interface…</p>}>
+        <ProjectPaymentPositionQuery readOnly={readOnly} projectId={projectId} host={host} onAccessEnding={onAccessEnding} />
+      </Suspense>
+    </>
+  ) : null;
 
-  const history = snapshotContentReady ? (
-    <Suspense
-      fallback={
-        <Card padding="compact" data-recent-notes-events="true">
-          <LoadingSkeleton rows={4} label="Loading recent notes and events" />
-        </Card>
-      }
-    >
-      <ProjectRecentNotesEvents
-        projectId={snapshot.project.id}
-        notes={snapshot.notes}
-        events={snapshot.activity}
-      />
-    </Suspense>
-  ) : (
-    <Card
-      title="Recent notes and events"
-      padding="compact"
-      data-recent-notes-events="true"
-    >
-      <AlertBanner
-        tone={snapshotState === "refresh-failed" ? "warning" : "info"}
-        title={
-          snapshotState === "refresh-failed"
-            ? "Saved history is not complete"
-            : "Updating recent history"
-        }
-      >
-        {snapshotState === "refresh-failed"
-          ? "The latest refresh failed. No partial history is presented as complete."
-          : "Recent notes and server events appear after the complete snapshot loads."}
-      </AlertBanner>
-    </Card>
-  );
+  const history = <ProjectRecentNotesEvents projectId={projectId} readOnly={readOnly} pending={snapshotState !== "refresh-failed"}
+    notes={snapshotContentReady && snapshot ? snapshot.notes : null}
+    events={snapshotContentReady && snapshot ? snapshot.activity : null}
+    statusPanel={!snapshotContentReady ? <AlertBanner tone={snapshotState === 'refresh-failed' ? 'warning' : 'info'}
+      title={snapshotState === 'refresh-failed' ? 'Saved history is not complete' : 'Updating recent history'}>
+      {snapshotState === 'refresh-failed' ? 'The latest refresh failed. No partial history is presented as complete.' : 'Recent notes and server events appear after the complete snapshot loads.'}
+    </AlertBanner> : null} />;
 
   return (
     <div data-project-overview="true">
       <ProjectOverviewLayout
         state={commandCentreState}
-        orientation={
+        orientation={snapshot ?
           <Suspense
             fallback={
               <Card padding="compact">
@@ -383,7 +253,7 @@ export default function OverviewTab({
               </Card>
             }
           >
-            <ProjectOrientationBand
+            <div inert={readOnly}><ProjectOrientationBand
               project={snapshot.project}
               host={host}
               operationalState={orientationProjection?.effectiveState}
@@ -391,18 +261,22 @@ export default function OverviewTab({
                 commandCentreState,
                 commandQuery.data?.generatedAt,
               )}
-            />
-          </Suspense>
+            /></div>
+          </Suspense> : null
         }
         exception={exception}
-        projectWork={<>{projectWork}{accessEndingStatus === null && <CommercialProjectNotice projectId={snapshot.project.id} view="activity" />}</>}
-        commercial={<>{commercial}{accessEndingStatus === null && <ProjectNextVisit projectId={snapshot.project.id} host={host} onAccessEnding={onAccessEnding} />}</>}
+        projectWork={<><ProjectWorkFilesCard projectId={projectId} host={host} className={workStyles.card}
+          positionLabel={snapshot && commandQuery.data && commandQuery.data.workModel === "v2" ? projectPositionLabel(snapshot.project.stage, (orientationProjection ?? commandQuery.data.projectWork).effectiveState, commandQuery.data.currentDesign, (orientationProjection ?? commandQuery.data.projectWork).closedOutcome) : undefined}>
+          {commandQuery.data && snapshot && commandQuery.data.workModel === 'v2' && !workModelMismatch ? projectWork : (
+            <section data-project-work-section="true" data-project-work-model={workModelMismatch ? 'mismatch' : commandQuery.isPending || !snapshot ? 'pending' : 'failed'}>{projectWork}</section>
+          )}</ProjectWorkFilesCard>{accessEndingStatus === null && <CommercialProjectNotice projectId={projectId} view="activity" />}</>}
+        commercial={<>{commercial}{accessEndingStatus === null && <ProjectNextVisit projectId={projectId} host={host} onAccessEnding={onAccessEnding} />}</>}
         recent={
           <>
             {accessEndingStatus === null && (
               <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} label="Loading customer emails" /></Card>}>
-                <ProjectCorrespondenceQuery projectId={snapshot.project.id} onAccessEnding={onAccessEnding}
-                  project={{ customerEmail: snapshot.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
+                <ProjectCorrespondenceQuery projectId={projectId} onAccessEnding={onAccessEnding}
+                  project={{ customerEmail: snapshot?.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
               </Suspense>
             )}
             {history}

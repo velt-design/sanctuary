@@ -34,6 +34,7 @@ export default function ScheduleGanttCompactView({
   rows,
   attentionMode,
   attentionCount,
+  readState,
   controlsDisabled,
   crews,
   hiddenCrewIds,
@@ -55,7 +56,8 @@ export default function ScheduleGanttCompactView({
   rangeEnd: string;
   rows: readonly GanttRow[];
   attentionMode: GanttAttentionMode;
-  attentionCount: number;
+  attentionCount: number | null;
+  readState?: 'pending' | 'unavailable';
   controlsDisabled: boolean;
   crews: ScheduleCrewFilterOption[];
   hiddenCrewIds: ReadonlySet<string>;
@@ -103,13 +105,14 @@ export default function ScheduleGanttCompactView({
             type="button"
             className={styles.ganttSegmentButton}
             aria-pressed={attentionMode === 'attention'}
-            disabled={controlsDisabled}
+            disabled={controlsDisabled || Boolean(readState)}
             onClick={() => onAttentionModeChange('attention')}
           >
-            Needs attention <span className={styles.ganttSegmentCount}>{attentionCount}</span>
+            Needs attention <span className={styles.ganttSegmentCount}>{attentionCount??(readState==='unavailable'?'Unavailable':'Reading…')}</span>
           </button>
         </div>
         <ScheduleCrewFilter
+          readState={readState}
           crews={crews}
           hiddenCrewIds={hiddenCrewIds}
           hiddenItemCount={hiddenItemCount}

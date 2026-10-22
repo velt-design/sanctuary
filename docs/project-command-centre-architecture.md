@@ -1,5 +1,25 @@
 # Project Operational Command Centre Architecture
 
+## Actual Overview before metadata (22 October 2026 candidate)
+
+The existing request-owned summary/snapshot/command/payment readers and their
+identity/grant/cancellation rules are unchanged. Their client now mounts the
+actual ProjectPageFrame before the summary. Work and the dedicated full Files tab, commercial
+price disclosure, payment metric slots and history disclosure retain their owners
+through pending and full reads. Complete command/payment facts can appear
+independently. Metadata editors wait for a genuine project summary rather than
+reading a local working copy under an invented project; work controls also await
+verified metadata and the existing fresh projection. Full history is unknown
+until the snapshot is complete. Access-ending errors remove private content.
+The Work section can render inside its persistent Work/Original enquiry owner;
+the approved canonical FilesTab owns full-width browsing, preparation/cache and
+single-stream previews independently from project metadata;
+other callers retain the original standalone composition. No command, permission,
+pricing or projection definition changed. Synthetic scoped read adapters exist
+only as optional client inputs; production keeps the same API/Flight paths.
+Connected query/frame, identity, failure/retry and existing component regressions
+are checked locally; optimized/protected review is tracked in the owning record.
+
 ## Initial Work document experiment (22 October 2026, local)
 
 After the existing fresh page gate, `loadProjectWorkInitialRead` starts summary,

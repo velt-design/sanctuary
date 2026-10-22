@@ -54,7 +54,7 @@ vi.mock("@/components/projects/ProjectPage/ProjectPageFrame", () => ({
       data-content-ready={String(snapshotContentReady)}
       data-snapshot-state={snapshotState}
     >
-      {snapshot.project.name}
+      {snapshot?.project.name ?? "Reading project"}
       {statusPanel}
       {[401, 403, 404].map((status) => (
         <button
@@ -447,7 +447,7 @@ describe("ProjectSnapshotPageClient", () => {
         '[data-project-snapshot-state="pending"]',
       ),
     ).not.toBeNull();
-    expect(rendered.container.textContent).toContain("Opening project");
+    expect(rendered.container.textContent).toContain("Reading project");
     expect(rendered.container.textContent).not.toContain("Project unavailable");
 
     rendered.unmount();

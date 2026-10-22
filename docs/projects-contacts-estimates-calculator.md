@@ -1,5 +1,32 @@
 # Projects, Contacts, Estimates, And Calculator
 
+The 22 October progressive candidate keeps actual ProjectPageFrame/masthead/tabs
+mounted without a summary. Its nullable metadata does not fabricate a project or
+unlock local-first editors. The genuine summary enables metadata presentation;
+full/current authority still controls work and commercial commands. Work/Files,
+price, payment metrics and history keep their own interface through pending,
+failure and completion, with independent reads retained from PR261. The existing
+Projects/Contacts table owners now retain actual headers and safe filters while
+records are unknown. Contact detail now keeps its real fields and linked-project table before metadata.
+Unknown identity performs no local working-copy/alias lookup and cannot edit or
+create linked work; existing verified-identity autosave and conflict behavior is
+preserved. Linked projects can arrive independently, and read errors stay
+retryable rather than becoming endless loading or a false not-found result.
+The contact repository uses maybeSingle: confirmed zero rows mean not found;
+transport and database failures propagate, including 401/403. Contact creation
+readback preserves that error, and quote creation fails before any quote write
+when its required contact cannot be verified.
+See `ui-foundation.md` and `testing-and-qa.md` for current verification boundaries.
+
+Commercial list/detail owners and the Job Packs toolbar/table now mount before
+metadata, using their existing protected project-keyed read owners. Metadata is
+not a prerequisite for real Find/table headers. New-design/revision Calculator
+runtime still waits for genuine project identity; URL quote creation also waits
+for current commercial authority and checks it again after its estimate read.
+Confirmed full Job Pack availability retains its canonical tab coercion. These
+connected-parent corrections independently passed optimized13 after the qualified12
+review, including ordinary protected entry and metadata arrival on the same owners.
+
 Project sales-designer responsibility is separate from current phase ownership,
 drafting requests and actual visit attendance. The Marketing record drawer edits
 it through the owner-only `/api/staff/v1/projects/[projectId]/sales-designer`
@@ -80,8 +107,11 @@ the project or staff client changes and is cleared with the existing access-endi
 client boundary. It is in-session continuity, not a new durable business store.
 Commercial and project tab URL replacements preserve scroll; explicit calculator
 open/create still uses the existing focused workspace and save/lock/conflict owners.
-`CalculatorSessionBoundary` hides default controls and prevents costing until the
-selected saved inputs have hydrated. Failed loads offer retry; unchanged hydrated
+`CalculatorSessionBoundary` keeps the actual field, module, price and result-tab
+owners mounted while hiding unverified default values and disabling draft actions.
+Existing Grid gates prevent costing or default-draft persistence until the selected
+saved inputs are verified. Record/output children wait for that matching identity.
+Failed loads offer retry in the command bar; unchanged hydrated
 inputs do not receive the browser-only unsaved-work label. Contact edit transitions
 focus the first field and restore the Edit details trigger without scrolling.
 
@@ -160,7 +190,7 @@ Contacts and projects are staff-owned portal records. Marketing lead capture can
 - The Contacts workflow is a production UI-foundation consumer. Index/create/detail/import compose the shared page canvas, operational headers, controls, cards, responsive tables, truthful loading/data states, alerts, and focus-managed modal without moving the read, write, cache, lazy-boundary, or local-first owners above. At mobile widths, list tables retain identity and actions while hiding secondary columns, Contact Detail fields reflow in place, and header/breadcrumb actions preserve 44px targets. The CSV dialog traps focus, blocks close while importing, returns focus to the import trigger, and never submits during browser review evidence.
 - `POST /api/staff/v1/projects` owns project creation. The browser submits one stable project command ID plus either an existing contact ID or one stable new-contact command. The server checks normalized exact email/phone duplicate candidates, then calls the transactional `project_create_v2` RPC, which creates the project, assigns the active Enquiry to Ellen, records its V2 model marker and Active state, and seeds the first-email obligation. The same owner policy applies to website intake. Matching stable-ID replays return the committed identity; a different payload returns `PROJECT_CREATION_COMMAND_CONFLICT`. Missing V2 schema fails closed with no legacy fallback. `20260731000002_project_work_portfolio_rollout.sql` brings every pre-cutover project through the same V2 boundary from its stored stage.
 - Contact/project detail routes continue to own their respective reads and updates. `GET /api/contacts/[contactId]` is the bounded authenticated lookup used to restore a preselected contact in the project-create combobox.
-- The persistent portal content boundary renders the real header, actions, filters, and truthful "Updating projects" list frame synchronously on an ordinary Projects-index click, while keeping the sidebar available; the matching route loading boundary uses the same frame for direct route transitions. The page entrypoint does not await request search params or data; its client controller reads the current filters and date, then dismisses the pending frame after mounting. One authenticated React Query request to `GET /api/staff/v1/projects/index` loads one bounded server-filtered/sorted active/archived/all page plus only the linked contact display rows needed by that page through `staff_projects_index_v3()`. The response includes server-owned journey, detailed stage, `ACTIVE|WAITING|CLOSED|ARCHIVED` state, Project Owner, Waiting/Closed context, and one server-ranked next-action summary for only the returned page. On narrow screens the search remains visible while secondary filters collapse behind one disclosure.
+- The persistent portal content boundary retains the current actual page until Next commits the destination; it no longer covers it with a pending replica. ProjectsIndexClient owns its actual header, filters and table while rows are pending or unavailable. The route starts its matching document read after the necessary staff gate without awaiting rows; native RSC navigation keeps its existing API path. One authenticated React Query request to `GET /api/staff/v1/projects/index` loads one bounded server-filtered/sorted active/archived/all page plus linked contact display rows through `staff_projects_index_v3()`. Server-owned journey, detailed stage, operational state, owner, Waiting/Closed context and next-action summary retain their existing meaning. Search stays visible on narrow screens while secondary filters collapse behind one disclosure.
 - Projects-index reads have five states: `pending`, `cached`, `fresh`, `refresh-failed`, and `unavailable`. A response is usable only when archive, search, stage, journey, state, sort, page, and page-size identity match the current request, so one scope/filter cannot borrow another scope's rows. Known same-request rows remain visible during background refresh and network/server failure, while `401`/`403` hides them. An empty state is truthful only after a fresh successful response.
 - Reversible Projects-index writes are optimistic through the current user's QueryClient. Name, phone, address, silent stage-correction, archive, and restore feedback appears before the API settles; only the affected field/state is rolled back on rejection, a small `Saving...` marker remains visible while syncing, and success language is emitted only after server confirmation. Archive moves update active/archived/all membership and known counts together. Hard delete remains server-confirmed and is never optimistic. The data-free project-mutation browser fixture mounts this production owner, deliberately delays persistence, and records feedback/useful/background timing separately; its disabled fixture query and intercepted sample request never read or write customer tables.
 - Links to the Projects index update the canonical `/staff/projects` URL immediately, bypass the blocking route overlay, and preload route/data only on hover, focus, touch, or pointer-down. Project opening reads the freshest matching combined Projects-index response directly for its immediate project/contact shell, with the established canonical list keys retained as a compatibility fallback; a current-user global-search result is the final summary-only fallback when the project was opened from search. The exact project route and authenticated snapshot query preload only from destination intent. Mutations patch or invalidate the combined, canonical, and search caches through their existing owners.
@@ -592,3 +622,24 @@ baseline and error for retry.
 ## SharePoint project files (22 October 2026)
 
 The dedicated main Files tab fills the available project width and viewport height, with explicitly bound Jobs-library folders, multiple roots per project, safe PDF/photo previews and original downloads. The selected Explorer keeps folder/list/selected preview together, preserves scoped return state and progressively finds within actual current-folder cursor pages. MIME metadata enables source-appropriate photo browsing; selected content uses the existing protected open route and lazy canvas PDF renderer. Website enquiry attachments remain available through the source chooser. This UI increment does not change provisioning enablement or backfill historical projects. See [Project SharePoint files](project-sharepoint-files.md) for ownership, activation, recovery and acceptance limits.
+
+
+Configured-design revision now keeps its actual card, return link and action owners
+while the saved source is pending or unavailable. Calculation/edit/save require the
+verified current source; changing project/source remounts its private revision
+state so an older prepared price cannot become a new project's save action.
+Installer payout keeps its real scope, terms, acceptance, totals and history labels
+before evidence, with Reading/Unavailable values instead of zero or a fabricated
+agreement. Reload aborts the older read, keeps verified same-project evidence
+read-only during refresh, and clears evidence on401/403/404. Existing agreement
+preview, durable command identity and financial-entry permissions remain intact.
+
+The email-review selected editor now owns its real Recipient, Subject, Body,
+review-note and command fields while a matching batch/item is unknown. Fields are
+blank and locked until a genuine record; the API list/counts remain one coherent
+25-row page. Batch/filter/page and selected-item ownership prevent earlier read
+results or errors from adopting a new selection. Errors offer Retry; access-ending
+reads clear private field contents. Existing dirty-text/conflict recovery and
+browser-only synthetic review remain intact. Exact-email previews retain their
+actual canvas/layout/viewport owners, with subject/preheader/HTML unknown until the
+matching variant/revision resolves. No provider/email contract changes are made.

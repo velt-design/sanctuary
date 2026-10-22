@@ -9,7 +9,6 @@ import {
   ButtonLink,
   DataStatePanel,
   EmptyState,
-  LoadingSkeleton,
   OverflowMenu,
   SearchFilterBar,
   Table,
@@ -88,7 +87,6 @@ export default function EstimatesListView({
         </div>}
       </div>
 
-      {loading ? <LoadingSkeleton rows={4} columns={5} label="Loading estimates" /> : null}
       {error ? (
         <DataStatePanel
           state={estimates.length ? 'stale' : 'error'}
@@ -106,8 +104,7 @@ export default function EstimatesListView({
         />
       ) : null}
 
-      {estimates.length ? (
-        <SearchFilterBar
+      <SearchFilterBar
           query={query}
           onQueryChange={setQuery}
           queryPlaceholder="Search estimate names or versions"
@@ -115,7 +112,6 @@ export default function EstimatesListView({
           filters={[]}
           onClearAll={() => setQuery('')}
         />
-      ) : null}
 
       {!loading && estimates.length && !visibleEstimates.length ? (
         <EmptyState
@@ -125,8 +121,7 @@ export default function EstimatesListView({
         />
       ) : null}
 
-      {visibleEstimates.length ? (
-        <Table aria-label="Project estimates" className={styles.table}>
+      <Table aria-label="Project estimates" className={styles.table}>
           <TableHeader>
             <TableRow>
               <TableHead>Estimate</TableHead>
@@ -137,6 +132,8 @@ export default function EstimatesListView({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {loading&&!estimates.length&&<TableRow><TableCell colSpan={5}><span role="status">Reading estimates…</span></TableCell></TableRow>}
+            {error&&!estimates.length&&<TableRow><TableCell colSpan={5}>Estimates unavailable. Retry the read.</TableCell></TableRow>}
             {visibleEstimates.map((estimate) => {
               const status = estimateStatus(estimate);
               const name = estimateDisplayName(estimate, estimates);
@@ -185,8 +182,8 @@ export default function EstimatesListView({
                     <div className={styles.actions}>
                       <Button size="small" variant="secondary" onClick={open}>{openLabel}</Button>
                       <OverflowMenu label={`Actions for ${name}`} menuLabel={name} items={[
-                        { label: 'Rename', onSelect: () => onRename(estimate) },
-                        { label: 'Duplicate', disabled: !commercial.actionsAvailable, onSelect: () => onDuplicate(estimate.id) },
+                        { label: 'Rename', disabled:loading||Boolean(error)||!commercial.actionsAvailable,onSelect: () => onRename(estimate) },
+                        { label: 'Duplicate', disabled: loading||Boolean(error)||!commercial.actionsAvailable, onSelect: () => onDuplicate(estimate.id) },
                       ]} />
                     </div>
                   </TableCell>
@@ -195,7 +192,6 @@ export default function EstimatesListView({
             })}
           </TableBody>
         </Table>
-      ) : null}
     </div>
   );
 }

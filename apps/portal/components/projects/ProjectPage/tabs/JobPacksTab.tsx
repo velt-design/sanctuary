@@ -8,7 +8,6 @@ import styles from './JobPacksTab.module.css';
 import {
   Badge,
   DataStatePanel,
-  LoadingSkeleton,
   Table,
   TableBody,
   TableCell,
@@ -16,6 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/foundation';
+import { useProjectCommercialContext } from '../ProjectCommercialContext';
+import {ApiError} from '@/lib/repo/apiClient';
 import { formatPortalDate } from '@/lib/format/portalDateTime';
 import { estimateDetailQueryOptions } from '@/lib/queries/projectEstimates';
 import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
@@ -26,7 +27,8 @@ function formatDate(value: string | null | undefined): string {
   return formatPortalDate(value, { fallback: '-' });
 }
 
-export default function JobPacksTab({ projectId }: { projectId: string }) {
+export default function JobPacksTab({ projectId, readOnly = false }: { projectId: string; readOnly?: boolean }) {
+  const commercial = useProjectCommercialContext();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -47,7 +49,11 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     enabled: Boolean(selectedEstimateId),
   });
 
-  const selectedDetail = selectedDetailQuery.data ?? null;
+  const listDenied=jobPacksQuery.error instanceof ApiError&&[401,403,404].includes(jobPacksQuery.error.status);
+  const jobPacks=listDenied?[]:jobPacksQuery.data;
+  const candidate=selectedDetailQuery.data;
+  const denied=selectedDetailQuery.error instanceof ApiError&&[401,403,404].includes(selectedDetailQuery.error.status);
+  const selectedDetail = !denied&&candidate?.id===selectedEstimateId&&candidate.projectId===projectId?candidate:null;
 
   const updateParams = useCallback(
     (next: {
@@ -97,8 +103,9 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
   }, [selectedEstimateId, updateParams]);
 
   const adapter = useJobPackSpreadsheetAdapter({
+    readOnly: readOnly || !commercial.ready,
     hostKey,
-    detail: selectedDetail,
+    onRetry:()=>{if(!selectedDetailQuery.isFetching)void selectedDetailQuery.refetch();},detail: selectedDetail,pending:selectedDetailQuery.isPending||(!selectedDetail&&selectedDetailQuery.isFetching),error:selectedDetailQuery.isError&&!selectedDetailQuery.isFetching?'Job pack unavailable. Retry the read.':null,refreshing:selectedDetailQuery.isFetching,
     sheet,
     onSheetChange: handleSheetChange,
     onBackToList: handleBackToList,
@@ -117,26 +124,8 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
   if (selectedEstimateId) {
     return (
       <div className={styles.wrapper}>
-        {selectedDetailQuery.isLoading ? (
-          <LoadingSkeleton rows={5} columns={5} label="Loading job pack" />
-        ) : selectedDetailQuery.isError ? (
-          <DataStatePanel
-            state="error"
-            title="Job pack unavailable"
-            description={selectedDetailQuery.error instanceof Error ? selectedDetailQuery.error.message : 'Failed to load this job pack.'}
-            onRetry={() => void selectedDetailQuery.refetch()}
-          />
-        ) : !adapter ? (
-          <DataStatePanel
-            state="unavailable"
-            title="Workbook unavailable"
-            description="This estimate snapshot is missing the data needed to render the spreadsheet view."
-          />
-        ) : (
-          <div className={styles.sheetWrap}>
-            <SpreadsheetPageTemplate adapter={adapter} embedded zoomDockPlacement="viewport" />
-          </div>
-        )}
+        {selectedDetailQuery.isError&&!selectedDetailQuery.isFetching&&<DataStatePanel state="error" title="Job pack unavailable" description="Retry the verified source read." onRetry={()=>{if(!selectedDetailQuery.isFetching)void selectedDetailQuery.refetch();}}/>}
+        <div className={styles.sheetWrap}>{adapter&&<SpreadsheetPageTemplate adapter={adapter} embedded zoomDockPlacement="viewport" />}</div>
       </div>
     );
   }
@@ -150,7 +139,6 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      {jobPacksQuery.isLoading ? <LoadingSkeleton rows={4} columns={4} label="Loading job packs" /> : null}
       {jobPacksQuery.isError ? (
         <DataStatePanel
           state="error"
@@ -160,7 +148,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
         />
       ) : null}
 
-      {!jobPacksQuery.isLoading && !jobPacksQuery.isError && !(jobPacksQuery.data?.length ?? 0) ? (
+      {!jobPacksQuery.isLoading && !jobPacksQuery.isError && !(jobPacks?.length ?? 0) ? (
         <DataStatePanel
           state="empty"
           title="No job packs yet"
@@ -168,8 +156,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
         />
       ) : null}
 
-      {jobPacksQuery.data?.length ? (
-        <Table aria-label="Job packs" className={styles.packTable}>
+      <Table aria-label="Job packs" className={styles.packTable}>
             <TableHeader>
               <TableRow>
                 <TableHead>Design</TableHead>
@@ -179,7 +166,9 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {jobPacksQuery.data.map((jobPack) => (
+              {jobPacksQuery.isPending&&<TableRow><TableCell colSpan={5}><span role="status">Reading job packs…</span></TableCell></TableRow>}
+              {jobPacksQuery.isError&&!(jobPacks?.length??0)&&<TableRow><TableCell colSpan={5}>Job packs unavailable.</TableCell></TableRow>}
+              {jobPacks?.map((jobPack) => (
                 <TableRow
                   key={jobPack.id}
                   className={styles.rowClickable}
@@ -202,7 +191,6 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
               ))}
             </TableBody>
         </Table>
-      ) : null}
     </div>
   );
 }

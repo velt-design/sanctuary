@@ -175,7 +175,6 @@ export default function QuotesListView({
         </Card>
       ) : null}
 
-      {quotesLoading ? <p className={styles.note}>Loading quotes…</p> : null}
       {quotesError ? (
         <DataStatePanel
           state={quotes.length ? "stale" : "error"}
@@ -202,8 +201,8 @@ export default function QuotesListView({
         </div>
       ) : null}
 
-      {quotes.length ? (
-        <SearchFilterBar
+      {quotesLoading&&quotes.length>0&&<p role="status">Updating quote versions. Earlier verified versions remain below.</p>}
+      <SearchFilterBar
           query={query}
           onQueryChange={setQuery}
           queryPlaceholder="Search quote names or references"
@@ -211,9 +210,8 @@ export default function QuotesListView({
           filters={[]}
           onClearAll={() => setQuery("")}
         />
-      ) : null}
 
-      {historicalCount > 0 ? <label className={styles.historyToggle}><input type="checkbox" checked={showHistory} onChange={(event) => setShowHistory(event.target.checked)} /> Show historical versions ({historicalCount}){query.trim() ? <span>Search includes history</span> : null}</label> : null}
+      <label className={styles.historyToggle}><input type="checkbox" checked={showHistory} onChange={(event) => setShowHistory(event.target.checked)} /> Show historical versions ({quotesLoading&&!quotes.length?'Reading…':quotesError&&!quotes.length?'Unavailable':historicalCount}){query.trim() ? <span>Search includes history</span> : null}</label>
 
       {!quotesLoading && quotes.length && !visibleQuotes.length ? (
         <EmptyState
@@ -222,8 +220,7 @@ export default function QuotesListView({
         />
       ) : null}
 
-      {visibleQuotes.length ? (
-        <div className={styles.tableWrap}>
+      <div className={styles.tableWrap}>
           <table className={styles.listTable}>
             <thead>
               <tr>
@@ -235,6 +232,8 @@ export default function QuotesListView({
               </tr>
             </thead>
             <tbody>
+              {quotesLoading&&!quotes.length&&<tr><td colSpan={5} role="status">Reading quote versions…</td></tr>}
+              {quotesError&&!quotes.length&&<tr><td colSpan={5}>Quote versions unavailable. Retry the read.</td></tr>}
               {visibleQuotes.map((quote) => {
                 const expired = quote.status !== "ACCEPTED" && isExpired(quote.expiresAt);
                 const quoteSyncPending =
@@ -342,18 +341,18 @@ export default function QuotesListView({
                           {
                             label: "Rename quote",
                             onSelect: () => renameQuote(quote),
-                            disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                            disabled: quotesLoading||Boolean(quotesError)||!commercial.actionsAvailable||isLocalQuoteId(quote.id) || quoteSyncPending,
                           },
                           ...(isAdmin && canDelete ? [{
                             label: "Delete draft quote",
                             destructive: true,
                             onSelect: () => deleteQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
-                            disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                            disabled: quotesLoading||Boolean(quotesError)||!commercial.actionsAvailable||isLocalQuoteId(quote.id) || quoteSyncPending,
                           }] : []),
                           ...(isAdmin && canSupersede ? [{
                             label: supersedePendingId === quote.id ? "Marking superseded..." : "Mark superseded",
                             onSelect: () => supersedeQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
-                            disabled: supersedePendingId !== null,
+                            disabled: quotesLoading||Boolean(quotesError)||!commercial.actionsAvailable||supersedePendingId !== null,
                           }] : []),
                         ]}
                       />
@@ -364,7 +363,6 @@ export default function QuotesListView({
             </tbody>
           </table>
         </div>
-      ) : null}
 
       {createOpen ? (
         <QuoteModal label="Create quote" onClose={closeCreate}>

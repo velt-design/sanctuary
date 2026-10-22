@@ -77,6 +77,13 @@ describe('ContactsIndexClient', () => {
 
   afterEach(() => { document.body.innerHTML = ''; });
 
+  it('keeps real columns and typed search across a pending-to-complete read',()=>{
+    let pending=true;useContactsIndexData.mockImplementation(params=>indexResult(pending?'pending':'fresh',[contact],params.search));
+    const view=renderIntoDocument(<ContactsIndexClient/>),table=view.container.querySelector('table'),header=view.container.querySelector('thead'),search=view.container.querySelector<HTMLInputElement>('#contactSearch')!;
+    expect(header?.textContent).toContain('Email');expect(view.container.textContent).toContain('Reading contacts');expect(search.disabled).toBe(false);act(()=>changeInputValue(search,'Alex'));
+    pending=false;view.rerender(<ContactsIndexClient/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('thead')).toBe(header);expect(view.container.querySelector('#contactSearch')).toBe(search);expect(search.value).toBe('Alex');expect(view.container.textContent).toContain('Alex Mason');view.unmount();
+  });
+
   it('renders fresh contacts and dismisses the instant pending frame', () => {
     const rendered = renderIntoDocument(<ContactsIndexClient />);
     expect(rendered.container.querySelector('[data-contacts-index-state="fresh"]')).not.toBeNull();
@@ -89,7 +96,7 @@ describe('ContactsIndexClient', () => {
   it.each(['pending', 'cached'] as const)('shows a truthful updating state for %s data', (state) => {
     useContactsIndexData.mockReturnValue(indexResult(state));
     const rendered = renderIntoDocument(<ContactsIndexClient />);
-    expect(rendered.container.textContent).toContain(state === 'pending' ? 'Updating contacts...' : 'Updating...');
+    expect(rendered.container.textContent).toContain(state === 'pending' ? 'Reading contacts…' : 'Updating...');
     expect(rendered.container.textContent).not.toContain('No contacts found.');
     rendered.unmount();
   });

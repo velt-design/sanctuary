@@ -7,6 +7,7 @@ import { usePortalSession } from "@/components/auth/PortalAuthProvider";
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
 import { useUnsavedChangesGuard } from "@/components/ui/foundation/useUnsavedChangesGuard";
 import styles from "./QuotesTab.module.css";
+import { useProjectCommercialContext } from "../ProjectCommercialContext";
 import QuoteDetailView from "./QuoteDetailView";
 import QuotesListView from "./QuotesListView";
 import QuoteWorkflowDialogs from "./QuoteWorkflowDialogs";
@@ -162,6 +163,9 @@ export default function QuotesTab({
   const createPendingRef = useRef(false);
   const manualCreateIntentRef = useRef<{ signature: string; intentId: string } | null>(null);
   const savePendingRef = useRef(false);
+  const commercial = useProjectCommercialContext();
+  const commercialActionsRef = useRef(commercial.actionsAvailable);
+  commercialActionsRef.current = commercial.actionsAvailable;
   const sendPendingRef = useRef(false);
   const preparedRetryPendingRef = useRef(false);
   const {
@@ -273,10 +277,8 @@ export default function QuotesTab({
     [],
   );
 
-  useEffect(() => {
-    if (!detail) return;
-    resetDraftFormFromDetail(detail);
-  }, [detail?.id, resetDraftFormFromDetail]);
+  const [draftOwner,setDraftOwner]=useState<string|null>(null);
+  if(draftOwner!==(detail?.id??null)){setDraftOwner(detail?.id??null);if(detail)resetDraftFormFromDetail(detail);}
 
   const getLiveUnitPriceIncGstCents = useCallback(
     (item: QuoteLineItem): number => {
@@ -540,7 +542,7 @@ export default function QuotesTab({
 
   const createDraftQuoteFromEstimate = useCallback(
     async (estimateId: string, opts?: { closeModal?: boolean; internalName?: string | null }) => {
-      if (!estimateId || createPendingRef.current) return;
+      if (!commercialActionsRef.current || !estimateId || createPendingRef.current) return;
       createPendingRef.current = true;
       setCreateBusy(true);
       try {
@@ -551,6 +553,10 @@ export default function QuotesTab({
           (await queryClient.fetchQuery(
             estimateDetailQueryOptions(hostKey, estimateId),
           ));
+        if (!commercialActionsRef.current) {
+          autoCreateRef.current = null;
+          return;
+        }
         const sharedInternalName = quotes.find((quote) =>
           (quote.commercialScopeId ?? null) === (estimateDetail.commercialScopeId ?? null) && quote.internalName,
         )?.internalName;
@@ -605,7 +611,7 @@ export default function QuotesTab({
   );
 
   const handleCreateQuote = async () => {
-    if (createPendingRef.current) return;
+    if (!commercial.actionsAvailable || createPendingRef.current) return;
     if (createMode === "estimate") {
       if (!createEstimateId) return;
       await createDraftQuoteFromEstimate(createEstimateId, {
@@ -656,7 +662,7 @@ export default function QuotesTab({
       autoCreateRef.current = null;
       return;
     }
-    if (estimatesLoading) return;
+    if (!commercial.actionsAvailable || estimatesLoading) return;
     const token = `${projectId}:${createFromEstimateId}`;
     if (autoCreateRef.current === token) return;
     autoCreateRef.current = token;
@@ -673,6 +679,7 @@ export default function QuotesTab({
       updateParams({ createFromEstimateId: null });
     });
   }, [
+    commercial.actionsAvailable,
     createDraftQuoteFromEstimate,
     createFromEstimateId,
     estimates,
@@ -1152,49 +1159,16 @@ export default function QuotesTab({
     });
   };
 
-  if (selectedId && detailLoading) {
-    return <p className={styles.note}>Loading quote…</p>;
-  }
-
-  if (selectedId && quoteDetailQuery.error) {
-    const message =
-      quoteDetailQuery.error instanceof Error
-        ? quoteDetailQuery.error.message
-        : String(quoteDetailQuery.error);
-    return (
-      <div
-        className={styles.wrapper}
-        role="region"
-        aria-label="Quote detail"
-        data-quotes-view="detail"
-      >
-        <button
-          type="button"
-          className={styles.backButton}
-          onClick={() => selectQuote(null)}
-        >
-          &larr; Back to quotes
-        </button>
-        <DataStatePanel
-          state="error"
-          title="Could not load this quote"
-          description={message}
-          onRetry={() => void quoteDetailQuery.refetch()}
-        />
-      </div>
-    );
-  }
-
-  if (selectedId && detail) {
+  if (selectedId) {
     const generatedJobPack =
       generatedJobPacks.find(
-        (jobPack) => jobPack.quoteVersionId === detail.id,
+        (jobPack) => jobPack.quoteVersionId === detail?.id,
       ) ?? null;
     const canGenerateJobPack =
-      Boolean(detail.sourceEstimateVersionId) &&
-      (detail.status === "SENT" ||
-        detail.status === "ACCEPTED" ||
-        detail.status === "DECLINED") &&
+      Boolean(detail?.sourceEstimateVersionId) &&
+      (detail?.status === "SENT" ||
+        detail?.status === "ACCEPTED" ||
+        detail?.status === "DECLINED") &&
       !generatedJobPack;
     const openJobPackHref = generatedJobPack
       ? `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
@@ -1206,6 +1180,9 @@ export default function QuotesTab({
       <QuoteDetailView
         projectId={projectId}
         detail={detail}
+        pending={detailLoading||quoteDetailQuery.isFetching}
+        readError={!quoteDetailQuery.isFetching&&quoteDetailQuery.error?String(quoteDetailQuery.error instanceof Error?quoteDetailQuery.error.message:quoteDetailQuery.error):''}
+        onRetry={()=>{if(!quoteDetailQuery.isFetching)void quoteDetailQuery.refetch();}}
         draftDirty={draftDirty}
         draftSyncPending={draftSyncPending}
         guardUnsavedDraft={guardUnsavedDraft}
@@ -1227,11 +1204,13 @@ export default function QuotesTab({
         saveDraft={() => void handleSaveDraft()}
         canDeleteQuote={isAdmin}
         openDeleteConfirm={() => {
+          if(!detail||detailLoading||quoteDetailQuery.isError)return;
           quoteDeletion.requestDelete({ id: detail.id, quoteRef: detail.quoteRef, versionNumber: detail.versionNumber });
           setMoreActionsOpen(false);
         }}
         canSupersedeQuote={isAdmin}
         supersedeQuote={() => {
+          if(!detail||detailLoading||quoteDetailQuery.isError)return;
           setMoreActionsOpen(false);
           void quoteSuperseding.supersedeQuote({
             id: detail.id,
@@ -1239,7 +1218,7 @@ export default function QuotesTab({
             versionNumber: detail.versionNumber,
           });
         }}
-        supersedeBusy={quoteSuperseding.pendingId === detail.id}
+        supersedeBusy={quoteSuperseding.pendingId === detail?.id}
         openJobPackHref={openJobPackHref}
         canGenerateJobPack={canGenerateJobPack}
         generateJobPack={() => void handleGenerateJobPack()}
@@ -1248,7 +1227,6 @@ export default function QuotesTab({
         quotePdfPreviewLoading={quotePdfPreviewLoading}
         quotePdfPreviewError={quotePdfPreviewError}
         quotePdfPreviewData={quotePdfPreviewData}
-        quotePdfPreviewKey={quotePdfPreviewKey}
         draftExpiry={draftExpiry}
         setDraftExpiry={setDraftExpiry}
         draftReference={draftReference}
@@ -1281,7 +1259,7 @@ export default function QuotesTab({
         acceptBusy={acceptBusy}
         decline={() => void handleDecline()}
         declineBusy={declineBusy}
-        dialogs={
+        dialogs={detail&&
           <>
           <QuoteWorkflowDialogs
             detail={detail}
@@ -1348,7 +1326,7 @@ export default function QuotesTab({
       quotes={quotes}
       quotesLoading={quotesLoading}
       quotesError={quotesError}
-      retryQuotes={() => void quotesQuery.refetch()}
+      retryQuotes={() => {if(!quotesQuery.isFetching)void quotesQuery.refetch();}}
       openCreate={openCreateModal}
       selectQuote={(quoteId) => selectQuote(quoteId)}
       prefetchQuoteDetail={prefetchQuoteDetail}

@@ -23,6 +23,159 @@ coverage. Google tests assert the panel leaves the viewport with its section
 rather than relying on the removed observer state. Local CUA inspection and
 authored browser coverage are recorded separately; emulation is not hardware.
 
+## Preview/booklet and connected parent checks (22 October 2026 candidate13)
+
+Use `/qa/invoice-artifact-preview-fixture?progressive=1&readFailure=1`, then Preview
+invoice. Metadata1400ms and independent PDF700ms fail once each; Retry in the same
+actual modal, select PDF/email/narrow/text while unknown and verify same summary,
+mode controls and viewport. This existing route intercepts only its exact fictional
+metadata GET and local QA PDF; all other API commands are refused.
+`/qa/invoice-artifact-preview-fixture?quoteEmail=1&readFailure=1` mounts the actual
+QuoteEmailPreviewPanel. Retry preview and switch DraftA/B rapidly during its220ms
+debounce plus1400ms source delay; no older subject/HTML may commit. Exact HTML is
+pre-rendered by the existing delivery renderer from fictional inputs. Only this
+fictional preview POST is answered in-browser; every send/other command is403.
+No protected real quote render/send POST is required for review.
+
+`/qa/design-booklet-workbench-fixture?progressive=1&readFailure=1` uses the actual
+project-linked client with its1400ms exact fictional GET. It starts with blank
+locked customer/title/select fields and unknown pages, then Retry booklet restores
+the same fields/preview viewport. `&project=b` selects the second fictional project.
+Source connected tests cover rapid A/B late results, no pending default saves,
+uploads or PDF publication, confirmed saved recovery and existing autosave/PDF.
+All fixture writes are403, including draft saves, signed uploads and PDF publish.
+These delays are controlled scenarios, never production timings or write proof.
+
+Recheck ordinary protected Project Commercial Estimates/Quotes/Invoices and Job
+Packs with metadata pending, then same-project read recovery/Back. Their actual
+query/table owners must mount before metadata; quote auto-create and Calculator
+new-design lifecycle must remain paused until genuine current authority. Connected
+actual-parent tests cover ProjectMainTabs through dynamic modules, the existing
+TanStack query and actual table/Find; source-authority regressions cover quote URL
+intent and authority loss during its estimate read. Quote line true-empty is
+asserted separately from pending/error in the actual QuotesTab path. R10/R11 independently closed on compiled13 with ordinary protected metadata-pending
+entry, same table/Find nodes and failed Quote→Retry→genuine rows. Schedule12 failed
+the mandatory84,000-byte lazy limit at84,132;13 passed at83,839 after orphan CSS
+retirement, with all other canonical route gates unchanged and passing.
+
+## Real progressive interface verification (22 October 2026 candidate)
+
+Exercise Schedule page/client/Board/Gantt tests and Marketing's progressive host,
+Commercial, initial-seed, module-loading and Financials suites. Pending controls
+must be the same actual nodes after complete data arrives. Verify no-view page
+selection defaults to Overview, filtered totals and all Designer totals wait for
+complete Hub membership, unfiltered complete Commercial source values appear with
+source time and pending context, and a later denial clears all
+private report values. Source/Designer/Financial data is never a partial zero.
+
+For actual optimized Flight proof, use the gated fictional
+`/qa/schedule-progressive-fixture?view=gantt` (1800 ms server seed; later reads
+1200 ms) and `/qa/marketing-performance-fixture?progressive=1` (Commercial500,
+Designer1100, Hub2400 ms). These availability controls test scheduling and continuity, not
+production speed. Record actual interface, first useful complete values and final
+content separately. Check view/date/detail return and failed reads/Retry, source
+identity, and actual control node continuity. Fixture commands are not a proof of
+business writes. Fixture pages reject disabled flags and production environments;
+protected staff/API routes keep their normal access controls.
+
+
+The same Marketing fixture with `?progressive=1&view=financials&financeSection=profit&financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=accrual`
+uses nested Flight parts from the actual Financial reader. Its gated
+`/qa/marketing-performance-fixture/financial-read?from=2026-09-01&to=2026-09-30&basis=accrual&section=profit`
+uses the same real bounded response/parser for subsequent Refresh, dates and basis.
+Controlled source delays are organisation100, essential periods500 and independent
+months1800 ms, using the existing two workers and exact-period deduplication.
+Observe complete selected metrics/comparisons/accounts before monthly completion,
+then all six exact periods, same control nodes, account detail/close and period changes.
+`financeScenario=partial` makes secondary domains honestly unavailable;
+`failure`, `late-denial` and `cleanup-failure` exercise fatal clearing. Change back
+to complete using the existing fictional scenario selector and Retry. No real
+provider/authentication or mutation backend is used. Probe actual HTTP part arrival
+and nested Flight independently of UI observations after optimized compilation;
+`data-financial-current=ready` requires genuine selected report values, while
+`data-financial-complete=true` requires the complete validated response.
+
+Connected Financial regressions cover real response/parser to actual Financials,
+StrictMode, nested void-returning Flight thenables, Refresh with prior full evidence,
+basis and A/B/A retirement, late invalidation, Retry, malformed/truncated/oversized
+streams, exact canonical reconstruction, early fresh authority, pool cancellation,
+source-once period reuse and cleanup after started workers settle. JSON/auth API
+regressions remain unchanged and negotiated authority/fixture denial are explicit.
+
+Remaining Hub views use the same gated Marketing fixture with
+`progressive=1&view=enquiries|sales|portfolio` and a 2400 ms complete Hub seed.
+Metric/table/chart owners and safe grouping/sort/evidence/date controls must exist
+before it; failure/Retry must preserve the same underlying table and unknown values.
+`failure=1` makes the initial source unavailable; remove it before ordinary Retry.
+Bank/AR/AP use `progressive=1&view=financials&financeSection=bank|receivables|payables`
+with a 1600 ms complete family seed; the existing fictional scenario selector then
+controls later reads. Verify Find text survives recovery, no false zero/empty state,
+and details require a genuine row. No test invents a partial cohort/currency total.
+
+Protected Finance composition proof is GET-only after existing staff/finance
+authority, using `/staff/payments?view=history` and Mapping without an invoice or
+with an invalid/nil invoice selection for unavailable/Retry only. Local pilot
+route admission may be enabled with provider/payment/observation/email effects
+disabled. Do not open Mapping with a genuine invoice for this read-only proof:
+verified context automatically POSTs inspection on mount, even without clicking
+an inspection button. Genuine inspection, confirmation, creation, resume, approval
+and payment actions are outside this proof.
+
+Use the gated fictional `/qa/portal-progressive-fixture?view=mapping` lane for
+connected form/confirmation reset checks; its commands are blocked. Source tests
+use the actual server stream with deferred repository evidence and preserve row
+action guidance/flags. Client tests cover no inspection before genuine context,
+unavailable/Retry and the same Find node, with mocked read/command boundaries.
+
+The gated `/qa/portal-progressive-fixture?view=dashboard` uses actual Dashboard
+queries with the same bounded server response and client stream parser as the
+protected API. Fictional source delays are portfolio350, state600, tasks900,
+work1200, estimates1400, activity1800 and snapshot2200 ms. Its explicitly gated
+`/qa/portal-progressive-fixture/dashboard-read` endpoint returns only these fictional
+sources. The staff API's authority is unchanged. `dashboardFailure=1` makes the
+first fixture read fail only the independent snapshot; complete sections stay
+visible and the ordinary manual Retry succeeds. The banner's fictional
+Refresh triggers the ordinary query invalidation path. Record HTTP frame arrival
+and completion privately, and observe actual UI separately after optimized build;
+source promises and browser-created streams alone do not prove Next/HTTP delivery.
+`data-dashboard-portfolio` and `data-project-state-counts` distinguish ready values
+from `data-dashboard-background-ready`, which requires the complete aggregate.
+
+`view=sheet` uses actual RunningJobs/Spreadsheet owners with an1800 ms fictional
+read. Visits remain independently650 ms. `sheetFailure=1` and `visitsFailure=1`
+fail once before ordinary Retry. Verify same-node controls, safe pending filters,
+zoom, return and no fabricated record rows. Domain links retain protected targets.
+
+`view=calculator&editEstimateId=fictional-saved-design` mounts actual CalculatorGridClient
+and its real draft/session/workspace owners. The fictional local restore takes500 ms
+and saved design1600 ms. `calculatorFailure=1` fails that design read once before
+normal Retry. Verify actual fields/result tabs before read, selection and node
+continuity, restored length8.4, and no costing request or default persistence while
+saved identity is unknown. Save is disabled; fictional persistence never accesses
+customer storage. The costing provider is deliberately unavailable, so this route
+proves read/interface recovery rather than a verified price or business save.
+
+Focused coverage includes actual Grid/session, Dashboard source-once assembly,
+response/parser/QueryClient integration, StrictMode, queue cancellation, Refresh,
+independent source failure, malformed/truncated streams, byte limits, fixture
+denial and contact repository/query/readback/quote prerequisites. Existing broad
+performance harness and budgets remain regression checks: their legacy heading,
+shell and route-progress "usefulContent" metrics do not establish this task's
+actual-interface, first-complete-useful-data or full-completion milestones.
+
+
+The same gated route's `view=project` mounts actual ProjectSnapshotPageClient,
+frame, header, tabs and Overview. Controlled fictional command/payment/summary/
+full-snapshot reads are650/900/1200/2400 ms. `project=b` selects a separate fictional
+record; the A/B controls exercise rapid identity changes. `projectFailure=1`
+fails each source once, followed by its ordinary Retry. Header tabs remain safe
+while metadata is pending. Commands are read-only, ancillary reads are synthetic,
+and all network mutations are refused. The Projects return opens the fictional
+list workspace. This route does not represent live mutation or provider coverage.
+The actual-query regression covers StrictMode read count, header/tab DOM identity,
+pending tab selection, initial failure/retry and A/B late-result isolation.
+
+
 ## Exact preparation recovery (22 October 2026)
 
 scripts/test-meta-creative-ledger-db.mjs installs the forward recovery migration
@@ -2637,3 +2790,102 @@ schema/provider test. No Graph dispatcher or credential loader exists.
 Run node scripts/test-project-sharepoint-files-pglite.mjs for the disposable real-migration contract and vitest run apps/portal/lib/projects/sharePointFiles plus the ProjectSharePointFilesPanel component test for source boundaries and ordinary file tasks. Fixtures do not establish live Graph coverage or real-provider browser/download acceptance. Activation checks are in [Project SharePoint files](project-sharepoint-files.md).
 
 The isolated browser harness now clicks the real component's View/Download actions through the real open handler with synthetic auth/Graph boundaries. It verifies a PNG renders, an action failure can be retried, and a synthetic original arrives with its expected filename/bytes/hash. PDF bytes and MIME are checked separately; native PDF viewing and actual SharePoint/Rhino acceptance remain outstanding. Database regression coverage includes linked, queued, running and completed project deletion, audit retention and stale completion rejection.
+
+### Actual operational owner lane
+
+`/qa/portal-progressive-fixture?view=costing|mapping|payout` means three separate
+view values, not a literal pipe-delimited URL. Append `&operationalFailure=1` for
+initial unavailable reads and use Retry overview, Check Xero records or Reload to
+recover. The actual Costing control centre/history, Mapping review/default forms
+and Installer payout sheet own both pending and ready states. Controlled fictional
+server context/overview delays are700/1800 ms and subsequent read delays1200 ms;
+they are not production timing measurements. Costing and Mapping command guards
+are explicitly read-only; payout responses deny edit permission and its fictional
+transport rejects writes. No genuine invoice inspection/provider command is
+permitted by this lane. Existing fixture enable/preview guards still apply.
+
+For Financial section handoff, observe committed DOM while switching completed
+Money owed/Bills in both directions, basis and applied custom dates. A newly
+selected read must be Reading/aria-busy until its own result, with no one-render
+Unavailable or inherited error. Genuine terminal failure must still become
+Unavailable with Retry. Previously verified same-query Refresh evidence remains
+explicitly dated; fatal validity failures clear it.
+
+### Commercial and email actual-owner lane (candidate12)
+
+- `/qa/project-page-shell-fixture?commercial=1&progressive=1&tab=quotes&quoteId=qv_clarity_3`: fresh selected Quote detail, actual Back/metadata/line/payment/send-log owners; append `&readFailure=1` for failure then Retry quote. Back returns the real quote search/list; search/history controls remain usable while reads run.
+- `/qa/project-page-shell-fixture?commercial=1&progressive=1&tab=job-packs&estimateId=est_clarity_2&sheet=materials`: real spreadsheet/toolbar before estimate and override reads. Switch to Summary while overrides are pending, then back to Materials. The same shared column definitions fill when the required complete source arrives. Retry job pack recovers a failed required read. The coherent fixture's commands/unlisted APIs remain403; no business commands or PDF generation are exercised.
+- `/qa/project-page-shell-fixture?commercial=1&progressive=1&tab=invoices`: complete payment totals can arrive from the independent schedule before invoice history. Actual search and columns precede both; no zero amount is invented.
+- `/qa/email-review-fixture?progressive=1&readFailure=1`: existing30-record fictional browser-only API with350/900/1200 ms session/list/detail delays. Select Example project1, observe actual disabled Recipient/Subject/Body, Retry draft after the first selected-read failure; select1 then4 quickly to prove an older result cannot replace the selected record. Back returns the same list. Synthetic commands only affect this browser; no provider send exists.
+- `/qa/email-preview-workbench-fixture?progressive=1&readFailure=1`: existing exact local HTML renderer, delayed1200 ms per read. Actual layout/focus/viewport/theme/zoom and subject/preheader owners precede HTML. Try again and Retry preview recover. This mode rejects every send request. Empty initial iframe/viewport is explicitly unknown, never a fabricated email body.
+
+These delays establish controlled state ordering, not production latency. The
+protected endpoints/auth/API JSON contracts are unchanged. Optimized12 browser coverage passed with the documented R10/R11 defects; both
+independently closed on13. Optimized13 also passed preview/Booklet recovery and
+identity journeys. Earlier accepted Schedule/Dashboard/Financial/admin proof is
+reused where source is unchanged. Current local candidate18 passes all six Portal plus separate Schedule gates
+with unchanged thresholds.
+
+
+### Object-first Workbench actual-reader lane (22 October 2026)
+
+Use `/qa/design-workbench-fixture?fixture=multi-house-u-two-pergola&progressive=1`.
+This existing opt-in hidden route mounts the actual WorkbenchReadHost and live
+EstimateClient/store/rails/viewport after a900ms context read and a1400ms dependent
+exact-estimate read. Plan/3D/Sheet/Back and the same disabled Save control exist
+before either read; no fake object rows or geometry are supplied while pending.
+These are fixed synthetic delays, not measured production latency.
+
+Append `&scenario=failure` for terminal selected-estimate503, `&scenario=denied`
+for status-less PostgrestError42501 clearing, `&scenario=empty` for genuine no-estimate and `&source=b` for the
+second fictional identity. Retry workbench uses the same actual host control/transition and a fixture-only
+read adaptor that router.replace navigates to the complete scenario. Production
+Retry still uses ordinary router.refresh. Independent optimized review and connected router-owned navigation tests verify
+this recovery; no history-only URL substitution is used.
+Read A/Read B perform actual RSC URL navigation; Fail read/Deny read select a
+new source read, and Refresh verified source uses ordinary router.refresh. Check
+same-selection contents retained read-only, no borrowed A labels/runtime during
+B, no old Save callbacks, mode/node continuity, late-result retirement and Back
+to the existing baked multi-object fixture. Protected ordinary Project→Workbench
+entry/return must be checked separately; this fixture is not auth/provider proof.
+
+Only the existing baked object-first draft is seeded into the existing browser
+store under a fictional owner and two fictional keys; prior owner is restored on
+unmount. Every API request is403 and all record commands remain read-only. The
+normal reader's project/estimate authority, exact selection/fallback and geometry
+inputs are unchanged. Existing non-progressive fixtures keep their old behavior;
+progressive mode rejects fixtures without an object-first draft. Focused tests use
+the real runtime/store/rails with the heavy viewport renderer substituted and
+assert two house/two pergola records plus nonempty genuine house shapes. Existing
+pergola diagnostics are preserved, not relabelled valid. Independent optimized
+read-state/identity/recovery proof passes; do not infer live persistence, protected
+saved geometry or production-scale speed from this lane.
+
+
+Canonical integration includes main9411232a (approved Files277 and
+landing279) with exact upstream SQL/operator code, no execution. A retained
+pre-integration stash preserves every prior tracked/untracked path. Files remains
+its full project tab with prepared directory/read state, scoped memory cache,
+original downloads and one protected progressive PDF stream. The nullable main
+Project frame passes its route identity to the actual FilesTab before metadata;
+no snapshot is fabricated. Overview/Work no longer owns obsolete embedded file
+props. Shared PDF tests cover byte pending/error/source clearing plus stream
+chunk delivery/completion and identity replacement without extra HTTP ranges.
+Legacy read test fixtures now accept nullable metadata and assert the actual
+Job Packs owner plus snapshot Retry, retaining all source counts, denial eviction,
+canonical availability coercion and route-change isolation. Incoming Graph/SQL
+implementation and operator enablement are unchanged; this is composition proof.
+The approved staging Files source returned403, so this task did not obtain actual
+protected provider/stream browser evidence. This is a proof limit, not an inferred
+product defect. Incoming accepted Files capability is retained; connected stream
+and real byte-PDF composition evidence remain separate.
+
+The current local candidate18 passes normal/protected builds, unchanged bundle
+gates, repository types/lint, five strict changed-file gates and the complete
+Portal suite (896 files, 5701 tests; one pre-existing skipped file and 13 skipped
+tests). Scoped independent review is complete. Dashboard fresh complete sections
+survived an independent failure with the same nodes; withholding old aggregate
+journey counts is covered by source/regression evidence. That browser fault did
+not take, and focus refetch prevented a new isolated Retry capture; prior verified
+recovery evidence is retained. Current required CI and Sanctuary production
+approval remain. No real provider or business commands were exercised.

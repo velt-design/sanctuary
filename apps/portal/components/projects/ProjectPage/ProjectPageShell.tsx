@@ -8,7 +8,9 @@ import styles from './ProjectPage.module.css';
 
 export default function ProjectPageShell({
   snapshot,
+  projectId = snapshot?.project.id ?? "",
   host,
+  readOnly = false,
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
@@ -17,8 +19,10 @@ export default function ProjectPageShell({
   onProjectAccessEnding,
   statusPanel,
 }: {
-  snapshot: ProjectPageSnapshot;
+  snapshot: ProjectPageSnapshot | null;
+  projectId?: string;
   host: string;
+  readOnly?: boolean;
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
@@ -31,7 +35,9 @@ export default function ProjectPageShell({
     <section className={styles.fullWidthShell} data-project-page-shell="true">
       <ProjectMainTabs
         snapshot={snapshot}
+        projectId={projectId}
         host={host}
+        readOnly={readOnly}
         snapshotContentReady={snapshotContentReady}
         snapshotState={snapshotState}
         tab={tab}

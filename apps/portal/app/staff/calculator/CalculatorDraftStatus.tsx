@@ -1,3 +1,5 @@
+"use client";
+import { useCalculatorSessionRead } from "./CalculatorSessionReadContext";
 import styles from './CalculatorTrustUi.module.css';
 import type { CalculatorLocalDraftStatus } from './useCalculatorDraftSession';
 
@@ -16,21 +18,22 @@ export default function CalculatorDraftStatus({
   status: CalculatorLocalDraftStatus;
   compact?: boolean;
 }) {
-  const label = calculatorLocalDraftStatusLabel(status);
+  const {ready,error,onRetry}=useCalculatorSessionRead();
+  const label = !ready ? error ? "Estimate unavailable" : "Reading saved draft…" : calculatorLocalDraftStatusLabel(status);
   if (!label) return null;
 
   return (
     <div
-      className={`${status.kind === 'error' ? styles.commandBarDraftStatusError : styles.commandBarDraftStatus}${compact ? ` ${styles.commandBarDraftStatusCompact}` : ''}`}
+      className={`${(error || (ready && status.kind === 'error')) ? styles.commandBarDraftStatusError : styles.commandBarDraftStatus}${compact ? ` ${styles.commandBarDraftStatusCompact}` : ''}`}
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      title={compact && status.kind !== 'error' ? 'Browser draft only — use Save to update the estimate.' : undefined}
+      title={ready && compact && status.kind !== 'error' ? 'Browser draft only — use Save to update the estimate.' : undefined}
     >
-      <span className={styles.commandBarDraftStatusLabel}>{label}</span>
-      <span className={compact && status.kind !== 'error' ? styles.commandBarDraftStatusHelpCompact : styles.commandBarDraftStatusHelp}>
+      <span className={styles.commandBarDraftStatusLabel}>{label}</span>{error ? <><span>{error}</span><button type="button" onClick={onRetry}>Retry</button></> : null}
+      {ready && <span className={compact && status.kind !== 'error' ? styles.commandBarDraftStatusHelpCompact : styles.commandBarDraftStatusHelp}>
         Browser draft only — use Save to update the estimate.
-      </span>
+      </span>}
     </div>
   );
 }

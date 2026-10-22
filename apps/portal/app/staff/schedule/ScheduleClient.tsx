@@ -1,6 +1,8 @@
 'use client';
 
 import { deriveScheduleStatus } from './scheduleItemStatus';
+import { createScheduleInitialSeed } from './scheduleInitialSeed';
+import type { SchedulePageSeed } from '@/lib/scheduling/serverSchedulePageSeed';
 
 import { checkAndCommitScheduleMutation } from './scheduleMutationConfirmation';
 import { retainScheduleBoardIntent } from '@/lib/scheduling/schedulePendingRequests';
@@ -47,7 +49,7 @@ import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/sc
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
-import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/FoundationFeedback';
+import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
@@ -117,16 +119,14 @@ import {
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
   {
-    ssr: false,
-    loading: () => <p className={styles.note}>Loading Board...</p>,
+    ssr: true,
   },
 );
 
 const LazyScheduleGanttView = dynamic<ScheduleGanttViewProps>(
   () => import('./ScheduleGanttView'),
   {
-    ssr: false,
-    loading: () => <p className={styles.note}>Loading Gantt...</p>,
+    ssr: true,
   },
 );
 
@@ -435,10 +435,16 @@ export default function ScheduleClient({
   initialScheduleMode = 'v2',
   initialSeedKind = 'board',
   initialV2Snapshot: initialV2SnapshotProp = null,
+  initialSeed,
+  snapshotLoaders,
+  navigationPath = '/staff/schedule',
 }: {
   initialScheduleMode?: 'v2' | 'legacy';
   initialSeedKind?: 'board' | 'gantt';
   initialV2Snapshot?: ScheduleV2Snapshot | null;
+  initialSeed?: Promise<SchedulePageSeed | null>;
+  snapshotLoaders?: { board: (signal: AbortSignal) => Promise<ScheduleV2Snapshot>; gantt: (signal: AbortSignal) => Promise<ScheduleV2Snapshot> };
+  navigationPath?: '/staff/schedule' | '/qa/schedule-progressive-fixture';
 }) {
   const toast = useToast();
   const router = useRouter();
@@ -448,6 +454,7 @@ export default function ScheduleClient({
   const { confirm: confirmScheduleAction, dialog: scheduleConfirmationDialog } = useScheduleConfirmation();
   const [isTransitionPending, startUiTransition] = useTransition();
   const hydratedFromCacheRef = useRef(false);
+  const [serverSeed] = useState(() => createScheduleInitialSeed(initialSeed, initialSeedKind));
   const scheduleItemsRef = useRef<ScheduleItem[]>([]);
   const unscheduledJobsSeedRef = useRef<SchedulableJob[]>([]);
   const scheduleConflictsRef = useRef<any[]>([]);
@@ -538,16 +545,18 @@ export default function ScheduleClient({
   const loadTrackedBoardSnapshot = useCallback(
     (context: QueryFunctionContext<ReturnType<typeof qk.schedule.board>>) => {
       const options = scheduleV2SnapshotQueryOptions(hostKey, today);
-      return v2BoardSnapshotRequestTrackerRef.current.track(() => options.queryFn!(context));
+      return v2BoardSnapshotRequestTrackerRef.current.track(async () =>
+        await serverSeed.take('board', today) ?? (snapshotLoaders ? snapshotLoaders.board(context.signal) : options.queryFn!(context)));
     },
-    [hostKey, today],
+    [hostKey, today, serverSeed, snapshotLoaders],
   );
   const loadTrackedGanttSnapshot = useCallback(
     (context: QueryFunctionContext<ReturnType<typeof qk.schedule.gantt>>) => {
       const options = scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange);
-      return v2GanttSnapshotRequestTrackerRef.current.track(() => options.queryFn!(context));
+      return v2GanttSnapshotRequestTrackerRef.current.track(async () =>
+        await serverSeed.take('gantt', today, ganttRange) ?? (snapshotLoaders ? snapshotLoaders.gantt(context.signal) : options.queryFn!(context)));
     },
-    [ganttRange, hostKey, today],
+    [ganttRange, hostKey, today, serverSeed, snapshotLoaders],
   );
   const sealV2SnapshotRequestEpochs = useCallback(() => {
     v2BoardSnapshotRequestTrackerRef.current.rejectStartedThroughCurrent();
@@ -555,7 +564,7 @@ export default function ScheduleClient({
   }, []);
 
   const [hydrated, setHydrated] = useState(() => Boolean(initialV2Snapshot));
-  const [loadError, setLoadError] = useState<{ message: string; table?: string; code?: string } | null>(null);
+  const [loadError, setLoadError] = useState<{ message: string } | null>(null);
   const [installers, setInstallers] = useState<Installer[]>(() => initialV2Snapshot?.installers ?? []);
   const [projects, setProjects] = useState<ScheduleProjectSummary[]>(() => initialV2Snapshot?.projects ?? []);
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(() => initialV2Snapshot?.scheduleItems ?? []);
@@ -1228,7 +1237,7 @@ export default function ScheduleClient({
     const qs = new URLSearchParams(searchParams.toString());
     const viewParam = next === 'site_visits' ? 'site-visits' : next;
     qs.set('view', viewParam);
-    const href = `/staff/schedule?${qs.toString()}`;
+    const href = `${navigationPath}?${qs.toString()}`;
     if (next === 'site_visits') {
       router.replace(href);
       return;
@@ -4149,7 +4158,7 @@ export default function ScheduleClient({
 
   const savedTime = formatSavedTime(scheduleTrust.savedAt);
   const scheduleTrustLabel =
-    scheduleTrust.status === 'saving'
+    loadError ? 'Read failed' : scheduleTrust.status === 'saving'
       ? 'Saving…'
       : scheduleTrust.status === 'refreshing'
         ? 'Refreshing…'
@@ -4161,13 +4170,17 @@ export default function ScheduleClient({
               ? `Saved · ${savedTime}`
               : 'Saved';
 
-  const boardMoveDisabled =
+  const scheduleViewError = Boolean(loadError || activeV2SnapshotError);
+  const scheduleDataPending = !hydrated ||
+    (scheduleMode === 'v2' && activeSnapshotKind !== (view === 'gantt' ? 'gantt' : 'board'));
+  const boardMoveDisabled = scheduleDataPending || Boolean(loadError) ||
     scheduleMode === 'v2' &&
     (foreignPendingMutationCount > 0 ||
       scheduleTrust.status === 'saving' ||
       scheduleTrust.status === 'refreshing' ||
       scheduleTrust.status === 'stale');
   const boardMoveDisabledReason =
+    scheduleDataPending ? 'Wait for this schedule view to finish loading.' :
     foreignPendingMutationCount > 0 || scheduleTrust.status === 'saving'
       ? 'Another schedule change is still saving.'
       : scheduleTrust.status === 'stale'
@@ -4198,108 +4211,12 @@ export default function ScheduleClient({
     );
   }
 
-  const waitingForActiveV2Snapshot =
-    scheduleMode === 'v2' &&
-    ((view === 'board' && activeSnapshotKind !== 'board') ||
-      (view === 'gantt' && activeSnapshotKind !== 'gantt'));
-
-  if (!hydrated || waitingForActiveV2Snapshot) {
-    return (
-      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-        <StaffPageHeader
-          title="Schedule"
-          right={
-            <HeaderActions>
-              {scheduleTabs}
-            </HeaderActions>
-          }
-        />
-        <div className={styles.stack}>
-          <TaskScheduleFeedback state="saving">Loading schedule data from the portal database…</TaskScheduleFeedback>
-        </div>
-      </PageLayout>
-    );
-  }
-
-  if (loadError) {
-    const table = loadError.table;
-    const supabaseHostLabel = supabaseHost ? (
-      <>
-        {' '}
-        on <strong>{supabaseHost}</strong>.
-      </>
-    ) : (
-      '.'
-    );
-    const schemaFixFile =
-      table === 'schedule_crews' || table === 'schedule_items'
-        ? 'supabase/schedule.sql'
-        : 'supabase/portal_schema.sql';
-
-    return (
-      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-        <StaffPageHeader
-          title="Schedule"
-          right={
-            <HeaderActions>
-              {scheduleTabs}
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => {
-                  setHydrated(false);
-                  refreshSchedule({ authoritative: true });
-                }}
-              >
-                Retry
-              </button>
-            </HeaderActions>
-          }
-        />
-        <div className={styles.stack}>
-          <AlertBanner tone="error" title="Schedule data could not load">
-            {loadError.table ? (
-              <>
-                Failed to query <strong>public.{loadError.table}</strong>
-                {supabaseHostLabel}{' '}
-                {loadError.code ? <span className={styles.muted}>({loadError.code})</span> : null}
-                <br />
-                {loadError.message}
-                <br />
-                Run <code>{schemaFixFile}</code> in Supabase SQL editor, then refresh.
-                {schemaFixFile === 'supabase/schedule.sql' ? (
-                  <>
-                    <br />
-                    If it errors on missing <code>public.projects</code> or <code>public.estimates</code>, run <code>supabase/portal_schema.sql</code> first.
-                    <br />
-                    Then run <code>supabase/seed_schedule_crews.sql</code> to seed default crews.
-                  </>
-                ) : (
-                  <>
-                    <br />
-                    Then run <code>supabase/seed_schedule_crews.sql</code> to seed default crews (if empty).
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                {loadError.message}
-                {supabaseHost ? (
-                  <>
-                    <br />
-                    Host: <strong>{supabaseHost}</strong>
-                  </>
-                ) : null}
-                <br />
-                Run <code>supabase/portal_schema.sql</code> (or <code>supabase/schedule.sql</code>) in Supabase SQL editor, then refresh.
-              </>
-            )}
-          </AlertBanner>
-          {diagnosticsPanel}
-        </div>
-      </PageLayout>
-    );
-  }
+  const loadFailure = loadError ? (
+    <AlertBanner tone="error" title="Schedule data could not load">
+      {loadError.message}
+      {supabaseHost ? <><br />Host: <strong>{supabaseHost}</strong></> : null}
+    </AlertBanner>
+  ) : null;
 
   return (
     <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
@@ -4323,7 +4240,9 @@ export default function ScheduleClient({
       />
 
       <div className={cx(styles.stack, styles.stackLocked)}>
-        {(scheduleTrust.status === 'failed' || scheduleTrust.status === 'stale')
+        {loadFailure}
+        {loadError ? <button type="button" className={styles.buttonSecondary} onClick={() => refreshSchedule({ authoritative: true })}>Retry</button> : null}
+        {!loadError && (scheduleTrust.status === 'failed' || scheduleTrust.status === 'stale')
           && (view === 'gantt' || !boardMutationNotice.notice) ? (
           <AlertBanner
             tone={scheduleTrust.status === 'failed' ? 'error' : 'warning'}
@@ -4373,15 +4292,17 @@ export default function ScheduleClient({
           <div className={styles.panels}>
             <section className={styles.mainPanel} aria-label="Installer lanes">
               <LazyScheduleGanttView
+                dataPending={scheduleDataPending}
+                dataError={scheduleViewError}
                 today={today}
                 scheduleMode={scheduleMode}
                 installers={installers}
-                laneItems={laneItems}
-                visibleScheduleItems={visibleScheduleItems}
+                laneItems={scheduleDataPending ? new Map() : laneItems}
+                visibleScheduleItems={scheduleDataPending ? [] : visibleScheduleItems}
                 projectsById={projectsById}
                 estimatesById={emptyEstimatesById}
-                scheduleBars={schedule.bars}
-                scheduleIssues={schedule.issues}
+                scheduleBars={scheduleDataPending ? [] : schedule.bars}
+                scheduleIssues={scheduleDataPending ? [] : schedule.issues}
                 holidays={ganttHolidays}
                 showCompleted={showCompleted}
                 onShowCompletedChange={handleShowCompletedChange}
@@ -4399,13 +4320,15 @@ export default function ScheduleClient({
           </div>
         ) : (
           <LazyScheduleBoardView
+            dataPending={scheduleDataPending}
+            dataError={scheduleViewError}
             today={today}
             scheduleMode={scheduleMode}
             installers={installers}
             schedulable={schedulable}
-            unscheduledJobs={unscheduledJobs}
-            unscheduledJobsAll={unscheduledJobsAll}
-            laneItems={laneItems}
+            unscheduledJobs={scheduleDataPending ? [] : unscheduledJobs}
+            unscheduledJobsAll={scheduleDataPending ? [] : unscheduledJobsAll}
+            laneItems={scheduleDataPending ? new Map() : laneItems}
             scheduleItemById={scheduleItemById}
             barsByScheduleId={barsByScheduleId}
             issueLevelByScheduleId={issueLevelByScheduleId}

@@ -53,13 +53,14 @@ function ContactsInstantRouteTrigger() {
 }
 
 function CompetingInstantRouteTrigger() {
-  const { beginInstantRoute, finishInstantRoute } = usePortalRouteTransition();
+  const { beginInstantRoute, finishInstantRoute,instantRoute } = usePortalRouteTransition();
   return (
     <div>
       <button type="button" onClick={() => beginInstantRoute('projects-index')}>Open projects</button>
       <button type="button" onClick={() => beginInstantRoute('contacts-index')}>Open contacts</button>
       <button type="button" onClick={() => finishInstantRoute('projects-index')}>Stale projects mounted</button>
       <button type="button" onClick={() => finishInstantRoute('contacts-index')}>Contacts mounted</button>
+      <output data-instant-state>{instantRoute??'none'}</output>
     </div>
   );
 }
@@ -174,7 +175,7 @@ describe('PortalRouteTransitionProvider', () => {
     rendered.unmount();
   });
 
-  it('shows the useful Projects frame synchronously and reveals mounted route content afterward', () => {
+  it('keeps the real page visible during Projects navigation and mount', () => {
     const rendered = renderIntoDocument(
       <PortalRouteTransitionProvider>
         <InstantRouteTrigger />
@@ -187,9 +188,9 @@ describe('PortalRouteTransitionProvider', () => {
 
     act(() => buttons[0]?.click());
 
-    expect(rendered.container.querySelector('[data-projects-index-state="pending"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBe('true');
-    expect(rendered.container.textContent).toContain('Updating projects');
+    expect(rendered.container.querySelector('[data-projects-index-state="pending"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBeNull();
+    expect(rendered.container.textContent).toContain('Dashboard content');
 
     act(() => buttons[1]?.click());
 
@@ -200,7 +201,7 @@ describe('PortalRouteTransitionProvider', () => {
     rendered.unmount();
   });
 
-  it('shows the useful Contacts frame synchronously and reveals mounted content afterward', () => {
+  it('keeps the real page visible during Contacts navigation and mount', () => {
     const rendered = renderIntoDocument(
       <PortalRouteTransitionProvider>
         <ContactsInstantRouteTrigger />
@@ -209,9 +210,9 @@ describe('PortalRouteTransitionProvider', () => {
     );
     const buttons = rendered.container.querySelectorAll('button');
     act(() => buttons[0]?.click());
-    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Updating contacts');
-    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).toBeNull();
+    expect(rendered.container.textContent).toContain('Dashboard content');
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBeNull();
     act(() => buttons[1]?.click());
     expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).toBeNull();
     expect(rendered.container.textContent).toContain('Dashboard content');
@@ -231,14 +232,14 @@ describe('PortalRouteTransitionProvider', () => {
     act(() => buttons[1]?.click());
     act(() => buttons[2]?.click());
 
-    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-instant-state]')?.textContent).toBe('contacts-index');
 
     act(() => buttons[3]?.click());
-    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-instant-state]')?.textContent).toBe('none');
     rendered.unmount();
   });
 
-  it('shows a truthful generic route shell immediately and releases it when the route commits', () => {
+  it('retains actual content and progress until the actual destination commits', () => {
     const rendered = renderIntoDocument(
       <PortalRouteTransitionProvider>
         <Trigger href="/staff/schedule" />
@@ -248,10 +249,10 @@ describe('PortalRouteTransitionProvider', () => {
 
     act(() => rendered.container.querySelector('button')?.click());
 
-    expect(rendered.container.querySelector('[data-portal-instant-shell="schedule"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Schedule');
-    expect(rendered.container.textContent).toContain('Updating crews');
-    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(rendered.container.querySelector('[data-portal-instant-shell="schedule"]')).toBeNull();
+    expect(rendered.container.textContent).toContain('Dashboard content');
+    expect(rendered.container.querySelector('[data-portal-route-progress]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBeNull();
 
     mockPathname = '/staff/schedule';
     window.history.replaceState({}, '', '/staff/schedule');

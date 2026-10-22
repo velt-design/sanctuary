@@ -16,6 +16,7 @@ type ScheduleCrewFilterProps = {
   hiddenItemCount: number;
   emptyCrewIds: string[];
   disabled?: boolean;
+  readState?: 'pending' | 'unavailable';
   onToggleCrew: (crewId: string) => void;
   onHideCrews: (crewIds: readonly string[]) => void;
   onShowAllCrews: () => void;
@@ -30,11 +31,13 @@ export default function ScheduleCrewFilter({
   hiddenCrewIds,
   hiddenItemCount,
   emptyCrewIds,
-  disabled = false,
+  disabled: disabledProp = false,
+  readState,
   onToggleCrew,
   onHideCrews,
   onShowAllCrews,
 }: ScheduleCrewFilterProps) {
+  const disabled = disabledProp || Boolean(readState);
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
   const summaryRef = useRef<HTMLElement | null>(null);
   const panelId = useId();
@@ -79,16 +82,16 @@ export default function ScheduleCrewFilter({
         aria-controls={panelId}
         aria-expanded={open}
         aria-disabled={disabled}
-        aria-label={`Filter crews, ${visibleCount} of ${crews.length} visible`}
+        aria-label={readState?`Crew filters ${readState==='pending'?'loading':'unavailable'}`:`Filter crews, ${visibleCount} of ${crews.length} visible`}
         onClick={(event) => {
           if (disabled) event.preventDefault();
         }}
       >
         <span>Crews</span>
         <span className={styles.triggerCount}>
-          {visibleCount} of {crews.length}
+          {readState?readState==='pending'?'Reading…':'Unavailable':`${visibleCount} of ${crews.length}`}
         </span>
-        {hiddenItemCount > 0 ? <span className={styles.triggerAlert}>{pluralize(hiddenItemCount, 'item')} hidden</span> : null}
+        {!readState && hiddenItemCount > 0 ? <span className={styles.triggerAlert}>{pluralize(hiddenItemCount, 'item')} hidden</span> : null}
       </summary>
 
       <div id={panelId} className={styles.panel}>
@@ -96,8 +99,8 @@ export default function ScheduleCrewFilter({
           <div>
             <div className={styles.title}>Crews in Schedule</div>
             <div className={styles.summary} aria-live="polite">
-              {hiddenCount > 0
-                ? `${pluralize(hiddenCount, 'crew', 'crews')} hidden${hiddenItemCount > 0 ? ` / ${pluralize(hiddenItemCount, 'item')} hidden` : ''}`
+              {readState?readState==='pending'?'Reading crews and scheduled work…':'Crew evidence unavailable':hiddenCount > 0
+                ? `${pluralize(hiddenCount, 'crew', 'crews')} hidden${!readState && hiddenItemCount > 0 ? ` / ${pluralize(hiddenItemCount, 'item')} hidden` : ''}`
                 : 'All crews visible'}
             </div>
           </div>
@@ -125,7 +128,7 @@ export default function ScheduleCrewFilter({
               />
               <span className={styles.crewDot} style={{ background: crew.color }} aria-hidden="true" />
               <span className={styles.crewName}>{crew.name}</span>
-              <span className={styles.itemCount}>{pluralize(crew.itemCount, 'item')}</span>
+              <span className={styles.itemCount}>{readState?'Not loaded':pluralize(crew.itemCount, 'item')}</span>
             </label>
           ))}
         </fieldset>

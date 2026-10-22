@@ -70,6 +70,8 @@ type GanttPopoverAction = {
 };
 
 export type ScheduleGanttViewProps = {
+  dataPending?: boolean;
+  dataError?: boolean;
   today: string;
   scheduleMode: 'v2' | 'legacy';
   installers: Installer[];
@@ -180,6 +182,8 @@ function GanttBarPopover({
 }
 
 export default function ScheduleGanttView({
+  dataPending = false,
+  dataError = false,
   today,
   scheduleMode,
   installers,
@@ -740,6 +744,7 @@ export default function ScheduleGanttView({
   };
 
   const openGanttPopover = (row: Extract<GanttRow, { kind: 'item' }>, target: HTMLElement) => {
+    if (dataPending || dataError) return;
     if (row.isDowntime) {
       setGanttPopover(null);
       return;
@@ -757,7 +762,7 @@ export default function ScheduleGanttView({
     mode: 'move' | 'resize',
     e: React.PointerEvent,
   ) => {
-    if (scheduleMode !== 'v2' || row.isDowntime || e.button !== 0) return;
+    if (dataPending || dataError || scheduleMode !== 'v2' || row.isDowntime || e.button !== 0) return;
     const scheduleItem = scheduleItemByIdRef.current.get(row.scheduleItemId) ?? null;
     if (!scheduleItem || !canAdjustGanttTiming(scheduleItem)) return;
     e.preventDefault();
@@ -807,8 +812,11 @@ export default function ScheduleGanttView({
     showAllCrews();
   };
 
-  let ganttEmptyState: GanttEmptyState | null = null;
-  if (gantt.rows.length === 0) {
+  let ganttEmptyState: GanttEmptyState | null = dataPending ? {
+    title: dataError ? 'Schedule unavailable' : 'Reading crews and scheduled work…',
+    message: dataError ? 'Retry to load this schedule.' : 'Scheduled work appears when the read completes.',
+  } : null;
+  if (!dataPending && gantt.rows.length === 0) {
     if (activeInstallers.length === 0) {
       ganttEmptyState = {
         title: 'No active crews',
@@ -852,7 +860,7 @@ export default function ScheduleGanttView({
   };
 
   return (
-    <div ref={ganttRootRef} className={styles.gantt} data-layout-mode={ganttLayoutMode}>
+    <div ref={ganttRootRef} className={styles.gantt} data-layout-mode={ganttLayoutMode} aria-busy={dataPending && !dataError}>
       {compactMode ? (
         <ScheduleGanttCompactView
           today={today}
@@ -860,7 +868,8 @@ export default function ScheduleGanttView({
           rangeEnd={gantt.rangeEnd}
           rows={gantt.rows}
           attentionMode={attentionMode}
-          attentionCount={visibleAttentionItemIds.size}
+          attentionCount={dataPending?null:visibleAttentionItemIds.size}
+          readState={dataPending?dataError?'unavailable':'pending':undefined}
           controlsDisabled={controlsDisabled}
           crews={crewFilterOptions}
           hiddenCrewIds={hiddenCrewIds}
@@ -888,7 +897,8 @@ export default function ScheduleGanttView({
             showCompleted={showCompleted}
             showPlanned={showPlanned}
             attentionMode={attentionMode}
-            attentionCount={visibleAttentionItemIds.size}
+            attentionCount={dataPending?null:visibleAttentionItemIds.size}
+          readState={dataPending?dataError?'unavailable':'pending':undefined}
             controlsDisabled={controlsDisabled}
             crews={crewFilterOptions}
             hiddenCrewIds={hiddenCrewIds}

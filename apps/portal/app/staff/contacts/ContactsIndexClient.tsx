@@ -8,7 +8,6 @@ import { ButtonLink, Input, Select } from '@/components/ui/foundation/Foundation
 import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
 import {
   Card,
-  LoadingSkeleton,
   PageLayout,
   Table,
   TableBody,
@@ -136,34 +135,14 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
                 ? 'Updating...'
                 : contactsIndex.state === 'refresh-failed'
                   ? contacts.length ? `Refresh failed · ${rangeStart}–${rangeEnd} of ${totalCount}` : 'Refresh failed'
-                  : `${rangeStart}–${rangeEnd} of ${totalCount}`}
+                  : contactsIndex.state==='unavailable'?'Access unavailable':`${rangeStart}–${rangeEnd} of ${totalCount}`}
             </span>
           )}
           aria-label="Contacts list"
           aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}
           padding="none"
         >
-          {contactsIndex.state === 'unavailable' ? (
-            <DataStatePanel
-              state="unavailable"
-              title="Contacts unavailable"
-              description="Your current session cannot access the Contacts list."
-            />
-          ) : (
-            <>
-              {contactsIndex.state === 'refresh-failed' ? (
-                <DataStatePanel
-                  state="stale"
-                  title="Could not refresh contacts"
-                  description={contacts.length
-                    ? 'Showing the last saved list.'
-                    : 'No saved list is available. Retry the request.'}
-                  onRetry={() => void contactsIndex.retry()}
-                />
-              ) : null}
-
-              {contacts.length ? (
-                <>
+          {contactsIndex.state==='refresh-failed'?<DataStatePanel state="stale" title="Could not refresh contacts" description={contacts.length?'Showing the last saved list.':'No saved list is available. Retry the request.'} onRetry={()=>void contactsIndex.retry()}/>:null}
                   <Table className={styles.responsiveTable}>
                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
                     <TableBody>
@@ -176,27 +155,11 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
                           <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
                         </TableRow>
                       ))}
+                      {!contacts.length&&<TableRow><TableCell colSpan={5}>{contactsIndex.state==='pending'||contactsIndex.state==='cached'?<p role="status">Reading contacts…</p>:contactsIndex.state==='unavailable'?<DataStatePanel state="unavailable" title="Contacts unavailable" description="Your current session cannot access the Contacts list."/>:contactsIndex.state==='fresh'?<DataStatePanel state={debouncedQuery.trim()?'filtered-empty':'empty'} title={debouncedQuery.trim()?'No contacts match your search.':'No contacts found.'} description={debouncedQuery.trim()?'Clear or adjust the search.':'Create the first contact to begin.'} onClear={debouncedQuery.trim()?()=>setQuery(''):undefined}/>:null}</TableCell></TableRow>}
                     </TableBody>
                   </Table>
-                  <Pagination
-                    currentPage={page}
-                    totalPages={contactsIndex.data?.contacts.totalPages ?? 1}
-                    itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} contacts`}
-                    onPageChange={setPage}
-                  />
-                </>
-              ) : contactsIndex.state === 'fresh' ? (
-                <DataStatePanel
-                  state={debouncedQuery.trim() ? 'filtered-empty' : 'empty'}
-                  title={debouncedQuery.trim() ? 'No contacts match your search.' : 'No contacts found.'}
-                  description={debouncedQuery.trim() ? 'Clear or adjust the search.' : 'Create the first contact to begin.'}
-                  onClear={debouncedQuery.trim() ? () => setQuery('') : undefined}
-                />
-              ) : contactsIndex.state === 'pending' || contactsIndex.state === 'cached' ? (
-                <LoadingSkeleton rows={5} columns={5} label="Updating contacts..." />
-              ) : null}
-            </>
-          )}
+          {contacts.length>0&&<Pagination currentPage={page} totalPages={contactsIndex.data?.contacts.totalPages??1} itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} contacts`} onPageChange={setPage}/>}
+
         </Card>
       </div>
     </PageLayout>

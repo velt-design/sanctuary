@@ -51,7 +51,6 @@ import {
   DataStatePanel,
   DestructiveConfirmation,
   Input,
-  LoadingSkeleton,
   PageLayout,
   Pagination,
   Table,
@@ -285,8 +284,6 @@ export default function ProjectsIndexClient({
                 onRetry={() => void projectsIndex.retry()}
               />
             ) : null}
-            {filteredProjects.length ? (
-              <>
                 <Table aria-label="Projects">
                   <TableHeader>
                     <TableRow>
@@ -411,17 +408,8 @@ export default function ProjectsIndexClient({
 
                       return rowEl;
                     })}
-                  </TableBody>
-                </Table>
-                <Pagination
-                  currentPage={page}
-                  totalPages={projectsIndex.data?.projects.totalPages ?? 1}
-                  itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`}
-                  onPageChange={setPage}
-                />
-              </>
-            ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
-              <LoadingSkeleton rows={5} columns={4} label="Updating projects…" />
+                    {!filteredProjects.length&&<TableRow><TableCell colSpan={6}>{projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
+              <p role="status">Reading projects…</p>
             ) : projectsIndex.state === 'unavailable' ? (
               <DataStatePanel state="unavailable" />
             ) : projectsIndex.state === 'refresh-failed' ? (
@@ -447,7 +435,15 @@ export default function ProjectsIndexClient({
                     : undefined
                 }
               />
-            )}
+            )}</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+                {filteredProjects.length>0&&<Pagination
+                  currentPage={page}
+                  totalPages={projectsIndex.data?.projects.totalPages ?? 1}
+                  itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`}
+                  onPageChange={setPage}
+                />}
         </Card>
       </div>
 

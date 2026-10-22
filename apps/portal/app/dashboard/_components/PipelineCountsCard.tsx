@@ -15,12 +15,12 @@ import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 const OPERATIONAL_STATES = ['ACTIVE', 'WAITING', 'CLOSED', 'ARCHIVED'] as const;
 
 export default function PipelineCountsCard({
-  counts,
+  counts,pending=false,statePending=pending,
   countsAvailable = true,
   stateCounts,
   stateCountsAvailable = true,
 }: {
-  counts: PipelineCounts;
+  counts: PipelineCounts;pending?:boolean;statePending?:boolean;
   countsAvailable?: boolean;
   stateCounts?: ProjectOperationalStateCounts;
   stateCountsAvailable?: boolean;
@@ -39,10 +39,10 @@ export default function PipelineCountsCard({
   }
 
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.pipelineCard}`} aria-label="Project portfolio">
+    <section className={`${styles.section} ${dash.card} ${dash.pipelineCard}`} aria-label="Project portfolio" data-dashboard-portfolio={pending?"pending":countsAvailable?"ready":"unavailable"}>
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Project portfolio</h2>
-        <span className={dash.sectionMeta}>{countsAvailable ? 'Journey and state' : 'Journey counts unavailable'}</span>
+        <span className={dash.sectionMeta}>{pending?'Reading portfolio…':countsAvailable ? 'Journey and state' : 'Journey counts unavailable'}</span>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody} ${dash.cardBodyNoScroll}`}>
         <div className={dash.pipelineStrip}>
@@ -56,7 +56,7 @@ export default function PipelineCountsCard({
                   href={journeyHref(phase)}
                 >
                   <span className={dash.pipelineLabel}>{PROJECT_JOURNEY_PHASE_LABELS[phase]}</span>
-                  <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{countsAvailable ? count : '—'}</span>
+                  <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{pending?'Reading…':countsAvailable ? count : '—'}</span>
                 </ProjectsIndexLink>
               );
             })}
@@ -66,7 +66,7 @@ export default function PipelineCountsCard({
         <div
           className={dash.projectStateGrid}
           aria-label="Project operational states"
-          data-project-state-counts={stateCountsAvailable && stateCounts ? 'ready' : 'unavailable'}
+          data-project-state-counts={statePending?'pending':stateCountsAvailable && stateCounts ? 'ready' : 'unavailable'}
         >
           {OPERATIONAL_STATES.map((state) => (
             <ProjectsIndexLink
@@ -75,7 +75,7 @@ export default function PipelineCountsCard({
               href={projectStateHref(state)}
             >
               <span>{state[0]}{state.slice(1).toLowerCase()}</span>
-              <strong>{stateCountsAvailable && stateCounts ? stateCounts[state] : '—'}</strong>
+              <strong>{statePending?'Reading…':stateCountsAvailable && stateCounts ? stateCounts[state] : '—'}</strong>
             </ProjectsIndexLink>
           ))}
         </div>

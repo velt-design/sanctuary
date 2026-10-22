@@ -22,17 +22,17 @@ vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'hos
 vi.mock('@/components/debug/PortalDebugExportButton', () => ({ default: () => null }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
 vi.mock('@/components/projects/ProjectPage/ProjectPageFrame', () => ({
-  default: ({ snapshot, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab, statusPanel }: any) => {
-    const { commandQuery, paymentQuery } = useActiveProjectOverviewReads(host, snapshot.project.id);
-    return <div data-frame={snapshot.project.id} data-snapshot={snapshotState}>
-      <span>{snapshot.project.name}</span>
+  default: ({ snapshot, projectId, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab, statusPanel }: any) => {
+    const { commandQuery, paymentQuery } = useActiveProjectOverviewReads(host, projectId);
+    return <div data-frame={snapshot?.project.id} data-snapshot={snapshotState} data-actual-frame>
+      <span>{snapshot?.project.name ?? 'Reading project…'}</span>
       {statusPanel}
       <span data-command={commandQuery.data?.projectId}>{commandQuery.data?.projectId}</span>
       <span data-payment={paymentQuery.data?.paidIncGstCents} />
       <span data-command-fetching={String(commandQuery.isFetching)} data-tab={optimisticTab} />
       <button onClick={() => onTabSelect('estimates')}>Commercial</button>
       <button onClick={() => onTabSelect('activity')}>Overview</button>
-      <ProjectMainTabs snapshot={snapshot} host={host} optimisticTab={optimisticTab}
+      <ProjectMainTabs snapshot={snapshot} projectId={projectId} host={host} optimisticTab={optimisticTab}
         snapshotState={snapshotState} snapshotContentReady={snapshotContentReady} tab={tab} />
     </div>;
   },
@@ -189,12 +189,12 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     view = renderIntoDocument(element('proj_1', 'job-packs'));
     await answer('summary');
     expect(view.container.querySelector('[data-project-active-tab="job-packs"]')).not.toBeNull();
-    expect(view.container.querySelector('[data-project-job-packs-availability="pending"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
     expect(view.container.querySelector('[data-testid="overview-tab"]')).toBeNull();
-    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).toBeNull();
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
     await answer('snapshot', 500);
-    expect(view.container.querySelector('[data-project-job-packs-availability="unavailable"]')).not.toBeNull();
-    expect(view.container.textContent).toContain('Retry the project refresh above.');
+    expect(view.container.querySelector('[data-project-snapshot-state="refresh-failed"]')).not.toBeNull();
+    expect([...view.container.querySelectorAll('button')].some((button) => button.textContent === 'Retry')).toBe(true);
     expect(count('command-centre')).toBe(0);
     expect(count('invoice-schedule')).toBe(0);
     expect(state.preload).not.toHaveBeenCalled();
@@ -241,7 +241,7 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     state.search = 'tab=job-packs';
     view = renderIntoDocument(element('proj_1', 'job-packs'));
     await answer('summary');
-    expect(view.container.querySelector('[data-project-job-packs-availability="pending"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
     await answer('snapshot', status);
     expect(view.container.querySelector('[data-project-snapshot-state="unavailable"]')).not.toBeNull();
     expect(view.container.querySelector('[data-project-tab-body]')).toBeNull();

@@ -39,3 +39,13 @@ describe('current-state commercial presentation', () => {
     result.unmount();
   });
 });
+
+it('does not claim saved records or an unfinished read when no initial project evidence exists',()=>{
+  const result=renderIntoDocument(<ProjectCommercialProvider projectId="proj-unknown" ready={false}>
+    <CommercialProjectNotice projectId="proj-unknown" view="quotes"/><Action/>
+  </ProjectCommercialProvider>);
+  expect(result.container.textContent).toContain('verified current project state');
+  expect(result.container.textContent).not.toContain('Saved records');
+  expect(result.container.textContent).not.toContain('finish loading');
+  expect(result.container.querySelector('button')?.disabled).toBe(true);result.unmount();
+});

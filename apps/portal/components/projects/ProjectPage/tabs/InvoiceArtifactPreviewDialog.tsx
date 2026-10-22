@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/ui/modal/Modal";
 import { Button, ButtonLink, DataStatePanel } from "@/components/ui/foundation";
+import { ApiError } from "@/lib/repo/apiClient";
 import type { DepositInvoiceArtifactPreview } from "@/lib/invoices/types";
 import {
   depositInvoicePdfPreviewUrl,
@@ -13,51 +14,54 @@ import InvoicePdfInlinePreview from './InvoicePdfInlinePreview';
 
 type PreviewMode = "pdf" | "email" | "narrow" | "text";
 
-export default function InvoiceArtifactPreviewDialog({
-  invoiceId,
-  invoiceRef,
-  onClose,
-  initialPreview,
-  pdfPreviewUrl,
-}: {
+type Props = {
   invoiceId: string;
   invoiceRef: string;
   onClose: () => void;
   initialPreview?: DepositInvoiceArtifactPreview;
   pdfPreviewUrl?: string;
-}) {
+};
+
+export default function InvoiceArtifactPreviewDialog(props: Props) {
+  return <InvoiceArtifactPreviewContent key={props.invoiceId} {...props} />;
+}
+
+function InvoiceArtifactPreviewContent({
+  invoiceId,
+  invoiceRef,
+  onClose,
+  initialPreview,
+  pdfPreviewUrl,
+}: Props) {
   const [mode, setMode] = useState<PreviewMode>("pdf");
-  const [preview, setPreview] = useState<DepositInvoiceArtifactPreview | null>(
-    initialPreview ?? null,
+  const verifiedInitialPreview = initialPreview?.invoiceId === invoiceId ? initialPreview : null;
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<{ attempt: number; preview?: DepositInvoiceArtifactPreview; error?: string; denied?: boolean } | null>(
+    verifiedInitialPreview ? { attempt: 0, preview: verifiedInitialPreview } : null,
   );
-  const [loading, setLoading] = useState(!initialPreview);
-  const [error, setError] = useState<string | null>(null);
+  const current = result?.attempt === attempt ? result : null;
+  const preview = current?.preview;
+  const error = current?.error;
+  const loading = !current;
 
   useEffect(() => {
-    if (initialPreview) return;
+    if (verifiedInitialPreview) return;
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
     void loadDepositInvoiceArtifactPreview(invoiceId)
       .then((result) => {
-        if (!controller.signal.aborted) setPreview(result);
+        if (result.invoiceId !== invoiceId) throw new Error("Invoice preview identity did not match.");
+        if (!controller.signal.aborted) setResult({ attempt, preview: result });
       })
       .catch((previewError) => {
         if (controller.signal.aborted) return;
-        setError(
-          previewError instanceof Error
-            ? previewError.message
-            : "Invoice preview is unavailable",
-        );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        setResult({ attempt, denied: previewError instanceof ApiError && [401, 403, 404].includes(previewError.status), error: previewError instanceof Error
+          ? previewError.message : "Invoice preview is unavailable" });
       });
     return () => controller.abort();
-  }, [initialPreview, invoiceId]);
+  }, [verifiedInitialPreview, invoiceId, attempt]);
 
   const recipients = useMemo(() => {
-    if (!preview) return [];
+    if (!preview) return ["To", "CC", "BCC"].map((label) => ({ label, value: loading ? "Reading…" : "Unavailable" }));
     const unresolved = "Resolved when delivery is prepared";
     const empty = preview.source === "prepared" ? "None" : unresolved;
     return [
@@ -65,8 +69,9 @@ export default function InvoiceArtifactPreviewDialog({
       { label: "CC", value: preview.recipients.cc.join(", ") || empty },
       { label: "BCC", value: preview.recipients.bcc.join(", ") || empty },
     ];
-  }, [preview]);
+  }, [preview, loading]);
 
+  const unknown = loading ? "Reading…" : "Unavailable";
   const pdfUrl = pdfPreviewUrl ?? depositInvoicePdfPreviewUrl(invoiceId);
 
   return (
@@ -103,16 +108,16 @@ export default function InvoiceArtifactPreviewDialog({
             state="error"
             title="Invoice preview unavailable"
             description={error}
+            onRetry={() => setAttempt((value) => value + 1)}
           />
         </div>
       ) : null}
 
-      {preview ? (
-        <>
-          <div className={styles.deliverySummary}>
+      <>
+          <div className={styles.deliverySummary} aria-busy={loading}>
             <div>
               <span>Subject</span>
-              <strong>{preview.subject}</strong>
+              <strong>{preview?.subject ?? unknown}</strong>
             </div>
             <div>
               <span>Recipients</span>
@@ -128,16 +133,16 @@ export default function InvoiceArtifactPreviewDialog({
             <div>
               <span>Attachments</span>
               <strong>
-                {preview.attachmentNames.join(", ") ||
+                {preview ? preview.attachmentNames.join(", ") ||
                   (preview.source === "prepared"
                     ? "No attachment recorded"
-                    : "Resolved when delivery is prepared")}
+                    : "Resolved when delivery is prepared") : unknown}
               </strong>
             </div>
           </div>
 
           <p className={styles.previewNotice}>
-            {preview.source === "prepared"
+            {!preview ? (loading ? "Reading delivery content…" : "Delivery content unavailable.") : preview.source === "prepared"
               ? "This is the frozen delivery content. The customer token is redacted in this staff preview."
               : "This uses the delivery renderer with an inert customer link. Recipients and the private token are resolved only when delivery is prepared."}
           </p>
@@ -173,6 +178,8 @@ export default function InvoiceArtifactPreviewDialog({
                 <span>Read-only PDF preview</span>
                 <ButtonLink
                   href={pdfUrl}
+                  aria-disabled={current?.denied || undefined}
+                  onClick={(event) => { if (current?.denied) event.preventDefault(); }}
                   target="_blank"
                   rel="noreferrer"
                   variant="secondary"
@@ -182,7 +189,7 @@ export default function InvoiceArtifactPreviewDialog({
                 </ButtonLink>
               </div>
               <div className={styles.pdfDocument} aria-label={`Invoice ${invoiceRef} PDF preview`}>
-                <InvoicePdfInlinePreview url={pdfUrl} />
+                <InvoicePdfInlinePreview url={pdfUrl} readVersion={attempt} enabled={!current?.denied} />
               </div>
             </div>
           ) : null}
@@ -198,17 +205,16 @@ export default function InvoiceArtifactPreviewDialog({
               <iframe
                 className={styles.emailFrame}
                 sandbox=""
-                srcDoc={preview.html}
+                srcDoc={preview?.html}
                 title={`Invoice ${invoiceRef} ${mode === "narrow" ? "narrow" : "desktop"} email preview`}
               />
             </div>
           ) : null}
 
           {mode === "text" ? (
-            <pre className={styles.textPreview}>{preview.text ?? ""}</pre>
+            <pre className={styles.textPreview}>{preview?.text ?? (preview ? "" : unknown)}</pre>
           ) : null}
-        </>
-      ) : null}
+      </>
     </Modal>
   );
 }

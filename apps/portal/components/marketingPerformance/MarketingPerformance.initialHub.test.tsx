@@ -38,7 +38,7 @@ function setup(wire=false) {
 }
 it.each([false,true])('renders complete seeded Sales records and preserves filters, inspection, return capture and normal refresh (columns=%s)', async wire => {
   const view = setup(wire), query = window.location.search;
-  expect(view.results().getAttribute('aria-busy')).toBe('true'); expect(view.container.textContent).toContain('Reading saved enquiries');
+  expect(view.results().getAttribute('aria-busy')).toBe('true'); expect(view.container.textContent).toContain('Reading complete underlying records');
   expect(view.source()).toContain('google'); expect(view.loader).not.toHaveBeenCalled();
   await act(async () => view.pending.resolve({ ok: true, report: hubFixture }));
   expect(view.results().getAttribute('aria-busy')).toBe('false'); expect(view.container.textContent).toContain('Quote versions');
@@ -57,7 +57,7 @@ it.each([false,true])('shows a failed seed without partial records and recovers 
   const view = setup(wire), query = window.location.search;
   await act(async () => view.pending.resolve({ ok: false, status: 503, error: 'The hub could not be loaded. Please retry.' }));
   expect(view.results().getAttribute('aria-busy')).toBe('false'); expect(view.container.querySelector('[role="alert"]')?.textContent).toContain('Hub unavailable');
-  expect(view.container.textContent).toContain('No partial totals'); expect(view.records()).toBeNull(); expect(view.loader).not.toHaveBeenCalled();
+  expect(view.container.textContent).toContain('No partial totals'); expect(view.records()?.querySelectorAll('tbody a')).toHaveLength(0);expect(view.records()?.textContent).toContain('Underlying records unavailable'); expect(view.loader).not.toHaveBeenCalled();
   await act(async () => view.button('Retry').click());
   expect(view.loader).toHaveBeenCalledTimes(1); expect(view.records()).not.toBeNull(); expect(view.container.querySelector('[role="alert"]')).toBeNull();
   expect(window.location.search).toBe(query); expect(view.source()).toContain('google');

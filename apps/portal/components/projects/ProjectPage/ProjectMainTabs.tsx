@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { coerceProjectTab, type ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import layout from './ProjectPage.module.css';
-import loadingStyles from './projectTabModules.module.css';
 import { ProjectEmailReadingProvider } from './tabs/overview/ProjectEmailReadingState';
 import {
   CommercialTab,
@@ -16,7 +15,9 @@ import {
 
 export default function ProjectMainTabs({
   snapshot,
+  projectId = snapshot?.project.id ?? "",
   host,
+  readOnly = false,
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
@@ -25,8 +26,10 @@ export default function ProjectMainTabs({
   onProjectAccessEnding,
   statusPanel,
 }: {
-  snapshot: ProjectPageSnapshot;
+  snapshot: ProjectPageSnapshot | null;
+  projectId?: string;
   host: string;
+  readOnly?: boolean;
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
@@ -39,7 +42,7 @@ export default function ProjectMainTabs({
   const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
   // Summary metadata cannot prove a specialist is absent. Match route/navigation
   // intent until the full snapshot resolves availability, including on failure.
-  const activeTab = coerceProjectTab(requestedTab, !snapshotContentReady || Boolean(snapshot.project.hasJobPacks));
+  const activeTab = coerceProjectTab(requestedTab, !snapshotContentReady || Boolean(snapshot?.project.hasJobPacks));
   const commercial = activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices';
 
   return (
@@ -50,7 +53,7 @@ export default function ProjectMainTabs({
       role="tabpanel"
       data-project-active-tab={activeTab}
     >
-      <ProjectEmailReadingProvider scope={JSON.stringify([snapshot.project.id, snapshot.project.contactId, snapshot.project.contactEmail])}>
+      <ProjectEmailReadingProvider scope={JSON.stringify([projectId, snapshot?.project.contactId, snapshot?.project.contactEmail])}>
       <div
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
@@ -58,35 +61,30 @@ export default function ProjectMainTabs({
         {!commercial ? statusPanel : null}
         {activeTab === 'activity' ? (
           <OverviewTab
+            readOnly={readOnly}
             snapshot={snapshot}
+            projectId={projectId}
             snapshotContentReady={snapshotContentReady}
             snapshotState={snapshotState}
             host={host}
             onAccessEnding={onProjectAccessEnding}
           />
         ) : null}
-        {activeTab === 'files' ? <FilesTab projectId={snapshot.project.id} host={host} /> : null}
+        {activeTab === 'files' ? <FilesTab key={projectId} projectId={projectId} host={host} /> : null}
         {activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices' ? (
           <CommercialTab
+            readOnly={readOnly}
             host={host}
-            projectId={snapshot.project.id}
-            projectName={snapshot.project.name}
+            projectReady={Boolean(snapshot)}
+            projectState={snapshotState}
+            projectId={projectId}
+            projectName={snapshot?.project.name}
             view={activeTab}
             calculatorWorkspace={calculatorWorkspace}
             statusPanel={statusPanel}
           />
         ) : null}
-        {activeTab === 'job-packs' ? snapshotContentReady ? <JobPacksTab projectId={snapshot.project.id} /> : (
-          <div
-            className={loadingStyles.tabLoadingState}
-            data-project-job-packs-availability={snapshotState === 'refresh-failed' ? 'unavailable' : 'pending'}
-            role="status"
-          >
-            {snapshotState === 'refresh-failed'
-              ? 'Job Packs availability could not be loaded. Retry the project refresh above.'
-              : 'Checking Job Packs availability…'}
-          </div>
-        ) : null}
+        {activeTab === 'job-packs' ? <JobPacksTab key={projectId} projectId={projectId} readOnly={readOnly} /> : null}
       </div>
       </ProjectEmailReadingProvider>
     </section>

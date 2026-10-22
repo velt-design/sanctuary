@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { DashboardPersonalTask } from '@/lib/dashboard/types';
 import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
@@ -18,8 +18,9 @@ async function readTaskResponse(res: Response): Promise<DashboardPersonalTask> {
   return body.task as DashboardPersonalTask;
 }
 
-export default function DashboardTasksCard({ initialTasks }: { initialTasks: DashboardPersonalTask[] }) {
-  const [tasks, setTasks] = useState(initialTasks);
+export default function DashboardTasksCard({ initialTasks,pending=false,readOnly=false }: { initialTasks: DashboardPersonalTask[]|null;pending?:boolean;readOnly?:boolean }) {
+  const [tasks, setTasks] = useState(initialTasks??[]);
+  const [sourceTasks, setSourceTasks] = useState(initialTasks);
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -28,24 +29,25 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   const createTaskIdRef = useRef(newId());
   const pendingTaskIdsRef = useRef(new Set<string>());
 
-  useEffect(() => {
-    setTasks((current) => {
-      const currentById = new Map(current.map((task) => [task.id, task]));
-      const refreshed = initialTasks.map((task) => pendingTaskIds.has(task.id)
-        ? currentById.get(task.id) ?? task
-        : task);
-      const refreshedIds = new Set(refreshed.map((task) => task.id));
-      return [
-        ...refreshed,
-        ...current.filter((task) => !refreshedIds.has(task.id)),
-      ];
-    });
-    // Pending task state is read only to preserve optimistic rows while a new
-    // server snapshot arrives; completing a mutation must not reapply an old prop.
-  }, [initialTasks]);
+  // Adopt a changed source before committing its ready UI. A passive effect would
+  // briefly label a genuine nonempty response as empty. Pending mutations retain
+  // their current row, and settling one must never reapply an older source prop.
+  if (initialTasks !== sourceTasks) {
+    setSourceTasks(initialTasks);
+    if (initialTasks) {
+      setTasks((current) => {
+        const currentById = new Map(current.map((task) => [task.id, task]));
+        const refreshed = initialTasks.map((task) => pendingTaskIds.has(task.id)
+          ? currentById.get(task.id) ?? task
+          : task);
+        const refreshedIds = new Set(refreshed.map((task) => task.id));
+        return [...refreshed, ...current.filter((task) => !refreshedIds.has(task.id))];
+      });
+    }
+  }
 
   async function createTask() {
-    if (submitLockedRef.current) return;
+    if (submitLockedRef.current||!initialTasks||readOnly) return;
     const nextTitle = title.trim();
     if (!nextTitle) {
       setError('Task title required');
@@ -75,7 +77,7 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   }
 
   async function toggleTask(task: DashboardPersonalTask, completed: boolean) {
-    if (pendingTaskIdsRef.current.has(task.id)) return;
+    if (!initialTasks||readOnly||pendingTaskIdsRef.current.has(task.id)) return;
     pendingTaskIdsRef.current.add(task.id);
     const previousTask = task;
     const optimistic: DashboardPersonalTask = {
@@ -142,13 +144,13 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
             }}
             disabled={submitting}
           />
-          <Button className={dash.taskAddButton} type="submit" loading={submitting} disabled={!title.trim()}>
+          <Button className={dash.taskAddButton} type="submit" loading={submitting} disabled={!initialTasks||readOnly||!title.trim()}>
             Add
           </Button>
         </form>
         {error ? <div className={dash.taskError}>{error}</div> : null}
 
-        {tasks.length ? (
+        {!initialTasks?<div className={dash.emptyState} role={pending?'status':undefined}>{pending?'Reading personal tasks…':'Personal tasks unavailable.'}</div>:tasks.length ? (
           <TaskList className={dash.taskList} ariaLabel="Personal tasks">
             {tasks.map((task) => {
               const completed = Boolean(task.completedAt);
@@ -157,7 +159,7 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
                   key={task.id}
                   className={dash.taskBubble}
                   checked={completed}
-                  disabled={pendingTaskIds.has(task.id)}
+                  disabled={readOnly||pendingTaskIds.has(task.id)}
                   label={task.title}
                   controlAriaLabel={`Complete ${task.title}`}
                   onChange={(checked) => void toggleTask(task, checked)}

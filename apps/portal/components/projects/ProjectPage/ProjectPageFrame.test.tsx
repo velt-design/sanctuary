@@ -6,7 +6,7 @@ import ProjectSnapshotNotice from './ProjectSnapshotNotice';
 import { useProjectTabSelection } from "./useProjectTabSelection";
 import type { ComponentProps } from "react";
 function ProjectPageFrame(props: Omit<ComponentProps<typeof Frame>, 'optimisticTab' | 'onTabSelect'>) {
-  const navigation = useProjectTabSelection(props.snapshot.project.id, props.tab, Boolean(props.snapshot.project.hasJobPacks));
+  const navigation = useProjectTabSelection(props.projectId ?? props.snapshot?.project.id ?? "", props.tab, Boolean(props.snapshot?.project.hasJobPacks));
   return <Frame {...props} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab} />;
 }
 

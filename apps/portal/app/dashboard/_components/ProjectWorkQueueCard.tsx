@@ -13,10 +13,10 @@ import dash from '../dashboard.module.css';
 
 export default function ProjectWorkQueueCard({
   items,
-  available,
+  available,pending=false,
 }: {
   items: ProjectWorkQueueEntry[];
-  available: boolean;
+  available: boolean;pending?:boolean;
 }) {
   return (
     <section className={`${styles.section} ${dash.card} ${dash.queueCard}`} aria-label="Work Queue">
@@ -28,7 +28,7 @@ export default function ProjectWorkQueueCard({
         <Link className={dash.queueOpenLink} href="/staff/projects/work-queue">Open queue</Link>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {!available ? (
+        {pending?<div className={dash.emptyState} role="status">Reading the work queue…</div>:!available ? (
           <div className={dash.emptyState}>The Work Queue is temporarily unavailable.</div>
         ) : items.length ? (
           <ul className={dash.queueList}>

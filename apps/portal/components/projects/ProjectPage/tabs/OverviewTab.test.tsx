@@ -75,13 +75,13 @@ vi.mock("./overview/ProjectWorkFilesCard", () => ({
 }));
 
 vi.mock("./overview/ProjectRecentNotesEvents", () => ({
-  default: ({ projectId }: { projectId: string }) => (
+  default: ({ projectId, statusPanel }: { projectId: string; statusPanel?: ReactNode }) => (
     <section
       data-testid="mock-recent"
       data-project-id={projectId}
       data-recent-notes-events="true"
     >
-      Recent notes and events
+      {statusPanel}Recent notes and events
     </section>
   ),
 }));
@@ -320,7 +320,7 @@ describe("OverviewTab", () => {
     expect(rendered.container.textContent).not.toContain("No current design");
     expect(
       rendered.container.querySelector('[data-testid="mock-recent"]'),
-    ).toBeNull();
+    ).not.toBeNull();
     rendered.unmount();
   });
 
@@ -531,7 +531,7 @@ describe("OverviewTab", () => {
       "Could not load the Project Overview",
     );
     expect(rendered.container.textContent).toContain(
-      "No next action or commercial position is available",
+      "No next action is available",
     );
     expect(rendered.container.textContent).not.toContain("No current design");
     expect(

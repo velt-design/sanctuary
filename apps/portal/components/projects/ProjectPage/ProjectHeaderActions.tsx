@@ -22,7 +22,7 @@ function requiredDeleteConfirmation(projectId: string, stage: string): string {
   return EXTRA_DELETE_CONFIRM_STAGES.has(stage) ? `DELETE ${projectId}` : 'DELETE';
 }
 
-export default function ProjectHeaderActions({ project }: { project: ProjectPageSnapshot['project'] }) {
+export default function ProjectHeaderActions({ project, projectId = project?.id ?? '', disabled = false }: { project: ProjectPageSnapshot['project'] | null; projectId?: string; disabled?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const { role } = usePortalSession();
@@ -32,7 +32,7 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
 
-  const requiredText = requiredDeleteConfirmation(project.id, project.stage);
+  const requiredText = project ? requiredDeleteConfirmation(project.id, project.stage) : 'DELETE';
 
   const closeDeleteModal = () => {
     if (deleteBusy) return;
@@ -42,6 +42,7 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
   };
 
   const openDeleteModal = () => {
+    if (disabled || !project) return;
     setDeleteConfirmText('');
     setDeleteReason('');
     setDeleteOpen(true);
@@ -53,13 +54,14 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
         Projects
       </ProjectsIndexLink>
       <ButtonLink
-        href={`/staff/projects/${encodeURIComponent(project.id)}/design-workbench`}
+        href={`/staff/projects/${encodeURIComponent(projectId)}/design-workbench`}
+        disabled={disabled || !project}
         size="small"
         leadingIcon={<ExternalLink aria-hidden="true" />}
       >
         Design Workbench
       </ButtonLink>
-      {process.env.NEXT_PUBLIC_INSTALLER_PAYOUT_ENABLED === 'true' && <ButtonLink href={`/staff/projects/${encodeURIComponent(project.id)}/installer-payout`} size="small" variant="secondary">
+      {process.env.NEXT_PUBLIC_INSTALLER_PAYOUT_ENABLED === 'true' && <ButtonLink href={`/staff/projects/${encodeURIComponent(projectId)}/installer-payout`} disabled={disabled || !project} size="small" variant="secondary">
         Installer payout
       </ButtonLink>}
       {isAdmin ? (
@@ -69,6 +71,7 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
           visibleLabel
           items={[{
             label: 'Delete project',
+            disabled: !project,
             icon: <Trash2 aria-hidden="true" />,
             destructive: true,
             onSelect: openDeleteModal,
@@ -77,7 +80,7 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
       ) : null}
 
       <DestructiveConfirmation
-        open={deleteOpen}
+        open={deleteOpen && Boolean(project)}
         title="Delete project?"
         description="Project data and linked records will be permanently removed."
         confirmationText={requiredText}
@@ -96,7 +99,7 @@ export default function ProjectHeaderActions({ project }: { project: ProjectPage
           />
         )}
         onConfirm={() => {
-          if (deleteBusy || deleteConfirmText.trim().toUpperCase() !== requiredText.toUpperCase()) return;
+          if (disabled || !project || deleteBusy || deleteConfirmText.trim().toUpperCase() !== requiredText.toUpperCase()) return;
           setDeleteBusy(true);
           void (async () => {
             try {

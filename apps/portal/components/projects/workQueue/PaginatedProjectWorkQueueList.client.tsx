@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState,type ReactNode } from 'react';
 import { Card, DataStatePanel, Pagination, SearchFilterBar } from '@/components/ui/foundation';
 import type { ProjectCommandStaffSummary } from '@/lib/projects/commandCentre/types';
 import ProjectWorkQueueList from './ProjectWorkQueueList';
@@ -20,13 +20,13 @@ export default function PaginatedProjectWorkQueueList({
   staff,
   host,
   mutationsEnabled = true,
-  reassignmentEnabled = true,
+  reassignmentEnabled = true,pending=false,statusPanel,
 }: {
   entries: WorkQueueEntryView[];
   staff: ProjectCommandStaffSummary[];
   host: string;
   mutationsEnabled?: boolean;
-  reassignmentEnabled?: boolean;
+  reassignmentEnabled?: boolean;pending?:boolean;statusPanel?:ReactNode;
 }) {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<WorkQueueFilters>(DEFAULT_WORK_QUEUE_FILTERS);
@@ -95,7 +95,7 @@ export default function PaginatedProjectWorkQueueList({
         />
       </Card>
 
-      {hasFilters && !filteredEntries.length ? (
+      {statusPanel??(pending?<ProjectWorkQueueList pending entries={[]} staff={staff} host={host} mutationsEnabled={false}/>:hasFilters && !filteredEntries.length ? (
         <DataStatePanel state="filtered-empty" onClear={clearFilters} />
       ) : (
         <ProjectWorkQueueList
@@ -105,8 +105,8 @@ export default function PaginatedProjectWorkQueueList({
           mutationsEnabled={mutationsEnabled}
           reassignmentEnabled={reassignmentEnabled}
         />
-      )}
-      {filteredEntries.length ? (
+      ))}
+      {!pending&&!statusPanel&&filteredEntries.length ? (
         <div className={styles.pagination}>
           <Pagination
             currentPage={visible.page}

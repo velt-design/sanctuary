@@ -1,13 +1,14 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import type { ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
-import { Button, LoadingSkeleton, TabNavigation } from '@/components/ui/foundation';
+import { Button, TabNavigation } from '@/components/ui/foundation';
 import styles from './CommercialTab.module.css';
 import { selectProjectView, updateProjectView } from '../projectViewNavigation';
 import { CommercialProjectNotice } from '../ProjectCommercialContext';
@@ -18,15 +19,9 @@ type QuoteView = 'edit' | 'preview';
 const loadEstimatesTab = () => import('./ProjectCalculatorTab');
 const loadQuotesTab = () => import('./QuotesTab');
 const loadInvoicesTab = () => import('./InvoicesTab');
-const EstimatesTab = dynamic(loadEstimatesTab, {
-  loading: () => <LoadingSkeleton rows={4} columns={5} label="Loading estimates" />,
-});
-const QuotesTab = dynamic(loadQuotesTab, {
-  loading: () => <LoadingSkeleton rows={4} columns={5} label="Loading quotes" />,
-});
-const InvoicesTab = dynamic(loadInvoicesTab, {
-  loading: () => <LoadingSkeleton rows={4} columns={6} label="Loading invoices" />,
-});
+const EstimatesTab = dynamic(loadEstimatesTab);
+const QuotesTab = dynamic(loadQuotesTab);
+const InvoicesTab = dynamic(loadInvoicesTab);
 
 export function preloadCommercialViewModule(view: CommercialView): Promise<unknown> {
   if (view === 'estimates') return loadEstimatesTab();
@@ -36,6 +31,9 @@ export function preloadCommercialViewModule(view: CommercialView): Promise<unkno
 
 export default function CommercialTab({
   host,
+  projectReady = true,
+  projectState = "pending",
+  readOnly = false,
   projectId,
   projectName = 'Project estimate',
   view,
@@ -43,6 +41,9 @@ export default function CommercialTab({
   statusPanel,
 }: {
   host: string;
+  projectReady?: boolean;
+  projectState?: ProjectSnapshotLoadState;
+  readOnly?: boolean;
   projectId: string;
   projectName?: string;
   view: CommercialView;
@@ -140,8 +141,10 @@ export default function CommercialTab({
 
       {statusPanel}
       <CommercialProjectNotice projectId={projectId} view={activeView} />
+      <div inert={readOnly && projectReady} style={{ display: 'contents' }}>
+      {!projectReady ? <p role={projectState === "pending" || projectState === "summary" ? "status" : undefined}>{projectState === "pending" || projectState === "summary" ? "Reading project details…" : "Project details unavailable. Retry the project read above."}</p> : null}
       {activeView === 'estimates' ? (
-        <EstimatesTab key={projectId} host={host} projectId={projectId} projectName={projectName} />
+        <EstimatesTab key={projectId} host={host} projectId={projectId} projectName={projectReady ? projectName : undefined} projectReady={projectReady} />
       ) : activeView === 'quotes' ? (
         <QuotesTab
           key={projectId}
@@ -151,7 +154,7 @@ export default function CommercialTab({
         />
       ) : (
         <InvoicesTab key={projectId} projectId={projectId} />
-      )}
+      )}</div>
     </div>
   );
 }

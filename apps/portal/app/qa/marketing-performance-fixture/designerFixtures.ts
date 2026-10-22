@@ -5,9 +5,11 @@ import { unrecordedSalesOutcome,type SalesOutcome } from '@/lib/marketingPerform
 import { OutcomeError,type OutcomeClient } from '@/components/marketingPerformance/ProjectSalesOutcome';
 import type { DesignerReport,DesignerVisit,DesignerScope } from '@/lib/marketingPerformance/designerContract';
 import { hubFixture } from './hubFixtures';
+import { representativeFixture } from './representativeFixture';
+import type { HubReport } from '@/lib/marketingPerformance/hub';
 const id=(n:number)=>`55555555-5555-4555-8555-${String(n).padStart(12,'0')}`;
-export function designerFixture(mode='complete'):DesignerReport {
-  const project=(n:number)=>hubFixture.projects[n%hubFixture.projects.length].id;
+export function designerFixture(mode='complete',hub:HubReport=hubFixture):DesignerReport {
+  const project=(n:number)=>hub.projects[n%hub.projects.length].id;
   const visit=(n:number,extra:Partial<DesignerVisit>={}):DesignerVisit=>({id:id(n),projectId:project(n),contactId:id(n+100),origin:'outlook',day:'2026-09-04',at:'2026-09-04T00:00:00Z',purpose:'initial',status:'attended',kind:'visit',staff:['jordan'],unmappedStaff:0,removed:false,withdrawn:false,cancelled:false,duplicate:false,changed:false,questions:0,...extra});
   const visits=[visit(1,{staff:['jordan','jp']}),visit(2,{staff:['jp']}),visit(3,{staff:['joe'],purpose:'measurement'}),visit(4,{staff:['joe'],purpose:null,status:null}),visit(5,{staff:['bruce'],purpose:'site_visit',status:'booked'}),visit(6,{staff:['bruce'],origin:'history',day:null,at:null}),visit(7,{projectId:project(1),purpose:'measurement',day:'2026-09-20',at:'2026-09-20T00:00:00Z'})];
   const scope=(n:number,extra:Partial<DesignerScope>={}):DesignerScope=>({id:id(n+200),projectId:project(n),reference:`DEMO-SCOPE-${n}`,addOn:false,firstSentAt:'2026-09-07T00:00:00Z',undatedSend:false,accepted:true,acceptedAt:'2026-09-11T00:00:00Z',valueCents:1850000,everAccepted:true,lastAcceptedAt:'2026-09-11T00:00:00Z',lastAcceptedValueCents:1850000,paymentEvidence:true,paidAt:'2026-09-13T00:00:00Z',...extra});
@@ -41,9 +43,10 @@ export const designerAssignmentClient:AssignmentClient={
   }
 };
 export const designerLoader:DesignerLoader=async(filters,signal)=>{
-  const mode=new URLSearchParams(window.location.search).get('designerScenario')??'complete';
+  const query=new URLSearchParams(window.location.search);
+  const mode=query.get('designerScenario')??(query.get('progressive')==='1'?'accepted':'complete');
   await new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,mode==='slow'?2500:300);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new Error('Aborted'));},{once:true});});
   if(mode==='failure'||mode==='denied')throw new Error(mode==='denied'?'Developer access is required.':'Synthetic read failure. Retry when available.');
-  const report=designerFixture(mode);savedAssignments.clear();commands.clear();savedOutcomes.clear();outcomeCommands.clear();for(const o of report.salesOutcomes)savedOutcomes.set(o.projectId,o);for(const a of report.assignments)savedAssignments.set(a.projectId,a);
+  const report=designerFixture(mode,query.get('representative')==='1'?representativeFixture:hubFixture);savedAssignments.clear();commands.clear();savedOutcomes.clear();outcomeCommands.clear();for(const o of report.salesOutcomes)savedOutcomes.set(o.projectId,o);for(const a of report.assignments)savedAssignments.set(a.projectId,a);
   return {...report,start:filters.start,end:filters.end};
 };

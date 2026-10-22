@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { ProjectActivityItem, ProjectNote } from "@/lib/projects/types";
 import { formatPortalDateTime } from "@/lib/format/portalDateTime";
 import {
@@ -23,12 +24,18 @@ export default function ProjectRecentNotesEvents({
   projectId,
   notes,
   events,
+  statusPanel,
+  readOnly = false,
+  pending = true,
 }: {
   projectId: string;
-  notes: ProjectNote[];
-  events: ProjectActivityItem[];
+  notes: ProjectNote[] | null;
+  events: ProjectActivityItem[] | null;
+  statusPanel?: ReactNode;
+  readOnly?: boolean;
+  pending?: boolean;
 }) {
-  const visibleEvents = events.filter(
+  const visibleEvents = events?.filter(
     (event) => !hasProhibitedProjectWorkText(event.title, event.detail),
   );
 
@@ -42,13 +49,14 @@ export default function ProjectRecentNotesEvents({
       aria-label="Recent notes and events"
       data-recent-notes-events="true"
     >
+      {statusPanel}
       <div className={styles.layout}>
         <section
           className={styles.notes}
           aria-labelledby="project-notes-heading"
         >
           <h3 id="project-notes-heading">Team notes</h3>
-          <ProjectNotesPanel projectId={projectId} initialNotes={notes} compactComposer />
+          {notes ? <div inert={readOnly}><ProjectNotesPanel projectId={projectId} initialNotes={notes} compactComposer /></div> : <p role="status">{pending ? "Reading complete notes…" : "Complete notes unavailable"}</p>}
         </section>
         <section
           className={styles.events}
@@ -56,7 +64,7 @@ export default function ProjectRecentNotesEvents({
         >
           <h3 id="project-events-heading">Recent system events</h3>
           <p>Portal activity only. Customer conversations are not included here.</p>
-          {visibleEvents.length ? (
+          {!visibleEvents ? <p role="status">{pending ? "Reading complete events…" : "Complete events unavailable"}</p> : visibleEvents.length ? (
             <ActivityTimeline ariaLabel="Recent system events">
               {visibleEvents.map((event) => (
                 <ActivityTimelineItem

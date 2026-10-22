@@ -43,9 +43,9 @@ describe('StaffSchedulePage', () => {
 
     expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'board' });
     expect(markup).toContain('data-testid="schedule-client"');
-    expect(markup).toContain('data-mode="v2"');
+    expect(markup).toContain('data-mode="default"');
     expect(markup).toContain('data-seed-kind="board"');
-    expect(markup).toContain('data-generated-at="2026-04-07T00:00:00.000Z"');
+    expect(markup).toContain('data-generated-at="none"');
   });
 
   it('loads the Gantt server schedule seed for gantt and passes it into the client entrypoint', async () => {
@@ -60,9 +60,9 @@ describe('StaffSchedulePage', () => {
 
     expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'gantt' });
     expect(markup).toContain('data-testid="schedule-client"');
-    expect(markup).toContain('data-mode="v2"');
+    expect(markup).toContain('data-mode="default"');
     expect(markup).toContain('data-seed-kind="gantt"');
-    expect(markup).toContain('data-generated-at="2026-04-07T00:00:00.000Z"');
+    expect(markup).toContain('data-generated-at="none"');
   });
 
   it('skips the schedule seed for site visits', async () => {
@@ -85,7 +85,17 @@ describe('StaffSchedulePage', () => {
 
     expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'board' });
     expect(markup).toContain('data-testid="schedule-client"');
-    expect(markup).toContain('data-mode="legacy"');
+    expect(markup).toContain('data-mode="default"');
+  });
+
+  it('returns the real client while the request-owned seed is unresolved', async () => {
+    let resolve!: (value: unknown) => void;
+    loadSchedulePageSeedMock.mockReturnValue(new Promise(value => { resolve = value; }));
+    const ui = await StaffSchedulePage({ searchParams: Promise.resolve({ view: 'board' }) }) as ReactElement<{initialSeed:Promise<unknown>}>;
+    expect(renderToStaticMarkup(ui)).toContain('data-testid="schedule-client"');
+    const seed = {initialScheduleMode:'v2',initialSeedKind:'board',today:'2026-04-07',initialV2Snapshot:{generatedAt:'2026-04-07T00:00:00.000Z'}};
+    resolve(seed);
+    await expect(ui.props.initialSeed).resolves.toEqual(seed);
   });
 
   it('keeps the site visits entrypoint independent from Board and Gantt modules', () => {

@@ -21,7 +21,7 @@ function updatedLabel(value: string): string {
   }).format(date);
 }
 
-export default function RecentEstimatesCard({ items }: { items: DashboardRecentEstimate[] }) {
+export default function RecentEstimatesCard({ items,pending=false }: { items: DashboardRecentEstimate[]|null;pending?:boolean }) {
   return (
     <section className={`${styles.section} ${dash.card} ${dash.estimatesCard}`} aria-label="Recent Estimates">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
@@ -31,7 +31,7 @@ export default function RecentEstimatesCard({ items }: { items: DashboardRecentE
         </div>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {items.length ? (
+        {items===null?<div className={dash.emptyState} role={pending?'status':undefined}>{pending?'Reading saved estimates…':'This section is unavailable.'}</div>:items.length ? (
           <ul className={dash.operationalList}>
             {items.map((item) => (
               <li key={item.estimateId}>

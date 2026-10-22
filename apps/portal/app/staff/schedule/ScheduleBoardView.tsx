@@ -48,6 +48,8 @@ export type { ScheduleBoardMenuAction } from './ScheduleBoardCards';
 export type { ScheduleBoardDrop, ScheduleBoardDropDebug } from './useScheduleBoardDragController';
 
 export type ScheduleBoardViewProps = {
+  dataPending?: boolean;
+  dataError?: boolean;
   today: string;
   scheduleMode: 'v2' | 'legacy';
   installers: Installer[];
@@ -199,6 +201,8 @@ function describeDropTarget(input: {
 }
 
 export default function ScheduleBoardView({
+  dataPending = false,
+  dataError = false,
   today,
   scheduleMode,
   installers,
@@ -327,7 +331,7 @@ export default function ScheduleBoardView({
           <div className={styles.panelHeader}>
             <h2 className={styles.panelTitle}>Unscheduled</h2>
             <div className={styles.panelHeaderActions}>
-              <span className={styles.muted}>{unscheduledJobs.length}</span>
+              <span className={styles.muted}>{dataPending ? dataError ? 'Unavailable' : 'Loading…' : unscheduledJobs.length}</span>
               <button
                 type="button"
                 className={styles.panelCollapseButton}
@@ -352,7 +356,7 @@ export default function ScheduleBoardView({
           </div>
 
           <UnscheduledDropZone onMount={(node) => (unscheduledBodyRef.current = node)}>
-            {unscheduledJobs.length ? (
+            {dataPending ? <p className={styles.note} role={dataError ? undefined : 'status'}>{dataError ? 'Unscheduled projects unavailable. Retry the schedule.' : 'Reading unscheduled projects…'}</p> : unscheduledJobs.length ? (
               <div className={styles.cardList}>
                 {unscheduledJobs.map((job) => (
                   <UnscheduledJobCard
@@ -464,8 +468,8 @@ export default function ScheduleBoardView({
                 Show completed jobs
               </label>
             </div>
-            {activeInstallers.length > 0 ? (
-              <ScheduleCrewFilter
+            <ScheduleCrewFilter
+                readState={dataPending?dataError?'unavailable':'pending':undefined}
                 crews={crewFilterOptions}
                 hiddenCrewIds={hiddenCrewIds}
                 hiddenItemCount={hiddenItemCount}
@@ -475,7 +479,6 @@ export default function ScheduleBoardView({
                 onHideCrews={hideCrews}
                 onShowAllCrews={showAllCrews}
               />
-            ) : null}
           </div>
           <div
             className={styles.lanes}
@@ -486,7 +489,7 @@ export default function ScheduleBoardView({
             {visibleInstallers.length === 0 ? (
               <div className={styles.allCrewsHidden}>
                 <p className={styles.emptyLaneTitle}>
-                  {activeInstallers.length === 0 ? 'No active crews available' : 'All crews are hidden'}
+                  {dataPending ? (dataError ? 'Schedule unavailable' : 'Reading crews and scheduled work…') : activeInstallers.length === 0 ? 'No active crews available' : 'All crews are hidden'}
                 </p>
                 {activeInstallers.length > 0 ? (
                   <>
@@ -604,10 +607,10 @@ export default function ScheduleBoardView({
                         <span className={styles.colorDot} style={{ background: installer.color }} />
                         <h3 className={styles.laneTitle}>{installer.name}</h3>
                       </div>
-                      {nextAvailable ? <div className={styles.smallMeta}>Next available: {formatShortDate(nextAvailable)}</div> : null}
+                      {!dataPending && nextAvailable ? <div className={styles.smallMeta}>Next available: {formatShortDate(nextAvailable)}</div> : null}
                     </div>
                     <div className={styles.laneCounts}>
-                      <span className={styles.laneLoad}>{formatScheduleCrewLoad(ids.length, forecastDays)}</span>
+                      <span className={styles.laneLoad}>{dataPending ? dataError ? 'Scheduled work unavailable' : 'Reading scheduled work…' : formatScheduleCrewLoad(ids.length, forecastDays)}</span>
                       {attentionCount > 0 ? <span className={styles.laneIssueCount}>{attentionCount} need attention</span> : null}
                     </div>
                   </div>
@@ -632,8 +635,8 @@ export default function ScheduleBoardView({
                           <div className={styles.emptyLaneIcon} aria-hidden="true">
                             ↓
                           </div>
-                          <p className={styles.emptyLaneTitle}>Drop jobs here</p>
-                          <p className={styles.emptyLaneHint}>Drag from Unscheduled or move from another crew</p>
+                          <p className={styles.emptyLaneTitle}>{dataPending ? dataError ? 'Scheduled work unavailable' : 'Reading scheduled work…' : 'Drop jobs here'}</p>
+                          {!dataPending && <p className={styles.emptyLaneHint}>Drag from Unscheduled or move from another crew</p>}
                         </div>
                       )}
                     </LaneDropZone>

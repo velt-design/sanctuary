@@ -6,6 +6,6 @@ export const runtime = 'nodejs';
 
 export default async function CostingControlCentrePage() {
   const supabase = await getSupabaseServerAuth();
-  const overview = await listCostingConfigurationOverview(supabase);
-  return <CostingControlCentre initialOverview={overview} />;
+  const initialOverviewRead=listCostingConfigurationOverview(supabase).catch(()=>null);
+  return <CostingControlCentre initialOverviewRead={initialOverviewRead} />;
 }

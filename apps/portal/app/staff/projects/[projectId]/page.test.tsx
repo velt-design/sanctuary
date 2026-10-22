@@ -45,6 +45,17 @@ describe('ProjectDetailPage', () => {
     expect(scheduling.load).not.toHaveBeenCalled();
   });
 
+  it('returns the actual client while every request-owned document result is still unsettled', async () => {
+    const id='proj_11111111-1111-4111-8111-111111111111';
+    scheduling.headers.set('x-portal-document-callback', `/staff/projects/${id}?tab=activity`);
+    const pending=new Promise(()=>{});
+    const initial={id:'fictional-read',ownerId:'staff-a',host:'fixture',projectId:id,results:{summary:pending,snapshot:pending,command:pending,payment:pending}};
+    scheduling.load.mockReturnValue(initial);
+    const page=await ProjectDetailPage({params:Promise.resolve({projectId:id})});
+    expect((page.props.children as ReactElement<{initialRead:unknown}>).props.initialRead).toBe(initial);
+    expect(scheduling.gate).toHaveBeenCalledTimes(1);
+  });
+
   it('never starts private reads when the page gate rejects', async () => {
     scheduling.gate.mockRejectedValue(new Error('denied'));
     await expect(ProjectDetailPage({ params: Promise.resolve({ projectId: 'proj_1' }) })).rejects.toThrow('denied');

@@ -55,10 +55,12 @@ export default function ProjectCalculatorTab({
   host,
   projectId,
   projectName = 'Project estimate',
+  projectReady = true,
 }: {
   host: string;
   projectId: string;
   projectName?: string;
+  projectReady?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -348,7 +350,7 @@ export default function ProjectCalculatorTab({
   }, [host, projectId, queryClient, renamePending, renameTarget, toast]);
 
   const hasCalculatorIntent = Boolean(editEstimateId || fromEstimateId || newDesign);
-  if (!hasCalculatorIntent) {
+  if (!hasCalculatorIntent || !projectReady) {
     return (
       <>
       <EstimatesListView

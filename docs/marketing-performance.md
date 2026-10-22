@@ -1,5 +1,121 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Progressive real reports candidate (22 October 2026)
+
+The Overview's real Commercial metric, grouping, trend and timing owners remain
+mounted while values arrive. Complete unfiltered Commercial source figures populate independently of the
+larger Hub response, with their source read time and outstanding project-context
+check stated beside them. Designer totals require complete Hub membership even
+without filters: the visit RPC deliberately retains unlinked/orphan history that
+the existing Hub intersection excludes. Its actual controls/table headers stay
+mounted while membership is pending. Current source/project filters also require
+the complete Hub selection; no partial subset supplies a total. In the
+unfiltered case, Commercial rows already belong to existing projects by the
+non-null quote-to-project foreign key, and Hub includes all projects. Once Hub is
+available, its exact project intersection remains authoritative. Separate reads
+can reflect different source times; completed membership can restate the earlier
+quote-source values, so cross-read invariance is not claimed. Details requiring
+project context wait for that context before exposing record actions. Closing a
+URL-restored Commercial drawer returns focus to its actual metric control;
+ordinary click-owned drawer focus continues using the shared Drawer owner.
+
+Initial page search parameters are passed to the real client on document and RSC
+entries (without broadening document-only seed admission) so a Financials direct
+link starts in Financials, with the no-view default still Overview. The initial
+Financial seed/query is retired on leaving that view; a later return restores the
+current URL. P&L's actual metric, comparison, chart and account-table owners render
+before source data, with pending/unavailable values inside them. Current retained
+evidence, date/basis labels and recovery are preserved. Access denials clear all
+Overview report values rather than retaining independently completed private data.
+The overall Hub readiness is recorded separately from independently useful
+sections; a shell, pending value or chart frame is not useful-data readiness.
+
+`overviewProjectSelection.ts` owns the shared filter dependency; the existing
+readers, full schemas and one-shot seed owners keep authority/freshness. No SQL,
+provider refresh, extra source read, shared private cache or infrastructure change
+is included. Gated `?progressive=1` QA uses fictional server seeds with explicitly
+separated 500/1100/2400 ms Commercial/Designer/Hub availability. Financial
+P&L uses the actual reader with controlled source delays described below. These are controlled scenarios, not production timings.
+The new host tests prove control/table identity, independent complete values,
+filter withholding, coherent standard/representative seed and fallback IDs, exact
+final membership after source-time skew, and late denial clearing. Actual browser and
+independent delivery review remain separate acceptance evidence.
+
+
+## Remaining Hub and Financial interfaces (22 October 2026 candidate)
+
+Enquiries, Sales and Portfolio now mount their existing metric, chart, grouping,
+record-inspection and table owners before the Hub read. Known dates/stages can be
+shown, while missing values are Reading or Unavailable. No source/person/business
+record, empty-population total or chart zero is fabricated. Safe date, grouping,
+measure, sort, evidence and filter selections remain usable. The underlying table,
+source/campaign comparison and weekly headers remain through failure and Retry.
+Complete filters and click-through meanings are unchanged. Definitions open during
+the wait without claiming unknown coverage. Access denial removes private values.
+A selection-window guard prevents a previous date response being presented under
+new dates before the new effect begins.
+
+The Hub is one authoritative `marketing_sales_hub_read` RPC (or the separately
+approved preview snapshot), followed by schema validation and complete cohort
+selection. It has no independent source promises comparable to Dashboard or P&L.
+Its current membership/intersections need that coherent population; no SQL, new
+cache, partial transport or duplicate baseline query is introduced just to show
+intermediate totals. Actual UI continuity is established separately from useful
+complete Hub values.
+
+Bank balances use their actual metrics and account table before source rows.
+Receivables/payables retain the actual Find field and document-table headers while
+the complete current authorised population is pending or unavailable. A missing
+population is never 'No outstanding' or zero. Currency/ageing summaries only name
+currencies established by genuine documents, and continue to use current read dates
+rather than the selected historical period. Source-dependent details/actions remain
+unavailable without their verified record; search survives pending/error/retry.
+
+## Complete P&L before independent monthly trend (22 October 2026 candidate)
+
+`financialCurrentSchema` is a distinct strict evidence contract: selected P&L,
+both exact comparisons, organisation, source identity and read window are complete;
+monthly reports are absent rather than fabricated. The same actual ProfitView owns
+metrics, comparison/account rows, six calendar periods, chart and monthly table
+before reading. Complete selected figures can populate while trend remains Reading.
+A verified unavailable selected domain is unavailable even while months continue.
+
+`readProfitPanel` owns one promise per exact period and the existing two-worker
+pool. JSON callers retain their complete existing response and authority lifecycle.
+Progressive callers additionally pass the reader's fresh finish gate before primary
+publication, and repeat the original final gate after all started workers settle.
+Per-call role/token/rotation, tenant/scope checks and connection ownership remain.
+A separate validity promise immediately invalidates displayed primary evidence on
+fatal source/authority/abort failure, including generic 503 failures; the tail
+still waits for started workers and connector cleanup. No failed cleanup can leave
+primary evidence usable. Canonical unavailable monthly domains can coexist with
+verified selected figures; authority loss cannot.
+
+One request transports nested Flight current/tail/validity results for an admitted
+initial document. Matching is selection/source/revision-bound and retired on changes;
+`Promise.resolve` normalizes Flight's void-returning thenables through StrictMode.
+Ordinary Refresh/date/basis reads negotiate private/no-store NDJSON on the existing
+Financials API (`Vary: Accept`). The bounded shared parser validates identity,
+selection, ordering, completion and UTF-8; malformed/truncated/oversized evidence
+clears all displayed/retained primary values. A late older request cannot revive them.
+Existing non-negotiated full JSON and other report families remain compatible.
+
+The compact tail carries the six months and final timestamps. Exact periods already
+present in the primary use validated references; canonical reconstruction must equal
+the original complete panel. No duplicate provider period or repeated final primary
+payload is introduced. Business evidence remains at most 4 MiB, with a single total
+transport bound of 4 MiB + 4096 framing bytes, not an allowance per frame. Existing
+report limits remain 2000 nested rows, depth eight, 100 cells, 20 attributes and
+1024-character labels; provider/read-window deadlines are unchanged. Historical
+private full-report payload receipts are realism evidence, not candidate benchmarks.
+
+The gated fictional Financial path uses the real reader, pool, parts response,
+client parser and Financials owner. Organisation is delayed 100 ms, each essential
+period 500 ms, and each independent month 1800 ms, with two workers. These are
+controlled dependencies, not production latency. Initial nested Flight, ordinary
+HTTP streaming and actual browser progress still require optimized artifact proof.
+The remaining Bank/AR/AP composition and other Hub views are separately tracked.
+
 ## Lossless initial report representation (22 October 2026)
 
 `columnarReports.ts` owns a versioned, Marketing-only initial-document wire
@@ -869,3 +985,14 @@ in disposable PGlite. Hosted rollback rehearsals, required CI, production migrat
 and deployed browser/source verification passed for PR #200, merged as
 `7b075978ad33698bc109aab25f17a4f596c32189`. This attribution correction is live;
 the owner commercial overview candidate above remains unreleased.
+
+### Selected Financial read ownership (22 October 2026 correction)
+
+The active read and accepted report each retain section/date/basis, revision and
+loader identity. A new selection is pending from its first committed render,
+before effects start its transport. A previous request's terminal error cannot
+label the new selection unavailable. Same-selection Refresh retains genuine dated
+evidence while updating; a completed unavailable read remains unavailable, and
+fatal authority/tenant/scope failures clear all retained figures. The same ownership
+covers AR/AP in both directions, basis and custom date changes. The connected React
+commit probe checks these transitions rather than only their eventual state.

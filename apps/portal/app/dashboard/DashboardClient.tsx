@@ -1,17 +1,18 @@
 'use client';
 
+import type { DashboardPartLoader } from '@/lib/dashboard/dashboardPartTransport';
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';
-import type { QueueMode } from '@/lib/dashboard/types';
-import DashboardPendingView from './DashboardPendingView';
+import type { DashboardData, QueueMode } from '@/lib/dashboard/types';
+import type { VisitSnapshot } from '@/lib/siteVisits/contract';
 import DashboardView from './DashboardView';
 import { useDashboardData } from './useDashboardData';
 
 export default function DashboardClient({
-  queueMode,
+  queueMode, loader, partsLoader, visitsLoader, readOnly=false,
 }: {
-  queueMode: QueueMode;
+  queueMode: QueueMode;partsLoader?:DashboardPartLoader;loader?:()=>Promise<DashboardData>;visitsLoader?:()=>Promise<VisitSnapshot>;readOnly?:boolean;
 }) {
-  const dashboard = useDashboardData(queueMode);
+  const dashboard = useDashboardData(queueMode,loader,partsLoader);
 
   if (dashboard.state === 'unavailable') {
     return (
@@ -28,23 +29,10 @@ export default function DashboardClient({
     );
   }
 
-  if (!dashboard.data) {
-    return (
-      <DashboardPendingView
-        failed={dashboard.state === 'refresh-failed'}
-        onRetry={dashboard.state === 'refresh-failed' ? () => void dashboard.retry() : undefined}
-      />
-    );
-  }
-
-  // A pending read cannot have data; this fallback only protects the view from
-  // an inconsistent mocked or future query result.
-  const visibleState = dashboard.state === 'pending' ? 'cached' : dashboard.state;
-
   return (
     <DashboardView
-      data={dashboard.data}
-      state={visibleState}
+      data={dashboard.data??null} parts={dashboard.parts}
+      state={dashboard.state} visitsLoader={visitsLoader} readOnly={readOnly}
       onRetry={() => void dashboard.retry()}
     />
   );

@@ -29,7 +29,7 @@ function activityTimeLabel(value: string): string {
   }).format(date);
 }
 
-export default function RecentActivityCard({ items }: { items: DashboardRecentActivityItem[] }) {
+export default function RecentActivityCard({ items,pending=false }: { items: DashboardRecentActivityItem[]|null;pending?:boolean }) {
   return (
     <section className={`${styles.section} ${dash.card} ${dash.activityCard}`} aria-label="Recent Activity">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
@@ -39,7 +39,7 @@ export default function RecentActivityCard({ items }: { items: DashboardRecentAc
         </div>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {items.length ? (
+        {items===null?<div className={dash.emptyState} role={pending?'status':undefined}>{pending?'Reading recent activity…':'This section is unavailable.'}</div>:items.length ? (
           <ul className={dash.activityList}>
             {items.slice(0, 6).map((item) => (
               <li key={item.id}>

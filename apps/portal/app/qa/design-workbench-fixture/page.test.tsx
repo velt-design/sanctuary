@@ -30,6 +30,7 @@ describe('DesignWorkbenchFixturePage', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     if (originalEnableFixtureFlag === undefined) {
       delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     } else {
@@ -45,6 +46,19 @@ describe('DesignWorkbenchFixturePage', () => {
     ).rejects.toThrow('NEXT_NOT_FOUND');
 
     expect(notFoundMock).toHaveBeenCalledTimes(1);
+    expect(getProjectPageSnapshotMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the same flag gate for progressive mode and passes unawaited selected Flight reads to the actual host', async () => {
+    await expect(DesignWorkbenchFixturePage({ searchParams: Promise.resolve({ fixture: 'multi-house-u-two-pergola', progressive: '1' }) })).rejects.toThrow('NEXT_NOT_FOUND');
+    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1'; vi.useFakeTimers();
+    const ui = await DesignWorkbenchFixturePage({ searchParams: Promise.resolve({ fixture: 'multi-house-u-two-pergola', progressive: '1', source: 'b', scenario: 'failure' }) }) as ReactElement<any>;
+    expect(ui.props.projectId).toBe('proj_workbench_progressive_b');
+    expect(ui.props.initialRead.context).toBeInstanceOf(Promise);
+    await vi.advanceTimersByTimeAsync(900);
+    expect(await ui.props.initialRead.context).toMatchObject({ kind: 'context', context: { project: { name: 'Fictional courtyard B' } } });
+    await vi.advanceTimersByTimeAsync(1400);
+    expect(await ui.props.initialRead.estimate).toMatchObject({ kind: 'error', accessEnded: false });
     expect(getProjectPageSnapshotMock).not.toHaveBeenCalled();
   });
 

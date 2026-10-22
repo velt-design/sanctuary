@@ -62,13 +62,17 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === '/qa/invoice-restore-fixture' ||
     path === PROJECT_WORK_QUEUE_FIXTURE_PATH ||
     path === SCHEDULE_OPS_FIXTURE_PATH ||
+    path === '/qa/schedule-progressive-fixture' ||
+    path === '/qa/portal-progressive-fixture' ||
+    path === '/qa/portal-progressive-fixture/dashboard-read' ||
     path === AI_ACTIVITY_FIXTURE_PATH ||
     path === '/qa/email-review-fixture' ||
     path === '/qa/finance-payment-fixture' ||
     path === '/qa/xero-summary-fixture' ||
     path === '/qa/enquiry-qualification-fixture' ||
     path === '/qa/marketing-performance-fixture' ||
-    path === '/qa/marketing-performance-fixture/project'
+    path === '/qa/marketing-performance-fixture/project' ||
+    path === '/qa/marketing-performance-fixture/financial-read'
   );
 }
 

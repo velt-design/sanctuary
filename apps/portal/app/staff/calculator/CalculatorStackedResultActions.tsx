@@ -1,3 +1,6 @@
+'use client';
+
+import { useCalculatorSessionRead } from './CalculatorSessionReadContext';
 import CalculatorPricingSummary, {
   type CalculatorPricingSummaryProps,
 } from './CalculatorPricingSummary';
@@ -14,6 +17,7 @@ export default function CalculatorStackedResultActions({
   onViewResults,
   onReviewIssues,
 }: CalculatorStackedResultActionsProps) {
+  const { ready } = useCalculatorSessionRead();
   return (
     <section
       className={styles.summaryActions}
@@ -25,7 +29,7 @@ export default function CalculatorStackedResultActions({
         <button type="button" className={styles.primaryAction} onClick={onViewResults}>
           View results
         </button>
-        {pricingSummary.issuesCount > 0 ? (
+        {ready && pricingSummary.issuesCount > 0 ? (
           <button type="button" className={styles.secondaryAction} onClick={onReviewIssues}>
             Review issues
           </button>

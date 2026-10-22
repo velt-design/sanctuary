@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
 import InvoicesTab from './InvoicesTab';
+import {ApiError} from '@/lib/repo/apiClient';
 import { act } from 'react';
 import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCommercialContext';
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
@@ -15,11 +16,11 @@ const schedule: ProjectInvoiceSchedule = {
   terms: [{ quoteVersionId: 'qv-current', quoteRef: 'Q-100', quoteVersionNumber: 2, paymentTermId: 'final', label: 'Final payment', position: 1, termCount: 1, amountIncGstCents: 80000, allocatedPaidIncGstCents: 0, remainingAmountIncGstCents: 80000, source: 'quote', invoice: null }],
   paymentEntries: [{ id: 'pmt-1', entryType: 'PAYMENT', amountIncGstCents: 20000, occurredAt: '2026-08-10', paymentMethod: 'bank transfer', reference: 'BANK-1', note: null, reason: null, sourceInvoiceId: null, sourceInvoiceRef: null, reversed: false, allocations: [], unallocatedIncGstCents: 20000 }],
 };
-let activeSchedule = schedule;
+let activeSchedule = schedule;let readPhase:'ready'|'pending'|'error'|'denied'='ready';
 
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: (options: any) => options?.queryKey?.[2] === 'scheduleByProject'
+  useQuery: (options: any) => readPhase==='denied'?{data:options?.queryKey?.[2]==='scheduleByProject'?activeSchedule:[],isPending:false,isError:true,error:new ApiError('Access ended',{status:403,body:null}),refetch:vi.fn()}:readPhase!=='ready'?{data:undefined,isPending:readPhase==='pending',isError:readPhase==='error',error:readPhase==='error'?new Error('Read failed'):null,refetch:vi.fn()}:options?.queryKey?.[2] === 'scheduleByProject'
     ? { data: activeSchedule, isPending: false, isError: false, error: null, refetch: vi.fn() }
     : { data: [], isPending: false, isError: false, error: null, refetch: vi.fn() },
   useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
@@ -34,7 +35,7 @@ vi.mock('@/lib/repo/invoicesRepo', () => ({
   updatePaymentAllocations: vi.fn(), voidProjectInvoice: vi.fn(),
 }));
 
-afterEach(() => { document.body.innerHTML = ''; admin = false; activeSchedule = schedule; });
+afterEach(() => { document.body.innerHTML = ''; admin = false; activeSchedule = schedule;readPhase='ready'; });
 
 describe('InvoicesTab reconciliation visibility', () => {
   it('keeps a closed accepted agreement and payment ledger visible while making billing a deliberate review', () => {
@@ -105,3 +106,9 @@ describe('InvoicesTab reconciliation visibility', () => {
     rendered.unmount();
   });
 });
+
+it('keeps actual invoice schedule metrics, search and history headers pending and failed, then fills them without replacement',()=>{
+ readPhase='pending';const view=renderIntoDocument(<InvoicesTab projectId="proj-1"/>),table=view.container.querySelector('table'),search=view.container.querySelector('input');expect(table?.textContent).toContain('Amount inc GST');expect(view.container.textContent).toContain('Recorded payments');expect(view.container.textContent).toContain('Reading');expect(view.container.textContent).not.toContain('No invoices yet');expect(view.container.textContent).not.toContain('$0.00');readPhase='error';view.rerender(<InvoicesTab projectId="proj-1"/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.textContent).toContain('Could not load invoices');readPhase='ready';view.rerender(<InvoicesTab projectId="proj-1"/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('input')).toBe(search);expect(view.container.textContent).toContain('$200.00');view.unmount();
+});
+
+it('clears cached payment evidence when its read authority ends while keeping the real table and metric labels',()=>{const view=renderIntoDocument(<InvoicesTab projectId="proj-1"/>),table=view.container.querySelector('table');expect(view.container.textContent).toContain('$200.00');readPhase='denied';view.rerender(<InvoicesTab projectId="proj-1"/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.textContent).not.toContain('$200.00');expect(view.container.textContent).toContain('Recorded payments');expect(view.container.textContent).toContain('Unavailable');expect(view.container.textContent).not.toContain('No invoices yet');view.unmount();});

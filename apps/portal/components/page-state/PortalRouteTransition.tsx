@@ -12,11 +12,8 @@ import {
 } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import PortalNavigationProgress from './PortalNavigationProgress';
-import ProjectsIndexPendingFrame from './ProjectsIndexPendingFrame';
-import ContactsIndexPendingFrame from './ContactsIndexPendingFrame';
 import { retainPortalHistory } from './portalHistoryGuard';
 import {
-  PORTAL_INSTANT_ROUTE_DEFINITIONS,
   portalInstantRouteReleasesOnCommit,
   portalInstantRouteTarget,
   type PortalInstantRoute,
@@ -289,31 +286,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   );
 }
 
+/** The current real page remains until Next commits the real destination. */
 export function PortalInstantRouteContent({ children }: { children: ReactNode }) {
-  const { instantRoute, instantRouteLabel } = usePortalRouteTransition();
-  const instantDefinition = instantRoute
-    ? PORTAL_INSTANT_ROUTE_DEFINITIONS[instantRoute]
-    : null;
-
-  return (
-    <>
-      {instantRoute === 'projects-index' ? <ProjectsIndexPendingFrame /> : null}
-      {instantRoute === 'contacts-index' ? <ContactsIndexPendingFrame /> : null}
-      {instantRoute && instantDefinition && instantRoute !== 'projects-index' && instantRoute !== 'contacts-index' ? (
-        <ProjectsIndexPendingFrame
-          instantRoute={instantRoute}
-          title={instantDefinition.title}
-          description={instantDefinition.description}
-          projectLabel={instantRouteLabel}
-        />
-      ) : null}
-      <div
-        style={{ display: instantRoute ? 'none' : 'contents' }}
-        aria-hidden={instantRoute ? 'true' : undefined}
-        data-portal-route-content="true"
-      >
-        {children}
-      </div>
-    </>
-  );
+  return <div style={{display:'contents'}} data-portal-route-content="true">{children}</div>;
 }

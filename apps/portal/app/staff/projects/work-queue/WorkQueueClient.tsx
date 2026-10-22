@@ -9,7 +9,6 @@ import {
   AlertBanner,
   AlertActionButton,
   DataStatePanel,
-  LoadingSkeleton,
   PageLayout,
 } from '@/components/ui/foundation';
 import { fetchProjectStaffDirectory } from '@/lib/projects/commandCentre/client';
@@ -106,29 +105,13 @@ export default function WorkQueueClient({
         </AlertBanner>
       ) : null}
 
-      {state === 'pending' ? (
-        <LoadingSkeleton rows={7} columns={4} label="Loading project work queue" />
-      ) : state === 'not-ready' ? (
-        <DataStatePanel
-          state="unavailable"
-          title="Work Queue not ready"
-          description="Project Work is not available in this environment. No unconfirmed work is shown."
-          onRetry={() => void queue.refetch()}
-        />
-      ) : state === 'error' || state === 'unavailable' ? (
-        <DataStatePanel
-          state={state === 'unavailable' ? 'unavailable' : 'error'}
-          onRetry={state === 'error' ? () => void queue.refetch() : undefined}
-        />
-      ) : (
-        <PaginatedProjectWorkQueueList
-          entries={entries}
-          staff={staffQuery.data ?? []}
-          host={host}
-          mutationsEnabled={state === 'fresh'}
-          reassignmentEnabled={staffQuery.isSuccess}
-        />
-      )}
+      <PaginatedProjectWorkQueueList
+        entries={entries} staff={staffQuery.data??[]} host={host}
+        mutationsEnabled={state==='fresh'} reassignmentEnabled={staffQuery.isSuccess}
+        pending={state==='pending'}
+        statusPanel={state==='not-ready'?<DataStatePanel state="unavailable" title="Work Queue not ready" description="Project Work is not available in this environment. No unconfirmed work is shown." onRetry={()=>void queue.refetch()}/>:state==='error'||state==='unavailable'?<DataStatePanel state={state==='unavailable'?'unavailable':'error'} onRetry={state==='error'?()=>void queue.refetch():undefined}/>:undefined}
+      />
+
     </PageLayout>
   );
 }

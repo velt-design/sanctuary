@@ -1,5 +1,6 @@
 'use client';
 
+import { useCalculatorSessionRead } from './CalculatorSessionReadContext';
 import {
   calculatorResultFreshnessLabel,
   type CalculatorResultFreshness,
@@ -71,8 +72,10 @@ export default function CalculatorPricingSummary({
   unpricedItemCount,
   hasCustomerPricing,
 }: CalculatorPricingSummaryViewProps) {
-  const isLastValid = resultFreshness !== 'current' && hasCustomerPricing;
-  const label = customerPriceLabel({ isLastValid, unpricedItemCount });
+  const {ready,error}=useCalculatorSessionRead();
+  const unknownLabel=error?"Unavailable":"Reading…";
+  const isLastValid = ready && resultFreshness !== 'current' && hasCustomerPricing;
+  const label = customerPriceLabel({ isLastValid, unpricedItemCount: ready ? unpricedItemCount : 0 });
   const summaryClassName = variant === 'inspector' ? styles.inspectorSummary : styles.compactSummary;
   const staleClassName = variant === 'inspector'
     ? styles.inspectorSummaryStale
@@ -83,13 +86,13 @@ export default function CalculatorPricingSummary({
       className={isLastValid ? `${summaryClassName} ${staleClassName}` : summaryClassName}
       aria-label={isLastValid ? 'Last valid customer price' : 'Customer price summary'}
       data-pricing-summary-variant={variant}
-      data-result-freshness={resultFreshness}
+      data-result-freshness={ready ? resultFreshness : error ? 'unavailable' : 'pending'}
       data-rounded-customer-summary
     >
       <div className={styles.primary}>
         <span className={styles.label}>{label}</span>
         <strong className={styles.value}>
-          {hasCustomerPricing
+          {!ready ? unknownLabel : hasCustomerPricing
             ? formatRoundedCustomerPriceFromCents(customerTotalIncGstCents)
             : '\u2014'}
         </strong>
@@ -98,17 +101,17 @@ export default function CalculatorPricingSummary({
       <div className={styles.secondary}>
         <span>
           Customer price (rounded, ex GST){' '}
-          {hasCustomerPricing
+          {!ready ? unknownLabel : hasCustomerPricing
             ? formatRoundedCustomerPriceFromCents(customerTotalExGstCents)
             : '\u2014'}
         </span>
-        <span>{calculatorResultFreshnessLabel(resultFreshness)}</span>
-        {unpricedItemCount > 0 ? (
+        <span>{ready ? calculatorResultFreshnessLabel(resultFreshness) : unknownLabel}</span>
+        {ready && unpricedItemCount > 0 ? (
           <span>
             {unpricedItemCount} unpriced item{unpricedItemCount === 1 ? '' : 's'}
           </span>
         ) : null}
-        {quoteDiscountPct > 0 ? <span>{quoteDiscountPct}% discount applied</span> : null}
+        {ready && quoteDiscountPct > 0 ? <span>{quoteDiscountPct}% discount applied</span> : null}
       </div>
     </section>
   );

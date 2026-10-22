@@ -6,15 +6,16 @@ import { summarize } from '@/lib/marketingPerformance/contract';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import styles from './MarketingPerformance.module.css';
 
-export default function HubMetrics({hub,filters,apply,inspectEvents}: {hub:HubReport;filters:HubFilters;apply:(f:HubFilters)=>void;inspectEvents:(kind:string)=>void}) {
-  const selected=selectHub(hub,{...filters,inspect:'all'}), totals=summarize(selected.enquiries);
-  const inspect=(value:string|number,label:string,action:()=>void)=><Button className={styles.metricButton} data-long={String(value).length>16||undefined} variant="quiet" aria-label={`Inspect ${label}`} onClick={action}>{value}</Button>;
+export default function HubMetrics({hub,filters,apply,inspectEvents,pending=false}: {hub:HubReport|null;pending?:boolean;filters:HubFilters;apply:(f:HubFilters)=>void;inspectEvents:(kind:string)=>void}) {
+  const selected=hub?selectHub(hub,{...filters,inspect:'all'}):null, totals=selected?summarize(selected.enquiries):null;
+  const inspect=(value:string|number,label:string,action:()=>void)=><Button className={styles.metricButton} data-long={String(value).length>16||undefined} variant="quiet" aria-label={`Inspect ${label}`} disabled={!hub} onClick={action}>{value}</Button>;
   const evidence=(key:string)=>apply({...filters,inspect:key});
-  const eventCount=(kind:string)=>selected.events.filter(e=>e.kind===kind).length;
-  const missingAmounts=selected.events.some(e=>['payment','reversal'].includes(e.kind)&&e.amountCents===null);
-  const net=selected.events.filter(e=>['payment','reversal'].includes(e.kind)).reduce((sum,e)=>sum+(e.amountCents??0),0);
-  const projects=selected.projects;
-  const items=filters.view==='enquiries'?[
+  const eventCount=(kind:string)=>selected?.events.filter(e=>e.kind===kind).length??0;
+  const missingAmounts=selected?.events.some(e=>['payment','reversal'].includes(e.kind)&&e.amountCents===null);
+  const net=(selected?.events??[]).filter(e=>['payment','reversal'].includes(e.kind)).reduce((sum,e)=>sum+(e.amountCents??0),0);
+  const projects=selected?.projects??[];
+  const labels=filters.view==='enquiries'?['Submissions','Qualification','Confirmed visits','Quoted projects','Accepted projects','Payment verified']:filters.view==='sales'?['Versions sent','Versions accepted','Net receipts · NZD','Payment entries','Invoices paid','Sales events']:['Projects','No enquiry receipt','Marked paid','Payment verified','Payment evidence gaps','Possible tests'];
+  const items=selected&&totals?(filters.view==='enquiries'?[
     {label:'Saved enquiry submissions',value:inspect(totals.enquiries,'saved enquiries',()=>evidence('all')),detail:`${totals.projects} linked projects · ${totals.repeats} repeats · ${totals.unlinked} unlinked`},
     {label:'Qualification assessments',value:inspect(!totals.eligible?'Not assessed':totals.unreviewed&&totals.eligible===totals.unreviewed?'Awaiting assessment':`${totals.qualified} qualified`,'qualification assessments',()=>evidence(totals.unreviewed&&totals.eligible===totals.unreviewed?'unreviewed':'qualified')),detail:`${totals.eligible} eligible · ${totals.unreviewed} awaiting · ${totals.notQualified} not qualified; other receipts outside criteria`},
     {label:'Recorded visit confirmations',value:inspect(totals.visit||'No evidence','visit confirmations',()=>evidence('visit')),detail:'Historical confirmation coverage is incomplete; absence is not zero visits.'},
@@ -35,10 +36,10 @@ export default function HubMetrics({hub,filters,apply,inspectEvents}: {hub:HubRe
     {label:'Payment-verified projects',value:inspect(projects.filter(p=>p.paymentVerified).length,'portfolio payment evidence',()=>evidence('payment')),detail:'Current qualifying payment evidence; independent of project stage'},
     {label:'Paid stage, missing payment evidence',value:inspect(projects.filter(p=>normalizePipelineStageKey(p.stage)==='paid'&&!p.paymentVerified).length,'paid evidence gaps',()=>evidence('paid_gap')),detail:'Inspect before any historical backfill; no automatic changes'},
     {label:'Known / possible test projects',value:inspect(projects.filter(p=>p.knownTest||p.testCandidate).length,'test candidates',()=>evidence('test')),detail:'Included in portfolio reconciliation; labels are candidates, not automatic exclusions'},
-  ];
-  const labels=filters.view==='enquiries'?['Submissions','Qualification','Confirmed visits','Quoted projects','Accepted projects','Payment verified']:filters.view==='sales'?['Versions sent','Versions accepted','Net receipts · NZD','Payment entries','Invoices paid','Sales events']:['Projects','No enquiry receipt','Marked paid','Payment verified','Payment evidence gaps','Possible tests'];
+  ]):labels.map(label=>({label,value:inspect(pending?'Reading…':'Unavailable',label,()=>{}),detail:'Complete evidence is required.'}));
+
   const prominent=filters.view==='enquiries'?[0,3,4,5]:items.map((_,index)=>index);
-  return <div className={styles.metrics}><MetricGrid className={`${styles.metricGrid} ${filters.view==='enquiries'?styles.enquiryMetricGrid:''}`} columns={filters.view==='enquiries'?4:3} ariaLabel={`${filters.view} measures`} items={prominent.map(i=>({...items[i],label:labels[i],detail:filters.view==='enquiries'&&i>=3?`${totals.origins} origin projects`:filters.view==='sales'&&i===2?'Recorded ledger · incl. GST':undefined}))}/>
-    {filters.view==='enquiries'&&<div className={styles.evidenceStatus}>{[1,2].map(i=><div key={i}><span>{labels[i]}</span>{items[i].value}<small>{i===1?`${totals.eligible} eligible · ${totals.unreviewed} awaiting`:'Partial historical coverage'}</small></div>)}</div>}
+  return <div className={styles.metrics}><MetricGrid className={`${styles.metricGrid} ${filters.view==='enquiries'?styles.enquiryMetricGrid:''}`} columns={filters.view==='enquiries'?4:3} ariaLabel={`${filters.view} measures`} items={prominent.map(i=>({...items[i],label:labels[i],detail:filters.view==='enquiries'&&i>=3?totals?`${totals.origins} origin projects`:'Complete cohort required':filters.view==='sales'&&i===2?'Recorded ledger · incl. GST':undefined}))}/>
+    {filters.view==='enquiries'&&<div className={styles.evidenceStatus}>{[1,2].map(i=><div key={i}><span>{labels[i]}</span>{items[i].value}<small>{i===1?totals?`${totals.eligible} eligible · ${totals.unreviewed} awaiting`:'Complete cohort required':'Partial historical coverage'}</small></div>)}</div>}
     <ReportDetail title="How these totals are counted" label="Metric definitions">{items.map(item=><p key={item.label}><strong>{item.label}</strong><br/>{item.detail}</p>)}</ReportDetail></div>;
 }

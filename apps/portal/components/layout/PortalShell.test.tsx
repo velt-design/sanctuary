@@ -246,8 +246,8 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
-  it('renders the Schedule operations QA fixture without auth redirects or portal chrome', () => {
-    mockPathname = '/qa/schedule-ops-fixture';
+  it.each(['/qa/schedule-ops-fixture','/qa/schedule-progressive-fixture','/qa/portal-progressive-fixture'])('renders %s without auth redirects or portal chrome', (fixturePath) => {
+    mockPathname = fixturePath;
     mockSession = {
       status: 'unauthenticated',
       email: null,

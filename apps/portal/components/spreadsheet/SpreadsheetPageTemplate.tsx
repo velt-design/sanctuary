@@ -352,13 +352,6 @@ export default function SpreadsheetPageTemplate<
         <section ref={sectionRef} className={styles.section}>
           {adapter.toolbar}
 
-          {adapter.loading && !adapter.allRows.length ? (
-            <div className={styles.emptyState}>{adapter.loadingMessage}</div>
-          ) : adapter.hasError && !adapter.allRows.length ? (
-            <div className={styles.emptyState}>{adapter.errorMessage}</div>
-          ) : !shell.visibleRows.length ? (
-            <div className={styles.emptyTable}>{adapter.emptyMessage}</div>
-          ) : (
             <div ref={shell.sheetViewportRef} className={styles.sheetViewport} {...shell.viewportProps}>
               <div ref={shell.gridRef} className={styles.tableScroller} style={shell.sheetVars} tabIndex={0} onKeyDown={handleGridKeyDown}>
                 <table className={styles.table}>
@@ -406,7 +399,8 @@ export default function SpreadsheetPageTemplate<
                     </tr>
                   </thead>
                   <tbody>
-                    {shell.displayRows.map((displayRow) => {
+                    {!shell.visibleRows.length && <tr><td colSpan={shell.displayColumns.length+1} className={styles.emptyTable} role={adapter.loading?'status':adapter.hasError?'alert':undefined}>{adapter.loading?adapter.loadingMessage:adapter.hasError?adapter.errorMessage:adapter.emptyMessage}</td></tr>}
+                    {(shell.visibleRows.length?shell.displayRows:[]).map((displayRow) => {
                       if (displayRow.kind === 'group') {
                         return (
                           <tr key={displayRow.key} className={styles.yearDividerRow}>
@@ -576,7 +570,6 @@ export default function SpreadsheetPageTemplate<
                 </div>
               </div>
             </div>
-          )}
         </section>
       </div>
     </main>

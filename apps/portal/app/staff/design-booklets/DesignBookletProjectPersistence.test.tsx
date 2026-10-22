@@ -740,4 +740,55 @@ describe("project-linked Design Booklet Workbench", () => {
     ).toBe("https://storage.example.test/second.jpg");
     rendered.unmount();
   });
+  it("keeps real fields and preview viewport unknown until verified, without default writes, and retries in place", async () => {
+    vi.useFakeTimers();
+    const seed = await mocks.load.getMockImplementation()!();
+    const read = deferred<typeof seed>();
+    mocks.load.mockReturnValueOnce(read.promise);
+    const view = renderProjectWorkbench();
+    const customer = view.container.querySelector('input[required]') as HTMLInputElement;
+    const canvas = view.container.querySelector('[class*="previewCanvas"]');
+    const toolbar = view.container.querySelector('[class*="previewToolbar"]');
+    expect(customer.value).toBe("");
+    expect(customer.disabled).toBe(true);
+    expect(Array.from(view.container.querySelectorAll("select")).every((select) => select.value === "" && select.disabled)).toBe(true);
+    expect(view.container.querySelector('[data-page-kind]')).toBeNull();
+    expect(view.container.textContent).not.toContain("Client AAA");
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.publishPdf).not.toHaveBeenCalled();
+    await act(async () => read.reject(new Error("Booklet read failed")));
+    expect(view.container.textContent).toContain("Project booklet unavailable");
+    expect(view.container.textContent).not.toContain("Save needs attention");
+    expect(view.container.querySelector('[class*="previewCanvas"]')).toBe(canvas);
+    const retry = Array.from(view.container.querySelectorAll("button")).find((button) => button.textContent === "Retry booklet")!;
+    await act(async () => retry.click());
+    expect(view.container.querySelector('input[required]')).toBe(customer);
+    expect(customer.disabled).toBe(false);
+    expect(customer.value).toBe("Client AAA");
+    expect(view.container.querySelector('[class*="previewToolbar"]')).toBe(toolbar);
+    expect(view.container.querySelector('[data-page-kind="cover"]')).not.toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(mocks.save).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it("does not adopt another project's defaults, labels or late read", async () => {
+    const seed = await mocks.load.getMockImplementation()!();
+    const old = deferred<typeof seed>();
+    const next = deferred<typeof seed>();
+    mocks.load.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+    const view = renderProjectWorkbench();
+    view.rerender(<DesignBookletWorkbenchClient content={getMarketingDesignBookletContent()} pdfEndpoint="/api/legacy-multipart-pdf" projectId="proj_project-2" />);
+    await act(async () => old.resolve(seed));
+    expect(view.container.textContent).not.toContain("AAA");
+    expect((view.container.querySelector('input[required]') as HTMLInputElement).value).toBe("");
+    await act(async () => next.resolve({ ...seed, project: { ...seed.project, id: "proj_project-2", name: "BBB courtyard", returnHref: "/staff/projects/proj_project-2" }, draft: createProjectDesignBookletDraft("Client BBB") }));
+    expect(view.container.textContent).toContain("Return to BBB courtyard");
+    expect((view.container.querySelector('input[required]') as HTMLInputElement).value).toBe("Client BBB");
+    expect(mocks.save).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
 });

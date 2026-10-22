@@ -1,4 +1,7 @@
-import { renderToStaticMarkup } from 'react-dom/server';
+import {renderToPipeableStream,renderToStaticMarkup} from 'react-dom/server';
+import {PassThrough} from 'node:stream';
+import type {ReactNode} from 'react';
+async function complete(element:ReactNode):Promise<string>{return new Promise((resolve,reject)=>{const target=new PassThrough();let html='';target.on('data',chunk=>{html+=chunk.toString();});target.on('end',()=>resolve(html));target.on('error',reject);const rendered=renderToPipeableStream(element,{onAllReady(){rendered.pipe(target);},onError:reject});});}
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { FinanceInvoice } from '@/lib/xero/financeReview';
 const mocks = vi.hoisted(() => ({ load: vi.fn() }));
@@ -29,7 +32,7 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.unstubAllEnvs());
 async function page(row: FinanceInvoice, view = 'attention') {
   mocks.load.mockResolvedValue({ rows: [row], checkedAt: '2026-09-15T00:00:00Z', hasMore: false });
-  return renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({ view }) }));
+  return complete(await FinancePage({ searchParams: Promise.resolve({ view }) }));
 }
 it('keeps historical invoices visible without presenting customer mapping as required work', async () => {
   const html = await page(invoice, 'history');
@@ -77,7 +80,7 @@ it('explains a stopped transfer without asking the owner to issue another invoic
 });
 it('defaults to server-filtered attention and keeps the selected view through search and pagination', async () => {
   mocks.load.mockResolvedValue({ rows: [], checkedAt: '2026-09-15T00:00:00Z', hasMore: true });
-  const html = renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({ search: 'Example', offset: '50', view: 'history' }) }));
+  const html = await complete(await FinancePage({ searchParams: Promise.resolve({ search: 'Example', offset: '50', view: 'history' }) }));
   expect(mocks.load).toHaveBeenCalledWith('owner', 'Example', 50, 'history');
   expect(html).toContain('offset=100&amp;view=history');
   expect(html).toContain('No matching invoices in this view');
@@ -85,10 +88,10 @@ it('defaults to server-filtered attention and keeps the selected view through se
 });
 it('shows a truthful attention empty state and treats load failures separately', async () => {
   mocks.load.mockResolvedValue({ rows: [], checkedAt: '2026-09-15T00:00:00Z', hasMore: false });
-  expect(renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({}) }))).toContain('No invoices need attention');
+  expect(await complete(await FinancePage({ searchParams: Promise.resolve({}) }))).toContain('No invoices need attention');
   expect(mocks.load).toHaveBeenCalledWith('owner', '', 0, 'attention');
   mocks.load.mockRejectedValue(new Error('unavailable'));
-  const html = renderToStaticMarkup(await FinancePage({ searchParams: Promise.resolve({}) }));
+  const html = await complete(await FinancePage({ searchParams: Promise.resolve({}) }));
   expect(html).toContain('Finance could not be loaded');
   expect(html).not.toContain('No invoices need attention');
 });
@@ -101,4 +104,10 @@ it('makes an automatic payment exception actionable',async()=>{
   vi.stubEnv('XERO_AUTOMATIC_PAYMENTS_ENABLED','true');vi.stubEnv('XERO_INVOICE_PAYMENTS_ENABLED','true');
   const html=await page({...invoice,captured:true,xeroInvoiceId:'xero',transferTargetStatus:'AUTHORISED',paymentSync:{state:'review',reason:'CHECK',checkedAt:new Date().toISOString()}});
   expect(html).toContain('Only deal with the exceptions');expect(html).toContain('Payment needs a finance check');expect(html).toContain('Review invoice payments');
+});
+
+it('returns the actual authorised header, safe search and table columns while its one invoice read remains pending',async()=>{
+ mocks.load.mockReturnValue(new Promise(()=>{}));
+ const page=await FinancePage({searchParams:Promise.resolve({search:'Example',view:'history'})});const html=renderToStaticMarkup(page);
+ expect(mocks.load).toHaveBeenCalledOnce();expect(html).toContain('Finance review');expect(html).toContain('Invoice / customer');expect(html).toContain('name="search"');expect(html).toContain('Reading verified invoices');expect(html).not.toContain('No historical invoices');expect(html).not.toContain('Review project payments');
 });

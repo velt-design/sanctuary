@@ -68,6 +68,24 @@ describe('Commercial view navigation',()=>{
     expect(active()).toBe('quotes');expect(window.location.search).toContain('quoteId=q1');
     vi.mocked(window.confirm).mockReturnValue(true);click('Invoices');expect(active()).toBe('invoices');
   });
+  it('keeps actual safe subviews and view controls mounted independently of metadata',()=>{
+    mount('tab=estimates',{projectReady:false,readOnly:true});
+    const tabs=rendered.container.querySelector('[role="tablist"]');
+    expect(tabs).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="estimates-subview"]')).not.toBeNull();
+    click('Quotes');expect(active()).toBe('quotes');
+    expect(rendered.container.querySelector('[data-testid="quotes-subview"]')).not.toBeNull();
+    rendered.rerender(<CommercialTab host="host" projectId="proj_1" view="estimates" projectReady readOnly/>);
+    expect(rendered.container.querySelector('[role="tablist"]')).toBe(tabs);
+    expect(rendered.container.querySelector('[data-testid="quotes-subview"]')?.closest('[inert]')).not.toBeNull();
+  });
+  it('shows terminal metadata failure without a Reading claim while retaining section controls',()=>{
+    mount('tab=quotes',{projectReady:false,projectState:'refresh-failed'});
+    expect(rendered.container.textContent).toContain('Project details unavailable');
+    expect(rendered.container.textContent).not.toContain('Reading project details');
+    expect(rendered.container.querySelector('[role="tablist"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="quotes-subview"]')).not.toBeNull();
+  });
   it('keeps calculator mode free of commercial chrome',()=>{
     mount('tab=estimates&estimateId=e1',{calculatorWorkspace:true});
     expect(rendered.container.querySelector('[role="tablist"]')).toBeNull();

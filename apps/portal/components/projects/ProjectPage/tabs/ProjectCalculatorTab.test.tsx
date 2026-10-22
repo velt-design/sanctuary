@@ -307,4 +307,20 @@ describe('ProjectCalculatorTab', () => {
     expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
     rendered.unmount();
   });
+  it('mounts its actual list and safe Find before metadata without starting a URL-requested default draft runtime', () => {
+    search = 'tab=estimates&newDesign=1&estimateName=Unverified';
+    const view = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" projectReady={false} />);
+    const find = view.container.querySelector('#estimate-search');
+    const table = view.container.querySelector('table');
+    expect(find).not.toBeNull();
+    expect((find as HTMLInputElement).disabled).toBe(false);
+    expect(table?.textContent).toContain('V2');
+    expect(view.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+    view.rerender(<ProjectCalculatorTab host="host" projectId="proj_1" projectReady />);
+    expect(view.container.querySelector('[data-testid="embedded-calculator"]')?.getAttribute('data-create-new')).toBe('true');
+    view.unmount();
+  });
+
 });

@@ -16,3 +16,6 @@ export type ProjectWorkInitialRead = {
   projectId: string;
   results: { [K in keyof ProjectWorkInitialData]: Promise<ProjectWorkReadResult<ProjectWorkInitialData[K]>> };
 };
+
+/** Optional scoped readers for fictional, read-only UI proof; production uses the existing API adapters. */
+export type ProjectWorkReadLoaders = { [K in keyof ProjectWorkInitialData]: (projectId: string) => Promise<ProjectWorkInitialData[K]> };

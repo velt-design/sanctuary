@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act } from 'react';
+import { act,Profiler } from 'react';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
 import { buildOptimisticQuoteDetail } from '@/lib/localFirst/portalEntities';
@@ -506,4 +506,40 @@ describe('QuotesTab draft ownership UI', () => {
     expect(acceptButton?.hasAttribute('disabled')).toBe(true);
     rendered.unmount();
   });
+ it('keeps real quote fields/line headers/return through pending, failure and ready without a zero-value or stale draft commit',async()=>{
+  let phase:'pending'|'error'|'ready'|'empty'='pending',calls=0;const retry=vi.fn();useQueryMock.mockImplementation(()=>{const index=calls++%4;return index===3?{data:phase==='ready'?quoteDetail:phase==='empty'?{...quoteDetail,lineItems:[]}:null,isPending:phase==='pending',isError:phase==='error',error:phase==='error'?new Error('Read failed'):null,refetch:retry}:{data:[],isPending:false,error:null};});
+  const commits:string[]=[];const element=()=> <Profiler id="quote-owner" onRender={()=>commits.push([...document.querySelectorAll('[class*="totalValue"]')].map(node=>node.textContent).join('|'))}><QuotesTab projectId="proj_1"/></Profiler>;const view=renderIntoDocument(element());const back=[...view.container.querySelectorAll('button')].find(b=>b.textContent?.includes('Back to quotes'))!,lineTable=view.container.querySelector('table')!;expect(view.container.textContent).toContain('Customer on this quote');expect(lineTable.textContent).toContain('Description');expect(lineTable.textContent).not.toContain('No line items.');expect(view.container.textContent).not.toContain('Taylor');expect(view.container.textContent).not.toContain('$0.00');expect(view.container.textContent).not.toContain('database upgrade');
+  phase='error';view.rerender(element());expect(lineTable.textContent).toContain('Line items unavailable.');expect(lineTable.textContent).not.toContain('No line items.');expect(view.container.querySelector('table')).toBe(lineTable);await act(async()=>[...view.container.querySelectorAll('button')].find(b=>b.textContent==='Retry quote')!.click());expect(retry).toHaveBeenCalledOnce();phase='ready';view.rerender(element());expect(view.container.querySelector('table')).toBe(lineTable);expect([...view.container.querySelectorAll('button')].find(b=>b.textContent?.includes('Back to quotes'))).toBe(back);expect(view.container.textContent).toContain('Taylor');expect(view.container.textContent).toContain('$100.00');expect(commits.join('|')).not.toContain('$0.00');view.unmount();phase='pending';const emptyView=renderIntoDocument(element());const emptyTable=emptyView.container.querySelector('table')!;phase='empty';emptyView.rerender(element());expect(emptyView.container.querySelector('table')).toBe(emptyTable);expect(emptyTable.textContent).toContain('No line items.');expect(emptyTable.textContent).not.toContain('unavailable');emptyView.unmount();
+ });
+
+  it('preserves URL create intent without creating before current project authority is ready', async () => {
+    searchParamsValue = 'createFromEstimateId=est_v2';
+    getQueryData.mockReturnValue({ id: 'est_v2', projectId: 'proj_1', commercialScopeId: null });
+    vi.mocked(buildOptimisticQuoteDetail).mockReturnValue(quoteDetail as any);
+    const element = (ready: boolean) => <ProjectCommercialProvider projectId="proj_1" ready={ready}><QuotesTab projectId="proj_1" /></ProjectCommercialProvider>;
+    const view = renderIntoDocument(element(false));
+    const table = view.container.querySelector('table');
+    expect(table).not.toBeNull();
+    expect(buildOptimisticQuoteDetail).not.toHaveBeenCalled();
+    expect(enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
+    expect(fetchQuery).not.toHaveBeenCalled();
+    await act(async () => view.rerender(element(true)));
+    expect(enqueueAndProcessLocalFirstMutation).toHaveBeenCalledOnce();
+    view.unmount();
+  });
+
+  it('does not create after an estimate read outlives current project authority', async () => {
+    searchParamsValue = 'createFromEstimateId=est_v2';
+    let resolve!: (value: unknown) => void;
+    fetchQuery.mockImplementationOnce(() => new Promise((accept) => { resolve = accept; }));
+    const element = (ready: boolean) => <ProjectCommercialProvider projectId="proj_1" ready={ready}><QuotesTab projectId="proj_1" /></ProjectCommercialProvider>;
+    const view = renderIntoDocument(element(true));
+    expect(fetchQuery).toHaveBeenCalledOnce();
+    view.rerender(element(false));
+    await act(async () => resolve({ id: 'est_v2', projectId: 'proj_1', commercialScopeId: null }));
+    expect(buildOptimisticQuoteDetail).not.toHaveBeenCalled();
+    expect(enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
 });

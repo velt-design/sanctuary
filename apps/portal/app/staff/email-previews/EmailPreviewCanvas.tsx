@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { Expand, MailCheck } from 'lucide-react';
 import { Badge, Button } from '@/components/ui/foundation';
 import {
-  previewViewportDefinition,
+  previewViewportDefinition,previewLayoutIds,
   type PreviewLayoutId,
 } from './emailPreviewOptions';
 import type {
@@ -20,6 +20,7 @@ type PreviewStyle = CSSProperties & {
   '--preview-scaled-height': string;
 };
 
+const layoutNames:Record<PreviewLayoutId,string>={'editorial-refined':'Editorial Refined','image-led':'Image-led',compact:'Compact'};
 const layoutQuickLabels: Record<PreviewLayoutId, string> = {
   'editorial-refined': 'Balanced and polished',
   'image-led': 'Photography and impact',
@@ -33,55 +34,56 @@ function frameHeight(viewport: EmailPreviewWorkbenchController['viewport']) {
 }
 
 function layoutNumber(
-  preview: PreviewResponse,
+  preview: PreviewResponse|null,
   layoutId: PreviewLayoutId,
 ): string {
-  const index = preview.layouts.findIndex((layout) => layout.id === layoutId);
+  const index = (preview?.layouts.map(layout=>layout.id)??previewLayoutIds).indexOf(layoutId);
   return String(Math.max(index, 0) + 1).padStart(2, '0');
 }
 
 function EmailLayoutPreview({
   controller,
-  layout,
+  layout,layoutId,
   style,
 }: {
   controller: EmailPreviewWorkbenchController;
-  layout: LayoutPreview;
+  layout: LayoutPreview|null;layoutId:PreviewLayoutId;
   style: PreviewStyle;
 }) {
-  const selected = layout.id === controller.selectedLayoutId;
+  const selected = layoutId === controller.selectedLayoutId;
   const html =
-    controller.theme === 'dark' ? layout.htmlDark : layout.htmlLight;
+    controller.theme === 'dark' ? layout?.htmlDark : layout?.htmlLight;
 
+  const name=layout?.name??layoutNames[layoutId],unknown=controller.loading?'Reading…':'Unavailable';
   function focusLayout() {
-    controller.setSelectedLayoutId(layout.id);
+    controller.setSelectedLayoutId(layoutId);
     controller.setDisplayMode('focus');
   }
 
   return (
     <article
       className={styles.previewCard}
-      data-layout-id={layout.id}
+      data-layout-id={layoutId}
       data-selected={selected || undefined}
       style={style}
     >
       <header className={styles.previewCardHeader}>
         <span className={styles.layoutNumber}>
-          {layoutNumber(controller.preview!, layout.id)}
+          {layoutNumber(controller.preview, layoutId)}
         </span>
         <div>
           <div className={styles.layoutTitleLine}>
-            <h3>{layout.name}</h3>
+            <h3>{name}</h3>
             {selected ? <Badge tone="info">Selected</Badge> : null}
           </div>
-          <p>{layout.description}</p>
+          <p>{layout?.description??layoutQuickLabels[layoutId]}</p>
         </div>
         {controller.displayMode === 'compare' ? (
           <Button
             size="small"
             variant="quiet"
             leadingIcon={<Expand aria-hidden="true" />}
-            aria-label={`Focus ${layout.name} design`}
+            aria-label={`Focus ${name} design`}
             onClick={focusLayout}
           >
             Focus
@@ -92,11 +94,11 @@ function EmailLayoutPreview({
       <dl className={styles.messageMetadata}>
         <div>
           <dt>Inbox subject</dt>
-          <dd>{layout.sendSubject}</dd>
+          <dd>{layout?.sendSubject??unknown}</dd>
         </div>
         <div>
           <dt>Preheader</dt>
-          <dd>{layout.preheader}</dd>
+          <dd>{layout?.preheader??unknown}</dd>
         </div>
       </dl>
 
@@ -111,27 +113,27 @@ function EmailLayoutPreview({
           <span>Exact HTML</span>
         </div>
         <div className={styles.scaledFrame}>
-          <iframe
-            key={`${controller.variant}-${layout.id}-${controller.theme}-${controller.renderRevision}`}
+          {layout?<iframe
+            key={`${controller.variant}-${layoutId}-${controller.theme}-${controller.renderRevision}`}
             className={styles.emailFrame}
-            title={`${layout.name} ${controller.viewport} ${controller.theme} enquiry email preview`}
+            title={`${name} ${controller.viewport} ${controller.theme} enquiry email preview`}
             srcDoc={html}
             sandbox=""
             loading="lazy"
-          />
+          />:<p role={controller.loading?'status':undefined}>{controller.loading?'Reading exact email HTML…':'Exact email HTML unavailable.'}</p>}
         </div>
       </div>
 
       <footer className={styles.previewCardFooter}>
         <div className={styles.bestFor}>
           <span>Best for</span>
-          <p>{layout.bestFor}</p>
+          <p>{layout?.bestFor??unknown}</p>
         </div>
         <details className={styles.plainText}>
-          <summary aria-label={`${layout.name} plain-text version`}>
+          <summary aria-label={`${name} plain-text version`}>
             Plain-text version
           </summary>
-          <pre>{layout.text}</pre>
+          <pre>{layout?.text??unknown}</pre>
         </details>
       </footer>
     </article>
@@ -144,7 +146,8 @@ export function EmailPreviewCanvas({
   controller: EmailPreviewWorkbenchController;
 }) {
   const { preview, selectedLayout } = controller;
-  if (!preview || !selectedLayout) return null;
+  const selectedName=selectedLayout?.name??layoutNames[controller.selectedLayoutId];
+  const choices=preview?.layouts.map(layout=>layout.id)??previewLayoutIds;
 
   const viewport = previewViewportDefinition(controller.viewport);
   const scale = controller.zoom / 100;
@@ -158,8 +161,8 @@ export function EmailPreviewCanvas({
   };
   const visibleLayouts =
     controller.displayMode === 'compare'
-      ? preview.layouts
-      : [selectedLayout];
+      ? choices
+      : [controller.selectedLayoutId];
 
   return (
     <section
@@ -177,10 +180,10 @@ export function EmailPreviewCanvas({
           <h2 id="email-preview-canvas-title">
             {controller.displayMode === 'compare'
               ? 'Compare three design directions'
-              : selectedLayout.name}
+              : selectedName}
           </h2>
           <p>
-            {preview.label} · {viewport.label} {viewport.width}px ·{' '}
+            {preview?.label??(controller.loading?'Reading selected enquiry…':'Selected enquiry unavailable')} · {viewport.label} {viewport.width}px ·{' '}
             {controller.theme} simulation · {controller.zoom}% zoom
           </p>
         </div>
@@ -193,7 +196,7 @@ export function EmailPreviewCanvas({
       <div className={styles.layoutChoiceHeading}>
         <div>
           <span>Active design</span>
-          <strong>{selectedLayout.name}</strong>
+          <strong>{selectedName}</strong>
         </div>
         <p>Select a design for sending. Use Focus for a larger review.</p>
       </div>
@@ -203,22 +206,22 @@ export function EmailPreviewCanvas({
         role="group"
         aria-label="Select the active email layout"
       >
-        {preview.layouts.map((layout) => (
+        {choices.map((layoutId) => {const name=preview?.layouts.find(layout=>layout.id===layoutId)?.name??layoutNames[layoutId];return (
           <button
             type="button"
             className={styles.layoutChoice}
-            data-layout-choice={layout.id}
-            aria-pressed={layout.id === controller.selectedLayoutId}
+            data-layout-choice={layoutId}
+            aria-pressed={layoutId === controller.selectedLayoutId}
             disabled={controller.controlsLocked}
-            key={layout.id}
-            aria-label={`${layout.name}: ${layoutQuickLabels[layout.id]}`}
-            onClick={() => controller.setSelectedLayoutId(layout.id)}
+            key={layoutId}
+            aria-label={`${name}: ${layoutQuickLabels[layoutId]}`}
+            onClick={() => controller.setSelectedLayoutId(layoutId)}
           >
-            <span>{layoutNumber(preview, layout.id)}</span>
-            <strong>{layout.name}</strong>
-            <small>{layoutQuickLabels[layout.id]}</small>
+            <span>{layoutNumber(preview, layoutId)}</span>
+            <strong>{name}</strong>
+            <small>{layoutQuickLabels[layoutId]}</small>
           </button>
-        ))}
+        );})}
       </div>
 
       <div
@@ -226,12 +229,13 @@ export function EmailPreviewCanvas({
         data-preview-count={visibleLayouts.length}
         style={previewStyle}
       >
-        {visibleLayouts.map((layout) => (
+        {visibleLayouts.map((layoutId) => (
           <EmailLayoutPreview
             controller={controller}
-            layout={layout}
+            layoutId={layoutId}
+            layout={preview?.layouts.find(layout=>layout.id===layoutId)??null}
             style={previewStyle}
-            key={layout.id}
+            key={layoutId}
           />
         ))}
       </div>

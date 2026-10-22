@@ -18,12 +18,13 @@ export default async function StaffSchedulePage({
   }
 
   const scheduleView = (view ?? '').trim().toLowerCase() === 'gantt' ? 'gantt' : 'board';
-  const seed = await loadSchedulePageSeed({ view: scheduleView });
+  // The real schedule mounts while this request-owned read is still running.
+  // Failed initial reads fall back to the normal authenticated query/retry path.
+  const seed = loadSchedulePageSeed({ view: scheduleView }).catch(() => null);
   return (
     <ScheduleClient
-      initialScheduleMode={seed.initialScheduleMode}
-      initialSeedKind={seed.initialScheduleMode === 'v2' ? seed.initialSeedKind : undefined}
-      initialV2Snapshot={seed.initialV2Snapshot}
+      initialSeedKind={scheduleView}
+      initialSeed={seed}
     />
   );
 }

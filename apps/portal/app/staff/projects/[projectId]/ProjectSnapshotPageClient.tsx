@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { projectWorkReadFunction } from '@/components/projects/ProjectPage/projectWorkInitialRead';
-import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
+import type { ProjectWorkInitialRead, ProjectWorkReadLoaders } from '@/lib/projects/projectWorkInitialRead';
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import ProjectPageFrame from "@/components/projects/ProjectPage/ProjectPageFrame";
 import { useProjectFilesPreparation } from '@/components/projects/ProjectPage/useProjectFilesPreparation';
@@ -15,9 +15,7 @@ import { ProjectOverviewReadsProvider, useProjectOverviewReads } from "@/compone
 import styles from "@/components/projects/ProjectPage/ProjectPage.module.css";
 import StaffPageHeader from "@/components/layout/StaffPageHeader";
 import {
-  Card,
   DataStatePanel,
-  LoadingSkeleton,
   PageLayout,
 } from "@/components/ui/foundation";
 import {
@@ -47,6 +45,8 @@ export default function ProjectSnapshotPageClient({
   calculatorWorkspace: initialCalculatorWorkspace = false,
   debugExportEnabled,
   initialRead,
+  readOnly = false,
+  readLoaders,
 }: {
   projectId: string;
   tab: string;
@@ -54,6 +54,8 @@ export default function ProjectSnapshotPageClient({
   calculatorWorkspace?: boolean;
   debugExportEnabled: boolean;
   initialRead?: ProjectWorkInitialRead;
+  readOnly?: boolean;
+  readLoaders?: ProjectWorkReadLoaders;
 }) {
   // Native tab/history navigation updates the live query without a server render.
   // Workspace chrome and debug identity must follow that query too.
@@ -86,13 +88,13 @@ export default function ProjectSnapshotPageClient({
   const snapshotOptions = projectPageSnapshotQueryOptions(host, projectId);
   const summaryQuery = useQuery({
     ...summaryOptions,
-    queryFn: projectWorkReadFunction(queryClient, summaryOptions.queryKey, 'summary', host, projectId, ownerId, summaryOptions.queryFn!, initialRead),
+    queryFn: projectWorkReadFunction(queryClient, summaryOptions.queryKey, 'summary', host, projectId, ownerId, readLoaders ? () => readLoaders.summary(projectId) : summaryOptions.queryFn!, initialRead),
     enabled: !cachedSummary && projectAccessStatus === null,
   });
 
   const snapshotQuery = useQuery({
     ...snapshotOptions,
-    queryFn: projectWorkReadFunction(queryClient, snapshotOptions.queryKey, 'snapshot', host, projectId, ownerId, snapshotOptions.queryFn!, initialRead),
+    queryFn: projectWorkReadFunction(queryClient, snapshotOptions.queryKey, 'snapshot', host, projectId, ownerId, readLoaders ? () => readLoaders.snapshot(projectId) : snapshotOptions.queryFn!, initialRead),
     placeholderData: cachedSummary ?? summaryQuery.data,
     enabled: projectAccessStatus === null,
   });
@@ -111,7 +113,7 @@ export default function ProjectSnapshotPageClient({
   );
   const overviewReads = useProjectOverviewReads(
     host, projectId, navigation.activeTab === "activity" && projectAccessStatus === null,
-    initialRead ? { read: initialRead, ownerId } : undefined,
+    initialRead ? { read: initialRead, ownerId } : undefined, readLoaders,
   );
   const readAccessStatus = [summaryQuery.error, snapshotQuery.error, overviewReads.commandQuery.error, overviewReads.paymentQuery.error]
     .find((error) => error instanceof ApiError && [401, 403, 404].includes(error.status));
@@ -208,7 +210,7 @@ export default function ProjectSnapshotPageClient({
     tab,
   ]);
 
-  if (!snapshot) {
+  if (accessUnavailable) {
     const pending = loadState === "pending";
     const unavailable = loadState === "unavailable";
     const title = pending
@@ -246,18 +248,7 @@ export default function ProjectSnapshotPageClient({
           description={message}
           back={{ label: "Back to Projects", href: "/staff/projects" }}
         />
-        {pending ? (
-          <Card padding="compact">
-            <LoadingSkeleton rows={5} columns={4} label="Loading project" />
-          </Card>
-        ) : (
-          <DataStatePanel
-            state={unavailable ? "unavailable" : "error"}
-            title={title}
-            description={message}
-            onRetry={!unavailable ? retry : undefined}
-          />
-        )}
+        <DataStatePanel state="unavailable" title={title} description={message} />
       </PageLayout>
     );
   }
@@ -275,9 +266,11 @@ export default function ProjectSnapshotPageClient({
     >
       <ProjectOverviewReadsProvider value={overviewReads}>
       <ProjectPageFrame
-        key={snapshot.project.id}
+        key={projectId}
+        projectId={projectId}
         snapshot={snapshot}
         host={host}
+        readOnly={readOnly}
         snapshotContentReady={snapshotContentReady}
         snapshotState={loadState}
         tab={tab}
@@ -286,7 +279,7 @@ export default function ProjectSnapshotPageClient({
         calculatorWorkspace={calculatorWorkspace}
         onProjectAccessEnding={handleProjectAccessEnding}
         statusPanel={<>
-          <ProjectSnapshotNotice state={loadState} onRetry={retry} />
+          <ProjectSnapshotNotice hasSavedDetails={Boolean(snapshot)} state={loadState} onRetry={retry} />
           {debugExport ? <PortalDebugExportButton payload={debugExport} /> : null}
         </>}
       />

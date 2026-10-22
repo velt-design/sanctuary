@@ -23,7 +23,7 @@ vi.mock('./projectTabModules', () => ({
       data-calculator-workspace={String(Boolean(calculatorWorkspace))}
     ><input aria-label="Unsaved draft" defaultValue="" /></div>
   ),
-  FilesTab: () => <div data-testid="files-tab" />,
+  FilesTab: ({ projectId }: { projectId: string }) => <div data-testid="files-tab" data-project-id={projectId} />,
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
 }));
 
@@ -36,6 +36,15 @@ const snapshot = {
 } as any;
 
 describe('ProjectMainTabs', () => {
+  it('mounts the actual Files owner by protected route identity before nullable project metadata', () => {
+    mockSearchParams = 'tab=files';
+    const rendered = renderIntoDocument(<ProjectMainTabs host="host" projectId="proj_1" snapshot={null} snapshotContentReady={false} snapshotState="pending" tab="files" />);
+    const owner = rendered.container.querySelector('[data-testid="files-tab"]');
+    expect(owner?.getAttribute('data-project-id')).toBe('proj_1');
+    rendered.rerender(<ProjectMainTabs host="host" projectId="proj_1" snapshot={snapshot} tab="files" />);
+    expect(rendered.container.querySelector('[data-testid="files-tab"]')).toBe(owner);
+    rendered.unmount();
+  });
   it('renders Files as a full project view without Overview cards', () => {
     mockSearchParams = 'tab=files';
     const rendered = renderIntoDocument(<ProjectMainTabs host="host" snapshot={snapshot} tab="files" />);
@@ -136,4 +145,15 @@ describe('ProjectMainTabs', () => {
     expect(rendered.container.querySelector('[data-testid="overview-tab"]')?.getAttribute('data-snapshot-ready')).toBe('false');
     rendered.unmount();
   });
+  it('mounts the actual Job Packs owner while metadata/availability is unknown and preserves it when verified', () => {
+    mockSearchParams = 'tab=job-packs&estimateId=est_1&sheet=summary';
+    const view = renderIntoDocument(<ProjectMainTabs host="host" projectId="proj_1" snapshot={null} snapshotContentReady={false} snapshotState="pending" tab="job-packs" />);
+    const owner = view.container.querySelector('[data-testid="job-packs-tab"]');
+    expect(owner).not.toBeNull();
+    expect(view.container.textContent).not.toContain('Checking Job Packs availability');
+    view.rerender(<ProjectMainTabs host="host" projectId="proj_1" snapshot={snapshot} snapshotContentReady snapshotState="fresh" tab="job-packs" />);
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).toBe(owner);
+    view.unmount();
+  });
+
 });

@@ -62,6 +62,21 @@ describe('SpreadsheetPageTemplate state reconciliation', () => {
     window.localStorage.removeItem('test-sheet-zoom');
   });
 
+  it('preserves real columns and zoom across pending, error, success and empty reads without filler records',()=>{
+    const base=adapter([]),pending={...base,loading:true};
+    const view=renderIntoDocument(<SpreadsheetPageTemplate adapter={pending}/>);
+    const table=view.container.querySelector('table'),header=view.container.querySelector('thead'),zoom=view.container.querySelector('[aria-label="Sheet zoom"]');
+    expect(header?.textContent).toContain('Value');expect(table?.textContent).toContain('Loading');expect(view.container.querySelectorAll('tbody tr')).toHaveLength(1);
+    expect(view.container.querySelector('[data-cell-id]')).toBeNull();
+    act(()=>{const select=view.container.querySelector<HTMLSelectElement>('[aria-label="Zoom preset"]')!;select.value='125';select.dispatchEvent(new Event('change',{bubbles:true}));});
+    view.rerender(<SpreadsheetPageTemplate adapter={{...base,hasError:true}}/>);
+    expect(table?.textContent).toContain('Error');expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('thead')).toBe(header);
+    view.rerender(<SpreadsheetPageTemplate adapter={adapter([{id:'real',value:'Confirmed'}])}/>);
+    expect(table?.textContent).toContain('Confirmed');expect(view.container.querySelector('[aria-label="Sheet zoom"]')).toBe(zoom);
+    expect(view.container.querySelector<HTMLSelectElement>('[aria-label="Zoom preset"]')?.value).toBe('125');
+    view.rerender(<SpreadsheetPageTemplate adapter={base}/>);expect(table?.textContent).toContain('Empty');expect(view.container.querySelectorAll('tbody tr')).toHaveLength(1);view.unmount();
+  });
+
   it('closes an editor when filtering or refresh removes its row', () => {
     const row = { id: 'row_1', value: 'Original' };
     const rendered = renderIntoDocument(<SpreadsheetPageTemplate adapter={adapter([row])} />);

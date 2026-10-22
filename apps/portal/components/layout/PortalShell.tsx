@@ -53,6 +53,8 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/invoice-restore-fixture' ||
     pathname === '/qa/project-work-queue-fixture' ||
     pathname === '/qa/schedule-ops-fixture' ||
+    pathname === '/qa/schedule-progressive-fixture' ||
+    pathname === '/qa/portal-progressive-fixture' ||
     pathname === '/qa/finance-payment-fixture' ||
     pathname === '/qa/xero-summary-fixture' ||
     pathname === '/qa/enquiry-qualification-fixture' ||

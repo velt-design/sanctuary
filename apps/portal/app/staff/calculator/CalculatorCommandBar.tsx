@@ -1,3 +1,5 @@
+"use client";
+import { useCalculatorSessionRead } from "./CalculatorSessionReadContext";
 import styles from './CalculatorTrustUi.module.css';
 import type { CalculatorReadinessSummary } from './calculatorReadinessSummary';
 import CalculatorDraftStatus from './CalculatorDraftStatus';
@@ -34,9 +36,11 @@ export default function CalculatorCommandBar({
   variant = 'standalone',
   designNavigation,
 }: CalculatorCommandBarProps) {
+  const {ready,error:readError}=useCalculatorSessionRead();
+  const pendingLabel=readError?"Estimate unavailable":"Reading estimate…";
   const embedded = variant === 'embedded';
   const readinessClassName =
-    readinessSummary.tone === 'ready'
+    !ready ? styles.commandBarStatusWaiting : readinessSummary.tone === 'ready'
       ? styles.commandBarStatusReady
       : readinessSummary.tone === 'review'
         ? styles.commandBarStatusReview
@@ -60,16 +64,17 @@ export default function CalculatorCommandBar({
                 className={styles.commandBarProject}
                 data-calculator-project-picker="enabled"
                 onClick={onSelectProject}
+                disabled={!ready}
               >
-                {projectLabel}
+                {ready ? projectLabel : pendingLabel}
               </button>
             ) : !embedded ? (
-              <span className={styles.commandBarProject} data-calculator-project-picker="fixed">{projectLabel}</span>
+              <span className={styles.commandBarProject} data-calculator-project-picker="fixed">{ready ? projectLabel : pendingLabel}</span>
             ) : null}
             {!embedded ? <span aria-hidden="true">·</span> : null}
-            <span>{isEditingDesign ? 'Editing draft' : 'New design'}</span>
+            <span>{!ready ? pendingLabel : isEditingDesign ? 'Editing draft' : 'New design'}</span>
             <span aria-hidden="true">·</span>
-            <span>{activeModuleLabel}</span>
+            <span>{ready ? activeModuleLabel : ""}</span>
           </div>
           <CalculatorDraftStatus status={localDraftStatus} compact={embedded} />
         </div>
@@ -82,24 +87,24 @@ export default function CalculatorCommandBar({
       >
         <span
           className={readinessClassName}
-          title={readinessSummary.accessibleLabel}
-          aria-label={readinessSummary.accessibleLabel}
+          title={ready ? readinessSummary.accessibleLabel : pendingLabel}
+          aria-label={ready ? readinessSummary.accessibleLabel : pendingLabel}
           data-calculator-command-readiness
         >
-          {readinessSummary.label}
+          {ready ? readinessSummary.label : pendingLabel}
         </span>
 
         <button
           type="button"
           className={styles.commandBarSave}
           onClick={onSave}
-          disabled={saveDisabled}
+          disabled={!ready || saveDisabled}
           data-calculator-command-save
         >
           {saveLabel}
         </button>
       </div>
-      {saveError ? <p className={styles.commandBarError}>{saveError}</p> : null}
+      {ready && saveError ? <p className={styles.commandBarError}>{saveError}</p> : null}
     </header>
   );
 }

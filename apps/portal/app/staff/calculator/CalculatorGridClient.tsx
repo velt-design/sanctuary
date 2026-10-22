@@ -86,7 +86,7 @@ import { useCalculatorPreviewSplit } from './useCalculatorPreviewSplit';
 import {
   deriveCalculatorResultFreshness,
 } from './calculatorResultFreshness';
-import { useCalculatorCostingRequest } from './useCalculatorCostingRequest';
+import { useCalculatorCostingRequest, type CalculatorCostingRequester } from './useCalculatorCostingRequest';
 import { useCalculatorInfillController } from './useCalculatorInfillController';
 import { useCalculatorIssueNavigation } from './useCalculatorIssueNavigation';
 import {
@@ -119,8 +119,11 @@ import {
 export default function CalculatorGridClient({
   email: emailProp,
   role: roleProp,
-  workspace,
+  workspace, sessionReads, costingRequest, readOnly=false,
 }: {
+  sessionReads?:Pick<Parameters<typeof useCalculatorWorkspaceSession>[0],'projectLoader'|'estimateLoader'|'draftPersistence'>;
+  costingRequest?:CalculatorCostingRequester;
+  readOnly?:boolean;
   email?: string;
   role?: 'admin' | 'staff';
   workspace?: CalculatorProjectWorkspace;
@@ -188,6 +191,7 @@ export default function CalculatorGridClient({
     router,
     queryClient,
     toast,
+    ...sessionReads,
   });
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
@@ -335,6 +339,7 @@ export default function CalculatorGridClient({
   } = useCalculatorCostingRequest({
     readyToCalculate,
     requestPayloadJson,
+    request:costingRequest,
   });
   useSimplePricingClassification({
     values,
@@ -896,7 +901,7 @@ export default function CalculatorGridClient({
       warningsCount,
       warningsHelperText,
       generateLabel,
-      onGenerate: openSaveConfirmation,
+      onGenerate: ()=>{if(!readOnly)openSaveConfirmation();},
       projectId,
       generateError,
       isGenerating,
@@ -1032,10 +1037,10 @@ export default function CalculatorGridClient({
       activeModuleLabel,
       readinessSummary: quoteStatusUi.readinessSummary,
       localDraftStatus,
-      onSelectProject: workspace ? undefined : () => setProjectPickerOpen(true),
+      onSelectProject: workspace || readOnly ? undefined : () => setProjectPickerOpen(true),
       saveLabel: generateField?.actionLabel ?? 'Save',
-      saveDisabled: !generateField || Boolean(generateField.disabled),
-      onSave: () => void generateField?.onAction?.(),
+      saveDisabled: readOnly || !generateField || Boolean(generateField.disabled),
+      onSave: () => {if(!readOnly)void generateField?.onAction?.();},
       saveError: generateField?.error,
     },
     previewSplit,
@@ -1117,8 +1122,8 @@ export default function CalculatorGridClient({
         onPricingPreserveReasonChange: setPricingPreserveReason,
         onConfirmRequestDesignChange: setConfirmRequestDesignChecked,
         onConfirmRequestDesignPriorityChange: setConfirmRequestDesignPriority,
-        onSave: () => void saveConfirmed(),
-        onRepriceLatest: () => void repriceLatest(),
+        onSave: () => {if(!readOnly)void saveConfirmed();},
+        onRepriceLatest: () => {if(!readOnly)void repriceLatest();},
       },
     },
     saveOutcome: {
@@ -1126,7 +1131,7 @@ export default function CalculatorGridClient({
       liveCalculatorTotalIncGstCents: pricingPreview.totalIncGstCents,
       onDismiss: dismissSaveOutcome,
     },
-    projectPicker: workspace ? null : {
+    projectPicker: workspace || readOnly ? null : {
       open: projectPickerOpen,
       hostKey,
       selectedProjectId: projectId,

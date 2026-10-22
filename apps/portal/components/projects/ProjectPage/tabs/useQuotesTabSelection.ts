@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { updateProjectView } from "../projectViewNavigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {ApiError} from "@/lib/repo/apiClient";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import {
   buildQuoteEntityKey,
@@ -23,6 +24,7 @@ import {
   supabaseRuntimeUrl,
 } from "@/lib/supabase/browserClient";
 
+function accessEnded(error:unknown){return error instanceof ApiError&&[401,403,404].includes(error.status);}
 type UseQuotesTabSelectionInput = {
   projectId: string;
   selectedQuoteId?: string | null;
@@ -83,19 +85,20 @@ export function useQuotesTabSelection({
     enabled: Boolean(resolvedSelectedId && !isLocalQuoteId(resolvedSelectedId)),
   });
 
-  const quotes = quotesQuery.data ?? [];
-  const quotesLoading = quotesQuery.isPending;
+  const quotes = accessEnded(quotesQuery.error)?[]:quotesQuery.data ?? [];
+  const quotesLoading = quotesQuery.isPending||quotesQuery.isFetching;
   const quotesError =
-    quotesQuery.error instanceof Error
+    quotesQuery.isFetching?null:quotesQuery.error instanceof Error
       ? quotesQuery.error.message
       : quotesQuery.error
         ? String(quotesQuery.error)
         : null;
-  const estimates = estimatesQuery.data ?? [];
+  const estimates = accessEnded(estimatesQuery.error)?[]:estimatesQuery.data ?? [];
   const estimatesLoading = estimatesQuery.isPending;
-  const generatedJobPacks = jobPacksQuery.data ?? [];
-  const detailLoading = Boolean(selectedId) && quoteDetailQuery.isPending;
-  const detail = quoteDetailQuery.data ?? null;
+  const generatedJobPacks = accessEnded(jobPacksQuery.error)?[]:jobPacksQuery.data ?? [];
+  const detailLoading = Boolean(selectedId)&&(quoteDetailQuery.isPending||(!quoteDetailQuery.data&&quoteDetailQuery.isFetching));
+  const denied=accessEnded(quoteDetailQuery.error);
+  const detail = denied?null:quoteDetailQuery.data ?? null;
   const detailSyncState = useAliasedEntitySyncState(
     detail?.id,
     buildQuoteEntityKey,
