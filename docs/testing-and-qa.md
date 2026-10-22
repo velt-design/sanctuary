@@ -2376,3 +2376,9 @@ post-Stop reconciliation, 24 normal plus three reserved terminal admissions,
 scoped-stop versus credential/global-Stop denial, exact never-dispatched proof,
 stale-fence denial and concurrent dispatch/no-effect exclusion. Disposable synthetic SQL is not a live
 schema/provider test. No Graph dispatcher or credential loader exists.
+
+## Project SharePoint file checks
+
+Run node scripts/test-project-sharepoint-files-pglite.mjs for the disposable real-migration contract and vitest run apps/portal/lib/projects/sharePointFiles plus the ProjectSharePointFilesPanel component test for source boundaries and ordinary file tasks. Fixtures do not establish live Graph coverage or real-provider browser/download acceptance. Activation checks are in [Project SharePoint files](project-sharepoint-files.md).
+
+The isolated browser harness now clicks the real component's View/Download actions through the real open handler with synthetic auth/Graph boundaries. It verifies a PNG renders, an action failure can be retried, and a synthetic original arrives with its expected filename/bytes/hash. PDF bytes and MIME are checked separately; native PDF viewing and actual SharePoint/Rhino acceptance remain outstanding. Database regression coverage includes linked, queued, running and completed project deletion, audit retention and stale completion rejection.
