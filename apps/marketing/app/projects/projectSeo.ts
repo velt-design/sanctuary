@@ -11,7 +11,15 @@ export function getProjectPageTitle(project: Project): string {
 }
 
 export function getProjectCaseStudyHero(project: Project) {
-  return project.slug === 'warkworth-outdoor-room' ? project.gallery[0] : project.caseStudyHeroImage ?? project.heroImage;
+  if (project.slug === 'warkworth-outdoor-room') return project.gallery[0];
+  if (project.slug === 'st-heliers-townhouse') return project.gallery[1];
+  if (project.slug === 'tindalls-bay-pavilion') return project.gallery[1];
+  if (project.slug === 'waiheke-holiday-home') return { ...project.gallery[0], alt: 'The covered Waiheke deck opening towards the garden' };
+  if (project.slug === 'muriwai-courtyard') return { ...project.gallery[1], alt: 'Opal acrylic hip roof over the Muriwai courtyard' };
+  if (project.slug === 'goodhome-commercial-terrace') return project.gallery[0];
+  if (project.slug === 'lilliput-mini-golf') return project.gallery[1];
+  if (project.slug === 'kiwi-rail-platform') return { ...project.gallery[2], alt: 'The covered workplace path at KiwiRail head office' };
+  return project.caseStudyHeroImage ?? project.heroImage;
 }
 
 export function buildProjectPageMetadata(project: Project): Metadata {
