@@ -1,6 +1,6 @@
 # Project SharePoint files
 
-Status: Dedicated Files workspace, protected recent-preview verification and open-route-only Sydney placement are live as of 23 October 2026. Actual acceptance verified recent photo/PDF 200 receipts, manual Refresh and unchanged placement of other functions. Sydney improved ordinary file delivery, but the owner's almost-instant first-open outcome remains unmet. The local combined candidate removes one redundant Portal role read and trials Singapore for only the existing open route, retaining fresh session verification and current RPC/Graph authority. Its latency gain is unverified. Large original delivery retains its separate acceptance requirement. No runtime enablement, bindings, grants, provisioning or staff changeover changes.
+Status: Dedicated Files workspace, protected recent-preview verification and open-route-only Sydney placement are live as of 23 October 2026. Actual acceptance verified recent photo/PDF 200 receipts, manual Refresh and unchanged placement of other functions. Sydney improved ordinary file delivery, but the owner's almost-instant first-open outcome remains unmet. The combined auth/Singapore change retains fresh session verification and current RPC/Graph authority, but Portal activation remains unverified after a missing workspace test dependency stopped its build. The dependency correction changes package ownership only; the combined latency gain remains unverified. Large original delivery retains its separate acceptance requirement. No runtime enablement, bindings, grants, provisioning or staff changeover changes.
 
 ## Outcome and ownership
 
@@ -166,6 +166,17 @@ headers account for the measured work. The exact decoded bodies rendered, but
 aborted transport reporting does not establish native completion or exact paint.
 The first-new-file speed goal remains unmet. Prepared navigation avoided extra
 source reads. The receipt fix adds no new body prefetch, authority cache or durable copy.
+
+### Workspace dependency verification
+
+The actor-bound open-access test imports PGlite to execute the actual SQL locally.
+Portal now declares that test tool as a development dependency at the exact
+existing repository version, `0.5.4`, with its workspace lock entry. Root/Marketing
+declarations do not make it a Portal dependency. A full-root development install
+can mask that error; verification must include a fresh Portal-selected workspace
+install outside ancestors containing a full dependency tree. Portal's existing
+Next TypeScript test inclusion remains intact. No production runtime import,
+auth/session behavior, SQL, grants, region or file content changes are required.
 
 ### Open-route locality and combined auth candidate
 
