@@ -14,6 +14,71 @@ cached and invalidated handoffs, alongside the unchanged shell single-GET browse
 assertion. Owners: `project-command-centre-architecture.md` and
 `projects-contacts-estimates-calculator.md`.
 
+## 2026-10-22: Separate missing historical dates from financial mutations
+
+A NULL acceptance-date fill on an already-ACCEPTED version does not change the
+canonical financial selection: status already qualifies it, and version number,
+creation time and ID determine precedence. The shared reconciliation trigger
+must not reopen legacy completed jobs for that date-only repair. Exempt only
+that transition with every other field unchanged except `updated_at`; preserve
+ordinary date edits, status/value changes, invoices and payment corrections.
+The regression first proves the old reopening, then covers competing accepted
+versions, rollback and unchanged authority. Historical repairs remain separately
+guarded and audited, never a reason to fabricate settlement or disable triggers.
+
+## 2026-10-22: Check committed service-role additions against the PR base
+
+The finite GA4 credential transfer used the reviewed service-only RPC but lacked
+its exact-file declaration in the service-role guard. Register that server owner
+without granting neighboring modules access. A clean worktree check does not
+cover committed PR changes: set both architecture base/head and worktree
+base/head references to the actual PR comparison before reporting guard coverage.
+The transfer's nonce, source, install-intent and SQL authority checks are unchanged.
+The separate Portal boundary suite also inventories every service-role user with
+an exact allowlist. Register the same reviewed path there and run that suite
+alongside the strict changed-file guard; neither check substitutes for the other.
+
+## 2026-10-22: Compose project filters from the current URL
+
+Rapid audience and roof-form changes could each spread the same stale server
+search-parameter props while the first router navigation was unresolved. The
+second edit then silently removed the first selection. Collection filter events
+now carry partial patches and synchronously merge against the current browser
+URL. Native history integrates with Next `useSearchParams`, making URL, rendered
+controls and Back/Forward share one source. Reset preserves unrelated query
+parameters. Existing project-return metadata and detail switching are unchanged. Independent
+review additionally found the mobile BODY scroll container was ignored by the
+return capture/restore path. Both now resolve the same current scroll owner; a
+BODY-scrolled lower-card regression protects All projects and browser Back.
+A component regression exercises two events before rerender; the focused browser
+journey covers real history, reload and project return. Do not reintroduce
+independent optimistic filter state or await navigation between ordinary edits.
+
+
+## 2026-10-22: separate credential storage from retained report authority
+
+Moving an existing Google refresh token to production Vercel secrets must not
+simulate vault events or erase an unchanged report. Explicit credential mode and
+frozen binding now govern the single lifecycle, while report authority remains
+stable across a guarded same-credential cutover. A finite cloud transfer records
+install intent before writing: proven pre-install failure may settle, but uncertain
+writes never replay or expire into permission. Unexpected genuine Google rotation
+quarantines before reporting and requires secure recovery; same-token echo is not
+rotation. Owner: GA4 in `environment-auth-supabase.md`. Regression evidence: Vercel
+configuration/lifecycle/transfer, SQL/HTTP and native transition tests.
+
+## 2026-10-22: Separate pre-token read failure from credential-write uncertainty
+
+A failed vault read quarantined GA4 even though no Google token intent existed,
+also denying an unchanged saved report. Settle proven pre-token working failures
+under the existing command lock and terminal-status fence, preserving pending
+evidence. Never treat expiry alone as permission to replay a credential effect.
+Existing uncertain work needs exact operator evidence; token/write uncertainty
+stays quarantined. Closed SDK-class and item-validation diagnostics observe only
+existing calls. SQL/HTTP and native tests cover stale continuation, cancellation,
+Stop and preserved token/write quarantine. Owner: Sanctuary-owned GA4 in
+`environment-auth-supabase.md`.
+
 ## 2026-10-22: project file relationships must preserve project deletion
 
 Independent review found that new SharePoint binding/job/audit foreign keys would

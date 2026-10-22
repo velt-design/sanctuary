@@ -236,6 +236,14 @@ and allowlisted SQLSTATE, never report bodies or credentials. The service-role
 adapter exposes one scoped lifecycle RPC and no direct table access. This local
 candidate does not alter staff Outlook, finance or other Portal permissions.
 
+The separate finite GA4 credential-transfer route has no browser/staff-cookie or
+ordinary delegated-action admission. It requires the protected exact production
+deployment origin/SHA, a short-lived nonce admission and transient operator platform
+authority. Its fixed service-role RPC rechecks actor/source/control and serializes
+transfer intent. Responses contain only fixed state/classification metadata, never
+SDK errors, tokens or provider data. Full storage and cutover contract:
+`environment-auth-supabase.md` section Vercel credential storage.
+
 ## Praxis organisation finance candidate
 
 `GET /api/integrations/praxis/v1/finance-position` accepts only `from`, `to` and

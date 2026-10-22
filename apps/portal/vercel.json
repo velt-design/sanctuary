@@ -1,6 +1,10 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/professionals-release-20261022": false,
+      "codex/accepted-date-reconciliation-20261022": false,
+      "codex/projects-release-20261022": false,
+      "codex/ga4-pretoken-recovery-20261022": false,
       "codex/marketing-overview-diagnostics-20261022": false,
       "codex/sharepoint-project-files-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
@@ -52,6 +56,7 @@
       "codex/portal-marketing-panel-ready-20261021": false,
       "codex/guide-hub-20261021": false,
       "codex/portal-marketing-latency-20261022": false,
+      "codex/marketing-transport-diagnostics-20261022": false,
       "codex/portal-cold-start-20261021": false
     }
   },

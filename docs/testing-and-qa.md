@@ -36,6 +36,64 @@ visit-to-project-to-return in the compiled application. These local warm-process
 observations are not platform-cold or production results. Keep all raw samples;
 do not change the100ms target or count a timer correction as runtime improvement.
 
+## Professionals photographic presentation (22 October 2026)
+
+Focused route tests preserve canonical/config identity, optional professional
+fields and guided-context attribution, and check project roles, unique existing
+photos and visible engineer responsibility outside the technical disclosures.
+Run the existing audience-form/content contracts with the route tests and full
+Marketing types. The audience browser suite includes first/repeated enquiry focus,
+required phone, enabled files, native fallback, all three case-study Back returns
+and technical disclosure open/close at phone and desktop sizes. The phase-four
+professional assertions now match the current headline and story/disclosure
+owners. Authored Playwright coverage is distinct from actual CUA/independent
+preview verification; no real enquiry submission is needed for this presentation.
+
+## Project stories rollout coverage (22 October 2026)
+
+`PhotographicProjectContent.test.tsx` checks all 14 configured stories, complete
+photo provenance/coverage, actual briefs, concise non-empty facts, technical
+scope, commercial closing copy, Velskov video and St Heliers seeded designer.
+Specific assertions retain landscape/architect credits and keep the conflicting
+KiwiRail area out of the new page. Existing Projects and product-selection tests
+cover collection/navigation/return/SEO and designer contracts. Hero changes are
+owned by the same metadata/preload helper, with original collection data intact.
+
+The registered Projects browser suite checks every canonical project, actual
+hero and metadata, gallery, responsive layout and contextual actions. The
+editorial suite covers rapid filters/lower-card return, Warkworth, the first
+pair's direct/contact/designer/related/adjacent return and commercial context.
+These are authored browser checks; local CUA evidence is separate.
+
+
+## Projects editorial presentation and rapid filters (22 October 2026)
+
+Focused local contracts:
+
+```bash
+npx vitest run apps/marketing/app/projects
+npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false
+```
+
+`ProjectNavigator.test.tsx` dispatches two edits before a render settles, checks
+both URL filters, reset and restored URLs. `WarkworthProjectContent.test.tsx`
+checks the restored brief, early contextual action, distinct story photography,
+technical scope and photographic related links. `projectCollectionReturn.test.ts`
+checks BODY-scrolled capture/restore, window fallback and modified-link isolation;
+the browser suite covers lower-card All projects and Back at320/1440. Existing collection, navigation,
+return and SEO tests retain the shared contracts.
+
+`playwright/marketing.projects-editorial.spec.ts` is registered in the Marketing
+browser lane. It covers actual Next history integration, rapid edits, Back and
+Forward, reload, reset, filtered project return, readable Warkworth gutters,
+Warkworth enquiry context, gallery and related-project return. Existing
+Projects and Editorial website assertions now reflect the new Warkworth owner
+and its three non-repeated gallery images. This suite is authored coverage, not
+a claim that it ran locally. The approved CUA browser workflow supplies actual
+preview journey evidence; normal CI can execute the registered browser suite.
+No real enquiry submission is needed for this presentation/filter change.
+
+
 ## Finite Portal service-secret transfer
 
 Run `apps/portal/app/api/integrations/praxis/portal-service-transfer/route.test.ts`
@@ -508,6 +566,20 @@ selection, snapshot and RSC/data/prefetch exclusions, signed carrier forwarding,
 cookie preservation and absent proxy identity/role phases. No database metric
 schema or retention behavior changes with this console-only extension.
 
+The native transport extension adds
+`lib/performance/documentTransportDiagnostics.test.ts`. Its fictional loopback
+native-fetch checks cover new/reused/unknown sockets, concurrent documents and
+out-of-order reads, setup/header/body timing separation, original response/error
+identity, incomplete bodies without extra consumption, per-operation/document/
+state caps, subscription rollback, expiry and rejected asynchronous emitters.
+Generation-gap coverage uses controlled diagnostic events; actual native overlap
+and subscription cleanup use real loopback reads. Run this with the signed
+`documentDiagnostics`, `documentRenderDiagnostics`, auth/regional/proxy and
+layout/page suites. The existing signed window, absent/removed/rotated setting,
+expiry, spoofing, snapshot and alternate-entry fences remain mandatory.
+HTTP loopback proves observer mechanics, not hosted TLS/DNS timing or actual
+native-event availability. Hosted `not_observed` coverage is not a zero-read claim.
+
 Use one optimized candidate build for a small disabled/enabled/expired read-only
 check. Correlate the browser's opaque response UUID with fixed server events;
 inspect that internal signed headers/configuration never reach final responses or
@@ -741,13 +813,25 @@ comparative retrieval or protected staff-route access; verify both separately.
 
 ## Sanctuary-owned GA4 candidate
 
-The v3 tests apply the exact existing 20260923070001 body plus forward candidate
-20261021082853. Fixed provider fixtures compose actual HTTP, parser, SQL
+The GA4 tests apply the exact 20260923070001 and 20261021082853 bodies plus
+20261022013028 pre-token settlement and 20261022030852 Vercel credentials.
+SQL/HTTP fixtures verify failed vault reads,
+preserved saved reports, terminal stale-executor fencing, cancellation, Stop and
+continued token/write quarantine. Fixed provider fixtures compose actual HTTP, parser, SQL
 completion and retained read for available, limited and validated row-limit
 outcomes. Tests retain first edit when keyEvents is zero, suppress comparisons,
 reject unavailable-with-metrics and unexpected failures, enforce shared byte and
 45-second phase bounds, and distinguish signed v2/v3 delegation and plan hashes.
 Portal's DataSources link test proves only dates enter the fixed Analytics URL.
+
+`test/sanctuary-ga4-vercel.test.ts` covers actual HTTP/SQL Vercel composition,
+saved report preservation across transfer/cutover, old-deployment rejection,
+credential binding, pre-token fencing and genuine rotation quarantine. The finite
+transfer test uses synthetic SDK/platform fixtures to check single-use admission,
+production-only destination, redaction and failed-before-install versus possible
+write outcomes. `test/sanctuary-ga4-vercel-native.mjs` extends the existing native
+harness with those SQL state transitions. No fixture proves live credential access
+or a successful Google report; those remain explicit operational verification.
 
 For native proof, set PRAXIS_DISPOSABLE_POSTGRES_BIN to an existing local PG17
 bin directory and run node test/sanctuary-ga4-native.mjs. This creates and
@@ -765,7 +849,7 @@ extension was used.
 The dedicated `.github/workflows/ga4-native.yml` runs the real-safeupdate
 substrate on the standard Ubuntu runner with Node22 and read-only
 repository permissions. Its PR/main triggers cover only that workflow, the
-committed native harness and the two exact GA4 migration bodies; manual dispatch
+committed native harness and the exact GA4 migration bodies; manual dispatch
 has no inputs. A separate single-attempt180-second provisioning step pulls the
 official GHCR 17.6.1.167 linux/amd64 image by immutable manifest digest
 `sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4`,
@@ -1498,6 +1582,14 @@ Commercial-trust changes should also run the focused intent/audit/migration and 
 npm run test:commercial:db
 npx vitest run apps/portal/lib/commercial apps/portal/app/api/quotes/_lib apps/portal/app/api/projects/[projectId]/estimates/route.test.ts apps/portal/components/projects/ProjectPage/tabs/QuotesTab.test.tsx
 ```
+
+For a database-only acceptance-date correction, the bounded command
+`node scripts/test-commercial-workflow-db.mjs` also reproduces the previous
+unwanted reopening before applying `20261022020001`, verifies rollback and
+unchanged function authority, and runs `supabase/tests/acceptance_date_reconciliation.sql`.
+It covers competing accepted revisions/add-ons, missing-date fills and preserved
+existing-date, lifecycle, amount, invoice and negative-payment reconciliation.
+This disposable fixture is not a whole production-schema or PostgREST proof.
 
 `npm run test:commercial:db` executes the commercial bootstrap, trust and commercial-truth migrations, stale-conflict correction, and SQL contracts in disposable in-process PGlite PostgreSQL 18 databases. It proves rollback, atomic apply, exact estimate/quote intents, current accepted base/add-on scope, acceptance and invoice caps, idempotent replay, whole-invoice payment/reversal rules, lifecycle tombstones, completion settlement, and service-role-only grants without reaching a shared database. The static migration test remains a complementary source-shape guard. Never use shared or production data as the disposable fixture.
 

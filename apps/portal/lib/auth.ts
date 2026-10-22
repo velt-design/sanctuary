@@ -38,7 +38,8 @@ async function readPortalAccess(): Promise<{
     const trackedLookup: PortalAccessLookup = {
       auth: {
         getUser: async () => {
-          const result = await supabase.auth.getUser();
+          const readUser = () => supabase.auth.getUser();
+          const result = await (diagnostics ? diagnostics.measureTransport('rsc.identity', readUser) : readUser());
           authenticatedUser = result.data?.user ?? null;
           return result;
         },

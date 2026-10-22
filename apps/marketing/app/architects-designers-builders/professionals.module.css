@@ -1,0 +1,72 @@
+.page { --professional-gutter: clamp(20px, 4.4vw, 64px); background: #f7f7f2; color: #263025; font-family: 'Inter Variable', sans-serif; }
+.page h1, .page h2, .page h3 { font-family: 'Instrument Sans Variable', sans-serif; font-weight: 450; letter-spacing: -.045em; }
+.page p { line-height: 1.65; }
+.page figure { margin: 0; }
+.page figure img { display: block; width: 100%; height: auto; }
+.hero, .content { max-width: 1440px; margin-inline: auto; padding-inline: var(--professional-gutter); }
+.hero { display: grid; grid-template-columns: 1fr 1.85fr; gap: 5%; align-items: center; padding-top: 36px; }
+.heroCopy { padding-bottom: 28px; }
+.page .eyebrow { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; line-height: 1.6; margin: 0 0 18px; }
+.page h1 { font-size: clamp(2.65rem, 3.8vw, 3.65rem); line-height: 1.04; margin: 0 0 24px; max-width: 10ch; }
+.page .intro { font-size: 1rem; max-width: 34ch; margin-bottom: 24px; }
+.primary, .textLink { display: inline-flex; align-items: center; gap: 16px; min-height: 44px; text-decoration: none; font-size: .85rem; font-weight: 550; }
+.primary { background: #3f4a3a; color: #fff; padding: 15px 23px; }
+.primary:hover { background: #303c2c; }
+.textLink { color: inherit; border-bottom: 1px solid #a7ae9f; }
+.heroCopy > .textLink { display: flex; width: fit-content; margin-top: 12px; }
+.page .primary svg, .page .textLink svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.page a:focus-visible, .page summary:focus-visible { outline: 2px solid #536449; outline-offset: 5px; }
+.heroPhoto img { aspect-ratio: 1.28; object-fit: cover; object-position: 50% 26%; }
+.page figcaption, .page .note, .page .projectNote { color: #5f675b; font-size: .82rem; line-height: 1.65; }
+.page figcaption { margin-top: 12px; }
+.page h2 { font-size: clamp(2.05rem, 3.2vw, 3.1rem); line-height: 1.09; margin: 0; }
+.page h3 { font-size: clamp(1.9rem, 2.8vw, 2.7rem); line-height: 1.1; margin: 0 0 24px; }
+.collaboration { display: grid; grid-template-columns: 1fr 1fr; gap: 12%; padding-block: 76px; border-bottom: 1px solid #c8cdbf; }
+.collaboration p:not(.eyebrow) { font-size: .97rem; }
+.collaboration .textLink { margin-top: 8px; }
+.projects { padding-top: 64px; scroll-margin-top: 110px; }
+.sectionHeading { margin-bottom: 42px; }
+.story { display: grid; grid-template-columns: 1.25fr 1fr; align-items: center; gap: 9%; margin-bottom: 64px; }
+.story > div { max-width: 450px; }
+.story p:not(.eyebrow) { font-size: .94rem; }
+.story .textLink { margin-top: 12px; }
+.story figure img { aspect-ratio: 1.14; object-fit: cover; object-position: 50% 50%; }
+.reverse { grid-template-columns: 1fr 1.25fr; }
+.reverse figure { grid-column: 2; grid-row: 1; }
+.reverse > div { grid-column: 1; grid-row: 1; }
+.reverse figure img { aspect-ratio: 1.18; }
+.story:last-of-type figure img { aspect-ratio: 1.4; }
+.page .projectNote { max-width: 700px; margin: -20px 0 0; }
+.responsibilities { display: grid; grid-template-columns: 1fr 1fr; gap: 10%; padding-block: 64px 72px; margin-top: 56px; border-top: 1px solid #c8cdbf; }
+.responsibilities > div > p:not(.eyebrow) { font-size: .94rem; margin-top: 22px; max-width: 370px; }
+.disclosures p { font-size: .9rem; }
+.disclosures summary { font-size: .95rem; min-height: 60px; }
+.page :global(#project-details) { scroll-margin-top: 110px; }
+.page :global(#project-details > div) { max-width: 1440px; padding-inline: var(--professional-gutter); }
+@media (max-width: 1050px) {
+  .hero { grid-template-columns: 1fr 1.35fr; gap: 5%; }
+  .page h1 { font-size: 2.8rem; }
+  .heroPhoto img { aspect-ratio: .94; }
+  .story { gap: 6%; }
+}
+@media (max-width: 800px) {
+  .hero { display: block; padding-top: 28px; }
+  .heroCopy { padding-bottom: 28px; }
+  .page h1 { font-size: clamp(2.6rem, 8.5vw, 3.6rem); max-width: 13ch; margin-bottom: 18px; }
+  .page .eyebrow { margin-bottom: 14px; }
+  .page .intro { font-size: .95rem; max-width: 42ch; margin-bottom: 20px; }
+  .primary { min-width: 230px; justify-content: space-between; }
+  .heroCopy > .textLink { margin-top: 8px; }
+  .heroPhoto img { aspect-ratio: 1.08; }
+  .page figcaption { font-size: .73rem; }
+  .collaboration, .story, .responsibilities { grid-template-columns: 1fr; gap: 24px; }
+  .collaboration { padding-block: 42px; }
+  .projects { padding-top: 42px; }
+  .sectionHeading { margin-bottom: 28px; }
+  .story { margin-bottom: 44px; }
+  .story > div { max-width: 550px; }
+  .reverse figure, .reverse > div { grid-column: auto; grid-row: auto; }
+  .page h3 { margin-bottom: 18px; }
+  .page .projectNote { margin-top: -6px; }
+  .responsibilities { padding-block: 36px 42px; margin-top: 36px; }
+}

@@ -269,6 +269,26 @@ starts disabled and its purge requires real pg_cron. Source actor/credentials
 are separately provisioned after paired Velt direct-writer exclusion is proven.
 See `testing-and-qa.md` for native and rollback-only exact-schema evidence.
 
+`20261022013028_ga4_pre_token_settlement.sql` replaces only the existing GA4
+command's failure-finalisation policy. Proven pre-token working failures may
+become terminal `report_failed` with their pending evidence preserved; the same
+lock fences stale continuation. Already uncertain operations and all uncertain
+token/write effects remain operator-owned. There are no new tables, columns,
+grants, enabled controls, credential stores or automatic retries.
+
+`20261022030852_ga4_vercel_credentials.sql` adds explicit credential mode and
+binding to the existing control and frozen operations, plus finite transfer metadata
+on the control. Report authority and snapshot rows are unchanged. Honest
+`credential_read` boundaries replace vault steps only for Vercel claims. The
+service-role-only `sanctuary_ga4_credential_transfer` RPC accepts fixed source,
+nonce and receipt metadata, never credentials or caller-selected destinations.
+Its install intent and terminal pre-install failure share the lifecycle advisory
+lock; transfer events remain append-only. The credential-change trigger permits
+only a verified vault-to-Vercel cutover with unchanged source/report authority,
+an exact installed receipt and no unresolved operations. No new credential table,
+secret column, direct table grant or automatic recovery is introduced. See the
+Vercel credential storage section in `environment-auth-supabase.md`.
+
 ## Meta source ownership candidate
 
 `20260923050001_sanctuary_meta_reporting.sql` adds private Meta control,
@@ -670,6 +690,14 @@ Migration source:
 - `supabase/migrations/20260818000001_rehome_sent_manual_variation.sql` rehomes one known sent variation from an already-accepted base family into an independent add-on family after strict no-acceptance/no-invoice precondition checks; the application prevents recurrence by scoping post-acceptance manual creates independently. It was exact-file applied to positively identified production on 2026-08-18 after a completed physical-backup check in the same controlled commercial rollout window and two rollback rehearsals, including a full acceptance/invoice proof with mocked reference allocators. The canonical-LF SHA-256 is `4f012c0b0884036e72e350065f945836cf8faf3e74de3f136f16067d094cf508`; the Windows/ledger CRLF body is 3,329 bytes with SHA-256 `fc805f0a9bc1ab5bf73e1050da651246e4896fb8ae271c7f250f9aff1ca530ea`. Postflight matched the stored body, independent scope, version `1`, one repair audit event, `SENT` status, and zero invoices; no acceptance or customer email was committed.
 - `supabase/migrations/20260811000001_commercial_internal_names.sql` adds bounded staff-only names to estimates and quote families without backfilling historical rows. It was exact-file applied to production on 2026-08-11; postflight verified both columns, constraints, PostgREST visibility, zero backfilled names, and the unique migration-ledger entry.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
+
+The forward migration `20261022020001_acceptance_date_reconciliation.sql` replaces
+only `commercial_reconcile_paid_stage_trigger()`, retaining its security, grants
+and callers. A NULL-to-date fill on an already-ACCEPTED version skips financial
+reopening only when all other fields except `updated_at` are unchanged. Existing
+date edits/removal and real lifecycle/financial changes retain reconciliation.
+No schema, write permission or business-data backfill is added. See
+[historical date correction](quotes-invoices-job-packs.md#historical-acceptance-date-correction).
 
 ## Schedule, Site Visits, And Running Jobs
 

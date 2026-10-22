@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getSupabaseServerAuth = vi.fn();
+const context = vi.hoisted(() => ({ headers: new Headers() }));
 const redirect = vi.fn((href: string) => {
   throw new Error(`redirect:${href}`);
 });
 
 vi.mock('server-only', () => ({}));
-vi.mock('next/headers', () => ({ headers: async () => new Headers() }));
+vi.mock('next/headers', () => ({ headers: async () => context.headers }));
 
 vi.mock('react', () => ({
   cache: <T extends (...args: never[]) => unknown>(fn: T): T => {
@@ -31,6 +32,7 @@ describe('portal server auth', () => {
     vi.resetModules();
     getSupabaseServerAuth.mockReset();
     redirect.mockClear();
+    context.headers = new Headers();
   });
 
   it('reuses one request-local user and role lookup across access helpers', async () => {
@@ -84,6 +86,26 @@ describe('portal server auth', () => {
     expect(maybeSingle).toHaveBeenCalledTimes(1);
     expect(redirect).not.toHaveBeenCalled();
   });
+});
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+
+it('observes the existing identity call only under a real signed Marketing scope, retaining cache and fresh denial', async () => {
+  vi.resetModules();
+  vi.stubEnv('PORTAL_DOCUMENT_DIAGNOSTICS', JSON.stringify({ until: new Date(Date.now() + 60_000).toISOString(), nonce: 'A'.repeat(43) }));
+  const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  const { prepareProxyDocumentDiagnostics } = await import('./performance/documentDiagnostics');
+  const prepared = prepareProxyDocumentDiagnostics(new Request('https://portal.example/staff/marketing-performance', { headers: { accept: 'text/html', 'sec-fetch-dest': 'document' } }));
+  context.headers = prepared.requestHeaders!;
+  const user = { id: 'fixture-user', email: 'private@example.invalid' };
+  const getUser = vi.fn().mockResolvedValue({ data: { user }, error: null });
+  const maybeSingle = vi.fn().mockResolvedValue({ data: { role: 'staff' }, error: null });
+  getSupabaseServerAuth.mockResolvedValue({ auth: { getUser }, from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }) });
+  const auth = await import('./auth');
+  expect((await auth.getPortalSession())?.user).toBe(user);
+  expect((await auth.getPortalSession())?.user).toBe(user); expect(getUser).toHaveBeenCalledTimes(1);
+  expect(log.mock.calls.map(call => call[1])).toContainEqual(expect.objectContaining({ event: 'portal.document.transport', requestId: prepared.diagnostics!.id, operation: 'rsc.identity', outcome: 'not_observed' }));
+  maybeSingle.mockResolvedValue({ data: null, error: null }); expect(await auth.getFreshPortalSession()).toBeNull();
+  expect(getUser).toHaveBeenCalledTimes(2); expect(JSON.stringify(log.mock.calls)).not.toMatch(/fixture-user|private@example/);
 });
 
 it('revalidates long-running finance reads outside the render cache with the same role resolver',async()=>{

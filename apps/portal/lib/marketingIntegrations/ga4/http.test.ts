@@ -25,7 +25,7 @@ function fixture() {
       resultHash: reportHash(JSON.parse(payload)), expiresAt: new Date(Date.parse(report.fetchedAt) + 7 * 86400000).toISOString() };
     return {};
   });
-  const credentials = vi.fn(() => ({ actor: id, propertyId: '123', binding: control.binding, vaultId: 'a'.repeat(26), itemId: 'b'.repeat(26),
+  const credentials = vi.fn(() => ({ credentialStore: 'vault' as const, actor: id, propertyId: '123', binding: control.binding, vaultId: 'a'.repeat(26), itemId: 'b'.repeat(26),
     clientId: 'synthetic-client', clientSecret: 'private-secret', vaultToken: 'private-token' }));
   const guard = vi.fn(async () => undefined);
   const vault = { authenticate: vi.fn(async () => undefined), read: vi.fn(async () => ({ refreshToken: 'private-refresh', version: 1 })), write: vi.fn(async () => ({ version: 2 })) };

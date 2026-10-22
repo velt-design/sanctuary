@@ -208,6 +208,25 @@ JOB-03 changes the transport boundary, not quote ownership. `apps/portal/lib/ema
 
 If a later checkpoint moves one of these flows to the worker, it must adopt the existing commercial intent rather than create a second delivery identity. An uncertain delivery may repeat only the same provider key and frozen request inside the provider window. Provider acceptance, including signed-webhook reconciliation, resumes the idempotent quote/invoice finaliser but is not itself a quote/invoice state transition.
 
+### Historical acceptance date correction
+
+Migration `20261022020001_acceptance_date_reconciliation.sql` exempts only an
+already-`ACCEPTED` version's missing-date fill from financial reopening. Every
+other version field must remain identical except the ordinary `updated_at`
+timestamp. The canonical selector ranks version number, creation time and ID;
+the accepted status already qualifies the row before and after the fill, including
+when a family has multiple accepted revisions. Existing-date edits/removal,
+status or financial changes, new acceptances, invoices and payment corrections
+retain the existing reconciliation path and authority.
+
+This is not a new staff mutation route or proof of payment. An approved historical
+repair still needs exact row guards, preserved financial/operational/provider
+facts, and visible provenance. Record approximate day evidence as approximate;
+an explicitly recorded Auckland-noon storage convention is not a known acceptance
+time. Do not replay normal acceptance to repair history, because it may create
+invoices, delivery and follow-up work. Deploying this function alone changes no
+record or acceptance date.
+
 ## Pricing Source Boundary
 
 Quote, public quote, invoice, and job-pack pricing remains unchanged during `workbench_solved` rollout prep. Draft quotes still build from the saved estimate/quote-version boundary, public outputs still render token-scoped quote state, deposit invoices still derive from quote versions, and job packs still require an eligible quote version plus estimate version.
