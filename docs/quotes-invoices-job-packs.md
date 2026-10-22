@@ -20,6 +20,14 @@ the grant row with `FOR SHARE`. PostgREST must use a read-write transaction for
 that lock, even though the register performs no financial writes. Retain the
 canonical check and verify the protected API transport when changing this owner.
 
+The strict service-role report approves only the exact server-only
+`apps/portal/lib/finance/registerRepository.ts` adapter. Its API supplies the gated
+session actor, and its single scoped RPC rechecks the finance grant and invoice
+draft audience. An authenticated client cannot execute this service-only reader;
+the adapter has no direct table, financial command or provider access. Nearby
+Finance files and browser components inherit no exception. The architecture
+report regression tests both the approved path and rejected siblings/browser paths.
+
 Invoice settlement uses active canonical source-invoice receipts and exact Xero
 matches once per payment entry. A paid invoice retains its original receipt
 evidence when its scope funding is reassigned. Arbitrary stage allocations are

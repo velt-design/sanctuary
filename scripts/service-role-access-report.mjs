@@ -111,6 +111,10 @@ function isApprovedServerFlow(file) {
   // Server-only delegated finance read. The one RPC rechecks current finance
   // grant, confirmed staff identity, canonical source and pinned tenant; no table or credential access.
   if (file === 'apps/portal/lib/xero/financePositionAuthority.ts') return true;
+  // Server-only Finance register read: the API supplies its gated session actor;
+  // the sole scoped RPC rechecks the finance grant and admin-only draft audience.
+  // No direct tables, financial commands or provider access. See docs/quotes-invoices-job-packs.md.
+  if (file === 'apps/portal/lib/finance/registerRepository.ts') return true;
   // Machine-authenticated GA4 source lifecycle; SQL pins actor/source/property,
   // serializes credential intents and retained delivery. No direct table access.
   if (file === 'apps/portal/lib/marketingIntegrations/ga4/store.ts') return true;
@@ -166,6 +170,7 @@ function suggestedOwner(file, category) {
   if (file.startsWith('apps/portal/lib/automation/')) return 'automation/email/audit owner';
   if (file.startsWith('apps/portal/lib/backgroundJobs/')) return 'background-job provider reconciliation owner';
   if (file === 'apps/portal/lib/integrations/portalActions/server.ts') return 'portal action grant RPC/lost-conversion server owner';
+  if (file === 'apps/portal/lib/finance/registerRepository.ts') return 'finance register scoped grant-rechecked server reader';
   if (file.startsWith('apps/portal/lib/dashboard/')) return 'dashboard snapshot server owner';
   if (file.startsWith('apps/portal/lib/scheduling/')) return 'schedule server/RPC command owner';
   if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) {
