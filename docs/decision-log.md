@@ -13,6 +13,15 @@ distinguish deadline, client abort and transport without retaining private value
 No committed counter may manufacture a successful assignment or exposure.
 See [security and privacy](security-privacy-quality.md).
 
+## 2026-10-23: Declare build-checked test tools in their workspace
+
+A Portal SQL-boundary test resolved PGlite through the full-root development
+install but failed Next type checking in the deployed workspace install. Declare
+the exact existing tool version in the importing workspace's development
+manifest and lock entry. Verify a fresh selected-workspace install without an
+ancestor dependency tree; do not exclude tests or add a runtime dependency.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
 ## 2026-10-23: Reuse current RPC authority after fresh file identity
 
 The Sydney file-open path repeated a generic Portal role query before an RPC
