@@ -6571,6 +6571,10 @@ The first production Schedule migration attempt rolled back because its extra da
 
 PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
 
+## 2026-10-23 — Shared GHCR database setup throttling
+
+Source CI failed before SQL because GHCR returned a numeric microsecond `retry-after` throttle instead of the older `Rate exceeded` message. The same bounded pull helper now recognizes that exact format and runs before both AI and Background database harnesses. Preserve the pinned images, three-pull ceiling and 30/60-second backoff; do not retry SQL, arbitrary transport errors or failed assertions. See `docs/testing-and-qa.md` and `test/ai-db-image-pull.test.ts`.
+
 ## 2026-09-09 — AI database image-pull throttling
 
 Status: Promoted. PRs #115 and #116 independently failed before SQL when the pinned public ECR image pull returned `toomanyrequests: Rate exceeded`. AI Foundation now gives only that exact pull failure three attempts with 30/60-second backoff. Other failures stop immediately, and the existing database harness runs once after a successful pull. Preserve the original failures as evidence; never rerun database assertions to hide setup or contract failures. Promoted to `docs/testing-and-qa.md`; synthetic coverage is `test/ai-db-image-pull.test.ts`.

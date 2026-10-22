@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
-const throttleLine = /^(?:docker: |Error response from daemon: )?toomanyrequests: Rate exceeded$/;
+// GHCR also returns a numeric microsecond hint. Keep the existing conservative
+// backoff rather than scheduling rapid retries from that hint.
+const throttleLine = /^(?:docker: )?(?:Error response from daemon: )?toomanyrequests: (?:Rate exceeded|retry-after: [0-9]{1,9}(?:\.[0-9]{1,9})?µs, allowed: [1-9][0-9]{0,8}\/minute)$/;
 const backoffMs = [30_000, 60_000];
 
 // Pull only: database startup and SQL remain in the subsequent, single-run harness.
@@ -30,7 +32,7 @@ export async function pullAiDatabaseImage(image, {
       throw new Error(`AI database image pull failed on attempt ${attempt}/3 (exit ${result.status}).`);
     }
     const waitMs = backoffMs[attempt - 1];
-    log(`Registry reported toomanyrequests: Rate exceeded; retrying pull in ${waitMs / 1000}s.`);
+    log(`Registry reported a recognized toomanyrequests throttle; retrying pull in ${waitMs / 1000}s.`);
     await sleep(waitMs);
   }
 }
