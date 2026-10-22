@@ -16,6 +16,26 @@ No SDK, database or real platform call is part of local proof. Fixed target
 IDs are nonsecret contract constants; all tokens and returned data are synthetic.
 Normal release build/review and private hosted operator verification are separate
 evidence; metadata presence alone cannot prove that the copied value matches.
+## Targeted Marketing latency verification (22 October 2026)
+
+Run report document selection/page/API, seed hooks and host return tests together
+with Financial panel/full/machine reader, provider/runtime, store/pilot and Portal
+auth suites. Verify realistic pending/fulfilled Flight thenables, Strict Mode,
+one matching read, section/basis/date A-to-B-to-A races, leave/return, loader
+replacement, rejection/retry, denial clearing and unmount. Verify exact full
+reports and unavailable metadata labels, all period identities, eight default
+P&L provider reads, peak two workers, queue refill and stop-on-revocation, final
+authority withholding and both-worker settlement before request cleanup.
+
+Store tests exercise concurrent access against serialized mock transactions,
+one rotation, current token rereads, per-use role checks, independent requests,
+connector identity change and idempotent close. This is not a live database or
+provider concurrency claim. Keep normal full Portal tests, types, scoped lint,
+docs/architecture guards, security/toolchain audits and optimized build/postbuild
+checks. Fictional optimized Flight journeys must cover full charts/tables and
+failure/retry without provider calls. Actual production before/after latency,
+ordinary date/basis/detail/return journeys and access denial remain separate
+release evidence. A partial report or skeleton never counts as complete.
 
 ## Historical designer/test correction regression
 

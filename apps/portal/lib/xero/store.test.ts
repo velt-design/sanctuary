@@ -3,7 +3,7 @@ import { seal,unseal } from './security';
 const mocks=vi.hoisted(()=>({postgres:vi.fn(),token:vi.fn(),connections:vi.fn(),read:vi.fn()}));
 vi.mock('postgres',()=>({default:mocks.postgres}));
 vi.mock('./provider',async importOriginal=>({...await importOriginal<typeof import('./provider')>(),tokenRequest:mocks.token,connections:mocks.connections,accountingRead:mocks.read}));
-import { access,connect,readAccounting,grantedConsentScopes } from './store';
+import { access,connect,readAccounting,grantedConsentScopes,createRequestAccess } from './store';
 import { XeroError } from './provider';
 import { supabaseCa } from './supabaseCa';
 import { XERO_INVOICE_SCOPES, XERO_REPORT_READ_SCOPES } from './oauthScopes';
@@ -138,4 +138,43 @@ describe('durable Xero renewal',()=>{
     await expect(connect({accessToken:'a',refreshToken:'r',expiresAt:1},'user')).rejects.toThrow('XERO_WRONG_ORGANISATION');
     expect(mocks.postgres).not.toHaveBeenCalled();
   });
+});
+
+it('reuses only the request connection, rereads encrypted tokens and role on every call and closes once',async()=>{
+ row.encrypted_tokens=seal({accessToken:'first',refreshToken:'r',expiresAt:Date.now()+600000},key);
+ const request=createRequestAccess();expect(mocks.postgres).not.toHaveBeenCalled();
+ expect((await request.access()).accessToken).toBe('first');
+ row.encrypted_tokens=seal({accessToken:'reconnected',refreshToken:'r2',expiresAt:Date.now()+600000},key);
+ expect((await request.access()).accessToken).toBe('reconnected');
+ expect(mocks.postgres).toHaveBeenCalledOnce();
+ expect(writes.filter(q=>q.includes('from pg_roles where'))).toHaveLength(2);
+ expect(writes.filter(q=>q.includes('select *')&&q.includes('for update'))).toHaveLength(2);
+ await request.close();await request.close();expect(mocks.postgres.mock.results[0].value.end).toHaveBeenCalledOnce();
+ await expect(request.access()).rejects.toThrow('XERO_READ_WINDOW_CLOSED');
+ const next=createRequestAccess();await next.access();await next.close();expect(mocks.postgres).toHaveBeenCalledTimes(2);
+});
+it('does not retain a successful token after reconnect denial in the same request',async()=>{
+ row.encrypted_tokens=seal({accessToken:'valid',refreshToken:'r',expiresAt:Date.now()+600000},key);
+ const request=createRequestAccess();await request.access();row.last_error='RECONNECT_REQUIRED';
+ await expect(request.access()).rejects.toThrow('RECONNECT_REQUIRED');await request.close();
+ expect(mocks.postgres.mock.results[0].value.end).toHaveBeenCalledOnce();
+});
+
+it('serializes concurrent token rotation on the single request connection and publishes only committed tokens',async()=>{
+ const sql=mocks.postgres.getMockImplementation()?.()??mocks.postgres();
+ mocks.postgres.mockClear();
+ let tail=Promise.resolve();sql.begin=(run:(tx:unknown)=>Promise<unknown>)=>{const next=tail.then(()=>run(sql));tail=next.then(()=>{},()=>{});return next;};
+ let release!:(value:unknown)=>void;mocks.token.mockImplementation(()=>new Promise(resolve=>{release=resolve;}));
+ const request=createRequestAccess(),first=request.access(),second=request.access();
+ for(let i=0;i<30&&!release;i++)await Promise.resolve();expect(mocks.token).toHaveBeenCalledOnce();
+ expect(mocks.postgres.mock.calls[0][1]).toMatchObject({max:1});
+ release({accessToken:'rotated',refreshToken:'fresh',expiresAt:Date.now()+600000});
+ expect((await Promise.all([first,second])).map(t=>t.accessToken)).toEqual(['rotated','rotated']);
+ expect(mocks.token).toHaveBeenCalledOnce();expect(writes.filter(q=>q.includes('for update'))).toHaveLength(2);
+ await request.close();expect(sql.end).toHaveBeenCalledOnce();
+});
+it('rechecks connector identity and refuses a changed database in an existing request',async()=>{
+ row.encrypted_tokens=seal({accessToken:'valid',refreshToken:'r',expiresAt:Date.now()+600000},key);
+ const request=createRequestAccess();await request.access();vi.stubEnv('XERO_DATABASE_URL','postgres://other@localhost/other');
+ await expect(request.access()).rejects.toThrow('XERO_DATABASE_IDENTITY_CHANGED');await request.close();
 });

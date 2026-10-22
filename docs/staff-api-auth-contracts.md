@@ -7,6 +7,25 @@ API exclusion from document middleware. It exposes no generic credential/proxy
 operation and accepts no target/value overrides. Ordinary staff/admin routes and
 Praxis read authorization are unchanged. See `environment-auth-supabase.md` for
 the production-only transfer contract, uncertain-effect handling and retirement.
+## Initial Overview and Financial report authority (22 October 2026)
+
+The Marketing page may start selected full-document report promises after its
+existing staff/developer/preview gates. Callback context selects work only;
+RSC/prefetch/actions/child routes and ambiguous or invalid report selections skip
+seeds. Shared Overview readers retain current-user guarded RPCs and complete
+schema/date validation. Snapshot previews do not start these live report seeds.
+
+`financials/readPortal.server` serves both the independently authenticated API
+and selected document seed. `getFreshPortalSession` invokes the same existing
+access resolver outside render caching; every Financial grant/identity recheck
+uses this path. Every provider read and final publication require both caller
+finance/developer authority and delegated source binding. Those independent
+checks can overlap but neither authorizes source access alone. The request-owned
+connector closes in finally; no credential/client crosses the Flight boundary.
+Existing API errors, legacy full requests, strict panel dates/basis/family and
+provider/publication budgets remain enforced. Safe errors never carry source
+exceptions or partial unverifiable evidence.
+
 
 ## Initial document access candidate (21 October 2026, unreleased under qualification)
 

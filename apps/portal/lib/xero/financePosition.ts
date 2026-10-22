@@ -58,10 +58,10 @@ export async function financePositionReader(query: FinancePositionQuery, deps: P
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' }).format(deps.now());
   if (!financePositionQuery.safeParse(query).success || query.to > today) throw new Error('POSITION_INVALID_QUERY');
   const identity = await deps.binding(signal);
-  async function read(family: PositionRead['family'], page = 1) {
+  async function read(family: PositionRead['family'], page = 1, readQuery = query) {
     signal.throwIfAborted(); const current = await deps.binding(signal);
     if (current.tenantId !== identity.tenantId || current.scope !== identity.scope) throw new Error('POSITION_AUTHORITY_CHANGED');
-    return deps.read({ family, page, tenantId: identity.tenantId, query }, signal);
+    return deps.read({ family, page, tenantId: identity.tenantId, query: readQuery }, signal);
   }
   // Authority failures abort the entire evidence. Provider/family failures remain explicit unavailable domains.
   async function domain<T>(family: PositionRead['family'], run: () => Promise<T>) {
@@ -79,9 +79,9 @@ export async function financePositionReader(query: FinancePositionQuery, deps: P
     if (uuid.parse(r.OrganisationID).toLowerCase() !== identity.tenantId.toLowerCase()) throw new PositionReadError('invalid_response');
     return { name: label.parse(r.Name), baseCurrency: z.string().regex(/^[A-Z]{3}$/).parse(r.BaseCurrency), timezone: z.string().min(1).max(1024).parse(r.Timezone) };
   });
-  const reportDomain = async (family: 'bankSummary' | 'profitAndLoss') => organisation.status !== 'available'
+  const reportDomain = async (family: 'bankSummary' | 'profitAndLoss', reportQuery = query) => organisation.status !== 'available'
     ? { status: 'unavailable' as const, reason: 'metadata_unavailable' as const, requiredScopes: [POSITION_SCOPES[family][0], POSITION_SCOPES.organisation[0]] }
-    : domain(family, async () => { const values = await read(family); if (values.length !== 1) throw new PositionReadError('invalid_response'); return parseFinanceReport(values[0], family, query, organisation.data.baseCurrency); });
+    : domain(family, async () => { const values = await read(family, 1, reportQuery); if (values.length !== 1) throw new PositionReadError('invalid_response'); return parseFinanceReport(values[0], family, reportQuery, organisation.data.baseCurrency); });
   async function invoices(family: 'receivables' | 'payables') {
     return domain(family, async () => {
       const items: z.infer<typeof financePositionInvoice>[] = []; const ids = new Set<string>();

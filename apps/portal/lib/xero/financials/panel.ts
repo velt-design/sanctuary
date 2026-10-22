@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { financePositionReader, type PositionDependencies } from '../financePosition';
 import { PositionReadError } from '../financePositionProvider';
 import { financialPanelSchema, previousQuery, yearAgoQuery, trendQueries, type FinancialPanelQuery } from './contract';
-import { readProfitComparisons } from './read';
+import { readProfitPanel } from './profitPanel';
 
 /** Only the requested panel enters the provider read window. No omitted family is a failed read. */
 export async function readFinancialPanel(input: FinancialPanelQuery, deps: PositionDependencies, signal: AbortSignal) {
@@ -18,12 +18,13 @@ export async function readFinancialPanel(input: FinancialPanelQuery, deps: Posit
     return values;
   }},signal);
   const notRequested={status:'not_requested' as const};
-  const profitAndLoss=section==='profit'?await reader.reportDomain('profitAndLoss'):notRequested;
+  const profit=section==='profit'?await readProfitPanel(query,reader):null;
+  const profitAndLoss=profit?.profitAndLoss??notRequested;
   const bankSummary=section==='bank'?await reader.reportDomain('bankSummary'):notRequested;
   const receivables=section==='receivables'?await reader.invoices('receivables'):notRequested;
   const payables=section==='payables'?await reader.invoices('payables'):notRequested;
-  const comparisons=profitAndLoss.status!=='not_requested'
-    ?await readProfitComparisons(query,{identity:reader.identity,organisation:reader.organisation,profitAndLoss},deps,signal)
+  const comparisons=profit
+    ?{previous:profit.previous,yearAgo:profit.yearAgo,months:profit.months}
     :{previous:{query:previousQuery(query),report:notRequested},yearAgo:{query:yearAgoQuery(query),report:notRequested},months:trendQueries(query).map(query=>({query,report:notRequested}))};
   await reader.finish();
   const checkedAt=deps.now().toISOString();

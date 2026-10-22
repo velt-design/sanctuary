@@ -1,5 +1,34 @@
 # Xero connection
 
+## Request-owned Financial report collection (22 October 2026)
+
+The Portal reader owns one lazy max-one connector connection for its request and
+closes it in finally on success, failure, cancellation or authority loss. The same
+TLS and restricted-role policy lives in `connectorDatabase`; role verification
+runs on every access. Every token access still locks and rereads the current
+encrypted connection row, commits any rotation before returning, and checks the
+pinned organisation. No tokens, scopes or private reports are cached. A changed
+connector database identity fails closed. Existing non-report store consumers
+retain their separate short-lived connection behavior.
+
+Selected P&L uses `financials/profitPanel`: two work-conserving workers read the
+same deduplicated current/previous/year-ago/six-month periods after Organisation.
+The default month still requires eight provider reads including Organisation;
+no unrelated family is read. Workers stop queued work on authority failure and
+both settle before the lease closes. Every provider read and final publication
+retain fresh authority, limits and deadlines. Independent caller and delegated
+checks overlap before access, with either failure withholding the result. Reports
+remain separate read-window evidence, not an atomic accounting snapshot. Legacy
+full-browser and machine wires and their reader definitions remain unchanged.
+
+The shared Portal API/document reader uses uncached current staff/developer and
+finance identity through the existing role resolver; render-cached page access
+never substitutes for later revalidation. Seed matching does not grant authority.
+No accounting write, new scope, shared pool, token cache or stored report is added.
+A queue removes idle barriers but equal-duration reads still need four P&L waves;
+local scheduling/connection counts are not claims about provider or live latency.
+
+
 ## Organisation financial reports and Portal candidate (2 October 2026)
 
 The existing organisation report service was verified deployed and returning a
