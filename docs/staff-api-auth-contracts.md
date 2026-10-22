@@ -113,6 +113,9 @@ actor, locks the project and enforces exact replay and optimistic revision.
 400/403/404/409/503 distinguish input, authority, missing source, conflict and
 uncertain results without raw database errors. Responses are private/no-store,
 validated and pinned to the requested project. There is no service-role client.
+The existing designer command additionally accepts historical `steve`; the outcome
+command additionally accepts `test` for a reversible reporting exclusion. Neither
+changes phase ownership, attendee identity, operational close or financial records.
 This records a report-only whole-job fact, not a finance refund or operational close.
 
 ## Designer performance candidate
