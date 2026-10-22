@@ -105,6 +105,7 @@ describe('actual preflight module behavior with synthetic process/port observati
   const processRoot=owned?root:root+'-foreign';
   const command=`"${process.execPath}" "${processRoot}/node_modules/next/dist/bin/next" dev -p 3999`;
   const fake={pid:'413',parentPid:'1',commandLine:command};
+  const fakeArgv=[process.execPath,processRoot+'/node_modules/next/dist/bin/next','dev','-p','3999'];
   const run=vi.fn((_file:string,args:string[])=>{
    const text=args.join(' ');
    if(text.includes('ConvertTo-Json'))return JSON.stringify([{ProcessId:413,ParentProcessId:1,CommandLine:command}]);
@@ -124,12 +125,20 @@ describe('actual preflight module behavior with synthetic process/port observati
   }}}));
   vi.doMock('node:fs',async original=>{
    const real=await original<typeof import('node:fs')>();
-   return {...real,default:{...real,existsSync:(file:string)=>file.replaceAll('\\','/').endsWith('/apps/portal/.next/lock')?locked:real.existsSync(file)}};
+   const readFileSync=(file:Parameters<typeof real.readFileSync>[0],options?:Parameters<typeof real.readFileSync>[1])=>{
+    if(file!=='/proc/413/cmdline')return real.readFileSync(file,options);
+    const contents=Buffer.from(fakeArgv.join('\0')+'\0');
+    const encoding=typeof options==='string'?options:options?.encoding;
+    return encoding?contents.toString(encoding):contents;
+   };
+   return {...real,readFileSync,default:{...real,readFileSync,existsSync:(file:string)=>file.replaceAll('\\','/').endsWith('/apps/portal/.next/lock')?locked:real.existsSync(file)}};
   });
   vi.stubEnv('PORTAL_BASE_URL','');vi.stubEnv('PORTAL_PLAYWRIGHT_PORT','3011');
   const exit=vi.spyOn(process,'exit').mockImplementation(()=>{throw Error('synthetic preflight refusal');});
   const error=vi.spyOn(console,'error').mockImplementation(()=>{}),log=vi.spyOn(console,'log').mockImplementation(()=>{});
   try{
+   const {readProcessArgv}=await import('../../../../scripts/ci/portal-next-process-owner.mjs');
+   expect(readProcessArgv(fake.pid)).toEqual(fakeArgv);
    const attempt=gate==='build'?import('../../../../scripts/check-portal-build-env.mjs'):import('../../../../scripts/check-portal-fixture-env.mjs');
    if(fails)await expect(attempt).rejects.toThrow('synthetic preflight refusal');else await attempt;
    expect(exit).toHaveBeenCalledTimes(fails?1:0);
