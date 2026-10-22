@@ -1,5 +1,26 @@
 # Supabase Schema Map
 
+## Observed estimate context (23 October 2026)
+
+Forward `20261023030001_landing_observed_context.sql` adds the private
+`landing_owner_observation_insert()` trigger and unique receipt index. It patches
+`landing_owner_decision(uuid)` and `landing_experiment_command(text,uuid,text,uuid,jsonb)`
+without changing the signed HTTP contract, renderer, templates, tables or grants.
+One operator-only `owner_observation` receipt binds the exact settled capacity/end
+rows, current controls/template, unchanged expiry, actual compatible releases and
+dated evidence hash. It atomically reacquires only the original unused global
+reservation. Existing `prepare` may then consider only acrylic `estimate` copy.
+The old no-hypothesis end, ordinary probe counts, decision count and exclusions
+remain. A second terminal end stops the supplement; no retry or renewal follows.
+Exact prepare replay keeps its original digest checks after Stop/expiry.
+
+Install only against the reviewed compatible consumer and prior23020001 schema,
+with rollback/equality and fresh original-row hashes. Source receipt comes before
+the paired Velt observed-context event. Never replace an uncertain append; read
+its exact command/result. The native test constructors are in
+`supabase/tests/landing_observed_context.sql`, included by the existing disposable
+owner-decision harness. No schema install creates an observation or runs a model.
+
 ## Funded owner landing decisions (23 October 2026, local candidate)
 
 Forward `20261023010001_landing_owner_decisions.sql` adds no table or public
