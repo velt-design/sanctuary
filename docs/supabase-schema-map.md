@@ -1,3 +1,17 @@
+## Creative terminal learning (uninstalled local continuation)
+
+Migration 20261022050010_creative_learning.sql wraps the existing executor with
+an authenticated history stage and locked duplicate admission check. It adds no
+table, endpoint or provider effect. A private helper joins immutable execution
+and analysis rows by plan hash, exact scope/originals/native method/donor/template
+and whole control (including media). All scoped rendered-primary JSON-string
+hashes remain exclusion authority; the latest four public hook prefixes and arm
+aggregates are display/learning context only. Over 64 distinct copies returns
+incomplete coverage and denies new preparation. Exact prepared-plan replay keeps
+its existing immutable identity checks. Application roles cannot call the helper
+or bypass wrapper. Deploy paired compatible consumers before this migration.
+Existing 50001-50003 and all production data remain unchanged by local work.
+
 ## Authored landing copy (uninstalled continuation)
 
 `20261021050009_landing_authored_copy.sql` extends the existing command, copy-map

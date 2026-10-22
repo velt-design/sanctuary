@@ -5,7 +5,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { canonicalHash, executionPlanSchema, hash, stateSchema, wireSchema } from './contract';
 import { serializeEffect } from './intent';
+import {creativeHistoryRequestSchema} from './learning-contract';
 const payloads = {
+  history:creativeHistoryRequestSchema,
   analysis_ack:z.object({analysisCommand:z.uuid()}).strict(), begin_analysis:z.object({planHash:hash}).strict(), delivery_health:z.object({planHash:hash,evidenceHash:hash,observedAt:z.iso.datetime()}).strict(), analysis: z.object({analysis:nativeAnalysisSchema}).strict(), read: z.object({}).strict(), cohort: z.object({freeze:z.boolean()}).strict(), authority: z.object({ generation: z.number().int().positive() }).strict(),
   prepare: z.object({ plan: executionPlanSchema, planHash: hash }).strict(),
   admit: z.object({ generation: z.number().int().positive(), intent: wireSchema, cleanup: z.boolean(), activationProof:activationProofSchema.optional() }).strict(),
@@ -21,7 +23,7 @@ export function verifyCreativeCommand(raw: unknown, signature: string | null, no
   const expected = createHmac('sha256', key).update(`creative-command\n${body}`).digest('base64url');
   if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) throw new Error('Invalid creative signature');
   const row = z.object({ version: z.literal(1), command: z.uuid(), experiment: z.uuid().nullable(), stage: z.enum(Object.keys(payloads) as [keyof typeof payloads, ...(keyof typeof payloads)[]]), payload: z.unknown(), at: z.number().int() }).strict().parse(raw);
-  if (Math.abs(row.at - now) > 30000 || (row.stage !== 'read' && row.experiment === null)) throw new Error('Expired creative command');
+  if (Math.abs(row.at - now) > 30000 || (row.stage==='history'?row.experiment!==null:row.stage !== 'read' && row.experiment === null)) throw new Error('Expired creative command');
   const payload = payloads[row.stage].parse(row.payload);
   if (row.stage === 'prepare') {
     const prepared = payloads.prepare.parse(payload);

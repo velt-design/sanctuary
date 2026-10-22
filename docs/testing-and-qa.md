@@ -1,3 +1,14 @@
+## Creative history and durable exclusion (local)
+
+The existing disposable PG17 ledger harness now applies 20261022050010 and the
+synthetic meta_creative_learning.sql regression. It proves cross-language
+JSON-string UTF8 hash identity, a prior copy beyond the latest-four display tail,
+160 unrelated rows, exact donor/media/control/scope/native-method isolation,
+64-copy coverage overflow, different-copy admission and exact immutable replay.
+Original terminal rows and helper ACLs are preserved. The signed existing route
+also rejects changed template/expanded scope/private extra response fields.
+No customer content, real credentials, model calls or provider effects are used.
+
 ## Authored landing continuation, local checks
 
 `landingCopyContract.test`, `LandingExperiment.test` and the actual

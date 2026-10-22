@@ -5,6 +5,7 @@ import { getServiceSupabase } from '@/lib/supabaseService';
 import { readBoundedJson } from '@/lib/marketingPublicRequest';
 import {stateSchema,executionPlanSchema} from '../../../../lib/creative-executor/contract';
 import { verifyCreativeCommand, validateCreativeIntent, validateCreativeDispatch } from '../../../../lib/creative-executor/authority';
+import {creativeHistoryRequestSchema,creativeHistorySchema} from '../../../../lib/creative-executor/learning-contract';
 export const runtime = 'nodejs';
 export const maxDuration = 15;
 export async function POST(request: Request) {
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
     if (!raw) throw new Error('Body unavailable');
     const command = verifyCreativeCommand(raw, request.headers.get('x-creative-signature'));
     if(command.stage==='prepare' && z.object({plan:executionPlanSchema}).parse(command.payload).plan.landingTemplate!==EXPERIMENT_TEMPLATE)throw new Error('Creative template changed');
+    if(command.stage==='history'&&creativeHistoryRequestSchema.parse(command.payload).template!==EXPERIMENT_TEMPLATE)throw new Error('Creative template changed');
     const db = getServiceSupabase(), signal = AbortSignal.any([request.signal, AbortSignal.timeout(10000)]);
     const args = { p_binding: process.env.SANCTUARY_LANDING_EXPERIMENT_BINDING, p_command: command.command, p_experiment: command.experiment };
     if (command.stage === 'admit'||command.stage==='check') {
@@ -31,6 +33,6 @@ export async function POST(request: Request) {
       // It is not authority for a new preparation or non-cleanup effect.
       return Response.json({...state,...(state.template!==EXPERIMENT_TEMPLATE?{compatibility:landingCompatibility(state.template)}:{})},{headers});
     }
-    return Response.json(result.data, { headers });
+    return Response.json(command.stage==='history'?creativeHistorySchema.parse(result.data):result.data, { headers });
   } catch { return Response.json({ status: 'unavailable' }, { status: 503, headers }); }
 }

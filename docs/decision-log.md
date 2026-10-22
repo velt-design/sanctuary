@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-22: Separate learning summaries from duplicate authority
+
+A bounded display tail cannot be the durable exclusion list. Creative proposals
+read genuine scoped terminal facts and public hook prefixes; Source admission
+checks all matching rendered copies under the reservation lock. Coverage overflow
+fails closed instead of silently dropping an old experiment. An immutable plan
+replay keeps its existing identity, and a changed donor/control/media domain does
+not inherit unrelated exclusions. Local synthetic proof is not live acceptance.
+
 ## 2026-10-22: Historical sales credit and explicit test exclusion
 
 Keep historical sales-design attribution separate from current project owners and
