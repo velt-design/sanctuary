@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-23: Recover file locality using the complete ordinary task
+
+The Singapore canary lowered authentication time but regressed both matched
+first-file transfers. Recover only the open route's better observed Sydney
+placement, preserving the accepted fresh identity/RPC checks and dependency fix.
+Judge the whole file task and recent-return behavior; one phase improvement does
+not establish the owner outcome or a general regional cause from one window.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
 ## 2026-10-23: Budget the complete landing visit response
 
 A hosted diagnostic committed its fourth assignment but returned 503 before the

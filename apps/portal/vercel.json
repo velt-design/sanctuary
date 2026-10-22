@@ -2,6 +2,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/portal-progressive-ui-20261022": false,
+      "codex/project-file-open-sydney-recovery-20261023": false,
       "codex/campaign-authored-landing-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
       "codex/designer-history-support-20261022": false,
@@ -92,7 +93,7 @@
     },
     "app/api/staff/v1/projects/*/files/*/open/route.ts": {
       "regions": [
-        "sin1"
+        "syd1"
       ]
     }
   },
