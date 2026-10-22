@@ -1,5 +1,13 @@
 # Staff API And Auth Contracts
 
+The temporary `/api/integrations/praxis/portal-service-transfer` operator endpoint
+uses independent fixed Vercel-principal/project authorization and a finite nonce
+admission, not a staff session or the bearer being copied. It sits in the existing
+API exclusion from document middleware. It exposes no generic credential/proxy
+operation and accepts no target/value overrides. Ordinary staff/admin routes and
+Praxis read authorization are unchanged. See `environment-auth-supabase.md` for
+the production-only transfer contract, uncertain-effect handling and retirement.
+
 ## Initial document access candidate (21 October 2026, unreleased under qualification)
 
 For canonical HTML document GETs at `/staff/projects`, `/staff/site-visits` and

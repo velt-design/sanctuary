@@ -1,5 +1,22 @@
 # Testing And QA
 
+## Finite Portal service-secret transfer
+
+Run `apps/portal/app/api/integrations/praxis/portal-service-transfer/route.test.ts`
+with existing Praxis server/route regressions, Portal types/lint and changed-file
+architecture guards. Tests compose the real route and connector configuration
+with synthetic hosting replies: exact principal/projects/team/source identity,
+finite nonce/expiry, pre-write changes, absent-only production sensitive create,
+replay in every environment, metadata reconciliation after unknown outcomes,
+secret/raw-error privacy, body bounds and no caller-controlled destination.
+The actual document middleware matcher must exclude the independently authorized
+API. The version GET must expose only the exact production commit SHA before any
+secret is sent and deny missing SHA, wrong origin/project/environment or query.
+No SDK, database or real platform call is part of local proof. Fixed target
+IDs are nonsecret contract constants; all tokens and returned data are synthetic.
+Normal release build/review and private hosted operator verification are separate
+evidence; metadata presence alone cannot prove that the copied value matches.
+
 ## Historical designer/test correction regression
 
 Run the existing `test/designer-performance-read.test.ts`, both project
