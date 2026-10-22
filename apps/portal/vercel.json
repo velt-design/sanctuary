@@ -33,6 +33,8 @@
       "codex/aluminium-seo-20261020": false,
       "codex/custom-seo-20261020": false,
       "codex/portal-workflow-20261020": false,
+      "codex/revised-quote-acceptance-copy-20261023": false,
+      "codex/revised-quote-deposits-20261022": false,
       "codex/portal-usability-20261021": false,
       "codex/portal-first-load-20261021": false,
       "codex/portal-first-load-followup-20261021": false,
@@ -82,7 +84,8 @@
       "codex/campaign-loop-continuation-20261023": false,
       "codex/project-file-open-locality-20261023": false,
       "codex/project-file-open-auth-20261023": false,
-      "codex/project-file-build-dependency-20261023": false
+      "codex/project-file-build-dependency-20261023": false,
+      "codex/campaign-test-entry-rubric-20261023": false
     }
   },
   "functions": {

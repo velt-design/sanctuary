@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
-const throttleLine = /^(?:docker: |Error response from daemon: )?toomanyrequests: (?:Rate exceeded|retry-after: \d+(?:\.\d+)?(?:ns|µs|ms|s), allowed: [1-9]\d*\/minute)$/;
+const throttleLine = /^(?:docker: )?(?:Error response from daemon: )?toomanyrequests: (?:Rate exceeded|retry-after: \d+(?:\.\d+)?(?:ns|µs|ms|s), allowed: [1-9]\d*\/minute)$/;
 const configurationThrottleLine = /^error pulling image configuration: download failed after attempts=1: toomanyrequests: retry-after: \d+(?:\.\d+)?(?:ns|µs|ms|s), allowed: [1-9]\d*\/minute$/;
 const isThrottleLine = (line) => throttleLine.test(line) || configurationThrottleLine.test(line);
 const imageProgressLine = /^[a-zA-Z0-9@_.:/-]+: Pulling from [a-z0-9._/-]+$/;

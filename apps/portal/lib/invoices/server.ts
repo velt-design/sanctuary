@@ -1,4 +1,5 @@
 import 'server-only';
+import { loadInvoiceScopeAssignments } from './scopeFunding';
 import { invoiceDeliveryIntentKey, isCurrentInvoiceDelivery } from './deliveryGeneration';
 import { parseInvoiceContent, type InvoiceContentSnapshot } from '@sp/quote-format';
 
@@ -1070,7 +1071,7 @@ export async function deliverAcceptedDepositInvoiceById(params: {
 export async function listDepositInvoicesForProject(projectId: string): Promise<DepositInvoiceSummary[]> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
 
-  const [invoiceRes, logRes] = await Promise.all([
+  const [invoiceRes, logRes, scopeAssignments] = await Promise.all([
     supabaseServiceRole
       .from('deposit_invoices')
       .select('*')
@@ -1081,6 +1082,7 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
       .select('deposit_invoice_id,delivery_intent_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false }),
+    loadInvoiceScopeAssignments(projectUuid),
   ]);
 
   if (invoiceRes.error) throw new Error(errorMessage(invoiceRes.error, 'Failed to load invoices'));
@@ -1104,7 +1106,8 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
   }
 
   return invoices.map((invoice) => {
-    return mapInvoiceSummary(invoice, currentIntentFailure(invoice, currentIntents.get(invoice.id) ?? null) ?? latestByInvoiceId.get(invoice.id) ?? null);
+    return { ...mapInvoiceSummary(invoice, currentIntentFailure(invoice, currentIntents.get(invoice.id) ?? null) ?? latestByInvoiceId.get(invoice.id) ?? null),
+      ...(scopeAssignments.has(invoice.id) ? { scopeAssignment: scopeAssignments.get(invoice.id) } : {}) };
   });
 }
 

@@ -19,7 +19,7 @@ type AcceptedQuoteInvoiceCommandResult = Readonly<{
     sent: boolean;
     sendError: string | null;
     deliveryState: 'sent' | 'retry_available' | 'needs_attention';
-  }>;
+  }> | null;
 }>;
 
 export class QuoteAcceptanceCommandError extends Error {
@@ -67,7 +67,7 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
   actor: string | null;
 }): Promise<AcceptedQuoteInvoiceCommandResult> {
   const command = await supabaseServiceRole.rpc(
-    'commercial_accept_quote_with_project_lock',
+    'commercial_accept_quote_with_project_lock_v2',
     {
       p_quote_version_id: params.quoteVersionUuid,
       p_actor: params.actor,
@@ -77,10 +77,11 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
   const row = firstRow(command.data);
   const invoiceId =
     typeof row?.invoice_id === 'string' ? row.invoice_id : '';
-  if (!invoiceId) {
+  if (!row || (!invoiceId && (row.invoice_id !== null || row.invoice_created !== false
+    || !row.invoice_project_id || !row.invoice_quote_id || !row.quote_version_id))) {
     throw new QuoteAcceptanceCommandError(
       'QUOTE_NOT_ACCEPTABLE',
-      'Quote was accepted but its deposit invoice could not be prepared',
+      'Quote acceptance returned no authoritative billing result',
     );
   }
 
@@ -140,6 +141,10 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
       error,
     });
   }
+  // A funded revision deliberately has no new invoice. Keep acceptance/work
+  // reconciliation, but never invent a delivery failure or resend a paid deposit.
+  if (!invoiceId) return { quoteVersionUuid, alreadyAccepted, invoice: null };
+
   let sent = false;
   let sendError: string | null = null;
   let deliveryState:

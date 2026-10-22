@@ -11,6 +11,7 @@ type ScheduleAcceptedQuote = {
   quoteVersionNumber: number;
   commercialScopeKind: 'base' | 'add_on';
   totalIncGstCents: number;
+  funding?: { paidIncGstCents: number; openIncGstCents: number; carriedPaidIncGstCents: number };
   terms: ScheduleQuoteTerm[];
 };
 export type SchedulePlanItem = {
@@ -122,9 +123,13 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
         source: 'custom' as const,
       }));
     const projectedTerms = [...baseTerms, ...planTerms, ...customTerms];
+    let carried = quote.funding?.carriedPaidIncGstCents ?? 0;
     return projectedTerms.map((term, index) => {
       const key = `${quote.quoteVersionId}:${term.paymentTermId}`;
-      const allocatedPaidIncGstCents = allocatedByCurrentTerm.get(key) ?? 0;
+      const allocated = allocatedByCurrentTerm.get(key) ?? 0;
+      const appliedCarry = term.source === 'quote' ? Math.min(carried, Math.max(0, term.amountIncGstCents - allocated)) : 0;
+      carried -= appliedCarry;
+      const allocatedPaidIncGstCents = allocated + appliedCarry;
       return {
         quoteVersionId: quote.quoteVersionId,
         quoteRef: quote.quoteRef,
@@ -178,13 +183,20 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
   });
 
   const totals = input.authoritativeTotals;
+  const additionalValue = activeInvoices.filter(invoice =>
+    (invoice.invoiceKind === 'STANDALONE' && invoice.scopeAssignment?.treatment !== 'QUOTE_PAYMENT')
+    || invoice.scopeAssignment?.treatment === 'SEPARATE_CHARGE',
+  ).reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0);
+  const hasCanonicalFunding = acceptedQuotes.some(quote => quote.funding);
+  const freeCredit = hasCanonicalFunding ? paymentEntries.reduce((sum, entry) =>
+    sum + (entry.sourceInvoiceId ? 0 : entry.unallocatedIncGstCents), 0) : Math.max(0, paidIncGstCents - currentAllocated - reservedCredit);
   return {
     acceptedQuoteVersionId: currentVersionId,
     acceptedQuoteRef: input.acceptedQuoteRef,
     acceptedQuoteVersionNumber: input.acceptedQuoteVersionNumber,
     acceptedQuoteTotalIncGstCents: acceptedTotalIncGstCents,
-    standaloneTotalIncGstCents: activeInvoices.filter((invoice) => invoice.invoiceKind === 'STANDALONE').reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0),
-    billableTotalIncGstCents: totals?.acceptedTotalIncGstCents ?? acceptedTotalIncGstCents + activeInvoices.filter((invoice) => invoice.invoiceKind === 'STANDALONE').reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0),
+    standaloneTotalIncGstCents: additionalValue,
+    billableTotalIncGstCents: totals?.acceptedTotalIncGstCents ?? acceptedTotalIncGstCents + additionalValue,
     invoicedIncGstCents: activeInvoices.reduce((sum, invoice) => sum + invoice.totalIncGstCents, 0),
     paidIncGstCents: totals?.paidIncGstCents ?? paidIncGstCents,
     outstandingIncGstCents: totals?.outstandingIncGstCents ?? outstandingIncGstCents,
@@ -194,7 +206,7 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
     ),
     overCommittedIncGstCents: totals?.overCommittedIncGstCents
       ?? Math.max(0, committedIncGstCents - acceptedTotalIncGstCents),
-    unallocatedCreditIncGstCents: Math.max(0, paidIncGstCents - currentAllocated - reservedCredit),
+    unallocatedCreditIncGstCents: Math.max(0, Math.min(paidIncGstCents, freeCredit)),
     acceptedQuotes: acceptedQuotes.map((quote) => {
       const allocated = activeAllocations
         .filter((allocation) => allocation.quoteVersionId === quote.quoteVersionId)
@@ -208,7 +220,7 @@ export function projectInvoiceSchedule(input: ProjectionInput): ProjectInvoiceSc
         quoteVersionNumber: quote.quoteVersionNumber,
         commercialScopeKind: quote.commercialScopeKind,
         totalIncGstCents: quote.totalIncGstCents,
-        remainingToInvoiceIncGstCents: Math.max(0, quote.totalIncGstCents - allocated - open),
+        remainingToInvoiceIncGstCents: Math.max(0, quote.totalIncGstCents - (quote.funding?.paidIncGstCents ?? allocated) - (quote.funding?.openIncGstCents ?? open)),
       };
     }),
     terms,

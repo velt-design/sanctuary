@@ -1,5 +1,31 @@
 # Supabase Schema Map
 
+## Funded owner landing decisions (23 October 2026, local candidate)
+
+Forward `20261023010001_landing_owner_decisions.sql` adds no table or public
+endpoint. Four private helpers project prior/settled state, validate capacity,
+and expire only an unprepared decision reservation. The existing signed command
+wraps its previous implementation; three unique receipt indexes enforce one
+owner/Auckland-day decision, one preparation and one first prepare-probe. A
+null/reject consumes the decision. A lost dispatch is reconciled by its exact
+receipt, never refunded or repeated. Ordinary probe rows/counters remain intact.
+Exact committed prepare/probe replay precedes current-capacity validation, so
+expiry, Stop or generation changes cannot hide the saved result. Binding and
+the complete stage/experiment/payload digest still must match. Signed probe
+receipt reads return only the original saved fields, without a new capability
+or extended probe expiry; fresh commands still require current capacity.
+
+Capacity is acquired before Velt reserves collection/model work, under the same
+acquisition lock as ordinary landing and creative tests. It binds owner/request,
+funding receipt/day, current template/controls/generation, terminal predecessor,
+corrected Velt release and <=4h expiry within both Sydney and Auckland days.
+Preparation atomically transfers the one reservation to its new experiment.
+Genuine prior assignment, publication or unresolved active state denies issuance;
+seven-day cadence uses actual start time. Rejected canonical slot/text remains
+excluded for the same rendered control across implementation-template changes.
+Nothing in this migration revives a prior candidate or installs an admission.
+
+
 ## Composed authored/native campaign layer (23 October 2026, local only)
 
 Unreleased landing migration50009 patches only explicit copy-semantic anchors
@@ -222,6 +248,29 @@ provider trigger or report projection. Existing revision/audit rows are retained
 POST commands remain VOLATILE with the same locked owner guard. The Portal read
 model retains test records for inspection while excluding them from business sales
 and conversion populations.
+
+## Revised quote funding (22 October 2026 candidate)
+
+`20261022000001_revised_quote_funding.sql` adds staff-readable, command-write-only
+`commercial_invoice_scope_assignments` and inaccessible private acceptance billing
+receipts. `commercial_reconcile_invoice_scope` is service-only, project-locked,
+fingerprint/revision guarded and audited. Invoice/payment/provider rows remain
+unchanged. `commercial_quote_scope_funding` is the canonical staff/service family
+funding read; internal effective-scope/value/term helpers have no direct grants.
+The existing financial truth, admin issuance and restoration owners consume those
+helpers, preserving their installed authorization and partial-Xero balance code.
+Dynamic source anchors fail the migration if an existing owner changed.
+
+`commercial_accept_quote_with_project_lock_v2` opts new server adapters into a
+nullable invoice for funded families. One canonical acceptance command implements
+both v2 and the existing invoice-guaranteed legacy wrapper. A private receipt
+freezes manual/scheduled choice and acceptance time, including replay after a
+custom invoice. Manual acceptance preserves existing OPEN obligations and exposes
+any overcommitment through the same balance reader; new invoices still enforce
+both project and effective-family limits. No direct table repair is supported.
+See [commercial workflow](quotes-invoices-job-packs.md#revised-quotes-with-existing-funding-22-october-2026-candidate)
+for release order and recovery.
+
 
 ## Designer accepted sales outcomes (21 October 2026)
 

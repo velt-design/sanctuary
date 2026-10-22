@@ -648,7 +648,7 @@ export default function QuoteDetailView({
                   ? "The database upgrade must be applied before recording a decision or preparing the first invoice."
                   : expired
                   ? "This quote has expired. Create and send a current revision before accepting it."
-                  : "Acceptance locks this version, prepares its first scheduled invoice, and attempts email delivery."}
+                  : "Acceptance locks this version. If payments already fund this quote, no invoice is created or emailed; create a custom progress invoice next. Otherwise, the first scheduled invoice is prepared and email delivery is attempted."}
               </p>
             </section>
           ) : null}

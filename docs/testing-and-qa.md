@@ -1,5 +1,26 @@
 # Testing And QA
 
+Next security maintenance (23 October 2026): root, Marketing and Portal require
+at least Next16.4.1 and the lock resolves that exact patched release for
+GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r and GHSA-673q-mjm6-r5xr.
+Keep `npm audit --omit=dev` unchanged. Dependency updates require both app builds
+and types plus the signed landing command/receipt checks. Regenerate the landing
+template manifest; a framework-version change changes its identity even when
+rendered-control source files are unchanged. Bind actual deployment proof before
+new experiment admission, preserving rejected-copy exclusion and old receipts.
+
+Owner-decision regression: `node scripts/test-landing-owner-decisions-db.mjs`
+with `SANCTUARY_DISPOSABLE_POSTGRES_BIN` set to an existing local PG17 bin.
+It uses only a disposable loopback database, including concurrent issuance,
+ordinary quota preservation, immutable rejected-copy exclusions across equivalent
+controls, distinct proposal/probe, no repeat after reject/null, signed receipt
+identity, genuine-delivery/cadence refusal and funded-day bounds. The same SQL
+fixture runs under PGlite in `test/landing-owner-decision-command.test.ts`; that
+file also covers the actual signed route and unchanged diagnostic capability.
+Lost-reply cases cover revoked/expired capacity and generation drift, exact
+prepare/probe replay, conflicting identities, unchanged native rows/counters,
+and signed probe receipt readback without capability renewal.
+
 ## Guarded actual-frame handoff candidate
 
 The Contacts/Schedule split passes both local production builds, unchanged bundle
@@ -646,6 +667,33 @@ existing-data/grant preservation, replay/conflict and owner denial. Existing nat
 also uses the widened enum values against disposable PostgreSQL17. Hosted schema,
 authenticated persistence and actual record corrections remain separate release checks.
 
+## Revised quote funding verification (22 October 2026 candidate)
+
+`test/revised-quote-funding.integration.test.ts` is included in
+`npm run test:commercial:db`. It applies the real migration and production command
+bodies to synthetic PGlite prerequisites, then tests separate assessment plus
+family deposit reconciliation, immutable financial history, old/new acceptance
+compatibility, no-invoice replay, custom draft/issue/reload, scope limits, split
+allocations and authority. Recovery coverage reverses and repays a separate fee,
+settles partial bank and invoice-payment receipts, corrects those matches, and
+rejects moving their money to construction. The existing native invoice harness runs
+real competing PostgreSQL sessions for reconciliation and acceptance replay.
+Local PGlite is not concurrent-session or complete deployed-schema evidence.
+
+`npm run preview:revised-quote` starts the disposable localhost SQL adapter on
+3155. Run Portal development on 3154 with `ENABLE_PORTAL_QA_FIXTURES=1` and
+`INVOICE_DRAFTS_ENABLED=true`; open `/qa/revised-quote-fixture`. Both QA routes are
+unavailable in production. The fixture composes the production Invoices tab and
+draft editor against actual production SQL with synthetic money. Its Accept
+control is a harness command, not the entire Quotes tab. Focused
+`useQuoteLifecycleActions.test.tsx` and `acceptQuote.test.ts` separately exercise
+the actual staff success/cache and server side-effect boundaries. No email or
+provider action is available. Reset discards the disposable scenario; browser
+reload retains it while the adapter remains running. A successful synthetic
+journey does not establish production deployment, real quote acceptance or a
+customer invoice amount. Run normal auth/staging release verification separately.
+
+
 ## Photographic guide hub (22 October 2026)
 
 The hub server-render unit proves all ten existing destinations remain reachable,
@@ -686,18 +734,22 @@ and streamed starts. It adds no simulated auth advantage. Verify actual Flight
 streaming, complete panel content, final data-to-content delay and retained
 recovery; unit promise tests do not establish hosted speed or access behavior.
 
-## PG17 CI registry recovery (21 October 2026)
+## PG17 CI registry recovery (23 October 2026)
 
-The background-jobs and AI-foundation PG17 matrices use Supabase's official GHCR
-mirror of the same 17.6.1.107 linux/amd64 manifest, pinned to
+The background-jobs and AI-foundation PG17 matrices use Supabase's official
+public ECR location for the same 17.6.1.107 linux/amd64 image, pinned to
 `sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`.
-Public ECR throttled before contract execution. Both registry manifests were
-read and matched byte-for-byte, including config and all layers; Supabase's own
+The earlier 21 October recovery used GHCR after ECR throttled. On 23 October,
+GHCR repeatedly throttled before SQL, including all three bounded AI pulls.
+Fresh ECR metadata hashes to the exact existing manifest digest: the same config
+and all 29 layer descriptors, also referenced by its 17.6.1.107 amd64 index entry.
+Supabase's own
 [mirror workflow](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml)
-publishes to both. This changes distribution only: PG17, PGMQ1.5.1, all contract
-assertions and the separate PG18 matrix remain unchanged. Local Docker was not
-running during verification, so metadata equality is not a container-test pass;
-the normal required CI jobs still execute the exact contracts.
+publishes to both. Only the registry hostname changes; PG17, PGMQ1.5.1, the
+separate PG18 matrices, pull bounds and single-run SQL assertions stay unchanged.
+No Docker pull/container run was performed for this metadata check. Matching
+content addresses do not establish current layer availability or a contract pass;
+the normal required CI jobs still download and execute the exact image.
 
 ## Paused creative capability candidate, 21 October 2026
 
@@ -2183,6 +2235,8 @@ The same policy also recognises the captured, fully anchored `error pulling imag
 Dashboard link preparation is intent-only for the Hero, Work Queue, Recent Estimates, Recent Activity and Today's Visits owners. They reuse `PortalIndexLink` with viewport prefetch disabled by default and route preparation on focus, hover, pointer or touch intent. Other staff-page destinations retain their exact native href/selection and normal navigation; they do not start index API reads or use the instant index URL. The route-only fallback excludes API, authentication and outbound/public destinations. Existing index preloads, return filters and explicit prefetch props remain supported. Disabled, cancelled, external and same-page hash-only intents do not start new route work. Dashboard queries and independently complete facts are not cancelled. The connected Dashboard test verifies these actual owners with a pending secondary read; optimized browser checks and the unchanged five-run/16-gate/100-500-50 ms performance checks remain necessary. Reducing speculative work is not evidence that connection queuing caused the measured delay or that the latency/long-task targets now pass.
 
 Root, Portal and Marketing use Next.js 16.4.1 with its matching env/compiler packages, following the [official security release](https://github.com/vercel/next.js/releases/tag/v16.4.1) for GHSA-2464-fhr4-w9xw and GHSA-p3m5-59mp-jv5r. React and existing dependency overrides remain unchanged. Renew the actual installed-adapter/cookie/leaf-denial, Loadable/tab-return, Schedule, stream and intent checks, optimized app builds, bundle budgets, audits and browser/performance gates against this framework. Earlier 16.3.8 compiled evidence does not establish 16.4.1 behavior or latency. The Marketing template's generated signature tracks the new Next version; this does not publish a template or approve campaign/provider activity.
+
+The official PG17 matrix uses the approved public ECR mirror of the same immutable Supabase digest. Both workflow bindings retain one harness invocation after successful bounded image preparation; combined Docker/daemon prefixes are covered alongside the captured formats. This transport integration changes no SQL assertions or credentials.
 
 PR-AI-007 additionally requires `npm run test:jobs`, `npm run test:worker`, `npm run typecheck:worker`, `npm run build:worker`, and `npm run test:jobs:db`. The package/worker suites prove the exact four-field synthetic payload, fixed fixture results, zero external-effect policy, worker-routed handler coverage, invalid-input quarantine, and legacy-kind fail-safe behavior. The live background-job harness applies the AI task and approval prerequisites, rehearses the exact synthetic-execution migration inside `BEGIN`/`ROLLBACK`, proves no execution objects remain, then applies it and executes real PGMQ claim/progress/completion, exact replay, linked-cancellation rejection, zero-cost usage, deterministic evaluation, RLS/grant, append-only, and atomic mismatch-rollback contracts on PostgreSQL 17 and 18. It must never target a shared environment.
 

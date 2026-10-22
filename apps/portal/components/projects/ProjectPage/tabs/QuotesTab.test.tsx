@@ -327,6 +327,16 @@ describe('QuotesTab draft ownership UI', () => {
     rendered.unmount();
   });
 
+  it('explains both funded and initial acceptance before recording a decision', () => {
+    activeQuoteDetail = { ...quoteDetail, status: 'SENT', expiresAt: null };
+    const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
+    expect(rendered.container.textContent).toContain('Acceptance locks this version.');
+    expect(rendered.container.textContent).toContain('no invoice is created or emailed; create a custom progress invoice next');
+    expect(rendered.container.textContent).toContain('Otherwise, the first scheduled invoice is prepared and email delivery is attempted.');
+    expect(rendered.container.textContent).not.toContain('Acceptance locks this version, prepares its first');
+    rendered.unmount();
+  });
+
   it('retains the expiry warning for an unaccepted sent quote', () => {
     activeQuoteDetail = { ...quoteDetail, status: 'SENT', expiresAt: '2020-01-01' };
     activeQuoteList = [{ ...activeQuoteList[0], ...activeQuoteDetail }];

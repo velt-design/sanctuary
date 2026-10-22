@@ -317,6 +317,20 @@ do not represent test data as cancelled/refunded business or delete its history.
 Test inventory is inspectable and reversible, outside business sales/visit-conversion
 counts. Original financial/operational/provider facts and access boundaries stay intact.
 
+## 2026-10-22: Separate revised scope acceptance from funded progress billing
+
+A revised quote's first scheduled term can exceed the remaining job balance when
+its family already has paid receipts. Do not change issued invoices or fabricate
+an acceptance to bypass that guard. Preserve explicit economic relationships and
+choose manual progress billing through a versioned acceptance capability. Persist
+that choice so retries cannot send a later custom invoice. Keep old callers'
+invoice contract during deployment. Separately charged historical work must be an
+explicit owner decision, not guessed from version order or document wording.
+Canonical funding must honour split allocations, reversals, existing OPEN exposure
+and provider receipts across all issuance/restoration/read owners. See
+`quotes-invoices-job-packs.md` for the current implementation and rollout.
+
+
 ## 2026-10-21: Preserve safe collector diagnostics before lifecycle redaction
 
 The GA4 collector classified failures, but the lifecycle replaced that diagnostic
@@ -6597,6 +6611,10 @@ The first production Schedule migration attempt rolled back because its extra da
 ## 2026-09-08 — Schedule release dependency audit
 
 PR #114's required production audit detected GHSA-px8p-9vwx-vf98 in existing fflate dependencies. The lockfile updates only the compatible patched releases 0.8.2 to 0.8.3 and 0.6.10 to 0.6.11. Production audit now reports zero vulnerabilities; the toolchain audit retains only the two approved xlsx exceptions. Keep the security gate blocking and rerun current-revision CI after a dependency correction.
+
+## 2026-10-23 — Shared GHCR database setup throttling
+
+Source CI failed before SQL because GHCR returned a numeric microsecond `retry-after` throttle instead of the older `Rate exceeded` message. The same bounded pull helper now recognizes that exact format and runs before both AI and Background database harnesses. Preserve the pinned images, three-pull ceiling and 30/60-second backoff; do not retry SQL, arbitrary transport errors or failed assertions. See `docs/testing-and-qa.md` and `test/ai-db-image-pull.test.ts`.
 
 ## 2026-09-09 — AI database image-pull throttling
 

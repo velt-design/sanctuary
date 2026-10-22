@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { pullAiDatabaseImage } from "../scripts/ci/pull-ai-db-image.mjs";
 
-const image = "ghcr.io/supabase/postgres@sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721";
+const image = "public.ecr.aws/supabase/postgres@sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721";
 const success = { status: 0, stdout: "Downloaded", stderr: "" };
 const throttle = { status: 1, stdout: "", stderr: "Error response from daemon: toomanyrequests: Rate exceeded\n" };
 
@@ -94,6 +94,7 @@ describe("AI database image pre-pull", () => {
   });
 
   for (const message of [
+    "docker: Error response from daemon: toomanyrequests: retry-after: 975.847µs, allowed: 44000/minute",
     "Error response from daemon: toomanyrequests: Rate exceeded",
     "docker: toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute",
   ]) {
@@ -115,6 +116,12 @@ describe("AI database image pre-pull", () => {
   }
 
   it.each([
+    "toomanyrequests: retry-after: Infinityµs, allowed: 44000/minute",
+    "toomanyrequests: retry-after: -1µs, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 1µs, allowed: 0/minute",
+    "toomanyrequests: retry-after: 1µs, allowed: unknown/minute",
+    "toomanyrequests: retry-after: 1h, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 1µs, allowed: 44000/minute suffix",
     "denied: requested access to the resource is denied",
     "manifest unknown",
     "network timeout",
@@ -161,6 +168,29 @@ describe("AI database image pre-pull", () => {
     expect(io.run).toHaveBeenCalledTimes(1);
     expect(io.sleep).not.toHaveBeenCalled();
   });
+
+  it.each([
+    "toomanyrequests: retry-after: 769.793µs, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 283.837µs, allowed: 44000/minute",
+    "docker: Error response from daemon: toomanyrequests: retry-after: 975.847µs, allowed: 44000/minute",
+  ])("uses the same bounded backoff for the observed GHCR throttle: %s", async (stderr) => {
+    const failure = { status: 1, stdout: "", stderr };
+    const io = fixture([failure, failure, success]);
+    await pullAiDatabaseImage(image, io);
+    expect(io.run).toHaveBeenCalledTimes(3);
+    expect(io.run.mock.calls.every(([command, args]) => command === "docker" && args[0] === "pull" && args[1] === image)).toBe(true);
+    expect(io.sleep.mock.calls).toEqual([[30_000], [60_000]]);
+    expect(io.log.mock.calls.filter(([line]) => line === stderr)).toHaveLength(2);
+  });
+
+  it("stops after three GHCR throttles without running the database or a fourth pull", async () => {
+    const failure = { status: 1, stderr: "toomanyrequests: retry-after: 769.793µs, allowed: 44000/minute" };
+    const io = fixture([failure, failure, failure]);
+    await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 3/3");
+    expect(io.run).toHaveBeenCalledTimes(3);
+    expect(io.sleep.mock.calls).toEqual([[30_000], [60_000]]);
+  });
+
 
   describe("configuration-download throttle wrapper", () => {
     const wrapped = "error pulling image configuration: download failed after attempts=1: toomanyrequests: retry-after: 549.614µs, allowed: 44000/minute";
@@ -241,6 +271,6 @@ describe("AI database image pre-pull", () => {
     expect(backgroundDatabaseJob.match(/run: node scripts\/test-xero-payment-concurrency\.mjs/g)).toHaveLength(1);
     expect(backgroundDatabaseJob).not.toMatch(/continue-on-error|always\(\)|retry|while |until /);
     expect(backgroundJob.match(/- "scripts\/ci\/pull-ai-db-image\.mjs"/g)).toHaveLength(2);
-    expect(backgroundJob.match(/- "test\/ai-db-image-pull.test.ts"/g)).toHaveLength(2);
+    expect(backgroundJob.match(/- "test\/ai-db-image-pull\.test\.ts"/g)).toHaveLength(2);
   });
 });
