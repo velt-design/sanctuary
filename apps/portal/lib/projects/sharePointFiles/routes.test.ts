@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), list: vi.fn(), graph: vi.fn(), download: vi.fn(), fetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), identity: vi.fn(), list: vi.fn(), graph: vi.fn(), download: vi.fn(), fetch: vi.fn() }));
 vi.mock('@/lib/api/staffApi', () => ({ requireStaffContext: mocks.auth }));
+vi.mock('./openIdentity', () => ({ projectFileOpenIdentity: mocks.identity }));
 vi.mock('./server', () => ({ listProjectFiles: mocks.list, projectGraph: mocks.graph, inlineTypes: new Set(['application/pdf', 'image/png']) }));
 import { GET as list } from '../../../app/api/staff/v1/projects/[projectId]/files/route';
 import { GET as open } from '../../../app/api/staff/v1/projects/[projectId]/files/[itemId]/open/route';
@@ -12,11 +13,13 @@ const request = (mode = 'download', headers = {}) => new Request(`https://portal
 beforeEach(() => {
   vi.resetAllMocks(); vi.stubGlobal('fetch', mocks.fetch);
   mocks.auth.mockResolvedValue({ ok: true, supabase: {} });
+  mocks.identity.mockResolvedValue({});
   mocks.graph.mockResolvedValue({ root: { itemId: 'root' }, graph: { download: mocks.download } });
   mocks.download.mockResolvedValue({ item: { name: 'Original design.3dm', size: 500000000, file: { mimeType: 'application/octet-stream' } }, url: 'https://fixture.sharepoint.com/_layouts/15/download.aspx?ephemeral=secret' });
 });
 it('authenticates list and open before Graph or project access', async () => {
   mocks.auth.mockImplementation(async () => ({ ok: false, response: new Response(null, { status: 401 }) }));
+  mocks.identity.mockResolvedValue(null);
   expect((await list(new Request('https://portal.test/api/files'), ctx)).status).toBe(401);
   expect((await open(request(), ctx)).status).toBe(401);
   expect(mocks.graph).not.toHaveBeenCalled(); expect(mocks.list).not.toHaveBeenCalled();
