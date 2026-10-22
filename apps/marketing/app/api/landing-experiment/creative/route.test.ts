@@ -17,7 +17,7 @@ function historyRequest(overrides:Record<string,unknown>={}){
  const raw={version:1,command:randomUUID(),experiment:null,stage:'history',payload:{generation:1,controlAd:'21',control,template:EXPERIMENT_TEMPLATE,...overrides},at:Date.now()},body=JSON.stringify(raw);
  return new Request(origin+'/api/landing-experiment/creative',{method:'POST',headers:{'Content-Type':'application/json','x-creative-signature':createHmac('sha256',key).update('creative-command\n'+body).digest('base64url')},body});
 }
-const history=()=>({version:1,generation:1,controlAd:'21',template:EXPERIMENT_TEMPLATE,previous:[],excluded:[],complete:true});
+const history=()=>({version:2,generation:1,controlAd:'21',template:EXPERIMENT_TEMPLATE,previous:[],excluded:[],complete:true});
 it('reads a signed exact donor history through the existing route without a provider/write stage',async()=>{
  seam.rpc.mockReturnValue({abortSignal:async()=>({data:history(),error:null})});const response=await POST(historyRequest());expect(response.status).toBe(200);expect(await response.json()).toEqual(history());
  expect(seam.rpc).toHaveBeenCalledOnce();expect(seam.rpc.mock.calls[0]?.[1]).toMatchObject({p_stage:'history',p_experiment:null,p_payload:{controlAd:'21',generation:1,template:EXPERIMENT_TEMPLATE}});
@@ -28,5 +28,13 @@ it.each([{template:'f'.repeat(64)},{scope:{account:'999'}},{controlAd:'not-an-id
 it('never exposes unknown history fields or raw source errors',async()=>{
  for(const result of [{data:{...history(),privateData:'private-canary'},error:null},{data:null,error:{message:'private-canary'}}]){
   seam.rpc.mockReturnValue({abortSignal:async()=>result});const response=await POST(historyRequest());expect(response.status).toBe(503);expect(JSON.stringify(await response.json())).not.toContain('private-canary');
+ }
+});
+it('preserves bounded outcome coverage and rejects contradictory or missing coverage in terminal summaries',async()=>{
+ const entry={copyHash:'a'.repeat(64),hookPrefix:'Earlier approved hook.',result:'inconclusive',observedAt:new Date().toISOString(),reason:'evidence_incomplete',enquiries:[0,0],coverage:{allSaved:'unknown',unassigned:3},spend:[null,0],quality:'unknown_or_fails'};
+ seam.rpc.mockReturnValue({abortSignal:async()=>({data:{...history(),previous:[entry]},error:null})});
+ const response=await POST(historyRequest());expect(response.status).toBe(200);expect((await response.json()).previous).toEqual([entry]);
+ for(const coverage of [undefined,{allSaved:'complete',unassigned:3},{allSaved:'unknown',unassigned:0},{allSaved:'unknown',unassigned:2001}]){
+  seam.rpc.mockReturnValue({abortSignal:async()=>({data:{...history(),previous:[{...entry,coverage}]},error:null})});expect((await POST(historyRequest())).status).toBe(503);
  }
 });

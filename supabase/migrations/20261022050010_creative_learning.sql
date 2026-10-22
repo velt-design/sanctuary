@@ -14,6 +14,7 @@ returns jsonb language sql stable set search_path='' as $$
  ), distinct_copies as(select distinct copy_hash from terminal), tail as(
   select jsonb_build_object('copyHash',copy_hash,'hookPrefix',left(rtrim(split_part(primary_text,E'\n',1),E'\r'),160),'result',case payload->>'decision'when 'revert'then 'reverted'when 'retain'then 'retained'else payload->>'decision'end,
    'observedAt',payload->'observedAt','reason',payload->'reason','quality',payload->'quality',
+   'coverage',jsonb_build_object('allSaved',payload->'allSavedCoverage','unassigned',(payload#>>'{coverageCounts,unknownAttribution}')::integer+(payload->>'unresolvedLate')::integer),
    'enquiries',jsonb_build_array((select v->'enquiries'from jsonb_array_elements(payload->'arms')v where v->>'arm'='control'),(select v->'enquiries'from jsonb_array_elements(payload->'arms')v where v->>'arm'='challenger')),
    'spend',jsonb_build_array((select v->'spend'from jsonb_array_elements(payload->'arms')v where v->>'arm'='control'),(select v->'spend'from jsonb_array_elements(payload->'arms')v where v->>'arm'='challenger'))) as summary,
    (payload->>'observedAt')::timestamptz as observed_at,experiment
@@ -42,7 +43,7 @@ begin
     or coalesce(p_payload#>>'{control,primary}','')=''or coalesce(p_payload#>>'{control,path}','')not in('/acrylic-roof-pergolas-auckland','/auckland-outdoor-living')
     then raise exception 'Creative history unavailable';end if;
    learning:=public.meta_creative_learning(c.scope,c.original_ads,c.native_contract_hash,p_payload->>'controlAd',template_key,p_payload->'control');
-   return learning||jsonb_build_object('version',1,'generation',c.generation,'controlAd',p_payload->>'controlAd','template',template_key);
+   return learning||jsonb_build_object('version',2,'generation',c.generation,'controlAd',p_payload->>'controlAd','template',template_key);
   end if;
   -- Exact prepared-command replay still delegates to the original immutable
   -- plan check. All new plans must pass durable exclusion under the same lock.

@@ -6,7 +6,10 @@ table, endpoint or provider effect. A private helper joins immutable execution
 and analysis rows by plan hash, exact scope/originals/native method/donor/template
 and whole control (including media). All scoped rendered-primary JSON-string
 hashes remain exclusion authority; the latest four public hook prefixes and arm
-aggregates are display/learning context only. Over 64 distinct copies returns
+aggregates are display/learning context only. History version 2 includes exact
+all-saved coverage and the bounded sum of unknown-attribution/unresolved-late
+records; matched/consented enquiry zeros are never all-saved evidence by default.
+Over 64 distinct copies returns
 incomplete coverage and denies new preparation. Exact prepared-plan replay keeps
 its existing immutable identity checks. Application roles cannot call the helper
 or bypass wrapper. Deploy paired compatible consumers before this migration.

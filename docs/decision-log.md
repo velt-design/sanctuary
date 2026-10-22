@@ -7,7 +7,10 @@ read genuine scoped terminal facts and public hook prefixes; Source admission
 checks all matching rendered copies under the reservation lock. Coverage overflow
 fails closed instead of silently dropping an old experiment. An immutable plan
 replay keeps its existing identity, and a changed donor/control/media domain does
-not inherit unrelated exclusions. Local synthetic proof is not live acceptance.
+not inherit unrelated exclusions. Carry all-saved coverage and unassigned outcome
+counts alongside matched/consented counts: an incomplete [0,0] cohort must not
+look like known zero or support all-enquiry CPE inference. Local synthetic proof
+is not live acceptance.
 
 ## 2026-10-22: Historical sales credit and explicit test exclusion
 

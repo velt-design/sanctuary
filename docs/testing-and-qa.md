@@ -7,6 +7,10 @@ JSON-string UTF8 hash identity, a prior copy beyond the latest-four display tail
 64-copy coverage overflow, different-copy admission and exact immutable replay.
 Original terminal rows and helper ACLs are preserved. The signed existing route
 also rejects changed template/expanded scope/private extra response fields.
+Native equal-zero arm fixtures distinguish complete all-saved coverage from
+unassigned outcomes; signed-route tests preserve null spend and reject missing
+or inconsistent coverage. Paired model composition labels matched counts and
+prohibits all-enquiry CPE inference when coverage is incomplete.
 No customer content, real credentials, model calls or provider effects are used.
 
 ## Authored landing continuation, local checks

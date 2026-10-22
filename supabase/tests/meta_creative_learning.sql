@@ -14,14 +14,14 @@ create function pg_temp.learn_plan(e uuid,copy text,change jsonb default '{}')re
  'generator','resp_synthetic_author','reviewer','resp_synthetic_reviewer','approvalHash',repeat('a',64),'approvedAssetHash',repeat('a',64),'approvalUntil',clock_timestamp()+interval'1 day',
  'controlAd','21','control',pg_temp.learn_control(),'challengerPrimary',copy,'start',floor(extract(epoch from clock_timestamp()-interval'18 days')),'end',floor(extract(epoch from clock_timestamp()-interval'4 days')))||change from public.meta_creative_control
 $$;
-create function pg_temp.learn_seed(copy text,change jsonb default '{}')returns uuid language plpgsql as $$
+create function pg_temp.learn_seed(copy text,change jsonb default '{}',analysis_change jsonb default '{}')returns uuid language plpgsql as $$
 declare e uuid:=gen_random_uuid();h text;plan jsonb;a jsonb;stamp text;begin
  h:=encode(sha256(convert_to(e::text,'UTF8')),'hex');plan:=pg_temp.learn_plan(e,copy,change);stamp:=to_char(clock_timestamp()at time zone'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"');
  insert into public.meta_creative_plans(id,plan,plan_hash,created_at)values(e,'{}',h,clock_timestamp()-interval'10 days');
  insert into public.meta_creative_execution(experiment,plan,plan_hash,created_at)values(e,plan,h,clock_timestamp()-interval'10 days');
  a:=jsonb_build_object('version',1,'experiment',e,'planHash',h,'policy','native-saved-enquiry-per-dollar-v1','observedAt',stamp,'cohortHash',repeat('a',64),'spendHash',repeat('b',64),'deliveryHash',repeat('c',64),'sourceDates',jsonb_build_object('cohort',stamp,'spend',stamp,'delivery',stamp),'allSavedCoverage','complete','coverageCounts',jsonb_build_object('websiteGenuine',0,'nativeMatched',0,'knownOtherRegistered',0,'unknownAttribution',0,'unlinkedNative',0),'unresolvedLate',0,
  'arms',jsonb_build_array(jsonb_build_object('arm','control','ad','8201','enquiries',0,'spend',10,'canonical',0,'correspondence',0,'intake',0,'assessed',0,'concerns',0,'conflicting',0,'unknown',0),jsonb_build_object('arm','challenger','ad','8202','enquiries',0,'spend',20,'canonical',0,'correspondence',0,'intake',0,'assessed',0,'concerns',0,'conflicting',0,'unknown',0)),'decision','inconclusive','reason','no_enquiries','interval',null,'quality','unknown_or_fails');
- insert into public.meta_creative_formal_analysis(experiment,command,payload)values(e,gen_random_uuid(),a);return e;
+ insert into public.meta_creative_formal_analysis(experiment,command,payload)values(e,gen_random_uuid(),a||analysis_change);return e;
 end$$;
 create function pg_temp.learn_read(change jsonb default '{}')returns jsonb language sql as $$
  select public.meta_creative_executor_command(repeat('b',64),gen_random_uuid(),null,'history',jsonb_build_object('generation',generation,'controlAd','21','control',pg_temp.learn_control(),'template',repeat('a',64))||change)from public.meta_creative_control
@@ -36,6 +36,14 @@ do $$declare prior uuid;before_row jsonb;history jsonb;copy text:=E'A quoted "ho
  perform pg_temp.learn_assert(not exists(select 1 from jsonb_array_elements(history->'previous')v where v->>'copyHash'=expected));
  perform pg_temp.learn_assert(history#>>'{previous,0,result}'='inconclusive'and history#>'{previous,0,enquiries}'='[0,0]'::jsonb and history#>'{previous,0,spend}'='[10,20]'::jsonb);
  perform pg_temp.learn_assert(history#>>'{previous,0,hookPrefix}'like'Later hook %');
+ -- Equal matched arm counts are not equivalent all-saved evidence. Preserve
+ -- unknown attribution and unresolved late records in the bounded projection.
+ perform pg_temp.learn_seed('Known zero.','{}','{"reason":"evidence_incomplete"}');
+ perform pg_temp.learn_seed('Unassigned outcomes.','{}','{"reason":"evidence_incomplete","allSavedCoverage":"unknown","unresolvedLate":1,"coverageCounts":{"websiteGenuine":3,"nativeMatched":0,"knownOtherRegistered":0,"unknownAttribution":2,"unlinkedNative":0}}');
+ history:=pg_temp.learn_read();
+ perform pg_temp.learn_assert(history#>'{previous,0,enquiries}'='[0,0]'::jsonb and history#>'{previous,1,enquiries}'='[0,0]'::jsonb);
+ perform pg_temp.learn_assert(history#>'{previous,0,coverage}'='{"allSaved":"unknown","unassigned":3}'::jsonb and history#>'{previous,1,coverage}'='{"allSaved":"complete","unassigned":0}'::jsonb);
+ perform pg_temp.learn_assert(history#>'{previous,0,reason}'=history#>'{previous,1,reason}');
  e:=gen_random_uuid();plan:=pg_temp.learn_plan(e,copy);
  perform pg_temp.learn_reject(format('select public.meta_creative_executor_command(%L,%L,%L,%L,%L)',repeat('b',64),gen_random_uuid(),e,'prepare',jsonb_build_object('plan',plan,'planHash',repeat('e',64))),'Previously evaluated creative copy');
  perform pg_temp.learn_assert(pg_temp.learn_read(jsonb_build_object('controlAd','22'))->'excluded'='[]'::jsonb);
