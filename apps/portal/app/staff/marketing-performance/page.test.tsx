@@ -102,12 +102,14 @@ it('times the complete client/read chains without awaiting or serializing the th
  expect(await page.props.initialCommercialSeed.result).toBe(failure);
  const success={ok:true as const,report:hubFixture};hubReady(success);expect(await page.props.initialHubSeed.result).toBe(success);
  expect(await page.props.initialDesignerSeed.result).toEqual({ok:false,status:503,error:'Unavailable'});
- const events=log.mock.calls.map(call=>call[1]);
+ const events=log.mock.calls.map(call=>call[1]).filter(event=>event.event==='portal.document.phase');
  expect(events).toEqual(expect.arrayContaining([
   expect.objectContaining({requestId:scope.id,phase:'marketing.hub',outcome:'complete',durationMs:60}),
   expect.objectContaining({requestId:scope.id,phase:'marketing.commercial',outcome:'error',durationMs:60}),
   expect.objectContaining({requestId:scope.id,phase:'marketing.designer',outcome:'error'}),
  ]));expect(events).toHaveLength(3);expect(JSON.stringify(events)).not.toMatch(/private connection|Safe unavailable|2026-09/);
+ const transport=log.mock.calls.map(call=>call[1]).filter(event=>event.event==='portal.document.transport');
+ expect(transport).toHaveLength(3);expect(transport).toEqual(expect.arrayContaining(['marketing.hub','marketing.commercial','marketing.designer'].map(operation=>expect.objectContaining({requestId:scope.id,operation,outcome:'not_observed'}))));
 });
 it('keeps public client-setup failures and results unchanged when diagnostic logging rejects',async()=>{
  observedOverview();vi.spyOn(console,'info').mockImplementation(()=>Promise.reject(new Error('logger failure')));

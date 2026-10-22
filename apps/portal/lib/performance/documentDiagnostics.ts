@@ -3,6 +3,7 @@ import 'server-only';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { PortalAccessTimingObserver } from '@/lib/portalAccess';
 import { prepareRegionalDocumentAccess } from '@/lib/regionalDocumentAccess';
+import { isTransportOperation, observeDocumentTransport, type TransportObservation } from './documentTransportDiagnostics.server';
 
 export const DOCUMENT_CARRIER_HEADER = 'x-portal-document-carrier';
 export const DOCUMENT_ID_HEADER = 'x-portal-document-id';
@@ -70,24 +71,44 @@ function decode(raw: string | null, value: Config): Carrier | null {
 function ignoreFailure(operation: () => unknown): void {
   try { void Promise.resolve(operation()).catch(() => undefined); } catch { /* Diagnostics cannot change the page. */ }
 }
+function deploymentMetadata() {
+  const build = process.env.VERCEL_GIT_COMMIT_SHA, region = process.env.VERCEL_REGION;
+  return { build: build && /^[a-f0-9]{40}$/.test(build) ? build : null, region: region && /^[a-z]{3}\d$/.test(region) ? region : null };
+}
 
 export class DocumentDiagnostics {
   private readonly emitted = new Set<Phase>();
-  constructor(private readonly carrier: Carrier) {}
+  constructor(private readonly carrier: Carrier, private readonly nonce: string) {}
   get id() { return this.carrier.id; }
   get routeTemplate() { return this.carrier.route; }
   record(phase: Phase, startedAt: number, outcome: DocumentOutcome): void {
     const duration = performance.now() - startedAt;
     if (Date.now() >= this.carrier.until || !config() || this.emitted.has(phase) || !phases.includes(phase) || !outcomes.includes(outcome) || !Number.isFinite(duration) || duration < 0 || duration > WINDOW_MS) return;
     this.emitted.add(phase);
-    const build = process.env.VERCEL_GIT_COMMIT_SHA;
-    const region = process.env.VERCEL_REGION;
     ignoreFailure(() => console.info('[portal.document]', {
       event: 'portal.document.phase', requestId: this.carrier.id, routeTemplate: this.carrier.route,
       phase, outcome, durationMs: Number(duration.toFixed(1)),
-      build: build && /^[a-f0-9]{40}$/.test(build) ? build : null,
-      region: region && /^[a-z]{3}\d$/.test(region) ? region : null,
+      ...deploymentMetadata(),
     }));
+  }
+  private transportActive() {
+    const value = config();
+    return this.carrier.route === '/staff/marketing-performance' && routeEnabled(this.carrier.route)
+      && Date.now() < this.carrier.until && value?.until === this.carrier.until && value.nonce === this.nonce;
+  }
+  private recordTransport(observation: TransportObservation) {
+    if (!this.transportActive()) return;
+    ignoreFailure(() => console.info('[portal.document]', {
+      event: 'portal.document.transport', requestId: this.carrier.id, routeTemplate: this.carrier.route,
+      operation: observation.operation, ordinal: observation.ordinal, connection: observation.connection,
+      dispatchMs: observation.dispatchMs, headersWaitMs: observation.headersWaitMs, bodyMs: observation.bodyMs,
+      connectMs: null, outcome: observation.outcome, ...deploymentMetadata(),
+    }));
+  }
+  measureTransport<T>(operation: string, work: () => PromiseLike<T> | T): PromiseLike<T> | T {
+    if (!isTransportOperation(operation) || !this.transportActive()) return work();
+    return observeDocumentTransport({ requestId: this.carrier.id, until: this.carrier.until,
+      active: () => this.transportActive(), emit: observation => this.recordTransport(observation) }, operation, work);
   }
   accessObserver(boundary: 'proxy' | 'rsc'): PortalAccessTimingObserver {
     return ({ phase, durationMs, outcome }) => this.record(`${boundary}.${phase}`, performance.now() - durationMs, outcome);
@@ -95,7 +116,7 @@ export class DocumentDiagnostics {
   async measure<T>(phase: Phase, operation: () => PromiseLike<T> | T, classify: (value: T) => DocumentOutcome = () => 'complete'): Promise<T> {
     const start = performance.now();
     let result: T;
-    try { result = await operation(); }
+    try { result = await this.measureTransport(phase, operation); }
     catch (error) { ignoreFailure(() => this.record(phase, start, 'error')); throw error; }
     ignoreFailure(() => this.record(phase, start, classify(result)));
     return result;
@@ -114,7 +135,7 @@ export function prepareProxyDocumentDiagnostics(request: Request): { requestHead
   try {
     const carrier: Carrier = { id: randomUUID(), route, issued: Date.now(), until: value.until };
     headers.set(DOCUMENT_CARRIER_HEADER, encode(carrier, value));
-    return { requestHeaders: headers, diagnostics: new DocumentDiagnostics(carrier) };
+    return { requestHeaders: headers, diagnostics: new DocumentDiagnostics(carrier, value.nonce) };
   } catch { return { requestHeaders: hadCarrier ? headers : undefined, diagnostics: null }; }
 }
 
@@ -122,5 +143,5 @@ export function readDocumentDiagnostics(headers: Headers): DocumentDiagnostics |
   const value = config();
   if (!value || !isDocument(headers, 'GET')) return null;
   const carrier = decode(headers.get(DOCUMENT_CARRIER_HEADER), value);
-  return carrier && routeEnabled(carrier.route) ? new DocumentDiagnostics(carrier) : null;
+  return carrier && routeEnabled(carrier.route) ? new DocumentDiagnostics(carrier, value.nonce) : null;
 }
