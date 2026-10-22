@@ -12,6 +12,37 @@ The regression first proves the old reopening, then covers competing accepted
 versions, rollback and unchanged authority. Historical repairs remain separately
 guarded and audited, never a reason to fabricate settlement or disable triggers.
 
+## 2026-10-22: Selected Explorer retains current-folder finding and source authority
+
+Jordan selected folders, list and preview together after the three-direction
+exploration. `ProjectSharePointFilesPanel` composes the existing Foundation and
+lazy canvas PDF renderer; it does not import the standalone prototype. The
+existing Work card defers website attachment reads until that source is selected.
+Current-folder finding progressively reads existing 100-item cursor pages in
+bounded batches and labels partial results; no broader Microsoft search grant
+or whole-project index is needed. Existing authenticated metadata queries keep a
+30-second freshness window with equivalent-root key seeding. Bounded scoped
+session navigation preserves task state without storing URLs/tokens/document
+bytes or introducing project query keys. Selected preview bytes are transient,
+cancelled on change and reused by the dialog. Original downloads retain the
+protected browser redirect and 50 MB inline cap. No shared auth/query framework,
+provisioning or migration changes belong to this UI increment.
+
+Independent review identified deep-page restoration saving its own temporary
+first-page clamp and a removed modal return trigger. The local list-position
+owner now defers restoration through the saved bounded metadata pages, ignores
+programmatic intermediate offsets and lets deliberate scrolling take control.
+Filtered/full list offsets are separate. A persistent preview owner/Expand
+control and explicit current-row return repair gallery/desktop keyboard close
+without changing the shared Modal or re-reading content solely for expansion.
+
+The actual old/new WorkFilesCard fixture comparison separates request savings
+from task retention: first entry defers one attachment read; both fresh returns
+make zero reads, but only Explorer restores the folder. Live source timing and
+full valid large Rhino delivery remain unverified without an approved runtime
+access route. Owner/security details and focused checks live in
+`project-sharepoint-files.md`; local private evidence is not deployment payload.
+
 ## 2026-10-22: Check committed service-role additions against the PR base
 
 The finite GA4 credential transfer used the reviewed service-only RPC but lacked

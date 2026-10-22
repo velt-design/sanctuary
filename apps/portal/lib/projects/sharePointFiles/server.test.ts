@@ -21,3 +21,17 @@ it('honours database staff denial before configuration or provider access', asyn
   await expect(listProjectFiles(db(null, { code: '42501' }), project, {}, '')).rejects.toMatchObject({ code: 'access_required', status: 403 });
   expect(mocks.config).not.toHaveBeenCalled(); expect(mocks.graph).not.toHaveBeenCalled();
 });
+it('observes the binding read without changing provider order, arguments or metadata', async () => {
+  const events: string[] = [], database = db({ state: 'ready', roots: [root], binding: 'binding' });
+  const observer = vi.fn((phase: string) => { events.push(phase); throw new Error('observer failure'); });
+  mocks.config.mockImplementation(() => { events.push('config'); return { binding: 'binding' }; });
+  const children = vi.fn(async () => ({ items: [], cursor: null }));
+  mocks.graph.mockImplementation(async (_cfg, assertion, signal, fetcher, receivedObserver) => {
+    events.push('graph'); expect(assertion).toBe('synthetic-assertion'); expect(signal).toBeInstanceOf(AbortSignal);
+    expect(fetcher).toBeUndefined(); expect(receivedObserver).toBe(observer); return { children };
+  });
+  expect(await listProjectFiles(database, project, {}, 'synthetic-assertion', observer)).toEqual({ state: 'ready', roots: [root], rootId: root.id, folderId: 'root', items: [], cursor: null });
+  expect(events).toEqual(['bindings_rpc', 'config', 'graph']);
+  expect(database.rpc).toHaveBeenCalledWith('project_files_read', { p_project_id: '11111111-1111-4111-8111-111111111111' });
+  expect(children).toHaveBeenCalledWith('root', 'root', undefined);
+});
