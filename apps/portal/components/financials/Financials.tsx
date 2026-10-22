@@ -1,4 +1,6 @@
 'use client';
+import type { InitialReport } from '@/lib/marketingPerformance/reportRead';
+import type { FinancialEvidence } from '@/lib/xero/financials/contract';
 import { useEffect, useState } from 'react';
 import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { TabNavigation } from '@/components/ui/foundation/FoundationOperational';
@@ -20,16 +22,16 @@ const reasons: Record<string,string> = {
   provider_unavailable:'Xero did not return this report within the read window. Retry shortly.', invalid_response:'The source report could not be verified. Partial figures are withheld.',
   limit_exceeded:'The source report exceeds the complete-read limit. Partial totals are withheld.', metadata_unavailable:'Organisation metadata is unavailable, so report currency cannot be verified.',
 };
-export default function Financials({loader,synthetic=false}:{loader?:FinancialsLoader;synthetic?:boolean}) {
+export default function Financials({loader,synthetic=false,initialSeed}:{loader?:FinancialsLoader;synthetic?:boolean;initialSeed?:InitialReport<FinancialEvidence>}) {
   const [selection,setSelection]=useState<FinancialSelection>(() => selectionFromUrl(new URLSearchParams())), [ready,setReady]=useState(false), [revision,setRevision]=useState(0);
   useEffect(() => {
     const restore = () => {setSelection(selectionFromUrl(new URLSearchParams(window.location.search)));setReady(true);};
     restore();window.addEventListener('popstate',restore);return () => window.removeEventListener('popstate',restore);
   },[]);
-  return ready ? <FinancialsContent selection={selection} setSelection={setSelection} revision={revision} retry={() => setRevision(value => value+1)} loader={loader} synthetic={synthetic}/> : <p role="status">Preparing financial report…</p>;
+  return ready ? <FinancialsContent selection={selection} setSelection={setSelection} revision={revision} retry={() => setRevision(value => value+1)} loader={loader} synthetic={synthetic} initialSeed={initialSeed}/> : <p role="status">Preparing financial report…</p>;
 }
-function FinancialsContent({selection,setSelection,revision,retry,loader,synthetic}:{selection:FinancialSelection;setSelection:(selection:FinancialSelection)=>void;revision:number;retry:()=>void;loader?:FinancialsLoader;synthetic:boolean}) {
-  const {report,retained,profitEvidence,busy,error}=useFinancials(selection,revision,loader);
+function FinancialsContent({selection,setSelection,revision,retry,loader,synthetic,initialSeed}:{selection:FinancialSelection;setSelection:(selection:FinancialSelection)=>void;revision:number;retry:()=>void;loader?:FinancialsLoader;synthetic:boolean;initialSeed?:InitialReport<FinancialEvidence>}) {
+  const {report,retained,profitEvidence,busy,error}=useFinancials(selection,revision,loader,initialSeed);
   const tabs=useVisibleSelection(selection.section);
   const apply=(next:FinancialSelection)=>{const url=new URL(window.location.href);url.search=selectionToUrl(url.searchParams,next).toString();window.history.replaceState(null,'',url);setSelection(next);};
   const position=report?.position;
