@@ -36,6 +36,19 @@ visit-to-project-to-return in the compiled application. These local warm-process
 observations are not platform-cold or production results. Keep all raw samples;
 do not change the100ms target or count a timer correction as runtime improvement.
 
+## Initial Marketing column representation (22 October 2026)
+
+Run `columnarReports.test.ts`, `columnarSeeds.test.tsx`, the Marketing page,
+initial-Hub host/hook and report-seed tests plus Financial seed regression.
+Check every field/ordered row, empty arrays, optional own undefined versus
+absence, future fields and homogeneous-shape fallback; malformed dimensions,
+missing values, versions or families must never yield partial evidence.
+Model outputs and real host records/filter/return/retry stay identical. Include
+StrictMode and void-returning Flight thenables with no duplicate initial read.
+Actual optimized Flight decoding, bundle size and full-document encoded bytes
+remain separate evidence; offline JSON/whole-buffer compression is not a hosted
+speed measurement.
+
 ## Professionals photographic presentation (22 October 2026)
 
 Focused route tests preserve canonical/config identity, optional professional
