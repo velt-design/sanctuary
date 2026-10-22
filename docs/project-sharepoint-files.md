@@ -1,6 +1,6 @@
 # Project SharePoint files
 
-Status: Dedicated Files workspace, protected recent-preview verification and open-route-only Sydney placement are live as of 23 October 2026. Actual acceptance verified recent photo/PDF 200 receipts, manual Refresh and unchanged placement of other functions. Sydney improved ordinary file delivery, but the owner's almost-instant first-open outcome remains unmet. The combined auth/Singapore change retains fresh session verification and current RPC/Graph authority, but Portal activation remains unverified after a missing workspace test dependency stopped its build. The dependency correction changes package ownership only; the combined latency gain remains unverified. Large original delivery retains its separate acceptance requirement. No runtime enablement, bindings, grants, provisioning or staff changeover changes.
+Status: Dedicated Files, protected recent-preview verification, open-only authentication deduplication and the workspace test dependency correction are live as of 23 October 2026. The combined Singapore release regressed both representative first opens despite lower authentication time. A narrow local recovery returns only the open route to Sydney, retaining every current session/RPC/Graph check and the dependency fix. The owner's almost-instant outcome remains unmet; recovery performance is unverified. Large original delivery retains its separate acceptance requirement. No bindings, grants, provisioning or staff changeover changes.
 
 ## Outcome and ownership
 
@@ -178,53 +178,51 @@ install outside ancestors containing a full dependency tree. Portal's existing
 Next TypeScript test inclusion remains intact. No production runtime import,
 auth/session behavior, SQL, grants, region or file content changes are required.
 
-### Open-route locality and combined auth candidate
+### Open-route locality and narrow recovery
 
-The 23 October release assigns only
-`app/api/staff/v1/projects/*/files/*/open/route.ts` to Sydney (`syd1`) through
-Portal's Vercel per-function configuration. Actual production artifacts verified
-that both open variants moved and all other functions, including middleware,
-retained their prior placement and resources. A paired protected control separated
-preview-only middleware placement from the production comparison.
+The earlier open-only Sydney release improved the representative photo/PDF to
+about 2.47/2.44 seconds for all observed decoded bytes, from about 5.85/5.19
+seconds in Mumbai. Headers still took about 2.31/2.34 seconds. These are observed
+transport timings, not exact useful-paint claims or acceptance of the owner's
+almost-instant outcome. Lists and other Portal functions retained their placement.
 
-The representative photo/PDF delivered all observed decoded bytes in about
-2.47/2.44 seconds, compared with about 5.85/5.19 seconds before this change.
-Headers still took about 2.31/2.34 seconds. These observations establish a useful
-improvement, not exact native transport completion or useful-paint timing, and do
-not establish the owner's almost-instant outcome. Current Sydney authentication
-plus binding reads cost about 1.38/1.79 seconds; Graph metadata proof was about
-0.23/0.12 seconds. The identity/role split within authentication was not measured.
+The combined `5ca16a7c` release kept the auth improvement and dependency fix while
+moving only open to Singapore. Actual production artifacts verified that only
+both open variants moved, with all other placements and resources unchanged.
+In one bounded matched window, photo headers/all decoded bytes took about
+4.40/7.43 seconds; PDF took about 2.90/5.42 seconds. Both first opens regressed
+against Sydney. Authentication dropped to about 0.16/0.14 seconds and binding
+reads to 0.10/0.14 seconds, but current Graph proof and source headers were slower.
+A single window does not establish a general regional cause or isolate the auth
+change's contribution. Recent previews still appeared immediately, completed
+protected 200 JSON verification and remained visible through Refresh without
+another body transfer.
 
-The local open-only auth candidate obtains one existing cookie-bound Supabase
-client, performs fresh `auth.getUser()`, and passes that same client to unchanged
-`projectGraph`. The existing `project_files_read` RPC rechecks current staff/admin
-membership, confirmation, deletion and ban state before returning project roots.
-That current actor check replaces only the redundant generic `portal_users` role
-query. Other Portal authentication and Files listing owners remain unchanged.
-The existing SSR refresh/cookie path stays in use; no role, claims or authority
-cache is introduced. Server-ended session detection still requires fresh
-`getUser()` and is not replaced by `getClaims()` or the RPC alone.
+The narrow local recovery changes only the existing open-route function override
+from Singapore (`sin1`) back to Sydney (`syd1`). It retains the live open-only
+identity owner: one existing cookie-bound client performs fresh `auth.getUser()`
+and the SAME client calls unchanged `projectGraph`. Existing `project_files_read`
+rechecks current staff/admin membership, confirmation, deletion and ban state
+before returning project roots. Only the redundant generic `portal_users` role
+query was removed; no cached role, claims or authority replaces current proof.
+Fresh `getUser()` still detects server-ended sessions; the RPC alone or
+`getClaims()` is insufficient. Existing SSR refresh/cookie behavior is unchanged.
 
-The combined local candidate also changes only the existing open override from
-Sydney to Singapore (`sin1`). Singapore is a midpoint hypothesis between the
-Mumbai authentication/binding data and the Australian source/client path. No
-prior Files timing establishes its performance. Lists and all other functions
-retain their existing placement. Removing one network operation is verified
-locally; the combined real latency saving is unverified and cannot be assumed
-to reach a numerical target or attributed solely to either change. Session denial,
-RPC denial/error, invalid roots or stale binding still stop before provider
-access, previews, verification receipts or original redirects. Node runtime,
-current Graph containment/type/size/version checks, original delivery and the
-five-minute metadata/recent-preview policy remain unchanged.
+Current Graph containment/type/size/version checks, native original delivery,
+the five-minute prepared metadata/recent-preview policy, the exact development
+dependency declaration and all tests remain intact. Session/RPC denial, error,
+invalid roots or stale binding still stop before provider access, previews,
+verification receipts or original redirects. Lists, middleware, defaults,
+resources and every other function retain their current configuration.
 
-If Singapore regresses, recovery changes only the open override back to the
-verified Sydney placement. An auth defect requires its own exact runtime revert,
-preserving other work and the protected receipt correction. Before promotion,
-actual artifact comparison must show only the two open variants moving from
-Sydney to Singapore, with all other functions and resources unchanged. No broad Portal
-region move, extra services, body preparation or persistent copies are included.
+Before recovery acceptance, the actual production comparison must permit only
+both open variants moving Singapore to Sydney and preserve all other functions
+and resources. The bounded ordinary photo/PDF and recent-return task still needs
+fresh verification. This restores the better observed byte path without a stale
+full rollback, wider region move, body preparation or authority relaxation.
+Recovery performance and the almost-instant outcome remain unverified.
 [Vercel per-function regions](https://vercel.com/docs/functions/configuring-functions/region)
-own deployment placement; the deprecated Next `preferredRegion` export is not used.
+own placement; the deprecated Next `preferredRegion` export is not used.
 
 The separate private localhost harness executes the actual list/open handlers,
 Graph/token/containment owners and client workspace with synthetic auth/RPC and

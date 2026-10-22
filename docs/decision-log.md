@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-23: Recover file locality using the complete ordinary task
+
+The Singapore canary lowered authentication time but regressed both matched
+first-file transfers. Recover only the open route's better observed Sydney
+placement, preserving the accepted fresh identity/RPC checks and dependency fix.
+Judge the whole file task and recent-return behavior; one phase improvement does
+not establish the owner outcome or a general regional cause from one window.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
 ## 2026-10-23: Declare build-checked test tools in their workspace
 
 A Portal SQL-boundary test resolved PGlite through the full-root development

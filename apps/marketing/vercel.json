@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/project-file-open-sydney-recovery-20261023": false,
       "codex/project-file-build-dependency-20261023": false,
       "codex/project-file-open-auth-20261023": false,
       "codex/project-file-open-locality-20261023": false,
