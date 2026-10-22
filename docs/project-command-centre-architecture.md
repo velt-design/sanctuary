@@ -17,8 +17,10 @@ route project and unchanged query state. Raw UUID routes retain their existing
 summary/snapshot keys and canonical command/payment keys. Summary can render
 progress while full snapshot work is pending; successful command or payment data
 cannot mark a failed snapshot complete. Cancellation, invalidation, tab return,
-recovery and access-ending API behavior keep the existing owners. This is local
-candidate source, not a verified speed or release claim.
+recovery and access-ending API behavior keep the existing owners. Local compiled
+verification and independent review accepted this mechanism on `f74c3fd2`.
+The data-delivery/control-readiness comparison and its paint, hosted and
+platform-cold limits are recorded in `portal-production-readiness.md`.
 
 ## First-load read path (released 21 October 2026)
 

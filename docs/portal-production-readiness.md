@@ -2,14 +2,23 @@
 
 ## Complete Work experiment (22 October 2026, local)
 
-The current bounded experiment starts the existing complete Work reads during
+The accepted local experiment starts the existing complete Work reads during
 the authenticated HTML request and shares command composition with snapshot only
 within that invocation. Its retained optimized `e267f583` baseline median is
 2,336 ms across five populated reloads, including enabled controls and completed
-snapshot/history. Candidate measurement, compiled recovery and independent
-review remain required. See the implementation map in
+snapshot data. The matched `f74c3fd2` candidate median is 1,379 ms (41.0% lower),
+with zero initial summary/snapshot/command/invoice browser GETs in all five runs.
+These are local warm-process staging data-delivery/control-readiness observations.
+All four streamed results finished before each candidate callback; the payment
+heading alone is not payment-value evidence. Separate ordinary and recovery
+checks verified values, independent errors, Retry, delayed tab choice, current-role
+denial and return. Nine compiled isolation/access/read-sharing checks and the
+independent local delivery review passed. The timing endpoint does not establish
+payment/history paint, hosted delivery or platform-cold performance.
+See the implementation map in
 `project-command-centre-architecture.md` and acceptance in `testing-and-qa.md`.
-No Work gain, hosted delivery or platform-cold result is established by source.
+Later integration retains this exact-source comparison as historical evidence;
+production release and the broader cold-start outcome remain open.
 
 ## Saved Visits experiment (22 October 2026, local)
 
@@ -25,7 +34,7 @@ failure/Retry and scope-change checks and independent ordinary return review
 passed on runtime `906720df` (docs correction `c1abcf83`). This is not hosted or
 platform-cold evidence. See `schedule.md` for the
 implementation map and `testing-and-qa.md` for acceptance checks. Projects' prior
-results below remain bound to their original measurements; complete Work and
+results below remain bound to their original measurements; hosted/production and
 platform-cold outcomes remain open.
 
 ## First-load continuation (21 October 2026)
@@ -71,8 +80,8 @@ its build and behavior checks do not establish a new integrated speed result.
 The broader faster first-load outcome remains open. Historical cold feedback
 measurements waited for document load before observing the shell and therefore
 did not identify its first paint. The 100 ms target is unchanged; correcting
-measurement alone cannot count as a speed gain. Site Visits, complete project
-work and actual platform-cold performance still require their own evidence.
+measurement alone cannot count as a speed gain. The accepted local Site Visits
+and Work evidence above does not establish hosted or platform-cold performance.
 
 
 Portal experience release completed through PR222 after Jordan requested "push

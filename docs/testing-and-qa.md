@@ -11,8 +11,10 @@ failure despite successful command, ordinary Retry, cancellation, invalidation,
 denial and tab/project return. Keep complete commercial facts and full history.
 
 Compare optimized exact-source baseline/candidate using the same enabled Work
-controls and completed snapshot endpoint; Current/Payment/Open quote alone is
-insufficient. Count browser requests and actual server reads. Delayed, failed
+controls and completed snapshot data; Current/Payment/Open quote alone is
+insufficient. Qualify payment completion separately from its heading, which is
+also present during failures. Data arrival and usable controls do not establish
+payment/history paint. Count browser requests and actual server reads. Delayed, failed
 and denied compiled paths remain necessary evidence beyond unit mocks. Preserve
 all samples and distinguish local warm-process results from hosted/platform-cold
 performance. Do not change the 100 ms target or credit a timer correction.
@@ -33,6 +35,23 @@ Verify delayed streaming, scope change before completion, failure then Retry and
 visit-to-project-to-return in the compiled application. These local warm-process
 observations are not platform-cold or production results. Keep all raw samples;
 do not change the100ms target or count a timer correction as runtime improvement.
+
+## Finite Portal service-secret transfer
+
+Run `apps/portal/app/api/integrations/praxis/portal-service-transfer/route.test.ts`
+with existing Praxis server/route regressions, Portal types/lint and changed-file
+architecture guards. Tests compose the real route and connector configuration
+with synthetic hosting replies: exact principal/projects/team/source identity,
+finite nonce/expiry, pre-write changes, absent-only production sensitive create,
+replay in every environment, metadata reconciliation after unknown outcomes,
+secret/raw-error privacy, body bounds and no caller-controlled destination.
+The actual document middleware matcher must exclude the independently authorized
+API. The version GET must expose only the exact production commit SHA before any
+secret is sent and deny missing SHA, wrong origin/project/environment or query.
+No SDK, database or real platform call is part of local proof. Fixed target
+IDs are nonsecret contract constants; all tokens and returned data are synthetic.
+Normal release build/review and private hosted operator verification are separate
+evidence; metadata presence alone cannot prove that the copied value matches.
 
 ## Targeted Marketing latency verification (22 October 2026)
 
