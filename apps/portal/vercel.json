@@ -2,26 +2,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/project-file-open-sydney-recovery-20261023": false,
-      "codex/project-file-build-dependency-20261023": false,
-      "codex/project-file-open-auth-20261023": false,
-      "codex/project-file-open-locality-20261023": false,
-      "codex/project-files-live-preview-fix-20261022": false,
-      "codex/campaign-browser-response-20261022": false,
-      "codex/seo-google-mobile-20261022": false,
-      "codex/project-files-main-tab-20261022": false,
-      "codex/campaign-render-deadline-20261022": false,
-      "codex/meta-mobile-20261022": false,
-      "codex/campaign-render-origin-20261022": false,
-      "codex/campaign-render-packaging-20261022": false,
-      "codex/pergolas-overview-release-20261022": false,
-      "codex/project-files-explorer-20261022": false,
-      "codex/ga4-acquisition-recovery-20261022": false,
-      "codex/professionals-release-20261022": false,
-      "codex/accepted-date-reconciliation-20261022": false,
-      "codex/projects-release-20261022": false,
-      "codex/ga4-pretoken-recovery-20261022": false,
-      "codex/marketing-overview-diagnostics-20261022": false,
-      "codex/sharepoint-project-files-20261022": false,
+      "codex/campaign-authored-landing-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
       "codex/designer-history-support-20261022": false,
       "codex/meta-video-donor-20261022": false,
@@ -71,21 +52,47 @@
       "codex/portal-marketing-panel-ready-20261021": false,
       "codex/guide-hub-20261021": false,
       "codex/portal-marketing-latency-20261022": false,
+      "codex/meta-creative-ambiguity-20261022": false,
+      "codex/meta-creative-completion-20261022": false,
+      "codex/meta-creative-retention-20261022": false,
+      "codex/meta-creative-inventory-20261022": false,
+      "codex/professionals-release-20261022": false,
+      "codex/accepted-date-reconciliation-20261022": false,
+      "codex/projects-release-20261022": false,
+      "codex/marketing-overview-diagnostics-20261022": false,
+      "codex/sharepoint-project-files-20261022": false,
       "codex/marketing-transport-diagnostics-20261022": false,
+      "codex/campaign-loop-integration-20261022": false,
+      "codex/project-files-live-preview-fix-20261022": false,
+      "codex/campaign-browser-response-20261022": false,
+      "codex/seo-google-mobile-20261022": false,
+      "codex/project-files-main-tab-20261022": false,
+      "codex/campaign-render-deadline-20261022": false,
+      "codex/meta-mobile-20261022": false,
+      "codex/campaign-render-origin-20261022": false,
+      "codex/campaign-render-packaging-20261022": false,
+      "codex/pergolas-overview-release-20261022": false,
+      "codex/project-files-explorer-20261022": false,
+      "codex/ga4-acquisition-recovery-20261022": false,
+      "codex/ga4-pretoken-recovery-20261022": false,
       "codex/marketing-columnar-seeds-20261022": false,
       "codex/portal-cold-start-20261021": false,
-      "codex/campaign-render-recovery-20261022": false
+      "codex/campaign-render-recovery-20261022": false,
+      "codex/campaign-loop-continuation-20261023": false,
+      "codex/project-file-open-locality-20261023": false,
+      "codex/project-file-open-auth-20261023": false,
+      "codex/project-file-build-dependency-20261023": false
     }
   },
   "functions": {
-    "app/api/staff/v1/projects/*/files/*/open/route.ts": {
-      "regions": [
-        "syd1"
-      ]
-    },
     "middleware.ts": {
       "regions": [
         "bom1"
+      ]
+    },
+    "app/api/staff/v1/projects/*/files/*/open/route.ts": {
+      "regions": [
+        "syd1"
       ]
     }
   },

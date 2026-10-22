@@ -12,12 +12,12 @@ let element:HTMLDivElement,root:Root;
 beforeEach(()=>{vi.stubGlobal('matchMedia',()=>({matches:true}));});
 beforeEach(()=>{sessionStorage.clear();vi.stubEnv('NEXT_PUBLIC_LANDING_EXPERIMENT_ENABLED','true');Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});element=document.createElement('div');document.body.append(element);root=createRoot(element);tracking.consent={analytics:true,marketing:true};tracking.hasTrackingDecision=true;vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>{callback(0);return 1;});});
 afterEach(async()=>{await act(async()=>root.unmount());element.remove();for(const path of LANDING_EXPERIMENT_PATHS)document.cookie=`${experimentCookieName(path)}=;Path=/;Max-Age=0`;vi.unstubAllEnvs();vi.unstubAllGlobals();});
-it.each(LANDING_EXPERIMENT_PATHS)('paints one permitted slot, captures the experienced receipt and leaves original content on denied consent: %s',async path=>{
- const receipt='syntheticreceipt'.repeat(6),assignment={experiment:'a1000000-0000-4000-8000-000000000001',assignment:'a2000000-0000-4000-8000-000000000001',path,arm:'challenger',copies:{design:'explore'},receipt};
+it.each(LANDING_EXPERIMENT_PATHS.flatMap(path=>[{path,copy:'explore',text:'Explore your pergola'},{path,copy:'copy:design:Plan your outdoor space',text:'Plan your outdoor space'}]))('paints one permitted slot, captures the experienced receipt and leaves original content on denied consent: $path/$copy',async({path,copy,text})=>{
+ const receipt='syntheticreceipt'.repeat(6),assignment={experiment:'a1000000-0000-4000-8000-000000000001',assignment:'a2000000-0000-4000-8000-000000000001',path,arm:'challenger',copies:{design:copy},receipt};
  const fetcher=vi.fn(async()=>new Response(JSON.stringify({assignment})));vi.stubGlobal('fetch',fetcher);
  const view=()=> <LandingExperiment path={path}><LandingCopy slot="design"><OriginalLandingCopy path={path} slot="design"/></LandingCopy><form><ExperimentReceiptField sourcePath={path}/></form></LandingExperiment>;
  await act(async()=>{root.render(view());});
- expect(element.textContent).toContain('Explore your pergola');expect(new FormData(element.querySelector('form')!).get('experimentReceipt')).toBe(receipt);
+ expect(element.textContent).toContain(text);expect(new FormData(element.querySelector('form')!).get('experimentReceipt')).toBe(receipt);
  expect(fetcher).toHaveBeenCalledTimes(2);
  tracking.consent={analytics:false,marketing:false};await act(async()=>root.render(view()));expect(element.textContent).toContain('Design your pergola');expect(fetcher).toHaveBeenCalledTimes(2);
 });

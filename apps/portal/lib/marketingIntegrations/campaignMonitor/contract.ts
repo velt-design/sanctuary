@@ -1,3 +1,5 @@
+import { steadyAdSchema } from './steady-contract';
+export { steadyAdSchema, type SteadyAd } from './steady-contract';
 import { z } from 'zod';
 
 // Fixed owner-approved scope. This is not a general ads query endpoint.
@@ -36,6 +38,7 @@ export const campaignHealthSchema = z.object({
   ads: z.array(z.object({ id: entityId, label: adLabel, status, today: metricsSchema, week: metricsSchema }).strict()).length(4)
     .refine(rows => new Set(rows.map(row => row.id)).size === 4),
   creativeAds: z.array(registeredCreativeAdSchema.extend({ status, today: metricsSchema, week: metricsSchema }).strict()).max(40).refine(rows => new Set(rows.map(row => row.id)).size === rows.length).optional(),
+  steadyAds: z.array(steadyAdSchema.safeExtend({ status, today: metricsSchema, week: metricsSchema })).max(40).refine(rows => new Set(rows.map(row => row.id)).size === rows.length && rows.filter(row => row.current).length <= 4 && new Set(rows.filter(row => row.current).map(row => row.donor)).size === rows.filter(row => row.current).length).optional(),
   attribution: z.literal('Ad-set attribution settings; impression-time reporting'),
 }).strict();
 export type CampaignHealth = z.infer<typeof campaignHealthSchema>;
@@ -50,6 +53,7 @@ export const outcomesSchema = z.object({ observedAt: z.iso.datetime(), cohortSta
   ads: z.array(adOutcomesSchema).length(4)
     .refine(rows => new Set(rows.map(row => row.id)).size === 4),
   creativeAds: z.array(adOutcomesSchema).max(40).refine(rows => new Set(rows.map(row => row.id)).size === rows.length).optional(),
+  steadyAds: z.array(adOutcomesSchema).max(40).refine(rows => new Set(rows.map(row => row.id)).size === rows.length).optional(),
   // Opaque correlation hashes only, never names, addresses, subjects or bodies.
   correspondence: cohortContextSchema,
   enquiryReferenceHashes: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(2000),
