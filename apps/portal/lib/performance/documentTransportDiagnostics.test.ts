@@ -27,13 +27,15 @@ function scope(records: TransportObservation[], override: Partial<TransportScope
 async function fixture() {
   let connections = 0, reads = 0;
   const socketIds = new WeakMap<object, number>(), gates = new Map<string, () => void>();
-  let allSeen!: () => void;
+  let allSeen!: () => void, abortSeen!: () => void;
   const seen = new Promise<void>(resolve => { allSeen = resolve; });
+  const abortRequest = new Promise<void>(resolve => { abortSeen = resolve; });
   const server = createServer((request, response) => {
     reads++;
     const send = () => response.end(JSON.stringify({ connection: socketIds.get(request.socket), fictional: 'never-log-body' }));
     response.setHeader('content-type', 'application/json');
-    if (request.url?.startsWith('/gate/')) { gates.set(request.url, send); if (gates.size === 4) allSeen(); }
+    if (request.url === '/abort') abortSeen();
+    else if (request.url?.startsWith('/gate/')) { gates.set(request.url, send); if (gates.size === 4) allSeen(); }
     else if (request.url === '/body') {
       response.write('{"fictional":');
       const timer = setTimeout(() => response.end('"never-log-body"}'), 55); response.on('close', () => clearTimeout(timer));
@@ -45,7 +47,23 @@ async function fixture() {
   server.keepAliveTimeout = 10_000;
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); servers.push(server);
   const address = server.address(); if (!address || typeof address === 'string') throw Error('Expected loopback address');
-  return { server, origin: `http://127.0.0.1:${address.port}`, gates, seen, reads: () => reads };
+  return { server, origin: `http://127.0.0.1:${address.port}`, gates, seen, abortRequest, reads: () => reads };
+}
+function nativeFailureForNextRequest() {
+  let request: object | undefined, finish!: () => void;
+  const seen = new Promise<void>(resolve => { finish = resolve; });
+  const created = (message: unknown) => { request ??= (message as { request: object }).request; };
+  const failed = (message: unknown) => { if (request && (message as { request: object }).request === request) finish(); };
+  dc.subscribe('undici:request:create', created); dc.subscribe('undici:request:error', failed);
+  return {
+    async wait() {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([seen, new Promise<void>((_, reject) => { timer = setTimeout(() => reject(Error('Expected the exact native request error event')), 2000); })]);
+      } finally { clearTimeout(timer); }
+    },
+    dispose() { dc.unsubscribe('undici:request:create', created); dc.unsubscribe('undici:request:error', failed); },
+  };
 }
 async function read(subject: DocumentTransportObserver, admitted: TransportScope, target: string, operation: TransportOperation = 'marketing.hub') {
   let raw!: Response;
@@ -111,13 +129,19 @@ it('separates header wait and body completion, and never consumes an unfinished 
   const count = records.length; expect(await returned.json()).toEqual({ fictional: 'never-log-body' }); expect(records).toHaveLength(count);
 });
 
-it('preserves exact native rejection objects for abort and refused connection, without exposing their contents', async () => {
+it('preserves exact native rejection objects when abort and refusal events arrive before operation settlement', async () => {
   const a = await fixture(), subject = observer(), records: TransportObservation[] = [], admitted = scope(records);
-  const controller = new AbortController(); let raw: unknown;
-  const timer = setTimeout(() => controller.abort(new Error('never-log-abort')), 10);
-  await expect(subject.observe(admitted, 'rsc.identity', async () => {
-    try { return await fetch(a.origin + '/pending', { signal: controller.signal }); } catch (error) { raw = error; throw error; }
-  })).rejects.toSatisfy(error => error === raw); clearTimeout(timer); await tick();
+  const controller = new AbortController(), nativeFailure = nativeFailureForNextRequest(); let raw: unknown;
+  try {
+    const pending = subject.observe(admitted, 'rsc.identity', async () => {
+      try { return await fetch(a.origin + '/abort', { signal: controller.signal }); }
+      // Native abort notification can follow fetch rejection. Keep this test's
+      // operation open to prove error coverage; the next test proves late closure.
+      catch (error) { raw = error; await nativeFailure.wait(); throw error; }
+    });
+    const rejected = expect(pending).rejects.toSatisfy(error => error === raw);
+    await a.abortRequest; controller.abort(new Error('never-log-abort')); await rejected;
+  } finally { nativeFailure.dispose(); }
   expect(records.at(-1)?.outcome).toBe('error');
   const closed = await fixture(), origin = closed.origin;
   await new Promise<void>(resolve => closed.server.close(() => resolve())); servers.splice(servers.indexOf(closed.server), 1);
@@ -126,6 +150,23 @@ it('preserves exact native rejection objects for abort and refused connection, w
   })).rejects.toSatisfy(error => error === raw); await tick();
   expect(records.at(-1)).toMatchObject({ outcome: 'error', connection: 'unknown', connectMs: null });
   expect(JSON.stringify(records)).not.toMatch(/never-log|127\.0\.0\.1|cookie|Authorization/);
+});
+
+it('keeps a rejected operation incomplete when its native error arrives after closure, without a duplicate emission', async () => {
+  const handlers = new Map<string, (message: unknown) => void>();
+  const subject = observer({ subscribe: (name, fn) => { handlers.set(name, fn); }, unsubscribe: name => handlers.delete(name) });
+  const records: TransportObservation[] = [], request = {}, failure = Error('never-log-late-error');
+  let nativeError!: (message: unknown) => void;
+  await expect(subject.observe(scope(records), 'rsc.identity', () => {
+    handlers.get('undici:request:create')!({ request });
+    nativeError = handlers.get('undici:request:error')!;
+    return Promise.reject(failure);
+  })).rejects.toBe(failure);
+  expect(records).toEqual([{ operation: 'rsc.identity', ordinal: 1, connection: 'unknown', dispatchMs: null, headersWaitMs: null, bodyMs: null, connectMs: null, outcome: 'incomplete' }]);
+  expect(handlers.size).toBe(0);
+  nativeError({ request, error: failure }); await tick();
+  expect(records).toHaveLength(1); expect(records[0].outcome).toBe('incomplete');
+  expect(JSON.stringify(records)).not.toContain('never-log');
 });
 
 it('caps native observation and retained document/active state while every ordinary read still executes', async () => {
