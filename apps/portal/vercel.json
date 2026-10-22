@@ -77,7 +77,8 @@
       "codex/marketing-columnar-seeds-20261022": false,
       "codex/portal-cold-start-20261021": false,
       "codex/campaign-render-recovery-20261022": false,
-      "codex/campaign-loop-continuation-20261023": false
+      "codex/campaign-loop-continuation-20261023": false,
+      "codex/project-file-open-locality-20261023": false
     }
   },
   "functions": {
