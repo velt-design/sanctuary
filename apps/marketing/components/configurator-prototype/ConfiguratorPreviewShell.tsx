@@ -18,9 +18,12 @@ export default function ConfiguratorPreviewShell({ initiallyOpen = false }: { in
   const close = () => {
     setOpened(false);
     if (returnEntry.current) {
-      prepareConfiguratorReturn(returnEntry.current);
+      const entry = returnEntry.current;
+      prepareConfiguratorReturn(entry);
       returnEntry.current = null;
-      router.back();
+      // Native fragment entries may not restore an App Router subtree on Back.
+      // Navigate to the recorded source explicitly, then restore its position.
+      router.replace(entry.from, { scroll: false });
       return;
     }
     const source = safeConfiguratorReturn(new URLSearchParams(window.location.search).get('source_path'), window.location.origin);

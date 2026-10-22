@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/seo-google-mobile-20261022": false,
       "codex/project-files-main-tab-20261022": false,
       "codex/campaign-render-deadline-20261022": false,
       "codex/meta-mobile-20261022": false,

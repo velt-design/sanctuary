@@ -1,5 +1,37 @@
 # Marketing UI Foundation
 
+## Enquiry privacy-link continuity (22 October 2026)
+
+The shared `AdvertisingMeasurementNotice` opens its privacy policy and choices
+in a clearly labelled new tab. Reading the notice must leave the original
+contact, configured-design or SEO enquiry mounted with its selected pathway,
+entered details, attachments and any recoverable submission error. An actual
+mobile check found that same-tab policy navigation followed by Back reset an
+unfinished contact brief. This uses native link behaviour rather than adding
+persistent storage of personal information; policy content and tracking choices
+remain unchanged.
+
+## SEO enquiry mobile input sizing (22 October 2026)
+
+The standard `AcrylicPergolaEnquiryForm`, shared by SEO services and guides,
+uses a 16px minimum editable-field font size at widths up to 760px. Live mobile
+inspection found the previous 0.95rem fields rendered at 15.2px. The shared
+stylesheet corrects the focus-zoom risk without disabling browser zoom, changing
+desktop typography, or affecting the separate inline funnel form. Pricing,
+validation, phone requirements, attachments and delivery remain unchanged.
+Physical iPhone keyboard/zoom behaviour remains separate hardware evidence.
+
+A seeded configurator's Close action returns to its validated recorded source via
+router replacement, preserving the query and fragment, rather than assuming a
+native fragment history entry can restore the App Router page. Browser Back may
+then revisit the original source entry. The existing return helper captures and
+restores BODY scrolling where that layout owns the scroll, otherwise the window.
+The existing Auckland/Cost selection sections signal when their restored options
+have settled, including failure; restoration waits for that layout rather than
+a fixed delay. User input cancels pending restoration, and route cleanup removes
+its observer/listeners. Standalone and storage-unavailable entries retain their
+safe source fallback.
+
 ## Professionals photographic presentation (22 October 2026)
 
 The owner approved the preview uplift of Architects, Designers & Builders, then
