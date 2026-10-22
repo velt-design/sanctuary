@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { projectWorkReadFunction } from './projectWorkInitialRead';
 import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
@@ -14,6 +14,37 @@ function setup(result: any = Promise.resolve({ ok: true, data })) {
   return { client, fallback, initial, read, context };
 }
 describe('Work one-use query handoff', () => {
+  it.each(['absent', 'owner mismatch', 'host mismatch', 'project mismatch', 'consumed', 'cached', 'invalidated'])(
+    'keeps one pending ordinary request across observer remount when the handoff is %s', async (reason) => {
+      const test = setup();
+      let finish!: (value: typeof data) => void;
+      test.fallback.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+      if (reason === 'consumed') await test.read()(test.context);
+      if (reason === 'cached') test.client.setQueryData(key, data);
+      if (reason === 'invalidated') {
+        test.client.getQueryCache().build(test.client, { queryKey: key });
+        await test.client.invalidateQueries({ queryKey: key });
+      }
+      const queryFn = projectWorkReadFunction(test.client, key, 'command',
+        reason === 'host mismatch' ? 'other' : 'host',
+        reason === 'project mismatch' ? 'proj_2' : 'proj_1',
+        reason === 'owner mismatch' ? 'staff-b' : 'staff-a', test.fallback,
+        reason === 'absent' ? undefined : test.initial);
+      const observer = new QueryObserver(test.client, { queryKey: key, queryFn });
+      const unsubscribe = observer.subscribe(() => {});
+      unsubscribe();
+      const returned = observer.subscribe(() => {});
+      try {
+        expect(test.fallback).toHaveBeenCalledTimes(1);
+        finish(data);
+        await vi.waitFor(() => expect(observer.getCurrentResult().fetchStatus).toBe('idle'));
+        expect(observer.getCurrentResult().data).toBe(data);
+      } finally {
+        returned();
+        test.client.clear();
+      }
+    },
+  );
   it('adopts a Flight thenable once per query client and then uses the ordinary API', async () => {
     const test = setup({ then: (resolve: (value: unknown) => void) => { resolve({ ok: true, data }); } });
     expect(await test.read()(test.context)).toBe(data);

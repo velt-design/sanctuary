@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-22: Preserve query cancellation policy through initial-read adapters
+
+Reading TanStack Query's context signal marks the query as cancellable even when
+the underlying API ignores it. The Work initial-read adapter did this before
+checking for an eligible handoff, so observer remounts cancelled query state and
+started a second ordinary GET while the first transport continued. Consume the
+signal only for the pending handoff; let each fallback retain its existing
+policy. Real QueryObserver detach/remount tests cover absent, mismatched, consumed,
+cached and invalidated handoffs, alongside the unchanged shell single-GET browser
+assertion. Owner: `project-command-centre-architecture.md`.
+
 ## 2026-10-22: project file relationships must preserve project deletion
 
 Independent review found that new SharePoint binding/job/audit foreign keys would

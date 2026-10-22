@@ -10,7 +10,6 @@ export function projectWorkReadFunction<K extends keyof ProjectWorkInitialData, 
   fallback: (context: QueryFunctionContext<Q>) => ProjectWorkInitialData[K] | Promise<ProjectWorkInitialData[K]>, initial?: ProjectWorkInitialRead,
 ) {
   return async (context: QueryFunctionContext<Q>): Promise<ProjectWorkInitialData[K]> => {
-    const { signal } = context;
     const recover = () => fallback(context);
     if (!initial) return recover();
     const consumed = consumedReads.get(client) ?? new Set<string>();
@@ -22,6 +21,9 @@ export function projectWorkReadFunction<K extends keyof ProjectWorkInitialData, 
     if (ownerId !== initial.ownerId || host !== initial.host || projectId !== initial.projectId
       || before?.data !== undefined || before?.isInvalidated) return recover();
 
+    // Reading TanStack's signal opts into cancellation on observer removal.
+    // Only the pending handoff needs that; preserve the fallback's own policy.
+    const { signal } = context;
     let result: ProjectWorkReadResult<ProjectWorkInitialData[K]>;
     try {
       result = await new Promise((resolve, reject) => {

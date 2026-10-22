@@ -19,6 +19,11 @@ progress while full snapshot work is pending; successful command or payment data
 cannot mark a failed snapshot complete. Cancellation, invalidation, tab return,
 recovery and access-ending API behavior keep the existing owners. Local compiled
 verification and independent review accepted this mechanism on `f74c3fd2`.
+The handoff reads TanStack's cancellation signal only after eligibility checks;
+ordinary API fallbacks retain their original cancellation policy. Merely reading
+that signal opts a query into cancellation on observer removal and can otherwise
+duplicate a still-running API request on remount. Real observer lifecycle tests
+and the shell fixture's unchanged single-GET assertion cover this boundary.
 The data-delivery/control-readiness comparison and its paint, hosted and
 platform-cold limits are recorded in `portal-production-readiness.md`.
 
