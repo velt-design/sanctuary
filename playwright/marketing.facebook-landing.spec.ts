@@ -143,3 +143,54 @@ for (const route of ['/acrylic-roof-pergolas-auckland', '/auckland-outdoor-livin
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
+
+
+// Exact current Facebook destinations, plus the related Google consumer of the
+// same layout owner. No observer may resize the section as the bar joins/leaves.
+for (const route of ['/ads/facebook/outdoor-living', '/ads/facebook/acrylic-pergolas', '/ads/outdoor-living']) {
+  for (const width of [320, 390]) test(`stable price-panel scroll ${route} at ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(route);
+    await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Width in metres' })).toBeEnabled();
+    await page.evaluate(() => document.fonts.ready);
+    const section = page.locator('#your-design');
+    const action = section.getByRole('link', { name: 'Enquire about this design', exact: true });
+    const panel = action.locator('..');
+    await expect(page.locator('[data-estimate-state]')).toHaveCount(1);
+    await expect(page.locator('[data-estimate-state]')).toHaveAttribute('data-estimate-state', 'unavailable');
+    await expect(panel).toHaveCSS('position', 'sticky');
+    // This catches the non-scrolling BODY container created by overflow-x:hidden.
+    await expect(page.locator('body')).toHaveCSS('overflow-y', 'visible');
+    await section.locator('img').evaluateAll(images => Promise.all(images.map(image => (image as HTMLImageElement).decode())));
+    const initialHeight = await section.evaluate(el => el.getBoundingClientRect().height);
+    const start = await section.evaluate(el => el.getBoundingClientRect().top + scrollY);
+    const positions = Array.from({ length: 17 }, (_, i) => Math.max(0, start - 300 + i * 100));
+    for (const y of [...positions, ...[...positions].reverse()]) {
+      await page.evaluate(y => window.scrollTo({ top: y, behavior: 'instant' }), y);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      expect(await section.evaluate(el => el.getBoundingClientRect().height)).toBeCloseTo(initialHeight, 0);
+      expect(await page.evaluate(() => scrollY)).toBeCloseTo(y, 0);
+    }
+    await section.evaluate(el => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    const panelBounds = (await panel.boundingBox())!;
+    expect(panelBounds.y + panelBounds.height).toBeLessThanOrEqual(844.5);
+    for (const child of await panel.locator(':scope > *').all()) {
+      expect(await child.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    }
+    await page.getByRole('textbox', { name: 'Width in metres' }).focus();
+    await expect(panel).toHaveCSS('position', 'static');
+    expect(await section.evaluate(el => el.getBoundingClientRect().height)).toBeCloseTo(initialHeight, 0);
+    await page.getByRole('slider', { name: 'Width', exact: true }).focus();
+    await expect(panel).toHaveCSS('position', 'sticky');
+    await page.getByRole('button', { name: 'Privacy settings', exact: true }).click();
+    await expect(panel).toHaveCSS('position', 'static');
+    await page.getByRole('button', { name: 'Essential only', exact: true }).click();
+    await expect(panel).toHaveCSS('position', 'sticky');
+    await action.click();
+    await expect(action).not.toBeInViewport();
+    await expect(page.locator('form[data-inline-enquiry]')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
