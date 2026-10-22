@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GA4_READ_SCOPE, refreshGa4Report, type Ga4LifecycleStore } from './lifecycle';
+import { GA4_READ_SCOPE, refreshGa4Report, type Ga4LifecycleStore, type Ga4CredentialConfig } from './lifecycle';
 
 function setup() {
   const events: string[] = [];
@@ -20,6 +20,34 @@ function setup() {
 }
 
 describe('Sanctuary GA4 credential and report lifecycle', () => {
+  const vercel: Ga4CredentialConfig = { credentialStore: 'vercel', credentialBinding: 'c'.repeat(64),
+    propertyId: '123', clientId: 'synthetic-client', clientSecret: 'synthetic-secret', refreshToken: 'synthetic-refresh' };
+  it.each([undefined, 'synthetic-refresh'])('uses honest Vercel evidence without vault effects, echo=%s', async returned => {
+    const f = setup(); f.google.token.mockResolvedValue({ accessToken: 'synthetic-access', refreshToken: returned, scope: GA4_READ_SCOPE, expiresIn: 3600 });
+    await refreshGa4Report({ ...f.input, config: vercel });
+    expect(f.events.slice(0, 4)).toEqual(['before:credential_read', 'after:credential_read', 'before:token_refresh', 'after:token_refresh']);
+    expect(f.vault.authenticate).not.toHaveBeenCalled(); expect(f.vault.read).not.toHaveBeenCalled(); expect(f.vault.write).not.toHaveBeenCalled();
+    expect(f.store.after).toHaveBeenCalledWith('credential_read', { credentialStore: 'vercel', credentialBinding: vercel.credentialBinding });
+    expect(f.store.after).toHaveBeenCalledWith('token_refresh', { scope: GA4_READ_SCOPE, expiresIn: 3600, refreshRotated: false });
+    expect(JSON.stringify(vi.mocked(f.store.after).mock.calls)).not.toMatch(/synthetic-refresh|afterVersion/);
+  });
+  it('records genuine Vercel rotation and quarantines before property or report without logging secrets', async () => {
+    const f = setup(), log = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    f.google.token.mockResolvedValue({ accessToken: 'private-access', refreshToken: 'private-rotated', scope: GA4_READ_SCOPE, expiresIn: 3600 });
+    vi.mocked(f.store.finish).mockImplementation(async outcome => { if (outcome === 'report_failed') throw new Error('Unresolved'); });
+    await expect(refreshGa4Report({ ...f.input, config: vercel })).rejects.toThrow('unconfirmed');
+    expect(f.store.after).toHaveBeenCalledWith('token_refresh', expect.objectContaining({ refreshRotated: true }));
+    expect(f.store.finish).toHaveBeenLastCalledWith('uncertain'); expect(f.google.property).not.toHaveBeenCalled();
+    expect(f.vault.write).not.toHaveBeenCalled(); expect(f.input.read).not.toHaveBeenCalled();
+    expect(log.mock.calls).toEqual([['sanctuary_ga4_credential_failure', { reason: 'rotation_requires_recovery' }]]); log.mockRestore();
+  });
+  it.each(['intent', 'result', 'cancel'])('does not reach Google after failed Vercel credential checkpoint %s', async fault => {
+    const f = setup();
+    if (fault === 'intent') vi.mocked(f.store.before).mockRejectedValue(new Error('SQL unavailable'));
+    else vi.mocked(f.store.after).mockImplementation(async () => { if (fault === 'cancel') f.controller.abort(); else throw new Error('SQL unavailable'); });
+    await expect(refreshGa4Report({ ...f.input, config: vercel })).rejects.toThrow('unconfirmed');
+    expect(f.google.token).not.toHaveBeenCalled(); expect(f.vault.read).not.toHaveBeenCalled(); expect(f.store.finish).toHaveBeenCalledWith('report_failed');
+  });
   it('uses the exact read-only grant and property with ordered audited effects', async () => {
     const f = setup();
     expect(await refreshGa4Report(f.input)).toEqual({ sessions: 12 });

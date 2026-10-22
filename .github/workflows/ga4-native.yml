@@ -6,15 +6,21 @@ on:
     paths:
       - '.github/workflows/ga4-native.yml'
       - 'test/sanctuary-ga4-native.mjs'
+      - 'test/sanctuary-ga4-vercel-native.mjs'
       - 'supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql'
       - 'supabase/migrations/20261021082853_ga4_v3_diagnostics.sql'
+      - 'supabase/migrations/20261022013028_ga4_pre_token_settlement.sql'
+      - 'supabase/migrations/20261022030852_ga4_vercel_credentials.sql'
   push:
     branches: [main]
     paths:
       - '.github/workflows/ga4-native.yml'
       - 'test/sanctuary-ga4-native.mjs'
+      - 'test/sanctuary-ga4-vercel-native.mjs'
       - 'supabase/migrations/20260923070001_sanctuary_ga4_reporting.sql'
       - 'supabase/migrations/20261021082853_ga4_v3_diagnostics.sql'
+      - 'supabase/migrations/20261022013028_ga4_pre_token_settlement.sql'
+      - 'supabase/migrations/20261022030852_ga4_vercel_credentials.sql'
   workflow_dispatch:
 
 permissions:
