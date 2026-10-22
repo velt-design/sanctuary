@@ -1,3 +1,23 @@
+## Retained creative serving (uninstalled local continuation)
+
+`20261022050011_creative_retention.sql` extends the existing private intent and
+receipt enums, with one unique retained effect per experiment/kind. It adds no
+table, scheduler or access grant. Mirrored `retention-policy` and Source authority
+validate exact mature retain results, native acceptance and fresh serving proofs.
+The existing global acquisition lock/reservation serializes create, predecessor
+pause, activation, rollback and restore. Finished serving releases that reservation.
+Four original donors may each have one registered winner; a new experiment must
+use that donor's exact current winning control/tracking. Originals are never targets.
+
+Both test ads require settled cleanup and fresh PAUSED proof. A new PAUSED owned
+ad reuses the winning creative without schedule edits. Unknown dispatch is consumed;
+exact ID readback reconciles, never another create. Final receipt replay is immutable.
+Rollback cannot change a comparator beneath a dependent reservation. The native
+fixture's old proposal expiry demonstrates that maturation creates no renewal gate;
+current Source/global/generation/template/native admission still governs effects.
+Actual provider schedule representation/allocation, full approved video mapping,
+and the conservative cross-channel ambiguity correction remain separate gaps.
+
 ## Creative terminal learning (uninstalled local continuation)
 
 Migration 20261022050010_creative_learning.sql wraps the existing executor with

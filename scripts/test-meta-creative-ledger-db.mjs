@@ -45,6 +45,8 @@ try{
  sql(readFileSync('supabase/tests/meta_creative_formal_settlement.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261022050010_creative_learning.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_learning.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261022050011_creative_retention.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_retention.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_outcomes.sql','utf8'));
 
  sql("update public.landing_experiments set created_at=clock_timestamp()-interval '8 days'");
@@ -52,6 +54,27 @@ try{
  const creative="select public.meta_creative_command(repeat('b',64),gen_random_uuid(),gen_random_uuid(),'reserve',"+plan+") from public.meta_creative_control";
  const landing="select public.landing_experiment_command(repeat('a',64),gen_random_uuid(),'prepare',gen_random_uuid(),jsonb_build_object('generation',generation,'template',template,'candidateHash',repeat('c',64),'evidenceHash',repeat('e',64),'path','/auckland-outdoor-living','copy','project','generator','author','minimumExposures',100,'durationDays',14)) from public.landing_experiment_control";
  const concurrent=statement=>new Promise((done,reject)=>{const child=spawn(join(bin,'psql'+suffix),['-X','-v','ON_ERROR_STOP=1','-h','127.0.0.1','-p',String(port),'-U','cluster_admin','-d','postgres','-q','-At'],{windowsHide:true,env:{NODE_ENV:'test'}});child.stdout.resume();child.stderr.resume();child.on('error',reject);child.on('close',code=>done(code===0));child.stdin.end(statement);});
+ // Reuse only the synthetic historical setup in this owned disposable cluster.
+ // Separate psql sessions exercise the real global lock and one-use fence.
+ const retentionFixture=readFileSync('supabase/tests/meta_creative_retention.sql','utf8').split('alter table public.meta_creative_native_acceptance disable trigger native_acceptance_guard;')[0].replace(/^begin;\s*/, '').replaceAll('pg_temp.','public.retention_fixture_');
+ sql(retentionFixture);
+ const retainedExperiment=sql("alter table public.meta_creative_native_acceptance disable trigger native_acceptance_guard;select public.retention_fixture_ret_seed('21');alter table public.meta_creative_native_acceptance enable trigger native_acceptance_guard;").trim();
+ const retentionPayload=sql(`select public.retention_fixture_ret_payload('${retainedExperiment}','create_retained')`).trim();
+ const quotedPayload="'"+retentionPayload.replaceAll("'","''")+"'";
+ const retentionCommands=['f2000000-0000-4000-8000-000000000001','f2000000-0000-4000-8000-000000000002'];
+ const admits=await Promise.all(retentionCommands.map(id=>concurrent(`select public.meta_creative_executor_command(repeat('b',64),'${id}','${retainedExperiment}','retention_admit',${quotedPayload})`)));
+ if(admits.filter(Boolean).length!==1)throw new Error('Retention parallel admits did not admit exactly one');
+ const retentionCommand=retentionCommands[admits.indexOf(true)];
+ const retentionCheck=`select public.meta_creative_executor_command(repeat('b',64),'${retentionCommand}','${retainedExperiment}','retention_check',jsonb_build_object('requestHash',repeat('e',64)))`;
+ const retentionNoEffect=`select public.meta_creative_executor_command(repeat('b',64),'${retentionCommand}','${retainedExperiment}','retention_no_effect',jsonb_build_object('requestHash',repeat('e',64),'evidenceHash',repeat('a',64),'reason','dispatch_not_started'))`;
+ if((await Promise.all([concurrent(retentionCheck),concurrent(retentionNoEffect)])).filter(Boolean).length!==1)throw new Error('Retention dispatch/no-effect race did not admit exactly one');
+ const retainedState=sql(`select state from public.meta_creative_effects where command='${retentionCommand}'`).trim();
+ if(await concurrent(retentionCheck))throw new Error('Retention dispatch repeated');
+ if(retainedState==='uncertain')sql(`select public.meta_creative_executor_command(repeat('b',64),'${retentionCommand}','${retainedExperiment}','retention_confirm',jsonb_build_object('requestHash',repeat('e',64),'objectId','9788','evidenceHash',repeat('f',64)))`);
+ else if(retainedState!=='no_effect')throw new Error('Retention race state differs');
+ sql(`select public.meta_creative_executor_command(repeat('b',64),gen_random_uuid(),'${retainedExperiment}','retention_abort',jsonb_build_object('generation',(select generation from meta_creative_control),'evidenceHash',repeat('a',64)))`);
+ if(retainedState==='uncertain')sql(`select public.retention_fixture_ret_effect('${retainedExperiment}','pause_retained')`);
+ sql(`select public.retention_fixture_ret_finish('${retainedExperiment}','reverted')`);
  const experiment='f1000000-0000-4000-8000-000000000001',command='f1000000-0000-4000-8000-000000000002';
  sql(`select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'${experiment}','reserve',${plan}) from public.meta_creative_control;
  select public.meta_creative_command(repeat('b',64),'${command}','${experiment}','admit',jsonb_build_object('kind','create_paused_ad','objectId',null,'requestHash',repeat('a',64),'generation',generation,'preStateHash',repeat('c',64),'observedAt',clock_timestamp())) from public.meta_creative_control;`);
@@ -70,7 +93,7 @@ try{
  sql(`select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'${experiment}','cleanup',jsonb_build_object('evidenceHash',repeat('f',64)))`);
  if((await Promise.all([concurrent(creative),concurrent(landing)])).filter(Boolean).length!==1)throw new Error('Cross-lane concurrent reservation did not admit exactly one');
  if(sql('select count(*) from public.acquisition_experiment_reservation').trim()!=='1')throw new Error('Missing global reservation');
- process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,disposableOnly:true,liveCalls:0}));
+ process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
  if(dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('sanctuary-experiment-'))rmSync(directory,{recursive:true,force:true});

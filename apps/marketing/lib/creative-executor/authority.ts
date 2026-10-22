@@ -6,7 +6,11 @@ import { z } from 'zod';
 import { canonicalHash, executionPlanSchema, hash, stateSchema, wireSchema } from './contract';
 import { serializeEffect } from './intent';
 import {creativeHistoryRequestSchema} from './learning-contract';
+import {retentionAdmitSchema,retentionFinishSchema} from './retention-authority';
 const payloads = {
+  retention_read:z.object({}).strict(),retention_authority:z.object({generation:z.number().int().positive()}).strict(),retention_abort:z.object({generation:z.number().int().positive(),evidenceHash:hash}).strict(),
+  retention_admit:retentionAdmitSchema,retention_check:z.object({requestHash:hash}).strict(),retention_finish:retentionFinishSchema,
+  retention_confirm:z.object({requestHash:hash,objectId:z.string().regex(/^[1-9]\d{0,19}$/),evidenceHash:hash}).strict(),retention_no_effect:z.object({requestHash:hash,evidenceHash:hash,reason:z.literal('dispatch_not_started')}).strict(),
   history:creativeHistoryRequestSchema,
   analysis_ack:z.object({analysisCommand:z.uuid()}).strict(), begin_analysis:z.object({planHash:hash}).strict(), delivery_health:z.object({planHash:hash,evidenceHash:hash,observedAt:z.iso.datetime()}).strict(), analysis: z.object({analysis:nativeAnalysisSchema}).strict(), read: z.object({}).strict(), cohort: z.object({freeze:z.boolean()}).strict(), authority: z.object({ generation: z.number().int().positive() }).strict(),
   prepare: z.object({ plan: executionPlanSchema, planHash: hash }).strict(),

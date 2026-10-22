@@ -1,3 +1,13 @@
+## Retained serving (local)
+
+Run `apps/marketing/lib/creative-executor` and the creative route tests. The
+disposable PG17 ledger harness applies 50011 and exercises first/other donor
+retention, same-donor replacement recovery, shared reservation denial, Stop/resume,
+stale proof, original/extra-budget target denial, final/no-effect replay and late
+confirmation. Separate native sessions prove parallel admission and dispatch versus
+no-effect exclusion. Historical acceptance rows in the synthetic fixture are
+explicit setup, never evidence of Meta capabilities or a production schema install.
+
 ## Creative history and durable exclusion (local)
 
 The existing disposable PG17 ledger harness now applies 20261022050010 and the

@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-22: Retained baselines keep donor lineage and shared reservation
+
+The owner outcome includes publishing variants and keeping or reverting them
+using recorded results. The local method retains one winner per original donor,
+at most four, while one acquisition experiment remains globally reserved. A new
+PAUSED owned ad avoids unproved expired-schedule clearing. Pause/readback the same
+donor's predecessor before activation; failed replacement pauses its challenger
+before a fenced restore. Rollback shares the reservation so it cannot silently
+change a later test's comparator. Retention proof includes actual PAUSED test ads,
+not just elapsed study time. Saved original metrics remain original context.
+Synthetic/native tests establish mechanics, not provider or whole-loop acceptance.
+
 ## 2026-10-22: Separate learning summaries from duplicate authority
 
 A bounded display tail cannot be the durable exclusion list. Creative proposals

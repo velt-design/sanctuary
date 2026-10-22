@@ -6,6 +6,7 @@ import { readBoundedJson } from '@/lib/marketingPublicRequest';
 import {stateSchema,executionPlanSchema} from '../../../../lib/creative-executor/contract';
 import { verifyCreativeCommand, validateCreativeIntent, validateCreativeDispatch } from '../../../../lib/creative-executor/authority';
 import {creativeHistoryRequestSchema,creativeHistorySchema} from '../../../../lib/creative-executor/learning-contract';
+import {retentionSnapshotSchema,validateRetentionIntent,validateRetentionDispatch,validateRetentionFinish} from '../../../../lib/creative-executor/retention-authority';
 export const runtime = 'nodejs';
 export const maxDuration = 15;
 export async function POST(request: Request) {
@@ -19,6 +20,13 @@ export async function POST(request: Request) {
     if(command.stage==='history'&&creativeHistoryRequestSchema.parse(command.payload).template!==EXPERIMENT_TEMPLATE)throw new Error('Creative template changed');
     const db = getServiceSupabase(), signal = AbortSignal.any([request.signal, AbortSignal.timeout(10000)]);
     const args = { p_binding: process.env.SANCTUARY_LANDING_EXPERIMENT_BINDING, p_command: command.command, p_experiment: command.experiment };
+    if(['retention_admit','retention_check','retention_finish'].includes(command.stage)){
+      const snapshot=await db.rpc('meta_creative_executor_command',{...args,p_stage:'retention_read',p_payload:{}}).abortSignal(signal);
+      if(snapshot.error)throw new Error('Retention unavailable');
+      if(command.stage==='retention_admit')validateRetentionIntent(command.payload,snapshot.data,EXPERIMENT_TEMPLATE);
+      else if(command.stage==='retention_finish')validateRetentionFinish(command.payload,snapshot.data,EXPERIMENT_TEMPLATE);
+      else validateRetentionDispatch(command.command,(command.payload as {requestHash:string}).requestHash,snapshot.data,EXPERIMENT_TEMPLATE);
+    }
     if (command.stage === 'admit'||command.stage==='check') {
       const state = await db.rpc('meta_creative_executor_command', { ...args, p_stage: 'read', p_payload: {} }).abortSignal(signal);
       if (state.error) throw new Error('Read unavailable');
@@ -33,6 +41,6 @@ export async function POST(request: Request) {
       // It is not authority for a new preparation or non-cleanup effect.
       return Response.json({...state,...(state.template!==EXPERIMENT_TEMPLATE?{compatibility:landingCompatibility(state.template)}:{})},{headers});
     }
-    return Response.json(command.stage==='history'?creativeHistorySchema.parse(result.data):result.data, { headers });
+    return Response.json(command.stage==='history'?creativeHistorySchema.parse(result.data):command.stage==='retention_read'?retentionSnapshotSchema.parse(result.data):result.data, { headers });
   } catch { return Response.json({ status: 'unavailable' }, { status: 503, headers }); }
 }
