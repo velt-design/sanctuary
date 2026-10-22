@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/project-files-explorer-20261022": false,
       "codex/professionals-release-20261022": false,
       "codex/accepted-date-reconciliation-20261022": false,
       "codex/projects-release-20261022": false,
