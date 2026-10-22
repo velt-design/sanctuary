@@ -1,7 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
-      "codex/meta-creative-ambiguity-20261022": false,
+      "codex/campaign-authored-landing-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
       "codex/designer-history-support-20261022": false,
       "codex/meta-video-donor-20261022": false,
@@ -51,6 +51,7 @@
       "codex/portal-marketing-panel-ready-20261021": false,
       "codex/guide-hub-20261021": false,
       "codex/portal-marketing-latency-20261022": false,
+      "codex/meta-creative-ambiguity-20261022": false,
       "codex/meta-creative-completion-20261022": false,
       "codex/meta-creative-retention-20261022": false,
       "codex/meta-creative-inventory-20261022": false,

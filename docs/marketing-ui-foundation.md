@@ -123,6 +123,23 @@ return behavior. Screenshots are private review evidence. Local fixture success,
 independent rendered review, protected preview and live measurements are distinct;
 this continuation is not yet a published experiment or the full automatic loop.
 
+## Bounded authored landing experiments (22 October 2026)
+
+`landingCopyContract` accepts the existing finite choices plus plain text in the
+design/help/support slots. Velt may author within the shared approved vocabulary
+and length limits; arbitrary markup, links, prices, claims and CSS are rejected.
+`LandingExperiment` applies one admitted slot over the saved control map, keeping
+destinations, designer, enquiry, consent, focus and interaction stability intact.
+The existing action-first mobile layout remains a separate finite option.
+
+Source50009 extends the existing command/visit contract and durable scoped copy
+exclusion. It adds no endpoint or public history. The paired Velt consumer reviews
+actual candidate screenshots at 320/390/1440 CSS pixels before publication.
+Local fixture assignment is diagnostic only and cannot count as a customer
+exposure or enquiry. Hosted publication and measured decisions still require
+ordinary cloud admission. Formal creative delivery is outside this landing stage.
+
+
 ## Photographic guide hub (22 October 2026)
 
 `app/pergola-guides/page.tsx`, `content.ts` and `guides.module.css` own the

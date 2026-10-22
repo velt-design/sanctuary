@@ -82,6 +82,17 @@ look like known zero or support all-enquiry CPE inference. Local synthetic proof
 is not live acceptance.
 
 
+
+## 2026-10-22: Compare experiment text independently of its storage key
+
+A finite choice and authored text can render the same slot and words. Raw-key
+exclusion lets an unsuccessful experiment reopen under its alias, including when
+the retained control map changes only representation. Compare exact slot/text
+and the fully rendered baseline at durable history and admission boundaries;
+return the same canonical exclusion to the proposer before model selection.
+Preserve original immutable records and distinguish deliberately different text.
+Owner: the authored landing contract in `supabase-schema-map.md`.
+
 ## 2026-10-22: Historical sales credit and explicit test exclusion
 
 Keep historical sales-design attribution separate from current project owners and

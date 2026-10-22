@@ -94,6 +94,29 @@ provisioning are required. Existing capability migrations remain unchanged.
 
 # Supabase Schema Map
 
+## Authored landing copy (22 October 2026)
+
+`20261021050009_landing_authored_copy.sql` extends the existing landing command,
+slot/text/map validation, constraints and bounded read receipt. It introduces
+no tables or endpoint. It preserves the control map, existing command identities,
+generation/cadence/publication gates and acquisition reservation. Durable scoped
+failed-copy exclusion and a 32-distinct-authored cap prevent fresh evidence from
+repeating earlier inconclusive candidates or reopening a truncated history.
+
+Private `landing_copy_identity` and `landing_control_identity` compare exact
+rendered slot/text, filling omitted control slots with their original text.
+Finite/authored aliases share a comparison identity in read, prepare and the
+authored exploration cap. Raw immutable copy/control fields are never rewritten;
+distinct text remains eligible and semantic similarity is not inferred.
+`supabase/tests/landing_authored_copy.sql`, `landing_copy_identity.sql` and the native ledger harness verify
+this over the already deployed 50001-50003 schema, without formal 50004-50008.
+
+Release both compatible consumers before installing this additive contract and
+rebinding the stopped landing control to the exact reviewed template. Preserve
+the original control maps and all histories/counters. Recovery uses the existing
+stop/rollback/readback commands and generation fence; do not revert to a consumer
+that cannot parse retained authored copy. Installation and hosted measurement
+remain separate acceptance evidence from local tests.
 ## Historical designer and explicit test corrections
 
 `20261022010001_designer_history_support.sql` extends the existing private

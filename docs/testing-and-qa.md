@@ -189,6 +189,34 @@ readback is not proof of actual Meta scheduling support or enforcement. ACTIVE
 publication and formal continuation remain disabled pending their connected gates.
 
 
+
+## Authored landing acceptance (22 October 2026)
+
+Run `landingCopyContract.test.ts`, `LandingExperiment.test.tsx`, landing-experiment
+route/probe tests and `test/marketing-template-paths.test.ts`. The native
+`scripts/test-meta-creative-ledger-db.mjs` harness applies Source50009 directly
+after the existing 50001-50003 contract, without unfinished formal migrations,
+and runs `supabase/tests/landing_authored_copy.sql`. Its synthetic fixtures prove
+slot validation, prepare/review/publish/rollback, preserved retained controls,
+scoped exclusion beyond a display tail, and no diagnostic enquiry/assignment.
+The existing cross-lane concurrency check must still admit exactly one owner.
+
+`landing_copy_identity.sql` adds native admission/history regressions for both
+finite/authored alias directions, retained-current no-op, exact authored reuse,
+equivalent and omitted-original control maps, and a 160-row unrelated history
+tail. It asserts the exact rejection, preserved original records, private helper
+ACLs and continued eligibility for different permitted text.
+
+For actual rendered proof, compile Marketing with credential-free local flags,
+then run `probe.integration.test.ts` with `IMPROVEMENT_RENDER_FIXTURE_ORIGIN`,
+`IMPROVEMENT_RENDER_MODULE` and `IMPROVEMENT_RENDER_EXECUTABLE` pointing to the
+local page server, bundled exact Velt renderer and local Chromium. All finite
+choices, all authored slots on both pages, mobile layout, reload, consent and
+interaction stability must pass. Inspect saved candidate images independently;
+an optional-browser skip is not visual proof. Record exact template/renderer
+hashes. This is local synthetic acceptance, not a provider/model call, genuine
+enquiry, production measurement or proof the complete automatic loop is working.
+
 ## Finite Portal service-secret transfer
 
 Run `apps/portal/app/api/integrations/praxis/portal-service-transfer/route.test.ts`

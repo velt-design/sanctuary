@@ -27,6 +27,7 @@ try{
  sql(readFileSync('supabase/tests/meta_creative_ledger.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050002_creative_executor.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050003_creative_measurement.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_copy_identity.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8'));
  // Complete the shared minimal fixture with the established 20260917000003 columns.
@@ -123,7 +124,8 @@ try{
  if(capacity.filter(Boolean).length!==1)throw new Error('Inventory capacity race did not admit exactly one');
  sql(`do $capacity$begin begin perform public.meta_creative_executor_command(repeat('b',64),gen_random_uuid(),gen_random_uuid(),'prepare','{"plan":{"purpose":"formal_experiment"}}');raise exception 'capacity bypass';exception when others then if sqlerrm<>'Owned ad inventory capacity reached'then raise;end if;end;end$capacity$;
  select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'f3000000-0000-4000-8000-000000000001','admit_cleanup',jsonb_build_object('kind','pause_ad','objectId','98001','requestHash',repeat('a',64),'generation',generation,'preStateHash',repeat('c',64),'observedAt',clock_timestamp()))from public.meta_creative_control;`);
- process.stdout.write(JSON.stringify({steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
+ process.stdout.write(JSON.stringify({authoredLanding:true,steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
+
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
  if(dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('sanctuary-experiment-'))rmSync(directory,{recursive:true,force:true});
