@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/project-file-open-sydney-recovery-20261023": false,
       "codex/campaign-authored-landing-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
       "codex/designer-history-support-20261022": false,
