@@ -1,8 +1,9 @@
 'use client';
+import {copyChoice} from '../../lib/landingCopyContract';
 import { createContext, useContext, useEffect, useState, Fragment, type ReactNode } from 'react';
 import { useConsent } from '../ConsentProvider';
 import { getBrowserMarketingAttribution } from '../../lib/attribution';
-import { isExperimentPath, LANDING_COPY, LANDING_ORIGINAL_TEXT, EXPERIMENT_SEEN_EVENT,rememberLandingExperience,parseLandingAssignment, parseLandingCopies, type ExperimentPath, type LandingCopies, type LandingSlot } from '../../lib/landingExperiment';
+import { isExperimentPath, LANDING_ORIGINAL_TEXT, EXPERIMENT_SEEN_EVENT,rememberLandingExperience,parseLandingAssignment, parseLandingCopies, type ExperimentPath, type LandingCopies, type LandingSlot } from '../../lib/landingExperiment';
 import template from '../../data/landing-template.generated.json';
 import {landingPaintGate} from '../../lib/landingExperimentPaint';
 
@@ -51,7 +52,7 @@ export function LandingExperiment({ path, children, control = ORIGINAL_CONTROL }
   return <Context.Provider value={copies}><div style={{ display: 'contents' }} data-landing-template={template.hash}>{children}</div></Context.Provider>;
 }
 export function LandingCopy({ slot, children }: { slot: LandingSlot; children: ReactNode }) {
-  const key = useContext(Context)[slot], copy = key ? LANDING_COPY[key] : null;
+  const key = useContext(Context)[slot], copy = copyChoice(key);
   return <span data-landing-copy={slot} data-landing-copy-key={copy?.slot === slot ? key : 'control'}>{copy?.slot === slot ? copy.text : children}</span>;
 }
 export function LandingHeroOrder({children,className}:{children:ReactNode;className:string}){

@@ -1,4 +1,58 @@
+## Authored landing copy boundary, local continuation
+
+New plain text is limited by shared approved vocabulary, slot and length checks
+in browser, server and actual SQL. No HTML, links, prices or technical claims are
+accepted. Original controls, global experiment reservation, both consents and
+diagnostic-versus-genuine attribution remain unchanged. Velt's independent review
+uses only the three exact candidate screenshots and cited bounded facts, with no
+customer records or public screenshot URLs. Local fixtures are synthetic and do
+not establish actual model, hosted or native advertising acceptance.
+
+## Native account acceptance, local continuation
+
+Additive50006 records immutable operator-only account/method acceptance and
+revocation, separately from candidate approval and the reviewed method hash.
+It requires an existing formal example study/canary and both registered owned
+ad/cell identities. Distinct evidence hashes cover actual unit, inside-campaign
+allocation, unchanged originals and intended objective proof. Numeric echo or
+UI80 alone cannot establish allocation. Missing actual proof means no receipt.
+The latest revoked proof cannot silently fall back to an older acceptance.
+Application roles cannot write either table or call the private lookup/wrapper.
+Native disposable tests exercise registry identity, independently changed scope
+and method, immutability/revocation, missing allocation evidence and surviving
+owned cleanup. These are storage/security tests, not actual Meta acceptance.
+Deploy optional read consumers before50006; root's guarded operator alone may
+provision the actual receipt after real evidence. Separate delivery authority and
+fresh proof gate the locally connected ACTIVE effects.
+
 # Security, Privacy, And Quality
+
+The unpublished formal preparation continuation adds a separate default-off
+`SANCTUARY_META_CREATIVE_PREPARATION_ENABLED` flag. It admits only signed, fresh,
+independently reviewed future plans and the existing PAUSED creative/ad/study
+intents under current template/control/Stop fences. Preparation does not authorize
+ACTIVE delivery or alter credential scope, budget, targeting, original ads or consent.
+Absent flag preserves the released capability-only boundary. Cleanup remains
+available under its existing narrowly scoped authority.
+
+## Authored landing boundary (22 October 2026)
+
+The mirrored `landingCopyContract` and SQL slot/map validators admit bounded
+plain text only in existing approved slots. Retained controls and exact original
+text comparisons prevent unchanged tests; durable path/template/control-scoped
+history excludes failed copy even beyond the bounded read tail. At 32 distinct
+authored exclusions the source closes further authored exploration for that
+baseline, while preserving eligible finite choices. No customer content enters
+this history. Existing binding, generation, cadence, consent and shared acquisition
+reservation checks still apply. Source50009 is additive and service-role-only;
+existing controls remain stopped until reviewed compatible consumers, schema and
+exact template binding are verified. It requires no creative activation migration.
+
+The local composed browser uses synthetic IDs and diagnostic probes, with no
+genuine assignment, enquiry, email or provider call. Rendered artifacts remain
+private evidence, never included in publication. Paired Velt pixel review uses
+hash-checked images and bounded cited metadata within existing model admission.
+
 
 
 ## Video donor compatibility boundary (22 October 2026)
@@ -36,9 +90,14 @@ Default-off environment: `SANCTUARY_LANDING_EXPERIMENT_ENABLED=false` and
 control scope/template/admission and publishing flags remain separate. The command
 route requires a signed30-second bounded body, no Origin/query, strict fixed stage
 schemas and service-only RPCs. Visitor JSON cannot select an arm, template or copy.
-Same-origin public assign/expose/revoke has a streaming4KB body limit and one1.5s
-deadline shared by the existing30/minute/IP-hash limiter and visit RPC; host maximum
-is5seconds. Errors fall back to authored control, withdrawal is best effort. These
+Same-origin public assign/expose/revoke has a streaming 4KB body limit and one 3s
+deadline shared by the existing 30/minute/IP-hash limiter and visit RPC; host maximum
+is 5 seconds, leaving 2 seconds for cold-start and response handling. The same budget
+applies to genuine visitors and signed diagnostics, without retry. Fixed failure
+logs contain only request/authority/rate_limit/visit/response stage and
+timeout/aborted/transport/unavailable code, never IDs, headers, bodies or errors.
+Committed counters do not substitute for a valid response. Errors fall back to
+authored control, withdrawal is best effort. These
 are per-request/rate bounds, not an aggregate arbitrary-traffic spending guarantee.
 
 Only exact two Meta paths participate. Signed per-path receipts are transient
@@ -762,3 +821,14 @@ Sources: https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarit
 
 Mobile configured-design Review adds closed `design_enquiry_open`, `design_share_open`, `design_share` (native-share or clipboard success), and `design_share_link_ready` (manual-copy recovery) events through the same consent/source/staff gate. Native cancellation records only the user's open intent, never completion. Payloads retain only the existing closed funnel metadata; no design URL, dimensions, contact fields or free text. `contact_start/success/error` still describe actual valid submission attempts/outcomes, not form opening. Test submissions and analytics verification must intercept enquiry/vendor traffic rather than create real leads or conversions.
 The configured-design tracker stays mounted above the responsive layout switch, so rotating between mobile and desktop does not restart the funnel or duplicate review events.
+
+### Steady creative attribution candidate (22 October 2026)
+
+Retained ads reuse the existing signed, consent-gated public visit transport.
+A steady receipt is explicitly distinct from the two experimental arms. Both
+analytics and marketing consent, exact approved route/tags, unrevoked exposure
+inside confirmed serving and the existing 28-day receipt lifetime are required
+for reporting credit. Invalid attribution never deletes the canonical enquiry.
+No extra customer content, raw provider payload, credentials or arbitrary URLs
+are added to the public response or model projection. Source registry and
+serving helpers remain private; ownership never follows a provider-only ID.

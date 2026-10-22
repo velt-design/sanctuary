@@ -137,6 +137,41 @@ existing URL and return tests. Existing long browser suites receive only changed
 assertions; the new connected regression lives in a separate focused spec.
 
 
+
+## Authored landing experiment slots (local continuation)
+
+`landingCopyContract` validates bounded plain text in the existing design/help/
+support slots. `LandingExperiment` paints only server-assigned validated copy
+after both tracking consents and the existing interaction-safe paint gate; links,
+control content, pricing and enquiry behavior remain owned by the current pages.
+`landingExperiment.server` exposes authored-copy availability only when Source
+migration50009 confirms its bounded history capacity. No arbitrary HTML/CSS, new
+claims, offers, targeting or customer communication is admitted.
+
+The local browser acceptance composes both compiled landing pages, actual signed
+diagnostic handlers/SQL and Velt's renderer. It exercises authored text in each
+slot at320/390/1440 widths, cookie reload and exposure, plus layout interaction and
+return behavior. Screenshots are private review evidence. Local fixture success,
+independent rendered review, protected preview and live measurements are distinct;
+this continuation is not yet a published experiment or the full automatic loop.
+
+## Bounded authored landing experiments (22 October 2026)
+
+`landingCopyContract` accepts the existing finite choices plus plain text in the
+design/help/support slots. Velt may author within the shared approved vocabulary
+and length limits; arbitrary markup, links, prices, claims and CSS are rejected.
+`LandingExperiment` applies one admitted slot over the saved control map, keeping
+destinations, designer, enquiry, consent, focus and interaction stability intact.
+The existing action-first mobile layout remains a separate finite option.
+
+Source50009 extends the existing command/visit contract and durable scoped copy
+exclusion. It adds no endpoint or public history. The paired Velt consumer reviews
+actual candidate screenshots at 320/390/1440 CSS pixels before publication.
+Local fixture assignment is diagnostic only and cannot count as a customer
+exposure or enquiry. Hosted publication and measured decisions still require
+ordinary cloud admission. Formal creative delivery is outside this landing stage.
+
+
 ## Photographic guide hub (22 October 2026)
 
 `app/pergola-guides/page.tsx`, `content.ts` and `guides.module.css` own the
