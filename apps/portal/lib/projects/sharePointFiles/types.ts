@@ -1,7 +1,7 @@
 type ProjectFileRoot = { id: string; label: string; itemId: string };
 type ProjectFileItem = {
   id: string; name: string; kind: 'folder' | 'file'; size: number;
-  modifiedAt: string | null; viewable: boolean;
+  modifiedAt: string | null; viewable: boolean; contentType?: string | null;
 };
 export type ProjectFilesPage = {
   state: 'ready' | 'unlinked' | 'pending' | 'needs_attention' | 'disabled';

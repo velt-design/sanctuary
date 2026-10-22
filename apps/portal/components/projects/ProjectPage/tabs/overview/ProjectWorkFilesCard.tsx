@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useContext, useEffect, useState, type ReactNode } from "react";
+import { PortalAuthContext } from '@/components/auth/PortalAuthProvider';
 import { Card, TabNavigation } from "@/components/ui/foundation";
 import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import ProjectEnquiryFilesPanel from "./ProjectEnquiryFilesPanel";
@@ -26,6 +27,18 @@ export default function ProjectWorkFilesCard({
   positionLabel?: string;
 }) {
   const [selectedPanel, setSelectedPanel] = useState<"work" | "files" | "enquiry">("work");
+  const auth = useContext(PortalAuthContext);
+  const panelKey = auth?.user?.id ? `sanctuary:project-work-panel:v1:${host}:${auth.user.id}:${projectId}` : null;
+  useEffect(() => {
+    let saved: string | null = null;
+    try { saved = panelKey ? sessionStorage.getItem(panelKey) : null; } catch { /* Optional return state. */ }
+    setSelectedPanel(saved === 'files' || saved === 'enquiry' ? saved : 'work');
+  }, [panelKey]);
+  const selectPanel = (panel: "work" | "files" | "enquiry") => {
+    setSelectedPanel(panel);
+    try { if (panelKey) sessionStorage.setItem(panelKey, panel); } catch { /* Optional return state. */ }
+  };
+  const enquiryFiles = <ProjectEnquiryFilesPanel projectId={projectId} host={host} initialAttachments={initialAttachments} disableActions={disableFileActions} />;
   return (
     <Card
       className={[styles.card, className].filter(Boolean).join(" ")}
@@ -42,20 +55,14 @@ export default function ProjectWorkFilesCard({
             { key: "enquiry", label: "Original enquiry", controls: "project-enquiry-panel" },
           ]}
           selectedKey={selectedPanel}
-          onSelect={setSelectedPanel}
+          onSelect={selectPanel}
         />
       }
       padding="compact"
     >
       {selectedPanel === "files" ? (
         <div id="project-files-panel" role="tabpanel" aria-label="Files">
-          <ProjectSharePointFilesPanel key={projectId} projectId={projectId} host={host} disabled={disableFileActions || initialAttachments !== undefined} />
-          <ProjectEnquiryFilesPanel
-            projectId={projectId}
-            host={host}
-            initialAttachments={initialAttachments}
-            disableActions={disableFileActions}
-          />
+          {disableFileActions || initialAttachments !== undefined ? enquiryFiles : <ProjectSharePointFilesPanel key={projectId} projectId={projectId} host={host} websiteFiles={enquiryFiles} />}
         </div>
       ) : selectedPanel === "enquiry" ? (
         <div id="project-enquiry-panel" role="tabpanel" aria-label="Original enquiry">

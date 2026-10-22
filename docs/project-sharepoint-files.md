@@ -1,6 +1,6 @@
 # Project SharePoint files
 
-Status: implemented locally on 22 October 2026; dark by default. No production migration, Microsoft grant, import, schedule or staff changeover is implied by this document.
+Status: Explorer UI candidate implemented locally on 22 October 2026. This incremental UI work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover. Live source performance and large original delivery require approved runtime acceptance.
 
 ## Outcome and ownership
 
@@ -13,11 +13,71 @@ Implementation map:
 | Surface | Owner |
 | --- | --- |
 | Staff project Files UI | `ProjectSharePointFilesPanel`, inside existing `ProjectWorkFilesCard` |
+| Folder reads, finding and continuity | `useProjectFilesExplorer`, `useProjectFilesListPosition`, `projectFilesNavigation`, domain `client.ts` |
+| Selected PDF/raster content | `ProjectFilePreview`, lazy existing `QuotePdfInlinePreview` canvas renderer |
 | Authenticated reads and file access | `apps/portal/app/api/staff/v1/projects/[projectId]/files` and `lib/projects/sharePointFiles/server.ts` |
 | Microsoft source and ancestry checks | `lib/projects/sharePointFiles/graph.ts` |
 | New enquiry folder job | `lib/projects/sharePointFiles/provision.ts`, `api/integrations/sharepoint-project-folders` |
 | Private state, grants and atomic enqueue | `supabase/migrations/20261022090001_project_sharepoint_files.sql` |
 | Verified existing-folder import | `scripts/sharepoint-project-files.ts`, domain `import.ts` |
+
+## Explorer interaction and finding
+
+Jordan selected folders, list and preview together after the local exploration.
+The project Files tab now has a persistent folder rail, compact file list and
+adjacent selected-file actions/preview. Narrow containers retain the list and use
+the existing Foundation dialog. The source chooser retains multiple verified
+roots and website enquiry files; website attachment reads wait until selected.
+Folder links and breadcrumbs read only that folder. Source MIME metadata permits
+photo next/previous among the loaded folder's previewable images. There is no
+thumbnail index or whole-project crawl.
+
+Finding covers the current folder across actual provider cursor pages. It first
+filters resident metadata, then reads at most three further pages per pass.
+Partial results say more files are available, including when no match has yet
+been found. Continue finding explicitly reads another bounded pass. A complete
+result means that folder's final cursor was reached, not that SharePoint cannot
+change later. Each provider page contains at most 100 metadata items; these are
+real source pages, not synthetic display pagination. No Microsoft search API or
+broader permission is introduced. Refresh revalidates the current loaded pages
+and root navigation. Very large folders can require repeated continuation and
+the provider's listing is not an atomic snapshot across pages.
+
+The existing authenticated-owner QueryClient retains metadata for five minutes
+with a 30-second freshness window. Initial default-root data seeds the equivalent
+explicit-root key, avoiding a needless return request. Fresh returns reuse data;
+stale returns revalidate. Abort signals, scope/scan guards and selection-tagged
+preview results keep late folder/file responses from replacing current content.
+Denied or failed reads hide cached file actions and offer truthful recovery.
+
+User/host/project-scoped session navigation stores only bounded root/trail IDs
+and names, selected ID, current finding text, loaded-page counts and scroll
+positions. Work/Files choice is scoped the same way. No document bytes, signed
+URLs, tokens or provider cursors enter durable storage. Reload reads fresh source
+metadata and restores up to ten saved pages automatically; deeper positions need
+continuation. Same-URL history entries preserve existing Next state and support
+folder Back/Forward without adding project query keys or changing canonical
+document routing/auth eligibility. The existing auth-owner QueryClient boundary
+remains authoritative; a different owner receives separate keys and navigation.
+
+Scroll restoration waits for the saved metadata pages and sufficient rendered
+extent. A first-page browser clamp cannot overwrite the intended deep offset;
+partial failures retain it for retry. Beyond the ten-page automatic budget it
+waits for explicit continuation, while deliberate wheel/touch/pointer/keyboard
+interaction gives scrolling back to the user. Finding has its own scoped offset,
+so a temporary filtered list does not destroy the unfiltered folder position.
+Completed shorter source listings may legitimately clamp to their new end.
+Preview controls persist through expanded gallery selection; close returns
+focus without scrolling to the current Expand control or narrow selected row.
+This stays local to Files and reuses the shared Modal focus trap unchanged.
+
+Only the selected preview body is held in memory. PDF code/worker load lazily,
+and inspector/dialog reuse the same bytes. Selection changes abort the prior
+read and revoke its object URL. Actual response MIME and the 50 MB byte cap are
+checked before rendering. The existing canvas renderer copies PDF bytes before
+worker transfer. Download remains an authenticated native link to the original
+redirect route, including large Rhino. There is no large-original fetch/buffer
+or simulated completion message in the production UI.
 
 ## Access and delivery contract
 
@@ -66,10 +126,31 @@ The importer does not overwrite or unbind a disputed match. Correcting an errone
 
 ## Verification
 
-Local checks: `node scripts/test-project-sharepoint-files-pglite.mjs`; `node scripts/test-project-sharepoint-files-browser.mjs`; `vitest run apps/portal/lib/projects/sharePointFiles`; `vitest run apps/portal/components/projects/ProjectPage/tabs/overview/ProjectSharePointFilesPanel.test.tsx`; Portal TypeScript, focused ESLint, documentation impact and changed architecture checks. The disposable PostgreSQL test exercises the real migration, rollback, dark defaults, no backfill, leases, retries, multi-root replay/conflicts and grants. It also deletes imported, completed, pending and running projects through the existing quote-then-project request sequence, checks retained audit identity and rejects stale worker completion/failure. Component tests exercise folder entry/return, multi-root selection, paging, file links and failure recovery.
+Successful authenticated list responses retain the existing `Server-Timing`
+total and append numeric `files_auth`, `files_bindings_rpc`, `files_token`,
+`files_library`, `files_ancestry` and `files_children` phases when reached.
+Token/Graph phases include JSON body reads; ancestry covers all required hops.
+Only fixed phase labels/durations enter this header, with no file/project names,
+IDs, URLs, assertions or cursors and no new logs/settings. The optional observer
+cannot change results/errors, ordering, validation, no-store or timeouts.
+Non-200 responses retain existing behavior and do not emit these phases;
+successful unready states emit only reached phases. Cursor pages are ordinary
+successful reads with the same phase measurements.
+This is measurement only, not a latency improvement or permission/cache change.
+Focused tests verify finite headers, body-read timing and request/error parity.
 
-The isolated headless Chromium harness builds the actual Files component **and actual open-route handler**, substituting only authentication/Graph boundaries and a local provider. It clicks View, verifies a synthetic PNG renders, retries an injected action failure, clicks Download and checks the received original filename, exact binary bytes and SHA-256. Those original bytes are a transport fixture with a `.3dm` filename, not a valid Rhino document. It separately checks a valid synthetic PDF's route response bytes and MIME header without claiming native PDF-viewer acceptance. The harness also checks desktop/mobile action visibility, browsing return and list recovery. Bundles remain in memory; screenshots go under ignored `test-results/sharepoint-files`. It uses a fresh browser context with no real session or screen control. Both disposable database and browser checks are included in Portal Quality CI.
+Local checks: `node scripts/test-project-sharepoint-files-pglite.mjs`; `node scripts/test-project-sharepoint-files-browser.mjs`; `vitest run apps/portal/lib/projects/sharePointFiles apps/portal/components/projects/ProjectPage/tabs/overview/ProjectSharePointFilesPanel.test.tsx apps/portal/components/projects/ProjectPage/tabs/overview/projectFilesNavigation.test.ts`; Portal TypeScript, focused ESLint, documentation impact and changed architecture checks. The disposable PostgreSQL test exercises the real migration, rollback, dark defaults, no backfill, leases, retries, multi-root replay/conflicts and grants. It also deletes imported, completed, pending and running projects through the existing quote-then-project request sequence, checks retained audit identity and rejects stale worker completion/failure. Actual React/TanStack observer tests cover request deduplication, equivalent-root keys, wrapper Work/project remount, selection/scroll return, bounded cursor finding, root/file races, cancellation, denial/retry, unsafe MIME, owner isolation and current-preview body reuse/refresh.
 
-Live Graph metadata/permissions, the actual private mapping import, original filename behavior, large-download completion, integrated authenticated Portal rendering and automatic new-enquiry end-to-end acceptance are not established by these local tests. No preview URL or background production operation is claimed.
+The isolated headless Chromium harness builds the actual Files component **and actual open-route handler**, substituting authentication/Graph boundaries and a local provider. It selects a synthetic PNG, retries an injected preview failure, clicks Download and checks the received original filename, exact binary bytes and SHA-256. Those original bytes are a transport fixture with a `.3dm` filename, not a valid Rhino document. It checks valid synthetic PDF response bytes/MIME and actual canvas rendering, then verifies expansion does not read the body again. Desktop/mobile action visibility, folder return and list recovery are included. Bundles remain in memory; screenshots go under ignored `test-results/sharepoint-files`. It uses a fresh browser context with no real session or screen control. Both disposable database and browser checks are included in Portal Quality CI.
+
+The private local actual-card comparison uses the same synthetic source and
+controlled 80 ms metadata delay for old/new wrappers. First Files entry changes
+from one metadata plus one website attachment request to one metadata request;
+the attachment read is deferred, not removed. Immediate Work return makes zero
+metadata requests in both versions. Explorer retains the folder while the old
+UI returns to root. This establishes request/task behavior, not real Graph
+latency, production cold-start improvement or a general percentage speed gain.
+
+Live Graph timing, real source changes/denial, provider filename behavior and full-size valid Rhino delivery are not established by these local tests. Existing mapping/provisioning acceptance remains with its owning activation record. The local component harness is synthetic and does not establish integrated live authenticated Portal rendering. Production identity is bound to deployed production OIDC; no broader local/staging trust or impersonation is introduced for measurement.
 
 Microsoft references: [selected permissions](https://learn.microsoft.com/en-us/graph/permissions-selected-overview), [drive item downloads](https://learn.microsoft.com/en-us/graph/api/driveitem-get-content?view=graph-rest-1.0), [SharePoint IDs](https://learn.microsoft.com/en-us/graph/api/resources/sharepointids?view=graph-rest-1.0).
