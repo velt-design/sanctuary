@@ -1,6 +1,6 @@
 # Project SharePoint files
 
-Status: Dedicated Files workspace and bounded performance candidate implemented locally on 22 October 2026. Runtime source latency, origin-version compatibility and large original delivery still require actual-source acceptance. This work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover.
+Status: Dedicated Files workspace and bounded performance candidate implemented locally on 22 October 2026. Live first-new-file latency remains above target. The protected recent-preview verification correction is implemented locally and requires fresh platform acceptance; large original delivery retains its separate acceptance requirement. This work changes no runtime enablement, existing bindings, grants, provisioning or staff changeover.
 
 ## Outcome and ownership
 
@@ -15,6 +15,7 @@ Implementation map:
 | Main Files route and available-screen layout | `projectTabs`, `ProjectMainTabs`, `tabs/FilesTab` |
 | Staff project Files UI | Existing `ProjectSharePointFilesPanel`, in workspace mode |
 | Folder reads, finding and continuity | `useProjectFilesExplorer`, `useProjectFilesListPosition`, `projectFilesNavigation`, domain `client.ts` |
+| Protected recent-preview verification contract | `previewVerification.ts`, existing open route and `useProjectFilePreview` |
 | Selected PDF/raster content | `ProjectFilePreview`, `useProjectFilePreview`, bounded `projectFilePreviewCache`, `ProjectPdfStream`, existing `QuotePdfInlinePreview` renderer |
 | Current-project preparation and freshness | `useProjectFilesPreparation`, shared domain `query.ts`, existing authenticated-owner QueryClient |
 | Authenticated reads and file access | `apps/portal/app/api/staff/v1/projects/[projectId]/files` and `lib/projects/sharePointFiles/server.ts` |
@@ -139,17 +140,28 @@ signed URLs enter durable browser storage or another service. A body enters this
 memory only if its actual origin strong ETag exactly matches the fresh Graph
 eTag/cTag. Weak/missing/mismatched origin tags still permit fresh rendering but
 prevent reuse. This also covers a source change between metadata and transfer.
-Actual SharePoint origin/Graph ETag compatibility remains unverified locally.
+Live `9411232a` verified matching strong origin/Graph versions for a representative photo and PDF. That establishes compatibility for those observations, not every file or future source response.
 
 A recent preview displays immediately while its protected route checks current
 authorization, root containment, type, size and source version. Only then may the
-route return 304 without resolving another transport URL or transferring bytes.
+route return a small protected 200 JSON receipt without resolving another transport URL or transferring file bytes. The request uses `x-project-file-preview-version`, never HTTP `If-None-Match`. The strict receipt binds the current project/root/item, strong version, MIME, byte size and current name to the resident; malformed, mismatched or unexpected 304 responses fail closed.
 Changed versions replace content; observed deletion, missing root, failed read
 or lost access hides/purges affected previews and offers retry. Any failed body
 recheck clears that project's recent memory, including source access errors
 mapped to 503. Logout/owner change clears the owner store. Refresh rechecks both
 metadata and the selected body; stale responses cannot replace another selection.
 Original downloads always perform current checks and retain native delivery.
+
+Live `9411232a` exposed a platform boundary: Vercel stripped the custom verification
+header from 304 responses, causing a valid recent PDF to disappear after its
+recheck. Bare 304/ETag is insufficient proof because an intermediary can generate
+it from an unverified 200 body. The correction therefore uses the authenticated 200
+JSON receipt above, which carries no signed URL or file body. The separate local
+platform model reproduces header-stripped 304 and conditional rewriting; actual
+corrected-platform acceptance remains outstanding. Observed first photo/PDF
+headers were about 2.9/3.3 seconds, so the first-new-file speed goal is still unmet.
+Prepared navigation avoided extra source reads. This fix adds no new body
+prefetch, authority cache, region change or durable copy.
 
 The separate private localhost harness executes the actual list/open handlers,
 Graph/token/containment owners and client workspace with synthetic auth/RPC and
@@ -211,7 +223,7 @@ The importer does not overwrite or unbind a disputed match. Correcting an errone
 
 Successful authenticated list responses retain the existing `Server-Timing`
 total and append numeric `files_auth`, `files_bindings_rpc`, `files_token`,
-`files_library`, `files_source_batch`, `files_ancestry` and `files_children` phases when reached.
+`files_library`, `files_source_batch`, `files_ancestry` and `files_children` phases when reached. Open responses use the same observer and add `files_content_redirect` and `files_source_headers` when reached; source-header timing ends before body transfer.
 Token/Graph phases include JSON body reads; ancestry covers all required hops.
 Only fixed phase labels/durations enter this header, with no file/project names,
 IDs, URLs, assertions or cursors and no new logs/settings. The optional observer

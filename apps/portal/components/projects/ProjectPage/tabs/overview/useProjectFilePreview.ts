@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectFilesPage } from '@/lib/projects/sharePointFiles/types';
+import { PREVIEW_VERSION_REQUEST_HEADER, readPreviewVerification } from '@/lib/projects/sharePointFiles/previewVerification';
 import { strongFileVersion, VERIFIED_FILE_VERSION_HEADER } from '@/lib/projects/sharePointFiles/fileVersion';
 import { discardPreview, discardProjectPreviews, readPreview, retainPreview, setPreviewOwner, type PreviewBytes, type PreviewScope } from './projectFilePreviewCache';
 import { ProjectPdfStream } from './ProjectPdfStream';
@@ -48,19 +49,23 @@ export function useProjectFilePreview({ url, item, scope, revision, onChanged }:
     const timeout = setTimeout(() => { controller.abort(); fail('The preview timed out. Retry or download the original.'); }, 50_000);
     void (async () => {
       try {
-        const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal, headers: resident ? { 'If-None-Match': resident.version } : {} });
+        const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal, headers: resident ? { [PREVIEW_VERSION_REQUEST_HEADER]: resident.version } : {} });
         if (disposed || controller.signal.aborted) return;
         const name = responseName(response, item.name);
         const originVersion = strongFileVersion(response.headers.get('etag'));
         const verifiedVersion = strongFileVersion(response.headers.get(VERIFIED_FILE_VERSION_HEADER));
-        if (response.status === 304) {
-          if (!scope || !resident || verifiedVersion !== resident.version) throw new Error('The preview could not be verified. Retry to load it again.');
-          retainPreview(client, scope, { ...resident, name });
-          setResult(previous => previous?.identity === identity ? { ...previous, name, checking: false } : previous);
-          return;
-        }
+        if (response.status === 304) throw new Error('The preview could not be verified. Retry to load it again.');
         if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'File access is unavailable. Refresh Files to check access.' : response.status === 404 ? 'This file has moved or is no longer available. Refresh the folder.' : 'The preview could not be loaded. Retry or download the original.');
         const mime = response.headers.get('content-type')?.split(';')[0].trim() ?? '';
+        if (mime === 'application/json') {
+          if (response.status !== 200 || !scope || !resident) throw new Error('The preview could not be verified. Retry to load it again.');
+          const receipt = await readPreviewVerification(response);
+          if (disposed || controller.signal.aborted) return;
+          if (receipt.projectId !== scope.projectId || receipt.rootId !== scope.rootId || receipt.itemId !== scope.itemId || receipt.version !== resident.version || receipt.contentType !== resident.mime || receipt.size !== resident.bytes.byteLength) throw new Error('The preview could not be verified. Retry to load it again.');
+          retainPreview(client, scope, { ...resident, name: receipt.name });
+          setResult(previous => previous?.identity === identity ? { ...previous, name: receipt.name, checking: false } : previous);
+          return;
+        }
         if (mime !== 'application/pdf' && !rasterTypes.has(mime)) throw new Error('Download the original to open this file.');
         const declared = Number(response.headers.get('content-length') ?? 0);
         if (declared > INLINE_LIMIT) throw new Error('This preview exceeds 50 MB. Download the original instead.');

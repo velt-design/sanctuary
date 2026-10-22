@@ -77,13 +77,13 @@ export async function createGraph(cfg: SharePointConfig, assertion: string, sign
       return { items, cursor: next ? Buffer.from(next as string).toString('base64url') : null };
     },
     async download(root: string, id: string, ifNoneMatch?: string) {
-      const found = await within(root, id); if (!found.file) throw new ProjectFilesError('not_found', 404);
+      const found = await measureProjectFilesPhase('ancestry', observer, () => within(root, id)); if (!found.file) throw new ProjectFilesError('not_found', 404);
       if (ifNoneMatch && [found.eTag, found.cTag].includes(ifNoneMatch)) return { item: found, url: null, notModified: true as const };
       // A fresh metadata download URL is the same temporary capability as /content.
       // Use it only in this authorized request; omitted URLs keep the existing fallback.
       let location = found['@microsoft.graph.downloadUrl'];
       if (!location) {
-        const response = await fetcher(base + encodeURIComponent(id) + '/content', { redirect: 'manual', cache: 'no-store', signal, headers: { authorization: `Bearer ${token.value}` } });
+        const response = await measureProjectFilesPhase('content_redirect', observer, () => fetcher(base + encodeURIComponent(id) + '/content', { redirect: 'manual', cache: 'no-store', signal, headers: { authorization: `Bearer ${token.value}` } }));
         if (response.status === 401 || response.status === 403) token.invalidate();
         if (response.status !== 302) throw new ProjectFilesError('source_unavailable');
         location = response.headers.get('location') ?? undefined;
