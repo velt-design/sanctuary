@@ -1,8 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Button,Select } from '@/components/ui/foundation/FoundationControls';
-import { PROJECT_OWNER_OPTIONS,projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
-import { salesDesignerSchema,type SalesDesigner,type SalesDesignerCommand } from '@/lib/marketingPerformance/salesDesigner';
+import { SALES_DESIGNER_OPTIONS,salesDesignerOption,salesDesignerSchema,type SalesDesigner,type SalesDesignerCommand } from '@/lib/marketingPerformance/salesDesigner';
 import styles from './DesignerPerformance.module.css';
 
 export class AssignmentError extends Error {constructor(public status:number){super(status===409?'The assignment changed. Reload it before saving.':'The assignment could not be confirmed.');}}
@@ -30,11 +29,11 @@ export default function SalesDesignerAssignment({value,onChange,client=liveClien
       else setError('The save result is uncertain. Retry the same request to reconcile it before editing.');
     }finally{setBusy(false);}
   };
-  return <section className={styles.assignment} aria-label="Sales designer assignment"><p><strong>Sales designer: {projectOwnerOption(value.designerKey??'')?.displayName??'Unassigned'}</strong></p>
+  return <section className={styles.assignment} aria-label="Sales designer assignment"><p><strong>Sales designer: {salesDesignerOption(value.designerKey??'')?.displayName??'Unassigned'}</strong></p>
     <p className={styles.note}>Sales credit for this project. Actual visit attendance stays unchanged.{value.updatedAt?` Updated ${new Date(value.updatedAt).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'})}.`:''}</p>
     {value.basis&&<p>Assignment reason: {value.basis}</p>}
     {!editing?<Button variant="quiet" disabled={readOnly} onClick={()=>{setKey(value.designerKey??'');setEditing(true);setError('');}}>Assign sales designer{readOnly?' (fixture read only)':''}</Button>:<>
-      <Select label="Sales designer" value={key} disabled={busy||!!pending} onChange={e=>setKey(e.target.value)}><option value="">Unassigned</option>{PROJECT_OWNER_OPTIONS.map(p=><option key={p.key} value={p.key}>{p.displayName}</option>)}</Select>
+      <Select label="Sales designer" value={key} disabled={busy||!!pending} onChange={e=>setKey(e.target.value)}><option value="">Unassigned</option>{SALES_DESIGNER_OPTIONS.map(p=><option key={p.key} value={p.key}>{p.displayName}</option>)}</Select>
       <label>Reason for assignment<textarea maxLength={500} value={basis} disabled={busy||!!pending} onChange={e=>setBasis(e.target.value)} rows={2}/></label>
       <div className={styles.assignmentActions}><Button disabled={busy||conflict||(!pending&&basis.trim().length<3)} onClick={save}>{busy?'Saving…':pending?'Retry same save':'Save assignment'}</Button>{conflict?<Button variant="secondary" disabled={busy} onClick={reload}>Reload assignment</Button>:!pending&&<Button variant="quiet" disabled={busy} onClick={()=>setEditing(false)}>Cancel</Button>}</div>
     </>}{error&&<p role="alert">{error}</p>}</section>;
