@@ -11,6 +11,12 @@ slot validation, prepare/review/publish/rollback, preserved retained controls,
 scoped exclusion beyond a display tail, and no diagnostic enquiry/assignment.
 The existing cross-lane concurrency check must still admit exactly one owner.
 
+`landing_copy_identity.sql` adds native admission/history regressions for both
+finite/authored alias directions, retained-current no-op, exact authored reuse,
+equivalent and omitted-original control maps, and a 160-row unrelated history
+tail. It asserts the exact rejection, preserved original records, private helper
+ACLs and continued eligibility for different permitted text.
+
 For actual rendered proof, compile Marketing with credential-free local flags,
 then run `probe.integration.test.ts` with `IMPROVEMENT_RENDER_FIXTURE_ORIGIN`,
 `IMPROVEMENT_RENDER_MODULE` and `IMPROVEMENT_RENDER_EXECUTABLE` pointing to the

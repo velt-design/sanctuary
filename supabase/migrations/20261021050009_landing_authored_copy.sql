@@ -18,6 +18,17 @@ $$;
 create function public.landing_original_text(p_path text,p_slot text) returns text language sql immutable set search_path='' as $$
  select case p_slot when 'design' then 'Design your pergola' when 'help' then 'Tell us about your space' when 'layout' then 'Hero action group after support' when 'support' then case p_path when '/auckland-outdoor-living' then E'A place for slow mornings. Long lunches.\nAnd a little more everyday living.' when '/acrylic-roof-pergolas-auckland' then E'A covered space, with daylight above.\nDesigned around the home you love.' end end
 $$;
+-- Compare rendered slot/text, not the spelling of a finite/authored key. Keep
+-- immutable original copy/control values in experiments and receipts untouched.
+create function public.landing_copy_identity(p_copy text) returns text language sql immutable set search_path='' as $$
+ select coalesce((select k from unnest(array['explore','project','estimate','action-first']) k
+   where public.landing_copy_slot(k)=public.landing_copy_slot(p_copy) and public.landing_copy_text(k)=public.landing_copy_text(p_copy)),p_copy)
+ where public.landing_copy_slot(p_copy) is not null
+$$;
+create function public.landing_control_identity(p_path text,p_control jsonb) returns jsonb language sql immutable set search_path='' as $$
+ select jsonb_object_agg(slot,coalesce(public.landing_copy_text(p_control->>slot),public.landing_original_text(p_path,slot)))
+ from unnest(array['design','help','support','layout']) slot
+$$;
 create function public.landing_copy_map_valid(p_value jsonb) returns boolean language plpgsql immutable set search_path='' as $$
 begin
  if jsonb_typeof(p_value) is distinct from 'object' then return false;end if;
@@ -26,9 +37,10 @@ end $$;
 -- A bounded unsuccessful exploration guard for one unchanged control/template.
 -- Retaining a genuinely different baseline starts a distinct comparison domain.
 create function public.landing_authored_available(p_path text,p_template text,p_control jsonb) returns boolean language sql stable set search_path='' as $$
- select count(distinct copy)<32 from public.landing_experiments where path=p_path and template=p_template and control_copy=p_control and copy like 'copy:%' and state in('rejected','reverted','inconclusive')
+ select count(distinct public.landing_copy_identity(copy))<32 from public.landing_experiments where path=p_path and template=p_template
+   and public.landing_control_identity(path,control_copy)=public.landing_control_identity(p_path,p_control) and copy like 'copy:%' and state in('rejected','reverted','inconclusive')
 $$;
-revoke all on function public.landing_copy_slot(text),public.landing_copy_text(text),public.landing_original_text(text,text),public.landing_copy_map_valid(jsonb),public.landing_authored_available(text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.landing_copy_slot(text),public.landing_copy_text(text),public.landing_original_text(text,text),public.landing_copy_identity(text),public.landing_control_identity(text,jsonb),public.landing_copy_map_valid(jsonb),public.landing_authored_available(text,text,jsonb) from public,anon,authenticated,service_role;
 -- Replace only the exact original finite-copy constraints, retaining every
 -- independent path/lane/state/consent/window and attribution constraint.
 do $$declare row record; removed integer:=0;begin
@@ -64,8 +76,8 @@ begin
      'authoredCopy',jsonb_build_object('/auckland-outdoor-living',public.landing_authored_available('/auckland-outdoor-living',c.template,c.control_outdoor),'/acrylic-roof-pergolas-auckland',public.landing_authored_available('/acrylic-roof-pergolas-auckland',c.template,c.control_acrylic)),
      'controls',jsonb_build_object('/auckland-outdoor-living',c.control_outdoor,'/acrylic-roof-pergolas-auckland',c.control_acrylic),
      'excluded',jsonb_build_object(
-       '/auckland-outdoor-living',(select coalesce(jsonb_agg(copy order by copy),'[]') from(select distinct copy from public.landing_experiments where path='/auckland-outdoor-living' and template=c.template and control_copy=c.control_outdoor and state in('rejected','reverted','inconclusive'))history),
-       '/acrylic-roof-pergolas-auckland',(select coalesce(jsonb_agg(copy order by copy),'[]') from(select distinct copy from public.landing_experiments where path='/acrylic-roof-pergolas-auckland' and template=c.template and control_copy=c.control_acrylic and state in('rejected','reverted','inconclusive'))history)),
+       '/auckland-outdoor-living',(select coalesce(jsonb_agg(copy order by copy),'[]') from(select distinct public.landing_copy_identity(copy) as copy from public.landing_experiments where path='/auckland-outdoor-living' and template=c.template and public.landing_control_identity(path,control_copy)=public.landing_control_identity(path,c.control_outdoor) and state in('rejected','reverted','inconclusive'))history),
+       '/acrylic-roof-pergolas-auckland',(select coalesce(jsonb_agg(copy order by copy),'[]') from(select distinct public.landing_copy_identity(copy) as copy from public.landing_experiments where path='/acrylic-roof-pergolas-auckland' and template=c.template and public.landing_control_identity(path,control_copy)=public.landing_control_identity(path,c.control_acrylic) and state in('rejected','reverted','inconclusive'))history)),
      'experiment',(select to_jsonb(x) from (select * from public.landing_experiments order by created_at desc limit 1)x),
      'counts',public.landing_experiment_counts((select id from public.landing_experiments order by created_at desc limit 1)),
      'decision',public.landing_experiment_decision((select id from public.landing_experiments order by created_at desc limit 1)))
@@ -82,8 +94,9 @@ begin
    if public.landing_copy_text(p_payload->>'copy')=coalesce(public.landing_copy_text(previous_copy->>selected_slot),public.landing_original_text(p_payload->>'path',selected_slot)) then raise exception 'Unchanged text';end if;
    -- The finite exclusion belongs to the durable source, not a bounded display
    -- tail. A new evidence date is not permission to repeat until significant.
-   if exists(select 1 from public.landing_experiments prior where prior.path=p_payload->>'path' and prior.template=c.template and prior.control_copy=previous_copy
-     and prior.copy=p_payload->>'copy' and prior.state in('rejected','reverted','inconclusive')) then raise exception 'Previously evaluated candidate';end if;
+   if exists(select 1 from public.landing_experiments prior where prior.path=p_payload->>'path' and prior.template=c.template
+     and public.landing_control_identity(prior.path,prior.control_copy)=public.landing_control_identity(prior.path,previous_copy)
+     and public.landing_copy_identity(prior.copy)=public.landing_copy_identity(p_payload->>'copy') and prior.state in('rejected','reverted','inconclusive')) then raise exception 'Previously evaluated candidate';end if;
    insert into public.landing_experiments(id,path,template,copy,control_copy,state,candidate_hash,evidence_hash,generator,minimum_exposures,duration_days)
     values(p_experiment,p_payload->>'path',c.template,p_payload->>'copy',previous_copy,'candidate',p_payload->>'candidateHash',p_payload->>'evidenceHash',p_payload->>'generator',
       (p_payload->>'minimumExposures')::integer,(p_payload->>'durationDays')::integer);

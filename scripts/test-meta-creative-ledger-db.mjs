@@ -29,6 +29,7 @@ try{
  sql(readFileSync('supabase/migrations/20261021050003_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050009_landing_authored_copy.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_authored_copy.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_copy_identity.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_outcomes.sql','utf8'));
