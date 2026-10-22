@@ -1,0 +1,18 @@
+import type { ProjectPageSnapshotResponse } from './types';
+import type { ProjectCommandCentreResponse } from './commandCentre/types';
+import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
+
+export type ProjectWorkInitialData = {
+  summary: ProjectPageSnapshotResponse;
+  snapshot: ProjectPageSnapshotResponse;
+  command: ProjectCommandCentreResponse;
+  payment: ProjectInvoiceSchedule;
+};
+export type ProjectWorkReadResult<T> = { ok: true; data: T } | { ok: false; status: number; message: string };
+export type ProjectWorkInitialRead = {
+  id: string;
+  ownerId: string;
+  host: string;
+  projectId: string;
+  results: { [K in keyof ProjectWorkInitialData]: Promise<ProjectWorkReadResult<ProjectWorkInitialData[K]>> };
+};

@@ -168,6 +168,7 @@ describe("ProjectWorkSection", () => {
     const card = workTab.closest('[aria-label="Project Work"]');
 
     expect(card).not.toBeNull();
+    expect(card?.getAttribute("data-project-work-panel")).toBe("work");
     expect(workTab.getAttribute("aria-selected")).toBe("true");
     expect(rendered.container.querySelector("#project-work-panel")).not.toBeNull();
     expect(rendered.container.querySelector('[data-project-enquiry-files="true"]')).toBeNull();
@@ -175,6 +176,7 @@ describe("ProjectWorkSection", () => {
     act(() => filesTab.click());
 
     expect(filesTab.getAttribute("aria-selected")).toBe("true");
+    expect(card?.getAttribute("data-project-work-panel")).toBe("files");
     expect(rendered.container.querySelector("#project-work-panel")).toBeNull();
     expect(rendered.container.querySelector("#project-files-panel")?.closest('[aria-label="Project Work"]')).toBe(card);
     expect(rendered.container.querySelector('[data-project-enquiry-files="true"]')).toBeNull();
@@ -191,6 +193,7 @@ describe("ProjectWorkSection", () => {
     expect(rendered.container.querySelector("#project-files-panel")?.closest('[aria-label="Project Work"]')).toBe(card);
 
     act(() => workTab.click());
+    expect(card?.getAttribute("data-project-work-panel")).toBe("work");
     expect(workTab.getAttribute("aria-selected")).toBe("true");
     expect(rendered.container.querySelector("#project-work-panel")).not.toBeNull();
     expect(rendered.container.querySelector("#project-files-panel")).toBeNull();

@@ -43,6 +43,7 @@ export default function ProjectWorkFilesCard({
     <Card
       className={[styles.card, className].filter(Boolean).join(" ")}
       aria-label="Project Work"
+      data-project-work-panel={selectedPanel}
       title={positionLabel ?? "Project Work"}
       eyebrow="Project position"
       action={

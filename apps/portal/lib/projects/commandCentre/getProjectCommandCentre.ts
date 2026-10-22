@@ -115,7 +115,7 @@ export async function getProjectCommandCentre(
   return createProjectCommandCentreRead(projectId, supabase, viewer).read();
 }
 
-/** One invocation owns the client, project and model promise. Never shared across requests. */
+/** One invocation owns the client, project, viewer and complete read. Never shared across requests. */
 export function createProjectCommandCentreRead(
   projectId: string,
   supabase: SupabaseClient,
@@ -128,12 +128,17 @@ export function createProjectCommandCentreRead(
     projectUuid = null;
   }
   let modelRead: Promise<boolean> | undefined;
+  let commandRead: Promise<ProjectCommandCentreResponse | null> | undefined;
   const readModel = () => modelRead ??= projectUuid
     ? isProjectWorkModelV2(supabase, projectUuid)
     : Promise.resolve(false);
   return {
+    matches: (id: string, client: SupabaseClient) => {
+      try { return client === supabase && uuidFromAppId(id, 'proj').toLowerCase() === projectUuid?.toLowerCase(); }
+      catch { return false; }
+    },
     readModel,
-    read: () => projectUuid
+    read: () => commandRead ??= projectUuid
       ? loadProjectCommandCentre(projectId, projectUuid, supabase, viewer, readModel)
       : Promise.resolve(null),
   };

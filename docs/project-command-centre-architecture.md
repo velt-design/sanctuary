@@ -1,5 +1,32 @@
 # Project Operational Command Centre Architecture
 
+## Initial Work document experiment (22 October 2026, local)
+
+After the existing fresh page gate, `loadProjectWorkInitialRead` starts summary,
+snapshot, complete command and invoice-schedule reads concurrently for an exact
+Work HTML document. Other tabs and ordinary RSC/prefetch retain the API path.
+The request's command reader owns its verified viewer, cookie client, project,
+model promise and full command promise. Snapshot's existing projection adapter
+accepts that reader only for the same client/project; separate requests never
+share it. The financial reader keeps its existing service-backed authority and
+current-admin payment-entry filter.
+
+`projectWorkInitialRead` hands four independent result promises to the existing
+query owners. Each result is accepted once for its exact owner, Supabase host,
+route project and unchanged query state. Raw UUID routes retain their existing
+summary/snapshot keys and canonical command/payment keys. Summary can render
+progress while full snapshot work is pending; successful command or payment data
+cannot mark a failed snapshot complete. Cancellation, invalidation, tab return,
+recovery and access-ending API behavior keep the existing owners. Local compiled
+verification and independent review accepted this mechanism on `f74c3fd2`.
+The handoff reads TanStack's cancellation signal only after eligibility checks;
+ordinary API fallbacks retain their original cancellation policy. Merely reading
+that signal opts a query into cancellation on observer removal and can otherwise
+duplicate a still-running API request on remount. Real observer lifecycle tests
+and the shell fixture's unchanged single-GET assertion cover this boundary.
+The data-delivery/control-readiness comparison and its paint, hosted and
+platform-cold limits are recorded in `portal-production-readiness.md`.
+
 ## First-load read path (released 21 October 2026)
 
 The first-load read change keeps the full Command Centre as the authoritative
@@ -39,8 +66,13 @@ desktop columns group work with commercial facts, and contact details with
 correspondence. They stack in that same reading and keyboard order on narrow
 screens. Independent column height prevents long correspondence from creating
 blank space between work and price, and keeps ordinary desktop customer messages
-within the first screen. Editors remain mounted through resizing. It does not
-invent tasks, completion or a new ranking. Empty site visits use a compact
+within the first screen. Editors remain mounted through resizing. Selected Files spans the full project
+row on wide compositions so its folder rail, list and adjacent preview fit;
+commercial and contact/correspondence continue in their existing columns below.
+Returning to Work restores the independent-column layout without remounting
+neighboring editors. See `project-sharepoint-files.md` for the responsive Files
+contract and actual-parent verification. It does not invent tasks, completion or
+a new ranking. Empty site visits use a compact
 disclosure; source errors and stale-source
 notices remain visible. Needs review shows the specific unanswered questions before
 provenance and opens the existing correction form through Resolve questions.

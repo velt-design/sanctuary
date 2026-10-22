@@ -7,6 +7,7 @@ API exclusion from document middleware. It exposes no generic credential/proxy
 operation and accepts no target/value overrides. Ordinary staff/admin routes and
 Praxis read authorization are unchanged. See `environment-auth-supabase.md` for
 the production-only transfer contract, uncertain-effect handling and retirement.
+
 ## Initial Overview and Financial report authority (22 October 2026)
 
 The Marketing page may start selected full-document report promises after its
@@ -27,10 +28,12 @@ provider/publication budgets remain enforced. Safe errors never carry source
 exceptions or partial unverifiable evidence.
 
 
-## Initial document access candidate (21 October 2026, unreleased under qualification)
+## Initial document access (released in PR241, 21 October 2026)
 
-For canonical HTML document GETs at `/staff/projects`, `/staff/site-visits` and
-`/staff/projects/(proj_)?<uuid>`, middleware renews session transport without using
+PR241 covers canonical HTML document GETs at `/staff/projects`, `/staff/site-visits`
+and `/staff/projects/(proj_)?<uuid>`. The later Marketing hub change adds its exact
+`/staff/marketing-performance` route with the additional gates described below.
+For these selected documents, middleware renews session transport without using
 session contents as authority. `regionalDocumentAccess.ts` owns the exact request
 eligibility and sanitized callback context. `supabase/proxyClient.ts` forwards the
 same cookie rotation and chunk removals attached to the response. The root layout,
@@ -41,7 +44,7 @@ against parallel rendering. Removed staff access fails closed; an administrator
 changed to staff retains staff access but not administrator access.
 
 The middleware overwrites the callback header from the actual path and full query,
-or strips it outside this lane. It is redirect context, never identity or role
+or strips it outside this lane. It is redirect and initial-read scheduling context, never identity or role
 authority. Ordinary browser RSC/prefetch use non-document fetch destinations and
 retain the full global path, as do action/POST, specialist and other routes. Next
 normalizes Flight headers before middleware, so a deliberately forged document-
@@ -51,9 +54,21 @@ shape chooses the location of verification, never whether verification occurs.
 APIs retain their own authoritative checks before private reads.
 There is no cross-request cache, service-role fallback or manual JWT parsing.
 Selected document responses remain private/no-store. Compiled local refresh,
-streaming, denial and request-isolation proof is required before this candidate
-can be treated as verified; hosted/provider behavior and useful-load improvement
-remain separate gates. No production release is implied.
+streaming, denial and request-isolation checks and the closing independent review
+passed for PR241. Ordinary production gains and the remaining cold-start evidence
+limits are recorded in `portal-production-readiness.md`.
+
+The subsequent local Projects candidate starts its index read only after
+`requireStaffPageAccess` returns a fresh verified identity and current staff role.
+`loadProjectsIndexInitialRead` uses the cookie-bound client and existing
+`loadProjectsIndexData` owner, with no service-role or cross-request data cache.
+Its unsettled result is private Flight data under the same document boundary.
+The overwritten document context chooses scheduling only; RSC navigation and
+prefetch do not start an extra index read. A client may consume the result once,
+only for the same verified user, normalized query and empty, uninvalidated query
+state. Later cache changes, cancellation, filters, returns and retry use the
+existing independently authorized API. This does not give the initial result
+authority over current access-ending API failures.
 
 The local Marketing hub scheduling candidate starts a report only after the
 page's existing staff, confirmed-developer and preview gates. The overwritten
@@ -66,7 +81,33 @@ Mismatched or later requests and explicit retries retain the guarded API path;
 there is no session/client serialization or shared evidence cache. See
 `marketing-performance.md` for the per-mount lifecycle and verification limits.
 
+## Initial Work document reads
+
+The local Work document experiment likewise starts only after the fresh page
+identity/current-role gate. Its summary, snapshot and complete command use one
+cookie-bound client; the existing invoice schedule remains service-backed with
+the same current-admin payment-entry filter as its API. The complete command
+promise is shared with snapshot only inside that invocation and is bound to its
+client, project and verified viewer. Only owner/query identifiers and independent
+safe data/error promises cross Flight, never roles, credentials or clients.
+Ordinary RSC/prefetch starts no Work seed. One-use matching cannot override later
+query updates, cancellation or access-ending denial; retries keep independently
+authenticated APIs. No access, cookie-renewal or private/no-store policy changes.
+
 ## Outlook site visits
+
+The local initial-document candidate starts the same saved-calendar read only
+after `requireStaffPageAccess` verifies the current user and staff role. API and
+page paths share `siteVisits/readSavedVisits.server`, using their existing
+cookie-bound client and the same current-actor guarded RPC. The handoff carries
+the owner identifier, query scope and saved-result promise; credentials, roles
+and server clients are never serialized or cached across requests. The overwritten callback header
+selects initial document scheduling only; ordinary RSC/prefetch starts no read.
+The client accepts a matching owner/host/project/visit handoff once, never over
+populated/invalidated or subsequently updated query state. Later reads and Retry
+use the independently authorized API; 401/403 continues to hide saved rows.
+Private/no-store responses, cookie renewal and provider-refresh authority stay
+unchanged. No live Outlook read occurs on navigation.
 
 `GET /api/staff/v1/outlook-site-visits` accepts optional project and exact visit UUIDs
 (the project also accepts the existing `proj_` prefix). Unknown/duplicate query

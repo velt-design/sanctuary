@@ -114,10 +114,14 @@ Ceilings of 200 profile groups, 400 range-expanded rows and 200 union groups are
 unproven live fit. EventName consumes groups too. There is no pagination or
 arbitrary query, alpha API, browser tracker or direct compatibility fallback.
 
-A validated row limit permits complete fresh core/stages and strict acquisition
-unavailable with no metric cells. Genuine unattempted capability has a separate
-closed reason; provider failures cannot be recast as that reason. Unexpected
-auth/provider/body/transport/deadline/authority/effect failures preserve the old
+A validated row limit permits fresh validated core/stages and strict acquisition
+unavailable with no metric cells. A successfully received acquisition JSON batch
+that fails its schema, profile, privacy or completeness validation also leaves
+only validated core/stages, with `compatibility_unproven` and no acquisition rows.
+This is a partial report, not proof of complete acquisition coverage. The parser
+still rejects all unsafe values; none are returned, persisted or logged.
+Auth/provider HTTP/body decoding/transport/deadline/authority/effect failures,
+core validation and final normalization failures preserve the old
 snapshot and existing effect/quarantine semantics. Sampling, thresholding and
 other row loss retain selected limited observations with comparisons/rankings
 suppressed. Missing stays null; observed zero remains zero. First-edit coverage
@@ -132,6 +136,14 @@ credential enters this log. Durable evidence still records only the existing
 unavailable outcome; generic HTTP responses and retention are unchanged. This
 diagnostic does not recover causes omitted from historical logs or authorize a
 refresh, retry, privacy exception or additional provider request.
+
+An acquisition-only validation limitation emits
+`sanctuary_ga4_acquisition_unavailable` with fixed stage, validation category and
+HTTP status. It never logs provider values or detailed schema issues. The catch
+surrounds only synchronous acquisition parsing after both bounded requests and
+validated core, with cancellation checked before retaining core and returning.
+Unknown exceptions remain fatal. The historical response-schema failure cannot
+identify its exact rejected field because its raw response was not retained.
 
 The additive retained-authority HTTP action is a local candidate (21 October).
 `GET ?action=authority` uses the same Praxis bearer/source identity and existing

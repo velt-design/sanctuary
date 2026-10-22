@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/repo/apiClient";
 import { selectProjectView } from "@/components/projects/ProjectPage/projectViewNavigation";
 import type { PortalPageDebugExport } from "@/lib/debug/portalPageDebugExport";
 import ProjectSnapshotPageClient from "./ProjectSnapshotPageClient";
+vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const useQueryMock = vi.fn();
 const placeholderMock = vi.fn();

@@ -245,6 +245,7 @@ export async function getProjectPageSnapshot(
   diagnostics?: PortalServerLogContext,
   supabase?: SupabaseClient,
   authenticatedUserId?: string | null,
+  commandRead?: Parameters<typeof createAuthoritativeProjectWorkRead>[2],
 ): Promise<ProjectPageSnapshot | null> {
   const client = supabase ?? (await getSupabaseServerAuth());
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
@@ -255,7 +256,7 @@ export async function getProjectPageSnapshot(
   // rows are embedded through their declared foreign keys in one PostgREST
   // request, avoiding a browser-open path with many HTTP round trips while
   // retaining auth-bound RLS on every relation.
-  const workRead = createAuthoritativeProjectWorkRead(appIdFromUuid('proj', projectUuid), client);
+  const workRead = createAuthoritativeProjectWorkRead(appIdFromUuid('proj', projectUuid), client, commandRead);
   const [projectRes, relatedRes, owner, usesV2ProjectWork] = await Promise.all([
     client
       .from('projects')

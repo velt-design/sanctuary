@@ -31,6 +31,38 @@ Diagnostic export tools also follow the masthead. Current status, access-ending
 recovery and paused owner/commercial actions retain their existing contracts.
 This followup still requires actual protected-preview geometry verification.
 
+## Projects initial document read (local candidate, 21 October 2026)
+
+The Projects page starts the exact normalized index read after its existing
+verified staff gate and passes an unsettled result to the existing client query.
+It does not await rows at the route boundary. The toolbar, input, list status and
+URL owner remain mounted while data arrives. Ordinary RSC navigation/prefetch
+keeps the existing API path and does not duplicate the index read on the server.
+
+Implementation map:
+- `app/staff/projects/page.tsx` owns verified document scheduling;
+  `loadProjectsIndexInitialRead.ts` wraps the existing cookie-bound index reader
+  and returns safe, retryable failures.
+- `projectIndexView.ts` owns both URL parsing and the shared normalized query
+  mapping, including the existing stage/status alias. Unknown URL context remains
+  with the existing URL writer.
+- `projectsIndexInitialRead.ts` adapts one matching result to React Query. Its
+  QueryClient-scoped markers contain only consumed render IDs. A different user,
+  filter, existing data, invalidation or intervening update rejects the handoff.
+  The ordinary fallback receives the original query context without spreading it:
+  reading its lazy signal would cancel query state on observer removal while the
+  API transport continues, duplicating the request on remount. Matching pending
+  handoffs still consume the signal and preserve navigation cancellation.
+- `useProjectsIndexData.ts` retains the existing freshness, retry, access-ending
+  cleanup and mutation owners. Back, remount and manual refresh use the API once
+  the initial handoff has been consumed; stored-scroll restoration still waits
+  for the mounted rows.
+
+The candidate targets the observed document-to-index-API waterfall. It does not
+change lifecycle truth, counts, sorting, page sizes, server read dependencies,
+pricing, provider behavior or the broader cold-route targets. Compiled streaming,
+failure/retry and navigation evidence is required in addition to unit tests.
+
 ## Portal contact and return continuity (released 16 October 2026)
 
 Jordan's approved connected-workflow improvement explicitly requires ordinary contact

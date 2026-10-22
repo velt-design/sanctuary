@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-10-22: Preserve query cancellation policy through initial-read adapters
+
+Reading TanStack Query's context signal marks the query as cancellable even when
+the underlying API ignores it. The Work initial-read adapter did this before
+checking for an eligible handoff, so observer remounts cancelled query state and
+started a second ordinary GET while the first transport continued. Consume the
+signal only for the pending handoff; let each fallback retain its existing
+policy. The Projects adapter had the same cause through an enumerable context
+spread, so it now forwards the typed context unchanged. Visits already passes
+its signal to the actual transport. Real QueryObserver detach/remount tests cover absent, mismatched, consumed,
+cached and invalidated handoffs, alongside the unchanged shell single-GET browser
+assertion. Owners: `project-command-centre-architecture.md` and
+`projects-contacts-estimates-calculator.md`.
+
+## 2026-10-22: Keep validated core when optional acquisition validation fails
+
+An HTTP200 acquisition schema rejection discarded an independently validated
+core report. Catch only typed local acquisition validation and schema errors at
+that parser boundary. Preserve core and first-edit evidence with explicit
+unavailable acquisition and no rows, using the existing wire contract. Do not
+turn transport, cancellation, authority, core or normalization failures into
+success. Fixed validation classifications improve future diagnosis without
+retaining provider values; historical evidence does not identify the exact field.
+
 ## 2026-10-22: Separate missing historical dates from financial mutations
 
 A NULL acceptance-date fill on an already-ACCEPTED version does not change the
@@ -6470,3 +6494,13 @@ The same review found a new quote-version name field that the existing family
 contract ignored. Named families now show their shared name and direct changes
 to Rename; optimistic creation uses the same name. New/unnamed/manual scopes
 retain the optional field.
+
+
+## 2026-10-22 - Verify specialist layouts inside the real project parent
+
+The Files Explorer passed an isolated actual-card fixture but its production
+Overview parent constrained the card to one of two columns. This hid the
+adjacent preview even on a wide desktop. Selected Files now spans the project
+row; Work and neighboring owners retain their existing layout and state.
+Responsive acceptance must include the actual containing layout and its width,
+not only viewport width or the leaf component. Owner: `project-sharepoint-files.md`.

@@ -32,6 +32,25 @@ remain the activation/recovery contract, not unfinished initial setup.
 The older Portal booking editor remains a compatibility
 surface; imported Outlook visits never enter its booking/confirmation commands.
 
+## Saved Visits first-load candidate (22 October 2026)
+
+The local candidate starts the saved-calendar read after the Site Visits page's
+fresh staff gate, only for its initial HTML document. It passes a pending result
+to the existing agenda query while controls remain mounted. Page view, person and
+search stay local filters; project and exact visit retain their existing scope.
+This reads the saved mirror only and never requests an Outlook refresh.
+
+`lib/siteVisits/readSavedVisits.server` owns the API/document-shared validation,
+RPC selection, reviewed projection, provider-enabled flag and safe failures.
+`savedVisitsContract` owns their small result/scope contract. The page's
+`loadCalendarVisitsInitialRead` uses its cookie-bound client; the component's
+`calendarVisitsInitialRead` adopts a matching user/host/scope once in the existing
+QueryClient. Cancelled, superseded, populated or invalidated queries keep the API
+path. Thirty-second freshness, sixty-second polling, correction invalidation,
+denial hiding and explicit Retry retain their existing behavior. Project and
+dashboard visit consumers receive no document handoff. The candidate is local and
+unreleased; optimized browser comparison and independent review qualify it.
+
 ## Outlook site visits (20 October 2026)
 
 Ellen books in the shared Outlook calendar. `lib/siteVisits` owns the bounded

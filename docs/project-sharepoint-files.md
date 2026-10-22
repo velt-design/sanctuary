@@ -79,6 +79,16 @@ worker transfer. Download remains an authenticated native link to the original
 redirect route, including large Rhino. There is no large-original fetch/buffer
 or simulated completion message in the production UI.
 
+The actual Overview parent gives selected Files the full project row on wide
+compositions. Commercial facts and contact/correspondence retain their two
+columns below; Work restores the existing independent-column arrangement.
+This is a scoped CSS composition using the Work card's selected-panel marker,
+without moving or remounting neighboring editors. At narrower project widths,
+the existing list/modal layout remains in use. Responsive evidence must mount
+`ProjectOverviewLayout`, not only a full-width isolated Work card: the ordinary
+Overview column is narrower than the Explorer inspector breakpoint even on a
+wide desktop viewport.
+
 ## Access and delivery contract
 
 Every staff request authenticates first and calls the user-bound `project_files_read` RPC. The RPC rechecks confirmed, active staff/admin membership. It exposes roots only for the requested existing project and configured drive. The service role is used only by the operator importer and the scoped provisioning command, never to bypass staff read checks.

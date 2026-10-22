@@ -1,12 +1,13 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/lib/repo/apiClient';
 import { projectsIndexQueryOptions } from '@/lib/queries/projectsIndex';
 import type {
   ProjectsIndexParams,
   ProjectsIndexResponse,
 } from '@/lib/projects/projectsIndexContract';
+import { projectsIndexReadFunction, type ProjectsIndexInitialRead } from './projectsIndexInitialRead';
 
 type ProjectsIndexReadState = 'pending' | 'cached' | 'fresh' | 'refresh-failed' | 'unavailable';
 
@@ -29,9 +30,14 @@ export function projectsIndexResponseMatchesRequest(
     && response.projects.pageSize === params.pageSize;
 }
 
-export function useProjectsIndexData(params: ProjectsIndexParams) {
+export function useProjectsIndexData(params: ProjectsIndexParams, initial?: {
+  ownerId: string | null;
+  initialRead?: ProjectsIndexInitialRead;
+}) {
+  const client = useQueryClient();
   const query = useQuery({
     ...projectsIndexQueryOptions(params.archive, params),
+    queryFn: projectsIndexReadFunction(client, params, initial?.ownerId ?? null, initial?.initialRead),
     placeholderData: keepPreviousData,
     refetchOnMount: 'always',
     retry: (failureCount, error) => !isAccessEndingError(error) && failureCount < 2,
