@@ -2,14 +2,21 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { fetchProjectFiles } from '@/lib/projects/sharePointFiles/client';
+import { projectFilesQueryOptions } from '@/lib/projects/sharePointFiles/query';
 import type { ProjectFilesPage } from '@/lib/projects/sharePointFiles/types';
 import { emptyFilesNavigation, filesNavigationKey, readFilesNavigation, writeFilesNavigation, type FilesNavigation } from './projectFilesNavigation';
 
-const FRESH_MS = 30_000;
 const BATCH_PAGES = 3;
 export function useProjectFilesExplorer(projectId: string, host: string, ownerId: string | null, enabled: boolean) {
   const client = useQueryClient();
+  const preparation = useRef<{ timer?: ReturnType<typeof setTimeout>; key?: readonly unknown[] }>({});
+  const cancelPreparation = () => {
+    clearTimeout(preparation.current.timer);
+    const key = preparation.current.key;
+    if (key && !client.getQueryCache().find({ queryKey: key, exact: true })?.getObserversCount()) void client.cancelQueries({ queryKey: key, exact: true });
+    preparation.current = {};
+  };
+  useEffect(() => cancelPreparation, [client, projectId, host, ownerId, enabled]);
   const storageKey = filesNavigationKey(host, ownerId, projectId);
   const [navigation, setNavigation] = useState(emptyFilesNavigation);
   const [hydrated, setHydrated] = useState(false);
@@ -35,13 +42,10 @@ export function useProjectFilesExplorer(projectId: string, host: string, ownerId
     const next = fn(currentNav.current); currentNav.current = next; writeFilesNavigation(storageKey, next); setNavigation(next);
   };
   const folderId = navigation.trail.at(-1)?.id;
-  const prefix = ['project-sharepoint-files', host, ownerId, projectId] as const;
-  const keyFor = (root: string | undefined, folder: string | undefined) => [...prefix, root ?? 'default', folder ?? 'root'] as const;
+  const keyFor = (root: string | undefined, folder: string | undefined) => projectFilesQueryOptions(host, ownerId, projectId, root, folder).queryKey;
   const options = (folder: string | undefined) => ({
-    queryKey: keyFor(navigation.rootId, folder), initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam, signal }: { pageParam: string | undefined; signal: AbortSignal }) => fetchProjectFiles(projectId, { rootId: navigation.rootId, folderId: folder, cursor: pageParam }, signal),
-    getNextPageParam: (page: ProjectFilesPage) => page.state === 'ready' ? page.cursor ?? undefined : undefined,
-    enabled: enabled && hydrated && navigation.source === 'sharepoint', staleTime: FRESH_MS, gcTime: 5 * 60_000, retry: false,
+    ...projectFilesQueryOptions(host, ownerId, projectId, navigation.rootId, folder),
+    enabled: enabled && hydrated && navigation.source === 'sharepoint',
   });
   // The same key at root deliberately shares one request/observer cache. No default/explicit-root refetch.
   const roots = useInfiniteQuery(options(undefined));
@@ -98,6 +102,13 @@ export function useProjectFilesExplorer(projectId: string, host: string, ownerId
     if (storageKey) window.history.pushState({ ...window.history.state, projectFilesNavigation: { key: storageKey, value: currentNav.current } }, '', window.location.href);
   };
   return { navigation, update, navigate, hydrated, query, roots, first, rootPage, allItems, rootFolders, scope,
+    prepareFolder: (folderId: string) => {
+      if (!enabled || !ownerId || !hydrated || first?.state !== 'ready') return;
+      const options = projectFilesQueryOptions(host, ownerId, projectId, navigation.rootId, folderId);
+      if (JSON.stringify(preparation.current.key) === JSON.stringify(options.queryKey)) return;
+      cancelPreparation(); preparation.current.key = options.queryKey;
+      preparation.current.timer = setTimeout(() => { void client.prefetchInfiniteQuery({ ...options, pages: 1 }); }, 120);
+    },
     scanning: scan.key === batchKey && scan.running, loadBatch,
     find: (term: string) => { scanNonce.current++; setScan({ key: '', running: false }); automaticScan.current = ''; update(value => ({ ...value, term })); },
     refresh: () => { automaticScan.current = ''; void query.refetch(); if (folderId) void roots.refetch(); } };

@@ -8,6 +8,7 @@ import { projectWorkReadFunction } from '@/components/projects/ProjectPage/proje
 import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import ProjectPageFrame from "@/components/projects/ProjectPage/ProjectPageFrame";
+import { useProjectFilesPreparation } from '@/components/projects/ProjectPage/useProjectFilesPreparation';
 import ProjectSnapshotNotice from "@/components/projects/ProjectPage/ProjectSnapshotNotice";
 import { useProjectTabSelection } from "@/components/projects/ProjectPage/useProjectTabSelection";
 import { ProjectOverviewReadsProvider, useProjectOverviewReads } from "@/components/projects/ProjectPage/ProjectOverviewReads";
@@ -116,6 +117,7 @@ export default function ProjectSnapshotPageClient({
     .find((error) => error instanceof ApiError && [401, 403, 404].includes(error.status));
   const readAccessEndingStatus = readAccessStatus instanceof ApiError ? readAccessStatus.status : null;
   const accessUnavailable = projectAccessStatus !== null || readAccessEndingStatus !== null;
+  useProjectFilesPreparation(projectId, host, !calculatorWorkspace && !accessUnavailable);
   const handleProjectAccessEnding = useCallback(
     (status: number) => {
       if (![401, 403, 404].includes(status)) return;

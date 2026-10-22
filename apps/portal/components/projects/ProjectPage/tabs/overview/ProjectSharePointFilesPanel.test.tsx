@@ -188,3 +188,48 @@ it('keeps the ten-page automatic restoration budget and preserves a deeper inten
   await act(async () => { list.scrollTop = 500; list.dispatchEvent(new Event('scroll')); });
   expect(readFilesNavigation(savedKey).scrolls[cadScope]).toBe(100_000);
 });
+
+it('paints a recent verified image immediately on return, rechecks current access and purges it on source503', async () => {
+  let recheck: ((response: Response) => void) | undefined, failRecheck = false;
+  let opens = 0;
+  fetcher.mockImplementation(async (url: string, init: RequestInit) => {
+    if (!url.includes('/open?')) return Response.json({ ...ready, items: [{ ...item('Photo', 'image/png'), eTag: '"v1"' }] });
+    opens++;
+    if (opens > 1) { expect(new Headers(init.headers).get('if-none-match')).toBe('"v1"'); if (failRecheck) return new Response('{}', { status: 503 }); return new Promise<Response>(resolve => { recheck = resolve; }); }
+    return new Response(new Uint8Array([1,2,3]), { headers: { 'content-type': 'image/png', 'content-length': '3', 'x-project-file-verified-version': '"v1"' } });
+  });
+  const c = await render(true); await selectFile(c, 'Photo.png'); expect(c.querySelector('img')).not.toBeNull();
+  await click(c, 'Work'); await click(c, 'Files');
+  expect(c.querySelector('img')).not.toBeNull(); expect(c.textContent).toContain('Checking latest'); expect(opens).toBe(2);
+  await act(async () => recheck!(new Response(null, { status: 304, headers: { 'x-project-file-verified-version': '"v1"' } }))); await flush();
+  expect(c.textContent).not.toContain('Checking latest');
+  await click(c, 'Work'); failRecheck = true; await click(c, 'Files');
+  expect(c.querySelector('img')).toBeNull(); expect(c.textContent).toContain('Preview unavailable');
+  await click(c, 'Work'); await click(c, 'Files');
+  expect(c.querySelector('img')).toBeNull();
+});
+it.each([null, 'W/"v1"'])('does not retain an unverified or weakly verified preview %s', async version => {
+  const headers = { 'content-type': 'image/png', ...(version ? { 'x-project-file-verified-version': version } : {}) };
+  fetcher.mockImplementation(async (url: string) => url.includes('/open?') ? new Response('image', { headers }) : Response.json({ ...ready, items: [{ ...item('Photo', 'image/png'), eTag: '"v1"' }] }));
+  const c = await render(true); await selectFile(c, 'Photo.png'); await click(c, 'Work'); await click(c, 'Files');
+  const calls = fetcher.mock.calls.filter(([url]) => String(url).includes('/open?'));
+  expect(calls).toHaveLength(2); expect(new Headers(calls[1][1].headers).get('if-none-match')).toBeNull();
+});
+it('keeps the same-version body through background list validation and replaces it only on a source version change', async () => {
+  let version = '"v1"';
+  fetcher.mockImplementation(async (url: string) => url.includes('/open?') ? new Response(version, { headers: { 'content-type': 'image/png', 'x-project-file-verified-version': version } }) : Response.json({ ...ready, items: [{ ...item('Photo', 'image/png'), eTag: version }] }));
+  const c = await render(); await selectFile(c, 'Photo.png');
+  await act(async () => { await client.refetchQueries({ queryKey: ['project-sharepoint-files'] }); }); await flush();
+  expect(fetcher.mock.calls.filter(([url]) => String(url).includes('/open?'))).toHaveLength(1);
+  version = '"v2"'; await act(async () => { await client.refetchQueries({ queryKey: ['project-sharepoint-files'] }); }); await flush();
+  expect(fetcher.mock.calls.filter(([url]) => String(url).includes('/open?'))).toHaveLength(2);
+});
+it('debounces folder intent and cancels unobserved speculative work when leaving the project', async () => {
+  const folders = Array.from({ length: 8 }, (_, index) => ({ ...cad, id: 'folder'+index, name: 'Folder '+index }));
+  fetcher.mockImplementation(async (url: string) => new URL(url, 'https://fixture').searchParams.has('folderId') ? new Promise<Response>(() => undefined) : Response.json({ ...ready, items: folders }));
+  const c = await render();
+  for (let index = 0; index < 8; index++) await act(async () => button(c, 'Folder '+index).dispatchEvent(new FocusEvent('focusin', { bubbles: true })));
+  await act(async () => vi.advanceTimersByTimeAsync(150));
+  const speculative = fetcher.mock.calls.filter(([url]) => String(url).includes('folderId=')); expect(speculative).toHaveLength(1);
+  mounted!.unmount(); mounted = undefined; expect(speculative[0][1].signal.aborted).toBe(true);
+});

@@ -1,12 +1,13 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import ProjectEnquiryFilesPanel from './overview/ProjectEnquiryFilesPanel';
 import ProjectSharePointFilesPanel from './overview/ProjectSharePointFilesPanel';
 import styles from './FilesTab.module.css';
 
 /** The project route owns the workspace; existing file owners retain reads and return state. */
 export default function FilesTab({ projectId, host }: { projectId: string; host: string }) {
+  useEffect(() => { void import('./QuotePdfInlinePreview').then(module => module.preloadQuotePdfPreview()).catch(() => undefined); }, []);
   const workspaceRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;

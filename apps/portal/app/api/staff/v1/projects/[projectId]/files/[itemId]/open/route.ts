@@ -5,6 +5,7 @@ import { graphId } from '@/lib/projects/sharePointFiles/config';
 import { inlineTypes, projectGraph } from '@/lib/projects/sharePointFiles/server';
 import { filesError, filesJson, privateResponse } from '@/lib/projects/sharePointFiles/http';
 import { ProjectFilesError, projectFilesHeaders } from '@/lib/projects/sharePointFiles/types';
+import { strongFileVersion, VERIFIED_FILE_VERSION_HEADER } from '@/lib/projects/sharePointFiles/fileVersion';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 const querySchema = z.object({ rootId: z.uuid(), mode: z.enum(['view', 'download']) }).strict();
@@ -17,13 +18,22 @@ export async function GET(request: Request, context: { params: Promise<{ project
   const params = await context.params;
   if (!query.success || !graphId.safeParse(params.itemId).success) return respond(filesJson({ error: 'Invalid request' }, 400));
   try {
-    const signal = AbortSignal.timeout(50000);
-    const { graph, root } = await projectGraph(auth.supabase, params.projectId, query.data.rootId, request.headers.get('x-vercel-oidc-token') ?? '', signal);
-    const result = await graph.download(root.itemId, params.itemId);
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(50000)]);
+    const { graph, root } = await projectGraph(auth.supabase, params.projectId, query.data.rootId, request.headers.get('x-vercel-oidc-token') ?? '', signal, params.itemId);
+    const conditionalVersion = query.data.mode === 'view' ? strongFileVersion(request.headers.get('if-none-match')) : null;
+    const result = await graph.download(root.itemId, params.itemId, conditionalVersion ?? undefined);
     // Large originals go directly to Microsoft's ephemeral download URL. No token or signed URL is persisted.
-    if (query.data.mode === 'download') return respond(new Response(null, { status: 302, headers: { ...projectFilesHeaders, Location: result.url } }));
+    if (query.data.mode === 'download') {
+      if (!result.url) throw new ProjectFilesError('source_invalid');
+      return respond(new Response(null, { status: 302, headers: { ...projectFilesHeaders, Location: result.url } }));
+    }
     const mime = result.item.file?.mimeType ?? '';
     if (!inlineTypes.has(mime) || (result.item.size ?? Infinity) > 50_000_000) return respond(filesJson({ error: 'Use Download for this file.' }, 400));
+    const disposition = `inline; filename*=UTF-8''${encodeURIComponent(result.item.name).replace(/['()*]/g, value => '%' + value.charCodeAt(0).toString(16))}`;
+    if (result.notModified) {
+      if (!conditionalVersion) throw new ProjectFilesError('source_invalid');
+      return respond(new Response(null, { status: 304, headers: { ...projectFilesHeaders, 'Content-Type': mime, 'Content-Disposition': disposition, ETag: conditionalVersion, [VERIFIED_FILE_VERSION_HEADER]: conditionalVersion } }));
+    }
     const range = request.headers.get('range');
     if (range && !/^bytes=(?:\d+-\d*|-\d+)$/.test(range)) return respond(filesJson({ error: 'Invalid range' }, 416));
     // Never forward Graph Authorization to the preauthenticated download endpoint.
@@ -31,7 +41,10 @@ export async function GET(request: Request, context: { params: Promise<{ project
     if (![200, 206, 416].includes(source.status)) throw new ProjectFilesError('source_unavailable');
     if (source.status === 416) { await source.body?.cancel(); return respond(filesJson({ error: 'Requested range is unavailable.' }, 416)); }
     if (Number(source.headers.get('content-length') ?? 0) > 50_000_000) { await source.body?.cancel(); throw new ProjectFilesError('source_invalid'); }
-    const headers = new Headers({ ...projectFilesHeaders, 'Content-Type': mime, 'Content-Security-Policy': "sandbox; default-src 'none'", 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(result.item.name).replace(/['()*]/g, value => '%' + value.charCodeAt(0).toString(16))}` });
+    const headers = new Headers({ ...projectFilesHeaders, 'Content-Type': mime, 'Content-Security-Policy': "sandbox; default-src 'none'", 'Content-Disposition': disposition });
+    const sourceVersion = strongFileVersion(source.headers.get('etag'));
+    if (sourceVersion) headers.set('ETag', sourceVersion);
+    if (!range && source.status === 200 && sourceVersion && [result.item.eTag, result.item.cTag].includes(sourceVersion)) headers.set(VERIFIED_FILE_VERSION_HEADER, sourceVersion);
     for (const name of ['content-length', 'content-range', 'accept-ranges']) { const value = source.headers.get(name); if (value) headers.set(name, value); }
     let streamed = 0;
     const bounded = source.body?.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) { streamed += chunk.length; if (streamed > 50_000_000) { controller.error(new Error('Preview exceeds limit')); return; } controller.enqueue(chunk); } }));
