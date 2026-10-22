@@ -78,8 +78,9 @@ there is no session/client serialization or shared evidence cache. See
 The local initial-document candidate starts the same saved-calendar read only
 after `requireStaffPageAccess` verifies the current user and staff role. API and
 page paths share `siteVisits/readSavedVisits.server`, using their existing
-cookie-bound client and the same current-actor guarded RPC. No identity, role or
-client is serialized or cached across requests. The overwritten callback header
+cookie-bound client and the same current-actor guarded RPC. The handoff carries
+the owner identifier, query scope and saved-result promise; credentials, roles
+and server clients are never serialized or cached across requests. The overwritten callback header
 selects initial document scheduling only; ordinary RSC/prefetch starts no read.
 The client accepts a matching owner/host/project/visit handoff once, never over
 populated/invalidated or subsequently updated query state. Later reads and Retry
