@@ -27,7 +27,7 @@ usable while the read is pending; filter changes, returns, retry and access loss
 retain ordinary fresh API behavior. See `projects-contacts-estimates-calculator.md`,
 `staff-api-auth-contracts.md` and `testing-and-qa.md`.
 
-The corrected local optimized candidate reduced the same table-and-enabled-filter
+The corrected local optimized candidate on base `ad7055b` reduced the same table-and-enabled-filter
 endpoint from a 1,614 ms baseline median to 956 ms across five reloads per version
 (40.8%). All five candidate reloads made zero initial index API requests. Both
 used the same authenticated staging identity/data, disabled HTTP cache and warm
@@ -36,7 +36,9 @@ ordering, delayed streaming, denial, isolation and avoiding RSC/prefetch reads.
 The first candidate failed this comparison because its native-Promise assumption
 did not match React Flight's thenable; its measurements were retained and the
 corrected adapter has a regression test. These are local mechanism and latency
-results, not production, platform-cold or all-route acceptance.
+results, not production, platform-cold or all-route acceptance. The later local
+integration with main `70b8567` retains this evidence as historical comparison;
+its build and behavior checks do not establish a new integrated speed result.
 
 The broader faster first-load outcome remains open. Historical cold feedback
 measurements waited for document load before observing the shell and therefore
