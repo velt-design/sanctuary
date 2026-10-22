@@ -84,6 +84,10 @@ function isCompatibilityHelper(file) {
 }
 
 function isApprovedServerFlow(file) {
+  // Explicit operator CLI: no browser/session entrypoint; preflight reads project
+  // identity and --apply calls only the reviewed binding-import RPC. See
+  // docs/project-sharepoint-files.md. Existing operational-script policy remains unchanged.
+  if (file === 'scripts/sharepoint-project-files.ts') return true;
   if (file.startsWith('scripts/')) return true;
   if (
     file === 'apps/worker/src/config.ts' ||
@@ -95,6 +99,11 @@ function isApprovedServerFlow(file) {
   // Calendar cron has no staff session. One RPC enforces the enabled source binding,
   // lease and atomic snapshot publication; no direct table or legacy booking writes.
   if (file === 'apps/portal/lib/siteVisits/syncCalendar.ts') return true;
+  // Server-only authenticated cron has no staff cookie. One scoped RPC checks
+  // enabled source identity, lease ownership and atomic folder publication;
+  // private tables stay inaccessible and staff file reads use the auth-bound client.
+  // See docs/project-sharepoint-files.md; no provider-delete or generic DB command.
+  if (file === 'apps/portal/lib/projects/sharePointFiles/provision.ts') return true;
   // Delegated bearer grants cannot use staff cookies. This server-only adapter
   // calls scoped grant RPCs (which recheck authority) and the existing lost-
   // conversion owner; see docs/staff-api-auth-contracts.md. No general DB access.
@@ -145,6 +154,8 @@ function isStrictAllowed(file) {
 
 function suggestedOwner(file, category) {
   if (category === 'compatibility-helper') return 'service-role helper boundary; keep server-only';
+  if (file === 'scripts/sharepoint-project-files.ts') return 'operator-only verified SharePoint binding import; preflight default, explicit apply';
+  if (file === 'apps/portal/lib/projects/sharePointFiles/provision.ts') return 'authenticated cron; scoped project-folder lease/publication RPC owner';
   if (file.startsWith('scripts/')) return 'operational script; document env and keep out of browser bundles';
   if (file.startsWith('apps/marketing/')) return 'marketing server/public-token or lead-capture owner';
   if (file.startsWith('apps/worker/')) return 'dedicated worker RPC/auth boundary; keep service-role access narrow and server-only';

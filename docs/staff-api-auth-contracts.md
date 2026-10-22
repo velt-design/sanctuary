@@ -582,3 +582,7 @@ Original website receipts use GET /api/staff/projects/[projectId]/enquiry-receip
 `POST /api/payments/xero/mapping` requires active finance grant and same-origin request. Strict inspect/confirm bodies reject actor/tenant overrides; confirm requires explicit owner confirmation. Fresh provider reads and SQL context checks precede saving. `financeMappingRepository.ts` owns private mapping RPCs; diagnostics stay server-side.
 
 `POST /api/payments/xero/observe` requires the finance grant, same origin and observation flag; browser input is only an invoice UUID. The scheduler `GET /api/integrations/xero/observe` requires the existing CRON_SECRET and flag. InvoiceObservationRepository owns bounded service RPCs; provider responses are reduced to fixed states/reasons and amounts before persistence.
+
+## Project SharePoint files (22 October 2026)
+
+Staff GET project files and file open routes authenticate before the user-bound project_files_read RPC, configured-drive checks and root ancestry verification. They do not use service-role reads. Original downloads redirect only to validated short-lived tenant URLs with private/no-store and no-referrer; inline previews stream safe types with Range support and a byte limit. The cron route has a separate CRON_SECRET boundary and a scoped leased command. See [Project SharePoint files](project-sharepoint-files.md).
