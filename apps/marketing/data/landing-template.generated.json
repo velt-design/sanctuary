@@ -1,5 +1,5 @@
 {
-  "hash": "d9e829ea88ae18af39909bb10792730cc77ea6acf8475aceb0cd7ad374f159c6",
+  "hash": "4055dbc85dfd1f411dbec77e98bfc302344aa354a676445c836bf6d4e6ef2233",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -851,7 +851,7 @@
     ],
     [
       "apps/marketing/components/landing-experiment/LandingExperiment.tsx",
-      "7f5174c3aabdfbeadd7d45ec03a646cb577e3aa42f9591cba78cc558e232cf54"
+      "016825e341667694412862bddb613cfefe951dc89c87f1097c3b2da853525a44"
     ],
     [
       "apps/marketing/components/marketing-foundation/ArrowIcon.tsx",
@@ -1054,12 +1054,16 @@
       "d2d150ea56e1ed82debb303f3cf41b587c5bb0afbbb3720e72042b44029a3abb"
     ],
     [
+      "apps/marketing/lib/landingCopyContract.ts",
+      "7dcc51c4b8807df325410339156902bdf36bd40e2056df9fe09a901bc6f34a0e"
+    ],
+    [
       "apps/marketing/lib/landingExperiment.server.ts",
-      "d610e62e0288467d401c2f238ac28c42318784c99f7e31bfaea5b426de2e9049"
+      "722312ad60c679abab01a626869769e08130320e4421397ba363369079a7b7ca"
     ],
     [
       "apps/marketing/lib/landingExperiment.ts",
-      "b90b99683acaca3c6041451dc051f83e42909348ab731e2897b2f334fa9fc63f"
+      "96c63eae0e21c8aedda060f1b6e7de984200b2ced926a053b5a36a61db7c3e74"
     ],
     [
       "apps/marketing/lib/landingExperimentConsent.ts",
@@ -1136,10 +1140,6 @@
     [
       "packages/configurator/src/core/defaults.ts",
       "6f9af078837782cf30b24e63defcbf710361dd91f18816875a53ead58c2d52ff"
-    ],
-    [
-      "packages/configurator/src/core/index.ts",
-      "2b80e42b826ab7b049e31363b15673c5b86e86f6d93cfb6dc1791c5f818d59e9"
     ],
     [
       "packages/configurator/src/core/index.ts",
@@ -1528,10 +1528,6 @@
     [
       "packages/geometry-viewer/src/three/deckVisual.ts",
       "41cbfaafab8c95ffc2bde6c05c67e00bf238d825c1fa20b6b48f158f9d8a0dd6"
-    ],
-    [
-      "packages/geometry-viewer/src/three/index.ts",
-      "9a10bf5a3f7cee50f3bddb3ac0b7f64d2747552e5f9680d6518dc0369aa36f09"
     ],
     [
       "packages/geometry-viewer/src/three/index.ts",
@@ -1995,7 +1991,11 @@
     ],
     [
       "scripts/marketing/generate-landing-template.mjs",
-      "b7f400611a03bd1b9f8581410d66fbef4c28a53283d9c7c9510957645781cb76"
+      "61540c3cb8a5ed29c5eb4e249a904d6508e86e02c05ad3161820be872736e689"
+    ],
+    [
+      "scripts/marketing/landing-template-paths.mjs",
+      "a8a1e463f3b7f623a7498f3d40211c84570877b14e55fa1cd348dead248a41fa"
     ]
   ],
   "dependencies": {

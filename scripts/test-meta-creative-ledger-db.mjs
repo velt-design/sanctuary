@@ -27,6 +27,8 @@ try{
  sql(readFileSync('supabase/tests/meta_creative_ledger.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050002_creative_executor.sql','utf8'));
  sql(readFileSync('supabase/migrations/20261021050003_creative_measurement.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261021050009_landing_authored_copy.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_authored_copy.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_measurement.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8'));
  sql(readFileSync('supabase/tests/meta_creative_outcomes.sql','utf8'));
@@ -54,7 +56,7 @@ try{
  sql(`select public.meta_creative_command(repeat('b',64),gen_random_uuid(),'${experiment}','cleanup',jsonb_build_object('evidenceHash',repeat('f',64)))`);
  if((await Promise.all([concurrent(creative),concurrent(landing)])).filter(Boolean).length!==1)throw new Error('Cross-lane concurrent reservation did not admit exactly one');
  if(sql('select count(*) from public.acquisition_experiment_reservation').trim()!=='1')throw new Error('Missing global reservation');
- process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,disposableOnly:true,liveCalls:0}));
+ process.stdout.write(JSON.stringify({postgres:sql('show server_version').trim(),sourceContract:true,authoredLanding:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,disposableOnly:true,liveCalls:0}));
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
  if(dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('sanctuary-experiment-'))rmSync(directory,{recursive:true,force:true});

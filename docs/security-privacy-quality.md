@@ -1,5 +1,23 @@
 # Security, Privacy, And Quality
 
+## Authored landing boundary (22 October 2026)
+
+The mirrored `landingCopyContract` and SQL slot/map validators admit bounded
+plain text only in existing approved slots. Retained controls and exact original
+text comparisons prevent unchanged tests; durable path/template/control-scoped
+history excludes failed copy even beyond the bounded read tail. At 32 distinct
+authored exclusions the source closes further authored exploration for that
+baseline, while preserving eligible finite choices. No customer content enters
+this history. Existing binding, generation, cadence, consent and shared acquisition
+reservation checks still apply. Source50009 is additive and service-role-only;
+existing controls remain stopped until reviewed compatible consumers, schema and
+exact template binding are verified. It requires no creative activation migration.
+
+The local composed browser uses synthetic IDs and diagnostic probes, with no
+genuine assignment, enquiry, email or provider call. Rendered artifacts remain
+private evidence, never included in publication. Paired Velt pixel review uses
+hash-checked images and bounded cited metadata within existing model admission.
+
 
 ## Video donor compatibility boundary (22 October 2026)
 
