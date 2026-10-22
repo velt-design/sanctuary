@@ -1,5 +1,37 @@
 # Decision Log
 
+## 2026-10-23: Preserve grant locking through the RPC transport
+
+An installed Finance register passed direct SQL reads but PostgREST returned
+SQLSTATE 25006: STABLE RPCs run in read-only transactions, while the canonical
+approver check takes a grant-row `FOR SHARE` lock. The wrapper now explicitly
+declares VOLATILE, matching the existing Finance reader. It still performs no
+financial mutations, and the revocation/locking check remains unchanged. Cover
+`pg_proc.provolatile`, rejection in a read-only transaction and success in a
+read-write transaction. Direct SQL and synthetic checks do not replace an actual
+protected API read through PostgREST.
+Owner: `quotes-invoices-job-packs.md`.
+
+## 2026-10-23: Separate successful delivery history from unfinished attempts
+
+A prepared first quote send may still be DRAFT after provider acceptance while
+finalisation is incomplete. Finance must read canonical unfinished delivery
+alongside successful send history, rather than classifying from lifecycle or logs
+alone. Confirming attempts are distinct from ordinary sending/recovery; a pending
+or failed resend never erases an earlier successful send. Check both quote and
+invoice display precedence and filters when changing delivery presentation.
+Owner: `quotes-invoices-job-packs.md`.
+
+## 2026-10-23: Keep finance projections explicit against real source schemas
+
+The first staging-only, rolled-back Finance reader exposed a duplicate timestamp
+from `quote.*` combined with version fields. The smaller synthetic bootstrap had
+omitted the family timestamp. The corrected reader explicitly projects family
+fields and names the version timestamp, and its harness includes the real family
+metadata columns. Check schema compatibility as well as financial semantics;
+synthetic passing reads alone do not establish installed-schema compatibility.
+Owners: `quotes-invoices-job-packs.md`, `supabase-schema-map.md`.
+
 ## 2026-10-23: Recover file locality using the complete ordinary task
 
 The Singapore canary lowered authentication time but regressed both matched

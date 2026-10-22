@@ -21,6 +21,20 @@ its exact command/result. The native test constructors are in
 `supabase/tests/landing_observed_context.sql`, included by the existing disposable
 owner-decision harness. No schema install creates an observation or runs a model.
 
+## Finance register (23 October 2026 local candidate)
+
+`20261023000001_finance_register.sql` adds only service-role executable
+`finance_register_v1(actor,tab,view,search,sent,offset)`. It reuses the current
+finance grant and independently resolves invoice-draft admin visibility. One SQL
+statement returns a bounded50-row page, five recent quote versions per visible
+family, full matching counts and currency-separated totals. Canonical invoice,
+receipt/match, allocation, quote lifecycle and successful delivery evidence remain
+in their existing owners. Ambiguous project credit is not silently applied to
+issued invoices; Xero freshness is separate from internally consistent Portal
+amounts. No tables, financial commands, browser grants, provider operations or
+existing function replacements are introduced. Apply this read boundary before its
+consumer. `quotes-invoices-job-packs.md` owns the projection semantics and source map.
+
 ## Funded owner landing decisions (23 October 2026, local candidate)
 
 Forward `20261023010001_landing_owner_decisions.sql` adds no table or public

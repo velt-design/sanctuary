@@ -52,6 +52,7 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/invoice-draft-editor-fixture' ||
     pathname === '/qa/invoice-restore-fixture' ||
     pathname === '/qa/revised-quote-fixture' ||
+    pathname === '/qa/finance-register' ||
     pathname === '/qa/project-work-queue-fixture' ||
     pathname === '/qa/schedule-ops-fixture' ||
     pathname === '/qa/finance-payment-fixture' ||

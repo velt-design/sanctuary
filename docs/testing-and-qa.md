@@ -6,6 +6,21 @@ one reservation, scoped estimate preparation, null termination and unchanged
 digest replay after Stop. It uses disposable local state only. The Source HTTP
 contract and rendered page are unchanged by this migration.
 
+Finance register candidate (23 October 2026): `npm run test:finance:register`
+runs the actual read migration on disposable current-commercial PGlite fixtures
+and measures bounded invoice/quote responses at10,000 synthetic invoices and quote
+versions, including200 unfinished initial/resend intents across100 families.
+It is included in existing `npm run test:commercial:db`, already run by
+Portal Quality; no separate CI job is required. A single thread keeps the WASM
+benchmark in one worker. The 500ms warmed query target excludes setup, network and
+browser readiness, so it does not establish production or visible-load timing.
+The SQL suite also checks RPC volatility and the canonical grant lock in both
+transaction modes; separately verify a real protected PostgREST read after install.
+The ordinary component, auth/API, deferred Xero reader and gated fixture-route
+checks remain in the normal `npm run test:portal` suite. Run
+`npm run preview:finance-register` alongside a QA-enabled local Portal for the
+synthetic `/qa/finance-register` journey; it has no provider access or real data.
+
 Next security maintenance (23 October 2026): root, Marketing and Portal require
 at least Next16.4.1 and the lock resolves that exact patched release for
 GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r and GHSA-673q-mjm6-r5xr.

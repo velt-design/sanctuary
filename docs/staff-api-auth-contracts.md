@@ -585,7 +585,16 @@ Original website receipts use GET /api/staff/projects/[projectId]/enquiry-receip
 
 `/api/payments/xero` is default-dark and uses `getPaymentPilotSession`, requiring an active confirmed portal identity plus a nonrevoked `xero_payment_approvers` grant. Every action also checks origin. Approval and reversal require explicit confirmation; the server supplies the actor, never a browser actor field. Approval evidence is encrypted, time-limited and actor/tenant-bound; receipt and ledger evidence are revalidated before the transaction. Recovery returns only the current approver's match. Investigation/rejection notes require a reason and use an idempotent append-only command. The allowlisted service-role adapter `lib/invoices/xeroMatchRepository.ts` owns these bounded reads/RPCs. Generic admin access does not grant pilot approval; technical connection controls remain developer-only.
 
-`/staff/payments` requires `getPaymentPilotSession` before reads; `lib/invoices/financeReviewRepository.ts` owns the bounded service-role RPC and validates its returned shape. The SQL function rechecks the server-supplied actor grant. Searches accept at most120 characters and bounded pagination; failures render an unavailable state, not an empty queue.
+`/staff/payments` requires `getPaymentPilotSession` before its Finance register or
+retained Xero checks. Candidate `GET /api/payments/register` repeats that gate,
+supplies the session actor to service-only `finance_register_v1` and validates its
+response in `lib/finance/registerRepository.ts`. SQL rechecks the finance grant and
+resolves the actor's current admin role before including invoice drafts. Search is
+at most120 characters, pages are50 rows, and full matching totals are grouped by
+currency. Browser actors and direct table reads are not supported. Denial removes
+visible register records; failure is unavailable with retry, never an empty success.
+`lib/invoices/financeReviewRepository.ts` continues owning the existing bounded
+Xero review RPC and its returned-shape validation.
 
 `POST /api/payments/xero/mapping` requires active finance grant and same-origin request. Strict inspect/confirm bodies reject actor/tenant overrides; confirm requires explicit owner confirmation. Fresh provider reads and SQL context checks precede saving. `financeMappingRepository.ts` owns private mapping RPCs; diagnostics stay server-side.
 

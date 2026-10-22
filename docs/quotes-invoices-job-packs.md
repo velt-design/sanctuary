@@ -1,5 +1,88 @@
 # Quotes, Invoices, And Job Packs
 
+## Finance register (23 October 2026 local candidate)
+
+`/staff/payments` opens the cross-project Invoices register on Outstanding, with
+Quotes alongside it and the existing accounting tools under Xero checks. The
+existing finance grant and feature gate remain required. Invoice drafts remain
+admin-only, including inside the service-only reader. No lifecycle, payment,
+provider or delivery command runs when opening, filtering or refreshing a register.
+
+Forward migration `20261023000001_finance_register.sql` must precede this
+consumer. `finance_register_v1` rechecks the server-supplied actor grant and returns
+50 rows with full matching-set counts and totals grouped by currency. Search,
+delivery filter, view, page and selected detail are URL-owned. Browser Back retains
+them after a job visit. Old `?view=attention|current|history` bookmarks retain their
+Xero queue meaning; new Xero links include `tab=xero`.
+
+The RPC explicitly declares VOLATILE because the existing approver check locks
+the grant row with `FOR SHARE`. PostgREST must use a read-write transaction for
+that lock, even though the register performs no financial writes. Retain the
+canonical check and verify the protected API transport when changing this owner.
+
+Invoice settlement uses active canonical source-invoice receipts and exact Xero
+matches once per payment entry. A paid invoice retains its original receipt
+evidence when its scope funding is reassigned. Arbitrary stage allocations are
+funding, not settlement of an already issued OPEN invoice. Unassigned credit,
+adjustments, excess allocations or contradictory status/receipt evidence require
+checking; affected owing is unknown and explicitly excluded from the recorded
+owing total. Stored missing, stale or conflicting Xero checks are separate notices
+and do not erase internally consistent Portal amounts. Portal recorded paid is
+not a claim of a fresh bank confirmation. Drafts and voids are not outstanding.
+Successful Portal send evidence survives later failed attempts, while restored
+invoices require their current delivery generation; pending/failed sends are
+labelled rather than treated as successful.
+
+Unfinished quote delivery follows `quoteDeliveryReadiness`: initial `quote_send`
+recovery precedes `quote_resend`, excluding finalised/cancelled attempts. Only
+kind, state and activity time are read from private intents, without payloads,
+recipients or provider identifiers. Prepared, confirming, failed and attention
+states appear even when a first-send quote is still DRAFT. A successful earlier
+send remains Sent while a separate note describes an unfinished resend. Delivery
+pending finds dispatching/provider-accepted attempts, including resends. The
+compatible `sent=needs` filter is labelled Needs sending / recovery and excludes
+those confirming attempts. Delivery qualification precedes relevant-version
+selection, so All plus Delivery pending can find a prepared draft revision even
+when an older SENT version remains active. Unfiltered All still prioritises the
+issued lifecycle; filtering never changes accepted/SENT authority. Job/quote delivery controls remain the authority for
+safe recovery; this register offers no new send or retry command.
+
+Quotes select one relevant version per family for each view: latest active SENT
+for Awaiting acceptance, current accepted-lifecycle version for Accepted,
+current/prepared draft for Drafts, and explicit Declined/Expired/History views.
+A later accepted-lifecycle terminal record prevents reviving an older acceptance.
+All prioritises the latest issued lifecycle over a draft revision. Pending draft
+and current accepted version labels stay separate, with five recent versions and
+a link to full job history. Expiry uses the Auckland calendar date without changing
+the lifecycle. Older SENT versions remain accessible until explicit retirement.
+
+Implementation map:
+
+- `lib/finance/register.ts` owns the wire contract, bounded URL parsing and links;
+  `registerRepository.ts` validates one service-only RPC result.
+- `app/api/payments/register/route.ts` binds the authenticated finance actor and
+  returns uncached results, denial or unavailable. It accepts no browser actor.
+- `components/finance/FinanceRegister.tsx` owns read/retry/cancellation and URL
+  continuity; `RegisterTable.tsx` owns rows, selected detail and existing job/PDF
+  links. Real filters and table headings appear while the first read is pending,
+  with no invented counts. Checked rows remain during refresh failure; access
+  denial removes them.
+- `app/staff/payments/XeroFinanceReview.tsx` and `FinanceReadParts.server.tsx`
+  retain the deferred Xero reader, real controls/table while pending, and one
+  shared read promise for status, rows and pagination.
+- `test/finance-register.integration.test.ts` runs the actual read migration on
+  the current commercial PGlite harness. `finance-register.performance.test.ts`
+  measures bounded responses at 10,000 synthetic invoices and quote versions;
+  fixture query time does not establish production or visible browser readiness.
+- Local `/qa/finance-register` reuses the actual components over the same SQL via
+  `npm run preview:finance-register` on loopback port3167. Page and proxy return
+  404 unless development and `ENABLE_PORTAL_QA_FIXTURES=1`. It contains synthetic
+  reads and response-failure controls. Real job/PDF links retain normal protected
+  routes, so fixture navigation alone is not authenticated job integration evidence.
+
+Production installation, release and production-browser timing remain separate
+release checks. The read migration does not change canonical financial owners.
+
 ## Revised quotes with existing funding (22 October 2026 candidate)
 
 Quote acceptance uses the versioned `commercial_accept_quote_with_project_lock_v2`
