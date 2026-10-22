@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { projects, type Project } from '../apps/marketing/data/projects';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
+import { getProjectCaseStudyHero } from '../apps/marketing/app/projects/projectSeo';
+import { getProjectEditorialStory } from '../apps/marketing/app/projects/projectEditorialStories';
 
 const representativeProject = projects[0];
 const representativeRoute = `/projects/${representativeProject.slug}`;
@@ -47,7 +49,12 @@ function visibleProjectsMain(page: Page) {
   return page.locator('main[data-projects-experience]:visible').last();
 }
 
-function projectGalleryItemCount(project: Project) { return project.gallery.length; }
+function galleryImages(project: Project) {
+  return project.slug === 'warkworth-outdoor-room'
+    ? project.gallery.filter((_, index) => [1, 3, 6].includes(index))
+    : project.gallery;
+}
+function projectGalleryItemCount(project: Project) { return galleryImages(project).length; }
 
 async function expectNoPageOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
@@ -410,34 +417,21 @@ test('Atelier Shu retains its governed front-on canopy case-study image', async 
   );
   await expect(hero.locator('img')).toHaveCSS('object-position', '50% 18%');
   const gallery = visibleProjectsMain(page).locator('#project-gallery [data-responsive-gallery]');
-  const source = projects.find(item=>item.slug==='atelier-shu-cafe')!;
-  const seen:string[]=[];
-  for(let i=0;i<source.gallery.length;i++){
-    seen.push(await gallery.locator('[data-gallery-frame-active] img').getAttribute('src') ?? '');
-    await gallery.getByRole('button',{name:/Next image/}).click();
-  }
-  expect(seen.some(src=>src.includes('project-atelier-shu-05.jpg'))).toBe(true);
-  expect(seen.some(src=>src.includes('project-atelier-shu-04.jpg'))).toBe(true);
+  await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('src', /project-atelier-shu-04.jpg/);
+  await expect(visibleProjectsMain(page).locator('[data-project-decision] img')).toHaveCount(2);
+  await expect(visibleProjectsMain(page).locator('[data-project-decision] img').first()).toHaveAttribute('src', /project-atelier-shu-05.jpg/);
 
   await page.goto('/sitemap-images.xml');
   await expect(page.locator('body')).toContainText(`${publicOrigin}/images/${imagePath}`);
 });
 
-test('Tindalls Bay leads with the full exterior and retains both supporting views', async ({ page }) => {
+test('Tindalls Bay leads with the finished patio and retains the exterior and roof details', async ({ page }) => {
   await page.goto('/projects/tindalls-bay-pavilion');
   const main = visibleProjectsMain(page);
-
-  await expect(main.locator('.project-case-study__hero img')).toHaveAttribute(
-    'src',
-    /project-tindalls-bay-02\.jpg/,
-  );
-  const gallery=main.locator('#project-gallery [data-responsive-gallery]');
-  const source=projects.find(item=>item.slug==='tindalls-bay-pavilion')!;
-  for(let i=0;i<source.gallery.length;i++){
-   await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',source.gallery[i].alt);
-   await gallery.getByRole('button',{name:/Next image/}).click();
-  }
-
+  await expect(main.locator('.project-case-study__hero img')).toHaveAttribute('src', /project-tindalls-bay-03\.jpg/);
+  await expect(main.locator('[data-project-decision] img')).toHaveCount(2);
+  await expect(main.locator('[data-project-decision] img').first()).toHaveAttribute('src', /project-tindalls-bay-02\.jpg/);
+  await expect(main.locator('[data-project-decision] img').last()).toHaveAttribute('src', /project-tindalls-bay\.jpg/);
 });
 
 test('Atelier imagery stays selective and claim-aligned across guide surfaces', async ({ page }) => {
@@ -495,17 +489,22 @@ test('every canonical project route has complete case-study structure, metadata,
       'href',
       `${publicOrigin}/projects/${project.slug}`,
     );
-    await expect(caseStudy.locator('.project-case-study__intro')).toContainText(project.blurb);
-    await expect(caseStudy.locator('#project-story')).toContainText(project.constraint);
-    await expect(caseStudy).toContainText(project.roofApproach);
+    const isWarkworth = project.slug === 'warkworth-outdoor-room';
+    const story = getProjectEditorialStory(project);
+    const isPhotographic = isWarkworth || Boolean(story);
+    await expect(caseStudy.locator(isPhotographic ? 'header' : '.project-case-study__intro')).toContainText(project.blurb);
+    await expect(caseStudy.locator('#project-story')).toContainText(isPhotographic ? story?.brief ?? project.description[0] : project.constraint);
+    if (isWarkworth) await expect(caseStudy).toContainText('Solid COLORSTEEL roofing and cedar lining');
+    else if (story) await expect(caseStudy.locator('#project-details')).toContainText(story.detailSummary);
+    else await expect(caseStudy).toContainText(project.roofApproach);
     await expect(caseStudy.locator('.project-case-study__fact-list dt')).not.toHaveCount(0);
     expect(
       await caseStudy.locator('.project-case-study__fact-list dd').evaluateAll(
         (elements) => elements.every((element) => Boolean(element.textContent?.trim())),
       ),
     ).toBe(true);
-    await expect(caseStudy.getByRole('heading', { name: 'How it comes together.' })).toBeVisible();
-    await expect(caseStudy.getByRole('link', { name: /Send project brief/ })).toHaveAttribute('href', buildEnquiryHref({
+    await expect(caseStudy.getByRole('heading', { name: isPhotographic ? 'The details.' : 'How it comes together.' })).toBeVisible();
+    await expect(caseStudy.getByRole('link', { name: isPhotographic ? /Discuss a similar project/ : /Send project brief/ }).first()).toHaveAttribute('href', buildEnquiryHref({
       enquiryType: project.type === 'Commercial' ? 'commercial' : 'residential',
       sourcePath: '/projects/'+project.slug, sourceComponent: 'project_cta', sourceProject: project.slug,
     }));
@@ -515,13 +514,13 @@ test('every canonical project route has complete case-study structure, metadata,
     await expect.poll(
       () => hero.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
     ).toBe(true);
-    const caseStudyHeroImage = project.slug === 'warkworth-outdoor-room' ? project.gallery[0] : project.caseStudyHeroImage ?? project.heroImage;
+    const caseStudyHeroImage = getProjectCaseStudyHero(project);
     await expect(hero).toHaveAttribute('src', new RegExp(
       caseStudyHeroImage.src.split('/').at(-1)?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') ?? '',
     ));
     await expect(hero).toHaveCSS(
       'object-position',
-      !caseStudyHeroImage.objectPosition || caseStudyHeroImage.objectPosition === 'center'
+      isWarkworth ? '50% 55%' : !caseStudyHeroImage.objectPosition || caseStudyHeroImage.objectPosition === 'center'
         ? '50% 50%'
         : caseStudyHeroImage.objectPosition,
     );
@@ -556,7 +555,7 @@ test('known data gaps are omitted instead of becoming invented or empty facts', 
 
   await page.goto('/projects/warkworth-outdoor-room');
   facts = visibleProjectsMain(page).locator('.project-case-study__fact-list');
-  await expect(facts).toContainText('Freestanding');
+  await expect(visibleProjectsMain(page).locator('#project-details')).toContainText('Freestanding');
 });
 
 test('long project labels and partial dimensions remain readable at the minimum width', async ({ page }) => {
@@ -582,7 +581,7 @@ test('the editorial project journey retains visible facts and touch-safe actions
       await expect(main.locator('h1:visible')).toHaveCount(1);
       await expect(main.locator('.project-case-study__hero img')).toBeVisible();
       await expect(main.locator('.project-case-study__fact-list')).toBeVisible();
-      await expect(main.getByRole('link',{name:/Send project brief/})).toHaveAttribute('href',buildEnquiryHref({enquiryType:item.project!.type === 'Commercial'?'commercial':'residential',sourcePath:item.route,sourceComponent:'project_cta',sourceProject:item.project!.slug}));
+      await expect(main.getByRole('link',{name:/Discuss a similar project/}).first()).toHaveAttribute('href',buildEnquiryHref({enquiryType:item.project!.type === 'Commercial'?'commercial':'residential',sourcePath:item.route,sourceComponent:'project_cta',sourceProject:item.project!.slug}));
       await expectNoPageOverflow(page); await expectNoNestedVerticalScroll(page); await expectMinimumTouchTargets(page); await expectLogicalVisibleHeadingOrder(page);
     }
   }
@@ -607,7 +606,7 @@ for (const viewport of [
 
     const gallery=main.locator('#project-gallery [data-responsive-gallery]');
     await expect(gallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
-    await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',representativeProject.gallery[0].alt);
+    await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',galleryImages(representativeProject)[0].alt);
     await expect(gallery.getByRole('button')).toHaveCount(2);
     for (const control of await gallery.getByRole('button').all()) expect((await control.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     await expect(main.locator('[data-project-next]')).toBeVisible();
@@ -619,8 +618,8 @@ test('project gallery supports keyboard, pointer and every governed image',async
  const gallery=visibleProjectsMain(page).locator('#project-gallery [data-responsive-gallery]');
  await gallery.focus();await page.keyboard.press('End');await expect(gallery).toHaveAttribute('data-gallery-position',projectGalleryItemCount(representativeProject)+'/'+projectGalleryItemCount(representativeProject));
  await page.keyboard.press('Home');await expect(gallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
- for(let index=0;index<representativeProject.gallery.length;index++){
-  await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',representativeProject.gallery[index].alt);
+ for(let index=0;index<galleryImages(representativeProject).length;index++){
+  await expect(gallery.locator('[data-gallery-frame-active] img')).toHaveAttribute('alt',galleryImages(representativeProject)[index].alt);
   await gallery.getByRole('button',{name:/Next image/}).click();
  }
  await expect(gallery).toHaveAttribute('data-gallery-position','1/'+projectGalleryItemCount(representativeProject));
@@ -928,7 +927,7 @@ test('technical detail and one related-project path remain usable', async ({ pag
 
   await expect(main.locator('[data-related-projects] a')).not.toHaveCount(0);
   await expect(main.locator('.project-case-study__pagination')).toHaveCount(0);
-  await expect(main.getByRole('link', { name: /Send project brief/ })).toBeVisible();
+  await expect(main.getByRole('link', { name: /Discuss a similar project/ }).first()).toBeVisible();
 
   const relatedProject = main.locator('[data-related-projects] a').first();
   const relatedProjectHref = await relatedProject.getAttribute('href');
@@ -940,7 +939,7 @@ test('technical detail and one related-project path remain usable', async ({ pag
   const gallery = main.locator('#project-gallery [data-responsive-gallery]');
   await gallery.getByRole('button',{name:/Next image/}).click();
   await expect(gallery).toHaveAttribute('data-gallery-position','2/'+projectGalleryItemCount(representativeProject));
-  await expect(main.getByRole('link', { name: /Send project brief/ })).toHaveAttribute('href', buildEnquiryHref({
+  await expect(main.getByRole('link', { name: /Discuss a similar project/ }).first()).toHaveAttribute('href', buildEnquiryHref({
     enquiryType: representativeProject.type === 'Commercial'
       ? 'commercial'
       : 'residential',
