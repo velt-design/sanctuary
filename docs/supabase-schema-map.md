@@ -1,6 +1,22 @@
 # Supabase Schema Map
 
-## Exact packaging-probe continuation (22 October 2026)
+## Exact same-candidate probe successor (22 October 2026)
+
+Forward20261022120001 extends only the existing private
+landing_packaging_recovery_expiry(uuid,jsonb), retaining its ACL/search path/UTC
+contract, and adds a unique prepare_successor_recovery receipt per experiment.
+The fixed ordinal4 proof binds the existing replacement, original expiry,
+correction release, complete previous recovery receipt and expired zero-visit
+third probe. All older probes must still match their original zero-visit hashes.
+The replacement must remain candidate, unreviewed/unpublished, under the same
+controls and global reservation with no genuine assignments. Existing signed
+probe atomically admits only the pinned new UUID, with normal idempotent receipt
+readback; fifth/changed/replayed new work denies. No prepare/new experiment,
+Origin/CSRF change, public endpoint, model allowance or credential is introduced.
+The migration appends no operational receipt. Native test composes through the
+earlier real three-probe/replacement history and preserves it after its rollback.
+
+## Historical packaging-probe continuation (22 October 2026)
 
 Forward20261022110001 adds private landing_packaging_recovery_expiry(uuid,jsonb)
 and landing_packaging_prepare(uuid,jsonb), patches the two existing recovery
