@@ -62,6 +62,27 @@ professional assertions now match the current headline and story/disclosure
 owners. Authored Playwright coverage is distinct from actual CUA/independent
 preview verification; no real enquiry submission is needed for this presentation.
 
+## Project Files Explorer (22 October 2026)
+
+Run the focused `ProjectSharePointFilesPanel.test.tsx`,
+`projectFilesNavigation.test.ts` and `lib/projects/sharePointFiles` Vitest lanes,
+full Portal types and scoped ESLint. The component lane mounts actual TanStack
+observers and the real Work/Files wrapper, covering deduplication, canonical root
+return, owner isolation, bounded finding across cursors, cancellation/races,
+denial/retry, selected-body reuse, refresh and remount/scroll continuity.
+The return regressions model actual overflow clamping and asynchronous cursor
+pages, partial restore failure/retry, deliberate user takeover, filtered/full
+position separation and the ten-page automatic budget. Keyboard tests cover
+desktop Escape/Close, current gallery selection and narrow row return without
+additional content reads for opening/closing alone. Local CUA rechecks use the
+actual 438-item fixture and repeated reload, separate from JSDOM geometry.
+`node scripts/test-project-sharepoint-files-browser.mjs` verifies the actual open
+handler with synthetic auth/Graph/provider boundaries, raster recovery, PDF canvas,
+dialog reuse and native original filename/bytes/hash at desktop/mobile widths.
+`node scripts/test-project-sharepoint-files-pglite.mjs` preserves the disposable
+database/auth/deletion lane. `project-sharepoint-files.md` distinguishes local
+fixture stage/request comparisons from unverified live Graph/large-file timing.
+
 ## Project stories rollout coverage (22 October 2026)
 
 `PhotographicProjectContent.test.tsx` checks all 14 configured stories, complete

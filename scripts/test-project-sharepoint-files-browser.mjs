@@ -12,8 +12,11 @@ const output = path.resolve('test-results/sharepoint-files');
 await mkdir(output, { recursive: true });
 const built = await build({
   stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import {QueryClient,QueryClientProvider} from '@tanstack/react-query'; import Panel from './apps/portal/components/projects/ProjectPage/tabs/overview/ProjectSharePointFilesPanel'; import './apps/portal/app/globals.css'; import './apps/portal/components/ui/foundation/foundation.tokens.css'; const client=new QueryClient(); createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><Panel projectId="proj_fixture" host="synthetic" /></QueryClientProvider>);`, resolveDir: process.cwd(), loader: 'tsx' },
-  bundle: true, write: false, outfile: path.join(output, 'fixture.js'), alias: { '@': path.resolve('apps/portal') }, jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' },
-  plugins: [{ name: 'synthetic-link', setup(build) { build.onResolve({ filter: /^next\/link$/ }, () => ({ path: 'next/link', namespace: 'synthetic-link' })); build.onLoad({ filter: /.*/, namespace: 'synthetic-link' }, () => ({ contents: `import React from 'react';export default function Link({prefetch,children,...props}){return <a {...props}>{children}</a>}`, loader: 'jsx', resolveDir: process.cwd() })); } }],
+  bundle: true, format: 'esm', write: false, outfile: path.join(output, 'fixture.js'), alias: { '@': path.resolve('apps/portal') }, jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' },
+  plugins: [{ name: 'synthetic-link', setup(build) {
+    build.onResolve({ filter: /PortalAuthProvider$/ }, () => ({ path: 'auth-context', namespace: 'synthetic-auth' }));
+    build.onLoad({ filter: /.*/, namespace: 'synthetic-auth' }, () => ({ contents: `import {createContext} from 'react';export const PortalAuthContext=createContext(null);`, loader: 'js', resolveDir: process.cwd() }));
+    build.onResolve({ filter: /^next\/link$/ }, () => ({ path: 'next/link', namespace: 'synthetic-link' })); build.onLoad({ filter: /.*/, namespace: 'synthetic-link' }, () => ({ contents: `import React from 'react';export default function Link({prefetch,children,...props}){return <a {...props}>{children}</a>}`, loader: 'jsx', resolveDir: process.cwd() })); } }],
 });
 const rootId = '11111111-1111-4111-8111-111111111111';
 const openFile = await buildSyntheticOpenHandler();
@@ -30,6 +33,7 @@ globalThis.__sharePointHarnessGraph = async (_db, projectId, selectedRoot) => {
 };
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  if (url.pathname === '/pdfjs-dist/build/pdf.worker.min.mjs') { response.setHeader('content-type', 'application/javascript'); response.end(await readFile(path.resolve('node_modules/pdfjs-dist/build/pdf.worker.min.mjs'))); return; }
   const opened = url.pathname.match(/^\/api\/staff\/v1\/projects\/([^/]+)\/files\/([^/]+)\/open$/);
   if (opened) {
     const result = await openFile(new Request(origin + request.url, { headers: request.headers }), { params: Promise.resolve({ projectId: opened[1], itemId: opened[2] }) });
@@ -50,10 +54,10 @@ const server = createServer(async (request, response) => {
     const folder = url.searchParams.get('folderId');
     const root = url.searchParams.get('rootId') ?? rootId;
     response.end(JSON.stringify({ state: 'ready', roots: [{ id: rootId, itemId: 'root', label: 'Current project' }, { id: '22222222-2222-4222-8222-222222222222', itemId: 'other', label: 'Earlier enquiry' }], rootId: root, folderId: folder ?? 'root', cursor: null,
-      items: folder ? Object.entries(files).map(([id, file]) => ({ id, name: file.name, kind: 'file', size: id === 'rhino' ? 470000000 : file.bytes.length, viewable: id !== 'rhino' })) : [{ id: 'cad', name: '3 CAD', kind: 'folder', size: 0, viewable: false }] })); return;
+      items: folder ? Object.entries(files).map(([id, file]) => ({ id, name: file.name, kind: 'file', size: id === 'rhino' ? 470000000 : file.bytes.length, viewable: id !== 'rhino', contentType: file.mime })) : [{ id: 'cad', name: '3 CAD', kind: 'folder', size: 0, viewable: false }] })); return;
   }
   if (['/fixture.js', '/fixture.css'].includes(url.pathname)) { response.setHeader('content-type', url.pathname.endsWith('js') ? 'application/javascript' : 'text/css'); response.end(built.outputFiles.find(file => path.basename(file.path) === url.pathname.slice(1)).contents); return; }
-  response.setHeader('content-type', 'text/html'); response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/fixture.css"><style>:root{--font-inter:Arial}body{font-family:var(--ui-font-body)}</style></head><body><main id="root" style="max-width:1000px;margin:auto;padding:16px"></main><script src="/fixture.js"></script></body></html>');
+  response.setHeader('content-type', 'text/html'); response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/fixture.css"><style>:root{--font-inter:Arial}body{font-family:var(--ui-font-body)}</style></head><body><main id="root" style="max-width:1200px;margin:auto;padding:16px"></main><script type="module" src="/fixture.js"></script></body></html>');
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 origin = `http://127.0.0.1:${server.address().port}`;
@@ -61,22 +65,19 @@ let browser;
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const errors = []; page.on('pageerror', error => { errors.push(error.message); console.error('browser fixture page error:', error.message); });
   await page.goto(origin);
-  await page.getByRole('button', { name: '3 CAD', exact: true }).click();
+  await page.getByRole('button', { name: '3 CAD Folder', exact: true }).click();
   await page.getByText('Original design.3dm').waitFor();
-  assert.equal(await page.getByRole('link', { name: 'Download', exact: true }).count(), 3);
-  assert.equal(await page.getByRole('link', { name: 'View', exact: true }).count(), 2);
-  const photoView = page.getByRole('row').filter({ hasText: 'Site photo.png' }).getByRole('link', { name: 'View', exact: true });
+  assert.equal(await page.getByRole('link', { name: /^Download / }).count(), 3);
+  const photoView = page.getByRole('button', { name: 'Site photo.png Preview available', exact: true });
   failOpen = true;
-  const [failedPreview] = await Promise.all([page.waitForEvent('popup'), photoView.click()]);
-  await failedPreview.getByText('Project files are temporarily unavailable.', { exact: false }).waitFor();
-  await failedPreview.close();
-  const [photoPreview] = await Promise.all([page.waitForEvent('popup'), photoView.click()]);
-  await photoPreview.waitForFunction(() => { const image = document.querySelector('img'); return image?.complete && image.naturalWidth === 1 && image.naturalHeight === 1; });
-  await photoPreview.screenshot({ path: path.join(output, 'photo-preview.png') });
-  await photoPreview.close();
-  const originalLink = page.getByRole('row').filter({ hasText: 'Original design.3dm' }).getByRole('link', { name: 'Download', exact: true });
+  await photoView.click();
+  await page.getByText('Preview unavailable', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await page.waitForFunction(() => { const image = document.querySelector('img'); return image?.complete && image.naturalWidth === 1 && image.naturalHeight === 1; });
+  await page.screenshot({ path: path.join(output, 'photo-preview.png') });
+  const originalLink = page.getByRole('link', { name: 'Download Original design.3dm', exact: true });
   const [original] = await Promise.all([page.waitForEvent('download'), originalLink.click()]);
   assert.equal(original.suggestedFilename(), files.rhino.name);
   assert.equal(await original.failure(), null);
@@ -88,6 +89,13 @@ try {
   const pdf = await page.request.get(`${origin}/api/staff/v1/projects/proj_fixture/files/pdf/open?rootId=${rootId}&mode=view`);
   assert.equal(pdf.status(), 200); assert.equal(pdf.headers()['content-type'], 'application/pdf');
   assert.deepEqual(await pdf.body(), files.pdf.bytes);
+  await page.getByRole('button', { name: 'Design.pdf Preview available', exact: true }).click();
+  await page.waitForFunction(() => { const canvas = document.querySelector('canvas'); return canvas && canvas.width > 0 && canvas.height > 0; });
+  assert.equal(providerRequests.filter(request => request.id === 'pdf').length, 2, 'HTTP byte probe and selected canvas use one read each');
+  await page.getByRole('button', { name: 'Expand preview', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Preview Design.pdf', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close preview', exact: true }).click();
+  assert.equal(providerRequests.filter(request => request.id === 'pdf').length, 2, 'Expanding must not refetch selected file bytes');
   assert.ok(providerRequests.some(request => request.id === 'photo'));
   assert.ok(providerRequests.some(request => request.id === 'rhino'));
   assert.ok(providerRequests.every(request => request.authorization === undefined));
@@ -95,16 +103,16 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: path.join(output, 'mobile.png'), fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Page overflows mobile viewport');
-  const download = await page.getByRole('link', { name: 'Download', exact: true }).first().boundingBox();
+  const download = await page.getByRole('link', { name: 'Download Original design.3dm', exact: true }).boundingBox();
   assert.ok(download && download.x >= 0 && download.x + download.width <= 390, 'Mobile download is outside the visible viewport');
   await page.getByRole('button', { name: 'Back to project folder' }).click();
-  await page.getByRole('button', { name: '3 CAD', exact: true }).waitFor();
-  await page.getByLabel('Project folder').selectOption('22222222-2222-4222-8222-222222222222');
-  await page.getByRole('button', { name: '3 CAD', exact: true }).waitFor();
+  await page.getByRole('button', { name: '3 CAD Folder', exact: true }).waitFor();
+  await page.getByLabel('Project folder', { exact: true }).selectOption('22222222-2222-4222-8222-222222222222');
+  await page.getByRole('button', { name: '3 CAD Folder', exact: true }).waitFor();
   fail = true; await page.getByRole('button', { name: 'Refresh files' }).click();
   await page.getByText('SharePoint files could not be loaded').waitFor();
   await page.getByRole('button', { name: /retry/i }).click();
-  await page.getByRole('button', { name: '3 CAD', exact: true }).waitFor();
+  await page.getByRole('button', { name: '3 CAD Folder', exact: true }).waitFor();
   assert.deepEqual(errors, []);
-  console.log('PASS: isolated desktop/mobile browsing; actual View click renders a PNG after failed-action retry; actual Download click preserves synthetic original filename/bytes/hash; real open-handler PDF bytes/headers; navigation/return and list retry. Auth/Graph boundaries are synthetic. No real SharePoint, valid Rhino document or native PDF viewer acceptance claimed.');
+  console.log('PASS: actual Explorer desktop/mobile browsing; selected raster retry; original filename/bytes/hash; protected open-handler PDF bytes and actual PDF canvas; expanded preview reuses bytes; navigation/return and list retry. Auth/Graph boundaries and Rhino bytes are synthetic; no live SharePoint delivery claim.');
 } finally { delete globalThis.__sharePointHarnessGraph; await browser?.close(); await new Promise(resolve => server.close(resolve)); }
