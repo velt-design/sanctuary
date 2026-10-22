@@ -26,7 +26,7 @@ it('keeps machine HMAC commands separate from same-origin visitors and rejects i
 it('shares one finite deadline and compiled template across public admission, while denying caller-selected arms or missing consent',async()=>{
  const timeout=vi.spyOn(AbortSignal,'timeout');
  const response=await POST(request(input));expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toBe('private, no-store');
- expect(db.signals).toHaveLength(2);expect(db.signals[0]).toBe(db.signals[1]);expect(timeout).toHaveBeenCalledWith(1500);expect(maxDuration).toBe(5);
+ expect(db.signals).toHaveLength(2);expect(db.signals[0]).toBe(db.signals[1]);expect(timeout).toHaveBeenCalledWith(3000);expect(maxDuration).toBe(5);
  expect(db.rpc.mock.calls[1]![1]).toMatchObject({p_template:EXPERIMENT_TEMPLATE,p_campaign:'11001',p_adset:'11002',p_ad:'11003'});
  db.rpc.mockClear();expect((await POST(request({...input,arm:'challenger'}))).status).toBe(503);expect(db.rpc).not.toHaveBeenCalled();
  expect((await POST(request({...input,consent:false}))).status).toBe(503);expect(db.rpc.mock.calls.every(call=>call[0]==='marketing_public_rate_limit_take')).toBe(true);

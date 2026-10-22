@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-10-23: Budget the complete landing visit response
+
+A hosted diagnostic committed its fourth assignment but returned 503 before the
+client received confirmation. The 1.5-second shared limiter/visit budget and
+provider timing strongly support deadline exhaustion; the old logs cannot prove
+the exact exception. A real loopback Supabase transport and PostgreSQL regression
+reproduces that partial outcome, and malformed responses remain a distinct cause.
+Use one 3-second budget inside the unchanged 5-second route for genuine visitors
+and diagnostics, no retry or privileged timing bypass. Fixed stage/code logs
+distinguish deadline, client abort and transport without retaining private values.
+No committed counter may manufacture a successful assignment or exposure.
+See [security and privacy](security-privacy-quality.md).
+
 ## 2026-10-22: Verify protected preview reuse through the platform
 
 A platform may rewrite a conditional response to304 and strip application

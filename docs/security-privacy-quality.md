@@ -90,9 +90,14 @@ Default-off environment: `SANCTUARY_LANDING_EXPERIMENT_ENABLED=false` and
 control scope/template/admission and publishing flags remain separate. The command
 route requires a signed30-second bounded body, no Origin/query, strict fixed stage
 schemas and service-only RPCs. Visitor JSON cannot select an arm, template or copy.
-Same-origin public assign/expose/revoke has a streaming4KB body limit and one1.5s
-deadline shared by the existing30/minute/IP-hash limiter and visit RPC; host maximum
-is5seconds. Errors fall back to authored control, withdrawal is best effort. These
+Same-origin public assign/expose/revoke has a streaming 4KB body limit and one 3s
+deadline shared by the existing 30/minute/IP-hash limiter and visit RPC; host maximum
+is 5 seconds, leaving 2 seconds for cold-start and response handling. The same budget
+applies to genuine visitors and signed diagnostics, without retry. Fixed failure
+logs contain only request/authority/rate_limit/visit/response stage and
+timeout/aborted/transport/unavailable code, never IDs, headers, bodies or errors.
+Committed counters do not substitute for a valid response. Errors fall back to
+authored control, withdrawal is best effort. These
 are per-request/rate bounds, not an aggregate arbitrary-traffic spending guarantee.
 
 Only exact two Meta paths participate. Signed per-path receipts are transient
