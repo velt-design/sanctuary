@@ -396,6 +396,26 @@ policy and required migration are mapped in the schema owner. Local synthetic
 pricing/enquiry checks do not establish live pricing, receipt or attribution.
 
 
+## Inline mobile estimate scroll stability (22 October 2026)
+
+The shared `FunnelJourney` price/action stays in normal flow and uses native
+bottom-sticky positioning on phones. The former observer changed its own section
+height by switching the estimate to fixed positioning and adding an approximate
+padding allowance. That could repeatedly cross the observation threshold and
+move the document while scrolling. There is no observer, spacer estimate or
+scroll-state layout toggle now. The same single price and enquiry action retain
+one compact geometry as they join the controls and leave with the section.
+
+The existing route-scoped document-scroll rule explicitly uses overflow-x:clip
+to avoid the global mobile hidden-overflow rule creating a non-scrolling BODY
+container for sticky descendants. Existing modal/menu scroll locks remain intact.
+An open consent banner or focused decimal text input makes the same-size panel
+static; range-slider focus keeps it sticky. Balanced columns preserve the price
+and44px retry target at320px. No prices, drafts, tracking or enquiry rules change.
+This fixes both exact Facebook paths and their shared Google/compatibility/SEO
+consumers. Desktop retains the existing inline panel. Hardware-specific keyboard,
+browser chrome and rubber-band behaviour require real-device verification.
+
 ## Channel-page structure (20 October 2026)
 
 The channel structure separates acquisition pages from indexed research pages.

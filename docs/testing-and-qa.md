@@ -1,5 +1,16 @@
 # Testing And QA
 
+## Facebook mobile sticky estimate repair (22 October 2026)
+
+The Facebook browser suite exercises both actual /ads/facebook destinations and
+the related Google owner at320/390: scroll down/up across entry and exit, constant
+section height, no scroll drift, readable panel children, cookie and decimal-input
+focus, range focus, and enquiry handoff. Existing channel tests retain price,
+saved-design/full-designer return, attribution, error/retry and native fallback
+coverage. Google tests assert the panel leaves the viewport with its section
+rather than relying on the removed observer state. Local CUA inspection and
+authored browser coverage are recorded separately; emulation is not hardware.
+
 ## Exact preparation recovery (22 October 2026)
 
 scripts/test-meta-creative-ledger-db.mjs installs the forward recovery migration
