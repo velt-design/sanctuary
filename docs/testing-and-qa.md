@@ -13,6 +13,19 @@ Actual optimized Flight decoding, bundle size and full-document encoded bytes
 remain separate evidence; offline JSON/whole-buffer compression is not a hosted
 speed measurement.
 
+## Professionals photographic presentation (22 October 2026)
+
+Focused route tests preserve canonical/config identity, optional professional
+fields and guided-context attribution, and check project roles, unique existing
+photos and visible engineer responsibility outside the technical disclosures.
+Run the existing audience-form/content contracts with the route tests and full
+Marketing types. The audience browser suite includes first/repeated enquiry focus,
+required phone, enabled files, native fallback, all three case-study Back returns
+and technical disclosure open/close at phone and desktop sizes. The phase-four
+professional assertions now match the current headline and story/disclosure
+owners. Authored Playwright coverage is distinct from actual CUA/independent
+preview verification; no real enquiry submission is needed for this presentation.
+
 ## Project stories rollout coverage (22 October 2026)
 
 `PhotographicProjectContent.test.tsx` checks all 14 configured stories, complete
