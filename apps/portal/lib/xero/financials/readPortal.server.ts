@@ -21,10 +21,18 @@ export async function readPortalFinancials(params:URLSearchParams,signal:AbortSi
       const current=await getFreshPaymentPilotSession();
       if(!current||current.user.id!==userId||!isDeveloper(current.user))throw new Error('FINANCIALS_ACCESS_CHANGED');
     },true);
+    let report:FinancialEvidence;
+    let cleanupFailed=false,cleanupError:unknown;
     try {
-      const report=panel?.success?await readFinancialPanel(panel.data,source.deps,source.deadline):await readFinancials(parsed.data,source.deps,source.deadline);
-      return {ok:true,report};
-    } finally { await source.close(); }
+      report=panel?.success?await readFinancialPanel(panel.data,source.deps,source.deadline):await readFinancials(parsed.data,source.deps,source.deadline);
+    } finally {
+      try { await source.close(); }
+      catch(error) { cleanupFailed=true;cleanupError=error; }
+    }
+    // A failed read propagates through finally unchanged. Cleanup failure only
+    // rejects otherwise-successful evidence, never replaces an access denial.
+    if(cleanupFailed)throw cleanupError;
+    return {ok:true,report};
   } catch(error) {
     if(error instanceof Error&&error.message==='FINANCIALS_ACCESS_CHANGED')return denied();
     return financialReadFailure();

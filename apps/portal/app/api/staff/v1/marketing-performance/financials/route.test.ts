@@ -46,3 +46,14 @@ it('closes the request-owned connector on success, source failure and access los
  mocks.read.mockRejectedValueOnce(new Error('FINANCIALS_ACCESS_CHANGED'));await GET(request());expect(mocks.close).toHaveBeenCalledTimes(3);
  expect(mocks.runtime.mock.calls[0][3]).toBe(true);
 });
+
+it.each([
+ ['FINANCIALS_ACCESS_CHANGED',403],
+ ['Unrelated private source failure',503],
+ [null,503],
+] as const)('preserves primary source error %s when cleanup also rejects',async(primary,status)=>{
+ if(primary)mocks.read.mockRejectedValueOnce(new Error(primary));
+ mocks.close.mockRejectedValueOnce(new Error('Private cleanup failure'));
+ const result=await GET(request());expect(result.status).toBe(status);
+ expect(mocks.close).toHaveBeenCalledOnce();expect(await result.text()).not.toContain('Private');
+});
