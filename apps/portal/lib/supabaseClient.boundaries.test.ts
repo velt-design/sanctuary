@@ -42,6 +42,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/marketingIntegrations/metaCredentials/store.ts', // Exact credential lease/checkpoint RPC only; no token storage or table access.
   'apps/portal/lib/projects/createProjectCommand.ts',
   'apps/portal/lib/projects/sharePointFiles/provision.ts', // Cron-only leased folder command; staff file reads remain user-bound. No direct private table access.
+  'apps/portal/lib/projects/sharePointFiles/previews/repository.ts', // Private cache RPC/Storage adapter; byte delivery follows fresh user/RPC/Graph proof.
   'apps/portal/lib/quotes/adminLifecycle.ts',
   'apps/portal/lib/quotes/internalName.server.ts',
   'apps/portal/lib/quotes/manualQuoteScope.server.ts',

@@ -104,6 +104,9 @@ function isApprovedServerFlow(file) {
   // private tables stay inaccessible and staff file reads use the auth-bound client.
   // See docs/project-sharepoint-files.md; no provider-delete or generic DB command.
   if (file === 'apps/portal/lib/projects/sharePointFiles/provision.ts') return true;
+  // Private preview Storage and scoped manifest/lease RPC only. Every new
+  // recipient response retains current user/RPC/Graph proof in the batch owner.
+  if (file === 'apps/portal/lib/projects/sharePointFiles/previews/repository.ts') return true;
   // Delegated bearer grants cannot use staff cookies. This server-only adapter
   // calls scoped grant RPCs (which recheck authority) and the existing lost-
   // conversion owner; see docs/staff-api-auth-contracts.md. No general DB access.
@@ -164,6 +167,7 @@ function suggestedOwner(file, category) {
   if (category === 'compatibility-helper') return 'service-role helper boundary; keep server-only';
   if (file === 'scripts/sharepoint-project-files.ts') return 'operator-only verified SharePoint binding import; preflight default, explicit apply';
   if (file === 'apps/portal/lib/projects/sharePointFiles/provision.ts') return 'authenticated cron; scoped project-folder lease/publication RPC owner';
+  if (file === 'apps/portal/lib/projects/sharePointFiles/previews/repository.ts') return 'private versioned preview cache; current recipient/RPC/Graph proof before every delivery';
   if (file.startsWith('scripts/')) return 'operational script; document env and keep out of browser bundles';
   if (file.startsWith('apps/marketing/')) return 'marketing server/public-token or lead-capture owner';
   if (file.startsWith('apps/worker/')) return 'dedicated worker RPC/auth boundary; keep service-role access narrow and server-only';

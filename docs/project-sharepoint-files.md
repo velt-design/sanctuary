@@ -1,12 +1,12 @@
 # Project SharePoint files
 
-Status: Dedicated Files, protected recent-preview verification, open-only authentication deduplication and the workspace test dependency correction are live as of 23 October 2026. The combined Singapore release regressed both representative first opens despite lower authentication time. A narrow local recovery returns only the open route to Sydney, retaining every current session/RPC/Graph check and the dependency fix. The owner's almost-instant outcome remains unmet; recovery performance is unverified. Large original delivery retains its separate acceptance requirement. No bindings, grants, provisioning or staff changeover changes.
+Status: Dedicated Files, protected recent-preview verification and the Sydney recovery are live. Recovery observed representative photo/PDF decoded bytes in about 1.98/1.43 seconds; the owner's almost-instant outcome remains open. The current local candidate adds private prepared photo/PDF storage, bounded recipient preloading and active-folder reconciliation, approved on 23 October. It has not activated Storage, schema, configuration or a hosted worker. Native database/Storage and real-source acceptance remain required. Originals, bindings, grants, provisioning and staff changeover retain their existing contracts.
 
 ## Outcome and ownership
 
 The owner's request is to link SharePoint files to their Portal projects and automatically prepare project folders for new enquiries, while leaving staff changeover for later. The main project **Files** tab includes verified SharePoint roots and preserves website enquiry attachments. Multiple roots can belong to one project. Runtime/import requires an explicit project UUID and verified SharePoint item identity; there is no runtime name-based auto-matching. Private preparation records the evidence used for each proposed identity, which may include a unique exact full-name match in its dated context rather than an independently confirmed street address.
 
-SharePoint remains the file authority. Portal stores explicit drive/item/project bindings and provisioning state, not copies or public links. Staff can navigate folders, page through results, open PDF and raster image previews, and download originals including Rhino. Files beyond the 50 MB inline preview limit remain downloadable. SVG and HTML are download-only. This does not merge the historical unassigned files, copy website attachments into SharePoint, or move current folders when a project changes stage.
+SharePoint remains the original authority. Portal stores explicit drive/item/project bindings, provisioning state and replaceable private preview copies. It exposes no public preview or reusable Storage URL. Staff can navigate folders, page through results, open PDF and raster image previews, and download originals including Rhino. Files beyond the 50 MB inline preview limit remain downloadable. SVG and HTML are download-only. This does not merge the historical unassigned files, copy website attachments into SharePoint, or move current folders when a project changes stage.
 
 Implementation map:
 
@@ -18,6 +18,9 @@ Implementation map:
 | Protected recent-preview verification contract | `previewVerification.ts`, existing open route and `useProjectFilePreview` |
 | Selected PDF/raster content | `ProjectFilePreview`, `useProjectFilePreview`, bounded `projectFilePreviewCache`, `ProjectPdfStream`, existing `QuotePdfInlinePreview` renderer |
 | Current-project preparation and freshness | `useProjectFilesPreparation`, shared domain `query.ts`, existing authenticated-owner QueryClient |
+| Private variant transport, preparation and memory admission | `previews/contracts`, `client`, `batch`; `projectFilePreviewPreparation` and `projectFilePreviewCache` |
+| Version-bound conversion and private Storage adapter | `previews/source`, `cache`, `repository`; existing Sharp and PDF.js facilities |
+| Active-folder reconciliation and finite cleanup | `previews/sync`, `api/integrations/sharepoint-project-previews`, `20261023100715_project_private_preview_cache.sql` |
 | Open identity and current staff proof | `openIdentity.ts` retains fresh `getUser`; the same user-bound client calls existing `project_files_read` for current staff/project/root authority |
 | Authenticated reads and file access | `apps/portal/app/api/staff/v1/projects/[projectId]/files` and `lib/projects/sharePointFiles/server.ts` |
 | Microsoft source and ancestry checks | `graph.ts`, `graphProtocol.ts`, `graphContainment.ts`; assertion-scoped `accessToken.ts` owns bearer reuse |
@@ -93,8 +96,9 @@ local non-linearized fixture does not establish first paint before body completi
 Inspector and dialog share the same request. Selection changes abort the prior
 read and revoke its object URL. Actual response MIME and the 50 MB byte cap are
 checked before rendering. Download remains an authenticated native link to the
-original redirect route, including large Rhino. No original is fetched in the
-background or given a simulated completion message.
+original redirect route, including large Rhino. Eligible originals may be read
+within bounded private preparation; Download original retains its independent
+current checks and native transfer behavior.
 
 Files is a dedicated main project view beneath the shared masthead. It fills
 the available project width and remaining viewport height, while commercial,
@@ -110,11 +114,13 @@ superseded embedded arrangement, not acceptance of this main-tab layout.
 
 ## Prepared browsing and recent previews
 
-The target is prepared lists in 100–300 ms, useful ordinary new PDF/photo content
-in 0.5–1 second and effectively immediate recent-file return. These are task
-acceptance targets, not measured production claims. SharePoint remains authoritative.
-The approved five-minute allowance applies to prepared lists and previously
-opened previews, not new downloads or a new file's first content read.
+The owner asked for everyday browsing to feel near instant and subsequently
+approved "private preview cache, background sync and preloading" while keeping
+permissions secure. A few hundred milliseconds for already prepared selections
+is an agent measurement target, not an owner numerical guarantee. Five minutes
+is the approved content/list allowance. It does not authorize stale access on a
+new server delivery. Cold files outside the prepared window retain current
+source work and can take longer.
 
 Preparation starts with an authenticated staff/admin route project ID alongside
 the snapshot. It reads at most that project's root, saved folder and first two
@@ -124,7 +130,8 @@ the root response. Folder pointer/focus intent is debounced 120 ms and cancels a
 previous unobserved speculative read. Project/owner/access changes cancel owned
 preparation; list/open request cancellation propagates to request-owned Graph
 and content fetches. A shared bounded token exchange may finish independently.
-There is no all-project polling, whole-tree traversal or background body download.
+There is no all-project polling or whole-tree traversal. The bounded private
+preparation described below can download eligible source bytes.
 
 An instance-local bearer map reuses only an exact assertion already accepted by
 Entra, scoped to source binding/tenant/client and bounded to eight entries.
@@ -134,16 +141,16 @@ Concurrent identical exchanges coalesce; failures and Graph 401/403 invalidate
 the relevant generation. Every server request still performs current staff,
 project and source-binding checks. No decoded assertion grants first-time access.
 
-Recent complete preview bytes live only in the current QueryClient's memory:
-at most eight files and 32 MiB total, with a five-minute lease. They are scoped
-to owner/host/project/root/item and a strong source version. No bytes, tokens or
-signed URLs enter durable browser storage or another service. A body enters this
-memory only if its actual origin strong ETag exactly matches the fresh Graph
-eTag/cTag. Weak/missing/mismatched origin tags still permit fresh rendering but
-prevent reuse. This also covers a source change between metadata and transfer.
+Recipient memory holds at most 32 entries and 32 MiB, with a five-minute lease,
+scoped to owner/host/project/root/item and strong source version. No bytes,
+tokens or signed URLs enter durable browser storage. Private server variants
+use a versioned manifest and private `project-file-previews` bucket. A source
+enters that cache only if its actual origin strong ETag exactly matches fresh
+Graph eTag/cTag and declared/actual length matches. Weak/missing/mismatched tags
+prevent publication. Original foreground rendering keeps its existing fallback.
 Live `9411232a` verified matching strong origin/Graph versions for a representative photo and PDF. That establishes compatibility for those observations, not every file or future source response.
 
-A recent preview displays immediately while its protected route checks current
+A recent original preview displays immediately while its protected route checks current
 authorization, root containment, type, size and source version. Only then may the
 route return a small protected 200 JSON receipt without resolving another transport URL or transferring file bytes. The request uses `x-project-file-preview-version`, never HTTP `If-None-Match`. The strict receipt binds the current project/root/item, strong version, MIME, byte size and current name to the resident; malformed, mismatched or unexpected 304 responses fail closed.
 Changed versions replace content; observed deletion, missing root, failed read
@@ -152,6 +159,98 @@ recheck clears that project's recent memory, including source access errors
 mapped to 503. Logout/owner change clears the owner store. Refresh rechecks both
 metadata and the selected body; stale responses cannot replace another selection.
 Original downloads always perform current checks and retain native delivery.
+Prepared variants have their own strict profile/source-version/body-hash receipt;
+resized JPEG MIME and size are never compared with an original-byte receipt.
+
+### Private cache and recipient preparation candidate
+
+Every new batch response first performs fresh `getUser()` and the same
+authenticated client's unchanged `project_files_read`. One fresh Graph scope
+proves the current bound root, requested folder and every requested file,
+including exact parent and current source version. Every subresponse must pass
+before any private Storage read or response byte. The integration uses app-only
+`client_credentials` and the existing selected-site grant; there is no delegated
+Microsoft user identity or per-user SharePoint ACL. The cache adds no roles or
+Microsoft permissions. App grant loss, Portal session/staff denial, root rebind,
+foreign/moved item or source failure stops new delivery. Service role accesses
+only the scoped manifest command and private bucket after this proof.
+
+The batch POST is same-origin, private/no-store NDJSON: at most eight items,
+8 MiB decoded bodies and 12 MiB encoded wire data. Each packet is validated and
+hashed before admission, allowing ready items to display before unrelated slow
+items finish. A 5 MiB PDF is streamed rather than becoming an oversized buffered
+JSON response. Truncation, malformed/mismatched receipts and transport errors
+fail closed. The existing original route remains the cold/large/unsupported
+fallback, with its independent current proof.
+
+Photos use existing Sharp to fit at most 1600 pixels and 512 KiB JPEG; small PDFs
+retain complete exact bytes, at most 5 MiB, and use the existing PDF.js renderer.
+Each source read is at most 10 MiB, and one batch admits at most 48 MiB source
+bytes with two concurrent preparations. Variant keys bind source identity,
+project/root/item, strong version and profile. Unique 50-second build leases
+fence duplicate work and late publication. Private object size/hash are checked
+on reads. Upload paths are registered for cleanup before upload, including
+uncertain or abandoned writes. No signed URL is stored, delivered or cached.
+
+Preparation starts during the project visit, then follows the selected folder's
+moving 16-item window (two prior items and upcoming neighbors). Likely child
+folders start with eight eligible items. One client batch runs at a time, with
+at most 16 queued jobs; foreground intent can interrupt unrelated preparation.
+Initial speculative admission is 32 MiB per five minutes. A new deliberate
+folder/selection intent permits one further bounded neighbor batch; foreground
+inspection is never disabled by cumulative transfer volume. Memory remains
+32 MiB, and active selected bytes survive background eviction. Old LRU entries
+make room for new neighbors, including after more than 32 distinct selections.
+One in-flight batch temporarily retains its exact requested representations
+(at most 8 MiB) so a matching receipt remains verifiable through streamed eviction.
+
+Already recipient-authorized prepared bytes display locally on selection without
+another network gate. This is reuse of a response already delivered to that
+authenticated recipient. Every subsequent server delivery still repeats current
+session/RPC/Graph proof. A four-minute active timer renews metadata and variant
+receipts before the five-minute lease; unchanged bodies are not retransferred.
+The fixed project timer reads the latest saved folder/source/selection on each
+pass and forces that bounded metadata pass through the fresh-query lease. Initial
+preparation still reuses fresh data; concurrent exact-key requests coalesce.
+Selection changes cannot postpone renewal, including after leaving website files.
+Renewal preserves and refreshes the already loaded page extent, without loading
+further pages. Reconciliation uses all retained refreshed items and the final
+page's cursor; a shorter completed source listing may legitimately remove files.
+Default-root seeding cannot overwrite a longer explicit-root page set.
+Logout/owner/project changes cancel owned work; logout/owner switch purges memory.
+Observed deletion, version change, root removal or failed proof purges affected
+bytes. Refresh bypasses leases. Late responses cannot undo newer observations.
+
+The domain cron runs every five minutes, with one leased active/requested folder
+page and at most two new originals per tick. A folder remains active 15 minutes
+after a batch. Initial working-set fill happens through bounded recipient batches,
+not one-file-per-cron-tick warmup. Reconciliation removes changed versions
+immediately and missing files only after a complete cursor scan; publications
+made after scan start survive an older scan. Observed denied/missing/invalid
+folder proof invalidates its private variants; transient listing failures retain
+them privately while every new delivery still requires current proof. An isolated
+corrupt preparation leaves good variants intact. Missing candidates rotate, so
+two persistent bad files cannot stall later preparations. This is bounded
+bound-folder reconciliation, not a whole-drive delta
+permission scan, durable general worker or polling of every project.
+
+Logical copies expire after 24 hours. Global admission includes both published
+bytes and provisional/deletion reservations, bounded to 512 MiB and 4096 objects.
+Capacity retires old LRU copies and attempts finite cleanup before retrying once;
+cache pressure never removes the SharePoint original. Each tick retires at most
+32 expired manifests and deletes at most 64 queued private objects. Physical
+cleanup is eventual: a completely full 4096-manifest expired cache can require
+128 healthy ticks (about 10.7 hours), plus the initial expiry, to drain. Failed
+deletion remains queued. Cleanup runs even with source/cache feature flags off.
+These are operational cache bounds, not limits on project count or original use.
+
+Activation requires the reviewed migration, a private-bucket/direct-client-denial
+check and server-only `SANCTUARY_SHAREPOINT_PREVIEW_CACHE_ENABLED=true`. It defaults
+off; no activation occurs merely by merging code. The existing cron secret and
+service credential are reused. Recovery disables this flag while retaining
+cleanup and original foreground delivery. Do not drop manifests before their
+objects are retired. Native SQL/Storage, hosted large-stream transport and actual
+source warmup/selection/refresh acceptance remain distinct from local fixtures.
 
 Live `9411232a` exposed a platform boundary: Vercel stripped the custom verification
 header from 304 responses, causing a valid recent PDF to disappear after its
@@ -198,7 +297,7 @@ change's contribution. Recent previews still appeared immediately, completed
 protected 200 JSON verification and remained visible through Refresh without
 another body transfer.
 
-The narrow local recovery changes only the existing open-route function override
+The accepted recovery changed only the existing open-route function override
 from Singapore (`sin1`) back to Sydney (`syd1`). It retains the live open-only
 identity owner: one existing cookie-bound client performs fresh `auth.getUser()`
 and the SAME client calls unchanged `projectGraph`. Existing `project_files_read`
@@ -215,12 +314,13 @@ invalid roots or stale binding still stop before provider access, previews,
 verification receipts or original redirects. Lists, middleware, defaults,
 resources and every other function retain their current configuration.
 
-Before recovery acceptance, the actual production comparison must permit only
-both open variants moving Singapore to Sydney and preserve all other functions
-and resources. The bounded ordinary photo/PDF and recent-return task still needs
-fresh verification. This restores the better observed byte path without a stale
-full rollback, wider region move, body preparation or authority relaxation.
-Recovery performance and the almost-instant outcome remain unverified.
+Actual recovery `de3` verified only both open variants moved Singapore to Sydney,
+preserving all other function resources/placements. Representative photo/PDF
+decoded-byte observations improved to about 1.98/1.43 seconds. Prepared Files
+entry took about 320 ms, and current-access return/Refresh remained correct.
+These observations do not establish exact native paint or near-instant cold use.
+The later private-preview candidate above is a separately approved method;
+the original locality recovery introduced no body preparation or authority cache.
 [Vercel per-function regions](https://vercel.com/docs/functions/configuring-functions/region)
 own placement; the deprecated Next `preferredRegion` export is not used.
 
@@ -229,17 +329,19 @@ Graph/token/containment owners and client workspace with synthetic auth/RPC and
 provider responses. It models source/network delays and valid synthetic 2.9 MB
 photo and 687 KB two-page PDF bytes, records prepared/unprepared/useful-paint
 cases separately, and exercises change/deny/retry. It is not checked-in production
-behavior or evidence of live source timing. No new storage service, region, provider permissions or periodic worker is
-introduced. Preparation uses the existing request/runtime budget and adds at most four bounded metadata requests per project visit before query reuse,
-plus explicit intent/navigation. Cold/unprepared entry and folders outside the
-bounded preparation still wait for current source/network work. Production
-acceptance must measure those ordinary tasks and the real version-header contract.
+behavior or evidence of live source timing. The private-cache fixture additionally
+executes actual migrations, cache commands, conversion and streaming owners with
+synthetic auth/Graph and private Storage transport boundaries. It starts empty;
+prepared selection timings must be reported separately from initial warmup and
+fixed-cadence browsing without per-target readiness waits. Metadata preparation
+adds at most four bounded requests per visit before query reuse, plus explicit
+intent/navigation. Cold/unprepared entry still waits for current source work.
 
 ## Access and delivery contract
 
-Every staff request authenticates first and calls the user-bound `project_files_read` RPC. Open requests retain fresh `getUser()` on the same request client; current staff access comes from the RPC actor rather than a duplicate Portal role read. The RPC rechecks confirmed, active staff/admin membership. It exposes roots only for the requested existing project and configured drive. The service role is used only by the operator importer and the scoped provisioning command, never to bypass staff read checks.
+Every staff request authenticates first and calls the user-bound `project_files_read` RPC. Open and private-preview requests retain fresh `getUser()` on the same request client; current staff access comes from the RPC actor rather than a duplicate Portal role read. The RPC rechecks confirmed, active staff/admin membership. It exposes roots only for the requested existing project and configured drive. Service role owns the operator importer, scoped provisioning and private preview storage/cache commands; it never replaces recipient staff/root/source proof.
 
-Both privilege governance checks retain this boundary: `supabaseClient.boundaries.test.ts` inventories Portal runtime users, while `scripts/service-role-access-report.mjs` registers the exact cron adapter for the strict shared-impact gate and identifies the operator-only importer. Nearby SharePoint modules receive no privilege exception. The focused `serviceRole.test.ts` checks that the two reviewed entrypoints pass and neighbouring runtime files remain rejected.
+Both privilege governance checks retain this boundary: `supabaseClient.boundaries.test.ts` inventories Portal runtime users, while `scripts/service-role-access-report.mjs` registers exact provisioning and private preview adapters and identifies the operator-only importer. Nearby SharePoint modules receive no privilege exception. The focused boundary tests preserve rejection of neighbouring unregistered runtime files.
 
 Microsoft uses a **separate** app registration with application `Sites.Selected` and an explicit Jobs-site write assignment for folder creation. Consent alone is insufficient. The existing mailbox-only Outlook app is not reused. Configure a narrowly bound Vercel OIDC federated identity for the approved Portal environment; do not grant broad site, directory or administrative permissions to the runtime app. The credential resolver accepts only the supplied assertion and does not prompt or discover desktop credentials.
 
