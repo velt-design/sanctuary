@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { prepareProjectFiles } from '@/lib/projects/sharePointFiles/query';
-import { discardProjectPreviews, reconcileFolderPreviews, setPreviewOwner } from './tabs/overview/projectFilePreviewCache';
+import { discardProjectPreviews, reconcileFolderPreviews, setPreviewOwner } from './tabs/overview/projectFilePreviewOwner';
 import { filesNavigationKey, readFilesNavigation } from './tabs/overview/projectFilesNavigation';
 
 export function useProjectFilesPreparation(projectId: string, host: string, enabled: boolean) {

@@ -5,6 +5,8 @@ The actual Work Queue frame/filter/list surface is shared across pending and gua
 
 Project Files metadata preparation starts independently of private preview code in the existing current-staff guarded effect. The preview preparation module loads there, with the original strict stream validation, batches, leases and source cache unchanged. Metadata reconciliation does not wait for that code. Retired effects cannot prepare previews or cancel a newer owner's work when an old import completes. A failed code load leaves metadata usable and permits another load on the existing four-minute pass; persistent module evaluation or deployment failures may require a reload or repaired deployment. This source boundary alone does not establish bundle fit or a latency improvement.
 
+`projectFilePreviewOwner` owns the single cache store and immediate owner/source invalidation. The metadata hook imports that core directly; the existing preview cache facade shares it and retains private body admission, leases, eviction and subscriptions. Owner changes and metadata invalidation therefore reach the same displayed bytes and subscribers while private preparation code is pending. Existing private consumers keep their original cache API.
+
 Status: Historical V1 product baseline. Non-conflicting design/commercial truth rules remain active.
 Current implementation authority: `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`
 Programme stage: Overview V2 is implemented and verified in `20a8adee`, entered production in the controlled 2026-07-30 Project Work cutover, and this file remains the historical V1 baseline

@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { prepareProjectFiles, projectFilesQueryOptions } from '@/lib/projects/sharePointFiles/query';
 import type { ProjectFilesPage } from '@/lib/projects/sharePointFiles/types';
-import { readPreview, retainPreview, setPreviewOwner } from './tabs/overview/projectFilePreviewCache';
+import { readPreview, retainPreview, setPreviewOwner, subscribePreview } from './tabs/overview/projectFilePreviewCache';
 import { useProjectFilesPreparation } from './useProjectFilesPreparation';
 import { emptyFilesNavigation, filesNavigationKey, readFilesNavigation, writeFilesNavigation } from './tabs/overview/projectFilesNavigation';
 const session = vi.hoisted(() => ({ user: { id: 'staff-a' }, role: 'staff', status: 'authenticated' }));
@@ -206,28 +206,39 @@ it.each(['disabled', 'anonymous', 'denied'])('does not load private preparation 
 });
 it('publishes metadata independently of held private code, then prepares the same current folder and cancels it synchronously on departure', async () => {
   const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
+  const scope = { owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root', itemId: 'file' };
+  setPreviewOwner(client, scope.owner);
+  retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"old"', name: 'Old.pdf', mime: 'application/pdf' });
+  const changed = vi.fn(), unsubscribe = subscribePreview(client, scope, changed);
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
   expect(code.entered).toHaveBeenCalledTimes(1); expect(metadata).toEqual(['project-a']); expect(previews).toEqual([]);
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].items[0].name).toBe('Plan.pdf');
+  expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
   expect(mounted.container.textContent).toBe('Snapshot still loading');
   await act(async () => code.release()); await flush();
   expect(previews).toEqual(['project-a']); expect(code.prepare).toHaveBeenCalledTimes(1);
   expect(code.prepare.mock.calls[0][1]).toEqual({ owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root' });
   mounted.unmount(); mounted = undefined;
   expect(code.cancel).toHaveBeenCalledExactlyOnceWith(client, JSON.stringify(['host','staff-a']), 'project-a');
+  unsubscribe();
 });
 it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not revive a held private owner after %s', async retirement => {
   const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
   expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledTimes(1);
+  const scope = { owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root', itemId: 'file' };
+  retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"v1"', name: 'Plan.pdf', mime: 'application/pdf' });
+  const changed = vi.fn(), unsubscribe = subscribePreview(client, scope, changed);
   if (retirement === 'unmount') { mounted.unmount(); mounted = undefined; }
   else {
     if (retirement === 'anonymous') session.status = 'anonymous';
     if (retirement === 'denied') session.role = 'customer';
     mounted.rerender(<QueryClientProvider client={client}><Owner enabled={retirement !== 'disable'} /></QueryClientProvider>);
+    expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
   }
   await act(async () => code.release()); await flush();
   expect(code.prepare).not.toHaveBeenCalled(); expect(code.cancel).not.toHaveBeenCalled(); expect(previews).toEqual([]);
+  unsubscribe();
 });
 it('rejects retired held A while current B and return A work through available code without a late cancellation', async () => {
   const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
