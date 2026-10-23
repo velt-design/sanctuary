@@ -28,12 +28,10 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
   const [instantView, setInstantView] = useState<ReactNode | null>(null);
   const [instantPathname, setInstantPathname] = useState<string | null>(null);
   const observedInstantPathRef = useRef(false);
-  const observedInstantSourceRef = useRef(false);
   const openingAttemptRef = useRef<object | string | null>(null);
 
   const clearInstantView = useCallback(() => {
     observedInstantPathRef.current = false;
-    observedInstantSourceRef.current = false;
     openingAttemptRef.current = null;
     setInstantPathname(null);
     setInstantView(null);
@@ -42,7 +40,6 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
   const showProject = useCallback((href: string, view: ReactNode) => {
     const nextPathname = new URL(href, window.location.href).pathname;
     observedInstantPathRef.current = false;
-    observedInstantSourceRef.current = false;
     openingAttemptRef.current = source?.attempt?.identity ?? null;
     setInstantPathname(nextPathname);
     setInstantView(view);
@@ -54,28 +51,18 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
     clearInstantView();
   }, [children, clearInstantView]);
 
-  useEffect(() => {
-    if (!instantPathname) return;
-    if (pathname === instantPathname) {
-      observedInstantPathRef.current = true;
-      return;
-    }
-    if (observedInstantPathRef.current) clearInstantView();
-  }, [clearInstantView, instantPathname, pathname]);
-
   const selectedPath = source?.selectedPath;
   const selectedAttempt = source?.attempt?.identity;
   useEffect(() => {
     if (!instantPathname) return;
-    if (selectedPath === instantPathname) {
-      observedInstantSourceRef.current = true;
+    // Accepted departure wins even while Next still reports the old detail.
+    if (selectedAttempt && selectedAttempt !== openingAttemptRef.current && selectedPath !== instantPathname) {
+      clearInstantView();
       return;
     }
-    // Opening a detail can still observe its original index source. Only a new
-    // accepted attempt or departure from an adopted detail retires this owner.
-    if ((selectedAttempt && selectedAttempt !== openingAttemptRef.current)
-      || (observedInstantSourceRef.current && selectedPath)) clearInstantView();
-  }, [clearInstantView, instantPathname, selectedAttempt, selectedPath]);
+    if (pathname === instantPathname || selectedPath === instantPathname) observedInstantPathRef.current = true;
+    else if (observedInstantPathRef.current) clearInstantView();
+  }, [clearInstantView, instantPathname, pathname, selectedAttempt, selectedPath]);
 
   useEffect(() => {
     if (!instantPathname || !pendingHref) return;

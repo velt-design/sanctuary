@@ -153,6 +153,23 @@ describe('useProjectInstantOpen', () => {
     expect(rendered.container.textContent).toContain('Open project');
     rendered.unmount();
   });
+
+  it('preserves a no-source opening on the old pathname and still retires on pendingHref before pathname adoption', () => {
+    navigation.pathname = '/staff/projects';
+    const stableChildren = <InstantOpenHarness />;
+    const ui = <ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>;
+    const rendered = renderIntoDocument(ui);
+    act(() => rendered.container.querySelector('button')?.click());
+    const instant = rendered.container.querySelector('[data-testid="optimistic-project"]');
+    expect(instant).not.toBeNull();
+    rendered.rerender(ui);
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBe(instant);
+    routeTransition.pendingHref = '/staff/projects/proj_2';
+    rendered.rerender(<ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>);
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.textContent).toContain('Open project');
+    rendered.unmount();
+  });
 });
 
 describe('accepted Projects source retirement with a retained Next outlet', () => {
