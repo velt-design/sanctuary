@@ -1,5 +1,15 @@
 # Testing And QA
 
+The AI and Background Jobs PostgreSQL 17 matrices fetch the official Supabase
+image from GHCR at the existing immutable `sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`
+manifest. Its manifest, configuration and all 29 layers match the prior public
+ECR source. This registry selection addresses repeated ECR `Data limit exceeded`
+failures without changing PostgreSQL 17, PGMQ 1.5.1 or the single-run database
+harnesses. The existing bounded helper handles recognized short throttles only;
+hard transfer quotas and other failures still stop immediately. Run
+`npx vitest run test/ai-db-image-pull.test.ts` for the pull and matrix contracts.
+Successful current CI image transfer and SQL execution remain release gates.
+
 ## CI browser-server cache isolation (23 October 2026)
 
 CI Playwright development servers disable Next's supported

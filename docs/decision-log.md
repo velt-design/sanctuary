@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-23: Preserve the database image while changing its registry
+
+Repeated public ECR `Data limit exceeded` responses prevented database setup,
+including a bounded unchanged retry. Fetch the same official Supabase manifest
+from GHCR, where its SHA-256, configuration and layer list are identical. Change
+only the two matrix repository names; keep the pinned digest, PostgreSQL/PGMQ
+versions, existing bounded throttle handling and single-run SQL harnesses. A
+registry metadata match does not establish runner transfer or SQL success:
+current CI must still pass. Do not introduce fallback state, retagging or broad
+retries for this fixed-image requirement. Owner: `testing-and-qa.md`.
+
 ## 2026-10-23: Isolate CI browser servers from persistent compiler state
 
 Repeated Portal qualification encountered a Turbopack missing-task panic when
