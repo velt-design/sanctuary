@@ -54,3 +54,22 @@ it('validates signed unchanged video-story preparation and exact source-media in
  for(const [key,value] of Object.entries(payload))expect(JSON.parse(intent.body[key]!)).toEqual(value);expect(intent.body.url_tags).toBe(control.urlTags);
  const altered=structuredClone(intent);altered.body.media_sourcing_spec=JSON.stringify({videos:[{video_id:'91001'}]});expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent:altered},state,plan.landingTemplate)).toThrow();
 });
+
+function nativePlan(){const base=planFixture(),now=Math.floor(Date.now()/1000);const control={format:'native_reference' as const,id:base.control.id,page:base.control.page,primary:base.control.primary,path:base.control.path,urlTags:base.control.urlTags,sourceAd:base.controlAd,snapshotHash:'f'.repeat(64)};return executionPlanSchema.parse({...base,control,purpose:'paused_capability',generator:null,reviewer:null,challengerPrimary:control.primary,approvedCopyHash:canonicalHash({control:control.primary,challenger:control.primary}),approvedAssetHash:creativeAssetHash(control),start:now,end:now+3600});}
+it('admits only exact native PAUSED copy and owned pause, without creative reconstruction or a name write',()=>{
+ const plan=nativePlan(),state:ExecutorState={template:plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};
+ const effect=serializeEffect(plan,state,'create_control');
+ expect(effect.path).toBe(`${plan.controlAd}/copies`);expect(effect.body).toEqual({adset_id:plan.scope.adset,status_option:'PAUSED'});expect(effect.target).toBeNull();
+ validateCreativeIntent({generation:1,cleanup:false,intent:effect},state,plan.landingTemplate);
+ for(const body of [{...effect.body,status_option:'ACTIVE'},{...effect.body,creative_parameters:'{}'},{...effect.body,name:'rename'}])expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent:{...effect,body}},state,plan.landingTemplate)).toThrow();
+ for(const kind of ['create_creative','create_challenger','create_study','activate_control','activate_challenger','end_study','pause_challenger']as const)expect(()=>serializeEffect(plan,state,kind)).toThrow();
+ state.objects=[{kind:'control',id:'999777',command:randomUUID(),requestHash:effect.requestHash}];state.enabled=false;
+ expect(serializeEffect(plan,state,'pause_control').body).toEqual({status:'PAUSED'});
+ expect(()=>serializeEffect(plan,state,'create_control')).toThrow();
+});
+it('never converts native references to formal approval even when preparation and delivery flags are enabled',()=>{
+ vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','true');vi.stubEnv('SANCTUARY_META_CREATIVE_DELIVERY_ENABLED','true');
+ const plan=nativePlan();expect(executionPlanSchema.safeParse({...plan,purpose:'formal_experiment',generator:'resp_author',reviewer:'resp_reviewer',challengerPrimary:'Different'}).success).toBe(false);
+ expect(executionPlanSchema.safeParse({...plan,control:{...plan.control,sourceAd:'99'}}).success).toBe(false);
+ const signed=request(plan);expect(verifyCreativeCommand(signed.raw,signed.signature).stage).toBe('prepare');
+});

@@ -3,6 +3,7 @@ import {creativeSchema,type Creative} from './contract';
 /** Exact reviewed copy substitution. Media and delivery settings remain byte-
  * equivalent; source-media copy mapping is separately required before formal use. */
 export function creativeWithPrimary(input:Creative,creativeId:string,primary:string):Creative{
+ if(input.format==='native_reference')throw new Error('Reference-only creative cannot be edited');
  const copy=structuredClone(input);copy.id=creativeId;copy.primary=primary;
  if(copy.format==='video_assets'){
   const feed=copy.payload.asset_feed_spec as {bodies?:{text?:string}[]};
