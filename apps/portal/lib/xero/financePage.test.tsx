@@ -1,10 +1,16 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToPipeableStream } from 'react-dom/server';
+import { PassThrough } from 'node:stream';
+import type { ReactNode } from 'react';
+async function complete(element: ReactNode): Promise<string> {
+  return new Promise((resolve,reject)=>{const target=new PassThrough();let html='';target.on('data',chunk=>{html+=chunk.toString();});target.on('end',()=>resolve(html));target.on('error',reject);
+    const rendered=renderToPipeableStream(element,{onAllReady(){rendered.pipe(target);},onError:reject});});
+}
 const mocks = vi.hoisted(() => ({ session: vi.fn(), review: vi.fn() }));
 vi.mock('./pilotAccess', () => ({ getPaymentPilotSession: mocks.session }));
 vi.mock('../invoices/financeReviewRepository', () => ({ loadFinanceReview: mocks.review }));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('NOT_FOUND'); } }));
-import Page from '../../app/staff/payments/page';
+import Page from '../../app/staff/payments/XeroFinanceReview';
 beforeEach(() => vi.resetAllMocks());
 it('denies access before loading finance information', async () => {
   mocks.session.mockResolvedValue(null);
@@ -14,7 +20,7 @@ it('denies access before loading finance information', async () => {
 it('renders unavailable separately from an empty queue and hides diagnostics', async () => {
   mocks.session.mockResolvedValue({ user: { id: 'ellen' } });
   mocks.review.mockRejectedValue(new Error('private-query-detail'));
-  const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
+  const html = await complete(await Page({ searchParams: Promise.resolve({}) }));
   expect(html).toContain('Finance could not be loaded');
   expect(html).toContain('data-state="error"');
   expect(html).not.toContain('No invoices need attention'); expect(html).not.toContain('private-query-detail');
@@ -26,7 +32,7 @@ it('shows partial balance and transfer freshness without claiming a live Xero ch
     status: 'OPEN', currency: 'NZD', dueDate: '2026-09-21', totalCents: 1000, recordedCents: 400,
     xeroInvoiceId: null, lastVerifiedAt: null, transferStatus: 'queued', transferError: null, captured: true, correctionRequired: false,
   }] });
-  const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ search: 'Example' }) }));
+  const html = await complete(await Page({ searchParams: Promise.resolve({ search: 'Example' }) }));
   expect(html).toContain('$6.00'); expect(html).toContain('Waiting for Xero transfer');
   expect(html).toContain('Each linked invoice shows when Xero was last checked');
   expect(mocks.review).toHaveBeenCalledWith('ellen', 'Example', 0, 'attention');

@@ -1,5 +1,70 @@
 # Decision Log
 
+## 2026-10-23: Preserve the database image while changing its registry
+
+Repeated public ECR `Data limit exceeded` responses prevented database setup,
+including a bounded unchanged retry. Fetch the same official Supabase manifest
+from GHCR, where its SHA-256, configuration and layer list are identical. Change
+only the two matrix repository names; keep the pinned digest, PostgreSQL/PGMQ
+versions, existing bounded throttle handling and single-run SQL harnesses. A
+registry metadata match does not establish runner transfer or SQL success:
+current CI must still pass. Do not introduce fallback state, retagging or broad
+retries for this fixed-image requirement. Owner: `testing-and-qa.md`.
+
+## 2026-10-23: Isolate CI browser servers from persistent compiler state
+
+Repeated Portal qualification encountered a Turbopack missing-task panic when
+the authenticated routing server reopened the output directory used by earlier
+browser invocations. Disable the supported development filesystem cache only
+for CI Playwright servers. Keep production compilation, normal development,
+explicit output directories and every authentication/browser assertion intact.
+Do not treat an application test pass or a blind rerun as evidence that a shared
+compiler lifecycle failure is repaired. Owner: `testing-and-qa.md`.
+
+## 2026-10-23: Judge Finance clarity inside its ordinary Portal frame
+
+Technical and isolated-fixture checks did not establish that the Finance register
+was clear for its intended daily task. Owner feedback required a simpler visual
+hierarchy and a preview in the real Portal layout. The revision emphasises owing,
+separates sent/due facts, removes repetitive OPEN badges and keeps full reasons
+in detail. Review representative everyday rows and exceptions at the actual
+content width beside the sidebar. Synthetic preview context belongs only to the
+gated QA composition; production authentication and financial truth stay in their
+existing owners. Human visual acceptance remains separate from technical passes.
+Owners: `ui-foundation.md`, `quotes-invoices-job-packs.md`.
+
+## 2026-10-23: Preserve grant locking through the RPC transport
+
+An installed Finance register passed direct SQL reads but PostgREST returned
+SQLSTATE 25006: STABLE RPCs run in read-only transactions, while the canonical
+approver check takes a grant-row `FOR SHARE` lock. The wrapper now explicitly
+declares VOLATILE, matching the existing Finance reader. It still performs no
+financial mutations, and the revocation/locking check remains unchanged. Cover
+`pg_proc.provolatile`, rejection in a read-only transaction and success in a
+read-write transaction. Direct SQL and synthetic checks do not replace an actual
+protected API read through PostgREST.
+Owner: `quotes-invoices-job-packs.md`.
+
+## 2026-10-23: Separate successful delivery history from unfinished attempts
+
+A prepared first quote send may still be DRAFT after provider acceptance while
+finalisation is incomplete. Finance must read canonical unfinished delivery
+alongside successful send history, rather than classifying from lifecycle or logs
+alone. Confirming attempts are distinct from ordinary sending/recovery; a pending
+or failed resend never erases an earlier successful send. Check both quote and
+invoice display precedence and filters when changing delivery presentation.
+Owner: `quotes-invoices-job-packs.md`.
+
+## 2026-10-23: Keep finance projections explicit against real source schemas
+
+The first staging-only, rolled-back Finance reader exposed a duplicate timestamp
+from `quote.*` combined with version fields. The smaller synthetic bootstrap had
+omitted the family timestamp. The corrected reader explicitly projects family
+fields and names the version timestamp, and its harness includes the real family
+metadata columns. Check schema compatibility as well as financial semantics;
+synthetic passing reads alone do not establish installed-schema compatibility.
+Owners: `quotes-invoices-job-packs.md`, `supabase-schema-map.md`.
+
 ## 2026-10-23: Prepare private representations without caching access authority
 
 Every new preview batch retains fresh recipient session/RPC and current app-only

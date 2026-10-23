@@ -1,5 +1,7 @@
 /** Shared parent highlighting for the expanded sidebar and its compact rail. */
 export function isNavParentActive(pathname: string, href: string) {
+  // Presentation alias only; the local Finance fixture retains its server gate.
+  if (pathname === '/qa/finance-register' && href === '/staff/payments') return true;
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
   if (pathname === href || pathname.startsWith(`${href}/`)) return true;
 

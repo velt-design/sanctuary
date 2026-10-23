@@ -1,10 +1,51 @@
 # Testing And QA
 
+The AI and Background Jobs PostgreSQL 17 matrices fetch the official Supabase
+image from GHCR at the existing immutable `sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`
+manifest. Its manifest, configuration and all 29 layers match the prior public
+ECR source. This registry selection addresses repeated ECR `Data limit exceeded`
+failures without changing PostgreSQL 17, PGMQ 1.5.1 or the single-run database
+harnesses. The existing bounded helper handles recognized short throttles only;
+hard transfer quotas and other failures still stop immediately. Run
+`npx vitest run test/ai-db-image-pull.test.ts` for the pull and matrix contracts.
+Successful current CI image transfer and SQL execution remain release gates.
+
+## CI browser-server cache isolation (23 October 2026)
+
+CI Playwright development servers disable Next's supported
+`experimental.turbopackFileSystemCacheForDev` when the existing
+`PORTAL_PLAYWRIGHT_DIST_DIR` is set. Sequential fixture, authentication-runtime
+and routing invocations can otherwise reopen a persistent task graph left by
+the previous process; repeated qualification runs encountered a Turbopack
+missing-task panic at that boundary. This keeps the same bundler, routes,
+authentication and tests, without deleting caches or changing output paths.
+Ordinary development and production build/start settings retain their defaults.
+
+`npx vitest run test/portal-playwright-cache.test.ts` checks the configuration
+boundary. Only the complete existing CI browser sequence establishes successful
+runtime recovery; the configuration test alone does not prove the compiler bug
+cannot recur.
+
 The owner-decision PG17 harness includes `landing_observed_context.sql`: original
 capacity/end/history preservation, exact receipt/control drift, duplicate denial,
 one reservation, scoped estimate preparation, null termination and unchanged
 digest replay after Stop. It uses disposable local state only. The Source HTTP
 contract and rendered page are unchanged by this migration.
+
+Finance register candidate (23 October 2026): `npm run test:finance:register`
+runs the actual read migration on disposable current-commercial PGlite fixtures
+and measures bounded invoice/quote responses at10,000 synthetic invoices and quote
+versions, including200 unfinished initial/resend intents across100 families.
+It is included in existing `npm run test:commercial:db`, already run by
+Portal Quality; no separate CI job is required. A single thread keeps the WASM
+benchmark in one worker. The 500ms warmed query target excludes setup, network and
+browser readiness, so it does not establish production or visible-load timing.
+The SQL suite also checks RPC volatility and the canonical grant lock in both
+transaction modes; separately verify a real protected PostgREST read after install.
+The ordinary component, auth/API, deferred Xero reader and gated fixture-route
+checks remain in the normal `npm run test:portal` suite. Run
+`npm run preview:finance-register` alongside a QA-enabled local Portal for the
+synthetic `/qa/finance-register` journey; it has no provider access or real data.
 
 Next security maintenance (23 October 2026): root, Marketing and Portal require
 at least Next16.4.1 and the lock resolves that exact patched release for
