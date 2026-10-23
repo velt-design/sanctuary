@@ -18,6 +18,11 @@ const Context = createContext<CommercialContext>({
 });
 export const useProjectCommercialContext = () => useContext(Context);
 
+/** Published private nodes keep their originating guarded value; this owns no state. */
+export function ProjectCommercialScope({ value, children }: { value: CommercialContext; children: ReactNode }) {
+  return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+
 export function ProjectCommercialProvider({ projectId, work, ready, children }: {
   projectId: string; work?: ProjectWorkProjection; ready: boolean; children: ReactNode;
 }) {

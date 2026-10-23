@@ -37,7 +37,7 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
   OverviewTab: () => { useEffect(() => { state.facts++; return () => { state.facts--; }; }, []); return <p data-real-fact>Current project facts</p>; },
   FilesTab: () => <p data-private-files>Files</p>, CommercialTab: () => <p data-private-commercial>Commercial</p>, JobPacksTab: () => <p>Job packs</p>,
 }));
-vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initialRead, navigation, estimatesList }: any) => {
+vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initialRead, navigation, estimatesList,quotesList,invoicesList,publishCommercial }: any) => {
   const evidence = useMemo(() => ({ snapshot: { project: { id: projectId, name: `Verified ${projectId}`, stage: 'new', hasJobPacks: false },
     workModel: 'legacy', pipeline: { stage: 'new' }, activity: [], emails: [], notes: [] }, host: 'host', readOnly: false,
     snapshotContentReady: true, snapshotState: 'fresh', overviewReads: null, calculatorWorkspace: false, searchReader: null,
@@ -48,6 +48,12 @@ vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initia
   const listEvidence = useMemo(() => ({ headerActions: <button>Verified estimate command</button>, status: null,
       render: (query: string) => ({ empty: null, noMatches: null, rows: 'Beta'.toLowerCase().includes(query.toLowerCase())
         ? <tr><td>Beta {projectId}</td></tr> : null }) }), [projectId]);
+  const quoteEvidence=useMemo(()=>({closed:false,headerActions:<button>Verified quote command</button>,accepted:null,status:null,historicalLabel:0,dialogs:null,
+    render:(query:string)=>({noMatches:null,rows:'Beta'.toLowerCase().includes(query.toLowerCase())?<tr><td>Beta quote {projectId}</td></tr>:null})}),[projectId]);
+  const invoiceEvidence=useMemo(()=>({closed:false,schedule:null,schedulePending:false,scheduleEyebrow:'Verified schedule',beforeSchedule:null,scheduleDetails:null,beforeHistory:null,historyEyebrow:'Verified invoices',dialogs:null,
+    render:(query:string)=>({noMatches:null,rows:'Beta'.toLowerCase().includes(query.toLowerCase())?<tr><td>Beta invoice {projectId}</td></tr>:null})}),[projectId]);
+  useLayoutEffect(()=>{quotesList?.publish(quoteEvidence);return()=>quotesList?.publish(null);},[quotesList?.publish,quoteEvidence]);
+  useLayoutEffect(()=>{invoicesList?.publish(invoiceEvidence);return()=>invoicesList?.publish(null);},[invoicesList?.publish,invoiceEvidence]);
   useLayoutEffect(() => { estimatesList?.publish(listEvidence); return () => estimatesList?.publish(null); }, [estimatesList?.publish, listEvidence]);
   useLayoutEffect(() => { state.readers++; state.initial = initialRead; state.retiredPublish = publish; publish(evidence);
     return () => { state.readers--; publish(null); }; }, [publish, evidence, initialRead]);
@@ -263,4 +269,29 @@ it('renders the one real Estimates Find/table synchronously for a cold Estimates
   expect(html).toContain('aria-label="Project estimates"'); expect(html).toContain('Reading estimates');
   expect(html).not.toContain('Beta proj_A'); expect(html).not.toContain('Verified estimate command'); expect(html).not.toContain('No estimates yet');
   expect(state.readers).toBe(0); expect(cache).not.toHaveBeenCalled(); cache.mockRestore();
+});
+
+it('keeps one real Commercial toolbar across all three safe views before held authority, then fills the same quote/invoice tables only from the current owner',()=>{
+ view=renderIntoDocument(tree());click('[data-open]');
+ const tab=(label:string)=>[...view!.container.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node=>node.textContent===label)!;
+ act(()=>tab('Commercial').click());const toolbar=view.container.querySelector('[aria-label="Commercial sections"]');
+ expect(toolbar).not.toBeNull();act(()=>tab('Quotes').click());
+ const input=view.container.querySelector<HTMLInputElement>('#quote-search')!,table=view.container.querySelector('table'),head=table?.querySelector('thead'),body=table?.querySelector('tbody');
+ expect(tab('Quotes').getAttribute('aria-selected')).toBe('true');expect(input.disabled).toBe(false);expect(table?.textContent).toContain('Reading quote versions');
+ expect(view.container.querySelector('[aria-label="Commercial sections"]')).toBe(toolbar);expect(state.readers).toBe(0);expect(view.container.textContent).not.toContain('Verified quote command');
+ act(()=>{input.focus();Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Beta');input.dispatchEvent(new Event('input',{bubbles:true}));});
+ adopt();expect(view.container.querySelector('#quote-search')).toBe(input);expect(view.container.querySelector('table')).toBe(table);expect(table?.querySelector('thead')).toBe(head);expect(table?.querySelector('tbody')).toBe(body);
+ expect(table?.textContent).toContain('Beta quote proj_A');expect(input.value).toBe('Beta');expect(document.activeElement).toBe(input);
+ click('[data-deny]');expect(view.container.querySelector('#quote-search')).toBe(input);expect(table?.textContent).not.toContain('Beta quote');expect(view.container.textContent).not.toContain('Verified quote command');
+ act(()=>tab('Invoices').click());const invoice=view.container.querySelector<HTMLInputElement>('#invoice-search')!,invoiceTable=view.container.querySelector('table');
+ expect(tab('Invoices').getAttribute('aria-selected')).toBe('true');expect(invoice.disabled).toBe(false);expect(invoiceTable?.textContent).toContain('Invoices unavailable');expect(view.container.querySelector('[aria-label="Commercial sections"]')).toBe(toolbar);
+ completion=recovered;view.rerender(tree());expect(view.container.querySelector('#invoice-search')).toBe(invoice);expect(view.container.querySelector('table')).toBe(invoiceTable);expect(invoiceTable?.textContent).toContain('Beta invoice proj_A');
+ expect(state.outletRetires).toBe(0);
+});
+it.each(['quotes','invoices','activity','files','job-packs'])('renders the SAME actual %s surface synchronously without private readers/cache/commands',tab=>{
+ state.pathname=state.canonical='/staff/projects/proj_A';window.history.replaceState(null,'',`${state.pathname}?tab=${tab}`);
+ const cached=vi.spyOn(client,'getQueryData');const html=renderToString(tree());
+ const required:Record<string,string[]>= {quotes:['quote-search','Show historical versions','<thead'],invoices:['invoice-search','Job payment schedule','Invoice history'],activity:['data-project-overview="true"','Project Work sections','Team notes &amp; portal history'],files:['Find in this folder','Files list','Download'], 'job-packs':['Job Packs','Design','Quote status']};
+ for(const item of required[tab])expect(html).toContain(item);
+ expect(html).not.toContain('Verified proj_A');expect(html).not.toContain('Beta quote');expect(html).not.toContain('Verified quote command');expect(state.readers).toBe(0);expect(cached).not.toHaveBeenCalled();cached.mockRestore();
 });

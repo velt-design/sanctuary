@@ -1,4 +1,7 @@
 "use client";
+import type {JobPacksListEvidence} from '@/components/projects/ProjectPage/tabs/JobPacksListSurface';
+import type {OverviewBinding,ProjectOverviewEvidence} from '@/components/projects/ProjectPage/tabs/ProjectOverviewSurface';
+import type {FilesBinding,ProjectFilesEvidence} from '@/components/projects/ProjectPage/tabs/ProjectFilesSurface';
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -9,6 +12,9 @@ import type { ProjectWorkInitialRead, ProjectWorkReadLoaders } from '@/lib/proje
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import dynamic from "next/dynamic";
 import type { SearchReadOwner } from "@/components/layout/GlobalPortalSearchSurface";
+import type { QuotesListBinding } from '@/components/projects/ProjectPage/tabs/QuotesListSurface';
+import type { InvoicesListBinding } from '@/components/projects/ProjectPage/tabs/InvoicesListSurface';
+import type { CommercialTabChrome } from '@/components/projects/ProjectPage/tabs/CommercialTabSurface';
 import type { EstimatesListBinding } from '@/components/projects/ProjectPage/tabs/EstimatesListSurface';
 import type { ProjectSnapshotProps, ProjectSnapshotEvidence } from "./ProjectSnapshotSurface";
 const SearchReader = dynamic(() => import("@/components/layout/GlobalPortalSearchRead"), { loading: () => null });
@@ -60,11 +66,18 @@ function ProjectSnapshotRead({
   publish,
   warmCorrespondence = false,
   estimatesList,
+  quotesList,
+  invoicesList,
+  publishCommercial, overview, files, publishJobPacks,
 }: ProjectSnapshotProps & {
   navigation: ReturnType<typeof useProjectTabSelection>;
   publish: (value: ProjectSnapshotEvidence | null) => void;
   warmCorrespondence?: boolean;
   estimatesList?: EstimatesListBinding;
+  quotesList?: QuotesListBinding;
+  invoicesList?: InvoicesListBinding;
+  overview?:OverviewBinding;files?:FilesBinding;publishJobPacks?:(value:JobPacksListEvidence|null)=>void;
+  publishCommercial?: (value: CommercialTabChrome | null) => void;
 }) {
   // Native tab/history navigation updates the live query without a server render.
   // Workspace chrome and debug identity must follow that query too.
@@ -257,7 +270,7 @@ function ProjectSnapshotRead({
     headerActions: accessUnavailable ? null : <ProjectHeaderPrivateActions project={snapshot?.project ?? null} projectId={frameProjectId} disabled={readOnly} />,
     body: accessUnavailable ? null : <ProjectCorrespondenceWarmRead projectId={projectId} enabled={warmCorrespondence && navigation.activeTab === 'activity'}><ProjectCommercialProvider projectId={frameProjectId} work={projectWork}
       ready={!readOnly && Boolean(snapshot) && loadState === 'fresh' && snapshotContentReady && (snapshot?.workModel === 'legacy' || Boolean(projectWork))}>
-      <ProjectTabBody estimatesList={estimatesList} snapshot={snapshot} projectId={frameProjectId} host={host} readOnly={readOnly} snapshotContentReady={snapshotContentReady}
+      <ProjectTabBody estimatesList={estimatesList} quotesList={quotesList} invoicesList={invoicesList} publishCommercial={publishCommercial} overview={overview} files={files} publishJobPacks={publishJobPacks} snapshot={snapshot} projectId={frameProjectId} host={host} readOnly={readOnly} snapshotContentReady={snapshotContentReady}
         snapshotState={loadState} tab={tab} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab}
         calculatorWorkspace={calculatorWorkspace} onProjectAccessEnding={handleProjectAccessEnding} statusPanel={statusPanel} />
     </ProjectCommercialProvider></ProjectCorrespondenceWarmRead>,
@@ -265,7 +278,7 @@ function ProjectSnapshotRead({
     onProjectAccessEnding: handleProjectAccessEnding,
     statusPanel,
   }), [snapshot, host, readOnly, accessUnavailable, snapshotContentReady, loadState, overviewReads, calculatorWorkspace,
-    searchReader, handleProjectAccessEnding, unavailablePanel, debugExport, projectWork, onTabIntent, frameProjectId, projectId, navigation, tab, statusPanel, warmCorrespondence, estimatesList]);
+    searchReader, handleProjectAccessEnding, unavailablePanel, debugExport, projectWork, onTabIntent, frameProjectId, projectId, navigation, tab, statusPanel, warmCorrespondence, estimatesList, quotesList, invoicesList, publishCommercial,overview,files,publishJobPacks]);
   useLayoutEffect(() => { publish(evidence); }, [publish, evidence]);
   useLayoutEffect(() => () => publish(null), [publish]);
   return null;

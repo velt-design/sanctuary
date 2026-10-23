@@ -10,6 +10,7 @@ import EstimatesListSurface, { useEstimatesListControls, type EstimatesListEvide
 import { useOwnedPortalPublication } from '@/components/page-state/PortalPageSource';
 import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
 import { ProjectCommercialProvider } from './ProjectCommercialContext';
+import JobPacksListSurface,{type JobPacksListEvidence} from './tabs/JobPacksListSurface';
 
 let search = 'tab=estimates';
 const { estimates, packs, editorModules } = vi.hoisted(() => ({ estimates: vi.fn(), packs: vi.fn(), editorModules: vi.fn() }));
@@ -35,6 +36,21 @@ function tree(client: QueryClient, tab: string, ready = false) {
   return <QueryClientProvider client={client}><ProjectCommercialProvider projectId="proj_1" ready={ready}><Suspense fallback={null}><ProjectMainTabs host="host" projectId="proj_1" snapshot={snapshot} snapshotContentReady={ready} snapshotState={ready ? 'fresh' : 'pending'} tab={tab} /></Suspense></ProjectCommercialProvider></QueryClientProvider>;
 }
 async function settleModules() { for (let depth = 0; depth < 3; depth += 1) await act(async () => { await vi.dynamicImportSettled(); }); }
+
+function ManagedPacks({allowed,owner}:{allowed:boolean;owner:object}){
+ const publication=useOwnedPortalPublication<JobPacksListEvidence>(allowed?owner:null);
+ const producer=useMemo(()=>allowed?<ProjectCommercialProvider projectId="proj_1" ready><ProjectTabBody projectId="proj_1" host="host" snapshot={null} snapshotContentReady={false} tab="job-packs" publishJobPacks={publication.publish}/></ProjectCommercialProvider>:null,[allowed,publication.publish]);
+ return <><JobPacksListSurface evidence={publication.value} unavailable={!allowed}/>{producer}</>;
+}
+it('keeps the actual Job Packs list header/table/body through held authority, genuine reader arrival and denial',async()=>{
+ search='tab=job-packs';packs.mockClear();const read=deferred<any[]>();packs.mockReturnValue(read.promise);
+ const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),owner={};const tree=(allowed:boolean)=><QueryClientProvider client={client}><ManagedPacks allowed={allowed} owner={owner}/></QueryClientProvider>;
+ const view=renderIntoDocument(tree(false)),table=view.container.querySelector('table'),head=table?.querySelector('thead'),body=table?.querySelector('tbody'),heading=view.container.querySelector('h3');
+ expect(packs).not.toHaveBeenCalled();view.rerender(tree(true));await settleModules();expect(packs).toHaveBeenCalledOnce();expect(view.container.querySelector('table')).toBe(table);
+ await act(async()=>{read.resolve([{id:'pack-fixture',estimateId:'est-fixture',estimateVersionLabel:'Verified V2',quoteRef:'Q-FIXTURE',quoteVersionNumber:1,quoteStatus:'ACCEPTED',createdAt:'2026-10-01'}]);await new Promise(resolve=>setTimeout(resolve,5));});
+ expect(table?.textContent).toContain('Verified V2');expect(view.container.querySelector('h3')).toBe(heading);expect(table?.querySelector('thead')).toBe(head);expect(table?.querySelector('tbody')).toBe(body);
+ view.rerender(tree(false));expect(table?.textContent).not.toContain('Verified V2');expect(table?.textContent).toContain('unavailable');expect(view.container.querySelector('table')).toBe(table);view.unmount();client.clear();
+});
 
 describe('actual Project specialist parent during independent reads', () => {
   it('keeps the actual Estimates Find and table before and after both source and metadata settle', async () => {
@@ -87,10 +103,10 @@ function GuardedListBridge({ owner, allowed, shown = true }: { owner: object; al
     <ProjectTabBody host="host" projectId="proj_1" snapshot={null} tab="estimates" estimatesList={binding} />
   </ProjectCommercialProvider>, [binding]);
   return <ProjectMainTabsSurface projectId="proj_1" host="host" snapshot={null} tab="estimates"
-    privateContentReady={allowed} body={shown ? body : null} publicEstimatesList={shown ? <CommercialTabSurface view="estimates" onSelect={() => undefined}>
+    privateContentReady={allowed} body={shown ? body : null} publicBody={shown ? <CommercialTabSurface view="estimates" onSelect={() => undefined}>
       {publication.value?.notice}
       <EstimatesListSurface query={controls.query} onQueryChange={controls.setQuery} onInteraction={controls.markInteracted} evidence={publication.value} unavailable={!allowed} />
-    </CommercialTabSurface> : null} />;
+    {allowed ? body : null}</CommercialTabSurface> : null} />;
 }
 function guardedListTree(client: QueryClient, owner: object, allowed: boolean, shown = true) {
   return <QueryClientProvider client={client}><PortalQueryClientScope client={client}>

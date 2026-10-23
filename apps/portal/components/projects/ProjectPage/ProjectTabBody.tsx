@@ -1,5 +1,11 @@
 'use client';
+import type {JobPacksListEvidence} from '@/components/projects/ProjectPage/tabs/JobPacksListSurface';
+import type {OverviewBinding,ProjectOverviewEvidence} from '@/components/projects/ProjectPage/tabs/ProjectOverviewSurface';
+import type {FilesBinding,ProjectFilesEvidence} from '@/components/projects/ProjectPage/tabs/ProjectFilesSurface';
 
+import type { CommercialTabChrome } from './tabs/CommercialTabSurface';
+import type { QuotesListBinding } from './tabs/QuotesListSurface';
+import type { InvoicesListBinding } from './tabs/InvoicesListSurface';
 import type { EstimatesListBinding } from './tabs/EstimatesListSurface';
 import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
@@ -27,6 +33,9 @@ export default function ProjectTabBody({
   statusPanel,
   privateContentReady = true,
   estimatesList,
+  quotesList,
+  invoicesList,
+  publishCommercial, overview, files, publishJobPacks,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -42,6 +51,10 @@ export default function ProjectTabBody({
   statusPanel?: import("react").ReactNode;
   privateContentReady?: boolean;
   estimatesList?: EstimatesListBinding;
+  quotesList?: QuotesListBinding;
+  invoicesList?: InvoicesListBinding;
+  overview?:OverviewBinding;files?:FilesBinding;publishJobPacks?:(value:JobPacksListEvidence|null)=>void;
+  publishCommercial?: (value: CommercialTabChrome | null) => void;
 }) {
   const searchParams = useSearchParams();
   const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
@@ -52,7 +65,7 @@ export default function ProjectTabBody({
 
   return <ProjectEmailReadingProvider scope={JSON.stringify([projectId, snapshot?.project.contactId, snapshot?.project.contactEmail])}>
         {privateContentReady && activeTab === 'activity' ? (
-          <OverviewTab
+          <OverviewTab surface={overview}
             readOnly={readOnly}
             snapshot={snapshot}
             projectId={projectId}
@@ -62,10 +75,10 @@ export default function ProjectTabBody({
             onAccessEnding={onProjectAccessEnding}
           />
         ) : null}
-        {privateContentReady && activeTab === 'files' ? <FilesTab key={projectId} projectId={projectId} host={host} /> : null}
+        {privateContentReady && activeTab === 'files' ? <FilesTab surface={files} key={projectId} projectId={projectId} host={host} /> : null}
         {privateContentReady && (activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices') ? (
           <CommercialTab
-            estimatesList={estimatesList}
+            estimatesList={estimatesList} quotesList={quotesList} invoicesList={invoicesList} publishCommercial={publishCommercial}
             readOnly={readOnly}
             host={host}
             projectReady={Boolean(snapshot)}
@@ -79,6 +92,6 @@ export default function ProjectTabBody({
             statusPanel={statusPanel}
           />
         ) : null}
-        {privateContentReady && activeTab === 'job-packs' ? <JobPacksTab key={projectId} projectId={projectId} readOnly={readOnly} /> : null}
+        {privateContentReady && activeTab === 'job-packs' ? <JobPacksTab publishList={publishJobPacks} key={projectId} projectId={projectId} readOnly={readOnly} /> : null}
   </ProjectEmailReadingProvider>;
 }

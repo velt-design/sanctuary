@@ -20,7 +20,7 @@ export default function ProjectMainTabsSurface({
   statusPanel,
   privateContentReady = true,
   body,
-  publicEstimatesList,
+  publicBody,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -36,7 +36,7 @@ export default function ProjectMainTabsSurface({
   statusPanel?: ReactNode;
   privateContentReady?: boolean;
   body?: ReactNode;
-  publicEstimatesList?: ReactNode;
+  publicBody?: ReactNode;
 }) {
   const searchParams = useSearchParams();
   const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
@@ -58,8 +58,7 @@ export default function ProjectMainTabsSurface({
         data-project-tab-body={activeTab}
       >
         {!privateContentReady || !commercial ? statusPanel : null}
-        {publicEstimatesList}
-        {privateContentReady ? body : null}
+        {publicBody ?? (privateContentReady ? body : null)}
       </div>
     </section>
   );

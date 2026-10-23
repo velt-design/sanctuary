@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
 import styles from './JobPacksTab.module.css';
+import JobPacksListSurface, { type JobPacksListEvidence } from './JobPacksListSurface';
 import {
   Badge,
   DataStatePanel,
@@ -27,7 +28,7 @@ function formatDate(value: string | null | undefined): string {
   return formatPortalDate(value, { fallback: '-' });
 }
 
-export default function JobPacksTab({ projectId, readOnly = false }: { projectId: string; readOnly?: boolean }) {
+export default function JobPacksTab({ projectId, readOnly = false, publishList }: { projectId: string; readOnly?: boolean; publishList?: (value: JobPacksListEvidence | null) => void }) {
   const commercial = useProjectCommercialContext();
   const router = useRouter();
   const pathname = usePathname();
@@ -121,25 +122,7 @@ export default function JobPacksTab({ projectId, readOnly = false }: { projectId
     [hostKey, queryClient],
   );
 
-  if (selectedEstimateId) {
-    return (
-      <div className={styles.wrapper}>
-        {selectedDetailQuery.isError&&!selectedDetailQuery.isFetching&&<DataStatePanel state="error" title="Job pack unavailable" description="Retry the verified source read." onRetry={()=>{if(!selectedDetailQuery.isFetching)void selectedDetailQuery.refetch();}}/>}
-        <div className={styles.sheetWrap}>{adapter&&<SpreadsheetPageTemplate adapter={adapter} embedded zoomDockPlacement="viewport" />}</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.wrapper}>
-      <div className={styles.header}>
-        <div>
-          <h3 className={styles.title}>Job Packs</h3>
-          <p className={styles.subtitle}>Materials and installation details · saved estimate versions.</p>
-        </div>
-      </div>
-
-      {jobPacksQuery.isError ? (
+  const listEvidence = useMemo<JobPacksListEvidence>(() => ({ status: <>      {jobPacksQuery.isError ? (
         <DataStatePanel
           state="error"
           title="Could not load job packs"
@@ -156,17 +139,7 @@ export default function JobPacksTab({ projectId, readOnly = false }: { projectId
         />
       ) : null}
 
-      <Table aria-label="Job packs" className={styles.packTable}>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Design</TableHead>
-                <TableHead>Quote</TableHead>
-                <TableHead>Generated</TableHead>
-                <TableHead>Quote status</TableHead><TableHead>Open</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {jobPacksQuery.isPending&&<TableRow><TableCell colSpan={5}><span role="status">Reading job packs…</span></TableCell></TableRow>}
+</>, rows: <>{jobPacksQuery.isPending&&<TableRow><TableCell colSpan={5}><span role="status">Reading job packs…</span></TableCell></TableRow>}
               {jobPacksQuery.isError&&!(jobPacks?.length??0)&&<TableRow><TableCell colSpan={5}>Job packs unavailable.</TableCell></TableRow>}
               {jobPacks?.map((jobPack) => (
                 <TableRow
@@ -188,9 +161,18 @@ export default function JobPacksTab({ projectId, readOnly = false }: { projectId
                   <TableCell data-label="Generated">{formatDate(jobPack.createdAt)}</TableCell>
                   <TableCell data-label="Quote status"><Badge tone={jobPack.quoteStatus === 'DECLINED' ? 'neutral' : 'info'}>{jobPack.quoteStatus}</Badge></TableCell><TableCell><span className={styles.openPack}>Open pack →</span></TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-        </Table>
-    </div>
-  );
+              ))}</> }), [jobPacksQuery, jobPacks, prefetchDetail, updateParams]);
+  useLayoutEffect(() => { publishList?.(selectedEstimateId ? null : listEvidence); }, [publishList, selectedEstimateId, listEvidence]);
+  useLayoutEffect(() => () => publishList?.(null), [publishList]);
+
+  if (selectedEstimateId) {
+    return (
+      <div className={styles.wrapper}>
+        {selectedDetailQuery.isError&&!selectedDetailQuery.isFetching&&<DataStatePanel state="error" title="Job pack unavailable" description="Retry the verified source read." onRetry={()=>{if(!selectedDetailQuery.isFetching)void selectedDetailQuery.refetch();}}/>}
+        <div className={styles.sheetWrap}>{adapter&&<SpreadsheetPageTemplate adapter={adapter} embedded zoomDockPlacement="viewport" />}</div>
+      </div>
+    );
+  }
+
+  return publishList ? null : <JobPacksListSurface evidence={listEvidence} />;
 }

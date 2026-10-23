@@ -1,12 +1,16 @@
 "use client";
 
-import ProjectRecentNotesEvents from "./overview/ProjectRecentNotesEvents";
-import ProjectWorkFilesCard from "./overview/ProjectWorkFilesCard";
-import workStyles from "./overview/ProjectWorkSection.module.css";
-import ProjectCommercialDetails from './overview/ProjectCommercialDetails';
+import { projectRecentNotesEvidence } from "./overview/ProjectRecentNotesEvents";
+import { useProjectWorkPanel } from "./overview/ProjectWorkFilesCard";
+import ProjectEnquiryReceiptPanel from "./overview/ProjectEnquiryReceiptPanel";
+import ProjectOverviewSurface, { type OverviewBinding, type ProjectOverviewEvidence } from "./ProjectOverviewSurface";
+import {ProjectCommercialScope,useProjectCommercialContext} from "../ProjectCommercialContext";
+import {ProjectCorrespondenceWarmScope,useProjectCorrespondenceWarmRead} from './overview/ProjectCorrespondenceWarmRead';
+import {ProjectEmailReadingScope,useProjectEmailReadingContext} from './overview/ProjectEmailReadingState';
+import {selectProjectView} from "../projectViewNavigation";
 import ProjectNextVisit from '@/components/site-visits/ProjectNextVisit';
 
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
   ProjectPageSnapshot,
@@ -22,7 +26,6 @@ import {
   DataStatePanel,
   LoadingSkeleton,
 } from "@/components/ui/foundation";
-import ProjectOverviewLayout from "./overview/ProjectOverviewLayout";
 import { projectPositionLabel } from './overview/projectPositionLabel';
 import { currentProjectWork } from '@/lib/projects/projectCurrentStatus';
 import type { ProjectOrientationFreshness } from "./overview/ProjectOrientationBand";
@@ -121,6 +124,7 @@ export default function OverviewTab({
   host,
   readOnly = false,
   onAccessEnding,
+  surface,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -129,8 +133,14 @@ export default function OverviewTab({
   host: string;
   readOnly?: boolean;
   onAccessEnding?: (status: number) => void;
+  surface?: OverviewBinding;
 }) {
   const queryClient = useQueryClient();
+  const commercial=useProjectCommercialContext();
+  const {closed}=commercial;
+  const correspondenceWarm=useProjectCorrespondenceWarmRead();
+  const emailReading=useProjectEmailReadingContext();
+  const panel=useProjectWorkPanel(projectId,host,surface?.controls);
   const { commandQuery } = useActiveProjectOverviewReads(host, projectId);
   const accessEndingStatus =
     commandQuery.error instanceof ApiError &&
@@ -211,37 +221,12 @@ export default function OverviewTab({
       description="No next action is available until the server view loads."
       onRetry={() => void commandQuery.refetch()} />;
   }
-  const commercial = accessEndingStatus === null ? (
-    <>
-      <ProjectCommercialDetails data={commandQuery.data?.currentDesign ?? null} pending={commandQuery.isPending}>
-        {commandQuery.data ? (
-          <Suspense fallback={<p role="status">Reading commercial details…</p>}>
-            <ProjectCurrentDesignCommercialCard previewOnly={readOnly} data={commandQuery.data.currentDesign} projectId={projectId} />
-          </Suspense>
-        ) : commandQuery.isPending ? <p role="status">Reading current design and commercial state…</p> : (
-          <DataStatePanel state="error" title="Commercial state unavailable"
-            description="The current design and price could not be loaded. Use the Project Overview retry." />
-        )}
-      </ProjectCommercialDetails>
-      <Suspense fallback={<p role="status">Reading payment interface…</p>}>
-        <ProjectPaymentPositionQuery readOnly={readOnly} projectId={projectId} host={host} onAccessEnding={onAccessEnding} />
-      </Suspense>
-    </>
-  ) : null;
+  const history = projectRecentNotesEvidence({ projectId, readOnly, pending:snapshotState !== 'refresh-failed',
+    notes:snapshotContentReady && snapshot ? snapshot.notes : null, events:snapshotContentReady && snapshot ? snapshot.activity : null,
+    statusPanel:!snapshotContentReady ? <AlertBanner tone={snapshotState === 'refresh-failed' ? 'warning' : 'info'} title={snapshotState === 'refresh-failed' ? 'Saved history is not complete' : 'Updating recent history'}>
+    {snapshotState === 'refresh-failed' ? 'The latest refresh failed. No partial history is presented as complete.' : 'Recent notes and server events appear after the complete snapshot loads.'}</AlertBanner> : null });
 
-  const history = <ProjectRecentNotesEvents projectId={projectId} readOnly={readOnly} pending={snapshotState !== "refresh-failed"}
-    notes={snapshotContentReady && snapshot ? snapshot.notes : null}
-    events={snapshotContentReady && snapshot ? snapshot.activity : null}
-    statusPanel={!snapshotContentReady ? <AlertBanner tone={snapshotState === 'refresh-failed' ? 'warning' : 'info'}
-      title={snapshotState === 'refresh-failed' ? 'Saved history is not complete' : 'Updating recent history'}>
-      {snapshotState === 'refresh-failed' ? 'The latest refresh failed. No partial history is presented as complete.' : 'Recent notes and server events appear after the complete snapshot loads.'}
-    </AlertBanner> : null} />;
-
-  return (
-    <div data-project-overview="true">
-      <ProjectOverviewLayout
-        state={commandCentreState}
-        orientation={snapshot ?
+  const evidence = useMemo<ProjectOverviewEvidence>(()=>({ state:commandCentreState, orientation:snapshot ?
           <Suspense
             fallback={
               <Card padding="compact">
@@ -263,26 +248,31 @@ export default function OverviewTab({
               )}
             /></div>
           </Suspense> : null
-        }
-        exception={exception}
-        projectWork={<><ProjectWorkFilesCard projectId={projectId} host={host} className={workStyles.card}
-          positionLabel={snapshot && commandQuery.data && commandQuery.data.workModel === "v2" ? projectPositionLabel(snapshot.project.stage, (orientationProjection ?? commandQuery.data.projectWork).effectiveState, commandQuery.data.currentDesign, (orientationProjection ?? commandQuery.data.projectWork).closedOutcome) : undefined}>
-          {commandQuery.data && snapshot && commandQuery.data.workModel === 'v2' && !workModelMismatch ? projectWork : (
+        , exception,
+    work:commandQuery.data && snapshot && commandQuery.data.workModel === 'v2' && !workModelMismatch ? projectWork : (
             <section data-project-work-section="true" data-project-work-model={workModelMismatch ? 'mismatch' : commandQuery.isPending || !snapshot ? 'pending' : 'failed'}>{projectWork}</section>
-          )}</ProjectWorkFilesCard>{accessEndingStatus === null && <CommercialProjectNotice projectId={projectId} view="activity" />}</>}
-        commercial={<>{commercial}{accessEndingStatus === null && <ProjectNextVisit projectId={projectId} host={host} onAccessEnding={onAccessEnding} />}</>}
-        recent={
-          <>
-            {accessEndingStatus === null && (
-              <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} label="Loading customer emails" /></Card>}>
+          ), enquiry:panel.selectedPanel==='enquiry'?<ProjectEnquiryReceiptPanel projectId={projectId} host={host}/>:null,
+    positionLabel:snapshot && commandQuery.data && commandQuery.data.workModel === "v2" ? projectPositionLabel(snapshot.project.stage, (orientationProjection ?? commandQuery.data.projectWork).effectiveState, commandQuery.data.currentDesign, (orientationProjection ?? commandQuery.data.projectWork).closedOutcome) : undefined, workNotice:accessEndingStatus===null?<ProjectCommercialScope value={commercial}><CommercialProjectNotice projectId={projectId} view="activity"/></ProjectCommercialScope>:null,
+    commercial:{ data:accessEndingStatus===null?commandQuery.data?.currentDesign??null:null,pending:commandQuery.isPending,closed,
+      content:accessEndingStatus===null?<ProjectCommercialScope value={commercial}>        {commandQuery.data ? (
+          <Suspense fallback={<p role="status">Reading commercial details…</p>}>
+            <ProjectCurrentDesignCommercialCard previewOnly={readOnly} data={commandQuery.data.currentDesign} projectId={projectId} />
+          </Suspense>
+        ) : commandQuery.isPending ? <p role="status">Reading current design and commercial state…</p> : (
+          <DataStatePanel state="error" title="Commercial state unavailable"
+            description="The current design and price could not be loaded. Use the Project Overview retry." />
+        )}</ProjectCommercialScope>:null,
+      after:accessEndingStatus===null?<ProjectCommercialScope value={commercial}>      <Suspense fallback={<p role="status">Reading payment interface…</p>}>
+        <ProjectPaymentPositionQuery readOnly={readOnly} projectId={projectId} host={host} onAccessEnding={onAccessEnding} />
+      </Suspense><ProjectNextVisit projectId={projectId} host={host} onAccessEnding={onAccessEnding}/></ProjectCommercialScope>:null },
+    recent:{...history,before:accessEndingStatus === null && (
+              <ProjectCorrespondenceWarmScope value={correspondenceWarm}><ProjectEmailReadingScope value={emailReading}><Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} label="Loading customer emails" /></Card>}>
                 <ProjectCorrespondenceQuery projectId={projectId} onAccessEnding={onAccessEnding}
                   project={{ customerEmail: snapshot?.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
-              </Suspense>
+              </Suspense></ProjectEmailReadingScope></ProjectCorrespondenceWarmScope>
             )}
-            {history}
-          </>
-        }
-      />
-    </div>
-  );
+  }),[commandCentreState,snapshot,commandQuery,exception,projectWork,panel.selectedPanel,projectId,host,orientationProjection,accessEndingStatus,workModelMismatch,closed,history,readOnly,onAccessEnding,commercial,correspondenceWarm,emailReading]);
+  useLayoutEffect(()=>{surface?.publish(evidence);},[surface?.publish,evidence]);
+  useLayoutEffect(()=>()=>surface?.publish(null),[surface?.publish]);
+  return surface ? null : <ProjectOverviewSurface evidence={evidence} controls={{projectId,panel:panel.selectedPanel,edited:false,setPanel:panel.selectPanel,adoptPanel:panel.selectPanel}} onFiles={()=>selectProjectView('files')}/>;
 }

@@ -8,6 +8,7 @@ import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
 import { useUnsavedChangesGuard } from "@/components/ui/foundation/useUnsavedChangesGuard";
 import styles from "./QuotesTab.module.css";
 import { useProjectCommercialContext } from "../ProjectCommercialContext";
+import type { QuotesListBinding } from './QuotesListSurface';
 import QuoteDetailView from "./QuoteDetailView";
 import QuotesListView from "./QuotesListView";
 import QuoteWorkflowDialogs from "./QuoteWorkflowDialogs";
@@ -151,10 +152,12 @@ export default function QuotesTab({
   projectId,
   selectedQuoteId,
   onSelectedQuoteChange,
+  listSurface,
 }: {
   projectId: string;
   selectedQuoteId?: string | null;
   onSelectedQuoteChange?: (quoteId: string | null) => void;
+  listSurface?: QuotesListBinding;
 }) {
   const toast = useToast();
   const { isAdmin } = usePortalSession();
@@ -1322,6 +1325,7 @@ export default function QuotesTab({
   return (
     <>
     <QuotesListView
+      listSurface={listSurface}
       projectId={projectId}
       quotes={quotes}
       quotesLoading={quotesLoading}

@@ -21,7 +21,7 @@ export default function ProjectPageShellSurface({
   statusPanel,
   privateContentReady = true,
   body,
-  publicEstimatesList,
+  publicBody,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -37,7 +37,7 @@ export default function ProjectPageShellSurface({
   statusPanel?: ReactNode;
   privateContentReady?: boolean;
   body?: ReactNode;
-  publicEstimatesList?: ReactNode;
+  publicBody?: ReactNode;
 }) {
   return (
     <section className={styles.fullWidthShell} data-project-page-shell="true">
@@ -56,7 +56,7 @@ export default function ProjectPageShellSurface({
         statusPanel={statusPanel}
         privateContentReady={privateContentReady}
         body={body}
-        publicEstimatesList={publicEstimatesList}
+        publicBody={publicBody}
       />
     </section>
   );

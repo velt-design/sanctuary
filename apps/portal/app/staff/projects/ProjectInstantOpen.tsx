@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { projectDetailHref } from '@/lib/queries/projectOpenPreload';
-import { useProjectInstantNavigation } from './ProjectInstantNavigation';
+import { useProjectInstantNavigation } from './ProjectInstantNavigationContext';
 
 export function useProjectInstantOpen(): {
   openProject: (projectId: string) => void;

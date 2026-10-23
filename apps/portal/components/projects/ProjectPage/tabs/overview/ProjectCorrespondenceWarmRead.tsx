@@ -7,6 +7,11 @@ type Reply = { state: string; context?: unknown };
 type Take = (projectId: string, signal: AbortSignal) => Promise<Reply> | null;
 const WarmRead = createContext<Take>(() => null);
 
+/** A value-only scope transfers the SAME in-flight handoff, never another read. */
+export function ProjectCorrespondenceWarmScope({ value, children }: { value: Take; children: ReactNode }) {
+  return <WarmRead.Provider value={value}>{children}</WarmRead.Provider>;
+}
+
 /** A single in-flight read for this mounted page, never a reusable browser cache. */
 export function ProjectCorrespondenceWarmRead({ projectId, enabled, children }: {
   projectId: string; enabled: boolean; children: ReactNode;

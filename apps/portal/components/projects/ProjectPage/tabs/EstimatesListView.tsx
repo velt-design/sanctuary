@@ -63,8 +63,9 @@ export default function EstimatesListView({
   const query = listSurface?.controls.query ?? savedQuery;
   const restoreScroll = useRef(!listSurface?.controls.interacted);
   useCommercialListScroll(projectId, 'estimates', !loading, restoreScroll.current);
+  if(listSurface?.controls.interacted)restoreScroll.current=false;
   const adopted = listSurface?.controls.adopted;
-  useLayoutEffect(() => { adopted?.(); }, [adopted]);
+  useLayoutEffect(() => { if(!loading)adopted?.(); }, [adopted,loading]);
   useLayoutEffect(() => {
     if (!listSurface) return;
     if (listSurface.controls.edited) {
@@ -73,6 +74,7 @@ export default function EstimatesListView({
   }, [listSurface, savedQuery, query, setSavedQuery]);
   const accepted = useMemo(() => acceptedEstimateQuoteIds(quotes ?? []), [quotes]);
   const evidence = useMemo<EstimatesListEvidence>(() => ({
+    pending:loading,
     notice: listSurface?.notice,
     onSelect: listSurface?.onSelect, onIntent: listSurface?.onIntent,
     inert: listSurface?.inert,

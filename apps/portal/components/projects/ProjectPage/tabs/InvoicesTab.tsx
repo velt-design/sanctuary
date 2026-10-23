@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback,useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import styles from './InvoicesTab.module.css';
-import InvoiceScheduleTotals from './InvoiceScheduleTotals';
+import InvoicesListSurface, { type InvoicesListBinding, type InvoicesListEvidence } from './InvoicesListSurface';
 import { useCommercialListScroll, useCommercialListState } from './useCommercialListState';
 import {
   Badge,
@@ -17,12 +17,7 @@ import {
   DataStatePanel,
   MetricGrid,
   OverflowMenu,
-  SearchFilterBar,
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
   type BadgeTone,
 } from '@/components/ui/foundation';
@@ -104,9 +99,18 @@ function deliveryTone(status: DepositInvoiceDeliveryStatus): BadgeTone {
   }
 }
 
-export default function InvoicesTab({ projectId }: { projectId: string }) {
+export default function InvoicesTab({ projectId, listSurface }: { projectId: string; listSurface?: InvoicesListBinding }) {
   const commercial = useProjectCommercialContext();
-  const [invoiceSearch, setInvoiceSearch] = useCommercialListState(projectId, 'invoices-search', '');
+  const [savedSearch, setInvoiceSearch] = useCommercialListState(projectId, 'invoices-search', '');
+  const invoiceSearch = listSurface?.controls.query ?? savedSearch;
+  const restoreScroll = useRef(!listSurface?.controls.interacted);
+  if(listSurface?.controls.interacted)restoreScroll.current=false;
+  const adopted = listSurface?.controls.adopted;
+  useLayoutEffect(() => {
+    if (!listSurface) return;
+    if (listSurface.controls.edited) { if (invoiceSearch !== savedSearch) setInvoiceSearch(invoiceSearch); }
+    else listSurface.controls.adoptSavedQuery(savedSearch);
+  }, [listSurface, savedSearch, invoiceSearch, setInvoiceSearch]);
   const { isAdmin } = usePortalSession();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -135,7 +139,9 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   const [recoveryRefreshPending, setRecoveryRefreshPending] = useState(false);
 
   const invoicesQuery = useQuery(depositInvoicesByProjectQueryOptions(hostKey, projectId));
-  useCommercialListScroll(projectId, 'invoices', !invoicesQuery.isPending);
+  useCommercialListScroll(projectId, 'invoices', !invoicesQuery.isPending, restoreScroll.current);
+  useLayoutEffect(() => { if(!invoicesQuery.isPending)adopted?.(); }, [adopted,invoicesQuery.isPending]);
+
   const scheduleQuery = useQuery({
     queryKey: qk.invoices.scheduleByProject(hostKey, projectId),
     queryFn: () => loadProjectInvoiceSchedule(projectId),
@@ -147,7 +153,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   const accessEnded=[invoicesQuery.error,scheduleQuery.error,draftsQuery.error].some(error=>error instanceof ApiError&&[401,403,404].includes(error.status));
   const invoices=accessEnded?[]:invoicesQuery.data??[],schedule=accessEnded?null:scheduleQuery.data??null;
   const invoicePending=invoicesQuery.isPending||(!invoices.length&&invoicesQuery.isFetching),schedulePending=scheduleQuery.isPending||(!schedule&&scheduleQuery.isFetching);
-  const visibleInvoices=invoices.filter(invoice=>[invoice.invoiceRef,invoice.quoteRef,invoice.reference,invoice.status,invoice.paymentTermLabel].some(value=>String(value??'').toLocaleLowerCase().includes(invoiceSearch.trim().toLocaleLowerCase())));
+
   const draftsEnabled = !accessEnded&&draftsQuery.data?.enabled === true;
   useEffect(()=>{if(!accessEnded)return;setPreviewInvoice(null);setEditingDraft(null);setCreateTarget(undefined);setPaidTarget(null);setVoidTarget(null);setRestoreTarget(null);setPaymentEntryMode(null);setAllocationTarget(null);setReversalTarget(null);},[accessEnded]);
   function newStandaloneDraft() {
@@ -395,15 +401,12 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     || paymentPending;
   const financialActionsLocked = !financialReadsReady || financialActionPending || recoveryNotice !== null || !commercial.actionsAvailable;
 
-  return (
-    <div className={styles.wrapper}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>Invoices</h3>
-        <p className={styles.subtitle}>
-          NZD inc GST · payment schedule, money received and invoice history.
-        </p>
-      </div>
-
+  const evidence: InvoicesListEvidence = {
+    pending:invoicesQuery.isPending,
+    closed: commercial.closed, schedule, schedulePending,
+    scheduleEyebrow: !schedule ? schedulePending ? 'Reading payment position…' : 'Payment position unavailable' : (schedule.acceptedQuotes?.length ?? 0) > 1
+      ? `${schedule.acceptedQuotes?.length} accepted quote scopes` : schedule.acceptedQuoteVersionId ? `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}` : 'Standalone project billing',
+    beforeSchedule: <>
       {accessEnded&&<DataStatePanel state="unavailable" title="Invoice access unavailable" description="The current invoice read authority ended. Retry before reviewing records or making a change." onRetry={()=>{for(const query of [invoicesQuery,scheduleQuery,draftsQuery])if(query.isError&&!query.isFetching)void query.refetch();}}/>}
       {recoveryNotice ? (
         <AlertBanner
@@ -433,16 +436,9 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         </Card>
       ) : null}
 
-      <Card
-          title={commercial.closed ? 'Recorded payment schedule' : 'Job payment schedule'}
-          eyebrow={!schedule?schedulePending?'Reading payment position…':'Payment position unavailable':(schedule.acceptedQuotes?.length ?? 0) > 1
-            ? `${schedule.acceptedQuotes?.length} accepted quote scopes`
-            : schedule.acceptedQuoteVersionId ? `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}` : 'Standalone project billing'}
-          padding="none"
-          headingLevel={4}
-          aria-label="Invoice schedule"
-        >
-          <InvoiceScheduleTotals schedule={schedule} pending={schedulePending} />
+
+    </>, scheduleDetails: <>
+
           {schedule&&schedule.overCommittedIncGstCents > 0 ? (
             <AlertBanner tone="warning" title="Commercial total needs reconciliation">
               Payments plus open invoices exceed the current billable project value by {formatMoneyFromCents(schedule.overCommittedIncGstCents)}. Review historical invoices and payment allocations before creating another invoice.
@@ -478,7 +474,8 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
               </div>
             ) : null}
           </div>
-        </Card>
+    </>, beforeHistory: <>
+
 
       {schedule && !schedule.acceptedQuoteVersionId && !schedule.standaloneTotalIncGstCents && (schedule.paidIncGstCents !== 0 || schedule.outstandingIncGstCents !== 0) ? (
         <Card title="Historical commercial record" eyebrow="No current accepted quote" padding="none" headingLevel={4}>
@@ -546,21 +543,67 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
       {!accessEnded&&!invoicesQuery.isPending&&!invoicesQuery.isError&&!invoices.length ? (
         <DataStatePanel state="empty" title={commercial.closed ? "No invoices recorded" : "No invoices yet"} description={commercial.closed ? "This closed project has no recorded invoices. Review the closure agreement before creating any further billing." : "The first invoice is created when a quote is accepted. Admins can create later scheduled, custom, remaining-balance, or split invoices here."} />
       ) : null}
-      <Card title="Invoice history" eyebrow={invoicePending&&!invoices.length?'Reading invoices…':invoicesQuery.isError&&!invoices.length?'Invoice count unavailable':`${invoices.length} ${invoices.length === 1 ? 'invoice' : 'invoices'}`} padding="none" headingLevel={4}>
-      <SearchFilterBar query={invoiceSearch} onQueryChange={setInvoiceSearch} queryPlaceholder="Search invoice, quote or status" searchId="invoice-search" filters={[]} onClearAll={() => setInvoiceSearch('')} />
+
+    </>, historyEyebrow: invoicePending&&!invoices.length?'Reading invoices…':invoicesQuery.isError&&!invoices.length?'Invoice count unavailable':`${invoices.length} ${invoices.length === 1 ? 'invoice' : 'invoices'}`,
+    dialogs: <>
+
+      {!accessEnded&&previewInvoice ? (
+        <InvoiceArtifactPreviewDialog
+          invoiceId={previewInvoice.id}
+          invoiceRef={previewInvoice.invoiceRef}
+          onClose={() => setPreviewInvoice(null)}
+        />
+      ) : null}
+      {!accessEnded&&<InvoiceActionDialogs
+        paidTarget={paidTarget}
+        voidTarget={voidTarget}
+        pending={markingPaidId !== null || voidingInvoiceId !== null}
+        onClosePaid={() => setPaidTarget(null)}
+        onCloseVoid={() => setVoidTarget(null)}
+        onConfirmPaid={(evidence) => { if (paidTarget) void handleMarkPaid(paidTarget, evidence); }}
+        onConfirmVoid={(reason) => { if (voidTarget) void handleVoid(voidTarget, reason); }}
+      />}
+
+      {!accessEnded&&restoreTarget ? <RestoreInvoiceDialog key={restoreTarget.id} invoice={restoreTarget} pending={restoringInvoice}
+        onClose={() => setRestoreTarget(null)} onRestore={handleRestore} /> : null}
+      {isAdmin && draftsEnabled && editingDraft ? <InvoiceDraftEditor key={editingDraft.id} initial={editingDraft}
+        onClose={() => setEditingDraft(null)} onSaved={() => { void draftsQuery.refetch(); }}
+        onIssued={async (message, sendError) => {
+          toast.success(message); if (sendError) toast.error('Invoice issued. Sending failed: ' + sendError + '. Retry sending from invoice history.');
+          await Promise.all([draftsQuery.refetch(), reconcileConfirmedAction(message)]);
+        }} /> : null}
+      {schedule ? (
+        <CreateInvoiceDialog
+          draftMode={draftsEnabled}
+          open={createTarget !== undefined}
+          projectId={projectId}
+          schedule={schedule}
+          initialTerm={createTarget ?? null}
+          pending={creatingInvoice}
+          result={createResult}
+          onClose={() => { if (!creatingInvoice) { setCreateTarget(undefined); setCreateResult(null); } }}
+          onCreate={(input) => void handleCreateInvoice(input)}
+          onPreview={(result) => { setPreviewInvoice(result.invoice); setCreateTarget(undefined); setCreateResult(null); }}
+        />
+      ) : null}
+      {schedule && isAdmin ? (
+        <PaymentReconciliationDialogs
+          entryMode={paymentEntryMode}
+          allocationTarget={allocationTarget}
+          reversalTarget={reversalTarget}
+          schedule={schedule}
+          pending={paymentPending}
+          onClose={closePaymentDialogs}
+          onRecord={(input) => void handleRecordPayment(input)}
+          onAllocate={(input) => void handleAllocatePayment(input)}
+          onReverse={(reason) => void handleReversePayment(reason)}
+        />
+      ) : null}
+    </>, render: (invoiceSearch) => {
+  const visibleInvoices=invoices.filter(invoice=>[invoice.invoiceRef,invoice.quoteRef,invoice.reference,invoice.status,invoice.paymentTermLabel].some(value=>String(value??'').toLocaleLowerCase().includes(invoiceSearch.trim().toLocaleLowerCase())));
+      return { noMatches: <>
       {!invoicesQuery.isPending&&!invoicesQuery.isError&&invoices.length>0&&!visibleInvoices.length ? <DataStatePanel state="empty" title="No matching invoices" description="Try another reference or clear the search." /> : null}
-      <Table aria-label="Invoices" className={styles.invoiceTable}>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Invoice</TableHead>
-            <TableHead>Quote</TableHead>
-            <TableHead>Amount inc GST</TableHead>
-            <TableHead>Due</TableHead>
-            <TableHead>Delivery</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      </>, rows: <>
           {!invoices.length&&(accessEnded||invoicePending||invoicesQuery.isError)&&<TableRow><TableCell colSpan={6}><span role={invoicePending?'status':undefined}>{invoicePending?'Reading invoices…':'Invoices unavailable. Retry the read.'}</span></TableCell></TableRow>}
           {visibleInvoices.map((invoice) => {
             const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT' && !invoice.finalFailure;
@@ -658,61 +701,11 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
               </TableRow>
             );
           })}
-        </TableBody>
-      </Table>
-      </Card>
-      {!accessEnded&&previewInvoice ? (
-        <InvoiceArtifactPreviewDialog
-          invoiceId={previewInvoice.id}
-          invoiceRef={previewInvoice.invoiceRef}
-          onClose={() => setPreviewInvoice(null)}
-        />
-      ) : null}
-      {!accessEnded&&<InvoiceActionDialogs
-        paidTarget={paidTarget}
-        voidTarget={voidTarget}
-        pending={markingPaidId !== null || voidingInvoiceId !== null}
-        onClosePaid={() => setPaidTarget(null)}
-        onCloseVoid={() => setVoidTarget(null)}
-        onConfirmPaid={(evidence) => { if (paidTarget) void handleMarkPaid(paidTarget, evidence); }}
-        onConfirmVoid={(reason) => { if (voidTarget) void handleVoid(voidTarget, reason); }}
-      />}
-
-      {!accessEnded&&restoreTarget ? <RestoreInvoiceDialog key={restoreTarget.id} invoice={restoreTarget} pending={restoringInvoice}
-        onClose={() => setRestoreTarget(null)} onRestore={handleRestore} /> : null}
-      {isAdmin && draftsEnabled && editingDraft ? <InvoiceDraftEditor key={editingDraft.id} initial={editingDraft}
-        onClose={() => setEditingDraft(null)} onSaved={() => { void draftsQuery.refetch(); }}
-        onIssued={async (message, sendError) => {
-          toast.success(message); if (sendError) toast.error('Invoice issued. Sending failed: ' + sendError + '. Retry sending from invoice history.');
-          await Promise.all([draftsQuery.refetch(), reconcileConfirmedAction(message)]);
-        }} /> : null}
-      {schedule ? (
-        <CreateInvoiceDialog
-          draftMode={draftsEnabled}
-          open={createTarget !== undefined}
-          projectId={projectId}
-          schedule={schedule}
-          initialTerm={createTarget ?? null}
-          pending={creatingInvoice}
-          result={createResult}
-          onClose={() => { if (!creatingInvoice) { setCreateTarget(undefined); setCreateResult(null); } }}
-          onCreate={(input) => void handleCreateInvoice(input)}
-          onPreview={(result) => { setPreviewInvoice(result.invoice); setCreateTarget(undefined); setCreateResult(null); }}
-        />
-      ) : null}
-      {schedule && isAdmin ? (
-        <PaymentReconciliationDialogs
-          entryMode={paymentEntryMode}
-          allocationTarget={allocationTarget}
-          reversalTarget={reversalTarget}
-          schedule={schedule}
-          pending={paymentPending}
-          onClose={closePaymentDialogs}
-          onRecord={(input) => void handleRecordPayment(input)}
-          onAllocate={(input) => void handleAllocatePayment(input)}
-          onReverse={(reason) => void handleReversePayment(reason)}
-        />
-      ) : null}
-    </div>
-  );
+      </> };
+    },
+  };
+  const publish = listSurface?.publish;
+  useLayoutEffect(() => { publish?.(evidence); }, [publish, evidence]);
+  useLayoutEffect(() => () => publish?.(null), [publish]);
+  return listSurface ? null : <InvoicesListSurface query={invoiceSearch} onQueryChange={setInvoiceSearch} evidence={evidence} />;
 }

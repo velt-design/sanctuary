@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act,Profiler } from 'react';
+import { act,Profiler,useMemo } from 'react';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
+import QuotesListView from './QuotesListView';
+import QuotesListSurface,{useQuotesListControls,type QuotesListEvidence} from './QuotesListSurface';
+import {useOwnedPortalPublication} from '@/components/page-state/PortalPageSource';
+import {PortalQueryClientScope} from '@/lib/react-query/PortalQueryClientContext';
 import { buildOptimisticQuoteDetail } from '@/lib/localFirst/portalEntities';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCommercialContext';
@@ -184,6 +188,31 @@ const quoteDetail = {
   },
 } as const;
 let activeQuoteDetail: any = quoteDetail;
+
+let oldQuotePublish:((value:QuotesListEvidence|null)=>void)|undefined;
+function ManagedQuotes({allowed,owner,pending}:{allowed:boolean;owner:object;pending:boolean}) {
+ const controls=useQuotesListControls('proj_1'),published=useOwnedPortalPublication<QuotesListEvidence>(allowed?owner:null);
+ const binding=useMemo(()=>({controls,publish:published.publish}),[controls,published.publish]);
+ if(allowed)oldQuotePublish=published.publish;
+ const producer=useMemo(()=>allowed?<QuotesListView {...({projectId:'proj_1',quotes:pending?[]:[quoteDetail],quotesLoading:pending,quotesError:null,retryQuotes:vi.fn(),
+  openCreate:vi.fn(),selectQuote:vi.fn(),prefetchQuoteDetail:vi.fn(),createOpen:false,closeCreate:vi.fn(),createEstimateId:'',setCreateEstimateId:vi.fn(),createInternalName:'',setCreateInternalName:vi.fn(),estimatesLoading:false,estimates:[],createQuote:vi.fn(),createMode:'estimate',setCreateMode:vi.fn(),manualDescription:'',setManualDescription:vi.fn(),manualQty:'1',setManualQty:vi.fn(),manualPrice:'',setManualPrice:vi.fn(),createBusy:false,isAdmin:false,deleteQuote:vi.fn(),supersedeQuote:vi.fn(),supersedePendingId:null,renameTarget:null,renamePending:false,renameQuote:vi.fn(),closeRename:vi.fn(),saveRename:vi.fn()} as any)} listSurface={binding}/>:null,[allowed,pending,binding]);
+ return <><QuotesListSurface query={controls.query} onQueryChange={controls.setQuery} showHistory={controls.showHistory} onHistoryChange={controls.setShowHistory}
+  onInteraction={controls.markInteracted} evidence={published.value} unavailable={!allowed}/>{producer}</>;
+}
+
+it('preserves actual quote Find/history/table/focus across held authority and pending rows, without consulting saved private state before its owner',()=>{
+ const data=new Map<string,unknown>([[JSON.stringify(['commercialListView','proj_1','quotes-search']),'Old saved filter']]);
+ const cache={getQueryData:vi.fn((key:unknown)=>data.get(JSON.stringify(key))),setQueryData:vi.fn((key:unknown,value:unknown)=>data.set(JSON.stringify(key),value))};
+ const a={},b={};const tree=(allowed:boolean,owner:object,pending:boolean)=><PortalQueryClientScope client={cache as any}><ManagedQuotes allowed={allowed} owner={owner} pending={pending}/></PortalQueryClientScope>;
+ const view=renderIntoDocument(tree(false,a,true)),input=view.container.querySelector<HTMLInputElement>('#quote-search')!,table=view.container.querySelector('table'),head=table?.querySelector('thead'),body=table?.querySelector('tbody');
+ expect(cache.getQueryData).not.toHaveBeenCalled();expect(input.disabled).toBe(false);expect(view.container.textContent).not.toContain('Q-1001');
+ view.rerender(tree(true,a,true));const old=oldQuotePublish!;
+ act(()=>{input.focus();Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Q-1001');input.dispatchEvent(new Event('input',{bubbles:true}));});
+ view.rerender(tree(true,a,false));expect(view.container.querySelector('#quote-search')).toBe(input);expect(view.container.querySelector('table')).toBe(table);expect(table?.querySelector('thead')).toBe(head);expect(table?.querySelector('tbody')).toBe(body);
+ expect(input.value).toBe('Q-1001');expect(document.activeElement).toBe(input);expect(table?.textContent).toContain('Q-1001');
+ view.rerender(tree(false,a,false));expect(table?.textContent).not.toContain('Q-1001');expect(view.container.querySelector('#quote-search')).toBe(input);
+ view.rerender(tree(true,b,false));act(()=>old(null));expect(table?.textContent).toContain('Q-1001');expect(input.value).toBe('Q-1001');view.unmount();
+});
 
 describe('QuotesTab draft ownership UI', () => {
   beforeEach(() => {
