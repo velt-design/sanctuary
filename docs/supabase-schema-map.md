@@ -1,5 +1,23 @@
 # Supabase Schema Map
 
+## Paused native-copy proof (24 October 2026, uninstalled local candidate)
+
+Forward `20261024000001_creative_paused_native_copy.sql` patches only the existing
+`meta_creative_executor_without_formal_cohort` predecessor. It changes no tables,
+rows, grants, controls or dispatch history. A `native_reference` plan is restricted
+to an original donor and paused capability. Its only normal intent is the exact
+same-adset `/copies` request with `status_option=PAUSED`, no creative parameters.
+The existing `create_control` maps to the same one-use `create_paused_ad` ledger.
+
+Canary acceptance requires the confirmed registered ad plus an exact native-copy
+receipt binding original source ad/creative, returned ad, request and readback
+hashes. No fabricated `create_creative` effect is needed or permitted. Owned pause
+and cleanup, global acquisition lock, Stop, uncertainty and legacy/formal paths
+remain. Mirrored `creative-executor` contracts/intent serializers and signed
+authority are the consumer owners. A native reference cannot be edited or become
+a formal plan. Install only after exact compatible consumer/rehearsal review;
+installation does not admit or dispatch an effect. Actual Meta proof is separate.
+
 ## Observed estimate context (23 October 2026)
 
 Forward `20261023030001_landing_observed_context.sql` adds the private

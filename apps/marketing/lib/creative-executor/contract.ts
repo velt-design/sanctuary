@@ -56,7 +56,10 @@ export const storyVideoCreativeSchema=z.object({...common,format:z.literal('vide
  call_to_action:z.object({type:z.enum(['GET_DETAILS','LEARN_MORE','GET_QUOTE']),value:z.object({link:z.string().url().max(300)}).strict()}).strict()}).strict()}).strict(),
  media_sourcing_spec:videoSources,creative_sourcing_spec:boundedJson.optional(),degrees_of_freedom_spec:boundedJson.optional(),interactive_components_spec:boundedJson.optional(),platform_customizations:boundedJson.optional(),contextual_multi_ads:boundedJson.optional(),instagram_user_id:id.optional(),
 }).strict()}).strict().refine(v=>{const story=v.payload.object_story_spec,video=story.video_data;return v.payload.media_sourcing_spec.videos.some(x=>x.video_id===video.video_id)&&story.page_id===v.page&&video.message===v.primary&&!!(video.image_url||video.image_hash)&&video.call_to_action.value.link===`https://www.sanctuarypergolas.co.nz${v.path}`;});
-export const creativeSchema = z.discriminatedUnion('format', [imageCreativeSchema, videoCreativeSchema,storyVideoCreativeSchema]);
+// Reference-only proof: unknown provider settings are neither reconstructed nor
+// sent back. Only an unchanged PAUSED copy may consume this tagged control.
+export const nativeReferenceCreativeSchema = z.object({ ...common, format: z.literal('native_reference'), sourceAd: id, snapshotHash: hash }).strict();
+export const creativeSchema = z.discriminatedUnion('format', [imageCreativeSchema, videoCreativeSchema,storyVideoCreativeSchema,nativeReferenceCreativeSchema]);
 export type Creative = z.infer<typeof creativeSchema>;
 export function creativeAssetHash(creative: Creative) {
   const copy = structuredClone(creative);
@@ -85,9 +88,10 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
     formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.enum(['inconclusive','finite_pool_sensitivity_else_inconclusive']) }).strict(),
 }).strict().superRefine((p, ctx) => {
   if((p.evaluation.ambiguity==='finite_allocation_envelope_v1')!==(p.evaluation.unknownMeans==='finite_pool_sensitivity_else_inconclusive'))ctx.addIssue({code:'custom',message:'Evaluation policy differs'});
-  const validReview = p.purpose === 'formal_experiment' ? p.control.format!=='video_story' && (p.control.format!=='video_assets'||p.control.payload.media_sourcing_spec===undefined) && !!p.generator && !!p.reviewer && p.generator !== p.reviewer && p.challengerPrimary !== p.control.primary && nativeWindowValid(p.start,p.end) && Date.parse(p.approvalUntil)>=(p.end+72*3600)*1000
+  const validReview = p.purpose === 'formal_experiment' ? p.control.format!=='native_reference' && p.control.format!=='video_story' && (p.control.format!=='video_assets'||p.control.payload.media_sourcing_spec===undefined) && !!p.generator && !!p.reviewer && p.generator !== p.reviewer && p.challengerPrimary !== p.control.primary && nativeWindowValid(p.start,p.end) && Date.parse(p.approvalUntil)>=(p.end+72*3600)*1000
     : p.generator === null && p.reviewer === null && p.challengerPrimary === p.control.primary && p.end>p.start && p.end-p.start<=3600;
   if (!validReview || !p.originalAds.includes(p.controlAd) || p.control.page !== p.scope.page
+    || p.control.format==='native_reference' && (p.control.sourceAd!==p.controlAd || !!p.retainedBaseline)
     ||p.retainedBaseline&&(p.retainedBaseline.donor!==p.controlAd||p.retainedBaseline.creative!==p.control.id||p.originalAds.includes(p.retainedBaseline.ad)||p.retainedBaseline.experiment===p.experiment)
     || p.end <= p.start
     || Date.parse(p.approvalUntil) <= Date.parse(p.approvedAt)

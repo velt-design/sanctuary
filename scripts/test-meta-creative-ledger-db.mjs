@@ -122,6 +122,9 @@ try{
  const settlement=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_ambiguity_settlement.sql','utf8')).trim().split('\n').at(-1));
  writeFileSync('.local-evidence/ambiguity-native-analysis.json',JSON.stringify({cases:analysisCases,settlement}));
  sql(readFileSync('supabase/migrations/20261022050013_creative_steady_inventory.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261024000001_creative_paused_native_copy.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_paused_native_copy.sql','utf8'));
+ sql(readFileSync('supabase/tests/meta_creative_capability.sql','utf8').replace('begin;', 'begin;delete from public.acquisition_experiment_reservation;truncate public.meta_creative_plans cascade;update public.meta_creative_control set enabled=true,cleanup_enabled=true,authority_current=true,global_stop=false;'));
  const inventory=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_steady_inventory.sql','utf8')).trim().split('\n').at(-1));
  writeFileSync('.local-evidence/steady-native-inventory.json',JSON.stringify(inventory));
  // Synthetic capacity-only cluster state: real trigger in parallel sessions,
