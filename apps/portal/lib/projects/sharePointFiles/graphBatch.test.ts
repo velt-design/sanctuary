@@ -49,6 +49,13 @@ it('uses current metadata URL and tags without a content-redirect lookup or URL 
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(JSON.parse(String(fetcher.mock.calls[1][1]?.body)).requests.find((item: any) => item.id === 'item1').url).toContain('@microsoft.graph.downloadUrl');
 });
+it('proves the bound root, current folder and all requested preview items within one bounded source batch', async () => {
+  const fetcher = source();
+  const graph = await createGraph(cfg, oidc(), AbortSignal.timeout(5000), fetcher as typeof fetch, undefined, { rootId: 'project', itemId: 'leaf', additionalItemIds: ['drawing'], download: true });
+  await graph.within('project', 'leaf'); await graph.within('project', 'drawing');
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(String(fetcher.mock.calls[1][1]?.body)).requests).toHaveLength(3);
+});
 
 it('retains the current source ancestry and /content fallback when optional metadata is absent', async () => {
   const fetcher = source({ omitPath: true, omitDownload: true });

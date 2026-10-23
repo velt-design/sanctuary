@@ -2,6 +2,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/portal-progressive-ui-20261022": false,
+      "codex/project-private-preview-cache-20261023": false,
       "codex/project-file-open-sydney-recovery-20261023": false,
       "codex/campaign-authored-landing-20261022": false,
       "codex/portal-secret-transfer-20261022": false,
@@ -85,10 +86,16 @@
       "codex/project-file-open-locality-20261023": false,
       "codex/project-file-open-auth-20261023": false,
       "codex/project-file-build-dependency-20261023": false,
-      "codex/campaign-test-entry-rubric-20261023": false
+      "codex/campaign-test-entry-rubric-20261023": false,
+      "codex/campaign-clarity-support-20261023": false
     }
   },
   "functions": {
+    "app/api/staff/v1/projects/*/files/previews/route.ts": {
+      "regions": [
+        "syd1"
+      ]
+    },
     "middleware.ts": {
       "regions": [
         "bom1"
@@ -101,6 +108,10 @@
     }
   },
   "crons": [
+    {
+      "path": "/api/integrations/sharepoint-project-previews",
+      "schedule": "*/5 * * * *"
+    },
     {
       "path": "/api/integrations/sharepoint-project-folders",
       "schedule": "* * * * *"

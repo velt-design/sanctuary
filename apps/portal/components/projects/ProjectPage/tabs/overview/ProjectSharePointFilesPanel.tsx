@@ -2,6 +2,7 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { discardProjectPreviews, reconcileFolderPreviews, reconcileRootPreviews, setPreviewOwner } from './projectFilePreviewCache';
+import { prepareFolderPreviews } from './projectFilePreviewPreparation';
 import { PortalAuthContext } from '@/components/auth/PortalAuthProvider';
 import { Button, ButtonLink, DataStatePanel, Input, LoadingSkeleton, Select, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation';
 import { ProjectFilesReadError, projectFileOpenHref } from '@/lib/projects/sharePointFiles/client';
@@ -39,12 +40,19 @@ function Explorer({ projectId, host, disabled = false, websiteFiles, ownerId, al
   const sourceFailed = query.isError || roots.isError;
   const items = denied || sourceFailed || first?.state !== 'ready' ? [] : allItems;
   const selected = items.find(item => item.kind === 'file' && item.id === nav.selectedId);
+  useEffect(() => {
+    if (previewOwner && !denied && !sourceFailed && nav.source === 'sharepoint' && first?.state === 'ready' && rootId && first.folderId) {
+      const prepare = (renew = false) => prepareFolderPreviews(client, { owner: previewOwner, projectId, rootId, folderId: first.folderId! }, allItems, nav.selectedId, renew, 16, true);
+      prepare(); const interval = setInterval(() => prepare(true), 4 * 60_000);
+      return () => clearInterval(interval);
+    }
+  }, [client, previewOwner, projectId, rootId, first?.folderId, query.dataUpdatedAt, denied, sourceFailed, nav.source, nav.selectedId]);
   useEffect(() => { setPreviewOwner(client, previewOwner); }, [client, previewOwner]);
   useEffect(() => {
     if (!previewOwner) return;
     if (rootPage) reconcileRootPreviews(client, previewOwner, projectId, rootPage.roots.map(root => root.id));
     if (denied || sourceFailed || first && first.state !== 'ready') discardProjectPreviews(client, previewOwner, projectId);
-    else if (first?.state === 'ready' && rootId) reconcileFolderPreviews(client, previewOwner, projectId, rootId, first.folderId ?? '', allItems, !query.hasNextPage);
+    else if (first?.state === 'ready' && rootId) reconcileFolderPreviews(client, previewOwner, projectId, rootId, first.folderId ?? '', allItems, !query.hasNextPage, query.dataUpdatedAt);
   }, [client, previewOwner, projectId, denied, sourceFailed, query.dataUpdatedAt, roots.dataUpdatedAt, first, rootId, query.hasNextPage]);
   const term = nav.term.trim().toLocaleLowerCase();
   const matches = items.filter(item => !term || item.name.toLocaleLowerCase().includes(term));

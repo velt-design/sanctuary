@@ -25,13 +25,23 @@ try{
  const inventory=()=>JSON.parse(sql("select jsonb_object_agg(p.oid::regprocedure::text,jsonb_build_object('hash',encode(sha256(convert_to(pg_get_functiondef(p.oid),'UTF8')),'hex'),'acl',p.proacl))from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'"));
  const before=inventory();sql(readFileSync('supabase/migrations/20261023010001_landing_owner_decisions.sql','utf8'));const after=inventory();
  mkdirSync('.local-evidence',{recursive:true});writeFileSync('.local-evidence/owner-decision-function-inventory.json',JSON.stringify({changed:Object.keys(after).filter(k=>JSON.stringify(after[k])!==JSON.stringify(before[k])).map(name=>({name,before:before[name]??null,after:after[name]})),removed:Object.keys(before).filter(k=>!(k in after))},null,2));
+ sql(readFileSync('supabase/migrations/20261023020001_landing_corrected_reassessment.sql','utf8'));
+ sql(readFileSync('supabase/migrations/20261023030001_landing_observed_context.sql','utf8'));
  sql(readFileSync('supabase/tests/landing_owner_decisions.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_corrected_reassessment.sql','utf8'));
+ sql(readFileSync('supabase/tests/landing_observed_context.sql','utf8'));
  const call=statement=>new Promise((done,reject)=>{const child=spawn(join(bin,'psql'+suffix),['-X','-v','ON_ERROR_STOP=1','-h','127.0.0.1','-p',String(port),'-U','cluster_admin','-d','postgres','-q','-At'],{windowsHide:true,env:{NODE_ENV:'test'}});child.stdout.resume();child.stderr.resume();child.on('error',reject);child.on('close',code=>done(code===0));child.stdin.end(statement);});
  sql("insert into public.landing_experiment_control(binding,template,campaign,adset,ads,admitted_until,enabled,publishing)values(repeat('b',64),repeat('a',64),'11001','11002',array['11003'],'infinity',true,false)");
  const payload=sql("select jsonb_build_object('owner','10000000-0000-4000-8000-000000000001','request',gen_random_uuid(),'generation',generation,'template',template,'controls',jsonb_build_object('/auckland-outdoor-living',control_outdoor,'/acrylic-roof-pergolas-auckland',control_acrylic),'prior',null,'correction',repeat('f',40),'day',to_char(clock_timestamp()at time zone 'Pacific/Auckland','YYYY-MM-DD'),'expiresAt',least(clock_timestamp()+interval '1 hour',date_trunc('day',clock_timestamp()at time zone 'Pacific/Auckland')at time zone 'Pacific/Auckland'+interval '1 day'-interval '1 second',date_trunc('day',clock_timestamp()at time zone 'Australia/Sydney')at time zone 'Australia/Sydney'+interval '1 day'-interval '1 second'),'funding',jsonb_build_object('day',to_char(clock_timestamp()at time zone 'Australia/Sydney','YYYY-MM-DD'),'receiptHash',repeat('a',64),'maximumModelUsd',.14308))from public.landing_experiment_control").trim();
  const claims=await Promise.all([1,2].map(()=>call(`select public.landing_experiment_command(repeat('b',64),gen_random_uuid(),'owner_decision',null,'${payload.replaceAll("'","''")}'::jsonb)`)));
  if(claims.filter(Boolean).length!==1)throw Error('Owner decision parallel admission differs');
  if(sql('select count(*)from public.acquisition_experiment_reservation').trim()!=='1')throw Error('Global owner reservation differs');
+ const first=sql("select command from public.landing_experiment_receipts where stage='owner_decision'").trim();
+ sql(`select public.landing_experiment_command(repeat('b',64),gen_random_uuid(),'owner_end',null,jsonb_build_object('ownerDecision','${first}','result','no_landing_hypothesis'))`);
+ const next=JSON.parse(payload);next.request='10000000-0000-4000-8000-000000000002';next.correction='e'.repeat(40);next.funding.receiptHash='e'.repeat(64);
+ const successor=JSON.stringify(next).replaceAll("'","''");
+ const repeated=await Promise.all([1,2].map(()=>call(`select public.landing_experiment_command(repeat('b',64),gen_random_uuid(),'owner_decision',null,'${successor}'::jsonb)`)));
+ if(repeated.filter(Boolean).length!==1||sql(`select count(*)from public.landing_experiment_receipts where stage='owner_decision' and command<>'${first}'`).trim()!=='1')throw Error('Corrected reassessment parallel admission differs');
  process.stdout.write(JSON.stringify({ownerDecision:true,ordinaryCountsPreserved:true,disposableOnly:true,liveCalls:0,postgres:sql('show server_version').trim()}));
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);

@@ -11,7 +11,7 @@ function removeFixture(repo: string, parent: string) {
   rmSync(target, { recursive: true, force: true });
 }
 
-it('registers only the reviewed provisioning adapter and keeps nearby privileged files denied', () => {
+it('registers only the reviewed provisioning/private-preview adapters and keeps nearby privileged files denied', () => {
   const parent = realpathSync(tmpdir());
   const repo = mkdtempSync(join(parent, 'sanctuary-sharepoint-boundary-'));
   const reporter = resolve('scripts/service-role-access-report.mjs');
@@ -27,6 +27,8 @@ it('registers only the reviewed provisioning adapter and keeps nearby privileged
     const base = git('rev-parse', 'HEAD');
     mkdirSync(join(repo, directory), { recursive: true }); mkdirSync(join(repo, 'scripts'));
     writeFileSync(join(repo, directory, 'provision.ts'), 'getSupabaseServiceRole();\n');
+    mkdirSync(join(repo, directory, 'previews'));
+    writeFileSync(join(repo, directory, 'previews/repository.ts'), 'process.env.SUPABASE_SERVICE_ROLE_KEY;\n');
     writeFileSync(join(repo, 'scripts/sharepoint-project-files.ts'), 'process.env.SUPABASE_SERVICE_ROLE_KEY;\n');
     git('add', '.'); git('commit', '-m', 'reviewed entrypoints');
     const report = () => spawnSync(process.execPath, [reporter, '--changed', '--strict'], {
@@ -36,6 +38,7 @@ it('registers only the reviewed provisioning adapter and keeps nearby privileged
     expect(allowed.status, allowed.stderr || allowed.stdout).toBe(0);
     expect(allowed.stdout).toContain('scoped project-folder lease/publication RPC owner');
     expect(allowed.stdout).toContain('operator-only verified SharePoint binding import');
+    expect(allowed.stdout).toContain('private versioned preview cache');
     writeFileSync(join(repo, directory, 'provision-extra.ts'), 'getSupabaseServiceRole();\n');
     writeFileSync(join(repo, directory, 'server.ts'), 'getSupabaseServiceRole();\n');
     git('add', '.'); git('commit', '-m', 'unreviewed privileged neighbours');
@@ -44,6 +47,7 @@ it('registers only the reviewed provisioning adapter and keeps nearby privileged
     expect(denied.stderr).toContain(`${directory}/provision-extra.ts`);
     expect(denied.stderr).toContain(`${directory}/server.ts`);
     expect(denied.stderr).not.toContain(`${directory}/provision.ts`);
+    expect(denied.stderr).not.toContain(`${directory}/previews/repository.ts`);
   } finally {
     removeFixture(repo, parent);
   }

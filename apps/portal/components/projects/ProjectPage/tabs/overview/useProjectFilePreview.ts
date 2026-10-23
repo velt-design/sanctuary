@@ -5,7 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectFilesPage } from '@/lib/projects/sharePointFiles/types';
 import { PREVIEW_VERSION_REQUEST_HEADER, readPreviewVerification } from '@/lib/projects/sharePointFiles/previewVerification';
 import { strongFileVersion, VERIFIED_FILE_VERSION_HEADER } from '@/lib/projects/sharePointFiles/fileVersion';
-import { discardPreview, discardProjectPreviews, readPreview, retainPreview, setPreviewOwner, type PreviewBytes, type PreviewScope } from './projectFilePreviewCache';
+import { discardPreview, discardProjectPreviews, readPreview, retainPreview, setPreviewOwner, subscribePreview, type PreviewBytes, type PreviewScope } from './projectFilePreviewCache';
+import { prepareSelectedPreview } from './projectFilePreviewPreparation';
 import { ProjectPdfStream } from './ProjectPdfStream';
 
 const INLINE_LIMIT = 50_000_000;
@@ -27,9 +28,12 @@ export function useProjectFilePreview({ url, item, scope, revision, onChanged }:
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const onChangedRef = useRef(onChanged); onChangedRef.current = onChanged;
+  const previousRequest = useRef({ revision, attempt });
   const scopeId = scope ? JSON.stringify(scope) : 'unscoped';
   const identity = `${scopeId}:${url}:${item.eTag ?? item.cTag ?? item.modifiedAt ?? ''}:${revision}:${attempt}`;
   useLayoutEffect(() => {
+    const force = previousRequest.current.revision !== revision || previousRequest.current.attempt !== attempt;
+    previousRequest.current = { revision, attempt };
     setPreviewOwner(client, scope?.owner ?? null);
     setResult(null);
     if (!url) return;
@@ -41,15 +45,29 @@ export function useProjectFilePreview({ url, item, scope, revision, onChanged }:
       else { objectUrl = URL.createObjectURL(new Blob([new Uint8Array(body.bytes)], { type: body.mime })); setResult({ identity, image: objectUrl, name: body.name, checking }); }
     };
     const resident = scope ? readPreview(client, scope, [item.eTag, item.cTag]) : null;
-    if (resident) showBytes({ ...resident, name: item.name }, true);
+    if (resident) showBytes(resident.profile ? resident : { ...resident, name: item.name }, !resident.profile || force);
+    const unsubscribe = scope ? subscribePreview(client, scope, body => {
+      if (disposed) return;
+      if (!body) { controller.abort(); setResult({ identity, error: 'File access or the preview has changed. Refresh Files or retry.' }); }
+      else if (body.profile) { showBytes(body, false); if (![item.eTag, item.cTag].includes(body.version)) onChangedRef.current(); }
+    }) : () => undefined;
     const fail = (message: string) => {
       if (scope) discardProjectPreviews(client, scope.owner, scope.projectId);
       if (!disposed) setResult({ identity, error: message });
     };
     const timeout = setTimeout(() => { controller.abort(); fail('The preview timed out. Retry or download the original.'); }, 50_000);
     void (async () => {
+      const authorizedAt = Date.now();
       try {
-        const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal, headers: resident ? { [PREVIEW_VERSION_REQUEST_HEADER]: resident.version } : {} });
+        if (resident?.profile && !force) return;
+        if (scope) {
+          const ready = await prepareSelectedPreview(client, scope, item, force);
+          if (disposed || controller.signal.aborted) return;
+          const prepared = ready ? readPreview(client, scope, []) : null;
+          if (prepared?.profile) { showBytes(prepared, false); return; }
+        }
+        const original = resident && !resident.profile ? resident : null;
+        const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal, headers: original ? { [PREVIEW_VERSION_REQUEST_HEADER]: original.version } : {} });
         if (disposed || controller.signal.aborted) return;
         const name = responseName(response, item.name);
         const originVersion = strongFileVersion(response.headers.get('etag'));
@@ -58,11 +76,11 @@ export function useProjectFilePreview({ url, item, scope, revision, onChanged }:
         if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'File access is unavailable. Refresh Files to check access.' : response.status === 404 ? 'This file has moved or is no longer available. Refresh the folder.' : 'The preview could not be loaded. Retry or download the original.');
         const mime = response.headers.get('content-type')?.split(';')[0].trim() ?? '';
         if (mime === 'application/json') {
-          if (response.status !== 200 || !scope || !resident) throw new Error('The preview could not be verified. Retry to load it again.');
+          if (response.status !== 200 || !scope || !original) throw new Error('The preview could not be verified. Retry to load it again.');
           const receipt = await readPreviewVerification(response);
           if (disposed || controller.signal.aborted) return;
-          if (receipt.projectId !== scope.projectId || receipt.rootId !== scope.rootId || receipt.itemId !== scope.itemId || receipt.version !== resident.version || receipt.contentType !== resident.mime || receipt.size !== resident.bytes.byteLength) throw new Error('The preview could not be verified. Retry to load it again.');
-          retainPreview(client, scope, { ...resident, name: receipt.name });
+          if (receipt.projectId !== scope.projectId || receipt.rootId !== scope.rootId || receipt.itemId !== scope.itemId || receipt.version !== original.version || receipt.contentType !== original.mime || receipt.size !== original.bytes.byteLength) throw new Error('The preview could not be verified. Retry to load it again.');
+          retainPreview(client, scope, { ...original, name: receipt.name }, false, authorizedAt);
           setResult(previous => previous?.identity === identity ? { ...previous, name: receipt.name, checking: false } : previous);
           return;
         }
@@ -89,14 +107,14 @@ export function useProjectFilePreview({ url, item, scope, revision, onChanged }:
         stream?.finish();
         const body = { bytes, mime, name, version: verifiedVersion ?? '' };
         // Only origin-verified complete representations may enter recent-file memory.
-        if (scope && verifiedVersion && response.status === 200 && (!declared || declared === received)) retainPreview(client, scope, body);
+        if (scope && verifiedVersion && response.status === 200 && (!declared || declared === received)) retainPreview(client, scope, body, false, authorizedAt);
         else if (scope) discardPreview(client, scope);
         if (!stream || stream.length !== received) showBytes(body, false);
         if (originVersion && [item.eTag, item.cTag].some(Boolean) && ![item.eTag, item.cTag].includes(originVersion)) onChangedRef.current();
       } catch (error) { if (!disposed && !controller.signal.aborted) fail(error instanceof Error ? error.message : 'Preview unavailable.'); }
       finally { clearTimeout(timeout); }
     })();
-    return () => { disposed = true; clearTimeout(timeout); controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    return () => { disposed = true; unsubscribe(); clearTimeout(timeout); controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [client, identity]);
   return {
     result: result?.identity === identity ? result : null,

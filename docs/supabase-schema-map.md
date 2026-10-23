@@ -1,12 +1,33 @@
 # Supabase Schema Map
 
+## Observed estimate context (23 October 2026)
+
+Forward `20261023030001_landing_observed_context.sql` adds the private
+`landing_owner_observation_insert()` trigger and unique receipt index. It patches
+`landing_owner_decision(uuid)` and `landing_experiment_command(text,uuid,text,uuid,jsonb)`
+without changing the signed HTTP contract, renderer, templates, tables or grants.
+One operator-only `owner_observation` receipt binds the exact settled capacity/end
+rows, current controls/template, unchanged expiry, actual compatible releases and
+dated evidence hash. It atomically reacquires only the original unused global
+reservation. Existing `prepare` may then consider only acrylic `estimate` copy.
+The old no-hypothesis end, ordinary probe counts, decision count and exclusions
+remain. A second terminal end stops the supplement; no retry or renewal follows.
+Exact prepare replay keeps its original digest checks after Stop/expiry.
+
+Install only against the reviewed compatible consumer and prior23020001 schema,
+with rollback/equality and fresh original-row hashes. Source receipt comes before
+the paired Velt observed-context event. Never replace an uncertain append; read
+its exact command/result. The native test constructors are in
+`supabase/tests/landing_observed_context.sql`, included by the existing disposable
+owner-decision harness. No schema install creates an observation or runs a model.
+
 ## Funded owner landing decisions (23 October 2026, local candidate)
 
 Forward `20261023010001_landing_owner_decisions.sql` adds no table or public
 endpoint. Four private helpers project prior/settled state, validate capacity,
 and expire only an unprepared decision reservation. The existing signed command
-wraps its previous implementation; three unique receipt indexes enforce one
-owner/Auckland-day decision, one preparation and one first prepare-probe. A
+wraps its previous implementation; its initial three unique receipt indexes enforce
+one owner/Auckland-day decision, one preparation and one first prepare-probe. A
 null/reject consumes the decision. A lost dispatch is reconciled by its exact
 receipt, never refunded or repeated. Ordinary probe rows/counters remain intact.
 Exact committed prepare/probe replay precedes current-capacity validation, so
@@ -14,6 +35,21 @@ expiry, Stop or generation changes cannot hide the saved result. Binding and
 the complete stage/experiment/payload digest still must match. Signed probe
 receipt reads return only the original saved fields, without a new capability
 or extended probe expiry; fresh commands still require current capacity.
+
+Forward `20261023020001_landing_corrected_reassessment.sql` replaces the daily
+unique index with owner/day/correction uniqueness and caps issuance at two that
+day under the existing acquisition lock. The second requires the first's exact
+`owner_end` no-hypothesis receipt, no preparation/probe, distinct corrected Velt
+release and funding receipt, and unchanged scope/template/generation/controls/
+prior experiment. The sole earlier immutable owner/day receipt is the exact
+predecessor, checked against Velt's explicit predecessor by the paired operator.
+Receipt row shape and signed result stay unchanged, preserving historical native
+whole-row hashes. No old rows, ordinary probes or model slots are reset.
+Exact lost-response replay still precedes current capacity checks. These native
+changes work with the already reviewed compatible consumer; no public-page or
+renderer change is required. Installation requires committed reviewed files,
+exact rollback rehearsal and ledger/readback evidence. Required Git merge checks
+remain separate and unchanged.
 
 Capacity is acquired before Velt reserves collection/model work, under the same
 acquisition lock as ordinary landing and creative tests. It binds owner/request,
@@ -1470,6 +1506,20 @@ mandatory. No production migration or capability is implied by fixture passes.
 ## Project SharePoint bindings and provisioning (22 October 2026)
 
 Migration 20261022090001_project_sharepoint_files adds private project_files_control, project_file_roots, project_folder_provisions and project_file_events. RLS and revoked direct grants preserve the boundary. User-bound project_files_read rechecks active confirmed staff/admin membership; service-only project_files_admin imports explicit evidence-backed roots and project_files_provision manages leased attempts. A dark insert trigger queues only future projects atomically. See [Project SharePoint files](project-sharepoint-files.md).
+
+Candidate migration `20261023100715_project_private_preview_cache` adds the private
+`project-file-previews` Storage bucket (JPEG/PDF only, 5 MiB/object), versioned
+preview manifest, active-folder scans, fenced build leases and durable object
+cleanup reservations. All four private tables enable RLS and revoke browser and
+service direct grants. Only service-role `project_file_preview_cache` can command
+them; no Storage policy grants direct authenticated/anonymous access. Cache
+commands validate current binding/project/root identity, but are not a recipient
+or SharePoint authorization substitute. Byte routes must first prove fresh user
+session, current staff/project roots and current Graph source identity/version.
+Global 512 MiB/4096-object admission includes abandoned uploads, copies expire
+logically after 24 hours, and finite queued cleanup survives feature disablement.
+Native PostgreSQL/Storage policy and API verification remain activation checks;
+the PGlite tests establish SQL command behavior, not hosted Storage enforcement.
 
 Project deletion cascades only local bindings/provisioning rows. A private deletion trigger snapshots root/job evidence before cleanup; audit project UUIDs intentionally survive without a live-project FK. No provider file deletion is dispatched. Late completion cannot resurrect deleted project metadata, and completion locks parent before job to match deletion order. The disposable migration contract covers imported, completed, pending and running deletion.
 
