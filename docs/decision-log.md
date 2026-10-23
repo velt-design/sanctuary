@@ -1,5 +1,23 @@
 # Decision Log
 
+## 2026-10-23: Prepare private representations without caching access authority
+
+Every new preview batch retains fresh recipient session/RPC and current app-only
+SharePoint containment/version proof before private bytes leave the server.
+Already delivered recipient bytes can display locally on selection; a second
+per-selection authority round trip defeats preloading without protecting a new
+disclosure. Bind derived MIME/size/hash to a variant receipt rather than an
+original-file receipt. Bound memory, work, abandoned uploads and cleanup, then
+verify sustained browsing without hiding waits behind readiness probes.
+Owner: [Project SharePoint files](project-sharepoint-files.md).
+
+A renewal timer must explicitly bypass a longer query freshness window and read
+the current navigation at execution time. Otherwise a four-minute timer can
+silently become eight-minute reads or keep renewing the folder captured at mount.
+Shared infinite-query renewal must also preserve loaded pages and reconcile
+their full retained item set; a forced one-page prefetch can remove a later-page
+selection even though the source file still exists.
+
 ## 2026-10-23: Recover file locality using the complete ordinary task
 
 The Singapore canary lowered authentication time but regressed both matched

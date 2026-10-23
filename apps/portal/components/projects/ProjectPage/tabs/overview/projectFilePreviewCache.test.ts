@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
-import { discardProjectPreviews, PREVIEW_CACHE_MAX_BYTES, PREVIEW_LEASE_MS, readPreview, reconcileFolderPreviews, retainPreview, setPreviewOwner, type PreviewScope } from './projectFilePreviewCache';
+import { discardProjectPreviews, PREVIEW_CACHE_MAX_BYTES, PREVIEW_LEASE_MS, readPreview, reconcileFolderPreviews, retainPreview, setPreviewOwner, subscribePreview, type PreviewScope } from './projectFilePreviewCache';
 import { ProjectPdfStream } from './ProjectPdfStream';
 const scope: PreviewScope = { owner: 'host:staff', projectId: 'project', rootId: 'root', folderId: 'folder', itemId: 'file' };
 const body = { bytes: new Uint8Array([1,2,3]), mime: 'image/png', name: 'Current.png', version: '"v1"' };
@@ -16,7 +16,7 @@ it('isolates owners, projects, roots and source versions and rejects late previo
 it('expires after the approved five-minute lease and keeps both count and byte budgets bounded', () => {
   vi.useFakeTimers(); const client = new QueryClient(); setPreviewOwner(client, scope.owner); retainPreview(client, scope, body);
   vi.advanceTimersByTime(PREVIEW_LEASE_MS); expect(readPreview(client, scope, [])).toBeNull();
-  for (let index = 0; index < 9; index++) retainPreview(client, { ...scope, itemId: String(index) }, body);
+  for (let index = 0; index < 33; index++) retainPreview(client, { ...scope, itemId: String(index) }, body);
   expect(readPreview(client, { ...scope, itemId: '0' }, [])).toBeNull();
   expect(readPreview(client, { ...scope, itemId: '8' }, [])).not.toBeNull();
   retainPreview(client, { ...scope, itemId: 'large' }, { ...body, bytes: new Uint8Array(PREVIEW_CACHE_MAX_BYTES) });
@@ -39,4 +39,35 @@ it('replays a single PDF stream to viewers using copies so worker transfer canno
   stream.append(new Uint8Array([3])); stream.finish(); expect(done).toHaveBeenCalledTimes(1);
   release(); const replay = vi.fn(), replayDone = vi.fn(); stream.subscribe(replay, replayDone);
   expect(replay).toHaveBeenCalledTimes(2); expect(replayDone).toHaveBeenCalledTimes(1);
+});
+it('admits useful new neighbors after forty distinct opened files without evicting each new preparation itself', () => {
+  const client = new QueryClient(); setPreviewOwner(client, scope.owner);
+  for (let index = 0; index < 40; index++) retainPreview(client, { ...scope, itemId: String(index) }, body);
+  for (let index = 40; index < 48; index++) retainPreview(client, { ...scope, itemId: String(index) }, body, true);
+  for (let index = 40; index < 48; index++) expect(readPreview(client, { ...scope, itemId: String(index) }, [], false)).not.toBeNull();
+  expect(readPreview(client, { ...scope, itemId: '8' }, [])).toBeNull();
+  expect(readPreview(client, { ...scope, itemId: '39' }, [])).not.toBeNull();
+});
+it('rejects an older in-flight publication after a newer version or deletion was observed', () => {
+  const client = new QueryClient(); setPreviewOwner(client, scope.owner);
+  reconcileFolderPreviews(client, scope.owner, scope.projectId, scope.rootId, scope.folderId, [{ id: 'file', name: 'New', kind: 'file', size: 3, modifiedAt: null, viewable: true, eTag: '"v2"' }], true, 200);
+  retainPreview(client, scope, body, true, 100); expect(readPreview(client, scope, [])).toBeNull();
+  retainPreview(client, scope, { ...body, version: '"v2"' }, true, 300); expect(readPreview(client, scope, [])).not.toBeNull();
+  reconcileFolderPreviews(client, scope.owner, scope.projectId, scope.rootId, scope.folderId, [], true, 400);
+  retainPreview(client, scope, { ...body, version: '"v2"' }, true, 300); expect(readPreview(client, scope, [])).toBeNull();
+});
+it('keeps the sixteen-item moving neighbor window after twenty opened files fill the working set', () => {
+  const client = new QueryClient(); setPreviewOwner(client, scope.owner);
+  for (let index = 0; index < 20; index++) retainPreview(client, { ...scope, itemId: String(index) }, body);
+  for (let index = 20; index < 36; index++) retainPreview(client, { ...scope, itemId: String(index) }, body, true);
+  for (let index = 20; index < 36; index++) expect(readPreview(client, { ...scope, itemId: String(index) }, [], false)).not.toBeNull();
+  expect(readPreview(client, { ...scope, itemId: '19' }, [])).not.toBeNull();
+});
+it('keeps a currently displayed large original alive when background neighbors exceed available memory', () => {
+  const client = new QueryClient(); setPreviewOwner(client, scope.owner);
+  retainPreview(client, scope, { ...body, bytes: new Uint8Array(30 * 1024 * 1024) });
+  const listener = vi.fn(), release = subscribePreview(client, scope, listener);
+  retainPreview(client, { ...scope, itemId: 'neighbor' }, { ...body, bytes: new Uint8Array(3 * 1024 * 1024) }, true);
+  expect(readPreview(client, scope, [])?.bytes.length).toBe(30 * 1024 * 1024);
+  expect(readPreview(client, { ...scope, itemId: 'neighbor' }, [])).toBeNull(); expect(listener).not.toHaveBeenCalledWith(null); release();
 });

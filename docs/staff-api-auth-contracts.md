@@ -594,3 +594,16 @@ Original website receipts use GET /api/staff/projects/[projectId]/enquiry-receip
 ## Project SharePoint files (22 October 2026)
 
 Staff GET project files and file open routes authenticate before the user-bound project_files_read RPC, configured-drive checks and root ancestry verification. They do not use service-role reads. Original downloads redirect only to validated short-lived tenant URLs with private/no-store and no-referrer; inline previews stream safe types with Range support and a byte limit. The cron route has a separate CRON_SECRET boundary and a scoped leased command. See [Project SharePoint files](project-sharepoint-files.md).
+
+The private-preview candidate adds same-origin POST
+`/api/staff/v1/projects/[projectId]/files/previews`. Fresh `getUser`, the same
+authenticated client's current `project_files_read`, and fresh Graph proof for
+the bound root/folder/every requested item precede private cache reads and all
+response bytes. A strict request admits eight IDs; private/no-store NDJSON streams
+bounded version/profile/hash receipts and at most 8 MiB decoded bodies. No Storage
+capability URL is exposed. The exact server-only preview repository is privileged
+for its service-only cache RPC/private bucket; it cannot replace recipient access
+checks. The separate five-minute reconciliation cron uses existing CRON_SECRET,
+claims one active folder page and keeps cleanup available when disabled. This
+candidate requires explicit schema/config activation and native Storage denial
+verification before claiming hosted coverage.

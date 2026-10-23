@@ -1,5 +1,11 @@
 # Project Operational Command Centre Architecture
 
+The local private-preview candidate keeps preparation owned by the dedicated
+Files domain and existing authenticated-owner QueryClient. Overview contributes
+only the current-project preparation hook; it acquires no Storage client or
+second explorer. Derived bytes, admission, renewal and cancellation use the
+existing Files owners described in [Project SharePoint files](project-sharepoint-files.md).
+
 ## Initial Work document experiment (22 October 2026, local)
 
 After the existing fresh page gate, `loadProjectWorkInitialRead` starts summary,

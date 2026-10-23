@@ -591,4 +591,11 @@ baseline and error for retry.
 
 ## SharePoint project files (22 October 2026)
 
+The 23 October private-preview candidate adds recipient-authorized bounded
+preloading, private versioned photo/small-PDF storage and active-folder sync.
+Every new byte delivery retains fresh session/staff/project/root/source proof;
+already delivered memory can display immediately. Originals and website
+attachments keep their existing paths. Activation and native/live acceptance
+remain separate from the local implementation; see the owner below.
+
 The dedicated main Files tab fills the available project width and viewport height, with explicitly bound Jobs-library folders, multiple roots per project, safe PDF/photo previews and original downloads. The selected Explorer keeps folder/list/selected preview together, preserves scoped return state and progressively finds within actual current-folder cursor pages. MIME metadata enables source-appropriate photo browsing; selected content uses the existing protected open route and lazy canvas PDF renderer. Website enquiry attachments remain available through the source chooser. This UI increment does not change provisioning enablement or backfill historical projects. See [Project SharePoint files](project-sharepoint-files.md) for ownership, activation, recovery and acceptance limits.
