@@ -3341,3 +3341,33 @@ public landing route suite checks the existing signed transport and rejects a
 steady receipt masquerading as a native arm. App typechecks, changed-file lint,
 architecture/docs guards and template generation check complete local proof.
 No synthetic fixture proves actual provider inventory or live attribution.
+
+
+### Supplemental native causal diagnostic (local candidate)
+
+The dedicated native spec runs once after successful completion of the unchanged
+five baseline captures, reusing their last auth state and production build. Its
+separate opt-in disables the original observer, media, HTML reports and raw
+server/framework output, including Playwright's separate error-context snapshot.
+A second in-memory schema filter covers runner failures
+before the safe reporter loads; shell pipefail retains failure status. No new
+artifact upload, credential setup, provider command or business POST is added.
+
+Raw CDP data stays bounded in memory and is discarded. Fixed JSONL markers carry
+only allowlisted event spans, finite numbers, and validated emitted public static
+chunk basenames/positions. Longest trace spans are selected across the full action;
+CPU locations have a separate quota and report sampled self-time/count with first
+and last sample bounds, not a continuous task. Trace and CPU offsets have separate
+origins. Unknown locations are numeric aggregates without names. Projection quotas
+remain explicit after successful full capture; this bounded subset does not prove
+complete task attribution. Missing data, action/CDP failure or raw-input truncation
+fails the diagnostic run. Failed capture takes precedence over projection quotas.
+The batch is bounded to 160 seconds (180-second test ceiling), 400 same-origin GETs,
+64 MiB raw input per capture, 128 trace spans plus 128 CPU locations per action and 2048 rows/512 KiB
+safe output. All other requests, including telemetry, are aborted. Sampling adds
+overhead and non-reproduction is inconclusive. Trace spans aggregate threads without
+main-thread attribution; a projected RunTask is not proof of the original browser
+main-thread long task. Sampled self-times cannot be added to trace durations.
+This provides causal evidence only;
+it does not change original clocks, five samples, 16 rules, 100/500/50 targets,
+Calculator exception or legacy useful-marker limitations recorded above.

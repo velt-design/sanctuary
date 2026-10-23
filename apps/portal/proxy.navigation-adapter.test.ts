@@ -36,9 +36,7 @@ it.each(REGIONAL_NAVIGATION_PATHS)('activates the fresh-server lane for adapter-
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });
 const exclusions: Array<{ path: string; extra: Record<string, string> }> = [
-  { path: '/staff/contacts', extra: { 'sec-fetch-dest': 'document', accept: 'text/html' } },
   { path: '/staff/contacts', extra: { 'next-action': 'fictional' } },
-  { path: '/staff/projects/work-queue', extra: { 'sec-fetch-dest': 'document', accept: 'text/html' } },
   { path: '/staff/projects/work-queue', extra: { 'next-action': 'fictional' } },
   { path: '/staff/projects/work-queue', extra: { accept: 'application/json' } },
   { path: '/schedule', extra: {} }, { path: '/admin', extra: {} }, { path: '/staff/projects/work-queue/child', extra: {} },
@@ -51,4 +49,12 @@ it.each(exclusions)('retains original middleware authority outside the selected 
 it.each(['/staff/contacts', '/staff/projects/work-queue'])('keeps %s actions outside the lane after real adapter normalization', async path => {
   const { response } = await throughAdapter(path, { 'next-action': 'fictional' }, 'POST');
   expect(h.session).not.toHaveBeenCalled(); expect(h.user).toHaveBeenCalledOnce(); expect(response.status).toBe(307);
+});
+
+it.each(REGIONAL_NAVIGATION_PATHS)('keeps document placement distinct after installed adapter normalization for %s', async path => {
+  const {response} = await throughAdapter(path, {'sec-fetch-dest':'document',accept:'text/html'});
+  expect(h.session).toHaveBeenCalledOnce();expect(h.user).not.toHaveBeenCalled();expect(h.role).not.toHaveBeenCalled();
+  expect(response.headers.get('x-middleware-request-'+DOCUMENT_CALLBACK_HEADER)).toBe(path+'?q=one');
+  expect(response.headers.get('x-middleware-request-'+NAVIGATION_CALLBACK_HEADER)).toBeNull();
+  expect(response.headers.get('cache-control')).toBe('private, no-store');
 });

@@ -26,7 +26,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
-it.each(['/staff/projects', '/staff/site-visits', '/staff/marketing-performance', '/staff/projects/proj_00000000-0000-4000-8000-000000000001', '/staff/projects/00000000-0000-4000-8000-000000000001'])('defers only %s document authority to regional checks', async path => {
+it.each([...REGIONAL_NAVIGATION_PATHS, '/staff/site-visits', '/staff/marketing-performance', '/staff/projects/proj_00000000-0000-4000-8000-000000000001', '/staff/projects/00000000-0000-4000-8000-000000000001'])('defers only %s document authority to regional checks', async path => {
   const callback = `${path}?q=one&q=two&tab=activity`;
   const response = await middleware(new NextRequest(`https://portal.example${callback}`, { headers: { ...documentHeaders, [DOCUMENT_CALLBACK_HEADER]: '/staff/projects?spoof=1' } }));
   expect(h.session).toHaveBeenCalledOnce();
@@ -36,7 +36,7 @@ it.each(['/staff/projects', '/staff/site-visits', '/staff/marketing-performance'
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });
 
-it.each(['/staff/marketing-performance/child', '/staff/marketing-performance-extra', '/staff/projects/new', '/staff/projects/work-queue', '/staff/projects/proj_1', '/staff/projects/proj_00000000-0000-4000-8000-000000000001/estimate/a', '/projects', '/admin', '/dashboard'])('keeps full global authority for %s', async path => {
+it.each(['/staff/marketing-performance/child', '/staff/marketing-performance-extra', '/staff/projects/new', '/staff/projects/work-queue/child', '/staff/projects/proj_1', '/staff/projects/proj_00000000-0000-4000-8000-000000000001/estimate/a', '/projects', '/admin', '/dashboard/child', '/schedule'])('keeps full global authority for %s', async path => {
   const response = await middleware(new NextRequest(`https://portal.example${path}`, { headers: { ...documentHeaders, [DOCUMENT_CALLBACK_HEADER]: '/staff/projects' } }));
   expect(h.session).not.toHaveBeenCalled();
   expect(h.user).toHaveBeenCalledOnce();
@@ -44,7 +44,7 @@ it.each(['/staff/marketing-performance/child', '/staff/marketing-performance-ext
   expect(response.headers.get(`x-middleware-request-${DOCUMENT_CALLBACK_HEADER}`)).toBeNull();
 });
 
-it.each(['/staff/projects','/staff/marketing-performance'].flatMap(path=>[{ rsc: '1' }, { 'next-router-prefetch': '1' }, { 'next-router-segment-prefetch': '/_tree' }, { 'next-action': 'synthetic' }, { purpose: 'prefetch' }, { 'sec-purpose': 'prefetch;prerender' }, { 'sec-fetch-dest': 'empty' }, { accept: 'text/x-component' }].map(extra=>({path,extra}))))('retains full checks for request variant %j', async ({path,extra}) => {
+it.each([...REGIONAL_NAVIGATION_PATHS,'/staff/marketing-performance'].flatMap(path=>[{ rsc: '1' }, { 'next-router-prefetch': '1' }, { 'next-router-segment-prefetch': '/_tree' }, { 'next-action': 'synthetic' }, { purpose: 'prefetch' }, { 'sec-purpose': 'prefetch;prerender' }, { 'sec-fetch-dest': 'empty' }, { accept: 'text/x-component' }].map(extra=>({path,extra}))))('retains full checks for request variant %j', async ({path,extra}) => {
   const headers = new Headers(documentHeaders);
   for (const [name, value] of Object.entries(extra)) if (value !== undefined) headers.set(name, value);
   const response = await middleware(new NextRequest(`https://portal.example${path}`, { headers }));
@@ -54,7 +54,7 @@ it.each(['/staff/projects','/staff/marketing-performance'].flatMap(path=>[{ rsc:
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });
 
-it.each(['/staff/projects','/staff/marketing-performance'])('retains full checks for POST %s and strips spoofed context from API pass-through', async path => {
+it.each([...REGIONAL_NAVIGATION_PATHS,'/staff/marketing-performance'])('retains full checks for POST %s and strips spoofed context from API pass-through', async path => {
   await middleware(new NextRequest(`https://portal.example${path}`, { method: 'POST', headers: documentHeaders }));
   expect(h.session).not.toHaveBeenCalled();
   expect(h.user).toHaveBeenCalledOnce();
@@ -135,4 +135,14 @@ it('does not move GET actions or API passthrough into navigation authority', asy
   const api = await middleware(new NextRequest('https://portal.example/api/staff/v1/contacts', { headers: { rsc: '1', [DOCUMENT_CALLBACK_HEADER]: '/staff/projects', [NAVIGATION_CALLBACK_HEADER]: '/staff/contacts' } }));
   expect(api.headers.get(`x-middleware-request-${NAVIGATION_CALLBACK_HEADER}`)).toBeNull();
   expect(api.headers.get(`x-middleware-request-${DOCUMENT_CALLBACK_HEADER}`)).toBeNull();
+});
+
+it.each(REGIONAL_NAVIGATION_PATHS)('preserves document cookie rotation/removal and fail-closed transport on %s',async path=>{
+ h.cookies=[{name:'session.0',value:'',options:{maxAge:0,path:'/'}},{name:'session',value:'rotated',options:{httpOnly:true,path:'/'}}];
+ const request=()=>new NextRequest('https://portal.example'+path,{headers:{...documentHeaders,cookie:'session.0=old; unrelated=keep',[DOCUMENT_CALLBACK_HEADER]:'/admin',[NAVIGATION_CALLBACK_HEADER]:'/admin'}});
+ const response=await middleware(request());
+ expect(response.headers.get('x-middleware-request-cookie')).toContain('session=rotated');expect(response.headers.get('x-middleware-request-cookie')).toContain('unrelated=keep');expect(response.headers.get('x-middleware-request-cookie')).not.toContain('session.0');
+ expect(response.cookies.get('session.0')?.maxAge).toBe(0);expect(response.cookies.get('session')?.value).toBe('rotated');
+ expect(response.headers.get('x-middleware-request-'+DOCUMENT_CALLBACK_HEADER)).toBe(path);expect(response.headers.get('x-middleware-request-'+NAVIGATION_CALLBACK_HEADER)).toBeNull();expect(h.user).not.toHaveBeenCalled();
+ h.session.mockRejectedValue(new Error('transport failure'));await expect(middleware(request())).rejects.toThrow('transport failure');
 });

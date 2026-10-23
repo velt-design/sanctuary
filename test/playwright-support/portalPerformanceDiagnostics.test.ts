@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import type { Page, Request, Response } from '@playwright/test';
 import { afterEach, expect, it, vi } from 'vitest';
 import { beginPortalNetworkTrace, createPortalNetworkTrace } from '../../playwright/support/portalPerformanceNetwork';
+import NativeReporter, { NATIVE_BEGIN, NATIVE_END, NATIVE_LIMITS, collectNativeCapture, nativeStaticChunk, nativeTarget, projectNativeCapture, safeNativeRow } from '../../playwright/support/portalPerformanceCausal';
 
 const requireRepo = createRequire(path.resolve('package.json'));
 const { install, safeRecord, emitDiagnostics } = requireRepo('./playwright/support/portalPerformanceServer.cjs');
@@ -239,6 +240,148 @@ it('emits only fixed allowlisted JSON fields inside bounded log markers, never r
     expect(path.dirname(directory)).toBe(path.resolve(os.tmpdir()));
     fs.rmSync(directory, { recursive: true, force: true });
   }
+});
+
+it('projects only native spans and actual public chunk positions without private fields', () => {
+  const origin = 'http://127.0.0.1:3011', emitted = new Set(['abc123_X.js']);
+  const events = [
+    { name: 'Layout', ph: 'X', ts: 1000, dur: 52000, args: { data: { url: origin + '/_next/static/chunks/abc123_X.js', text: 'PRIVATE_VALUE' } } },
+    { name: 'PRIVATE_VALUE', ph: 'X', ts: 4000, dur: 8000 },
+    { name: 'FunctionCall', ph: 'X', ts: 60000, dur: 8000, args: { data: { url: origin + '/_next/static/chunks/abc123_X.js?PRIVATE_VALUE' } } },
+  ];
+  const profile = { nodes: [{ id: 1, callFrame: { url: origin + '/_next/static/chunks/abc123_X.js', functionName: 'PRIVATE_VALUE', lineNumber: 12, columnNumber: 34 } }, { id: 2, callFrame: { url: 'https://private.invalid/PRIVATE_VALUE' } }], samples: [1, 2], timeDeltas: [1000, 2000] };
+  const rows = projectNativeCapture('dashboard-cold', events, profile, origin, emitted, 'complete');
+  expect(rows[0]).toMatchObject({ event: 'Layout', startMs: 0, durationMs: 52, chunk: 'abc123_X.js' });
+  expect(rows).toContainEqual(expect.objectContaining({ kind: 'cpu', chunk: 'abc123_X.js', line: 12, column: 34, samples: 1, selfMs: 1 }));
+  expect(rows.at(-1)).toMatchObject({ status: 'complete', traceEvents: 3, cpuSamples: 2 });
+  expect(rows.every(row => safeNativeRow(row))).toBe(true);
+  expect(JSON.stringify(rows)).not.toMatch(/PRIVATE_VALUE|http|functionName|url|args/);
+  for (const value of [origin + '/_next/static/chunks/unlisted.js', origin + '/_next/static/chunks/abc123_X.js#private', origin + '/private/abc123_X.js', 'https://elsewhere.invalid/_next/static/chunks/abc123_X.js']) expect(nativeStaticChunk(value, origin, emitted)).toBeUndefined();
+});
+
+it('rejects poisoned native rows and labels capped or unavailable coverage honestly', () => {
+  const valid = { schema: 1, kind: 'span', journey: 'contacts-warm', source: 'trace', event: 'Layout', startMs: 0, durationMs: 51 };
+  for (const poison of [{ ...valid, url: 'PRIVATE_VALUE' }, { ...valid, event: 'PRIVATE_VALUE' }, { ...valid, startMs: NaN }, { ...valid, durationMs: Infinity }, { ...valid, chunk: '../../PRIVATE_VALUE.js' }, { ...valid, line: 2 }, { ...valid, column: -1 }, { get schema() { throw Error('PRIVATE_VALUE'); } }]) expect(safeNativeRow(poison)).toBeNull();
+  const events = Array.from({ length: NATIVE_LIMITS.traceSpans + 2 }, (_, i) => ({ name: 'Layout', ph: 'X', ts: i * 2000, dur: 1000 }));
+  const rows = projectNativeCapture('contacts-warm', events, { nodes: [], samples: [1], timeDeltas: [NaN] }, 'http://127.0.0.1:3011', new Set(), 'complete');
+  expect(rows).toHaveLength(NATIVE_LIMITS.traceSpans + 1);
+  expect(rows.at(-1)).toMatchObject({ status: 'unavailable', projectionCapped:true, dropped: 3 });
+  expect(projectNativeCapture('running-warm', [null, {}, 'PRIVATE_VALUE'], null, 'http://127.0.0.1:3011', new Set(), 'unavailable')).toEqual([{ schema: 1, kind: 'coverage', journey: 'running-warm', status: 'unavailable', projectionCapped:false, traceEvents: 3, cpuSamples: 0, dropped: 0 }]);
+});
+
+it('suppresses reporter errors, attachments and poisoned stdout, with bounded output', () => {
+  const output: string[] = [], reporter = new NativeReporter(text => output.push(text));
+  reporter.onBegin(); reporter.onStdOut('PRIVATE_VALUE DOM snapshot https://private.invalid\n');
+  reporter.onStdOut(JSON.stringify({ schema: 1, kind: 'run', status: 'passed', error: 'PRIVATE_VALUE' }) + '\n');
+  reporter.onStdOut('{"schema":1,"kind":"run",'); reporter.onStdOut('"status":"failed"}\n');
+  reporter.onStdErr(); reporter.onError();
+  reporter.onTestEnd({} as any, { status: 'failed', error: { message: 'PRIVATE_VALUE' }, attachments: [{ body: Buffer.from('PRIVATE_VALUE') }] } as any);
+  reporter.onEnd({ status: 'failed' } as any);
+  expect(output[0]).toBe(NATIVE_BEGIN + '\n'); expect(output.join('')).toContain(NATIVE_END);
+  expect(output.join('')).not.toMatch(/PRIVATE_VALUE|http|DOM|attachments|stack/);
+  const capped: string[] = [], cap = new NativeReporter(text => capped.push(text));
+  for (let i = 0; i < 2200; i++) cap.onStdOut('{"schema":1,"kind":"run","status":"passed"}\n');
+  cap.onEnd({ status: 'passed' } as any);
+  expect(capped.join('')).toContain('"status":"capped"'); expect(Buffer.byteLength(capped.join(''))).toBeLessThan(525000);
+});
+
+it('sanitizes actual pre-reporter framework output in memory without echoing failures', () => {
+  const result = spawnSync(process.execPath, ['--experimental-strip-types', 'playwright/support/portalPerformanceCausal.ts', '--sanitize'], { encoding: 'utf8', input: 'PRIVATE_VALUE https://private.invalid\n' + JSON.stringify({ schema: 1, kind: 'run', status: 'failed', message: 'PRIVATE_VALUE' }) + '\n', env: { ...process.env, NODE_NO_WARNINGS: '1' } });
+  expect(result.status).toBe(0); expect(result.stdout).toContain(NATIVE_BEGIN); expect(result.stdout).toContain('"status":"failed"'); expect(result.stdout).toContain(NATIVE_END);
+  expect(result.stdout).not.toMatch(/PRIVATE_VALUE|http|message|Error|stack/);
+});
+
+it('isolates native privacy settings while preserving original default settings and five captures', async () => {
+  vi.stubEnv('PLAYWRIGHT_NO_COPY_PROMPT','');
+  vi.stubEnv('PORTAL_PERF_DIAGNOSTICS', '0'); vi.stubEnv('PORTAL_PERF_NATIVE_CAUSAL', ''); vi.stubEnv('CI', 'true'); vi.stubEnv('PORTAL_PLAYWRIGHT_PRODUCTION', '1'); vi.stubEnv('PORTAL_BASE_URL', ''); vi.stubEnv('PORTAL_PLAYWRIGHT_PORT', '3011'); vi.resetModules();
+  const ordinary = (await import('../../playwright.config')).default;
+  expect(process.env.PLAYWRIGHT_NO_COPY_PROMPT).toBe('');
+  expect(ordinary.retries).toBe(1); expect(ordinary.reporter).toEqual([['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]);
+  expect(ordinary.use).toMatchObject({ trace: 'on-first-retry', screenshot: 'only-on-failure', video: 'retain-on-failure' });
+  vi.stubEnv('PORTAL_PERF_NATIVE_CAUSAL', '1'); vi.resetModules(); const native = (await import('../../playwright.config')).default;
+  expect(process.env.PLAYWRIGHT_NO_COPY_PROMPT).toBe('1');
+  expect(native.retries).toBe(0); expect(native.use).toMatchObject({ trace: 'off', screenshot: 'off', video: 'off' });
+  expect(native.reporter).toEqual([['./playwright/support/portalPerformanceCausal.ts']]);
+  const server = Array.isArray(native.webServer) ? native.webServer[0] : native.webServer;
+  expect(server).toMatchObject({ command: 'npm --prefix apps/portal run start -- -p 3011', stdout: 'ignore', stderr: 'ignore' });
+  expect(server?.env).toMatchObject({ PORTAL_PERF_DIAGNOSTICS: '0', PORTAL_PERF_SERVER_OBSERVER: '0' }); expect(server?.env?.NODE_OPTIONS).toBeUndefined();
+  const workflow = fs.readFileSync('.github/workflows/portal-quality.yml', 'utf8'), step = workflow.slice(workflow.indexOf('      - name: Supplemental bounded native causal diagnostic'));
+  expect(step).toContain("steps.portal_performance.outcome == 'success'"); expect(step).toContain("PORTAL_PERF_DIAGNOSTICS: '0'");
+  expect(step).toContain('--no-deps --workers=1 --retries=0 2>/dev/null | node --experimental-strip-types'); expect(step).toContain('set -o pipefail'); expect(step).not.toContain('upload-artifact');
+  expect(workflow.indexOf('Upload portal timing artifact')).toBeLessThan(workflow.indexOf('Supplemental bounded native'));
+  expect(workflow).toContain('for run in 1 2 3 4 5; do');
+  expect(step).toContain("PLAYWRIGHT_NO_COPY_PROMPT: '1'");
+  const installed=fs.readFileSync(path.join(path.dirname(requireRepo.resolve('playwright/package.json')),'lib/index.js'),'utf8');
+  expect(installed).toContain('if (process.env.PLAYWRIGHT_NO_COPY_PROMPT)');
+  expect(installed.indexOf('if (process.env.PLAYWRIGHT_NO_COPY_PROMPT)')).toBeLessThan(installed.indexOf('this._pageSnapshot = (await page._snapshotForAI'));
+});
+
+it('rejects unsafe native targets and concurrent original diagnostics without private values', () => {
+  const env = { CI: 'true', PORTAL_PLAYWRIGHT_PRODUCTION: '1', PORTAL_PLAYWRIGHT_PORT: '3011', PORTAL_PERF_NATIVE_CAUSAL: '1', PORTAL_PERF_DIAGNOSTICS: '0' };
+  expect(nativeTarget(env)).toBe('http://127.0.0.1:3011');
+  for (const change of [{ PORTAL_BASE_URL: 'https://PRIVATE_VALUE.invalid' }, { PORTAL_PERF_DIAGNOSTICS: '1' }, { PORTAL_PLAYWRIGHT_PRODUCTION: '0' }, { CI: 'false' }, { PORTAL_PLAYWRIGHT_PORT: '1' }, { PORTAL_BASE_URL: 'http://127.0.0.1:3011/?PRIVATE_VALUE' }]) expect(() => nativeTarget({ ...env, ...change })).toThrow('Native diagnostic requires its dedicated CI loopback target.');
+});
+
+it('keeps late long spans and CPU locations across the full action, with independent quotas', () => {
+  const origin='http://127.0.0.1:3011', emitted=new Set(['abc123_X.js','xyz789_A.js']);
+  const events=Array.from({length:300},(_,i)=>({name:'Layout',ph:'X',ts:i*2000,dur:1000}));
+  events.push({name:'RunTask',ph:'X',ts:900000,dur:81000});
+  const profile={nodes:[{id:1,callFrame:{url:origin+'/_next/static/chunks/abc123_X.js',lineNumber:1,columnNumber:2}},{id:2,callFrame:{url:origin+'/_next/static/chunks/xyz789_A.js',lineNumber:3,columnNumber:4}}],samples:[...Array(200).fill(1),...Array(100).fill(2),1],timeDeltas:Array(301).fill(1000)};
+  const rows=projectNativeCapture('schedule-toggle',events,profile,origin,emitted,'complete');
+  expect(rows[0]).toMatchObject({event:'RunTask',startMs:900,durationMs:81});
+  expect(rows).toContainEqual(expect.objectContaining({kind:'cpu',chunk:'xyz789_A.js',firstMs:200,lastMs:300,selfMs:100,samples:100}));
+  expect(rows).toContainEqual(expect.objectContaining({kind:'cpu',chunk:'abc123_X.js',firstMs:0,lastMs:301,selfMs:201,samples:201}));
+  expect(rows.at(-1)).toMatchObject({status:'complete',projectionCapped:true,traceEvents:301,cpuSamples:301});
+  const printed:string[]=[],reporter=new NativeReporter(line=>printed.push(line),emitted);
+  reporter.onStdOut(JSON.stringify({...rows[0],chunk:'PRIVATE_VALUE.js'})+'\n');
+  reporter.onStdOut(JSON.stringify(rows.find(row=>row.kind==='cpu'&&row.chunk==='xyz789_A.js'))+'\n');
+  expect(printed).toHaveLength(1);expect(printed.join('')).not.toContain('PRIVATE_VALUE');
+  const metadata=projectNativeCapture('schedule-toggle',[{name:'thread_name',ph:'M',ts:0,args:{name:'PRIVATE_VALUE'}},...events],profile,origin,emitted,'complete');
+  expect(metadata[0]).toMatchObject({event:'RunTask',startMs:900,durationMs:81});
+  expect(projectNativeCapture('schedule-toggle',events,profile,origin,emitted,'failed').at(-1)).toMatchObject({status:'failed',projectionCapped:true});
+  expect(projectNativeCapture('schedule-toggle',[],null,origin,emitted,'complete').at(-1)).toMatchObject({status:'unavailable'});
+});
+
+it.each(['complete','action-failed','raw-cap','missing','profiler-failed'] as const)('retires the real native collector protocol for %s without exposing raw errors', async mode => {
+  const session=new EventEmitter() as EventEmitter & {send:ReturnType<typeof vi.fn>;detach:ReturnType<typeof vi.fn>};
+  session.detach=vi.fn(async()=>undefined);
+  session.send=vi.fn(async(method:string)=>{
+    if(method==='Profiler.stop'&&mode==='profiler-failed')throw Error('PRIVATE_VALUE');
+    if(method==='Tracing.end')session.emit('Tracing.tracingComplete',{});
+    return method==='Profiler.stop'?{profile:{nodes:[{id:1,callFrame:{}}],samples:[1],timeDeltas:[1000]}}:{};
+  });
+  const page={context:()=>({newCDPSession:async()=>session}),waitForTimeout:vi.fn(async()=>undefined)} as unknown as Page;
+  const output:object[]=[];
+  const success=await collectNativeCapture(page,'schedule-toggle','http://127.0.0.1:3011',new Set(),async()=>{
+    if(mode==='action-failed')throw new Error('PRIVATE_VALUE');
+    if(mode==='missing')return;
+    session.emit('Tracing.dataCollected',{value:mode==='raw-cap'?Array(NATIVE_LIMITS.events+1).fill({}):[{name:'Layout',ph:'X',ts:1000,dur:1200,args:{text:'PRIVATE_VALUE'}}]});
+  },rows=>output.push(...rows));
+  expect(success).toBe(mode==='complete');expect(output.at(-1)).toMatchObject({kind:'coverage',status:mode==='complete'?'complete':mode==='raw-cap'?'capped':mode==='missing'?'unavailable':'failed'});
+  expect(session.detach).toHaveBeenCalledOnce();expect(session.eventNames()).toEqual([]);
+  const prior=JSON.stringify(output);session.emit('Tracing.dataCollected',{value:[{text:'PRIVATE_VALUE'}]});expect(JSON.stringify(output)).toBe(prior);expect(prior).not.toContain('PRIVATE_VALUE');
+});
+
+it.each([false,true])('reserves profile bytes before the late trace tail, retaining action-failure precedence (%s)', async actionFails => {
+  const initial={value:[{name:'Layout',ph:'X',ts:1000,dur:1200}]};
+  const tail={value:[{name:'RunTask',ph:'X',ts:3000,dur:52000}]};
+  const stopped={profile:{nodes:[{id:1,callFrame:{}}],samples:[1],timeDeltas:[1000],metadata:'PRIVATE_VALUE'.repeat(20)}};
+  const size=(value:unknown)=>Buffer.byteLength(JSON.stringify(value));
+  const mutable=NATIVE_LIMITS as {rawBytes:number},original=mutable.rawBytes;
+  const session=new EventEmitter() as EventEmitter & {send:ReturnType<typeof vi.fn>;detach:ReturnType<typeof vi.fn>};session.detach=vi.fn(async()=>undefined);
+  session.send=vi.fn(async(method:string)=>{
+    if(method==='Tracing.end'){session.emit('Tracing.dataCollected',tail);session.emit('Tracing.tracingComplete',{});}
+    return method==='Profiler.stop'?stopped:{};
+  });
+  const page={context:()=>({newCDPSession:async()=>session}),waitForTimeout:vi.fn(async()=>undefined)} as unknown as Page;
+  const rows:object[]=[];
+  try {
+    mutable.rawBytes=size(initial)+size(stopped)+size(tail)-1;
+    expect(size(initial)+size(tail)).toBeLessThan(mutable.rawBytes);
+    const complete=await collectNativeCapture(page,'schedule-toggle','http://127.0.0.1:3011',new Set(),async()=>{session.emit('Tracing.dataCollected',initial);if(actionFails)throw Error('PRIVATE_VALUE');},values=>rows.push(...values));
+    expect(complete).toBe(false);expect(rows.at(-1)).toMatchObject({kind:'coverage',status:actionFails?'failed':'capped'});
+    expect(session.detach).toHaveBeenCalledOnce();expect(session.eventNames()).toEqual([]);expect(JSON.stringify(rows)).not.toContain('PRIVATE_VALUE');
+  } finally {mutable.rawBytes=original;}
 });
 
 it('bounds diagnostic file emission and rejects observer activation outside the CI test target', () => {

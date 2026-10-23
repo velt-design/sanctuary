@@ -4,7 +4,7 @@ import { getSafeCallbackUrl } from './portalAccess';
 export const DOCUMENT_CALLBACK_HEADER = 'x-portal-document-callback';
 
 export function isRegionalDocumentPath(path: string): boolean {
-  return path === '/staff/projects' || path === '/staff/site-visits' || path === '/staff/marketing-performance' ||
+  return isRegionalNavigationPath(path) || path === '/staff/site-visits' || path === '/staff/marketing-performance' ||
     /^\/staff\/projects\/(?:proj_)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
 }
 

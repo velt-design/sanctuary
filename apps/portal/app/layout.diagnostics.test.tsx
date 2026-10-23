@@ -31,8 +31,8 @@ function shellProps(node:ReactNode):Record<string,unknown>|null {
 it('times the existing delayed navigation-finance call once and preserves layout ordering',async()=>{
  vi.useFakeTimers();const current=scope(),log=vi.spyOn(console,'info').mockImplementation(()=>undefined);
  let finish!:(value:typeof session)=>void;h.finance.mockReturnValue(new Promise(yes=>{finish=yes;}));
- const pending=Layout({children:'content'});await Promise.resolve();await Promise.resolve();
- expect(h.regional).toHaveBeenCalledOnce();expect(h.finance).toHaveBeenCalledOnce();expect(h.theme).not.toHaveBeenCalled();
+ const pending=Layout({children:'content'});for(let i=0;i<6;i++)await Promise.resolve();
+ expect(h.regional).toHaveBeenCalledOnce();expect(h.finance).toHaveBeenCalledOnce();expect(h.theme).toHaveBeenCalledOnce();
  vi.advanceTimersByTime(45);finish(session);const page=await pending;
  expect(shellProps(page)?.financeUserId).toBe(session.user.id);expect(h.access).toHaveBeenCalledOnce();expect(h.theme).toHaveBeenCalledOnce();
  expect(log.mock.calls.map(call=>call[1])).toContainEqual(expect.objectContaining({requestId:current.id,phase:'navigation.finance',durationMs:45,outcome:'complete'}));
@@ -56,4 +56,21 @@ it('retains the denied root boundary before finance and theme work',async()=>{
 it('does not let a diagnostic transport failure change successful finance navigation',async()=>{
  scope();vi.spyOn(console,'info').mockImplementation(()=>{throw new Error('logger');});
  expect(shellProps(await Layout({children:'content'}))?.financeUserId).toBe(session.user.id);expect(h.finance).toHaveBeenCalledOnce();
+});
+
+it('starts finance and theme only after the current root gate, overlaps both and awaits final finance props',async()=>{
+ h.diagnostics.mockResolvedValue(null);let grant!:()=>void,finance!:(value:typeof session)=>void,theme!:(value:object)=>void;
+ h.regional.mockReturnValue(new Promise<void>(resolve=>{grant=resolve;}));h.finance.mockReturnValue(new Promise(resolve=>{finance=resolve;}));h.theme.mockReturnValue(new Promise(resolve=>{theme=resolve;}));
+ let complete=false;const pending=Layout({children:'content'}).then(page=>{complete=true;return page;});
+ await Promise.resolve();await Promise.resolve();expect(h.access).not.toHaveBeenCalled();expect(h.finance).not.toHaveBeenCalled();expect(h.theme).not.toHaveBeenCalled();
+ grant();for(let i=0;i<6;i++)await Promise.resolve();
+ expect(h.finance).toHaveBeenCalledOnce();expect(h.access).toHaveBeenCalledOnce();expect(h.theme).toHaveBeenCalledExactlyOnceWith(session.user.id,null);expect(complete).toBe(false);
+ theme({});for(let i=0;i<4;i++)await Promise.resolve();expect(complete).toBe(false);
+ finance(session);const page=await pending;expect(shellProps(page)?.financeUserId).toBe(session.user.id);expect(complete).toBe(true);
+});
+it('retains theme fallback and caught finance failure while completing exactly once with unchanged empty props',async()=>{
+ scope();const log=vi.spyOn(console,'info').mockImplementation(()=>undefined);h.theme.mockRejectedValue(new Error('private theme'));h.finance.mockRejectedValue(new Error('private finance'));
+ const page=await Layout({children:'content'});expect(shellProps(page)?.financeUserId).toBeUndefined();
+ expect(h.access).toHaveBeenCalledOnce();expect(h.finance).toHaveBeenCalledOnce();expect(h.theme).toHaveBeenCalledOnce();
+ expect(log.mock.calls.map(call=>call[1].phase)).toContain('theme.fallback');expect(log.mock.calls.filter(call=>call[1].phase==='layout.complete')).toHaveLength(1);expect(JSON.stringify(log.mock.calls)).not.toContain('private');
 });

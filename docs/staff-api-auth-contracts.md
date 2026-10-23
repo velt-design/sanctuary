@@ -647,3 +647,15 @@ checks. The separate five-minute reconciliation cron uses existing CRON_SECRET,
 claims one active folder page and keeps cleanup available when disabled. This
 candidate requires explicit schema/config activation and native Storage denial
 verification before claiming hosted coverage.
+
+### Selected document placement and root concurrency (local candidate)
+
+The exact seven selected navigation paths also use the existing HTML-document
+placement lane. Projects keeps its prior behaviour. GET/document/text-html,
+prefetch/action exclusions, callback overwrite, cookie renewal/removal and
+private/no-store rules are unchanged. Fresh root and selected-leaf identity and
+current-role checks still precede protected props, theme and content. Schedule
+ordinary documents retain the existing seed; only navigation context omits it.
+RootLayout starts its same caught finance-navigation promise after that guard,
+overlapping current-access/theme work, then awaits finance before completion and
+final props. Neither change establishes the original 100ms cold target.

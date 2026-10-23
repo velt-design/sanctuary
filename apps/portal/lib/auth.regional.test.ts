@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest';
-import { DOCUMENT_CALLBACK_HEADER, NAVIGATION_CALLBACK_HEADER } from './regionalDocumentAccess';
+import { DOCUMENT_CALLBACK_HEADER, NAVIGATION_CALLBACK_HEADER, REGIONAL_NAVIGATION_PATHS } from './regionalDocumentAccess';
 
 const h = vi.hoisted(() => ({ user: vi.fn(), role: vi.fn(), headers: new Headers() }));
 vi.mock('server-only', () => ({}));
@@ -75,4 +75,13 @@ it.each(['/staff/contacts', '/staff/projects/work-queue'])('shares one fresh %s 
 it.each(['/admin', '/staff/projects/new', '/staff/contacts#private', 'https://outside.invalid'])('rejects unsafe navigation context %s', async callback => {
   h.headers = new Headers({ [NAVIGATION_CALLBACK_HEADER]: callback });
   const auth = await import('./auth'); await auth.requireRegionalDocumentAccess(); expect(h.user).not.toHaveBeenCalled();
+});
+
+it.each(REGIONAL_NAVIGATION_PATHS)('freshly verifies document %s and rejects retired access on the next request',async path=>{
+ h.headers=new Headers({[DOCUMENT_CALLBACK_HEADER]:path+'?q=one'});
+ const auth=await import('./auth');await Promise.all([auth.requireRegionalDocumentAccess(),auth.requireStaffPageAccess(path),auth.getPortalAccessState()]);
+ expect(h.user).toHaveBeenCalledOnce();expect(h.role).toHaveBeenCalledOnce();
+ vi.resetModules();h.role.mockResolvedValue({data:null,error:null});const retired=await import('./auth');
+ await expect(retired.requireRegionalDocumentAccess()).rejects.toThrow('redirect:/access-status?');
+ expect(h.user).toHaveBeenCalledTimes(2);expect(h.role).toHaveBeenCalledTimes(2);
 });

@@ -306,3 +306,14 @@ jobs:
           name: portal-performance-baseline
           path: artifacts/portal-performance/*.json
           if-no-files-found: warn
+
+      - name: Supplemental bounded native causal diagnostic
+        if: ${{ always() && steps.portal_performance.outcome == 'success' }}
+        env:
+          PORTAL_PERF_NATIVE_CAUSAL: '1'
+          PORTAL_PERF_DIAGNOSTICS: '0'
+          PORTAL_PERF_SERVER_OBSERVER: '0'
+          PLAYWRIGHT_NO_COPY_PROMPT: '1'
+        run: |
+          set -o pipefail
+          npx playwright test playwright/portal.performance-causal.spec.ts --project=portal-chromium --no-deps --workers=1 --retries=0 2>/dev/null | node --experimental-strip-types playwright/support/portalPerformanceCausal.ts --sanitize 2>/dev/null

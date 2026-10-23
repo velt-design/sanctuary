@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { NAVIGATION_CALLBACK_HEADER, REGIONAL_NAVIGATION_PATHS } from './regionalDocumentAccess';
+import { DOCUMENT_CALLBACK_HEADER, NAVIGATION_CALLBACK_HEADER, REGIONAL_NAVIGATION_PATHS } from './regionalDocumentAccess';
 const h = vi.hoisted(() => ({ user: vi.fn(), role: vi.fn(), seed: vi.fn(), initial: vi.fn(), contactsBoundary: vi.fn(), headers: new Headers() }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/headers', () => ({ headers: async () => h.headers }));
@@ -26,11 +26,11 @@ const loaders = [() => import('../app/dashboard/page'), () => import('../app/sta
   () => import('../app/staff/projects/work-queue/page')];
 beforeEach(() => { vi.resetModules(); vi.clearAllMocks(); h.seed.mockResolvedValue(null); h.user.mockResolvedValue({ data: { user: { id: 'synthetic-user', email: 'private@example.invalid' } }, error: null }); h.role.mockResolvedValue({ data: { role: 'staff' }, error: null }); });
 const states = ['staff', 'admin', 'anonymous', 'disabled', 'revoked', 'unrecognized', 'lookup_failed'] as const;
-it.each(REGIONAL_NAVIGATION_PATHS.flatMap((path, index) => states.map(state => ({ path, index, state }))))('gates selected leaf $path ($state) without relying on a matched ancestor', async ({ path, index, state }) => {
+it.each(REGIONAL_NAVIGATION_PATHS.flatMap((path, index) => states.flatMap(state => ['navigation','document'].map(context => ({ path, index, state, context })))))('gates selected leaf $path ($state, $context) without relying on a matched ancestor', async ({ path, index, state, context }) => {
   // A partial Flight walk can skip matched root/layout segments. Invoke the real
   // selected leaf directly with that retained tree and the middleware-owned context.
   const retained = path.split('/').filter(Boolean).reduceRight<any>((children, segment) => [segment, { children }], ['__PAGE__', {}]);
-  h.headers = new Headers({ rsc: '1', [NAVIGATION_CALLBACK_HEADER]: path + '?q=one&q=two',
+  h.headers = new Headers({ ...(context === 'navigation' ? { rsc: '1' } : {}), [context === 'navigation' ? NAVIGATION_CALLBACK_HEADER : DOCUMENT_CALLBACK_HEADER]: path + '?q=one&q=two',
     'next-router-state-tree': JSON.stringify(['', { children: retained }]) });
   if (state === 'anonymous' || state === 'disabled') h.user.mockResolvedValue({ data: { user: null }, error: state === 'disabled' ? { message: 'disabled' } : null });
   if (state === 'revoked') h.role.mockResolvedValue({ data: null, error: null });
@@ -53,8 +53,8 @@ it.each(REGIONAL_NAVIGATION_PATHS.flatMap((path, index) => states.map(state => (
     expect(markup).toContain('Actual client boundary');
     if(path==='/staff/contacts')expect(h.contactsBoundary).toHaveBeenCalledExactlyOnceWith({initialQuery:'one'});
     if (path === '/staff/projects/work-queue') expect(markup).toContain(`data-admin-review="${state === 'admin'}"`);
-    expect(h.initial).not.toHaveBeenCalled(); // Navigation context cannot select a document seed.
-    expect(h.seed).not.toHaveBeenCalled();
+    if(context === 'document' && path === '/staff/projects')expect(h.initial).toHaveBeenCalledOnce();else expect(h.initial).not.toHaveBeenCalled();
+    if(context === 'document' && path === '/staff/schedule')expect(h.seed).toHaveBeenCalledExactlyOnceWith({view:'board'});else expect(h.seed).not.toHaveBeenCalled();
   }
   expect(h.user).toHaveBeenCalledOnce();
 });
