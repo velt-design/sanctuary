@@ -31,7 +31,9 @@ function usePublicScheduleController(owner: object | null, initialView: Schedule
     setShowCompleted, unscheduledCollapsed, setUnscheduledCollapsed, preserveCollapseOnAdoption }),
   [owner, today, view, query, showCompleted, unscheduledCollapsed]);
 }
-type ScheduleController = ReturnType<typeof usePublicScheduleController>;
+type ScheduleController = Omit<ReturnType<typeof usePublicScheduleController>, 'unscheduledCollapsed'> & {
+  setUnscheduledCollapsedFromIntent: ReturnType<typeof usePublicScheduleController>['setUnscheduledCollapsed'];
+};
 const ScheduleWorkspaceContext = createContext<ScheduleController | null>(null);
 const SchedulePublicationContext = createContext<((value: PublishedScheduleFrame | null) => void) | null>(null);
 
@@ -40,6 +42,22 @@ export function ScheduleWorkspace({ owner, visible, children, initialView = 'boa
   unavailable?: boolean; onRetry?: () => void;
 }) {
   const controller = usePublicScheduleController(owner, initialView, entryIdentity);
+  const collapseEvidencePending = useRef(true);
+  const setUnscheduledCollapsedFromIntent = useCallback<ScheduleController['setUnscheduledCollapsed']>(value => {
+    if (collapseEvidencePending.current) controller.preserveCollapseOnAdoption.current = true;
+    controller.setUnscheduledCollapsed(value);
+  }, [controller.preserveCollapseOnAdoption, controller.setUnscheduledCollapsed]);
+  // A public panel toggle must not invalidate the private row/query owner.
+  // Its stable setter still accepts the guarded source's initial defaults.
+  const privateController = useMemo<ScheduleController>(() => ({
+    owner: controller.owner, today: controller.today, view: controller.view, setView: controller.setView,
+    query: controller.query, setQuery: controller.setQuery, showCompleted: controller.showCompleted,
+    setShowCompleted: controller.setShowCompleted, setUnscheduledCollapsed: controller.setUnscheduledCollapsed,
+    setUnscheduledCollapsedFromIntent,
+    preserveCollapseOnAdoption: controller.preserveCollapseOnAdoption,
+  }), [controller.owner, controller.today, controller.view, controller.setView, controller.query,
+    controller.setQuery, controller.showCompleted, controller.setShowCompleted,
+    controller.setUnscheduledCollapsed, controller.preserveCollapseOnAdoption, setUnscheduledCollapsedFromIntent]);
   const router = useRouter();
   const [published, setPublished] = useState<PublishedScheduleFrame | null>(null);
   const currentOwner = useRef(owner);
@@ -50,6 +68,10 @@ export function ScheduleWorkspace({ owner, visible, children, initialView = 'boa
   }, [owner]);
   const props = published?.owner === owner ? published.props : null;
   const replacement = published?.owner === owner ? published.replacement : null;
+  collapseEvidencePending.current = !props || Boolean(props.board.dataPending || props.board.dataError);
+  const toggleUnscheduled = () => {
+    setUnscheduledCollapsedFromIntent(value => !value);
+  };
   useLayoutEffect(() => {
     if (!owner || !visible) return;
     const url = new URL(window.location.href);
@@ -66,19 +88,21 @@ export function ScheduleWorkspace({ owner, visible, children, initialView = 'boa
     window.history.replaceState(window.history.state, '', href);
     controller.setView(next);
   };
-  return <ScheduleWorkspaceContext.Provider value={controller}>
+  return <ScheduleWorkspaceContext.Provider value={privateController}>
     <SchedulePublicationContext.Provider value={publish}>
     <ScheduleSurfaceProvider owner={owner} today={controller.today} ganttActive={visible && controller.view === 'gantt'}>
       {visible ? replacement ? <ScheduleSurfaceIsolation>{replacement}</ScheduleSurfaceIsolation> : <Suspense fallback={null}>
-        {props ? <Frame {...props} /> : <Frame pending={{
+        {props ? <Frame {...props} board={{ ...props.board,
+          unscheduledCollapsed: controller.unscheduledCollapsed,
+          onToggleUnscheduledCollapsed: toggleUnscheduled,
+        }} /> : <Frame pending={{
           unavailable, onRetry,
           today: controller.today, view: controller.view, query: controller.query,
           showCompleted: controller.showCompleted, unscheduledCollapsed: controller.unscheduledCollapsed,
           setQuery: controller.setQuery, setShowCompleted: controller.setShowCompleted,
           selectView: selectPendingView,
-          toggleUnscheduled: () => { controller.preserveCollapseOnAdoption.current = true;
-            controller.setUnscheduledCollapsed(value => !value); },
-          openUnscheduled: () => { controller.setUnscheduledCollapsed(false); selectPendingView('board'); },
+          toggleUnscheduled,
+          openUnscheduled: () => { setUnscheduledCollapsedFromIntent(false); selectPendingView('board'); },
         }} />}
       </Suspense> : null}
       {children}

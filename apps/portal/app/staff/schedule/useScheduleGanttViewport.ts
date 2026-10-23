@@ -98,7 +98,7 @@ export function useScheduleGanttViewport(today: string, active = true) {
     };
   }, [applyInteractiveLabelWidth, ganttLabelResize]);
 
-  const handleGanttZoomWeeksChange = (next: GanttZoomWeeks) => {
+  const handleGanttZoomWeeksChange = useCallback((next: GanttZoomWeeks) => {
     if (next === zoomWeeks) return;
     const scroller = ganttScrollRef.current;
     if (scroller && gantt.axis.rangeDays > 0) {
@@ -113,9 +113,9 @@ export function useScheduleGanttViewport(today: string, active = true) {
       };
     }
     setZoomWeeks(next);
-  };
+  }, [zoomWeeks, gantt.axis.rangeDays, gantt.displayToday, gantt.todayLinePx, labelWidthPx]);
 
-  const jumpGanttToToday = () => {
+  const jumpGanttToToday = useCallback(() => {
     const scroller = ganttScrollRef.current;
     if (!scroller) return;
     const timelineViewportWidth = Math.max(0, scroller.clientWidth - labelWidthPx);
@@ -126,9 +126,9 @@ export function useScheduleGanttViewport(today: string, active = true) {
       left: Math.min(maxLeft, targetLeft),
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     });
-  };
+  }, [labelWidthPx, gantt.todayLinePx]);
 
-  const beginGanttLabelResize = (event: React.PointerEvent<HTMLDivElement>) => {
+  const beginGanttLabelResize = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -138,9 +138,9 @@ export function useScheduleGanttViewport(today: string, active = true) {
     } catch {
       // ignore pointer capture errors
     }
-  };
+  }, [labelWidthPx, labelWidthBounds]);
 
-  const handleGanttLabelResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleGanttLabelResizeKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? GANTT_LABEL_KEYBOARD_STEP_PX * 2 : GANTT_LABEL_KEYBOARD_STEP_PX;
     let next: number | null = null;
     if (event.key === 'ArrowLeft') next = labelWidthPx - step;
@@ -152,7 +152,10 @@ export function useScheduleGanttViewport(today: string, active = true) {
     event.stopPropagation();
     const applied = applyInteractiveLabelWidth(next, labelWidthBounds);
     if (!labelWidthBounds.narrow) writeGanttLabelWidthPreference(applied);
-  };
+  }, [labelWidthPx, labelWidthBounds, applyInteractiveLabelWidth]);
 
-  return { ganttRootRef, ganttLayoutMode, compactMode, ganttScrollRef, zoomWeeks, ganttDensity, setGanttDensity, showPlanned, setShowPlanned, attentionMode, setAttentionMode, labelWidthPx, labelWidthBounds, ganttLabelResize, gantt, handleGanttZoomWeeksChange, jumpGanttToToday, beginGanttLabelResize, handleGanttLabelResizeKeyDown };
+  return useMemo(() => ({ ganttRootRef, ganttLayoutMode, compactMode, ganttScrollRef, zoomWeeks, ganttDensity, setGanttDensity, showPlanned, setShowPlanned, attentionMode, setAttentionMode, labelWidthPx, labelWidthBounds, ganttLabelResize, gantt, handleGanttZoomWeeksChange, jumpGanttToToday, beginGanttLabelResize, handleGanttLabelResizeKeyDown }),
+    [ganttRootRef, ganttLayoutMode, compactMode, zoomWeeks, ganttDensity, showPlanned, attentionMode,
+      labelWidthPx, labelWidthBounds, ganttLabelResize, gantt, handleGanttZoomWeeksChange,
+      jumpGanttToToday, beginGanttLabelResize, handleGanttLabelResizeKeyDown]);
 }

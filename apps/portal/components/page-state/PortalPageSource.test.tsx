@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 import ContactsIndexClient from '@/app/staff/contacts/ContactsIndexClient';
 import ScheduleClient from '@/app/staff/schedule/ScheduleClient';
+import { useScheduleWorkspace } from '@/app/staff/schedule/ScheduleWorkspace';
 import { progressiveScheduleSnapshot } from '@/app/qa/schedule-progressive-fixture/snapshot';
 import { contactsIndexQueryOptions } from '@/lib/queries/contactsIndex';
 import type { ContactsIndexResponse } from '@/lib/contacts/contactsIndexContract';
@@ -64,6 +65,8 @@ function Harness({ canonical, leaf, pathname = window.location.pathname, href = 
 async function settle() {
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 25)); });
 }
+
+
 let client: QueryClient;
 beforeEach(() => {
   window.history.replaceState(null, '', '/dashboard');
@@ -254,6 +257,68 @@ it('fills the same Board viewport through one private Dnd context and removes it
   unmounted = true;
 });
 
+it('toggles the same adopted Board without rerendering its private context consumer or date rows', async () => {
+  let resolveRead!: (value: ReturnType<typeof progressiveScheduleSnapshot>) => void;
+  const read = vi.fn(() => new Promise<ReturnType<typeof progressiveScheduleSnapshot>>(resolve => { resolveRead = resolve; }));
+  let privateRenders = 0;
+  function PrivateConsumer() { useScheduleWorkspace(); privateRenders++; return null; }
+  const completion = {};
+  const leaf = (denied = false) => <PortalGuardedPage pathname="/staff/schedule" completion={completion} unavailable={denied}>
+    <PrivateConsumer /><ScheduleClient snapshotLoaders={{ board: read, gantt: read }} />
+  </PortalGuardedPage>;
+  const dashboard = <PortalGuardedPage pathname="/dashboard" completion={{}}><PrivateDashboard /></PortalGuardedPage>;
+  const ui = (canonical: string, child: ReactNode) => <QueryClientProvider client={client}>
+    <Harness canonical={canonical} href="/staff/schedule?view=board" leaf={child} />
+  </QueryClientProvider>;
+  const view = renderIntoDocument(ui('/dashboard', dashboard));
+  onTestFinished(() => view.unmount());
+  act(() => view.container.querySelector('button')!.click()); await settle();
+  const toggle = view.container.querySelector<HTMLButtonElement>('[aria-expanded][aria-label$="unscheduled panel"]')!;
+  const panel = view.container.querySelector<HTMLElement>('aside[aria-label="Unscheduled jobs"]')!;
+  const input = view.container.querySelector<HTMLInputElement>('[aria-label="Search unscheduled projects"]')!;
+  const lanes = view.container.querySelector<HTMLElement>('[data-board-lanes]')!;
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(panel.getAttribute('data-collapsed')).toBe('false');
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(privateRenders).toBe(0);
+  expect(read).not.toHaveBeenCalled();
+  await act(async () => view.rerender(ui('/staff/schedule', leaf())));
+  await settle();
+  await act(async () => { resolveRead(progressiveScheduleSnapshot()); await import('@/app/staff/schedule/ScheduleBoardView'); });
+  await settle();
+  expect(read).toHaveBeenCalledTimes(1);
+  expect(lanes.querySelector('[data-schedule-card-id]')).not.toBeNull();
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  input.focus(); lanes.scrollLeft = 65; lanes.scrollTop = 90;
+  const renders = privateRenders;
+  const formatter = vi.spyOn(Intl, 'DateTimeFormat');
+  try {
+    for (const expanded of ['true', 'false', 'true']) {
+      act(() => toggle.click());
+      expect(toggle.getAttribute('aria-expanded')).toBe(expanded);
+      expect(panel.getAttribute('data-collapsed')).toBe(expanded === 'true' ? 'false' : 'true');
+      await settle();
+      expect(privateRenders).toBe(renders);
+      expect(formatter).not.toHaveBeenCalled();
+      expect(read).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(input);
+      expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')).toBe(panel);
+      expect(view.container.querySelector('[data-board-lanes]')).toBe(lanes);
+      expect(lanes.scrollLeft).toBe(65); expect(lanes.scrollTop).toBe(90);
+    }
+  } finally { formatter.mockRestore(); }
+  await act(async () => view.rerender(ui('/staff/schedule', leaf(true))));
+  await settle();
+  expect(view.container.querySelector('[data-schedule-card-id]')).toBeNull();
+  expect(view.container.querySelector('[aria-label="Search unscheduled projects"]')).toBe(input);
+  act(() => toggle.click());
+  expect(panel.getAttribute('data-collapsed')).toBe('true');
+  expect(read).toHaveBeenCalledTimes(1);
+});
+
 it('keeps early Find input and selection through adoption without reading a different cached query', async () => {
   let resolveRead!: (value: ContactsIndexResponse) => void;
   api.mockImplementation(() => new Promise(resolve => { resolveRead = resolve; }));
@@ -387,4 +452,125 @@ it('follows a later same-page search URL after the guarded handoff instead of pi
   expect(api.mock.calls.at(-1)?.[0]).toContain('q=B');
   expect(view.container.textContent).not.toContain('Private fictional contact');
   view.unmount();
+});
+
+it.each([true, false])('keeps the guarded initial unscheduled collapse default for empty=%s', async empty => {
+  window.history.replaceState(null, '', '/staff/schedule?view=board');
+  const snapshot = progressiveScheduleSnapshot();
+  const read = vi.fn(async () => ({ ...snapshot, unscheduledJobs: empty ? [] : snapshot.unscheduledJobs }));
+  const view = renderIntoDocument(<QueryClientProvider client={client}>
+    <Harness canonical="/staff/schedule" leaf={<PortalGuardedPage pathname="/staff/schedule" completion={{}}>
+      <ScheduleClient snapshotLoaders={{ board: read, gantt: read }} />
+    </PortalGuardedPage>} />
+  </QueryClientProvider>);
+  onTestFinished(() => view.unmount());
+  await settle(); await settle();
+  expect(read).toHaveBeenCalledTimes(1);
+  expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.getAttribute('data-collapsed')).toBe(String(empty));
+  expect(view.container.querySelector('[aria-expanded][aria-label$="unscheduled panel"]')?.getAttribute('aria-expanded')).toBe(String(!empty));
+});
+
+it('preserves a collapse choice made after private props publish while the genuine Board read is held', async () => {
+  window.history.replaceState(null, '', '/staff/schedule?view=board');
+  let resolveRead!: (value: ReturnType<typeof progressiveScheduleSnapshot>) => void;
+  const read = vi.fn(() => new Promise<ReturnType<typeof progressiveScheduleSnapshot>>(resolve => { resolveRead = resolve; }));
+  const view = renderIntoDocument(<QueryClientProvider client={client}>
+    <Harness canonical="/staff/schedule" leaf={<PortalGuardedPage pathname="/staff/schedule" completion={{}}>
+      <ScheduleClient snapshotLoaders={{ board: read, gantt: read }} />
+    </PortalGuardedPage>} />
+  </QueryClientProvider>);
+  onTestFinished(() => view.unmount());
+  await settle(); await settle();
+  expect(read).toHaveBeenCalledTimes(1);
+  // Real private runtime/props exist, but there are no verified record rows yet.
+  expect(document.querySelectorAll('[id^="DndDescribedBy-"]')).toHaveLength(1);
+  expect(view.container.querySelector('[data-schedule-card-id]')).toBeNull();
+  const toggle = view.container.querySelector<HTMLButtonElement>('[aria-expanded][aria-label$="unscheduled panel"]')!;
+  const panel = view.container.querySelector('aside[aria-label="Unscheduled jobs"]');
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  await act(async () => resolveRead(progressiveScheduleSnapshot()));
+  await settle();
+  expect(view.container.querySelector('[data-schedule-card-id]')).not.toBeNull();
+  expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')).toBe(panel);
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  // A later ready-source click is not a pending preference: a genuine change
+  // to an empty source must still apply the established collapsed default.
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  read.mockResolvedValueOnce({ ...progressiveScheduleSnapshot(), unscheduledJobs: [] });
+  await act(async () => { await client.refetchQueries(); });
+  await settle();
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+});
+
+it('preserves a choice made after an initial unavailable read through the actual Retry recovery', async () => {
+  window.history.replaceState(null, '', '/staff/schedule?view=board');
+  client.setDefaultOptions({ queries: { retry: false, retryDelay: 0 } });
+  const read = vi.fn<() => Promise<ReturnType<typeof progressiveScheduleSnapshot>>>()
+    .mockRejectedValue(new Error('Fictional initial read unavailable'));
+  const view = renderIntoDocument(<QueryClientProvider client={client}>
+    <Harness canonical="/staff/schedule" leaf={<PortalGuardedPage pathname="/staff/schedule" completion={{}}>
+      <ScheduleClient snapshotLoaders={{ board: read, gantt: read }} />
+    </PortalGuardedPage>} />
+  </QueryClientProvider>);
+  onTestFinished(() => view.unmount());
+  await settle(); await settle();
+  const retry = [...view.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!;
+  expect(retry).toBeDefined();
+  expect(view.container.textContent).toContain('Fictional initial read unavailable');
+  expect(view.container.querySelector('[data-schedule-card-id]')).toBeNull();
+  const toggle = view.container.querySelector<HTMLButtonElement>('[aria-expanded][aria-label$="unscheduled panel"]')!;
+  const panel = view.container.querySelector('aside[aria-label="Unscheduled jobs"]');
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  act(() => toggle.click());
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(read).toHaveBeenCalledTimes(2);
+  read.mockResolvedValue(progressiveScheduleSnapshot());
+  act(() => retry.click());
+  await settle(); await settle();
+  expect(read).toHaveBeenCalledTimes(3);
+  expect(view.container.querySelector('[data-schedule-card-id]')).not.toBeNull();
+  expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')).toBe(panel);
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+});
+
+it.each(['pending', 'first-error'] as const)('keeps Gantt View unscheduled jobs intent through %s evidence and empty Board adoption', async phase => {
+  const empty = { ...progressiveScheduleSnapshot(), unscheduledJobs: [] };
+  const board = vi.fn(async () => empty);
+  const gantt = vi.fn(async () => { throw new Error('Fictional Gantt unavailable'); });
+  client.setDefaultOptions({ queries: { retry: false, retryDelay: 0 } });
+  const dashboard = <PortalGuardedPage pathname="/dashboard" completion={{}}><PrivateDashboard /></PortalGuardedPage>;
+  const ui = (canonical: string, leaf: ReactNode) => <QueryClientProvider client={client}>
+    <Harness canonical={canonical} href="/staff/schedule?view=gantt" leaf={leaf} />
+  </QueryClientProvider>;
+  const view = renderIntoDocument(ui('/dashboard', dashboard));
+  onTestFinished(() => view.unmount());
+  act(() => view.container.querySelector('button')!.click()); await settle();
+  if (phase === 'first-error') {
+    await act(async () => view.rerender(ui('/staff/schedule', <PortalGuardedPage pathname="/staff/schedule" completion={{}}>
+      <ScheduleClient initialSeedKind="gantt" snapshotLoaders={{ board, gantt }} />
+    </PortalGuardedPage>)));
+    await settle(); await settle();
+    expect(view.container.textContent).toContain('Fictional Gantt unavailable');
+  }
+  const open = [...view.container.querySelectorAll('button')].find(button => button.textContent === 'View unscheduled jobs')!;
+  expect(open.disabled).toBe(false);
+  act(() => open.click()); await settle();
+  expect(new URL(window.location.href).searchParams.get('view')).toBe('board');
+  if (phase === 'pending') {
+    expect(board).not.toHaveBeenCalled();
+    await act(async () => view.rerender(ui('/staff/schedule', <PortalGuardedPage pathname="/staff/schedule" completion={{}}>
+      <ScheduleClient initialSeedKind="board" snapshotLoaders={{ board, gantt }} />
+    </PortalGuardedPage>)));
+  }
+  await settle(); await settle();
+  expect(board).toHaveBeenCalledTimes(1);
+  expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.getAttribute('data-collapsed')).toBe('false');
+  expect(view.container.textContent).toContain('No unscheduled deposit-stage projects');
 });

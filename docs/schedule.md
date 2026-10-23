@@ -23,6 +23,16 @@ and record state remain guarded. Old-source publications and cleanup cannot chan
 a newer source's slots. ScheduleFrameOutput alone imports the private renderers;
 legacy ssr:false behavior is retained. Fresh bundle and browser proof is pending.
 
+The persistent Workspace owns the unscheduled panel's collapse state and updates
+the same public Frame urgently before and after guarded adoption. Private clients
+receive its stable adoption setter, without subscribing to that neutral value.
+Toggle and View unscheduled jobs share an intent setter that retains choices
+through pending or unavailable evidence; healthy source defaults stay separate.
+Stable viewport callbacks keep an unrelated panel toggle from republishing private
+Board rows. Initial source defaults, early user choice and standalone behavior
+remain with their existing owners. This removes unnecessary work; current
+compiled bundle, interaction and performance targets still require verification.
+
 `ScheduleBoardView` and `ScheduleGanttView` supply their verified pending values. Gantt dates,
 calendar lines, scale and density controls are real before crews/work arrive.
 Crew rows come from actual known crew data. Missing active-view records never

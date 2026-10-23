@@ -2,7 +2,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NAVIGATION_CALLBACK_HEADER, REGIONAL_NAVIGATION_PATHS } from './regionalDocumentAccess';
-const h = vi.hoisted(() => ({ user: vi.fn(), role: vi.fn(), seed: vi.fn(), initial: vi.fn(), headers: new Headers() }));
+const h = vi.hoisted(() => ({ user: vi.fn(), role: vi.fn(), seed: vi.fn(), initial: vi.fn(), contactsBoundary: vi.fn(), headers: new Headers() }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/headers', () => ({ headers: async () => h.headers }));
 vi.mock('next/navigation', () => ({ redirect: (href: string) => { throw new Error(`redirect:${href}`); } }));
@@ -10,7 +10,9 @@ vi.mock('./performance/documentRenderDiagnostics', () => ({ getDocumentRenderDia
 vi.mock('./supabase/serverClient', () => ({ getSupabaseServerAuth: async () => ({ auth: { getUser: h.user }, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: h.role }) }) }) }) }));
 vi.mock('react', async () => ({ ...await vi.importActual<typeof import('react')>('react'), cache: (fn: () => unknown) => { let pending: unknown; return () => pending ??= fn(); } }));
 vi.mock('@/app/dashboard/DashboardClient', () => ({ default: () => <div>Actual client boundary</div> }));
-vi.mock('@/app/staff/contacts/ContactsIndexClient', () => ({ default: () => <div>Actual client boundary</div> }));
+// The leaf delivers this guarded lazy boundary after the fresh role read.
+// Static rendering tests its adoption, not unresolved lazy/private client code.
+vi.mock('@/app/staff/contacts/GuardedContactsIndexClient', () => ({ default: (props: {initialQuery?:string}) => { h.contactsBoundary(props); return <div>Actual client boundary</div>; } }));
 vi.mock('@/app/staff/projects/ProjectsIndexClient', () => ({ default: () => <div>Actual client boundary</div> }));
 vi.mock('@/app/staff/schedule/ScheduleClient', () => ({ default: () => <div>Actual client boundary</div> }));
 vi.mock('@/app/staff/schedule/SiteVisitsScheduleClient', () => ({ default: () => <div>Actual client boundary</div> }));
@@ -39,16 +41,17 @@ it.each(REGIONAL_NAVIGATION_PATHS.flatMap((path, index) => states.map(state => (
   const page = Page as (props: { searchParams: Promise<Record<string, string>> }) => Promise<any>;
   if (state !== 'staff' && state !== 'admin') {
     await expect(page({ searchParams: Promise.resolve({ q: 'one' }) })).rejects.toThrow(state === 'anonymous' || state === 'disabled' ? 'redirect:/login?' : 'redirect:/access-status?');
-    expect(h.seed).not.toHaveBeenCalled(); expect(h.initial).not.toHaveBeenCalled();
+    expect(h.seed).not.toHaveBeenCalled(); expect(h.initial).not.toHaveBeenCalled(); expect(h.contactsBoundary).not.toHaveBeenCalled();
   } else {
     let release!: (value: unknown) => void;
     h.role.mockReturnValue(new Promise(resolve => { release = resolve; }));
     let finished = false; const pending = page({ searchParams: Promise.resolve({ q: 'one' }) }).then(value => { finished = true; return value; });
     await vi.waitFor(() => expect(h.role).toHaveBeenCalledOnce());
-    expect(finished).toBe(false); expect(h.seed).not.toHaveBeenCalled(); expect(h.initial).not.toHaveBeenCalled();
+    expect(finished).toBe(false); expect(h.seed).not.toHaveBeenCalled(); expect(h.initial).not.toHaveBeenCalled(); expect(h.contactsBoundary).not.toHaveBeenCalled();
     release({ data: { role: state }, error: null });
     const markup = renderToStaticMarkup(await pending);
     expect(markup).toContain('Actual client boundary');
+    if(path==='/staff/contacts')expect(h.contactsBoundary).toHaveBeenCalledExactlyOnceWith({initialQuery:'one'});
     if (path === '/staff/projects/work-queue') expect(markup).toContain(`data-admin-review="${state === 'admin'}"`);
     expect(h.initial).not.toHaveBeenCalled(); // Navigation context cannot select a document seed.
     expect(h.seed).not.toHaveBeenCalled();

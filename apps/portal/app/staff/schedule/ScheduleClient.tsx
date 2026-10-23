@@ -604,8 +604,12 @@ export default function ScheduleClient({
   const setQuery = publicWorkspace?.setQuery ?? setLocalQuery;
   const showCompleted = publicWorkspace?.showCompleted ?? localShowCompleted;
   const setShowCompleted = publicWorkspace?.setShowCompleted ?? setLocalShowCompleted;
-  const unscheduledCollapsed = publicWorkspace?.unscheduledCollapsed ?? localUnscheduledCollapsed;
+  // The persistent Workspace supplies its own collapse value to the real Frame.
+  // This local value remains the standalone fallback; private rows do not need
+  // to subscribe to neutral panel state.
+  const unscheduledCollapsed = localUnscheduledCollapsed;
   const setUnscheduledCollapsed = publicWorkspace?.setUnscheduledCollapsed ?? setLocalUnscheduledCollapsed;
+  const setUnscheduledCollapsedFromIntent = publicWorkspace?.setUnscheduledCollapsedFromIntent ?? setLocalUnscheduledCollapsed;
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
   const [diagnostics, setDiagnostics] = useState<ScheduleDiagnosticsResult | null>(null);
@@ -1257,12 +1261,12 @@ export default function ScheduleClient({
 
   const handleToggleUnscheduledCollapsed = () => {
     startUiTransition(() => {
-      setUnscheduledCollapsed((prev) => !prev);
+      setUnscheduledCollapsedFromIntent((prev) => !prev);
     });
   };
 
   const handleOpenUnscheduledJobs = (control: HTMLButtonElement) => {
-    setUnscheduledCollapsed(false);
+    setUnscheduledCollapsedFromIntent(false);
     setScheduleView('board', control);
   };
 
