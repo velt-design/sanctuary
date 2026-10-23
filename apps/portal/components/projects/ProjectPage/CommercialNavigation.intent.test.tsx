@@ -7,7 +7,7 @@ import ProjectPageShell from './ProjectPageShell';
 import { useProjectTabSelection } from './useProjectTabSelection';
 import { useProjectViewDraftGuard } from './projectViewNavigation';
 
-const h = vi.hoisted(() => ({ index: 0, loads: {} as Record<string, () => Promise<any>>, prefetch: vi.fn() }));
+const h = vi.hoisted(() => ({ loads: {} as Record<string, () => Promise<any>>, prefetch: vi.fn() }));
 let canonicalSearch = '?tab=estimates';
 let bridgeHeld = true;
 const listeners = new Set<() => void>();
@@ -34,7 +34,8 @@ vi.mock('./projectTabModules', async () => {
 vi.mock('next/dynamic', async () => {
   const { default: Loadable } = await vi.importActual<typeof import('next/dist/shared/lib/lazy-dynamic/loadable')>('next/dist/shared/lib/lazy-dynamic/loadable');
   return { default: (loader: () => Promise<any>, options?: object) => {
-    const kind = ['estimates', 'quotes', 'invoices'][h.index++];
+    const source = String(loader);
+    const kind = source.includes('QuotesTab') ? 'quotes' : source.includes('InvoicesTab') ? 'invoices' : null;
     // Preserve the installed factory's actual ssr/loading boundary defaults.
     return Loadable({ loader: kind ? () => h.loads[kind]() : loader, ...options });
   } };
@@ -44,7 +45,6 @@ function deferred() {
   const promise = new Promise<any>((accept) => { resolve = accept; });
   return { promise, resolve };
 }
-function loaded(kind: string) { return { default: ({ projectId }: { projectId: string }) => <div data-lazy-body={kind} data-project={projectId} /> }; }
 function adoptUrl() { canonicalSearch = window.location.search; for (const listener of listeners) listener(); }
 function adoptPopstate() { if (!bridgeHeld) adoptUrl(); }
 async function go(direction: 'back' | 'forward') {
@@ -61,7 +61,7 @@ afterEach(() => { client.clear(); __resetLocalFirstStoreForTests(); __setLocalFi
 
 it('shares guarded urgent intent above delayed bodies, then follows canonical Back and project identity', async () => {
   const quotes = deferred(), invoices = deferred();
-  h.loads.estimates = async () => loaded('estimates'); h.loads.quotes = () => quotes.promise.then(() => import('./tabs/QuotesTab')); h.loads.invoices = () => invoices.promise.then(() => import('./tabs/InvoicesTab'));
+  h.loads.quotes = () => quotes.promise.then(() => import('./tabs/QuotesTab')); h.loads.invoices = () => invoices.promise.then(() => import('./tabs/InvoicesTab'));
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   const view = renderIntoDocument(<Page />);
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
@@ -95,7 +95,10 @@ it('shares guarded urgent intent above delayed bodies, then follows canonical Ba
   expect(selected()).toBe('Quotes'); expect(view.container.querySelector('#quote-search')).not.toBeNull(); expect(view.container.querySelector('table')?.textContent).toContain('Quote');
   act(() => button('Invoices').click());
   act(() => { window.history.replaceState(null, '', '/staff/projects/proj_2?tab=estimates'); adoptUrl(); view.rerender(<Page projectId="proj_2" />); });
-  expect(selected()).toBe('Estimates'); expect(view.container.querySelector('[data-lazy-body]')?.getAttribute('data-project')).toBe('proj_2');
+  expect(selected()).toBe('Estimates'); expect(view.container.querySelector('[data-estimates-view="list"]')).not.toBeNull();
+  await act(async () => { await vi.dynamicImportSettled(); });
+  expect(client.getQueryData(['estimates', 'proj_2'])).toEqual([]);
+  expect(view.container.querySelector('#estimate-search')).not.toBeNull();
   expect(h.prefetch).not.toHaveBeenCalled();
   view.unmount();
 });

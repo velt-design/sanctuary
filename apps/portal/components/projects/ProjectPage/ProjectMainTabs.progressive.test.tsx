@@ -1,4 +1,4 @@
-import { act, lazy, Suspense } from 'react';
+import { act, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
@@ -6,8 +6,14 @@ import ProjectMainTabs from './ProjectMainTabs';
 import { ProjectCommercialProvider } from './ProjectCommercialContext';
 
 let search = 'tab=estimates';
-const { estimates, packs } = vi.hoisted(() => ({ estimates: vi.fn(), packs: vi.fn() }));
-vi.mock('next/dynamic', () => ({ default: (loader: () => Promise<any>) => lazy(loader) }));
+const { estimates, packs, editorModules } = vi.hoisted(() => ({ estimates: vi.fn(), packs: vi.fn(), editorModules: vi.fn() }));
+vi.mock('next/dynamic', async () => {
+  const { default: Loadable } = await vi.importActual<typeof import('next/dist/shared/lib/lazy-dynamic/loadable')>('next/dist/shared/lib/lazy-dynamic/loadable');
+  return { default: (loader: () => Promise<any>, options?: object) => Loadable({ loader: () => {
+    if (String(loader).includes('CalculatorGridClient')) { editorModules(); return new Promise(() => undefined); }
+    return loader();
+  }, ...options }) };
+});
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(search), usePathname: () => '/staff/projects/proj_1', useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
 vi.mock('@/components/ui/toast/ToastProvider', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseRuntimeUrl: () => 'https://example.invalid', supabaseHostFromUrl: () => 'host' }));
@@ -26,7 +32,7 @@ async function settleModules() { for (let depth = 0; depth < 3; depth += 1) awai
 
 describe('actual Project specialist parent during independent reads', () => {
   it('keeps the actual Estimates Find and table before and after both source and metadata settle', async () => {
-    search = 'tab=estimates';
+    search = 'tab=estimates'; editorModules.mockClear();
     const read = deferred<any[]>(); estimates.mockReturnValue(read.promise);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const view = renderIntoDocument(tree(client, 'estimates'));
@@ -35,6 +41,7 @@ describe('actual Project specialist parent during independent reads', () => {
     const table = view.container.querySelector('table');
     expect(find).not.toBeNull(); expect(find.disabled).toBe(false);
     expect(table?.textContent).toContain('Estimate');
+    expect(editorModules).not.toHaveBeenCalled();
     expect(view.container.textContent).toContain('Reading estimates');
     expect(view.container.textContent).not.toContain('Create estimate');
     await act(async () => { read.resolve([{ id: 'est_1', projectId: 'proj_1', versionLabel: 'V2', createdAt: '2026-10-01', status: 'draft', isActiveDraft: true }]); await new Promise((resolve) => setTimeout(resolve, 5)); });
@@ -43,6 +50,7 @@ describe('actual Project specialist parent during independent reads', () => {
     expect(view.container.querySelector('#estimate-search')).toBe(find);
     expect(view.container.querySelector('table')).toBe(table);
     expect(view.container.textContent).toContain('Create estimate');
+    expect(editorModules).not.toHaveBeenCalled();
     view.unmount(); client.clear();
   });
 

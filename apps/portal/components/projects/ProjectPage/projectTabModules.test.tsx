@@ -33,4 +33,12 @@ describe('project tab module preload', () => {
 
     expect(preloadCommercialView).not.toHaveBeenCalled();
   });
+  it('prepares the real Estimates list module without requesting calculator editor code', async () => {
+    const before = dynamicMock.mock.calls.length;
+    await preloadNestedProjectTab('estimates');
+    const nested = dynamicMock.mock.calls.slice(before);
+    expect(nested).toHaveLength(2); // Quotes and Invoices retain their own lazy bodies.
+    expect(nested.map(call => String(call[0])).join(' ')).not.toContain('CalculatorGridClient');
+  });
+
 });

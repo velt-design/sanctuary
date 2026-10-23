@@ -3,13 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import CommercialTab from './CommercialTab';
 import { useProjectViewDraftGuard } from '../projectViewNavigation';
-const dynamicState = vi.hoisted(() => ({ callCount: 0 }));
 const serverReplace = vi.fn();
 const prefetchQuery = vi.fn();
-vi.mock('next/dynamic', () => ({ default: () => {
-  const kind = ['estimates','quotes','invoices'][dynamicState.callCount++] ?? 'unknown';
+vi.mock('next/dynamic', () => ({ default: (loader: () => Promise<unknown>) => {
+  const kind = String(loader).includes('QuotesTab') ? 'quotes' : 'invoices';
   return (props: any) => <div data-testid={`${kind}-subview`} data-selected-quote-id={props.selectedQuoteId ?? ''} />;
 }}));
+vi.mock('./ProjectCalculatorTab', () => ({ default: () => <div data-testid="estimates-subview" /> }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({replace:serverReplace}),
   useSearchParams: () => new URLSearchParams(useSyncExternalStore(

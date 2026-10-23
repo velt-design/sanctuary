@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import EstimatesTab from './ProjectCalculatorTab';
 import type { ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -16,15 +17,13 @@ import { CommercialProjectNotice } from '../ProjectCommercialContext';
 type CommercialView = 'estimates' | 'quotes' | 'invoices';
 type QuoteView = 'edit' | 'preview';
 
-const loadEstimatesTab = () => import('./ProjectCalculatorTab');
 const loadQuotesTab = () => import('./QuotesTab');
 const loadInvoicesTab = () => import('./InvoicesTab');
-const EstimatesTab = dynamic(loadEstimatesTab);
 const QuotesTab = dynamic(loadQuotesTab);
 const InvoicesTab = dynamic(loadInvoicesTab);
 
 export function preloadCommercialViewModule(view: CommercialView): Promise<unknown> {
-  if (view === 'estimates') return loadEstimatesTab();
+  if (view === 'estimates') return Promise.resolve();
   if (view === 'quotes') return loadQuotesTab();
   return loadInvoicesTab();
 }

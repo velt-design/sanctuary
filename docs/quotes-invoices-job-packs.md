@@ -1,5 +1,9 @@
 # Quotes, Invoices, And Job Packs
 
+## Commercial Estimates code ownership
+
+The existing Estimates list/controller is composed inside the already-lazy Commercial owner. Opening its actual Find/table no longer requires the calculator editor runtime. Only a genuine edit, revision or new-design selection loads that same Grid, with local preparation/error/Retry; list queries, working-copy aliases, save callbacks, URL/dirty guards and source retirement stay with their existing owners. The standalone Calculator keeps its static Grid import. This source split does not establish bundle fit or the original five-run timing targets.
+
 ## Finance register (23 October 2026 local candidate)
 
 The register and bookmarked Xero review both publish their existing guarded leaf completion to the Portal page-source owner. Accepted navigation retires the old private Finance body immediately while Next keeps its outlet mounted; a valid cached return can restore that same completion. The ordinary payment-pilot gate and Xero owner's complete guard/read setup run before the wrapper, with register filters, tables, providers and commands unchanged.
