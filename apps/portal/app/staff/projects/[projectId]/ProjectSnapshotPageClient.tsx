@@ -11,5 +11,5 @@ export default function ProjectSnapshotPageClient(props: ProjectSnapshotProps) {
     <ProjectSnapshotPageClient {...props} />
   </ProjectInstantNavigationProvider>;
   if (workspace.projectId !== props.projectId || !workspace.owner) return null;
-  return <ProjectSnapshotRead {...props} navigation={workspace.navigation} publish={workspace.publish} warmCorrespondence={workspace.warmCorrespondence} />;
+  return <ProjectSnapshotRead {...props} estimatesList={workspace.estimatesList} navigation={workspace.navigation} publish={workspace.publish} warmCorrespondence={workspace.warmCorrespondence} />;
 }

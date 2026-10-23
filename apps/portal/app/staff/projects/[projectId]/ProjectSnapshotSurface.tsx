@@ -1,5 +1,8 @@
 "use client";
 
+import CommercialTabSurface from '@/components/projects/ProjectPage/tabs/CommercialTabSurface';
+import EstimatesListSurface, { type EstimatesListControls, type EstimatesListEvidence } from '@/components/projects/ProjectPage/tabs/EstimatesListSurface';
+import { selectProjectView } from '@/components/projects/ProjectPage/projectViewNavigation';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProjectPageFrameSurface from '@/components/projects/ProjectPage/ProjectPageFrameSurface';
@@ -24,6 +27,7 @@ export type ProjectSnapshotEvidence = {
   snapshotState: ProjectSnapshotLoadState; overviewReads: ReturnType<typeof useProjectOverviewReads>;
   calculatorWorkspace: boolean;
   projectWork?: ProjectPageSnapshot['projectWork'];
+  estimatesList?: EstimatesListEvidence | null;
   headerOwner?: ReactNode; headerActions?: ReactNode; body?: ReactNode;
   onTabIntent?: (tab: import('@/lib/projects/projectTabs').ProjectNavigationTabKey, codeOnly?: boolean) => void;
   searchReader: { component: SearchReadOwner } | null;
@@ -31,10 +35,10 @@ export type ProjectSnapshotEvidence = {
 };
 
 /** The one real frame exists before and after its guarded reader is adopted. */
-export default function ProjectSnapshotSurface({ projectId, tab, evidence, navigation, unavailable = false, initialCalculatorWorkspace = false, onRetry, onTabIntent, deferHistory }: {
+export default function ProjectSnapshotSurface({ projectId, tab, evidence, navigation, unavailable = false, initialCalculatorWorkspace = false, onRetry, onTabIntent, deferHistory, estimatesListControls }: {
   projectId: string; tab: string; evidence: ProjectSnapshotEvidence | null;
   navigation: ReturnType<typeof useProjectTabSelection>; unavailable?: boolean; initialCalculatorWorkspace?: boolean; onRetry?: () => void;
-  onTabIntent?: ProjectSnapshotEvidence['onTabIntent']; deferHistory?: boolean;
+  onTabIntent?: ProjectSnapshotEvidence['onTabIntent']; deferHistory?: boolean; estimatesListControls?: EstimatesListControls;
 }) {
   const search = useSearchParams();
   const calculatorWorkspace = search.get('tab') === null ? initialCalculatorWorkspace : search.get('tab') === 'estimates' && Boolean(search.get('estimateId') || search.get('fromEstimateId') || search.get('newDesign') === '1');
@@ -58,6 +62,20 @@ export default function ProjectSnapshotSurface({ projectId, tab, evidence, navig
         readOnly={evidence?.readOnly ?? true} snapshotContentReady={evidence?.snapshotContentReady ?? false}
         snapshotState={state} tab={tab} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab}
         calculatorWorkspace={calculatorWorkspace} privateContentReady={Boolean(evidence) && state !== 'unavailable'}
+          publicEstimatesList={navigation.activeTab === 'estimates' && !calculatorWorkspace && estimatesListControls ? <CommercialTabSurface
+            view="estimates" onSelect={(next) => {
+              if (evidence?.estimatesList?.onSelect) evidence.estimatesList.onSelect(next);
+              else if (deferHistory || selectProjectView(next)) navigation.selectTab(next);
+            }} onIntent={(next) => {
+              if (evidence?.estimatesList?.onIntent) evidence.estimatesList.onIntent(next);
+              else onTabIntent?.('estimates');
+            }}>
+            {evidence?.estimatesList?.notice}
+            <div inert={evidence?.estimatesList?.inert} style={{ display: 'contents' }}>
+              <EstimatesListSurface query={estimatesListControls.query} onQueryChange={estimatesListControls.setQuery} onInteraction={estimatesListControls.markInteracted}
+                evidence={state === 'unavailable' ? null : evidence?.estimatesList ?? null} unavailable={unavailable || state === 'unavailable'} />
+            </div>
+          </CommercialTabSurface> : undefined}
           onProjectAccessEnding={evidence?.onProjectAccessEnding} body={evidence?.body}
           statusPanel={evidence?.statusPanel ?? (unavailable ? <DataStatePanel state="unavailable" title="Project access unavailable"
           description="The project may have been removed, or your access may have changed." onRetry={onRetry} /> : null)} />

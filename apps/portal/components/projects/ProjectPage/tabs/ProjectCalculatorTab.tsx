@@ -12,6 +12,7 @@ import type {
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { Button, Card, DataStatePanel, LoadingSkeleton, Select } from '@/components/ui/foundation';
+import type { EstimatesListBinding } from './EstimatesListSurface';
 import EstimatesListView from './EstimatesListView';
 import styles from './ProjectCalculatorTab.module.css';
 import CommercialInternalNameDialog from './CommercialInternalNameDialog';
@@ -80,11 +81,13 @@ export default function ProjectCalculatorTab({
   projectId,
   projectName = 'Project estimate',
   projectReady = true,
+  estimatesList,
 }: {
   host: string;
   projectId: string;
   projectName?: string;
   projectReady?: boolean;
+  estimatesList?: EstimatesListBinding;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -378,6 +381,7 @@ export default function ProjectCalculatorTab({
     return (
       <>
       <EstimatesListView
+        listSurface={estimatesList}
         projectId={projectId}
         estimates={estimates}
         quotes={estimateQuotesQuery.isError ? undefined : estimateQuotesQuery.data}

@@ -1,5 +1,6 @@
 'use client';
 
+import type { EstimatesListBinding } from './tabs/EstimatesListSurface';
 import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { coerceProjectTab, type ProjectTabKey } from '@/lib/projects/projectTabs';
@@ -25,6 +26,7 @@ export default function ProjectTabBody({
   onProjectAccessEnding,
   statusPanel,
   privateContentReady = true,
+  estimatesList,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -39,6 +41,7 @@ export default function ProjectTabBody({
   onProjectAccessEnding?: (status: number) => void;
   statusPanel?: import("react").ReactNode;
   privateContentReady?: boolean;
+  estimatesList?: EstimatesListBinding;
 }) {
   const searchParams = useSearchParams();
   const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
@@ -62,6 +65,7 @@ export default function ProjectTabBody({
         {privateContentReady && activeTab === 'files' ? <FilesTab key={projectId} projectId={projectId} host={host} /> : null}
         {privateContentReady && (activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices') ? (
           <CommercialTab
+            estimatesList={estimatesList}
             readOnly={readOnly}
             host={host}
             projectReady={Boolean(snapshot)}

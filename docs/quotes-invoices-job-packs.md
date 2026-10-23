@@ -2,7 +2,9 @@
 
 ## Commercial Estimates code ownership
 
-The existing Estimates list/controller is composed inside the already-lazy Commercial owner. Opening its actual Find/table no longer requires the calculator editor runtime. Only a genuine edit, revision or new-design selection loads that same Grid, with local preparation/error/Retry; list queries, working-copy aliases, save callbacks, URL/dirty guards and source retirement stay with their existing owners. The standalone Calculator keeps its static Grid import. This source split does not establish bundle fit or the original five-run timing targets.
+The actual Estimates header, Find, commercial strip and table/columns now belong to lightweight `EstimatesListSurface` / `CommercialTabSurface`, composed once by the existing project workspace before its current guarded source arrives. Neutral Find/scroll intent persists through adoption. The same source-owned `ProjectSnapshotEvidence` receives genuine row, read-status and action slots; pending is Reading, not a fabricated empty estimate set. The guarded `EstimatesListView` alone restores saved query/position, and early public input/scroll wins that first adoption. Standalone Commercial composes these same surfaces once. Private queries, cache/working-copy reads, commands and editor remain behind the existing current root/leaf completion.
+
+The guarded Estimates record/controller is composed inside the already-lazy Commercial owner. Opening its actual Find/table no longer requires the calculator editor runtime. Only a genuine edit, revision or new-design selection loads that same Grid, with local preparation/error/Retry; list queries, working-copy aliases, save callbacks, URL/dirty guards and source retirement stay with their existing owners. The standalone Calculator keeps its static Grid import. This source split does not establish bundle fit or the original five-run timing targets.
 
 ## Finance register (23 October 2026 local candidate)
 

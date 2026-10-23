@@ -37,7 +37,7 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
   OverviewTab: () => { useEffect(() => { state.facts++; return () => { state.facts--; }; }, []); return <p data-real-fact>Current project facts</p>; },
   FilesTab: () => <p data-private-files>Files</p>, CommercialTab: () => <p data-private-commercial>Commercial</p>, JobPacksTab: () => <p>Job packs</p>,
 }));
-vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initialRead, navigation }: any) => {
+vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initialRead, navigation, estimatesList }: any) => {
   const evidence = useMemo(() => ({ snapshot: { project: { id: projectId, name: `Verified ${projectId}`, stage: 'new', hasJobPacks: false },
     workModel: 'legacy', pipeline: { stage: 'new' }, activity: [], emails: [], notes: [] }, host: 'host', readOnly: false,
     snapshotContentReady: true, snapshotState: 'fresh', overviewReads: null, calculatorWorkspace: false, searchReader: null,
@@ -45,6 +45,10 @@ vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initia
     body: <ProjectTabBody projectId={projectId} host="host" snapshot={null} tab="activity" optimisticTab={navigation.optimisticTab} />,
     onTabIntent: (tab: string, codeOnly = false) => { state.prepared.push(tab); state.preparationModes.push(codeOnly); },
     onProjectAccessEnding: vi.fn(), statusPanel: null }) as unknown as ProjectSnapshotEvidence, [projectId, navigation.optimisticTab]);
+  const listEvidence = useMemo(() => ({ headerActions: <button>Verified estimate command</button>, status: null,
+      render: (query: string) => ({ empty: null, noMatches: null, rows: 'Beta'.toLowerCase().includes(query.toLowerCase())
+        ? <tr><td>Beta {projectId}</td></tr> : null }) }), [projectId]);
+  useLayoutEffect(() => { estimatesList?.publish(listEvidence); return () => estimatesList?.publish(null); }, [estimatesList?.publish, listEvidence]);
   useLayoutEffect(() => { state.readers++; state.initial = initialRead; state.retiredPublish = publish; publish(evidence);
     return () => { state.readers--; publish(null); }; }, [publish, evidence, initialRead]);
   return null;
@@ -224,4 +228,39 @@ it('does not queue a blocked pending tab selection or mutate the URL', () => {
     expect(new URL(window.location.href).searchParams.get('tab')).toBe('activity');
     expect(state.prepared).toEqual([]);
   } finally { window.removeEventListener('portal:before-project-view-change', block); }
+});
+
+
+it('selects the same actual Estimates Find/table before held detail authority and rejects old source publication on denial and A→B', () => {
+  view = renderIntoDocument(tree()); click('[data-open]');
+  const commercial = [...view.container.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent === 'Commercial')!;
+  act(() => commercial.click());
+  const input = view.container.querySelector<HTMLInputElement>('#estimate-search')!, table = view.container.querySelector('table'),
+    head = view.container.querySelector('thead'), body = view.container.querySelector('tbody');
+  expect(input).not.toBeNull(); expect(input.disabled).toBe(false); expect(table?.textContent).toContain('Reading estimates');
+  expect(state.readers).toBe(0); expect(state.owners).toBe(0); expect(state.outletMounts).toBe(1); expect(state.outletRetires).toBe(0);
+  expect(view.container.textContent).not.toContain('Beta proj_A'); expect(view.container.textContent).not.toContain('Verified estimate command');
+  act(() => { input.focus(); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Beta'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  adopt(); const old = state.retiredPublish!;
+  expect(view.container.querySelector('#estimate-search')).toBe(input); expect(view.container.querySelector('table')).toBe(table);
+  expect(view.container.querySelector('thead')).toBe(head); expect(view.container.querySelector('tbody')).toBe(body);
+  expect(table?.textContent).toContain('Beta proj_A'); expect(document.activeElement).toBe(input); expect(input.value).toBe('Beta');
+  click('[data-deny]'); expect(table?.textContent).toContain('Estimates unavailable'); expect(table?.textContent).not.toContain('Beta proj_A');
+  expect(view.container.textContent).not.toContain('Verified estimate command'); expect(view.container.querySelector('#estimate-search')).toBe(input);
+  expect(state.readers).toBe(0); expect(input.value).toBe('Beta');
+  completion = recovered; view.rerender(tree()); expect(table?.textContent).toContain('Beta proj_A');
+  completion = detailB; window.history.replaceState(null, '', '/staff/projects/proj_B?tab=estimates'); adopt('proj_B');
+  expect(view.container.querySelector('#estimate-search')).toBe(input); expect(input.value).toBe(''); expect(table?.textContent).toContain('Beta proj_B');
+  act(() => old(null)); expect(table?.textContent).toContain('Beta proj_B'); expect(state.outletRetires).toBe(0);
+});
+
+
+it('renders the one real Estimates Find/table synchronously for a cold Estimates document without guarded readers or invented rows', () => {
+  state.pathname = state.canonical = '/staff/projects/proj_A'; window.history.replaceState(null, '', `${state.pathname}?tab=estimates`);
+  const cache = vi.spyOn(client, 'getQueryData');
+  const html = renderToString(tree());
+  expect(html.match(/data-estimates-view="list"/g)).toHaveLength(1); expect(html).toContain('id="estimate-search"');
+  expect(html).toContain('aria-label="Project estimates"'); expect(html).toContain('Reading estimates');
+  expect(html).not.toContain('Beta proj_A'); expect(html).not.toContain('Verified estimate command'); expect(html).not.toContain('No estimates yet');
+  expect(state.readers).toBe(0); expect(cache).not.toHaveBeenCalled(); cache.mockRestore();
 });

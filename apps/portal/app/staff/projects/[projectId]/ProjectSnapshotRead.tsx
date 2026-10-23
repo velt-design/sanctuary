@@ -9,6 +9,7 @@ import type { ProjectWorkInitialRead, ProjectWorkReadLoaders } from '@/lib/proje
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import dynamic from "next/dynamic";
 import type { SearchReadOwner } from "@/components/layout/GlobalPortalSearchSurface";
+import type { EstimatesListBinding } from '@/components/projects/ProjectPage/tabs/EstimatesListSurface';
 import type { ProjectSnapshotProps, ProjectSnapshotEvidence } from "./ProjectSnapshotSurface";
 const SearchReader = dynamic(() => import("@/components/layout/GlobalPortalSearchRead"), { loading: () => null });
 import { useProjectFilesPreparation } from '@/components/projects/ProjectPage/useProjectFilesPreparation';
@@ -58,10 +59,12 @@ function ProjectSnapshotRead({
   navigation,
   publish,
   warmCorrespondence = false,
+  estimatesList,
 }: ProjectSnapshotProps & {
   navigation: ReturnType<typeof useProjectTabSelection>;
   publish: (value: ProjectSnapshotEvidence | null) => void;
   warmCorrespondence?: boolean;
+  estimatesList?: EstimatesListBinding;
 }) {
   // Native tab/history navigation updates the live query without a server render.
   // Workspace chrome and debug identity must follow that query too.
@@ -254,7 +257,7 @@ function ProjectSnapshotRead({
     headerActions: accessUnavailable ? null : <ProjectHeaderPrivateActions project={snapshot?.project ?? null} projectId={frameProjectId} disabled={readOnly} />,
     body: accessUnavailable ? null : <ProjectCorrespondenceWarmRead projectId={projectId} enabled={warmCorrespondence && navigation.activeTab === 'activity'}><ProjectCommercialProvider projectId={frameProjectId} work={projectWork}
       ready={!readOnly && Boolean(snapshot) && loadState === 'fresh' && snapshotContentReady && (snapshot?.workModel === 'legacy' || Boolean(projectWork))}>
-      <ProjectTabBody snapshot={snapshot} projectId={frameProjectId} host={host} readOnly={readOnly} snapshotContentReady={snapshotContentReady}
+      <ProjectTabBody estimatesList={estimatesList} snapshot={snapshot} projectId={frameProjectId} host={host} readOnly={readOnly} snapshotContentReady={snapshotContentReady}
         snapshotState={loadState} tab={tab} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab}
         calculatorWorkspace={calculatorWorkspace} onProjectAccessEnding={handleProjectAccessEnding} statusPanel={statusPanel} />
     </ProjectCommercialProvider></ProjectCorrespondenceWarmRead>,
@@ -262,7 +265,7 @@ function ProjectSnapshotRead({
     onProjectAccessEnding: handleProjectAccessEnding,
     statusPanel,
   }), [snapshot, host, readOnly, accessUnavailable, snapshotContentReady, loadState, overviewReads, calculatorWorkspace,
-    searchReader, handleProjectAccessEnding, unavailablePanel, debugExport, projectWork, onTabIntent, frameProjectId, projectId, navigation, tab, statusPanel, warmCorrespondence]);
+    searchReader, handleProjectAccessEnding, unavailablePanel, debugExport, projectWork, onTabIntent, frameProjectId, projectId, navigation, tab, statusPanel, warmCorrespondence, estimatesList]);
   useLayoutEffect(() => { publish(evidence); }, [publish, evidence]);
   useLayoutEffect(() => () => publish(null), [publish]);
   return null;

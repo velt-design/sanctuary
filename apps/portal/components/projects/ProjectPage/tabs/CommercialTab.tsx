@@ -1,6 +1,8 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import CommercialTabSurface from './CommercialTabSurface';
+import type { EstimatesListBinding } from './EstimatesListSurface';
 import EstimatesTab from './ProjectCalculatorTab';
 import type { ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -9,7 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
-import { Button, TabNavigation } from '@/components/ui/foundation';
+import { Button } from '@/components/ui/foundation';
 import styles from './CommercialTab.module.css';
 import { selectProjectView, updateProjectView } from '../projectViewNavigation';
 import { CommercialProjectNotice } from '../ProjectCommercialContext';
@@ -40,6 +42,7 @@ export default function CommercialTab({
   onViewSelect,
   calculatorWorkspace = false,
   statusPanel,
+  estimatesList,
 }: {
   host: string;
   projectReady?: boolean;
@@ -52,6 +55,7 @@ export default function CommercialTab({
   onViewSelect?: (view: CommercialView) => void;
   calculatorWorkspace?: boolean;
   statusPanel?: ReactNode;
+  estimatesList?: EstimatesListBinding;
 }) {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -102,25 +106,17 @@ export default function CommercialTab({
     void queryClient.prefetchQuery(depositInvoicesByProjectQueryOptions(host, projectId));
   };
 
-  return (
-    <div
-      className={`${styles.container} ${calculatorWorkspace ? styles.containerCalculatorWorkspace : ''}`}
-      data-project-commercial-view={activeView}
-      data-commercial-calculator-workspace={calculatorWorkspace ? "true" : undefined}
-    >
-      {!calculatorWorkspace ? <div className={styles.toolbar}>
-        <TabNavigation
-          items={[
-            { key: 'estimates', label: 'Estimates' },
-            { key: 'quotes', label: 'Quotes' },
-            { key: 'invoices', label: 'Invoices' },
-          ]}
-          selectedKey={activeView}
-          onSelect={setView}
-          onIntent={preload}
-          ariaLabel="Commercial sections"
-        />
+  if (estimatesList && activeView === 'estimates' && !calculatorWorkspace) return <>
+    <EstimatesTab key={projectId} host={host} projectId={projectId} projectName={projectReady ? projectName : undefined}
+      projectReady={projectReady} estimatesList={{ ...estimatesList, onSelect: setView, onIntent: preload,
+        notice: <>{statusPanel}<CommercialProjectNotice projectId={projectId} view={activeView} />
+          {!projectReady ? <p role={projectState === 'pending' || projectState === 'summary' ? 'status' : undefined}>{projectState === 'pending' || projectState === 'summary' ? 'Reading project details…' : 'Project details unavailable. Retry the project read above.'}</p> : null}</>,
+        inert: readOnly && projectReady }} />
+  </>;
 
+  return (
+    <CommercialTabSurface view={activeView} calculatorWorkspace={calculatorWorkspace}
+      onSelect={setView} onIntent={preload} quoteViews={<>
         {activeView === 'quotes' && selectedQuoteId ? (
           <div className={styles.quoteViews} role="group" aria-label="Quote view">
             {(['edit', 'preview'] as const).map((value) => {
@@ -142,7 +138,8 @@ export default function CommercialTab({
             })}
           </div>
         ) : null}
-      </div> : null}
+      </>}>
+
 
       {statusPanel}
       <CommercialProjectNotice projectId={projectId} view={activeView} />
@@ -162,6 +159,6 @@ export default function CommercialTab({
         <InvoicesTab key={projectId} projectId={projectId} />
       )}</div>
       </Suspense>
-    </div>
+    </CommercialTabSurface>
   );
 }

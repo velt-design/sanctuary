@@ -19,6 +19,7 @@ import { selectProjectView } from '@/components/projects/ProjectPage/projectView
 import type { ProjectNavigationTabKey, ProjectTabKey } from '@/lib/projects/projectTabs';
 import { useProjectTabSelection } from '@/components/projects/ProjectPage/useProjectTabSelection';
 import ProjectSnapshotSurface, { type ProjectSnapshotProps, type ProjectSnapshotEvidence } from './[projectId]/ProjectSnapshotSurface';
+import { useEstimatesListControls, type EstimatesListBinding, type EstimatesListEvidence } from '@/components/projects/ProjectPage/tabs/EstimatesListSurface';
 type ProjectInstantNavigationValue = {
   showProject: (href: string) => void;
   projectId: string;
@@ -26,6 +27,7 @@ type ProjectInstantNavigationValue = {
   navigation: ReturnType<typeof useProjectTabSelection>;
   publish: (value: ProjectSnapshotEvidence | null) => void;
   warmCorrespondence: boolean;
+  estimatesList: EstimatesListBinding;
 };
 
 function detailId(pathname: string | null | undefined): string | null {
@@ -107,11 +109,16 @@ export default function ProjectInstantNavigationProvider({ children, standaloneP
     : pendingPath && pendingPath !== instantPathname ? pendingPath
     : instantPathname && !departed ? instantPathname : selectedPath ?? pathname;
   const projectId = standaloneProject?.projectId ?? detailId(activePath) ?? '';
+  const estimatesListControls = useEstimatesListControls(projectId);
   const localOwner = useMemo(() => ({}), [projectId]);
   const owner = projectId ? standaloneProject || !source ? localOwner
     : source.selectedPath === activePath && source.canonicalPath === activePath ? source.owner : null : null;
   const publication = useOwnedPortalPublication<ProjectSnapshotEvidence>(owner);
-  const evidence = publication.value;
+  const listPublication = useOwnedPortalPublication<EstimatesListEvidence>(owner);
+  const estimatesList = useMemo(() => ({ controls: estimatesListControls, publish: listPublication.publish }),
+    [estimatesListControls, listPublication.publish]);
+  const evidence = useMemo(() => publication.value ? ({ ...publication.value, estimatesList: listPublication.value }) : null,
+    [publication.value, listPublication.value]);
   const privateReady = Boolean(evidence);
   const onTabIntent = evidence?.onTabIntent;
   const tab = standaloneProject?.tab ?? 'activity';
@@ -153,14 +160,14 @@ export default function ProjectInstantNavigationProvider({ children, standaloneP
   const navigation = useMemo(() => ({ activeTab: currentNavigation.activeTab, optimisticTab: currentNavigation.optimisticTab, selectTab }),
     [currentNavigation.activeTab, currentNavigation.optimisticTab, selectTab]);
   const warmCorrespondence = !standaloneProject && Boolean(source);
-  const value = useMemo(() => ({ showProject, projectId, owner, navigation, publish: publication.publish, warmCorrespondence }),
-    [showProject, projectId, owner, navigation, publication.publish, warmCorrespondence]);
+  const value = useMemo(() => ({ showProject, projectId, owner, navigation, publish: publication.publish, warmCorrespondence, estimatesList }),
+    [showProject, projectId, owner, navigation, publication.publish, warmCorrespondence, estimatesList]);
 
   return (
     <ProjectInstantNavigationContext.Provider value={value}>
       {children}
       {projectId ? <>
-        <ProjectSnapshotSurface projectId={projectId} tab={tab} navigation={navigation} evidence={evidence} onTabIntent={prepareTab} deferHistory={!owner || !privateReady} initialCalculatorWorkspace={standaloneProject?.calculatorWorkspace} onRetry={source?.retry}
+        <ProjectSnapshotSurface estimatesListControls={estimatesListControls} projectId={projectId} tab={tab} navigation={navigation} evidence={evidence} onTabIntent={prepareTab} deferHistory={!owner || !privateReady} initialCalculatorWorkspace={standaloneProject?.calculatorWorkspace} onRetry={source?.retry}
           unavailable={Boolean(source?.attempt?.unavailable && source.selectedPath === activePath)} />
       </> : null}
     </ProjectInstantNavigationContext.Provider>
