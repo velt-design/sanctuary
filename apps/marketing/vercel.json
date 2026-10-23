@@ -5,6 +5,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/portal-progressive-ui-20261022": false,
+      "codex/finance-register-20261023": false,
       "codex/project-private-preview-cache-20261023": false,
       "codex/project-file-open-sydney-recovery-20261023": false,
       "codex/campaign-authored-landing-20261022": false,

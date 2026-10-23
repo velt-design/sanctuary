@@ -9,7 +9,7 @@ vi.mock('@/lib/xero/pilotAccess', () => ({ getPaymentPilotSession: async () => (
 vi.mock('@/lib/invoices/financeReviewRepository', () => ({ loadFinanceReview: mocks.load }));
 vi.mock('./CheckXero', () => ({ default: () => null }));
 vi.mock('./RecoverTransfer', () => ({ default: () => null }));
-import FinancePage from './page';
+import FinancePage from './XeroFinanceReview';
 
 const invoice: FinanceInvoice = { invoiceId: 'invoice', invoiceRef: 'INV-0014', projectId: 'project', customerName: 'Example',
   projectName: 'Example project', status: 'OPEN', currency: 'NZD', dueDate: null, totalCents: 10000, recordedCents: 0,
@@ -109,5 +109,5 @@ it('makes an automatic payment exception actionable',async()=>{
 it('returns the actual authorised header, safe search and table columns while its one invoice read remains pending',async()=>{
  mocks.load.mockReturnValue(new Promise(()=>{}));
  const page=await FinancePage({searchParams:Promise.resolve({search:'Example',view:'history'})});const html=renderToStaticMarkup(page);
- expect(mocks.load).toHaveBeenCalledOnce();expect(html).toContain('Finance review');expect(html).toContain('Invoice / customer');expect(html).toContain('name="search"');expect(html).toContain('Reading verified invoices');expect(html).not.toContain('No historical invoices');expect(html).not.toContain('Review project payments');
+ expect(mocks.load).toHaveBeenCalledOnce();expect(html).toContain('Xero checks');expect(html).toContain('Invoice / customer');expect(html).toContain('name="search"');expect(html).toContain('name="tab" value="xero"');expect(html).toContain('Reading verified invoices');expect(html).not.toContain('No historical invoices');expect(html).not.toContain('Review project payments');
 });

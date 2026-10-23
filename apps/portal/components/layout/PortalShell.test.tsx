@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PortalShell from './PortalShell';
+import PortalFrame, { usePortalFrameNavigation } from './PortalFrame';
 import { dispatchKeyboard, renderIntoDocument } from '../../../../test/reactHarness';
 import { act } from 'react';
 
@@ -138,7 +139,7 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
-  it.each(['/qa/revised-quote-fixture', '/qa/invoice-draft-editor-fixture', '/qa/finance-payment-fixture', '/qa/xero-summary-fixture'])('leaves %s behind its server flag', (path) => {
+  it.each(['/qa/finance-register', '/qa/revised-quote-fixture', '/qa/invoice-draft-editor-fixture', '/qa/finance-payment-fixture', '/qa/xero-summary-fixture'])('leaves %s behind its server flag', (path) => {
     mockPathname = path;
     mockSearchParams = new URLSearchParams();
     mockSession = { status: 'unauthenticated', email: null, role: null } as any;
@@ -375,6 +376,31 @@ describe('PortalShell', () => {
     expect(document.body.querySelector('[data-drawer-panel]')).not.toBeNull();
     dispatchKeyboard(window, 'Escape');
     expect(document.activeElement).toBe(mobileTrigger);
+    rendered.unmount();
+  });
+
+  it('uses the same frame markup in production and the local preview composition', () => {
+    const production = renderIntoDocument(<PortalShell financeUserId="current-finance-user"><div>Finance content</div></PortalShell>);
+    const html = production.container.innerHTML;
+    production.unmount();
+    function PreviewFrame() {
+      const navigation = usePortalFrameNavigation();
+      return <PortalFrame financeAccess navigation={navigation}><div>Finance content</div></PortalFrame>;
+    }
+    const preview = renderIntoDocument(<PreviewFrame />);
+    expect(preview.container.innerHTML).toBe(html);
+    preview.unmount();
+  });
+
+  it('retains collapsed navigation through an authenticated standalone visit', () => {
+    const rendered = renderIntoDocument(<PortalShell>Finance content</PortalShell>);
+    act(() => (rendered.container.querySelector('button[aria-label="Collapse sidebar"]') as HTMLButtonElement).click());
+    mockPathname = '/staff/design-booklets';
+    rendered.rerender(<PortalShell>Booklets</PortalShell>);
+    expect(rendered.container.querySelector('[data-authenticated-standalone-shell]')).not.toBeNull();
+    mockPathname = '/staff/payments';
+    rendered.rerender(<PortalShell>Finance content</PortalShell>);
+    expect(rendered.container.querySelector('[data-portal-content-sidebar-mode]')?.getAttribute('data-portal-content-sidebar-mode')).toBe('collapsed');
     rendered.unmount();
   });
 

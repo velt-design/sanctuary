@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ session: vi.fn(), review: vi.fn() }));
 vi.mock('./pilotAccess', () => ({ getPaymentPilotSession: mocks.session }));
 vi.mock('../invoices/financeReviewRepository', () => ({ loadFinanceReview: mocks.review }));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('NOT_FOUND'); } }));
-import Page from '../../app/staff/payments/page';
+import Page from '../../app/staff/payments/XeroFinanceReview';
 beforeEach(() => vi.resetAllMocks());
 async function renderPage(query: { search?: string } = {}) {
   const stream = await renderToReadableStream(await Page({ searchParams: Promise.resolve(query) }));
@@ -52,7 +52,8 @@ it('streams the actual controls and table before the one read, then distinguishe
     if (part.done) break;
     initial += decoder.decode(part.value, { stream: true });
   }
-  expect(initial).toContain('Finance review');
+  expect(initial).toContain('Xero checks');
+  expect(initial).toContain('name="tab" value="xero"');
   expect(initial).toContain('Finance views');
   expect(initial).toContain('Invoice / customer');
   expect(initial).toContain('Reading verified invoices');

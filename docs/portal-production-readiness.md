@@ -15,6 +15,15 @@ staging Files source returned403, so actual protected provider/stream browser
 evidence was not obtained; this is a proof limit, not an inferred defect. See
 `ui-foundation.md`, `design-workbench-architecture.md` and `testing-and-qa.md`.
 
+## CI compiler lifecycle recovery (23 October 2026 candidate)
+
+Repeated authenticated browser qualification stopped on a Turbopack stale-task
+panic after the authentication runtime passed. CI Playwright development servers
+now opt out of persistent compiler caching; all existing tests and production
+settings remain. Configuration isolation is locally testable, but the corrected
+complete CI browser sequence must pass before release. See
+`testing-and-qa.md#ci-browser-server-cache-isolation-23-october-2026`.
+
 ## Complete Work experiment (22 October 2026, local)
 
 The accepted local experiment starts the existing complete Work reads during

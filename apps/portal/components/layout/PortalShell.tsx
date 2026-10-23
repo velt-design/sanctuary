@@ -1,27 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import SidebarRail from '@/components/navigation/SidebarRail';
-import PortalSidebarPanel from '@/components/navigation/PortalSidebarPanel';
-import {
-  SIDEBAR_PINNED_WIDTH_PX,
-  SIDEBAR_RAIL_WIDTH_PX,
-} from '@/components/navigation/sidebarLayout';
-import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { buildAccessStatusHref, buildLoginHref, currentRequestPathWithSearch, toAccessStatusQueryState } from '@/lib/portalAccess';
-import { Drawer } from '@/components/ui/drawer/Drawer';
-import {
-  PortalInstantRouteContent,
-  PortalRouteTransitionProvider,
-} from '@/components/page-state/PortalRouteTransition';
-import { GlobalPortalSearchStateProvider } from './GlobalPortalSearchState';
-
-function cx(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(' ');
-}
+import PortalFrame, { usePortalFrameNavigation } from './PortalFrame';
+import styles from './PortalShell.module.css';
 
 function isFixtureWorkbenchRoutePath(
   pathname: string | null,
@@ -52,6 +36,7 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/invoice-draft-editor-fixture' ||
     pathname === '/qa/invoice-restore-fixture' ||
     pathname === '/qa/revised-quote-fixture' ||
+    pathname === '/qa/finance-register' ||
     pathname === '/qa/project-work-queue-fixture' ||
     pathname === '/qa/schedule-ops-fixture' ||
     pathname === '/qa/schedule-progressive-fixture' ||
@@ -73,10 +58,6 @@ function isPublicRoutePath(pathname: string | null, searchParams: { get(name: st
   );
 }
 
-function isDesignWorkbenchRoutePath(pathname: string | null): boolean {
-  return Boolean(pathname && /^\/staff\/projects\/[^/]+\/design-workbench(?:\/|$)/.test(pathname));
-}
-
 function isAuthenticatedStandaloneRoutePath(pathname: string | null): boolean {
   return Boolean(
     pathname &&
@@ -89,28 +70,12 @@ export default function PortalShell({ children, financeUserId }: { children: Rea
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { status, user, email, role } = usePortalSession();
+  const { status, user, role } = usePortalSession();
+  const navigation = usePortalFrameNavigation();
   const financeAccess = status === 'authenticated' && Boolean(financeUserId) && user?.id === financeUserId;
   const hasMountedRef = useRef(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const isPublicRoute = isPublicRoutePath(pathname, searchParams);
-  const shellRouteKey = `${pathname ?? ''}?${searchParams.toString()}`;
-  const sidebarMode = isDesignWorkbenchRoutePath(pathname) ? 'railOnly' : 'pinned';
-  const isViewportLockedPath =
-    typeof pathname === 'string' &&
-    (pathname === '/schedule' ||
-      pathname.startsWith('/schedule/') ||
-      pathname === '/staff/schedule' ||
-      pathname.startsWith('/staff/schedule/') ||
-      pathname === '/staff/running-jobs' ||
-      pathname.startsWith('/staff/running-jobs/') ||
-      pathname === '/staff/projects/running-jobs' ||
-      pathname.startsWith('/staff/projects/running-jobs/') ||
-      pathname === '/staff/projects/design-packages' ||
-      pathname.startsWith('/staff/projects/design-packages/'));
-  const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';
   const callbackUrl = useMemo(() => {
     const url = new URL('http://portal.local');
     url.pathname = pathname || '/dashboard';
@@ -128,15 +93,6 @@ export default function PortalShell({ children, financeUserId }: { children: Rea
     }
     return null;
   }, [callbackUrl, status]);
-  const sidebarLayoutStyle = useMemo(
-    () =>
-      ({
-        '--portal-sidebar-rail-width': `${SIDEBAR_RAIL_WIDTH_PX}px`,
-        '--portal-sidebar-pinned-width': `${SIDEBAR_PINNED_WIDTH_PX}px`,
-      }) as CSSProperties,
-    [],
-  );
-
   useEffect(() => {
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
@@ -145,10 +101,6 @@ export default function PortalShell({ children, financeUserId }: { children: Rea
     if (isPublicRoute || !redirectHref) return;
     router.replace(redirectHref);
   }, [isPublicRoute, redirectHref, router]);
-
-  useEffect(() => {
-    setIsMobileNavOpen(false);
-  }, [shellRouteKey]);
 
   if (isPublicRoute) return <>{children}</>;
 
@@ -160,57 +112,5 @@ export default function PortalShell({ children, financeUserId }: { children: Rea
     return <div data-authenticated-standalone-shell>{children}</div>;
   }
 
-  return (
-    <PortalRouteTransitionProvider>
-      <GlobalPortalSearchStateProvider>
-        <div
-          className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}
-          data-portal-sidebar-mode={sidebarMode}
-          style={sidebarLayoutStyle}
-        >
-        {sidebarMode === 'railOnly' || isSidebarCollapsed ? (
-          <SidebarRail
-            email={email ?? undefined}
-            roleLabel={roleLabel}
-            role={role ?? undefined}
-            panelVisible={false}
-            financeAccess={financeAccess}
-          />
-        ) : (
-          <PortalSidebarPanel financeAccess={financeAccess} />
-        )}
-        {sidebarMode === 'pinned' ? (
-          <button
-            type="button"
-            className={styles.sidebarToggle}
-            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-pressed={isSidebarCollapsed}
-            onClick={() => setIsSidebarCollapsed((current) => !current)}
-          >
-            {isSidebarCollapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
-          </button>
-        ) : null}
-        <header className={styles.mobileTopBar} data-portal-mobile-top-bar>
-          <strong>Sanctuary</strong>
-          <button type="button" aria-label="Open portal navigation" aria-expanded={isMobileNavOpen} onClick={() => setIsMobileNavOpen(true)}>
-            <Menu aria-hidden="true" />
-          </button>
-        </header>
-        <Drawer open={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} title="Portal navigation" side="left">
-          <PortalSidebarPanel mode="drawer" financeAccess={financeAccess} />
-        </Drawer>
-        <div
-          className={cx(
-            styles.content,
-            sidebarMode === 'pinned' && !isSidebarCollapsed && styles.contentSidebarPinned,
-            isViewportLockedPath && styles.contentViewportLocked,
-          )}
-          data-portal-content-sidebar-mode={sidebarMode === 'pinned' && isSidebarCollapsed ? 'collapsed' : sidebarMode}
-        >
-          <PortalInstantRouteContent>{children}</PortalInstantRouteContent>
-        </div>
-        </div>
-      </GlobalPortalSearchStateProvider>
-    </PortalRouteTransitionProvider>
-  );
+  return <PortalFrame financeAccess={financeAccess} navigation={navigation}>{children}</PortalFrame>;
 }
