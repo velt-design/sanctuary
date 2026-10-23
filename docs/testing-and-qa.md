@@ -1,5 +1,21 @@
 # Testing And QA
 
+## CI browser-server cache isolation (23 October 2026)
+
+CI Playwright development servers disable Next's supported
+`experimental.turbopackFileSystemCacheForDev` when the existing
+`PORTAL_PLAYWRIGHT_DIST_DIR` is set. Sequential fixture, authentication-runtime
+and routing invocations can otherwise reopen a persistent task graph left by
+the previous process; repeated qualification runs encountered a Turbopack
+missing-task panic at that boundary. This keeps the same bundler, routes,
+authentication and tests, without deleting caches or changing output paths.
+Ordinary development and production build/start settings retain their defaults.
+
+`npx vitest run test/portal-playwright-cache.test.ts` checks the configuration
+boundary. Only the complete existing CI browser sequence establishes successful
+runtime recovery; the configuration test alone does not prove the compiler bug
+cannot recur.
+
 The owner-decision PG17 harness includes `landing_observed_context.sql`: original
 capacity/end/history preservation, exact receipt/control drift, duplicate denial,
 one reservation, scoped estimate preparation, null termination and unchanged

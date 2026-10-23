@@ -10,7 +10,13 @@ const designBookletSharpRuntimeFiles = [
 
 const nextConfig: NextConfig = {
   ...(playwrightDistDir ? { distDir: playwrightDistDir } : {}),
-  experimental: { externalDir: true },
+  experimental: {
+    externalDir: true,
+    // Sequential CI browser servers must not reopen a stale Turbopack task graph.
+    ...(process.env.CI && playwrightDistDir && process.env.NODE_ENV === 'development'
+      ? { turbopackFileSystemCacheForDev: false }
+      : {}),
+  },
   serverExternalPackages: ['@1password/sdk'],
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   outputFileTracingIncludes: {

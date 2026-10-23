@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-23: Isolate CI browser servers from persistent compiler state
+
+Repeated Portal qualification encountered a Turbopack missing-task panic when
+the authenticated routing server reopened the output directory used by earlier
+browser invocations. Disable the supported development filesystem cache only
+for CI Playwright servers. Keep production compilation, normal development,
+explicit output directories and every authentication/browser assertion intact.
+Do not treat an application test pass or a blind rerun as evidence that a shared
+compiler lifecycle failure is repaired. Owner: `testing-and-qa.md`.
+
 ## 2026-10-23: Judge Finance clarity inside its ordinary Portal frame
 
 Technical and isolated-fixture checks did not establish that the Finance register
