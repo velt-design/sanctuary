@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { usePortalPageSource } from '@/components/page-state/PortalPageSource';
 
 type ProjectInstantNavigationValue = {
   showProject: (href: string, view: ReactNode) => void;
@@ -23,12 +24,17 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
   const router = useRouter();
   const pathname = usePathname();
   const { pendingHref } = usePortalRouteTransition();
+  const source = usePortalPageSource();
   const [instantView, setInstantView] = useState<ReactNode | null>(null);
   const [instantPathname, setInstantPathname] = useState<string | null>(null);
   const observedInstantPathRef = useRef(false);
+  const observedInstantSourceRef = useRef(false);
+  const openingAttemptRef = useRef<object | string | null>(null);
 
   const clearInstantView = useCallback(() => {
     observedInstantPathRef.current = false;
+    observedInstantSourceRef.current = false;
+    openingAttemptRef.current = null;
     setInstantPathname(null);
     setInstantView(null);
   }, []);
@@ -36,11 +42,13 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
   const showProject = useCallback((href: string, view: ReactNode) => {
     const nextPathname = new URL(href, window.location.href).pathname;
     observedInstantPathRef.current = false;
+    observedInstantSourceRef.current = false;
+    openingAttemptRef.current = source?.attempt?.identity ?? null;
     setInstantPathname(nextPathname);
     setInstantView(view);
     window.history.pushState(null, '', `${href}?tab=activity`);
     router.replace(href, { scroll: false });
-  }, [router]);
+  }, [router, source?.attempt?.identity]);
 
   useEffect(() => {
     clearInstantView();
@@ -54,6 +62,20 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
     }
     if (observedInstantPathRef.current) clearInstantView();
   }, [clearInstantView, instantPathname, pathname]);
+
+  const selectedPath = source?.selectedPath;
+  const selectedAttempt = source?.attempt?.identity;
+  useEffect(() => {
+    if (!instantPathname) return;
+    if (selectedPath === instantPathname) {
+      observedInstantSourceRef.current = true;
+      return;
+    }
+    // Opening a detail can still observe its original index source. Only a new
+    // accepted attempt or departure from an adopted detail retires this owner.
+    if ((selectedAttempt && selectedAttempt !== openingAttemptRef.current)
+      || (observedInstantSourceRef.current && selectedPath)) clearInstantView();
+  }, [clearInstantView, instantPathname, selectedAttempt, selectedPath]);
 
   useEffect(() => {
     if (!instantPathname || !pendingHref) return;

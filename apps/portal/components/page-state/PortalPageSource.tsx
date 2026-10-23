@@ -34,6 +34,7 @@ export function usePortalPageSourceController(pathname: string | null, canonical
   const [attempt, setAttempt] = useState<FrameAttempt | null>(null);
   const sourceRef = useRef(source);
   const attemptRef = useRef(attempt);
+  const deniedCompletionsRef = useRef(new WeakSet<PortalPageCompletion>());
   const canonicalRef = useRef(canonicalPath);
   canonicalRef.current = canonicalPath;
   const begin = useCallback((href: string) => {
@@ -51,7 +52,8 @@ export function usePortalPageSourceController(pathname: string | null, canonical
     const next: FrameAttempt = {
       href, pathname: target, identity: {},
       fromCanonicalPath: canonicalRef.current,
-      blockedCompletion: sourceRef.current?.completion ?? null, adoptedCompletion: null,
+      blockedCompletion: sourceRef.current?.pathname === canonicalRef.current ? sourceRef.current.completion : null,
+      adoptedCompletion: null,
     };
     attemptRef.current = next;
     setAttempt(next);
@@ -64,6 +66,8 @@ export function usePortalPageSourceController(pathname: string | null, canonical
   const deny = useCallback((selectedPath: string) => {
     const pending = attemptRef.current;
     if (pending?.pathname !== selectedPath && sourceRef.current?.pathname !== selectedPath) return;
+    if (sourceRef.current?.pathname === selectedPath) deniedCompletionsRef.current.add(sourceRef.current.completion);
+    if (pending?.pathname === selectedPath && pending.adoptedCompletion) deniedCompletionsRef.current.add(pending.adoptedCompletion);
     // A source failure must not restore the entry query over safe view changes
     // already made on the selected actual frame. This URL is correlation only.
     const unavailable: FrameAttempt = { href: `${selectedPath}${window.location.search}${window.location.hash}`,
@@ -84,7 +88,7 @@ export function usePortalPageSourceController(pathname: string | null, canonical
       && canonicalPath !== attempt.fromCanonicalPath) cancel();
   }, [attempt, canonicalPath, pathname, cancel]);
   const register = useCallback((selected: SelectedSource) => {
-    if (canonicalRef.current !== selected.pathname) return;
+    if (canonicalRef.current !== selected.pathname || deniedCompletionsRef.current.has(selected.completion)) return;
     const pending = attemptRef.current;
     if (pending) {
       if (pending.pathname !== selected.pathname || pending.blockedCompletion === selected.completion) return;
@@ -102,7 +106,7 @@ export function usePortalPageSourceController(pathname: string | null, canonical
     setSource(selected);
   }, []);
   const allowed = (selected: SelectedSource) => {
-    if (canonicalPath !== selected.pathname) return false;
+    if (canonicalPath !== selected.pathname || deniedCompletionsRef.current.has(selected.completion)) return false;
     if (attempt) return attempt.pathname === selected.pathname && attempt.adoptedCompletion === selected.completion;
     return pathname === selected.pathname;
   };

@@ -376,6 +376,87 @@ it('clears genuine facts and commands on a denied selected source and rejects it
   view.unmount();
 });
 
+it('keeps explicit denial effective through cancellation, rebegin and late old completion while a distinct completion can recover', async () => {
+  const denied = {}, fresh = {};
+  window.history.replaceState(null, '', '/staff/contacts');
+  const ui = (completion: PortalPageCompletion, unavailable = false) => <QueryClientProvider client={client}>
+    <Harness canonical="/staff/contacts" href="/staff/contacts" leaf={
+      <PortalGuardedPage pathname="/staff/contacts" completion={completion} unavailable={unavailable}>
+        <ContactsIndexClient />
+      </PortalGuardedPage>} />
+  </QueryClientProvider>;
+  const view = renderIntoDocument(ui(denied)); await settle();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  view.rerender(ui({}, true)); await settle();
+  act(() => view.container.querySelector<HTMLButtonElement>('[data-cancel-selection]')!.click());
+  view.rerender(ui(denied)); await settle();
+  expect(view.container.textContent).not.toContain('Private fictional contact');
+  expect(view.container.querySelector('[href="/staff/contacts/new"]')).toBeNull();
+  expect(client.getQueryCache().find({ queryKey: contactsIndexQueryOptions().queryKey })!.getObserversCount()).toBe(0);
+  act(() => view.container.querySelector('button')!.click()); await settle();
+  view.rerender(ui(denied)); await settle();
+  expect(view.container.textContent).not.toContain('Private fictional contact');
+  view.rerender(ui(fresh)); await settle();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  expect(view.container.querySelector('[href="/staff/contacts/new"]')).not.toBeNull();
+  view.rerender(ui(denied)); await settle();
+  expect(view.container.textContent).not.toContain('Private fictional contact');
+  expect(client.getQueryCache().find({ queryKey: contactsIndexQueryOptions().queryKey })!.getObserversCount()).toBe(0);
+  view.rerender(ui(fresh)); await settle();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  view.unmount();
+});
+
+it('blocks the current completion during same-source refresh without treating it as explicit denial', async () => {
+  const current = {}, fresh = {};
+  window.history.replaceState(null, '', '/staff/contacts');
+  const ui = (completion: PortalPageCompletion) => <QueryClientProvider client={client}>
+    <Harness canonical="/staff/contacts" href="/staff/contacts" leaf={
+      <PortalGuardedPage pathname="/staff/contacts" completion={completion}><ContactsIndexClient /></PortalGuardedPage>} />
+  </QueryClientProvider>;
+  const view = renderIntoDocument(ui(current)); await settle();
+  const input = view.container.querySelector('#contactSearch');
+  act(() => view.container.querySelector('button')!.click()); await settle();
+  view.rerender(ui(current)); await settle();
+  expect(view.container.textContent).not.toContain('Private fictional contact');
+  expect(view.container.querySelector('[href="/staff/contacts/new"]')).toBeNull();
+  // Cancelling this ordinary refresh retains the existing valid source.
+  act(() => view.container.querySelector<HTMLButtonElement>('[data-cancel-selection]')!.click()); await settle();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  act(() => view.container.querySelector('button')!.click()); await settle();
+  expect(view.container.textContent).not.toContain('Private fictional contact');
+  view.rerender(ui(fresh)); await settle();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  expect(view.container.querySelector('#contactSearch')).toBe(input);
+  view.unmount();
+});
+
+it('does not revoke outgoing Contacts A when pending Schedule B fails or let a wrong-canonical late B completion adopt', async () => {
+  const a = {}, b = {};
+  window.history.replaceState(null, '', '/staff/contacts');
+  const ui = (deniedB: boolean) => <QueryClientProvider client={client}>
+    <Harness canonical="/staff/contacts" href="/staff/schedule" leaf={<>
+      <PortalGuardedPage pathname="/staff/contacts" completion={a}><ContactsIndexClient /></PortalGuardedPage>
+      <PortalGuardedPage pathname="/staff/schedule" completion={b} unavailable={deniedB}>
+        <p data-late-schedule>Late private Schedule evidence</p>
+      </PortalGuardedPage>
+    </>} />
+  </QueryClientProvider>;
+  const view = renderIntoDocument(ui(false)); await settle();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  act(() => view.container.querySelector('button')!.click()); await settle();
+  view.rerender(ui(true)); await settle();
+  expect(view.container.textContent).toContain('Schedule unavailable');
+  expect(view.container.textContent).not.toContain('Private fictional contact');
+  act(() => view.container.querySelector<HTMLButtonElement>('[data-cancel-selection]')!.click()); await settle();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  expect(view.container.querySelector('[href="/staff/contacts/new"]')).not.toBeNull();
+  view.rerender(ui(false)); await settle();
+  expect(view.container.querySelector('[data-late-schedule]')).toBeNull();
+  expect(view.container.textContent).toContain('Private fictional contact');
+  view.unmount();
+});
+
 it('restores the retained canonical source when pending navigation is cancelled before adoption', async () => {
   const completion = {};
   const dashboard = <PortalGuardedPage pathname="/dashboard" completion={completion}><PrivateDashboard /></PortalGuardedPage>;
