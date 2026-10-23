@@ -10,12 +10,13 @@ import {
   type ProjectNavigationTabKey,
   type ProjectTabKey,
 } from '@/lib/projects/projectTabs';
-import { preloadProjectTab } from './projectTabModules';
+import { preloadProjectTab, preloadProjectTabModule } from './projectTabModules';
 import { TabNavigation } from '@/components/ui/foundation';
 import { selectProjectView, updateProjectView } from './projectViewNavigation';
 
 export default function ProjectTabNavigation({
   hasJobPacks,
+  privateContentReady = true,
   tabAvailabilityReady = true,
   host,
   initialTab,
@@ -24,6 +25,7 @@ export default function ProjectTabNavigation({
   onTabSelect,
 }: {
   hasJobPacks: boolean;
+  privateContentReady?: boolean;
   tabAvailabilityReady?: boolean;
   host: string;
   initialTab: string;
@@ -58,7 +60,7 @@ export default function ProjectTabNavigation({
   }, [activeTab, replaceTab, requestedTab]);
 
   const prefetch = (tab: ProjectNavigationTabKey) => {
-    void preloadProjectTab(tab, { host, projectId, queryClient });
+    void (privateContentReady ? preloadProjectTab(tab, { host, projectId, queryClient }) : preloadProjectTabModule(tab));
   };
 
   const selectTab = (tab: ProjectNavigationTabKey) => {

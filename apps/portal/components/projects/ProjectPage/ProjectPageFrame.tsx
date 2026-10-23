@@ -26,6 +26,8 @@ export default function ProjectPageFrame({
   optimisticTab,
   onTabSelect,
   statusPanel,
+  privateContentReady = true,
+  searchReader,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -39,6 +41,8 @@ export default function ProjectPageFrame({
   optimisticTab: ProjectTabKey | null;
   onTabSelect: (tab: ProjectTabKey) => void;
   statusPanel?: ReactNode;
+  privateContentReady?: boolean;
+  searchReader?: { component: import("@/components/layout/GlobalPortalSearchSurface").SearchReadOwner } | null;
 }) {
   const projectId = snapshot?.project.id ?? overviewProjectId(routeProjectId);
   const overviewReads = useOptionalProjectOverviewReads(host, projectId);
@@ -76,6 +80,8 @@ export default function ProjectPageFrame({
           data-project-masthead-slot-sticky="true"
         >
           <ProjectHeader
+            privateContentReady={privateContentReady}
+            searchReader={searchReader}
             project={snapshot?.project ?? null}
             projectId={projectId}
             workModel={snapshot?.workModel}
@@ -107,6 +113,7 @@ export default function ProjectPageFrame({
           onTabSelect={onTabSelect}
           onProjectAccessEnding={onProjectAccessEnding}
           statusPanel={statusPanel}
+          privateContentReady={privateContentReady}
         />
         </ProjectCommercialProvider>
       </div>

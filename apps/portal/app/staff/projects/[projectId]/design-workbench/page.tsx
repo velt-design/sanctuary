@@ -1,3 +1,4 @@
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
@@ -125,5 +126,5 @@ export default async function DesignWorkbenchPage({
 
   await requireStaffPageAccess(`/staff/projects/${encodeURIComponent(normalizedProjectId)}/design-workbench`);
   const initialRead = loadWorkbenchPageRead({ projectId: normalizedProjectId, estimateId, requestId });
-  return <DesignWorkbenchReadHost projectId={normalizedProjectId} estimateId={estimateId} requestId={requestId} initialRead={initialRead} backHref={backHref} debugExportEnabled={isPortalPageDebugExportEnabled()} />;
+  return <PortalGuardedPage pathname={`/staff/projects/${encodeURIComponent(normalizedProjectId)}/design-workbench`} completion={{}} publicFrame={false}><DesignWorkbenchReadHost projectId={normalizedProjectId} estimateId={estimateId} requestId={requestId} initialRead={initialRead} backHref={backHref} debugExportEnabled={isPortalPageDebugExportEnabled()} /></PortalGuardedPage>;
 }

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/foundation";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import ProjectOwnerControls from "./tabs/overview/ProjectOwnerControls";
 import styles from "./ProjectPage.module.css";
+import ProjectHeaderOwnerSurface from "./ProjectHeaderOwnerSurface";
 
 export default function ProjectHeaderOwnerControl({
   project,
@@ -115,10 +116,7 @@ export default function ProjectHeaderOwnerControl({
           <span>{displayName}</span>
         </button>
       ) : (
-        <span className={styles.mastheadOwner} data-project-owner={ownerKey}>
-          <strong>Owner</strong>
-          <span>{displayName}</span>
-        </span>
+        <ProjectHeaderOwnerSurface ownerKey={ownerKey} displayName={displayName} pending={metadataPending} />
       )}
 
       {open && owner && project ? (

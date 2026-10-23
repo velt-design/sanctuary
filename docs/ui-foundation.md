@@ -1030,3 +1030,5 @@ supported-contract omission. No rows were changed. The existing Project Work
 gate passed 420 tests; its imported dashboard migration test now normalises the
 new SQL payload to committed LF on Windows while retaining the deliberately CRLF
 old-function scenario. Both SQL suites pass all 11 tests after the owner correction.
+
+The actual `DataStatePanel` and its copy/type now have the focused `FoundationDataState` primitive owner; `FoundationFeedback` reexports that same component for existing consumers. Public Contacts, Projects, Work Queue and Schedule surfaces import the focused primitive, while other financial/permission/task feedback stays with its existing owner. Rendering, styles and retry/clear behavior are unchanged.

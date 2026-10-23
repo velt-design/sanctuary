@@ -6,7 +6,7 @@ import ScheduleGanttSurface from './ScheduleGanttSurface';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import HeaderActions from '@/components/layout/HeaderActions';
-import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import type { ScheduleBoardViewProps } from './ScheduleBoardView';
 import type { ScheduleGanttViewProps } from './ScheduleGanttView';
 import styles from './schedule.module.css';

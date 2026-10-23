@@ -1,7 +1,7 @@
 'use client';
 import {createContext,useContext,useMemo,useState,type Dispatch,type ReactNode,type SetStateAction} from 'react';
 import {useOwnedPortalPublication} from '@/components/page-state/PortalPageSource';
-import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import WorkQueueSurface,{type WorkQueueSurfaceProps} from '@/components/projects/workQueue/WorkQueueSurface';
 import {DEFAULT_WORK_QUEUE_FILTERS,type WorkQueueFilters} from '@/components/projects/workQueue/workQueueFilterSelection';
 import WorkQueueFrame,{type WorkQueuePageEvidence} from './WorkQueueFrame';

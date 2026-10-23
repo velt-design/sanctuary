@@ -6,7 +6,7 @@ import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import type { ProjectWorkReadLoaders } from '@/lib/projects/projectWorkInitialRead';
 import { projectFixtureSnapshot } from '@/app/qa/portal-progressive-fixture/ProjectJourney';
 
-vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'fictional-staff' }, role: 'staff' }) }));
 vi.mock('@/components/ui/toast/ToastProvider', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({children, ...props}: any) => <a {...props}>{children}</a> }));

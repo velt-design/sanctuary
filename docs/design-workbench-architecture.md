@@ -264,3 +264,5 @@ The gated denied scenario now throws actual PostgrestError42501 without status,
 and independent optimized review verified this clearing/recovery path. Numeric
 HTTP-status and coded-adapter regressions remain distinct; no real authority
 revocation or live grant change is claimed.
+
+The ordinary Workbench leaf also uses the existing Portal selected-source lifetime gate after its unchanged fresh staff guard. This retires the same ReadHost only when another route is accepted; geometry, dirty/Save, read/source and fixture behavior are unchanged. Gate0: legacy audit rows N/A, no legacy build-on, no Phase2/commercial dependency or parameter consolidation. This is route lifetime composition only, not an engine or runtime redesign.

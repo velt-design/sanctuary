@@ -11,8 +11,9 @@ const replace = vi.fn();
 const routeTransition = vi.hoisted(() => ({ pendingHref: null as string | null }));
 const navigation = vi.hoisted(() => ({ canonical: '/staff/projects', pathname: null as string | null }));
 const lifetime = vi.hoisted(() => ({ mounted: 0, retired: 0 }));
+const outlet = vi.hoisted(() => ({ mounted: 0, retired: 0 }));
 
-vi.mock('./[projectId]/ProjectSnapshotPageClient', () => ({
+vi.mock('./[projectId]/ProjectSnapshotSurface', () => ({
   default: ({ projectId, tab }: { projectId: string; tab: string }) => {
     useEffect(() => { lifetime.mounted++; return () => { lifetime.mounted--; lifetime.retired++; }; }, []);
     return <div data-testid="optimistic-project" data-project-id={projectId} data-tab={tab}>
@@ -91,7 +92,7 @@ describe('useProjectInstantOpen', () => {
     const rendered = renderHarness();
     act(() => rendered.container.querySelector('button')?.click());
 
-    expect(rendered.container.textContent).not.toContain('Open project');
+    expect(rendered.container.textContent).toContain('Open project'); // The real outlet stays mounted.
 
     window.history.replaceState(null, '', '/staff/projects');
     act(() => window.dispatchEvent(new PopStateEvent('popstate')));
@@ -100,19 +101,20 @@ describe('useProjectInstantOpen', () => {
     rendered.unmount();
   });
 
-  it('releases the instant project when the destination route children settle', () => {
+  it('keeps the same actual frame while the real destination outlet settles', () => {
     const rendered = renderHarness();
     act(() => rendered.container.querySelector('button')?.click());
 
     expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).not.toBeNull();
 
+    const frame = rendered.container.querySelector('[data-testid="optimistic-project"]');
     rendered.rerender(
       <ProjectInstantNavigationProvider>
         <div data-testid="settled-project">Settled project route</div>
       </ProjectInstantNavigationProvider>,
     );
 
-    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBe(frame);
     expect(rendered.container.querySelector('[data-testid="settled-project"]')?.textContent)
       .toBe('Settled project route');
     rendered.unmount();
@@ -131,7 +133,7 @@ describe('useProjectInstantOpen', () => {
       <ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>,
     );
 
-    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')?.getAttribute('data-project-id')).toBe('proj_2');
     expect(rendered.container.textContent).toContain('Open project');
     rendered.unmount();
   });
@@ -149,7 +151,7 @@ describe('useProjectInstantOpen', () => {
       <ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>,
     );
 
-    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')?.getAttribute('data-project-id')).toBe('proj_2');
     expect(rendered.container.textContent).toContain('Open project');
     rendered.unmount();
   });
@@ -166,7 +168,7 @@ describe('useProjectInstantOpen', () => {
     expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBe(instant);
     routeTransition.pendingHref = '/staff/projects/proj_2';
     rendered.rerender(<ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>);
-    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')?.getAttribute('data-project-id')).toBe('proj_2');
     expect(rendered.container.textContent).toContain('Open project');
     rendered.unmount();
   });
@@ -189,6 +191,7 @@ describe('accepted Projects source retirement with a retained Next outlet', () =
       data-owner={source?.owner === (recovered ? recoveryCompletion : indexCompletion) ? 'index' : source?.owner ? 'detail' : 'pending'} /></>;
   }
   function StableOutlet() {
+    useEffect(() => { outlet.mounted++; return () => { outlet.mounted--; outlet.retired++; }; }, []);
     const source = usePortalPageSource();
     const path = source?.canonicalPath ?? '/staff/projects';
     return path === '/staff/projects'
@@ -216,7 +219,7 @@ describe('accepted Projects source retirement with a retained Next outlet', () =
   function returnToProjects() { act(() => view.container.querySelector<HTMLButtonElement>('[data-return]')!.click()); }
   beforeEach(() => {
     window.history.replaceState(null, '', '/staff/projects'); navigation.canonical = '/staff/projects'; navigation.pathname = null;
-    denied = false; recovered = false; routeTransition.pendingHref = null; lifetime.mounted = 0; lifetime.retired = 0;
+    denied = false; recovered = false; routeTransition.pendingHref = null; lifetime.mounted = 0; lifetime.retired = 0; outlet.mounted = 0; outlet.retired = 0;
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     view = renderIntoDocument(tree());
   });
@@ -224,6 +227,7 @@ describe('accepted Projects source retirement with a retained Next outlet', () =
 
   it('retires the real instant provider after settled detail on accepted index selection without pendingHref or changed children', () => {
     open();
+    expect(outlet.mounted).toBe(1); expect(outlet.retired).toBe(0);
     const detail = view.container.querySelector('[data-testid="optimistic-project"]');
     adopt('/staff/projects/proj_1');
     expect(view.container.querySelector('[data-testid="optimistic-project"]')).toBe(detail);
@@ -240,6 +244,7 @@ describe('accepted Projects source retirement with a retained Next outlet', () =
     expect(view.container.querySelector('[data-index-evidence]')).not.toBeNull();
     expect(view.container.querySelector('[data-owner]')?.getAttribute('data-owner')).toBe('index');
     expect(view.container.querySelector('[data-canonical-detail]')).toBeNull();
+    expect(outlet.mounted).toBe(1); expect(outlet.retired).toBe(0);
   });
 
   it('keeps the same instant node and local focus through same-detail adoption and same-path search', () => {
@@ -296,8 +301,9 @@ describe('accepted Projects source retirement with a retained Next outlet', () =
     adopt('/staff/projects/proj_1');
     expect(view.container.querySelector('[data-canonical-detail]')).not.toBeNull();
     expect(view.container.querySelector('[data-index-evidence]')).toBeNull();
-    expect(view.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
-    expect(lifetime.mounted).toBe(0);
+    expect(view.container.querySelector('[data-testid="optimistic-project"]')?.getAttribute('data-project-id')).toBe('proj_1');
+    expect(lifetime.mounted).toBe(1);
+    expect(outlet.mounted).toBe(1); expect(outlet.retired).toBe(0);
   });
 
   it('keeps the replacement project B through its adoption and retires B on the next accepted index selection', () => {

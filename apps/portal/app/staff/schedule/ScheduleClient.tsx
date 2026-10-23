@@ -50,7 +50,7 @@ import { resolveDefaultScheduleGanttRange } from '@/lib/scheduling/scheduleGantt
 import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import { AlertBanner } from '@/components/ui/foundation/FoundationAlert';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';

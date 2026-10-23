@@ -9,7 +9,7 @@ import { progressiveScheduleSnapshot } from '@/app/qa/schedule-progressive-fixtu
 import { contactsIndexQueryOptions } from '@/lib/queries/contactsIndex';
 import type { ContactsIndexResponse } from '@/lib/contacts/contactsIndexContract';
 import PortalActualFrames from './PortalActualFrames';
-import { PortalGuardedPage, PortalPageSourceProvider, usePortalPageSourceController, type PortalPageCompletion } from './PortalPageSource';
+import { PortalGuardedPage, PortalPageSourceProvider, usePortalPageSourceController, projectDetailPath, type PortalPageCompletion } from './PortalPageSource';
 
 const api = vi.fn();
 const privateCode = vi.hoisted(() => ({ board: null as Promise<void> | null }));
@@ -654,4 +654,58 @@ it.each(['pending', 'first-error'] as const)('keeps Gantt View unscheduled jobs 
   expect(board).toHaveBeenCalledTimes(1);
   expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.getAttribute('data-collapsed')).toBe('false');
   expect(view.container.textContent).toContain('No unscheduled deposit-stage projects');
+});
+
+
+it.each(['/staff/contacts', '/staff/projects/proj_B'])('correlates unavailable leaf identities before adoption without poisoning unrelated or recovered owners for %s', pathB => {
+  const pathA = '/dashboard';
+  const tokenA = {}, deniedB = {}, freshB = {}, retired = {};
+  let current!: ReturnType<typeof usePortalPageSourceController>;
+  function Probe({ pathname, canonical, unavailable, completion }: { pathname: string; canonical: string; unavailable?: boolean; completion: Record<string, never> }) {
+    current = usePortalPageSourceController(pathname, canonical, '');
+    return <PortalPageSourceProvider value={current}><PortalGuardedPage pathname={pathB} completion={completion}
+      unavailable={unavailable}><span data-private-B/></PortalGuardedPage></PortalPageSourceProvider>;
+  }
+  const view = renderIntoDocument(<Probe pathname={pathA} canonical={pathA} completion={deniedB}/>);
+  onTestFinished(() => view.unmount());
+  act(() => current.register({ pathname: pathA, completion: tokenA }));
+  act(() => current.begin(pathB));
+  // B fails while A remains canonical and B has never registered/adopted.
+  view.rerender(<Probe pathname={pathB} canonical={pathA} completion={deniedB} unavailable/>);
+  expect(current.attempt?.unavailable).toBe(true);
+  act(() => current.begin(pathA));
+  view.rerender(<Probe pathname={pathA} canonical={pathA} completion={deniedB}/>);
+  expect(current.allowed({ pathname: pathA, completion: tokenA })).toBe(true);
+  act(() => current.cancel());
+  view.rerender(<Probe pathname={pathA} canonical={pathA} completion={deniedB}/>);
+  expect(current.allowed({ pathname: pathA, completion: tokenA })).toBe(true);
+  // A cached unavailable leaf stays truthfully unavailable after cancel/Back,
+  // rather than becoming a pending frame with no genuine owner/read.
+  view.rerender(<Probe pathname={pathB} canonical={pathB} completion={deniedB} unavailable/>);
+  expect(current.attempt?.unavailable).toBe(true);
+  act(() => current.cancel());
+  view.rerender(<Probe pathname={pathA} canonical={pathA} completion={deniedB}/>);
+  // Rebegin/cached Back cannot make the explicit denied B identity positive.
+  act(() => current.begin(pathB));
+  view.rerender(<Probe pathname={pathB} canonical={pathB} completion={deniedB}/>);
+  expect(view.container.querySelector('[data-private-B]')).toBeNull();
+  expect(current.allowed({ pathname: pathB, completion: deniedB })).toBe(false);
+  view.rerender(<Probe pathname={pathB} canonical={pathB} completion={freshB}/>);
+  expect(view.container.querySelector('[data-private-B]')).not.toBeNull();
+  expect(current.allowed({ pathname: pathB, completion: freshB })).toBe(true);
+  // A late repeat of the known-denied gate cannot revoke the newer B owner.
+  act(() => current.deny(pathB, deniedB));
+  expect(current.allowed({ pathname: pathB, completion: freshB })).toBe(true);
+  // A stale wrong-path gate cannot steer current B or poison an unrelated token.
+  act(() => current.deny(pathA, retired));
+  expect(current.selectedPath).toBe(pathB);
+  expect(current.allowed({ pathname: pathB, completion: freshB })).toBe(true);
+});
+
+it('limits project intent to the same existing nonblank detail identity without expanding public frame paths', () => {
+  const base = 'https://portal.example.test/staff/projects';
+  for (const href of ['https://foreign.example.test/staff/projects/proj_A', '/api/staff/v1/projects/proj_A', '/staff/projects/%20%20',
+    '/staff/projects/%6eew', '/staff/projects/work-queue', '/staff/projects/proj_A/estimate/est_1', 'http://[']) expect(projectDetailPath(href, base)).toBeNull();
+  expect(projectDetailPath('/staff/projects/proj_A?tab=files#details', base)).toBe('/staff/projects/proj_A');
+  expect(projectDetailPath('/staff/projects/%20proj_A', base)).toBe('/staff/projects/%20proj_A');
 });

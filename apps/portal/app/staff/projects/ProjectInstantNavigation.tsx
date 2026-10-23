@@ -12,20 +12,34 @@ import {
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
-import { usePortalPageSource } from '@/components/page-state/PortalPageSource';
+import { projectDetailPath, useOwnedPortalPublication, usePortalPageSource } from '@/components/page-state/PortalPageSource';
+
+import { useProjectTabSelection } from '@/components/projects/ProjectPage/useProjectTabSelection';
+import ProjectSnapshotSurface, { type ProjectSnapshotProps, type ProjectSnapshotEvidence } from './[projectId]/ProjectSnapshotSurface';
+import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
 
 type ProjectInstantNavigationValue = {
-  showProject: (href: string, view: ReactNode) => void;
+  showProject: (href: string) => void;
+  projectId: string;
+  owner: object | null;
+  navigation: ReturnType<typeof useProjectTabSelection>;
+  publish: (value: ProjectSnapshotEvidence | null) => void;
 };
+
+function detailId(pathname: string | null | undefined): string | null {
+  const path = pathname ? projectDetailPath(pathname, 'http://portal.invalid') : null;
+  return path ? decodeURIComponent(path.slice(path.lastIndexOf('/') + 1)) : null;
+}
 
 const ProjectInstantNavigationContext = createContext<ProjectInstantNavigationValue | null>(null);
 
-export default function ProjectInstantNavigationProvider({ children }: { children: ReactNode }) {
+export default function ProjectInstantNavigationProvider({ children, standaloneProject }: {
+  children: ReactNode; standaloneProject?: ProjectSnapshotProps;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { pendingHref } = usePortalRouteTransition();
   const source = usePortalPageSource();
-  const [instantView, setInstantView] = useState<ReactNode | null>(null);
   const [instantPathname, setInstantPathname] = useState<string | null>(null);
   const observedInstantPathRef = useRef(false);
   const openingAttemptRef = useRef<object | string | null>(null);
@@ -34,22 +48,19 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
     observedInstantPathRef.current = false;
     openingAttemptRef.current = null;
     setInstantPathname(null);
-    setInstantView(null);
   }, []);
 
-  const showProject = useCallback((href: string, view: ReactNode) => {
-    const nextPathname = new URL(href, window.location.href).pathname;
+  const showProject = useCallback((href: string) => {
+    const nextPathname = projectDetailPath(href, window.location.href);
+    if (!nextPathname || (source && !source.begin(href))) return;
     observedInstantPathRef.current = false;
     openingAttemptRef.current = source?.attempt?.identity ?? null;
     setInstantPathname(nextPathname);
-    setInstantView(view);
-    window.history.pushState(null, '', `${href}?tab=activity`);
+    const url = new URL(href, window.location.href);
+    if (!url.searchParams.has('tab')) url.searchParams.set('tab', 'activity');
+    window.history.pushState(null, '', `${url.pathname}${url.search}${url.hash}`);
     router.replace(href, { scroll: false });
-  }, [router, source?.attempt?.identity]);
-
-  useEffect(() => {
-    clearInstantView();
-  }, [children, clearInstantView]);
+  }, [router, source?.attempt?.identity, source?.begin]);
 
   const selectedPath = source?.selectedPath;
   const selectedAttempt = source?.attempt?.identity;
@@ -84,11 +95,38 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
     return () => window.removeEventListener('popstate', handlePopState);
   }, [clearInstantView]);
 
-  const value = useMemo(() => ({ showProject }), [showProject]);
+  const departed = Boolean(instantPathname && (
+    selectedAttempt && selectedAttempt !== openingAttemptRef.current && selectedPath !== instantPathname
+    || observedInstantPathRef.current && pathname !== instantPathname && selectedPath !== instantPathname));
+  const pendingPath = useMemo(() => {
+    try { return pendingHref ? new URL(pendingHref, 'http://portal.invalid').pathname : null; } catch { return null; }
+  }, [pendingHref]);
+  const activePath = standaloneProject ? `/staff/projects/${encodeURIComponent(standaloneProject.projectId)}`
+    : pendingPath && pendingPath !== instantPathname ? pendingPath
+    : instantPathname && !departed ? instantPathname : selectedPath ?? pathname;
+  const projectId = standaloneProject?.projectId ?? detailId(activePath) ?? '';
+  const localOwner = useMemo(() => ({}), [projectId]);
+  const owner = projectId ? standaloneProject || !source ? localOwner
+    : source.selectedPath === activePath && source.canonicalPath === activePath ? source.owner : null : null;
+  const publication = useOwnedPortalPublication<ProjectSnapshotEvidence>(owner);
+  const evidence = publication.value;
+  const tab = standaloneProject?.tab ?? 'activity';
+  const currentNavigation = useProjectTabSelection(projectId, tab,
+    evidence?.snapshotContentReady ? Boolean(evidence.snapshot?.project.hasJobPacks) : undefined);
+  const navigationRef = useRef(currentNavigation); navigationRef.current = currentNavigation;
+  const selectTab = useCallback((next: Parameters<typeof currentNavigation.selectTab>[0]) => navigationRef.current.selectTab(next), []);
+  const navigation = useMemo(() => ({ activeTab: currentNavigation.activeTab, optimisticTab: currentNavigation.optimisticTab, selectTab }),
+    [currentNavigation.activeTab, currentNavigation.optimisticTab, selectTab]);
+  const value = useMemo(() => ({ showProject, projectId, owner, navigation, publish: publication.publish }),
+    [showProject, projectId, owner, navigation, publication.publish]);
 
   return (
     <ProjectInstantNavigationContext.Provider value={value}>
-      {instantView ?? children}
+      {children}
+      {projectId ? <ProjectCorrespondenceWarmRead projectId={projectId} enabled={!standaloneProject && Boolean(source) && Boolean(owner) && evidence?.snapshotState !== 'unavailable' && navigation.activeTab === 'activity'}>
+        <ProjectSnapshotSurface projectId={projectId} tab={tab} navigation={navigation} evidence={evidence} initialCalculatorWorkspace={standaloneProject?.calculatorWorkspace} onRetry={source?.retry}
+          unavailable={Boolean(source?.attempt?.unavailable && source.selectedPath === activePath)} />
+      </ProjectCorrespondenceWarmRead> : null}
     </ProjectInstantNavigationContext.Provider>
   );
 }
@@ -98,3 +136,5 @@ export function useProjectInstantNavigation(): ProjectInstantNavigationValue {
   if (!value) throw new Error('useProjectInstantNavigation must be used inside the Projects layout.');
   return value;
 }
+
+export function useOptionalProjectWorkspace() { return useContext(ProjectInstantNavigationContext); }

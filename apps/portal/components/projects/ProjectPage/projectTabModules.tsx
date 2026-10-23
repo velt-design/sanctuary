@@ -60,3 +60,7 @@ export async function preloadProjectOverviewModule(): Promise<void> {
   const overview = await loaders.activity();
   await overview.preloadOverviewModules();
 }
+
+export async function preloadProjectTabModule(tab: ProjectTabModuleKey): Promise<void> {
+  await Promise.all([loaders[tab](), preloadNestedProjectTab(tab)]);
+}

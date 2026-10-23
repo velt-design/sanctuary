@@ -3,7 +3,6 @@ import { DataStatePanel, PageLayout } from '@/components/ui/foundation';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 import { isProjectTabKey } from '@/lib/projects/projectTabs';
-import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
 import { requireStaffPageAccess } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { DOCUMENT_CALLBACK_HEADER, regionalDocumentCallback } from '@/lib/regionalDocumentAccess';
@@ -68,7 +67,6 @@ export default async function ProjectDetailPage({
     : undefined;
   return (
     <PortalGuardedPage pathname={`/staff/projects/${encodeURIComponent(projectId)}`} completion={{}} publicFrame={false}>
-    <ProjectCorrespondenceWarmRead projectId={projectId} enabled={tab === 'activity'}>
     <ProjectSnapshotPageClient
       projectId={projectId}
       tab={tab}
@@ -77,7 +75,6 @@ export default async function ProjectDetailPage({
       debugExportEnabled={isPortalPageDebugExportEnabled()}
       initialRead={initialRead}
     />
-    </ProjectCorrespondenceWarmRead>
     </PortalGuardedPage>
   );
 }

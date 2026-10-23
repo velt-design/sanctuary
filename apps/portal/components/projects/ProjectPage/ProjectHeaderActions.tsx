@@ -22,7 +22,7 @@ function requiredDeleteConfirmation(projectId: string, stage: string): string {
   return EXTRA_DELETE_CONFIRM_STAGES.has(stage) ? `DELETE ${projectId}` : 'DELETE';
 }
 
-export default function ProjectHeaderActions({ project, projectId = project?.id ?? '', disabled = false }: { project: ProjectPageSnapshot['project'] | null; projectId?: string; disabled?: boolean }) {
+function PrivateProjectHeaderActions({ project, projectId = project?.id ?? '', disabled = false }: { project: ProjectPageSnapshot['project'] | null; projectId?: string; disabled?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const { role } = usePortalSession();
@@ -49,21 +49,7 @@ export default function ProjectHeaderActions({ project, projectId = project?.id 
   };
 
   return (
-    <div className={styles.mastheadActions}>
-      <ProjectsIndexLink href="/staff/projects" variant="secondary" size="small">
-        Projects
-      </ProjectsIndexLink>
-      <ButtonLink
-        href={`/staff/projects/${encodeURIComponent(projectId)}/design-workbench`}
-        disabled={disabled || !project}
-        size="small"
-        leadingIcon={<ExternalLink aria-hidden="true" />}
-      >
-        Design Workbench
-      </ButtonLink>
-      {process.env.NEXT_PUBLIC_INSTALLER_PAYOUT_ENABLED === 'true' && <ButtonLink href={`/staff/projects/${encodeURIComponent(projectId)}/installer-payout`} disabled={disabled || !project} size="small" variant="secondary">
-        Installer payout
-      </ButtonLink>}
+    <>
       {isAdmin ? (
         <OverflowMenu
           label="More"
@@ -117,6 +103,21 @@ export default function ProjectHeaderActions({ project, projectId = project?.id 
           })();
         }}
       />
-    </div>
+    </>
   );
+}
+
+export default function ProjectHeaderActions({ privateContentReady = true, ...props }: {
+  project: ProjectPageSnapshot['project'] | null; projectId?: string; disabled?: boolean; privateContentReady?: boolean;
+}) {
+  const projectId = props.projectId ?? props.project?.id ?? '';
+  const disabled = !privateContentReady || props.disabled || !props.project;
+  return <div className={styles.mastheadActions}>
+    <ProjectsIndexLink href="/staff/projects" variant="secondary" size="small">Projects</ProjectsIndexLink>
+    <ButtonLink href={`/staff/projects/${encodeURIComponent(projectId)}/design-workbench`} disabled={disabled} size="small"
+      leadingIcon={<ExternalLink aria-hidden="true" />}>Design Workbench</ButtonLink>
+    {process.env.NEXT_PUBLIC_INSTALLER_PAYOUT_ENABLED === 'true' ? <ButtonLink
+      href={`/staff/projects/${encodeURIComponent(projectId)}/installer-payout`} disabled={disabled} size="small" variant="secondary">Installer payout</ButtonLink> : null}
+    {privateContentReady ? <PrivateProjectHeaderActions {...props} /> : null}
+  </div>;
 }

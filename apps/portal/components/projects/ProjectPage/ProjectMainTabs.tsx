@@ -26,6 +26,7 @@ export default function ProjectMainTabs({
   onTabSelect,
   onProjectAccessEnding,
   statusPanel,
+  privateContentReady = true,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -39,6 +40,7 @@ export default function ProjectMainTabs({
   onTabSelect?: (tab: ProjectTabKey) => void;
   onProjectAccessEnding?: (status: number) => void;
   statusPanel?: ReactNode;
+  privateContentReady?: boolean;
 }) {
   const searchParams = useSearchParams();
   const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
@@ -60,8 +62,8 @@ export default function ProjectMainTabs({
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
       >
-        {!commercial ? statusPanel : null}
-        {activeTab === 'activity' ? (
+        {!privateContentReady || !commercial ? statusPanel : null}
+        {privateContentReady && activeTab === 'activity' ? (
           <OverviewTab
             readOnly={readOnly}
             snapshot={snapshot}
@@ -72,8 +74,8 @@ export default function ProjectMainTabs({
             onAccessEnding={onProjectAccessEnding}
           />
         ) : null}
-        {activeTab === 'files' ? <FilesTab key={projectId} projectId={projectId} host={host} /> : null}
-        {activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices' ? (
+        {privateContentReady && activeTab === 'files' ? <FilesTab key={projectId} projectId={projectId} host={host} /> : null}
+        {privateContentReady && (activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices') ? (
           <CommercialTab
             readOnly={readOnly}
             host={host}
@@ -88,7 +90,7 @@ export default function ProjectMainTabs({
             statusPanel={statusPanel}
           />
         ) : null}
-        {activeTab === 'job-packs' ? <JobPacksTab key={projectId} projectId={projectId} readOnly={readOnly} /> : null}
+        {privateContentReady && activeTab === 'job-packs' ? <JobPacksTab key={projectId} projectId={projectId} readOnly={readOnly} /> : null}
       </div>
       </ProjectEmailReadingProvider>
     </section>

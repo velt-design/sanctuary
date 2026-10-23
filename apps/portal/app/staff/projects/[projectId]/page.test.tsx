@@ -5,7 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import PortalActualFrames from '@/components/page-state/PortalActualFrames';
 import { PortalGuardedPage, PortalPageSourceProvider, usePortalPageSourceController } from '@/components/page-state/PortalPageSource';
-import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
+import ProjectInstantNavigationProvider from '../ProjectInstantNavigation';
+import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import ProjectDetailPage from './page';
 const scheduling = vi.hoisted(() => ({ headers: new Headers(), load: vi.fn(), gate: vi.fn() }));
 const lifetime = vi.hoisted(() => ({ mounts: 0, cleanups: 0, api: vi.fn() }));
@@ -50,7 +51,7 @@ function RetainedOutlet({ canonical, leaf, expectedOwner }: { canonical: string;
   return <PortalPageSourceProvider value={source}>
     <button onClick={() => { source.begin('/staff/projects'); window.history.pushState(null, '', '/staff/projects'); }}>Select Projects</button>
     <output data-current-owner={source.owner === expectedOwner && expectedOwner ? 'expected' : source.owner ? 'other' : 'pending'} />
-    <PortalActualFrames>{leaf}</PortalActualFrames>
+    <PortalActualFrames><ProjectInstantNavigationProvider>{leaf}</ProjectInstantNavigationProvider></PortalActualFrames>
   </PortalPageSourceProvider>;
 }
 
@@ -104,9 +105,9 @@ describe('ProjectDetailPage', () => {
     scheduling.load.mockReturnValue(initial);
     const page=await ProjectDetailPage({params:Promise.resolve({projectId:id})});
     expect(page.type).toBe(PortalGuardedPage); expect(page.props.publicFrame).toBe(false);
-    const warm = page.props.children as ReactElement<{ children: ReactElement<{ initialRead: unknown }> }>;
-    expect(warm.type).toBe(ProjectCorrespondenceWarmRead);
-    expect(warm.props.children.props.initialRead).toBe(initial);
+    const producer = page.props.children as ReactElement<{ initialRead: unknown }>;
+    expect(producer.type).toBe(ProjectSnapshotPageClient);
+    expect(producer.props.initialRead).toBe(initial);
     expect(scheduling.gate).toHaveBeenCalledTimes(1);
   });
 

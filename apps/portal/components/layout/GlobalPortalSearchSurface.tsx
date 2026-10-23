@@ -36,8 +36,8 @@ export type SearchReadOwner = ComponentType<SearchReadProps>;
 function hidden(element: Element) { return Boolean(element.closest('[hidden], [inert], [aria-hidden="true"]')); }
 
 /** One input/controller. Private evidence is supplied only by the current guarded reader. */
-export default function GlobalPortalSearchSurface({ shortcutEnabled = true, reader }: {
-  shortcutEnabled?: boolean; reader?: SearchReadOwner;
+export default function GlobalPortalSearchSurface({ shortcutEnabled = true, reader, registration }: {
+  shortcutEnabled?: boolean; reader?: SearchReadOwner; registration?: { component: SearchReadOwner } | null;
 }) {
   const transition = usePortalRouteTransition();
   const shared = useOptionalGlobalPortalSearchState();
@@ -48,8 +48,8 @@ export default function GlobalPortalSearchSurface({ shortcutEnabled = true, read
   const query = shared?.query ?? localQuery, setQuery = shared?.setQuery ?? setLocalQuery;
   const interactionActive = shared?.interactionActive ?? localInteraction, setInteractionActive = shared?.setInteractionActive ?? setLocalInteraction;
   const activeInstanceId = shared?.activeInstanceId, setActiveInstanceId = shared?.setActiveInstanceId;
-  const Reader = queryClient ? shared?.guarded ? shared.reader?.component : reader : undefined;
-  const binding = shared?.guarded ? shared.reader : Reader;
+  const Reader = queryClient ? registration !== undefined ? registration?.component : shared?.guarded ? shared.reader?.component : reader : undefined;
+  const binding = registration !== undefined ? registration : shared?.guarded ? shared.reader : Reader;
   const currentBinding = useRef(binding); currentBinding.current = binding;
   const currentQuery = useRef(query); currentQuery.current = query;
   const [published, setPublished] = useState<{ binding: typeof binding; query: string; value: SearchInputEvidence } | null>(null);

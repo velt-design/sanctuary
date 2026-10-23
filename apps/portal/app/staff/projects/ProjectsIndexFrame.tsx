@@ -7,7 +7,7 @@ import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { Card, PageLayout, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation/FoundationSurfaces';
-import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import styles from './ProjectsIndexClient.module.css';
 export type ProjectsIndexFrameRead=Pick<ReturnType<typeof useProjectsIndexData>,'state'|'backgroundReady'>&{
   data?:ReturnType<typeof useProjectsIndexData>['data'];retry:()=>unknown;

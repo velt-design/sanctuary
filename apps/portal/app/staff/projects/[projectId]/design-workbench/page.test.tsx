@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import DesignWorkbenchPage from './page';
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import type { DesignListRow } from '@/lib/designPackages/types';
 import type { WorkbenchPageRead, WorkbenchContextRead } from './workbenchPageRead';
@@ -119,7 +120,8 @@ function buildEstimateDetail(overrides: Partial<EstimateDetail> = {}): EstimateD
 }
 
 async function pageRead(ui: ReactElement): Promise<WorkbenchContextRead | null> {
-  const read = (ui.props as { initialRead?: WorkbenchPageRead }).initialRead;
+  const child = ui.type === PortalGuardedPage ? (ui.props as { children: ReactElement }).children : ui;
+  const read = (child.props as { initialRead?: WorkbenchPageRead }).initialRead;
   if (!read) return null;
   const [context] = await Promise.all([read.context, read.estimate]);
   return context;
@@ -484,7 +486,8 @@ describe('DesignWorkbenchPage', () => {
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('Reading project');
-    const read = (ui.props as { initialRead: WorkbenchPageRead }).initialRead;
+    expect(ui.type).toBe(PortalGuardedPage);
+    const read = ((ui.props as { children: ReactElement }).children.props as { initialRead: WorkbenchPageRead }).initialRead;
     expect(await read.estimate).toEqual({ kind: 'estimate', estimate: null });
     expect(markup).toContain('Drawing workbench');
   });

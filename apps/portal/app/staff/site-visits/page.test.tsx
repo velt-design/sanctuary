@@ -20,7 +20,7 @@ it('starts only after the verified gate and returns without awaiting the calenda
   const page = Page({ searchParams: Promise.resolve({ project: ['proj_first', 'ignored'], visit: 'exact', view: 'history', q: 'keep', person: 'keep' }) });
   await Promise.resolve(); expect(loadCalendarVisitsInitialRead).not.toHaveBeenCalled();
   authorize({ user: { id: 'staff-a' }, role: 'staff' } as never);
-  expect((await page).props.initialRead).toBeDefined();
+  expect((await page).props.children.props.initialRead).toBeDefined();
   expect(loadCalendarVisitsInitialRead).toHaveBeenCalledWith('staff-a', 'portal.example.test', { project: 'proj_first', visit: 'exact' });
 });
 it('leaves view/person/search on the client and matches empty scope to the ordinary hook', async () => {
@@ -35,7 +35,7 @@ it('does not start a private read after denial', async () => {
 it('keeps RSC/prefetch and unrelated document contexts on the normal API path', async () => {
   for (const callback of ['', '/staff/projects']) {
     vi.mocked(headers).mockResolvedValue(new Headers({ 'x-portal-document-callback': callback }) as never);
-    expect((await Page({})).props.initialRead).toBeUndefined();
+    expect((await Page({})).props.children.props.initialRead).toBeUndefined();
   }
   expect(requireStaffPageAccess).toHaveBeenCalledTimes(2);
   expect(loadCalendarVisitsInitialRead).not.toHaveBeenCalled();

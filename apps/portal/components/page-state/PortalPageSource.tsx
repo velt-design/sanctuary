@@ -28,6 +28,17 @@ export function publicFramePath(href: string, base: string): string | null {
   return null;
 }
 
+/** Public project selection only; the matching guarded leaf still owns authority. */
+export function projectDetailPath(href: string, base: string): string | null {
+  try {
+    const current = new URL(base), next = new URL(href, current);
+    const match = /^\/staff\/projects\/([^/]+)$/.exec(next.pathname);
+    if (next.origin !== current.origin || !match) return null;
+    const id = decodeURIComponent(match[1]);
+    return !id.trim() || ['work-queue', 'design-packages', 'running-jobs', 'new'].includes(id) ? null : next.pathname;
+  } catch { return null; }
+}
+
 export function usePortalPageSourceController(pathname: string | null, canonicalPath: string, search: string) {
   const router = useRouter();
   const [source, setSource] = useState<SelectedSource | null>(null);
@@ -35,16 +46,19 @@ export function usePortalPageSourceController(pathname: string | null, canonical
   const sourceRef = useRef(source);
   const attemptRef = useRef(attempt);
   const deniedCompletionsRef = useRef(new WeakSet<PortalPageCompletion>());
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const canonicalRef = useRef(canonicalPath);
   canonicalRef.current = canonicalPath;
   const begin = useCallback((href: string) => {
-    const target = publicFramePath(href, window.location.href);
+    const target = publicFramePath(href, window.location.href) ?? projectDetailPath(href, window.location.href);
     if (!target) return false;
     // Accepted reversion to the still-retained genuine page is the existing
     // Back/local-first case. Context updates alone never invoke this branch.
     const pending = attemptRef.current;
-    if (pending && !pending.unavailable && !pending.adoptedCompletion
-      && canonicalRef.current === target && sourceRef.current?.pathname === target) {
+    if (pending && (!pending.unavailable || pending.pathname !== target) && !pending.adoptedCompletion
+      && canonicalRef.current === target && sourceRef.current?.pathname === target
+      && !deniedCompletionsRef.current.has(sourceRef.current.completion)) {
       attemptRef.current = null;
       setAttempt(null);
       return true;
@@ -63,17 +77,31 @@ export function usePortalPageSourceController(pathname: string | null, canonical
     attemptRef.current = null;
     setAttempt(null);
   }, []);
-  const deny = useCallback((selectedPath: string) => {
+  const deny = useCallback((selectedPath: string, completion?: PortalPageCompletion) => {
     const pending = attemptRef.current;
-    if (pending?.pathname !== selectedPath && sourceRef.current?.pathname !== selectedPath) return;
-    if (sourceRef.current?.pathname === selectedPath) deniedCompletionsRef.current.add(sourceRef.current.completion);
-    if (pending?.pathname === selectedPath && pending.adoptedCompletion) deniedCompletionsRef.current.add(pending.adoptedCompletion);
+    const matchingSelection = pending ? pending.pathname === selectedPath
+      : canonicalRef.current === selectedPath && pathnameRef.current === selectedPath;
+    if (!matchingSelection) return;
+    const knownDenied = Boolean(completion && deniedCompletionsRef.current.has(completion));
+    const current = sourceRef.current;
+    const currentAllowed = current?.pathname === selectedPath && canonicalRef.current === selectedPath
+      && !deniedCompletionsRef.current.has(current.completion)
+      && (pending ? pending.pathname === selectedPath && pending.adoptedCompletion === current.completion
+        : pathnameRef.current === selectedPath);
+    if (knownDenied && currentAllowed) return;
+    // A rendered unavailable leaf has its own negative identity even when the
+    // outgoing source is still retained. It never revokes that unrelated source.
+    if (!knownDenied) {
+      if (completion) deniedCompletionsRef.current.add(completion);
+      if (current?.pathname === selectedPath) deniedCompletionsRef.current.add(current.completion);
+      if (pending?.pathname === selectedPath && pending.adoptedCompletion) deniedCompletionsRef.current.add(pending.adoptedCompletion);
+    }
     // A source failure must not restore the entry query over safe view changes
     // already made on the selected actual frame. This URL is correlation only.
     const unavailable: FrameAttempt = { href: `${selectedPath}${window.location.search}${window.location.hash}`,
       pathname: selectedPath, identity: pending?.identity ?? canonicalRef.current,
       fromCanonicalPath: pending?.fromCanonicalPath ?? canonicalRef.current,
-      blockedCompletion: pending?.adoptedCompletion ?? sourceRef.current?.completion ?? pending?.blockedCompletion ?? null,
+      blockedCompletion: knownDenied ? completion! : pending?.adoptedCompletion ?? sourceRef.current?.completion ?? pending?.blockedCompletion ?? null,
       adoptedCompletion: null, unavailable: true };
     attemptRef.current = unavailable;
     setAttempt(unavailable);
@@ -144,7 +172,7 @@ export function PortalGuardedPage({ pathname, completion, publicFrame, unavailab
   const deny = source?.deny;
   const canonicalPath = source?.canonicalPath;
   useLayoutEffect(() => {
-    if (unavailable) deny?.(pathname);
+    if (unavailable) deny?.(pathname, completion);
     else register?.({ pathname, completion, publicFrame });
     // Public intent/context changes must not re-register an old mounted page.
   }, [register, deny, pathname, completion, publicFrame, unavailable, canonicalPath]);

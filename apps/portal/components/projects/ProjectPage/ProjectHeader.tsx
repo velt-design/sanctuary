@@ -3,7 +3,10 @@ import type { ProjectTabKey } from "@/lib/projects/projectTabs";
 import ProjectTabNavigation from "./ProjectTabNavigation";
 import ProjectHeaderActions from "./ProjectHeaderActions";
 import ProjectHeaderOwnerControl from "./ProjectHeaderOwnerControl";
-import StaffPageHeader from "@/components/layout/StaffPageHeader";
+import StaffPageHeader from "@/components/layout/StaffPageHeaderSurface";
+import GlobalPortalSearch from "@/components/layout/GlobalPortalSearch.client";
+import GlobalPortalSearchSurface, { type SearchReadOwner } from "@/components/layout/GlobalPortalSearchSurface";
+import ProjectHeaderOwnerSurface from './ProjectHeaderOwnerSurface';
 import { Card } from "@/components/ui/foundation";
 import ProjectCurrentStatusBadge from "../ProjectCurrentStatusBadge";
 import styles from "./ProjectPage.module.css";
@@ -22,6 +25,8 @@ export default function ProjectHeader({
   tabAvailabilityReady = true,
   optimisticTab,
   onTabSelect,
+  privateContentReady = true,
+  searchReader,
 }: {
   project: ProjectPageSnapshot["project"] | null;
   projectId?: string;
@@ -35,6 +40,8 @@ export default function ProjectHeader({
   tabAvailabilityReady?: boolean;
   optimisticTab?: ProjectTabKey | null;
   onTabSelect?: (tab: ProjectTabKey) => void;
+  privateContentReady?: boolean;
+  searchReader?: { component: SearchReadOwner } | null;
 }) {
   const metadataPending = snapshotState === "pending" || snapshotState === "summary";
   return (
@@ -46,6 +53,7 @@ export default function ProjectHeader({
     >
       <div className={styles.mastheadBody} data-project-header-row="command">
         <StaffPageHeader
+          search={searchReader !== undefined ? <GlobalPortalSearchSurface registration={searchReader} /> : privateContentReady ? <GlobalPortalSearch /> : <GlobalPortalSearchSurface registration={null} />}
           className={styles.mastheadHeader}
           variant="detail"
           title={project?.name ?? (metadataPending ? "Reading project" : "Project unavailable")}
@@ -61,7 +69,7 @@ export default function ProjectHeader({
             />
           }
           meta={
-            <ProjectHeaderOwnerControl
+            privateContentReady ? <ProjectHeaderOwnerControl
               project={project}
               projectId={projectId}
               pending={metadataPending}
@@ -69,13 +77,14 @@ export default function ProjectHeader({
               active={tab === "activity"}
               expectedWorkModel={workModel}
               externallyPaused={readOnly || ownerControlsPaused}
-            />
+            /> : <ProjectHeaderOwnerSurface pending={metadataPending} />
           }
-          right={<ProjectHeaderActions project={project} projectId={projectId} disabled={readOnly} />}
+          right={<ProjectHeaderActions project={project} projectId={projectId} disabled={readOnly} privateContentReady={privateContentReady} />}
         />
       </div>
       <div data-project-header-row="tabs">
         <ProjectTabNavigation
+          privateContentReady={privateContentReady}
           hasJobPacks={Boolean(project?.hasJobPacks)}
           tabAvailabilityReady={tabAvailabilityReady}
           host={host}

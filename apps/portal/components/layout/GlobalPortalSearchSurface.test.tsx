@@ -7,7 +7,7 @@ import {PortalGuardedPage,PortalPageSourceProvider,usePortalPageSourceController
 import {GlobalPortalSearchStateProvider} from './GlobalPortalSearchState';
 import GuardedGlobalPortalSearch from './GuardedGlobalPortalSearch';
 import StaffPageHeaderSurface from './StaffPageHeaderSurface';
-import type {SearchInputEvidence,SearchReadProps} from './GlobalPortalSearchSurface';
+import GlobalPortalSearchSurface, {type SearchInputEvidence,type SearchReadProps} from './GlobalPortalSearchSurface';
 
 const controlled=vi.hoisted(()=>({props:null as SearchReadProps|null,mounts:0}));
 // Isolate code arrival only. The real registration/source/input/evidence owners remain connected.
@@ -45,4 +45,24 @@ it.each(['pending','denied'] as const)('never revives A input evidence or callba
   act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'new');input.dispatchEvent(new Event('input',{bubbles:true}));});
   act(()=>current(evidence(newKey)));expect(input.getAttribute('aria-activedescendant')).toBeNull();
   view.unmount();client.clear();
+});
+
+it('uses an explicit domain registration without falling back or restoring a retired same-component reader', () => {
+  const client = new QueryClient(); let props: SearchReadProps | null = null;
+  function Reader(value: SearchReadProps) { props = value; return null; }
+  const first = { component: Reader }, next = { component: Reader };
+  const ui = (registration: typeof first | null) => <QueryClientProvider client={client}><PortalQueryClientScope client={client}>
+    <GlobalPortalSearchSurface reader={Reader} registration={registration}/>
+  </PortalQueryClientScope></QueryClientProvider>;
+  const view = renderIntoDocument(ui(first)), input = view.container.querySelector('input')!;
+  act(() => { input.focus(); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'re'); input.dispatchEvent(new Event('input',{bubbles:true})); });
+  const old = props!.publish, oldKey = vi.fn(); act(() => old(evidence(oldKey)));
+  expect(input.getAttribute('aria-expanded')).toBe('true');
+  view.rerender(ui(null)); expect(input.getAttribute('aria-expanded')).toBe('false'); const pendingProps = props;
+  view.rerender(ui(next)); expect(props).not.toBe(pendingProps); expect(input.getAttribute('aria-expanded')).toBe('false');
+  act(() => { old(evidence(oldKey)); input.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})); });
+  expect(oldKey).not.toHaveBeenCalled(); const current = props!.publish, newKey = vi.fn();
+  act(() => current(evidence(newKey))); act(() => { old(null); input.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})); });
+  expect(newKey).toHaveBeenCalledTimes(1); expect(view.container.querySelector('input')).toBe(input); expect(input.value).toBe('re'); expect(document.activeElement).toBe(input);
+  view.unmount(); client.clear();
 });

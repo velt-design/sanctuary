@@ -1,3 +1,4 @@
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 import MarketingPerformance from '@/components/marketingPerformance/MarketingPerformance';
 import { notFound } from 'next/navigation';
 import { requireStaffPageAccess } from '@/lib/auth';
@@ -38,7 +39,7 @@ export default async function MarketingPerformancePage({searchParams}: {searchPa
   const initialFinancialSeed=financial?(financial.section==='profit'
     ?financialProfitSeed(financialRequestKey(financial),startPortalFinancialProfitParts(new URLSearchParams(financial),AbortSignal.timeout(45000),session.user.id))
     :{key:financialRequestKey(financial),result:readPortalFinancials(new URLSearchParams(financial),AbortSignal.timeout(45000),session.user.id).catch(financialReadFailure)}):undefined;
-  return <MarketingPerformance staging={process.env.MARKETING_PERFORMANCE_PREVIEW === 'staging'} productionSnapshot={snapshot}
+  return <PortalGuardedPage pathname="/staff/marketing-performance" completion={{}} publicFrame={false}><MarketingPerformance staging={process.env.MARKETING_PERFORMANCE_PREVIEW === 'staging'} productionSnapshot={snapshot}
     initialQuery={initialQuery} initialHubSeed={initialHubSeed} initialCommercialSeed={initialCommercialSeed} initialDesignerSeed={initialDesignerSeed} initialFinancialSeed={initialFinancialSeed}
-    previewDescription={snapshot?'Private production snapshot · Real records from 23 September 2025 through 22 September 2026; outcomes frozen at the read time below. Refresh rereads this snapshot. Project links open the live Portal; other preview pages use staging records.':undefined}/>;
+    previewDescription={snapshot?'Private production snapshot · Real records from 23 September 2025 through 22 September 2026; outcomes frozen at the read time below. Refresh rereads this snapshot. Project links open the live Portal; other preview pages use staging records.':undefined}/></PortalGuardedPage>;
 }

@@ -19,6 +19,7 @@ export default function ProjectPageShell({
   onTabSelect,
   onProjectAccessEnding,
   statusPanel,
+  privateContentReady = true,
 }: {
   snapshot: ProjectPageSnapshot | null;
   projectId?: string;
@@ -32,6 +33,7 @@ export default function ProjectPageShell({
   onTabSelect?: (tab: ProjectTabKey) => void;
   onProjectAccessEnding?: (status: number) => void;
   statusPanel?: ReactNode;
+  privateContentReady?: boolean;
 }) {
   return (
     <section className={styles.fullWidthShell} data-project-page-shell="true">
@@ -48,6 +50,7 @@ export default function ProjectPageShell({
         onTabSelect={onTabSelect}
         onProjectAccessEnding={onProjectAccessEnding}
         statusPanel={statusPanel}
+        privateContentReady={privateContentReady}
       />
     </section>
   );

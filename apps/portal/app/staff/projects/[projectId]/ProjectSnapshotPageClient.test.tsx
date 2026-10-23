@@ -12,7 +12,7 @@ const placeholderMock = vi.fn();
 const refetchMock = vi.fn();
 const removeQueriesMock = vi.fn();
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/components/projects/ProjectPage/projectTabModules", () => ({ preloadProjectOverviewModule: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock("@/components/navigation/ProjectsIndexLink", () => ({

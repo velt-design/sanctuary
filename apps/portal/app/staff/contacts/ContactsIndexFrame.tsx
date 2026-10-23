@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import { Input, Select } from '@/components/ui/foundation/FoundationControls';
-import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import {
   Card,
   PageLayout,
