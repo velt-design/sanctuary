@@ -376,6 +376,32 @@ Local checks and fixtures are not production migration, hosted access or real
 record coverage proof. Both exact task-branch auto-deploy entries are disabled;
 release remains subject to the owning task's review and production approval.
 
+## Optional original-ad tracking evidence (24 October 2026, local candidate)
+
+`campaignMonitor/tracking-evidence.ts` derives only compiled structural metadata
+from `tracking_specs` added to the existing campaign-filtered ads GET. Only the
+four exact original rows carry optional `trackingEvidence` in the strict health
+contract. The existing reporting identity remains ads_read only; no publishing
+credential, preflight/capability claim, extra GET, retry or fallback is used.
+All five audited reads,64KiB/15-second transport and50-second route limits remain.
+A provider field rejection or larger body can still make core health unavailable;
+optional local projection failure alone becomes unavailable without losing health.
+
+Counts mean UTF-8 bytes of JSON.stringify (capped6001), visited values including
+root (capped501), and maximum root-zero depth (capped9). Strings use JavaScript
+UTF-16 length and the unchanged charCode>8 rule. Finite violation enums mirror the
+current creative bounded-JSON predicate without changing it. Skipped descendants
+make scanComplete=false; actionTypeKey is null if an unseen known key cannot be
+ruled out. Missing/unavailable are distinct from empty tracking. No dynamic key,
+value, path, hash, URL, raw response or error string is retained. The explicit
+known action.type presence flag describes only this later reporting response.
+
+Source retain:false completion keeps its hash; Velt's compatible optional consumer
+must deploy first and save the returned safe report in the normal monitor snapshot.
+No SQL migration, schedule, slot, model or native code binding changes. Evidence
+from the next eligible normal run cannot establish the earlier failed proof's
+exact response, provider write permission or full page/creative completion.
+
 ## Cloud campaign source candidate (14 October 2026)
 
 This is a default-off local candidate, not activated monitoring. The owner asked

@@ -1,0 +1,66 @@
+// @vitest-environment node
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {mkdtempSync,readFileSync,rmSync,writeFileSync,mkdirSync} from 'node:fs';
+import {createServer} from 'node:net';
+import {tmpdir} from 'node:os';
+import {join,resolve,dirname,basename} from 'node:path';
+import {afterAll,beforeAll,describe,expect,it,vi} from 'vitest';
+vi.mock('server-only',()=>({}));
+import {readCampaignHealth} from './reader';
+import {campaignPeriods} from './contract';
+import {verifyMeta} from '../meta/verify';
+import type {Boundary} from '../meta/boundary';
+const bin=process.env.SANCTUARY_DISPOSABLE_POSTGRES_BIN,suffix=process.platform==='win32'?'.exe':'';
+describe.skipIf(!bin)('normal tracking health source native retention',()=>{
+ let directory='',port=0,started=false;
+ const run=(name:string,args:string[],input?:string,background=false)=>{const r=spawnSync(join(bin!,name+suffix),args,{input,encoding:'utf8',windowsHide:true,stdio:background?'ignore':undefined,env:{NODE_ENV:'test'},maxBuffer:2e6});expect(r.status,r.stderr??String(r.error)).toBe(0);return r.stdout;};
+ const sql=(input:string)=>run('psql',['-X','-v','ON_ERROR_STOP=1','-h','127.0.0.1','-p',String(port),'-U','cluster_admin','-d','postgres','-q','-At'],input).trim();
+ const q=(value:unknown)=>value===null||value===undefined?'null':"'"+(typeof value==='string'?value:JSON.stringify(value)).replaceAll("'","''")+"'";
+ beforeAll(async()=>{
+  directory=mkdtempSync(join(tmpdir(),'source-tracking-health-'));
+  port=await new Promise<number>((done,reject)=>{const server=createServer();server.on('error',reject);server.listen(0,'127.0.0.1',()=>{const a=server.address();if(!a||typeof a==='string')return reject();server.close(()=>done(a.port));});});
+  run('initdb',['-D',directory,'-U','cluster_admin','-A','trust','--no-locale','-E','UTF8']);run('pg_ctl',['-D',directory,'-l',join(directory,'postgres.log'),'-o',`-p ${port} -h 127.0.0.1`,'-w','start'],undefined,true);started=true;
+  sql(`create role anon;create role authenticated;create role service_role;create schema private;create schema auth;create schema praxis_reporting;create schema cron;
+   create table auth.users(id uuid primary key,email_confirmed_at timestamptz,deleted_at timestamptz,banned_until timestamptz);create table public.portal_users(user_id uuid,role text);
+   create table praxis_reporting.source_identity_v1(singleton boolean,source_key text,connection_id uuid,environment text);
+   create function cron.schedule(text,text,text)returns bigint language sql as $$select 1::bigint$$;`);
+  sql(readFileSync('supabase/migrations/20260923050001_sanctuary_meta_reporting.sql','utf8'));
+  sql(readFileSync('supabase/migrations/20261014000006_campaign_health.sql','utf8'));
+ },30000);
+ afterAll(()=>{vi.unstubAllEnvs();if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);if(directory&&dirname(resolve(directory))===resolve(tmpdir())&&basename(directory).startsWith('source-tracking-health-'))rmSync(directory,{recursive:true,force:true});});
+ it('completes five real fenced GETs, retains only its hash, and exports the exact safe report for the Velt native readback',async()=>{
+  const actor='10000000-0000-4000-8000-000000000001',connection='20000000-0000-4000-8000-000000000001',binding='a'.repeat(64),source='fixture';
+  const scope={account:'99100',campaign:'99200',adset:'99300',ads:['Riverhead photo','Riverhead video','Acrylic video','Acrylic photo'].map((label,i)=>({id:'9940'+(i+1),label})),launchDay:'2026-01-01',dailyAverage:100,maximumDay:175,weeklyAllowance:700,weekStartsOn:0,weeklyWindowVerified:true};
+  vi.stubEnv('SANCTUARY_CAMPAIGN_MONITOR_SCOPE',JSON.stringify(scope));
+  sql(`insert into auth.users(id,email_confirmed_at)values('${actor}',now());insert into portal_users values('${actor}','admin');insert into praxis_reporting.source_identity_v1 values(true,'${source}','${connection}','test');
+   insert into private.sanctuary_meta_control(actor_id,account_id,binding_hash,enabled,expires_at,source_key,connection_id,environment)values('${actor}','${scope.account}','${binding}',true,now()+interval '1 day','${source}','${connection}','test');
+   insert into private.sanctuary_campaign_monitor_scope(singleton,enabled,scope)values(true,true,${q(scope)});`);
+  const now=new Date(),period=campaignPeriods(now).week;
+  const command=(stage:string,operation:string|null=null,step:string|null=null,payload:string|null=null,query:string|null=null)=>JSON.parse(sql(`select sanctuary_meta_command('${actor}','${scope.account}','${binding}','${source}','${connection}','test',${q(stage)},${q(operation)},${q(query)},${q(step)},${q(payload)});`));
+  const claim=command('claim',null,null,null,JSON.stringify({...period,retain:false,health:true,scope}));
+  const boundary:Boundary=async(step,execute)=>{command('before',claim.operation,step);const value=await execute();command('after',claim.operation,step);return value;};
+  const calls:string[]=[];
+  const fetcher:typeof fetch=async(_url,init)=>{
+   const entries=JSON.parse(new URLSearchParams(String(init?.body)).get('batch')!);expect(entries).toHaveLength(1);expect(entries[0].method).toBe('GET');
+   const url=new URL('https://graph.invalid/'+entries[0].relative_url),path=url.pathname.slice(1);calls.push(path);
+   let value:unknown;
+   if(path==='debug_token')value={data:{app_id:'123',user_id:'456',type:'SYSTEM_USER',is_valid:true,scopes:['ads_read'],expires_at:0,data_access_expires_at:0}};
+   else if(path==='act_'+scope.account)value={id:'act_'+scope.account,account_id:scope.account,account_status:1,currency:'NZD',timezone_name:'Pacific/Auckland'};
+   else if(path.endsWith('/ads'))value={data:scope.ads.map(ad=>({id:ad.id,account_id:scope.account,campaign_id:scope.campaign,adset_id:scope.adset,effective_status:'ACTIVE',tracking_specs:[{'action.type':['offsite_conversion'],fb_pixel:['777777'],'private-secret-key':'private-secret-value'}],campaign:{id:scope.campaign,effective_status:'ACTIVE',daily_budget:'10000'},adset:{id:scope.adset,effective_status:'ACTIVE'}}))};
+   else value={data:[]};
+   return Response.json([{code:200,body:JSON.stringify(value)}]);
+  };
+  const config={actor,account:scope.account,binding,app:'123',principal:'456',business:'789',token:'synthetic-only',appSecret:'synthetic-only'};
+  const account=await verifyMeta(config,boundary,fetcher),report=await readCampaignHealth(config,account,boundary,fetcher,now),payload=JSON.stringify(report),hash=createHash('sha256').update(payload).digest('hex');
+  expect(calls).toEqual(['debug_token','act_99100','act_99100/ads','act_99100/insights','act_99100/insights']);
+  expect(()=>command('before',claim.operation,'report_read')).toThrow();
+  expect(command('complete',claim.operation,null,payload)).toMatchObject({retained:false,status:'completed'});command('deliver',claim.operation);
+  expect(command('read')).toEqual({status:'missing'});
+  expect(JSON.parse(sql(`select jsonb_build_object('calls',calls,'hash',result_hash,'stage',stage)from private.sanctuary_meta_operations where id='${claim.operation}'`))).toEqual({calls:5,hash,stage:'completed'});
+  expect(sql('select count(*)from private.sanctuary_meta_snapshot')).toBe('0');expect(payload).not.toMatch(/private-secret|offsite_conversion|fb_pixel|action\.type/);
+  const envelope={schemaVersion:'sanctuary.praxis.campaign-health.v1',requestId:claim.operation,operation:claim.operation,source:{sourceKey:source,connectionId:connection,environment:'test',authority:'canonical',retrievedAt:now.toISOString()},report,outcomes:null};
+  mkdirSync('.local-evidence',{recursive:true});writeFileSync('.local-evidence/tracking-health-native-report.private.json',JSON.stringify({scope,envelope,sqlProof:{calls:5,retained:false,hash}},null,2)+'\n');
+  sql('update private.sanctuary_meta_control set enabled=false');expect(()=>command('deliver',claim.operation)).toThrow();expect(calls).toHaveLength(5);
+ });
+});
