@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Check, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import PageHeader from '@/components/layout/PageHeader';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
@@ -9,6 +10,7 @@ import { Button, ButtonLink, Input, Select } from '@/components/ui/foundation/Fo
 import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
 import { invoiceViews, quoteViews, parseRegisterQuery, registerHref, registerParams, registerSchema, type RegisterData } from '@/lib/finance/register';
 import RegisterTable from './RegisterTable';
+import RegisterSummary from './RegisterSummary';
 import styles from './FinanceRegister.module.css';
 
 type Loaded = { key: string; data: RegisterData };
@@ -47,44 +49,35 @@ export default function FinanceRegister({ basePath = '/staff/payments', apiPath 
   const navigate = (href: string) => window.history.pushState(null, '', href);
   const selected = params.get('selected');
   return <PageLayout width="full" density="compact" className={styles.page}>
-    <PageHeader variant="index" title="Finance" description="Quotes, invoices and the money still to come in." />
+    <PageHeader variant="index" title="Finance" />
     <nav className={styles.tabs} aria-label="Finance sections">
-      <ButtonLink href={href({ ...query, tab: 'invoices', view: 'outstanding', offset: 0 })} variant={query.tab === 'invoices' ? 'primary' : 'secondary'} aria-current={query.tab === 'invoices' ? 'page' : undefined}>Invoices</ButtonLink>
-      <ButtonLink href={href({ ...query, tab: 'quotes', view: 'awaiting', offset: 0 })} variant={query.tab === 'quotes' ? 'primary' : 'secondary'} aria-current={query.tab === 'quotes' ? 'page' : undefined}>Quotes</ButtonLink>
-      <ButtonLink href="/staff/payments?tab=xero&view=attention" variant="tertiary">Xero checks</ButtonLink>
+      <Link href={href({ ...query, tab: 'invoices', view: 'outstanding', offset: 0 })} aria-current={query.tab === 'invoices' ? 'page' : undefined}>Invoices</Link>
+      <Link href={href({ ...query, tab: 'quotes', view: 'awaiting', offset: 0 })} aria-current={query.tab === 'quotes' ? 'page' : undefined}>Quotes</Link>
+      <Link className={styles.xeroLink} href="/staff/payments?tab=xero&view=attention">Xero checks <span aria-hidden="true">↗</span></Link>
     </nav>
-    <div className={styles.toolbar}>
-      <nav className={styles.views} aria-label={`${query.tab === 'quotes' ? 'Quote' : 'Invoice'} views`}>
-        {views.filter(([view]) => view !== 'drafts' || query.tab === 'quotes' || data?.draftsAllowed !== false).map(([view, label]) =>
-          <Link key={view} href={href({ ...query, view, offset: 0 })} aria-current={query.view === view ? 'page' : undefined}>{label}</Link>)}
-      </nav>
-      <Button variant="secondary" size="small" disabled={busy} onClick={() => setRevision(n => n + 1)}>{busy ? 'Checking…' : 'Refresh'}</Button>
-    </div>
+    <RegisterSummary data={data} query={resultQuery} stale={stale} pending={busy} />
     <form className={styles.filters} onSubmit={event => { event.preventDefault(); navigate(href({ ...query, search, offset: 0 })); }}>
-      <label className={styles.search}>Search {query.tab}<Input name="search" value={search} onChange={event => setSearch(event.target.value)} maxLength={120} placeholder="Number, customer or job" /></label>
-      <label>Portal delivery<Select value={query.sent} onChange={event => navigate(href({ ...query, sent: event.target.value as typeof query.sent, offset: 0 }))}>
+      <label className={styles.viewFilter}>View<Select name="view" value={query.view} onChange={event => navigate(href({ ...query, view: event.target.value, offset: 0 }))}>
+        {views.filter(([view]) => view !== 'drafts' || query.tab === 'quotes' || data?.draftsAllowed !== false).map(([view, label]) => <option key={view} value={view}>{label}</option>)}
+      </Select></label>
+      <div className={styles.search}><label htmlFor="finance-search">Search {query.tab}</label><div className={styles.searchControl}><Input id="finance-search" name="search" value={search} onChange={event => setSearch(event.target.value)} maxLength={120} placeholder="Number, customer or job" /><Button type="submit" variant="secondary">Search</Button></div></div>
+      <label className={styles.deliveryFilter}>Portal delivery<Select name="delivery" value={query.sent} onChange={event => navigate(href({ ...query, sent: event.target.value as typeof query.sent, offset: 0 }))}>
         <option value="all">All delivery states</option><option value="sent">Sent from Portal</option><option value="needs">Needs sending / recovery</option><option value="pending">Delivery pending</option>
       </Select></label>
-      <Button type="submit" variant="secondary">Search</Button>
-      {(query.search || query.sent !== 'all') && <ButtonLink variant="tertiary" href={href({ ...query, search: '', sent: 'all', offset: 0 })}>Clear filters</ButtonLink>}
+      <Button type="button" variant="tertiary" className={styles.sentFilter} aria-pressed={query.sent === 'sent'} onClick={() => navigate(href({ ...query, sent: query.sent === 'sent' ? 'all' : 'sent', offset: 0 }))}><span aria-hidden="true" className={styles.checkBox}>{query.sent === 'sent' && <Check />}</span>Sent from Portal</Button>
+      <Button type="button" variant="tertiary" className={styles.refresh} aria-label="Refresh" title="Refresh records" disabled={busy} onClick={() => setRevision(n => n + 1)}><RefreshCw aria-hidden="true" /></Button>
     </form>
     <section aria-label="Register results" aria-busy={busy} className={styles.results}>
       <div className={styles.status} role="status" aria-live="polite">
         {error === 'denied' ? 'Finance access is no longer available for this account.'
           : error ? <span>Finance could not be refreshed.{data ? ' Previously checked records remain below.' : ''} <Button variant="tertiary" size="small" onClick={() => setRevision(n => n + 1)}>Try again</Button></span>
           : busy ? loaded ? 'Checking the latest records. Previous results remain visible.' : 'Loading finance records…'
-          : data ? `Portal records checked ${new Date(data.checkedAt).toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' })}.` : ''}
+          : data ? `Checked ${new Date(data.checkedAt).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })}` : ''}
+        {(query.search || query.sent !== 'all') && <Link className={styles.clearFilters} href={href({ ...query, search: '', sent: 'all', offset: 0 })}>Clear filters</Link>}
       </div>
       {data && <>
-        <div className={styles.summary} data-stale={stale || undefined}>
-          <p><strong>{data.count}</strong> matching {resultQuery.tab === 'quotes' ? 'quote families' : 'invoices'}{stale ? ' in the previous results' : ''}</p>
-          {data.totals.map(total => <div key={total.currency}>
-            <strong>{new Intl.NumberFormat('en-NZ', { style: 'currency', currency: total.currency, currencyDisplay: 'code' }).format((resultQuery.tab === 'quotes' || resultQuery.view === 'drafts' ? total.totalCents : resultQuery.view === 'paid' ? total.paidCents : total.balanceCents) / 100)}</strong>
-            <span>{resultQuery.tab === 'quotes' ? 'quote value, incl GST' : resultQuery.view === 'drafts' ? 'draft value, incl GST' : resultQuery.view === 'paid' ? 'recorded paid, incl GST' : 'recorded owing, incl GST'}{total.unconfirmedCount > 0 ? ` · ${total.unconfirmedCount} needing checks excluded` : ''}</span>
-          </div>)}
-        </div>
-        {resultQuery.tab === 'quotes' && <p className={styles.note}>One relevant version per quote family. Current agreements, draft revisions and earlier versions remain visible in details.</p>}
-        <RegisterTable rows={data.rows} tab={resultQuery.tab}
+        {resultQuery.tab === 'quotes' && <p className={styles.note}>One relevant version per family. Open a quote for revisions and history.</p>}
+        <RegisterTable rows={data.rows} tab={resultQuery.tab} checkedAt={data.checkedAt}
           selected={selected} disabled={stale && !current} select={id => {
             const next = new URLSearchParams(params.toString());
             if (id === selected) next.delete('selected'); else next.set('selected', id);

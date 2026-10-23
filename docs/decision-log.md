@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-23: Judge Finance clarity inside its ordinary Portal frame
+
+Technical and isolated-fixture checks did not establish that the Finance register
+was clear for its intended daily task. Owner feedback required a simpler visual
+hierarchy and a preview in the real Portal layout. The revision emphasises owing,
+separates sent/due facts, removes repetitive OPEN badges and keeps full reasons
+in detail. Review representative everyday rows and exceptions at the actual
+content width beside the sidebar. Synthetic preview context belongs only to the
+gated QA composition; production authentication and financial truth stay in their
+existing owners. Human visual acceptance remains separate from technical passes.
+Owners: `ui-foundation.md`, `quotes-invoices-job-packs.md`.
+
 ## 2026-10-23: Preserve grant locking through the RPC transport
 
 An installed Finance register passed direct SQL reads but PostgREST returned

@@ -1,5 +1,30 @@
 # Staff Portal UI System
 
+## Finance register (23 October 2026 preview revision)
+
+Finance keeps Invoices and Quotes as the primary tabs, with Xero checks as a
+quiet secondary link. Outstanding includes every applicable delivery state;
+Sent from Portal is an explicit quick filter. One view/search/delivery toolbar
+serves the table. The compact summary uses full matching-set RPC counts and
+currency totals, preserves unknown-payment exclusions, and labels retained
+results during refresh or failure. It does not estimate overdue totals from a page.
+
+Invoice rows separate Portal sent and due dates, align total/paid/owing, and give
+owing the strongest monetary emphasis. OPEN is not repeated as an Outstanding
+badge. Part-paid, overdue, failed/pending delivery and payment-check notices stay
+concise beside the relevant facts; selected details retain the full explanation,
+delivery activity, quote versions and job/PDF links. Local container queries
+respond to the space remaining beside the real sidebar, rather than viewport
+width alone. Narrow views retain labelled values and keyboard-operated details.
+
+`PortalShell` still owns session, redirect and finance-navigation authority.
+`PortalFrame` shares its existing presentational body and navigation-state hook;
+the hook remains owned by the shell so collapsed state survives standalone visits.
+Only the development-and-flag-gated Finance QA page supplies a synthetic display
+context to the same frame. This creates no session, token or permission grant and
+does not replace production access checks. The local preview uses the real pinned
+sidebar, collapsed rail and mobile drawer, with clearly labelled synthetic data.
+
 ## Project Files Explorer (22 October 2026 candidate)
 
 The selected Files direction keeps folders, compact list and selected preview

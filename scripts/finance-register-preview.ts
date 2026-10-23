@@ -6,16 +6,30 @@ import { parseRegisterQuery, registerSchema } from '../apps/portal/lib/finance/r
 async function main() {
   const db = await createFinanceRegisterDatabase();
   await seedFinanceRegisterScenario(db);
-  await db.exec(`alter table public.deposit_invoices disable trigger all;
+  await db.exec(`
+    create temp table preview_everyday as select gen_random_uuid() project_id,n,
+      (array['Alex Morgan','Sam Taylor','Casey Wilson','Robin Lee','Jamie Clarke','Avery Patel','Charlie Bennett','Drew Campbell'])[(n-1)%8+1] customer,
+      (array['Coastal terrace, Bayview','Garden pergola, Hillcrest','Courtyard roof, Westhaven','Poolside shade, Riverview','Outdoor room, Cedar Lane','Entry canopy, Northfield','Deck extension, Parklane','Kitchen courtyard, Brookside'])[(n-1)%8+1] job,
+      (array[1927500,684000,1235000,398500,2560000,842000,1570000,610000])[(n-1)%8+1]+((n-1)/8)*12500 total,
+      case when n<=8 then current_date-3+n else current_date+4+n%24 end due
+      from generate_series(1,56) n;
+    insert into public.projects(id,name) select project_id,job from preview_everyday;
+    alter table public.deposit_invoices disable trigger all;
     insert into public.deposit_invoices select (jsonb_populate_record(null::public.deposit_invoices,to_jsonb(i)||jsonb_build_object(
-      'id',gen_random_uuid(),'invoice_ref','INV-'||lpad(n::text,4,'0'),'status','OPEN','issue_command_id',null,'paid_at',null,'paid_by',null,
-      'customer_name',case when n%3=0 then 'Synthetic long customer name and project partnership' else 'Synthetic customer '||n end,
-      'project_name',case when n%3=0 then 'Synthetic north courtyard and weather protection' else 'Synthetic job '||n end,
-      'due_date',case when n%3=0 then current_date-7 else current_date+7 end,
-      'sent_at',case when n%4=0 then null else now()-interval '3 days' end,
-      'total_inc_gst_cents',100000+n*1000,'total_ex_gst_cents',86957,'gst_cents',13043))).*
-      from public.deposit_invoices i cross join generate_series(1,56) n where i.invoice_ref='INV-REGISTER';
+      'id',gen_random_uuid(),'project_id',s.project_id,'invoice_ref','INV-'||(1040+s.n),'status','OPEN','issue_command_id',null,'paid_at',null,'paid_by',null,
+      'customer_name',s.customer,'project_name',s.job,'issue_date',least(current_date-1,s.due-14),'due_date',s.due,
+      'sent_at',case when s.n%4=0 then null else least(now(),(s.due-13)::timestamptz+interval '9 hours') end,
+      'total_inc_gst_cents',s.total,'total_ex_gst_cents',round(s.total/1.15),'gst_cents',s.total-round(s.total/1.15)))).*
+      from public.deposit_invoices i cross join preview_everyday s where i.invoice_ref='INV-REGISTER';
     alter table public.deposit_invoices enable trigger all;
+    -- Due dates can be future; completed issue/send facts cannot. Fail the
+    -- preview seed if a later fixture change breaks that chronology.
+    do $$ begin
+      if exists(select 1 from public.deposit_invoices i join preview_everyday s on s.project_id=i.project_id
+        where i.issue_date>current_date or i.sent_at>now()
+          or i.issue_date>(i.sent_at at time zone 'Pacific/Auckland')::date)
+      then raise exception 'Synthetic invoice issue/send chronology is invalid'; end if;
+    end $$;
     insert into public.quote_versions(quote_id,version_number,status,total_inc_gst_cents,total_ex_gst_cents,gst_cents,is_current_draft)
       select id,4,'DRAFT',200000,173913,26087,true from public.quotes where quote_ref='Q-SYNTHETIC';
   `);

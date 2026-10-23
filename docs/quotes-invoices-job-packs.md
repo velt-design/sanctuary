@@ -8,6 +8,16 @@ existing finance grant and feature gate remain required. Invoice drafts remain
 admin-only, including inside the service-only reader. No lifecycle, payment,
 provider or delivery command runs when opening, filtering or refreshing a register.
 
+The preview visual revision uses the same Finance component in the normal Portal
+frame. It prioritises recorded owing, recorded paid and full matching counts,
+then one view/search/delivery toolbar and distinct sent/due columns. Summary
+values come from the existing RPC totals, never the current page. Long exception
+reasons remain in selected details, with concise warnings still visible in rows.
+`RegisterSummary.tsx` owns this display of full-set totals; `RegisterTable.tsx`
+owns row hierarchy and detail. `PortalFrame` owns shared presentation only;
+production authentication remains in `PortalShell`. The QA fixture's synthetic
+display context stays behind its existing development-plus-flag server gate.
+
 Forward migration `20261023000001_finance_register.sql` must precede this
 consumer. `finance_register_v1` rechecks the server-supplied actor grant and returns
 50 rows with full matching-set counts and totals grouped by currency. Search,

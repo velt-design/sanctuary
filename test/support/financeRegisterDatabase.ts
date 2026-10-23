@@ -48,13 +48,16 @@ export async function seedFinanceRegisterScenario(db: PGlite) {
 /** Independent synthetic jobs avoid one job's free credit tainting every row. */
 export async function seedFinanceRegisterPreviewCases(db: PGlite) {
   await db.exec(`
-    create temp table preview_cases as select gen_random_uuid() project_id,gen_random_uuid() invoice_id,gen_random_uuid() entry_id,kind
+    create temp table preview_cases as select gen_random_uuid() project_id,gen_random_uuid() invoice_id,gen_random_uuid() entry_id,kind,
+      case kind when 'Partial receipt' then 'Mia Parker' when 'Project credit to check' then 'Theo Ellis' when 'Failed send' then 'Finley Roberts' else 'Blake Harris' end customer,
+      case kind when 'Partial receipt' then 'Courtyard pergola, Fern Bay' when 'Project credit to check' then 'Studio terrace, Stonebrook' when 'Failed send' then 'Garden room, Willow Park' else 'Pool canopy, Ridgeway' end job
       from unnest(array['Partial receipt','Project credit to check','Failed send','Delivery pending']) kind;
-    insert into public.projects(id,name) select project_id,'Synthetic '||kind||' job' from preview_cases;
+    insert into public.projects(id,name) select project_id,job from preview_cases;
     alter table public.deposit_invoices disable trigger all;
     insert into public.deposit_invoices select (jsonb_populate_record(null::public.deposit_invoices,to_jsonb(i)||jsonb_build_object(
       'id',c.invoice_id,'project_id',c.project_id,'invoice_ref',case c.kind when 'Partial receipt' then 'INV-PARTIAL' when 'Project credit to check' then 'INV-CREDIT' when 'Failed send' then 'INV-SEND-FAILED' else 'INV-SEND-PENDING' end,
-      'customer_name','Synthetic '||c.kind,'project_name','Synthetic '||c.kind||' job','due_date',current_date-14,'issue_command_id',null,
+      'customer_name',c.customer,'project_name',c.job,'issue_date',case when c.kind in ('Partial receipt','Project credit to check') then current_date-20 else current_date-2 end,
+      'due_date',case c.kind when 'Partial receipt' then current_date when 'Project credit to check' then current_date+12 else current_date+7 end,'issue_command_id',null,
       'sent_at',case when c.kind in ('Partial receipt','Project credit to check') then now()-interval '20 days' end,
       'total_inc_gst_cents',100000,'total_ex_gst_cents',86957,'gst_cents',13043))).*
       from public.deposit_invoices i cross join preview_cases c where i.invoice_ref='INV-REGISTER';
@@ -71,19 +74,21 @@ export async function seedFinanceRegisterPreviewCases(db: PGlite) {
       provider_idempotency_key,provider_idempotency_expires_at)
       select 'deposit-invoice-send:'||invoice_id,'deposit_invoice_send',invoice_id,project_id,repeat('a',64),'{}','dispatching',
         'synthetic-'||invoice_id,now()+interval '1 day' from preview_cases where kind='Delivery pending';
-    create temp table preview_quotes as select gen_random_uuid() project_id,gen_random_uuid() quote_id,kind
+    create temp table preview_quotes as select gen_random_uuid() project_id,gen_random_uuid() quote_id,kind,
+      case kind when 'Accepted with draft revision' then 'Harper Wood' when 'Awaiting with draft revision' then 'Quinn Scott' when 'Expired' then 'Riley Brooks' when 'Declined' then 'Emerson Reed' else 'Sage Cooper' end customer,
+      case kind when 'Accepted with draft revision' then 'Outdoor dining, Orchard Lane' when 'Awaiting with draft revision' then 'Deck enclosure, Harbour Rise' when 'Expired' then 'Entry canopy, Pine Grove' when 'Declined' then 'Garden studio, Meadow Lane' else 'Terrace roof, Silver Bay' end job
       from unnest(array['Accepted with draft revision','Awaiting with draft revision','Expired','Declined','Prepared delivery']) kind;
-    insert into public.projects(id,name) select project_id,'Synthetic '||kind||' job' from preview_quotes;
+    insert into public.projects(id,name) select project_id,job from preview_quotes;
     insert into public.quotes(id,project_id,quote_ref) select quote_id,project_id,
       case kind when 'Expired' then 'Q-EXPIRED' when 'Declined' then 'Q-DECLINED' when 'Accepted with draft revision' then 'Q-AGREED' when 'Prepared delivery' then 'Q-PREPARED' else 'Q-AWAITING' end from preview_quotes;
     insert into public.quote_versions(quote_id,version_number,status,customer_name,total_inc_gst_cents,total_ex_gst_cents,gst_cents,accepted_at,sent_at,expires_at,is_current_draft,delivery_prepared_at,created_at)
       select quote_id,1,case when kind='Accepted with draft revision' then 'ACCEPTED' when kind='Declined' then 'DECLINED' when kind='Prepared delivery' then 'DRAFT' else 'SENT' end,
-        'Synthetic '||kind,500000,434783,65217,case when kind='Accepted with draft revision' then now() end,
+        customer,500000,434783,65217,case when kind='Accepted with draft revision' then now() end,
         case when kind<>'Prepared delivery' then now()-interval '10 days' end,
         case when kind='Expired' then current_date-2 else current_date+10 end,kind='Prepared delivery',
         case when kind='Prepared delivery' then now()-interval '1 hour' end,now()-interval '12 days' from preview_quotes;
     insert into public.quote_versions(quote_id,version_number,status,customer_name,total_inc_gst_cents,total_ex_gst_cents,gst_cents,is_current_draft)
-      select quote_id,2,'DRAFT','Synthetic '||kind,600000,521739,78261,true from preview_quotes where kind like '%draft revision';
+      select quote_id,2,'DRAFT',customer,600000,521739,78261,true from preview_quotes where kind like '%draft revision';
     insert into private.commercial_email_intents(intent_key,kind,subject_id,project_id,payload_hash,protected_payload,status,
       provider_idempotency_key,provider_idempotency_expires_at,provider_message_id)
       select 'quote-send:'||v.id||':synthetic-prepared','quote_send',v.id,q.project_id,repeat('a',64),'{}','provider_accepted',
