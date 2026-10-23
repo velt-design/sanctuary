@@ -1,3 +1,4 @@
+// Private read tests observe the same snapshot props at the extracted public shell boundary.
 import { act } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +8,7 @@ import { useOptionalProjectOverviewReads } from '@/components/projects/ProjectPa
 import ProjectMainTabs from '@/components/projects/ProjectPage/ProjectMainTabs';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
+vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', () => ({ default: () => null }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const state = vi.hoisted(() => ({ search: '', preload: vi.fn().mockResolvedValue(undefined) }));
@@ -21,7 +23,7 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'host', supabaseRuntimeUrl: () => 'https://host.supabase.co' }));
 vi.mock('@/components/debug/PortalDebugExportButton', () => ({ default: () => null }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
-vi.mock('@/components/projects/ProjectPage/ProjectPageFrame', () => ({
+vi.mock('@/components/projects/ProjectPage/ProjectPageShellSurface', () => ({
   default: ({ snapshot, projectId, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab, statusPanel, privateContentReady }: any) => {
     const reads = useOptionalProjectOverviewReads(host, projectId);
     const commandQuery = reads?.commandQuery, paymentQuery = reads?.paymentQuery;

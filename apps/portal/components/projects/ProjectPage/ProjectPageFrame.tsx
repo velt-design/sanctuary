@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { ProjectTabKey } from "@/lib/projects/projectTabs";
 import type {
   ProjectPageSnapshot,
@@ -8,7 +8,7 @@ import type {
 } from "@/lib/projects/types";
 import ProjectHeader from "./ProjectHeader";
 import ProjectPageShell from "./ProjectPageShell";
-import styles from "./ProjectPage.module.css";
+import ProjectPageFrameSurface from "./ProjectPageFrameSurface";
 import { currentProjectWork } from "@/lib/projects/projectCurrentStatus";
 import { overviewProjectId, useOptionalProjectOverviewReads } from "./ProjectOverviewReads";
 import { ProjectCommercialProvider } from './ProjectCommercialContext';
@@ -47,39 +47,7 @@ export default function ProjectPageFrame({
   const projectId = snapshot?.project.id ?? overviewProjectId(routeProjectId);
   const overviewReads = useOptionalProjectOverviewReads(host, projectId);
   const projectWork = snapshot ? currentProjectWork(snapshot, overviewReads?.commandQuery.data) : undefined;
-  const frameRef = useRef<HTMLDivElement | null>(null);
-  const mastheadRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const frame = frameRef.current;
-    const masthead = mastheadRef.current;
-    if (!frame || !masthead || typeof ResizeObserver === "undefined") return;
-    const update = () =>
-      frame.style.setProperty(
-        "--project-page-masthead-height",
-        `${Math.ceil(masthead.getBoundingClientRect().height)}px`,
-      );
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(masthead);
-    return () => observer.disconnect();
-  }, [calculatorWorkspace]);
-
-  return (
-    <div
-      ref={frameRef}
-      className={`${styles.pageFrame} ${calculatorWorkspace ? styles.pageFrameCalculatorWorkspace : ""}`}
-      data-project-page-frame="true"
-      data-project-masthead-sticky={calculatorWorkspace ? undefined : "true"}
-      data-project-calculator-workspace={calculatorWorkspace ? "true" : undefined}
-    >
-      {!calculatorWorkspace ? (
-        <div
-          ref={mastheadRef}
-          className={`${styles.pageFrameMastheadSlot} ${styles.pageFrameMastheadSlotSticky}`}
-          data-project-masthead-slot="fixed"
-          data-project-masthead-slot-sticky="true"
-        >
-          <ProjectHeader
+  return <ProjectPageFrameSurface calculatorWorkspace={calculatorWorkspace} header={<ProjectHeader
             privateContentReady={privateContentReady}
             searchReader={searchReader}
             project={snapshot?.project ?? null}
@@ -94,12 +62,8 @@ export default function ProjectPageFrame({
             tabAvailabilityReady={snapshotContentReady}
             optimisticTab={optimisticTab}
             onTabSelect={onTabSelect}
-          />
-        </div>
-      ) : null}
-
-      <div className={styles.pageFrameBody}>
-        <ProjectCommercialProvider projectId={projectId} work={projectWork} ready={!readOnly && Boolean(snapshot) && snapshotState === 'fresh' && snapshotContentReady && (snapshot?.workModel === 'legacy' || Boolean(projectWork))}>
+          />}>
+<ProjectCommercialProvider projectId={projectId} work={projectWork} ready={!readOnly && Boolean(snapshot) && snapshotState === 'fresh' && snapshotContentReady && (snapshot?.workModel === 'legacy' || Boolean(projectWork))}>
         <ProjectPageShell
           snapshot={snapshot}
           projectId={projectId}
@@ -116,7 +80,5 @@ export default function ProjectPageFrame({
           privateContentReady={privateContentReady}
         />
         </ProjectCommercialProvider>
-      </div>
-    </div>
-  );
+  </ProjectPageFrameSurface>;
 }

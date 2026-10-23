@@ -2,6 +2,10 @@ import { act, useEffect } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 import { PortalGuardedPage, PortalPageSourceProvider, usePortalPageSourceController } from './PortalPageSource';
+import ContactDetail from '@/app/staff/contacts/[contactId]/page';
+import NewContact from '@/app/staff/contacts/new/page';
+import NewProject from '@/app/staff/projects/new/page';
+import EmailPreview from '@/app/staff/email-previews/page';
 import Calculator from '@/app/staff/calculator/page';
 import Email from '@/app/staff/email-review/page';
 import Costing from '@/app/admin/costing/page';
@@ -13,6 +17,10 @@ function PrivateClient() { useEffect(() => { calls.mounts++; return () => { call
 vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: calls.staff, requireAdminPageAccess: calls.admin }));
 vi.mock('@/lib/supabase/serverClient', () => ({ getSupabaseServerAuth: calls.auth }));
 vi.mock('@/lib/costing/configurationAdmin', () => ({ listCostingConfigurationOverview: calls.read }));
+vi.mock('@/app/staff/contacts/[contactId]/ContactDetailClient', () => ({ default: () => <PrivateClient/> }));
+vi.mock('@/app/staff/contacts/new/ContactCreateClient', () => ({ default: () => <PrivateClient/> }));
+vi.mock('@/app/staff/projects/new/ProjectCreateClient', () => ({ default: () => <PrivateClient/> }));
+vi.mock('@/app/staff/email-previews/EmailPreviewWorkbenchPage', () => ({ default: () => <PrivateClient/> }));
 vi.mock('@/app/staff/calculator/CalculatorGridClient', () => ({ default: () => <PrivateClient/> }));
 vi.mock('@/components/emailReview/EmailReviewWorkspace', () => ({ default: () => <PrivateClient/> }));
 vi.mock('@/app/admin/costing/CostingControlCentre', () => ({ default: () => <PrivateClient/> }));
@@ -26,6 +34,10 @@ beforeEach(() => { vi.clearAllMocks(); calls.mounts = calls.retired = 0; calls.s
 afterEach(() => { view?.unmount(); view = undefined; });
 const project = 'proj_fictional';
 const cases = [
+  { path: '/staff/contacts/contact_fictional', page: () => ContactDetail({params:Promise.resolve({contactId:'contact_fictional'})}), gate: 'staff' },
+  { path: '/staff/contacts/new', page: () => NewContact(), gate: 'staff' },
+  { path: '/staff/projects/new', page: () => NewProject(), gate: 'staff' },
+  { path: '/staff/email-previews', page: () => EmailPreview(), gate: 'staff' },
   { path: '/staff/calculator', page: () => Calculator(), gate: 'staff' },
   { path: '/staff/email-review', page: () => Email(), gate: 'staff' },
   { path: '/admin/costing', page: () => Costing(), gate: 'admin' },

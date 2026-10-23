@@ -1,3 +1,5 @@
+import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
+import { useOptionalProjectWorkspace } from '../ProjectInstantNavigation';
 import { act, useEffect, type ReactElement, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,16 +33,17 @@ vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
 
 vi.mock('./ProjectSnapshotPageClient', () => ({
   default: (props: { projectId: string; tab: string; estimateId: string | null; calculatorWorkspace: boolean; debugExportEnabled: boolean }) => {
+    const workspace = useOptionalProjectWorkspace();
     useEffect(() => { lifetime.mounts++; return () => { lifetime.mounts--; lifetime.cleanups++; }; }, []);
     return (
-    <div
+    <ProjectCorrespondenceWarmRead projectId={props.projectId} enabled={Boolean(workspace?.warmCorrespondence)}><div
       data-testid="project-page"
       data-project-id={props.projectId}
       data-tab={props.tab}
       data-estimate-id={props.estimateId ?? ''}
       data-calculator-workspace={String(props.calculatorWorkspace)}
       data-debug-enabled={String(props.debugExportEnabled)}
-    />
+    /></ProjectCorrespondenceWarmRead>
     );
   },
 }));

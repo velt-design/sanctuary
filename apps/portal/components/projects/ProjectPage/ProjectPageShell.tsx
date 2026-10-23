@@ -1,57 +1,7 @@
 'use client';
-
-import type { ReactNode } from 'react';
-import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
-import type { ProjectTabKey } from '@/lib/projects/projectTabs';
-import ProjectMainTabs from './ProjectMainTabs';
-import styles from './ProjectPage.module.css';
-
-export default function ProjectPageShell({
-  snapshot,
-  projectId = snapshot?.project.id ?? "",
-  host,
-  readOnly = false,
-  snapshotContentReady = true,
-  snapshotState = 'fresh',
-  tab,
-  calculatorWorkspace = false,
-  optimisticTab,
-  onTabSelect,
-  onProjectAccessEnding,
-  statusPanel,
-  privateContentReady = true,
-}: {
-  snapshot: ProjectPageSnapshot | null;
-  projectId?: string;
-  host: string;
-  readOnly?: boolean;
-  snapshotContentReady?: boolean;
-  snapshotState?: ProjectSnapshotLoadState;
-  tab: string;
-  calculatorWorkspace?: boolean;
-  optimisticTab?: ProjectTabKey | null;
-  onTabSelect?: (tab: ProjectTabKey) => void;
-  onProjectAccessEnding?: (status: number) => void;
-  statusPanel?: ReactNode;
-  privateContentReady?: boolean;
-}) {
-  return (
-    <section className={styles.fullWidthShell} data-project-page-shell="true">
-      <ProjectMainTabs
-        snapshot={snapshot}
-        projectId={projectId}
-        host={host}
-        readOnly={readOnly}
-        snapshotContentReady={snapshotContentReady}
-        snapshotState={snapshotState}
-        tab={tab}
-        calculatorWorkspace={calculatorWorkspace}
-        optimisticTab={optimisticTab}
-        onTabSelect={onTabSelect}
-        onProjectAccessEnding={onProjectAccessEnding}
-        statusPanel={statusPanel}
-        privateContentReady={privateContentReady}
-      />
-    </section>
-  );
+import type { ComponentProps } from 'react';
+import Surface from './ProjectPageShellSurface';
+import Body from './ProjectTabBody';
+export default function ProjectPageShell(props: Omit<ComponentProps<typeof Surface>, 'body'>) {
+  return <Surface {...props} body={props.privateContentReady === false ? null : <Body {...props} />} />;
 }

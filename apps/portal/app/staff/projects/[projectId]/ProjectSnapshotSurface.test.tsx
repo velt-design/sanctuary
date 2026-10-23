@@ -10,13 +10,19 @@ import Provider, { useOptionalProjectWorkspace } from '../ProjectInstantNavigati
 import { useProjectInstantOpen } from '../ProjectInstantOpen';
 import Snapshot from './ProjectSnapshotPageClient';
 import ProjectDetailPage from './page';
+import ProjectHeaderOwnerControl from '@/components/projects/ProjectPage/ProjectHeaderOwnerControl';
+import ProjectTabBody from '@/components/projects/ProjectPage/ProjectTabBody';
 import type { ProjectSnapshotEvidence } from './ProjectSnapshotSurface';
 
 const state = vi.hoisted(() => ({ canonical: '/staff/projects', pathname: '/staff/projects', readers: 0, outletMounts: 0,
-  outletRetires: 0, duplicateViews: 0, facts: 0, owners: 0, initial: null as unknown, retiredPublish: null as null | ((v: any) => void) }));
+  publicPrepare: null as null | ((tab: any) => void), prepared: [] as string[], preparationModes: [] as boolean[], outletRetires: 0, duplicateViews: 0, facts: 0, owners: 0, initial: null as unknown, retiredPublish: null as null | ((v: any) => void) }));
 const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router, usePathname: () => state.pathname,
   useSelectedLayoutSegments: () => state.canonical.split('/').filter(Boolean), useSearchParams: () => new URLSearchParams(window.location.search) }));
+vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', async (original) => {
+  const actual = await original<typeof import('@/components/projects/ProjectPage/ProjectHeaderSurface')>();
+  return { default: (props: any) => { state.publicPrepare = props.onTabIntent; return <actual.default {...props} />; } };
+});
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: async () => ({ user: { id: 'fictional-staff' }, role: 'staff' }) }));
 vi.mock('next/headers', () => ({ headers: vi.fn() }));
@@ -31,11 +37,14 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
   OverviewTab: () => { useEffect(() => { state.facts++; return () => { state.facts--; }; }, []); return <p data-real-fact>Current project facts</p>; },
   FilesTab: () => <p data-private-files>Files</p>, CommercialTab: () => <p data-private-commercial>Commercial</p>, JobPacksTab: () => <p>Job packs</p>,
 }));
-vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initialRead }: any) => {
+vi.mock('./ProjectSnapshotRead', () => ({ default: ({ projectId, publish, initialRead, navigation }: any) => {
   const evidence = useMemo(() => ({ snapshot: { project: { id: projectId, name: `Verified ${projectId}`, stage: 'new', hasJobPacks: false },
     workModel: 'legacy', pipeline: { stage: 'new' }, activity: [], emails: [], notes: [] }, host: 'host', readOnly: false,
     snapshotContentReady: true, snapshotState: 'fresh', overviewReads: null, calculatorWorkspace: false, searchReader: null,
-    onProjectAccessEnding: vi.fn(), statusPanel: null }) as unknown as ProjectSnapshotEvidence, [projectId]);
+    headerOwner: <ProjectHeaderOwnerControl project={null} projectId={projectId} host="host" active />,
+    body: <ProjectTabBody projectId={projectId} host="host" snapshot={null} tab="activity" optimisticTab={navigation.optimisticTab} />,
+    onTabIntent: (tab: string, codeOnly = false) => { state.prepared.push(tab); state.preparationModes.push(codeOnly); },
+    onProjectAccessEnding: vi.fn(), statusPanel: null }) as unknown as ProjectSnapshotEvidence, [projectId, navigation.optimisticTab]);
   useLayoutEffect(() => { state.readers++; state.initial = initialRead; state.retiredPublish = publish; publish(evidence);
     return () => { state.readers--; publish(null); }; }, [publish, evidence, initialRead]);
   return null;
@@ -68,7 +77,7 @@ function tree() { return <QueryClientProvider client={client}><PortalQueryClient
 </PortalRouteTransitionProvider></PortalQueryClientScope></QueryClientProvider>; }
 function adopt(id = 'proj_A') { state.pathname = `/staff/projects/${id}`; state.canonical = state.pathname; view!.rerender(tree()); }
 function click(selector: string) { act(() => view!.container.querySelector<HTMLButtonElement>(selector)!.click()); }
-beforeEach(() => { state.canonical = state.pathname = '/staff/projects'; Object.assign(state, { readers: 0, facts: 0, owners: 0, outletMounts: 0, outletRetires: 0, duplicateViews: 0, initial: null, retiredPublish: null });
+beforeEach(() => { state.canonical = state.pathname = '/staff/projects'; Object.assign(state, { readers: 0, facts: 0, owners: 0, outletMounts: 0, outletRetires: 0, duplicateViews: 0, initial: null, retiredPublish: null, publicPrepare: null, prepared: [], preparationModes: [] });
   completion = detailA; denied = false; window.history.replaceState(null, '', '/staff/projects');
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); });
 afterEach(() => { view?.unmount(); view = undefined; client.clear(); });
@@ -155,4 +164,64 @@ it('restores the genuine held index after unrelated detail failure without even 
   click('[data-deny]'); expect(state.readers).toBe(0); click('[data-select-index]');
   expect(view.container.querySelector('[data-index]')).not.toBeNull(); expect(view.container.querySelector('[data-project-page-frame]')).toBeNull();
   expect(state.duplicateViews).toBe(0); expect(state.outletRetires).toBe(0);
+});
+
+// The real pending navigation must survive safe tab use; only current adopted code may prepare data.
+it('queues early tab URL/preparation without cancelling held adoption, then reuses the same actual tab body', () => {
+  view = renderIntoDocument(tree()); click('[data-open]');
+  const frame = view.container.querySelector('[data-project-page-frame]');
+  const body = view.container.querySelector('[data-project-tab-body]');
+  const files = [...view.container.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent === 'Files')!;
+  const historyLength = window.history.length;
+  act(() => { files.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); files.click(); });
+  expect(files.getAttribute('aria-selected')).toBe('true');
+  expect(body?.getAttribute('data-project-tab-body')).toBe('files');
+  expect(new URL(window.location.href).searchParams.get('tab')).toBe('activity');
+  expect(state.prepared).toEqual([]); expect(state.readers).toBe(0); expect(state.facts).toBe(0);
+  adopt();
+  expect(window.history.length).toBe(historyLength);
+  expect(new URL(window.location.href).searchParams.get('tab')).toBe('files');
+  expect(view.container.querySelector('[data-project-page-frame]')).toBe(frame);
+  expect(view.container.querySelector('[data-project-tab-body]')).toBe(body);
+  expect(view.container.querySelector('[data-private-files]')).not.toBeNull();
+  expect(state.prepared).toEqual(['files']); expect(state.preparationModes).toEqual([true]); expect(state.readers).toBe(1); expect(state.outletRetires).toBe(0);
+});
+
+it('discards pending tab URL and preparation when that source is retired before code adoption', () => {
+  view = renderIntoDocument(tree()); click('[data-open]');
+  const files = [...view.container.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent === 'Files')!;
+  act(() => { files.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); files.click(); });
+  click('[data-select-index]');
+  expect(state.prepared).toEqual([]); expect(state.readers).toBe(0);
+  state.canonical = state.pathname = '/staff/projects'; view.rerender(tree());
+  expect(new URL(window.location.href).pathname).toBe('/staff/projects');
+  expect(new URL(window.location.href).searchParams.get('tab')).toBeNull();
+  expect(view.container.querySelector('[data-project-page-frame]')).toBeNull();
+  expect(state.outletRetires).toBe(0);
+});
+
+it('rejects a late public preparation callback after its guarded project owner retires', () => {
+  view = renderIntoDocument(tree()); click('[data-open]'); adopt();
+  const oldPreparation = state.publicPrepare!;
+  expect(state.readers).toBe(1);
+  click('[data-select-index]');
+  expect(state.readers).toBe(0);
+  act(() => oldPreparation('files'));
+  expect(state.prepared).toEqual([]);
+  expect(view.container.querySelector('[data-project-page-frame]')).toBeNull();
+});
+
+it('does not queue a blocked pending tab selection or mutate the URL', () => {
+  view = renderIntoDocument(tree()); click('[data-open]');
+  const block = (event: Event) => event.preventDefault();
+  window.addEventListener('portal:before-project-view-change', block);
+  try {
+    const files = [...view.container.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent === 'Files')!;
+    act(() => files.click());
+    expect(files.getAttribute('aria-selected')).toBe('false');
+    expect(new URL(window.location.href).searchParams.get('tab')).toBe('activity');
+    adopt();
+    expect(new URL(window.location.href).searchParams.get('tab')).toBe('activity');
+    expect(state.prepared).toEqual([]);
+  } finally { window.removeEventListener('portal:before-project-view-change', block); }
 });

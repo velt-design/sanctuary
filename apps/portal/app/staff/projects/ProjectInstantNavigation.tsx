@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -14,16 +15,17 @@ import { usePathname, useRouter } from 'next/navigation';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { projectDetailPath, useOwnedPortalPublication, usePortalPageSource } from '@/components/page-state/PortalPageSource';
 
+import { selectProjectView } from '@/components/projects/ProjectPage/projectViewNavigation';
+import type { ProjectNavigationTabKey, ProjectTabKey } from '@/lib/projects/projectTabs';
 import { useProjectTabSelection } from '@/components/projects/ProjectPage/useProjectTabSelection';
 import ProjectSnapshotSurface, { type ProjectSnapshotProps, type ProjectSnapshotEvidence } from './[projectId]/ProjectSnapshotSurface';
-import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
-
 type ProjectInstantNavigationValue = {
   showProject: (href: string) => void;
   projectId: string;
   owner: object | null;
   navigation: ReturnType<typeof useProjectTabSelection>;
   publish: (value: ProjectSnapshotEvidence | null) => void;
+  warmCorrespondence: boolean;
 };
 
 function detailId(pathname: string | null | undefined): string | null {
@@ -110,23 +112,57 @@ export default function ProjectInstantNavigationProvider({ children, standaloneP
     : source.selectedPath === activePath && source.canonicalPath === activePath ? source.owner : null : null;
   const publication = useOwnedPortalPublication<ProjectSnapshotEvidence>(owner);
   const evidence = publication.value;
+  const privateReady = Boolean(evidence);
+  const onTabIntent = evidence?.onTabIntent;
   const tab = standaloneProject?.tab ?? 'activity';
   const currentNavigation = useProjectTabSelection(projectId, tab,
     evidence?.snapshotContentReady ? Boolean(evidence.snapshot?.project.hasJobPacks) : undefined);
   const navigationRef = useRef(currentNavigation); navigationRef.current = currentNavigation;
-  const selectTab = useCallback((next: Parameters<typeof currentNavigation.selectTab>[0]) => navigationRef.current.selectTab(next), []);
+  const queuedTab = useRef<{ projectId: string; attempt: typeof selectedAttempt; tab: ProjectTabKey } | null>(null);
+  const queuedPreparation = useRef<{ projectId: string; attempt: typeof selectedAttempt; tab: ProjectNavigationTabKey } | null>(null);
+  const selectTab = useCallback((next: ProjectTabKey) => {
+    if (!owner || !privateReady) queuedTab.current = { projectId, attempt: selectedAttempt, tab: next };
+    navigationRef.current.selectTab(next);
+  }, [owner, privateReady, projectId, selectedAttempt]);
+  const currentPreparation = useRef({ projectId, owner, selectedAttempt, onTabIntent });
+  currentPreparation.current = { projectId, owner, selectedAttempt, onTabIntent };
+  const prepareTab = useCallback((next: ProjectNavigationTabKey) => {
+    const current = currentPreparation.current;
+    if (current.projectId !== projectId || current.owner !== owner || current.selectedAttempt !== selectedAttempt || current.onTabIntent !== onTabIntent) return;
+    if (owner && onTabIntent) onTabIntent(next);
+    else queuedPreparation.current = { projectId, attempt: selectedAttempt, tab: next };
+  }, [owner, onTabIntent, projectId, selectedAttempt]);
+  useLayoutEffect(() => {
+    const queued = queuedTab.current;
+    if (!queued) return;
+    if (queued.projectId !== projectId || queued.attempt !== selectedAttempt && !(selectedAttempt === undefined && owner)) { queuedTab.current = null; return; }
+    if (!owner || !privateReady) return;
+    // Updating Next's native history bridge before its pending Flight commits
+    // can cancel that delivery. Apply the already accepted safe view once adopted.
+    queuedTab.current = null;
+    selectProjectView(queued.tab, 'replace');
+  }, [owner, privateReady, projectId, selectedAttempt]);
+  useEffect(() => {
+    const queued = queuedPreparation.current;
+    if (!queued) return;
+    if (queued.projectId !== projectId || queued.attempt !== selectedAttempt && !(selectedAttempt === undefined && owner)) { queuedPreparation.current = null; return; }
+    if (!owner || !onTabIntent) return;
+    queuedPreparation.current = null;
+    onTabIntent(queued.tab, true);
+  }, [owner, onTabIntent, projectId, selectedAttempt]);
   const navigation = useMemo(() => ({ activeTab: currentNavigation.activeTab, optimisticTab: currentNavigation.optimisticTab, selectTab }),
     [currentNavigation.activeTab, currentNavigation.optimisticTab, selectTab]);
-  const value = useMemo(() => ({ showProject, projectId, owner, navigation, publish: publication.publish }),
-    [showProject, projectId, owner, navigation, publication.publish]);
+  const warmCorrespondence = !standaloneProject && Boolean(source);
+  const value = useMemo(() => ({ showProject, projectId, owner, navigation, publish: publication.publish, warmCorrespondence }),
+    [showProject, projectId, owner, navigation, publication.publish, warmCorrespondence]);
 
   return (
     <ProjectInstantNavigationContext.Provider value={value}>
       {children}
-      {projectId ? <ProjectCorrespondenceWarmRead projectId={projectId} enabled={!standaloneProject && Boolean(source) && Boolean(owner) && evidence?.snapshotState !== 'unavailable' && navigation.activeTab === 'activity'}>
-        <ProjectSnapshotSurface projectId={projectId} tab={tab} navigation={navigation} evidence={evidence} initialCalculatorWorkspace={standaloneProject?.calculatorWorkspace} onRetry={source?.retry}
+      {projectId ? <>
+        <ProjectSnapshotSurface projectId={projectId} tab={tab} navigation={navigation} evidence={evidence} onTabIntent={prepareTab} deferHistory={!owner || !privateReady} initialCalculatorWorkspace={standaloneProject?.calculatorWorkspace} onRetry={source?.retry}
           unavailable={Boolean(source?.attempt?.unavailable && source.selectedPath === activePath)} />
-      </ProjectCorrespondenceWarmRead> : null}
+      </> : null}
     </ProjectInstantNavigationContext.Provider>
   );
 }

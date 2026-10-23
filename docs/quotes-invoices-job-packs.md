@@ -2,6 +2,8 @@
 
 ## Finance register (23 October 2026 local candidate)
 
+The register and bookmarked Xero review both publish their existing guarded leaf completion to the Portal page-source owner. Accepted navigation retires the old private Finance body immediately while Next keeps its outlet mounted; a valid cached return can restore that same completion. The ordinary payment-pilot gate and Xero owner's complete guard/read setup run before the wrapper, with register filters, tables, providers and commands unchanged.
+
 `/staff/payments` opens the cross-project Invoices register on Outstanding, with
 Quotes alongside it and the existing accounting tools under Xero checks. The
 existing finance grant and feature gate remain required. Invoice drafts remain

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectPageShell from './ProjectPageShell';
 
-vi.mock('./ProjectMainTabs', () => ({
+vi.mock('./ProjectMainTabsSurface', () => ({
   default: ({ tab }: { tab: string }) => <div data-testid="project-main-tabs" data-tab={tab} />,
 }));
 

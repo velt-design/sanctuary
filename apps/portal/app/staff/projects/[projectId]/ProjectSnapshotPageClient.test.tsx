@@ -1,3 +1,4 @@
+// Private read tests observe the same snapshot props at the extracted public shell boundary.
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../test/reactHarness";
@@ -5,6 +6,7 @@ import { ApiError } from "@/lib/repo/apiClient";
 import { selectProjectView } from "@/components/projects/ProjectPage/projectViewNavigation";
 import type { PortalPageDebugExport } from "@/lib/debug/portalPageDebugExport";
 import ProjectSnapshotPageClient from "./ProjectSnapshotPageClient";
+vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', () => ({ default: () => null }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const useQueryMock = vi.fn();
@@ -41,7 +43,7 @@ vi.mock("@/lib/supabase/browserClient", () => ({
   supabaseRuntimeUrl: () => "https://host.supabase.co",
 }));
 
-vi.mock("@/components/projects/ProjectPage/ProjectPageFrame", () => ({
+vi.mock("@/components/projects/ProjectPage/ProjectPageShellSurface", () => ({
   default: ({
     snapshot,
     snapshotContentReady,
