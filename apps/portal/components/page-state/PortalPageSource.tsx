@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { resolvePortalSameOriginUrl } from '@/lib/portalInstantRoutes';
 
 /** Correlation emitted by a leaf after its existing fresh access guard. It grants nothing. */
 export type PortalPageCompletion = Record<string, never>;
@@ -16,27 +17,31 @@ type FrameAttempt = {
   unavailable?: boolean;
 };
 
-export function publicFramePath(href: string, base: string): string | null {
-  try {
-    const current = new URL(base);
-    const next = new URL(href, current);
-    if (next.origin !== current.origin) return null;
-    if (['/dashboard','/staff/projects','/staff/contacts','/staff/projects/work-queue',
-      '/staff/projects/design-packages','/staff/projects/running-jobs'].includes(next.pathname)) return next.pathname;
-    if (next.pathname === '/staff/schedule' && next.searchParams.get('view')?.trim().toLowerCase() !== 'site-visits') return next.pathname;
-  } catch { /* A malformed selection does not start a frame. */ }
+function publicFrameUrlPath(next: URL): string | null {
+  if (['/dashboard','/staff/projects','/staff/contacts','/staff/projects/work-queue',
+    '/staff/projects/design-packages','/staff/projects/running-jobs'].includes(next.pathname)) return next.pathname;
+  if (next.pathname === '/staff/schedule' && next.searchParams.get('view')?.trim().toLowerCase() !== 'site-visits') return next.pathname;
   return null;
+}
+
+export function publicFramePath(href: string, base: string): string | null {
+  const next = resolvePortalSameOriginUrl(href, base);
+  return next ? publicFrameUrlPath(next) : null;
+}
+
+function projectDetailUrlPath(next: URL): string | null {
+  try {
+    const match = /^\/staff\/projects\/([^/]+)$/.exec(next.pathname);
+    if (!match) return null;
+    const id = decodeURIComponent(match[1]);
+    return !id.trim() || ['work-queue', 'design-packages', 'running-jobs', 'new'].includes(id) ? null : next.pathname;
+  } catch { return null; }
 }
 
 /** Public project selection only; the matching guarded leaf still owns authority. */
 export function projectDetailPath(href: string, base: string): string | null {
-  try {
-    const current = new URL(base), next = new URL(href, current);
-    const match = /^\/staff\/projects\/([^/]+)$/.exec(next.pathname);
-    if (next.origin !== current.origin || !match) return null;
-    const id = decodeURIComponent(match[1]);
-    return !id.trim() || ['work-queue', 'design-packages', 'running-jobs', 'new'].includes(id) ? null : next.pathname;
-  } catch { return null; }
+  const next = resolvePortalSameOriginUrl(href, base);
+  return next ? projectDetailUrlPath(next) : null;
 }
 
 export function usePortalPageSourceController(pathname: string | null, canonicalPath: string, search: string) {
@@ -51,7 +56,8 @@ export function usePortalPageSourceController(pathname: string | null, canonical
   const canonicalRef = useRef(canonicalPath);
   canonicalRef.current = canonicalPath;
   const begin = useCallback((href: string) => {
-    const target = publicFramePath(href, window.location.href) ?? projectDetailPath(href, window.location.href);
+    const nextUrl = resolvePortalSameOriginUrl(href, window.location.href);
+    const target = nextUrl && (publicFrameUrlPath(nextUrl) ?? projectDetailUrlPath(nextUrl));
     if (!target) return false;
     // Accepted reversion to the still-retained genuine page is the existing
     // Back/local-first case. Context updates alone never invoke this branch.

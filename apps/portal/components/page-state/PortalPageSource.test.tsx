@@ -9,7 +9,7 @@ import { progressiveScheduleSnapshot } from '@/app/qa/schedule-progressive-fixtu
 import { contactsIndexQueryOptions } from '@/lib/queries/contactsIndex';
 import type { ContactsIndexResponse } from '@/lib/contacts/contactsIndexContract';
 import PortalActualFrames from './PortalActualFrames';
-import { PortalGuardedPage, PortalPageSourceProvider, usePortalPageSourceController, projectDetailPath, type PortalPageCompletion } from './PortalPageSource';
+import { PortalGuardedPage, PortalPageSourceProvider, usePortalPageSourceController, projectDetailPath, publicFramePath, type PortalPageCompletion } from './PortalPageSource';
 
 const api = vi.fn();
 const privateCode = vi.hoisted(() => ({ board: null as Promise<void> | null }));
@@ -708,4 +708,52 @@ it('limits project intent to the same existing nonblank detail identity without 
     '/staff/projects/%6eew', '/staff/projects/work-queue', '/staff/projects/proj_A/estimate/est_1', 'http://[']) expect(projectDetailPath(href, base)).toBeNull();
   expect(projectDetailPath('/staff/projects/proj_A?tab=files#details', base)).toBe('/staff/projects/proj_A');
   expect(projectDetailPath('/staff/projects/%20proj_A', base)).toBe('/staff/projects/%20proj_A');
+});
+
+
+it.each([
+  ['/dashboard?from=projects#top', '/dashboard', null],
+  ['/staff/projects', '/staff/projects', null],
+  ['/staff/contacts', '/staff/contacts', null],
+  ['/staff/projects/work-queue', '/staff/projects/work-queue', null],
+  ['/staff/projects/design-packages', '/staff/projects/design-packages', null],
+  ['/staff/projects/running-jobs', '/staff/projects/running-jobs', null],
+  ['/staff/schedule?view=GANTT', '/staff/schedule', null],
+  ['/staff/schedule?view=%20Site-Visits%20', null, null],
+  ['/', null, null], ['/schedule', null, null], ['/staff/running-jobs', null, null], ['/staff/calculator', null, null],
+  ['/staff/projects/%20proj_A?tab=files#details', null, '/staff/projects/%20proj_A'],
+  ['/staff/projects/%20%20', null, null], ['/staff/projects/%E0%A4%A', null, null],
+  ['/staff/projects/%6eew', null, null], ['/staff/projects/%77ork-queue', null, null],
+  ['/staff/projects/design%2Dpackages', null, null], ['/staff/projects/running%2Djobs', null, null],
+  ['/staff/projects/proj_A/estimate/est_1', null, null], ['/api/staff/v1/projects/proj_A', null, null],
+  ['https://foreign.test/staff/projects/proj_A', null, null], ['http://[', null, null],
+])('keeps Source selection policy separate from route aliases for %s', (href, frame, detail) => {
+  const base = 'https://portal.test/staff/projects';
+  expect(publicFramePath(href, base)).toBe(frame);
+  expect(projectDetailPath(href, base)).toBe(detail);
+  expect(publicFramePath(href, 'http://[')).toBeNull();
+  expect(projectDetailPath(href, 'http://[')).toBeNull();
+});
+
+it('resolves an accepted detail selection once without weakening the fresh completion boundary', () => {
+  const NativeURL = URL;
+  let constructions = 0;
+  let current!: ReturnType<typeof usePortalPageSourceController>;
+  function Probe() { current = usePortalPageSourceController('/dashboard', '/dashboard', ''); return null; }
+  const view = renderIntoDocument(<Probe/>);
+  onTestFinished(() => view.unmount());
+  const outgoing = {}, pending = {};
+  act(() => current.register({ pathname: '/dashboard', completion: outgoing }));
+  vi.stubGlobal('URL', class extends NativeURL {
+    constructor(url: string | URL, base?: string | URL) { super(url, base); constructions++; }
+  });
+  try {
+    act(() => { expect(current.begin('/staff/projects/proj_A?tab=files#details')).toBe(true); });
+    expect(constructions).toBe(2); // one base URL and one destination, not a second detail parse
+    expect(current.selectedPath).toBe('/staff/projects/proj_A');
+    expect(current.href).toBe('/staff/projects/proj_A?tab=files#details');
+    expect(current.owner).toBeNull();
+    expect(current.allowed({ pathname: '/dashboard', completion: outgoing })).toBe(false);
+    expect(current.allowed({ pathname: '/staff/projects/proj_A', completion: pending })).toBe(false);
+  } finally { vi.unstubAllGlobals(); }
 });
