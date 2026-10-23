@@ -7,6 +7,8 @@ Project Files requests metadata and private preview preparation code independent
 
 `projectFilePreviewOwner` owns the single cache store and immediate owner/source invalidation. The metadata hook imports that core directly; the existing preview cache facade shares it and retains private body admission, leases, eviction and subscriptions. Owner changes and metadata invalidation therefore reach the same displayed bytes and subscribers while private preparation code is pending. Existing private consumers keep their original cache API.
 
+The settled project detail registers its existing guarded source boundary after the fresh staff check, with no separate public frame. Both the actual detail client and correspondence warm read sit inside that boundary, so selecting the real Projects frame retires them even while Next retains the old detail outlet. Valid cached Back/Forward completion, direct entry, tabs and request-owned document reads retain their existing authority and source rules. This does not establish a timing-target pass.
+
 Status: Historical V1 product baseline. Non-conflicting design/commercial truth rules remain active.
 Current implementation authority: `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`
 Programme stage: Overview V2 is implemented and verified in `20a8adee`, entered production in the controlled 2026-07-30 Project Work cutover, and this file remains the historical V1 baseline

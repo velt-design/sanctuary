@@ -8,6 +8,7 @@ import { requireStaffPageAccess } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { DOCUMENT_CALLBACK_HEADER, regionalDocumentCallback } from '@/lib/regionalDocumentAccess';
 import { loadProjectWorkInitialRead } from './loadProjectWorkInitialRead';
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -40,6 +41,7 @@ export default async function ProjectDetailPage({
   const calculatorWorkspace = tab === 'estimates' && Boolean(estimateId || fromEstimateId || newDesign);
   if (!projectId.trim()) {
     return (
+      <PortalGuardedPage pathname={`/staff/projects/${encodeURIComponent(projectId)}`} completion={{}} publicFrame={false}>
       <PageLayout width="full" data-ui-foundation-consumer="project-detail">
         <StaffPageHeader
           variant="detail"
@@ -54,6 +56,7 @@ export default async function ProjectDetailPage({
           description="The project link is invalid. Return to Projects and choose a record."
         />
       </PageLayout>
+      </PortalGuardedPage>
     );
   }
 
@@ -64,6 +67,7 @@ export default async function ProjectDetailPage({
     ? loadProjectWorkInitialRead(projectId, { userId: session.user.id, isAdmin: session.role === 'admin' })
     : undefined;
   return (
+    <PortalGuardedPage pathname={`/staff/projects/${encodeURIComponent(projectId)}`} completion={{}} publicFrame={false}>
     <ProjectCorrespondenceWarmRead projectId={projectId} enabled={tab === 'activity'}>
     <ProjectSnapshotPageClient
       projectId={projectId}
@@ -74,5 +78,6 @@ export default async function ProjectDetailPage({
       initialRead={initialRead}
     />
     </ProjectCorrespondenceWarmRead>
+    </PortalGuardedPage>
   );
 }
