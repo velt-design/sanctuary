@@ -2,6 +2,7 @@ import 'server-only';
 import { isDeveloper } from '@/lib/developerAccess';
 import { getFreshPaymentPilotSession } from '../pilotAccess';
 import { positionRuntime } from '../financePositionRuntime';
+import {startFinancialProfitRead,type FinancialProfitRead} from './profitParts.server';
 import { readFinancialPanel } from './panel';
 import { readFinancials } from './read';
 import { financialPanelQuery, financialsQuery, nzDay, type FinancialEvidence } from './contract';
@@ -37,4 +38,26 @@ export async function readPortalFinancials(params:URLSearchParams,signal:AbortSi
     if(error instanceof Error&&error.message==='FINANCIALS_ACCESS_CHANGED')return denied();
     return financialReadFailure();
   }
+}
+
+/** Progressive callers retain the same fresh staff/finance/developer and source
+ * binding gates. Existing JSON callers keep the reader above unchanged. */
+export async function startPortalFinancialProfitParts(params:URLSearchParams,signal:AbortSignal,userId:string):Promise<ReportRead<FinancialProfitRead>>{
+  const denied=():ReportRead<FinancialProfitRead>=>({ok:false,status:403,error:'Current developer and finance access are required.'});
+  try{
+    const finance=await getFreshPaymentPilotSession();
+    if(!finance||finance.user.id!==userId||!isDeveloper(finance.user))return denied();
+    const parsed=financialPanelQuery.safeParse(Object.fromEntries(params));
+    if([...params.keys()].some(key=>params.getAll(key).length!==1)||!parsed.success||parsed.data.section!=='profit'||parsed.data.to>nzDay())return {ok:false,status:400,error:'Choose a basis and 1 to 366 accounting dates ending today or earlier.'};
+    const source=positionRuntime(signal,undefined,async()=>{
+      const current=await getFreshPaymentPilotSession();
+      if(!current||current.user.id!==userId||!isDeveloper(current.user))throw new Error('FINANCIALS_ACCESS_CHANGED');
+    },true);
+    return {ok:true,report:startFinancialProfitRead(parsed.data,source.deps,source.deadline,source.close)};
+  }catch(error){return financialProfitFailure(error);}
+}
+export function financialProfitFailure(error:unknown):{ok:false;status:number;error:string}{
+  return error instanceof Error&&error.message==='FINANCIALS_ACCESS_CHANGED'
+    ?{ok:false,status:403,error:'Current developer and finance access are required.'}
+    :{ok:false,status:503,error:'Xero reports could not be verified. Retry; if this continues, check the existing finance connection and report access.'};
 }

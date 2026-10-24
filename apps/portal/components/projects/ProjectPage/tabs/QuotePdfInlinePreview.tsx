@@ -55,11 +55,13 @@ async function destroyLoadingTask(task: PdfLoadingTask | null): Promise<void> {
 
 export async function preloadQuotePdfPreview() { await import('pdfjs-dist/legacy/build/pdf.mjs'); }
 
-export default function QuotePdfInlinePreview({ data, source }: { data?: Uint8Array; source?: ProjectPdfStream }) {
+export default function QuotePdfInlinePreview({ data = null, source, pending = !data && !source, readError, onRetry }: { data?: Uint8Array | null; source?: ProjectPdfStream; pending?: boolean; readError?: string; onRetry?: () => void }) {
+  const sourceIdentity = source ?? data;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pdfRef = useRef<PdfDocumentProxy | null>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const [pageCount, setPageCount] = useState(0);
+  const [documentSource, setDocumentSource] = useState<Uint8Array | ProjectPdfStream | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -87,6 +89,7 @@ export default function QuotePdfInlinePreview({ data, source }: { data?: Uint8Ar
     let loadingTask: PdfLoadingTask | null = null;
     let releaseStream: (() => void) | undefined;
 
+    setDocumentSource(source ?? data);
     setPageCount(0);
     setRenderError(null);
     const byteLength = source?.length ?? data?.byteLength ?? 0;
@@ -262,11 +265,15 @@ export default function QuotePdfInlinePreview({ data, source }: { data?: Uint8Ar
     };
   }, [containerWidth, pageCount, data, source]);
 
+  const current = documentSource === sourceIdentity;
+  const visibleError = readError ?? (current ? renderError : null);
+  const status = pending ? "Reading PDF…" : current ? statusMessage : "Loading PDF preview…";
+
   return (
-    <div ref={containerRef} className={styles.quotePreviewDocument}>
-      {renderError ? <p className={styles.quotePreviewRenderState}>{renderError}</p> : null}
-      {!renderError && statusMessage ? <p className={styles.quotePreviewRenderState}>{statusMessage}</p> : null}
-      {Array.from({ length: pageCount }, (_, pageIndex) => (
+    <div ref={containerRef} className={styles.quotePreviewDocument} aria-busy={pending || Boolean(!visibleError && status)}>
+      {visibleError ? <p className={styles.quotePreviewRenderState}>{visibleError} {onRetry ? <button type="button" onClick={onRetry}>Retry PDF</button> : null}</p> : null}
+      {!visibleError && status ? <p role="status" className={styles.quotePreviewRenderState}>{status}</p> : null}
+      {Array.from({ length: current && sourceIdentity && !readError ? pageCount : 0 }, (_, pageIndex) => (
         <div key={pageIndex} className={styles.quotePreviewPage}>
           <canvas
             ref={(node) => {

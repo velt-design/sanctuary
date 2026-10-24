@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, type Dispatch, type SetStateAction } from "react";
+import { useLayoutEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
+import QuotesListSurface, { type QuotesListBinding, type QuotesListEvidence } from './QuotesListSurface';
 import { useCommercialListScroll, useCommercialListState } from './useCommercialListState';
 import { DataStatePanel } from "@/components/ui/foundation/FoundationFeedback";
-import { Badge, Button, ButtonLink, Card, EmptyState, Input, OverflowMenu, SearchFilterBar } from "@/components/ui/foundation";
+import { Badge, Button, ButtonLink, Card, EmptyState, Input, OverflowMenu } from "@/components/ui/foundation";
 import { QuoteStatusBadge } from "@/components/ui/foundation/SanctuaryStatus";
 import type { EstimateMeta } from "@/lib/estimates/types";
 import { getAliasedLocalFirstEntitySyncState } from "@/lib/localFirst/store";
@@ -30,6 +31,7 @@ import { useProjectCommercialContext } from '../ProjectCommercialContext';
 
 type QuotesListViewProps = {
   projectId: string;
+  listSurface?: QuotesListBinding;
   quotes: QuoteVersion[];
   quotesLoading: boolean;
   quotesError: string | null;
@@ -102,25 +104,29 @@ export default function QuotesListView({
   renameQuote,
   closeRename,
   saveRename,
+  listSurface,
 }: QuotesListViewProps) {
   const commercial = useProjectCommercialContext();
   const createEstimate = estimates.find((estimate) => estimate.id === createEstimateId);
   const sharedCreateName = createMode === 'estimate' && createEstimate
     ? quotes.find((quote) => (quote.commercialScopeId ?? null) === (createEstimate.commercialScopeId ?? null) && quote.internalName)?.internalName
     : null;
-  const [query, setQuery] = useCommercialListState(projectId, 'quotes-search', '');
-  const [showHistory, setShowHistory] = useCommercialListState(projectId, 'quotes-history', false);
-  useCommercialListScroll(projectId, 'quotes', !quotesLoading);
-  const matchingQuotes = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    if (!needle) return quotes;
-    return quotes.filter((quote) => [
-      quote.internalName,
-      quote.quoteRef,
-      `v${quote.versionNumber}`,
-      quote.sourceEstimateVersionLabel,
-    ].some((value) => String(value ?? "").toLocaleLowerCase().includes(needle)));
-  }, [query, quotes]);
+  const [savedQuery, setQuery] = useCommercialListState(projectId, 'quotes-search', '');
+  const query = listSurface?.controls.query ?? savedQuery;
+  const [savedHistory, setShowHistory] = useCommercialListState(projectId, 'quotes-history', false);
+  const showHistory = listSurface?.controls.showHistory ?? savedHistory;
+  const restoreScroll = useRef(!listSurface?.controls.interacted && !listSurface?.controls.historyEdited);
+  useCommercialListScroll(projectId, 'quotes', !quotesLoading, restoreScroll.current);
+  if(listSurface?.controls.interacted)restoreScroll.current=false;
+  const adopted = listSurface?.controls.adopted;
+  useLayoutEffect(() => { if(!quotesLoading)adopted?.(); }, [adopted,quotesLoading]);
+  useLayoutEffect(() => {
+    if (!listSurface) return;
+    if (listSurface.controls.edited) { if (query !== savedQuery) setQuery(query); }
+    else listSurface.controls.adoptSavedQuery(savedQuery);
+    if (listSurface.controls.historyEdited) { if (showHistory !== savedHistory) setShowHistory(showHistory); }
+    else listSurface.controls.adoptSavedHistory(savedHistory);
+  }, [listSurface, query, savedQuery, savedHistory, showHistory, setQuery, setShowHistory]);
   const currentAcceptedIds = useMemo(() => new Set(
     selectAuthoritativeAcceptedVersions(quotes.map((quote) => ({
       ...quote,
@@ -136,29 +142,13 @@ export default function QuotesListView({
   const historicalCount = quotes.filter(isHistorical).length;
   // Search always includes history. Older SENT versions remain available until
   // explicitly retired; a newer draft must not silently replace their status.
-  const visibleQuotes = query.trim() || showHistory ? matchingQuotes : matchingQuotes.filter((quote) => !isHistorical(quote));
 
-  return (
-    <div
-      className={styles.wrapper}
-      role="region"
-      aria-label="Quotes"
-      data-quotes-view="list"
-    >
-      <div className={styles.header}>
-        <div>
-          <h3 className={styles.title}>Quotes</h3>
-          <p className={styles.subtitle}>{commercial.closed ? 'Recorded agreements and quote history' : 'Agreed scope first'} · all amounts NZD inc GST</p>
-        </div>
-        {commercial.actionsAvailable && <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={openCreate}
-        >
-          Create quote
-        </button>}
-      </div>
 
+  const evidence: QuotesListEvidence = {
+    pending:quotesLoading,
+    closed: commercial.closed,
+    headerActions: commercial.actionsAvailable ? <button type="button" className={styles.primaryButton} onClick={openCreate}>Create quote</button> : null,
+    accepted: <>
       {currentAcceptedIds.size > 0 ? (
         <Card title={commercial.closed ? "Recorded accepted agreement" : quotesError ? "Saved accepted work" : "Current accepted work"} padding="compact" headingLevel={4}>
           {commercial.closed && <p>The acceptance is part of the project history. Review any remaining commercial obligations before billing or preparing work.</p>}
@@ -175,7 +165,9 @@ export default function QuotesListView({
         </Card>
       ) : null}
 
-      {quotesLoading ? <p className={styles.note}>Loading quotes…</p> : null}
+    </>,
+    status: <>
+
       {quotesError ? (
         <DataStatePanel
           state={quotes.length ? "stale" : "error"}
@@ -202,19 +194,125 @@ export default function QuotesListView({
         </div>
       ) : null}
 
-      {quotes.length ? (
-        <SearchFilterBar
-          query={query}
-          onQueryChange={setQuery}
-          queryPlaceholder="Search quote names or references"
-          searchId="quote-search"
-          filters={[]}
-          onClearAll={() => setQuery("")}
-        />
+      {quotesLoading&&quotes.length>0&&<p role="status">Updating quote versions. Earlier verified versions remain below.</p>}
+    </>,
+    historicalLabel: quotesLoading && !quotes.length ? 'Reading…' : quotesError && !quotes.length ? 'Unavailable' : historicalCount,
+    dialogs: <>
+      {createOpen ? (
+        <QuoteModal label="Create quote" onClose={closeCreate}>
+          <div className={styles.modalHeader}>
+            <h4 className={styles.cardTitle}>Create quote</h4>
+            <button
+              type="button"
+              className={styles.modalClose}
+              onClick={closeCreate}
+              disabled={createBusy}
+            >
+              Close
+            </button>
+          </div>
+          <div className={styles.modalBody}>
+            {isAdmin ? (
+              <div className={styles.modalModeSwitch} aria-label="Quote source">
+                <button type="button" disabled={createBusy} className={createMode === "estimate" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("estimate")}>From estimate</button>
+                <button type="button" disabled={createBusy} className={createMode === "manual" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("manual")}>Manual quote</button>
+              </div>
+            ) : null}
+            {createMode === "estimate" ? (
+              <>
+                <label className={styles.metaLabel} htmlFor="estimateSelect">Select design version</label>
+                <select
+                  id="estimateSelect"
+                  className={styles.metaInput}
+                  value={createEstimateId}
+                  disabled={createBusy || estimatesLoading}
+                  onChange={(event) => {
+                    setCreateEstimateId(event.target.value);
+                    const estimate = estimates.find((item) => item.id === event.target.value);
+                    const family = quotes.find((quote) =>
+                      (quote.commercialScopeId ?? null) === (estimate?.commercialScopeId ?? null),
+                    );
+                    setCreateInternalName(family?.internalName ?? estimate?.internalName ?? "");
+                  }}
+                >
+                  {!estimates.length ? <option value="">No estimates available</option> : null}
+                  {estimates.map((estimate) => (
+                    <option key={estimate.id} value={estimate.id}>
+                      {estimate.internalName || (estimate.isActiveDraft
+                        ? "Current draft design"
+                        : `Design ${estimate.versionLabel}`)}{estimate.commercialScopeKind === "add_on" ? " · Add-on" : ""}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <div className={styles.manualQuoteFields}>
+                <Input label="First line item" disabled={createBusy} value={manualDescription} onChange={(event) => setManualDescription(event.target.value)} placeholder="e.g. Supply and install additional post" />
+                <Input label="Quantity" disabled={createBusy} type="number" min="0.01" step="0.01" value={manualQty} onChange={(event) => setManualQty(event.target.value)} />
+                <Input label="Unit price (inc GST)" disabled={createBusy} type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} helperText="Add more lines and edit payment terms after creation." />
+              </div>
+            )}
+            {sharedCreateName ? (
+              <div>
+                <span className={styles.metaLabel}>Internal quote name</span>
+                <p className={styles.metaValue}>{sharedCreateName}</p>
+                <p className={styles.muted}>Shared by all versions. Use Rename in the quote list to change it.</p>
+              </div>
+            ) : <Input
+              label="Internal quote name (optional)"
+              value={createInternalName}
+              disabled={createBusy}
+              onChange={(event) => setCreateInternalName(event.target.value)}
+              placeholder="e.g. Front deck pergola"
+              maxLength={COMMERCIAL_INTERNAL_NAME_MAX_LENGTH}
+              helperText="For staff use only; customer documents keep the quote reference."
+            />}
+          </div>
+          <div className={styles.modalFooter}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={closeCreate}
+              disabled={createBusy}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={createQuote}
+              disabled={createBusy || (createMode === "estimate" ? !createEstimateId : !manualDescription.trim() || Number(manualQty) <= 0 || Number(manualPrice) <= 0)}
+            >
+              {createBusy ? "Creating..." : "Create quote"}
+            </button>
+          </div>
+        </QuoteModal>
       ) : null}
 
-      {historicalCount > 0 ? <label className={styles.historyToggle}><input type="checkbox" checked={showHistory} onChange={(event) => setShowHistory(event.target.checked)} /> Show historical versions ({historicalCount}){query.trim() ? <span>Search includes history</span> : null}</label> : null}
-
+      <CommercialInternalNameDialog
+        open={Boolean(renameTarget)}
+        title="Rename quote"
+        description="This updates the staff-only name across every version of this quote."
+        initialValue={renameTarget?.internalName}
+        submitLabel="Save name"
+        pending={renamePending}
+        onClose={closeRename}
+        onSubmit={saveRename}
+      />
+    </>,
+    render: (query, showHistory) => {
+      const matchingQuotes = (() => {
+    const needle = query.trim().toLocaleLowerCase();
+    if (!needle) return quotes;
+    return quotes.filter((quote) => [
+      quote.internalName,
+      quote.quoteRef,
+      `v${quote.versionNumber}`,
+      quote.sourceEstimateVersionLabel,
+    ].some((value) => String(value ?? "").toLocaleLowerCase().includes(needle)));
+      })();
+      const visibleQuotes = query.trim() || showHistory ? matchingQuotes : matchingQuotes.filter((quote) => !isHistorical(quote));
+      return { noMatches: <>
       {!quotesLoading && quotes.length && !visibleQuotes.length ? (
         <EmptyState
           title={query.trim() ? "No matching quotes" : "Only historical versions"}
@@ -222,19 +320,9 @@ export default function QuotesListView({
         />
       ) : null}
 
-      {visibleQuotes.length ? (
-        <div className={styles.tableWrap}>
-          <table className={styles.listTable}>
-            <thead>
-              <tr>
-                <th>Quote</th>
-                <th>Dates</th>
-                <th>Status</th>
-                <th>Amount (inc GST)</th>
-                                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+      </>, rows: <>
+              {quotesLoading&&!quotes.length&&<tr><td colSpan={5} role="status">Reading quote versions…</td></tr>}
+              {quotesError&&!quotes.length&&<tr><td colSpan={5}>Quote versions unavailable. Retry the read.</td></tr>}
               {visibleQuotes.map((quote) => {
                 const expired = quote.status !== "ACCEPTED" && isExpired(quote.expiresAt);
                 const quoteSyncPending =
@@ -342,18 +430,18 @@ export default function QuotesListView({
                           {
                             label: "Rename quote",
                             onSelect: () => renameQuote(quote),
-                            disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                            disabled: quotesLoading||Boolean(quotesError)||!commercial.actionsAvailable||isLocalQuoteId(quote.id) || quoteSyncPending,
                           },
                           ...(isAdmin && canDelete ? [{
                             label: "Delete draft quote",
                             destructive: true,
                             onSelect: () => deleteQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
-                            disabled: isLocalQuoteId(quote.id) || quoteSyncPending,
+                            disabled: quotesLoading||Boolean(quotesError)||!commercial.actionsAvailable||isLocalQuoteId(quote.id) || quoteSyncPending,
                           }] : []),
                           ...(isAdmin && canSupersede ? [{
                             label: supersedePendingId === quote.id ? "Marking superseded..." : "Mark superseded",
                             onSelect: () => supersedeQuote({ id: quote.id, quoteRef: quote.quoteRef, versionNumber: quote.versionNumber }),
-                            disabled: supersedePendingId !== null,
+                            disabled: quotesLoading||Boolean(quotesError)||!commercial.actionsAvailable||supersedePendingId !== null,
                           }] : []),
                         ]}
                       />
@@ -361,112 +449,12 @@ export default function QuotesListView({
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {createOpen ? (
-        <QuoteModal label="Create quote" onClose={closeCreate}>
-          <div className={styles.modalHeader}>
-            <h4 className={styles.cardTitle}>Create quote</h4>
-            <button
-              type="button"
-              className={styles.modalClose}
-              onClick={closeCreate}
-              disabled={createBusy}
-            >
-              Close
-            </button>
-          </div>
-          <div className={styles.modalBody}>
-            {isAdmin ? (
-              <div className={styles.modalModeSwitch} aria-label="Quote source">
-                <button type="button" disabled={createBusy} className={createMode === "estimate" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("estimate")}>From estimate</button>
-                <button type="button" disabled={createBusy} className={createMode === "manual" ? styles.modalModeButtonActive : styles.modalModeButton} onClick={() => setCreateMode("manual")}>Manual quote</button>
-              </div>
-            ) : null}
-            {createMode === "estimate" ? (
-              <>
-                <label className={styles.metaLabel} htmlFor="estimateSelect">Select design version</label>
-                <select
-                  id="estimateSelect"
-                  className={styles.metaInput}
-                  value={createEstimateId}
-                  disabled={createBusy || estimatesLoading}
-                  onChange={(event) => {
-                    setCreateEstimateId(event.target.value);
-                    const estimate = estimates.find((item) => item.id === event.target.value);
-                    const family = quotes.find((quote) =>
-                      (quote.commercialScopeId ?? null) === (estimate?.commercialScopeId ?? null),
-                    );
-                    setCreateInternalName(family?.internalName ?? estimate?.internalName ?? "");
-                  }}
-                >
-                  {!estimates.length ? <option value="">No estimates available</option> : null}
-                  {estimates.map((estimate) => (
-                    <option key={estimate.id} value={estimate.id}>
-                      {estimate.internalName || (estimate.isActiveDraft
-                        ? "Current draft design"
-                        : `Design ${estimate.versionLabel}`)}{estimate.commercialScopeKind === "add_on" ? " · Add-on" : ""}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : (
-              <div className={styles.manualQuoteFields}>
-                <Input label="First line item" disabled={createBusy} value={manualDescription} onChange={(event) => setManualDescription(event.target.value)} placeholder="e.g. Supply and install additional post" />
-                <Input label="Quantity" disabled={createBusy} type="number" min="0.01" step="0.01" value={manualQty} onChange={(event) => setManualQty(event.target.value)} />
-                <Input label="Unit price (inc GST)" disabled={createBusy} type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} helperText="Add more lines and edit payment terms after creation." />
-              </div>
-            )}
-            {sharedCreateName ? (
-              <div>
-                <span className={styles.metaLabel}>Internal quote name</span>
-                <p className={styles.metaValue}>{sharedCreateName}</p>
-                <p className={styles.muted}>Shared by all versions. Use Rename in the quote list to change it.</p>
-              </div>
-            ) : <Input
-              label="Internal quote name (optional)"
-              value={createInternalName}
-              disabled={createBusy}
-              onChange={(event) => setCreateInternalName(event.target.value)}
-              placeholder="e.g. Front deck pergola"
-              maxLength={COMMERCIAL_INTERNAL_NAME_MAX_LENGTH}
-              helperText="For staff use only; customer documents keep the quote reference."
-            />}
-          </div>
-          <div className={styles.modalFooter}>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={closeCreate}
-              disabled={createBusy}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={createQuote}
-              disabled={createBusy || (createMode === "estimate" ? !createEstimateId : !manualDescription.trim() || Number(manualQty) <= 0 || Number(manualPrice) <= 0)}
-            >
-              {createBusy ? "Creating..." : "Create quote"}
-            </button>
-          </div>
-        </QuoteModal>
-      ) : null}
-
-      <CommercialInternalNameDialog
-        open={Boolean(renameTarget)}
-        title="Rename quote"
-        description="This updates the staff-only name across every version of this quote."
-        initialValue={renameTarget?.internalName}
-        submitLabel="Save name"
-        pending={renamePending}
-        onClose={closeRename}
-        onSubmit={saveRename}
-      />
-    </div>
-  );
+      </> };
+    },
+  };
+  const publish = listSurface?.publish;
+  useLayoutEffect(() => { publish?.(evidence); }, [publish, evidence]);
+  useLayoutEffect(() => () => publish?.(null), [publish]);
+  return listSurface ? null : <QuotesListSurface query={query} onQueryChange={setQuery} showHistory={showHistory}
+    onHistoryChange={setShowHistory} evidence={evidence} />;
 }

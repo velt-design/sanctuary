@@ -2,6 +2,7 @@ import { act, createRef, type Ref, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderIntoDocument } from '../../../../../test/reactHarness';
+import CalculatorSessionBoundary from './CalculatorSessionBoundary';
 import CalculatorResultInspector, {
   type CalculatorResultInspectorHandle,
   type CalculatorResultInspectorProps,
@@ -122,6 +123,29 @@ afterEach(() => {
 });
 
 describe('CalculatorResultInspector', () => {
+  it('keeps real result controls and panels through pending, failure and recovery without exposing unverified result bodies', () => {
+    const retry=vi.fn();
+    const ui=(ready:boolean,error:string|null=null)=><CalculatorSessionBoundary ready={ready} error={error} onRetry={retry}><ControlledInspector/></CalculatorSessionBoundary>;
+    const view=renderIntoDocument(ui(false));
+    const materials=tab('Materials');
+    const panel=document.querySelector('[role="tabpanel"]');
+    expect(document.querySelector('[data-testid="actual-cost"]')).toBeNull();
+    expect(document.querySelector('[data-testid="module-views"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('2 input issues');
+    act(()=>materials.click());
+    expect(materials.getAttribute('aria-selected')).toBe('true');
+    view.rerender(ui(false,'Read failed'));
+    expect(tab('Materials')).toBe(materials);
+    expect(document.querySelector('[role="tabpanel"]')).toBe(panel);
+    expect(document.body.textContent).toContain('Result unavailable');
+    view.rerender(ui(true));
+    expect(tab('Materials')).toBe(materials);
+    expect(materials.getAttribute('aria-selected')).toBe('true');
+    expect(document.querySelector('[data-testid="actual-cost"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="module-views"]')).not.toBeNull();
+    view.unmount();
+  });
+
   it('keeps price, freshness, issue count, and readiness above five output tabs', () => {
     renderIntoDocument(<CalculatorResultInspector {...buildProps()} />);
 

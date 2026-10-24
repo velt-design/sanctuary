@@ -262,11 +262,11 @@ describe('portal proxy', () => {
     expect(createServerClientMock).not.toHaveBeenCalled();
   });
 
-  it('allows the data-free Schedule operations fixture to enforce its own server flag without auth', async () => {
+  it.each(['/qa/schedule-ops-fixture','/qa/schedule-progressive-fixture','/qa/portal-progressive-fixture','/qa/portal-progressive-fixture/dashboard-read','/qa/marketing-performance-fixture/financial-read'])('allows %s to enforce its own server flag without auth', async (fixturePath) => {
     process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
 
     const response = await proxy(
-      new NextRequest('https://example.com/qa/schedule-ops-fixture?view=gantt&scale=large'),
+      new NextRequest('https://example.com'+fixturePath+'?view=gantt&scale=large'),
     );
 
     expect(response.status).toBe(200);

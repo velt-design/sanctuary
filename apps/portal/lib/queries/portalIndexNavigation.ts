@@ -1,9 +1,10 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { shouldHandleRouteTransitionClick } from '@/components/page-state/PortalRouteTransition';
+import { shouldHandleRouteTransitionClick, shouldStartRouteTransitionForHref } from '@/components/page-state/PortalRouteTransition';
 import type { PortalInstantRoute } from '@/components/page-state/PortalRouteTransition';
-import { contactsIndexQueryOptions } from './contactsIndex';
-import { projectsIndexQueryOptions, type ProjectsIndexArchiveFilter } from './projectsIndex';
+import type { ProjectsIndexArchiveFilter } from './projectsIndex';
 import { resolveProjectIndexReturnHref } from '@/lib/projects/projectIndexSession';
+import { publicFramePath } from '@/components/page-state/PortalPageSource';
+import {portalInstantRouteTarget} from '@/lib/portalInstantRoutes';
 
 const PORTAL_INDEX_OPENING_PARAM = '__portal_opening';
 
@@ -59,11 +60,7 @@ export function preloadPortalIndex(
   const target = portalIndexTarget(href);
   if (!target) return null;
   router.prefetch(href);
-  if (target.route === 'projects-index') {
-    void queryClient.prefetchQuery(projectsIndexQueryOptions(projectsArchiveFromPortalIndexTarget(target)));
-  } else {
-    void queryClient.prefetchQuery(contactsIndexQueryOptions());
-  }
+  // Index records mount only after the selected guarded leaf is adopted.
   return target.route;
 }
 
@@ -80,4 +77,30 @@ export function openPortalIndexInstantly(
   window.history.pushState(null, '', openingHref);
   router.replace(href, { scroll: false });
   return target.route;
+}
+
+/** The Schedule frame shares the accepted index history handoff, not its API prefetch. */
+export function openPortalScheduleInstantly(
+  event: PortalIndexClickEvent,
+  router: Pick<PortalIndexRouter, 'replace'>,
+  href: string,
+): boolean {
+  if(publicFramePath(href,window.location.href)!=='/staff/schedule')return false;
+  return openPortalActualFrameInstantly(event,router,href);
+}
+
+/** Reuse the accepted index history handoff for the seven actual public frames. */
+export function openPortalActualFrameInstantly(
+  event:PortalIndexClickEvent,router:Pick<PortalIndexRouter,'replace'>,href:string,
+):boolean{
+  if (!shouldHandleRouteTransitionClick(event) || !shouldStartRouteTransitionForHref(href)
+    || !publicFramePath(href, window.location.href)) return false;
+  const target = new URL(href, window.location.href);
+  const route=portalInstantRouteTarget(href,window.location.href);
+  if(!route)return false;
+  target.searchParams.set(PORTAL_INDEX_OPENING_PARAM, route.route);
+  event.preventDefault();
+  window.history.pushState(null, '', `${target.pathname}${target.search}${target.hash}`);
+  router.replace(href, { scroll: false });
+  return true;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {useCostingOverview} from './useCostingOverview';
 import AccessoryRatesEditor from './AccessoryRatesEditor';
 import InstalledSellingRatesEditor from './InstalledSellingRatesEditor';
 import type { CostingControlConfigV1 } from '@sp/costing';
@@ -108,8 +109,7 @@ function currentWorkflowStep(
   return 2;
 }
 
-export default function CostingControlCentre({ initialOverview }: { initialOverview: CostingConfigurationOverview }) {
-  const [overview, setOverview] = useState(initialOverview);
+export default function CostingControlCentre({ initialOverview,initialOverviewRead,overviewLoader,readOnlyMode=false }: { overviewLoader?:()=>Promise<CostingConfigurationOverview>;readOnlyMode?:boolean; initialOverview?: CostingConfigurationOverview;initialOverviewRead?:Promise<CostingConfigurationOverview|null> }) {
   const [editor, setEditor] = useState<EditorPayload | null>(null);
   const [config, setConfig] = useState<CostingControlConfigV1 | null>(null);
   const [section, setSection] = useState<CostingControlSection>('materials');
@@ -128,16 +128,16 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const [validationState, setValidationState] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [draftDialog, setDraftDialog] = useState<DraftDialogState | null>(null);
   const publishPanelRef = useRef<HTMLDivElement>(null);
-  const initialOverviewSignatureRef = useRef(JSON.stringify(initialOverview));
   const actionLockedRef = useRef(false);
   const draftVersionIdRef = useRef(newId());
+  const {overview,setOverview,pending:overviewPending,setPending:setOverviewPending,error:overviewError,setError:setOverviewError}=useCostingOverview({initialOverview,initialOverviewRead,busy,dirty});
 
   const versionById = useMemo(
-    () => new Map(overview.versions.map((version) => [version.id, version])),
-    [overview.versions],
+    () => new Map(overview?.versions.map((version) => [version.id, version])),
+    [overview?.versions],
   );
-  const latestDraft = overview.versions.find((version) => version.status === 'draft') ?? null;
-  const currentVersion = overview.currentVersionId ? versionById.get(overview.currentVersionId) ?? null : null;
+  const latestDraft = overview?.versions.find((version) => version.status === 'draft') ?? null;
+  const currentVersion = overview?.currentVersionId ? versionById.get(overview.currentVersionId) ?? null : null;
   const materialLabels = useMemo(
     () => new Map(editor?.catalog.materials.map((item) => [item.id, item.label]) ?? []),
     [editor],
@@ -147,7 +147,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     [editor],
   );
   const readOnly = editor?.version.status !== 'draft';
-  const controlsReadOnly = readOnly || busy;
+  const controlsReadOnly = readOnlyMode || readOnly || busy;
   const baseline = editor?.comparison?.baselineConfig ?? editor?.version.config ?? null;
   const workflowStep = currentWorkflowStep(editor, section);
   const changedCounts = useMemo(
@@ -159,14 +159,6 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const configMatchesBaseline = Boolean(
     config && baseline && JSON.stringify(config) === JSON.stringify(baseline),
   );
-
-  useEffect(() => {
-    const signature = JSON.stringify(initialOverview);
-    if (signature === initialOverviewSignatureRef.current) return;
-    if (dirty || busy) return;
-    initialOverviewSignatureRef.current = signature;
-    setOverview(initialOverview);
-  }, [busy, dirty, initialOverview]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -236,7 +228,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   );
 
   const refreshOverview = async () => {
-    setOverview(await requestJson<CostingConfigurationOverview>('/api/admin/costing/configurations'));
+    setOverview(await (overviewLoader?overviewLoader():requestJson<CostingConfigurationOverview>('/api/admin/costing/configurations')));
   };
 
   const loadVersion = async (versionId: string, landing?: CostingControlSection) => {
@@ -254,7 +246,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const openVersion = async (versionId: string, landing?: CostingControlSection) => {
-    if (busy || actionLockedRef.current) return;
+    if (readOnlyMode||busy || actionLockedRef.current) return;
     if (!confirmDiscard()) return;
     actionLockedRef.current = true;
     setBusy(true);
@@ -271,7 +263,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const createDraft = (sourceVersionId?: string) => {
-    if (busy) return;
+    if (readOnlyMode||busy||!overview) return;
     if (!confirmDiscard()) return;
     draftVersionIdRef.current = newId();
     const source = sourceVersionId ? versionById.get(sourceVersionId) : null;
@@ -283,7 +275,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const submitDraft = async () => {
-    if (!draftDialog || busy || actionLockedRef.current) return;
+    if (readOnlyMode||!draftDialog || busy || actionLockedRef.current) return;
     const source = draftDialog.sourceVersionId
       ? versionById.get(draftDialog.sourceVersionId) ?? null
       : null;
@@ -363,6 +355,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const saveDraft = async (landing?: CostingControlSection) => {
+    if(readOnlyMode)return;
     if (busy || actionLockedRef.current || !editor || !config) return;
     actionLockedRef.current = true;
     setBusy(true);
@@ -428,6 +421,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   };
 
   const publishDraft = async () => {
+    if(readOnlyMode)return;
     if (busy || actionLockedRef.current || !editor || dirty || !confirmed) return;
     if (!window.confirm('Publish this pricing version? Future calculations will use it immediately.')) return;
     actionLockedRef.current = true;
@@ -499,8 +493,8 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
             Continue draft v{latestDraft.versionNumber}
           </button>
         ) : (
-          <button className={styles.button} type="button" disabled={busy} onClick={() => createDraft()}>
-            Create first draft
+          <button className={styles.button} type="button" disabled={readOnlyMode||busy||!overview} onClick={() => createDraft()}>
+            {overview?'Create first draft':overviewPending?'Reading overview…':'Pricing unavailable'}
           </button>
         )}
       </header>
@@ -519,10 +513,12 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
       <CostingStatusSummary
         currentVersion={currentVersion}
         latestDraft={latestDraft}
+        readState={overview?'ready':overviewPending?'pending':'unavailable'}
         selectedVersion={editor?.version ?? null}
         dirty={dirty}
       />
 
+      {overviewError&&<div className={styles.error} role="alert">{overviewError} <button type="button" disabled={overviewPending} onClick={()=>{setOverviewPending(true);setOverviewError('');void refreshOverview().catch(()=>setOverviewError('Pricing configuration overview could not be loaded. Retry.')).finally(()=>setOverviewPending(false));}}>Retry overview</button></div>}
       {error ? <div className={styles.error} role="alert">{error}</div> : null}
       {message ? <div className={styles.success} role="status">{message}</div> : null}
       {issues.length ? (
@@ -569,9 +565,9 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
         <section className={styles.onboardingCard}>
           <div>
             <div className={styles.eyebrow}>Step 1 · Overview</div>
-            <h2>{latestDraft ? 'Continue the current pricing review' : 'Start with a safe draft'}</h2>
+            <h2>{!overview?'Pricing overview':latestDraft?'Continue the current pricing review':'Start with a safe draft'}</h2>
             <p>
-              {latestDraft
+              {!overview?(overviewPending?'Reading current pricing and draft records…':'Pricing records unavailable. Retry before creating a draft.'):latestDraft
                 ? 'Open the existing draft to review its settings, validate it and inspect representative project impacts.'
                 : 'A draft begins as an exact copy of the active calculator settings. Nothing changes for staff or customers until an admin explicitly publishes it.'}
             </p>
@@ -579,19 +575,20 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
           <button
             className={styles.button}
             type="button"
-            disabled={busy}
+            disabled={readOnlyMode||busy||!overview}
             onClick={() => latestDraft ? openVersion(latestDraft.id) : createDraft()}
           >
-            {latestDraft ? `Open draft v${latestDraft.versionNumber}` : 'Create first draft'}
+            {!overview?overviewPending?'Reading overview…':'Pricing unavailable':latestDraft?`Open draft v${latestDraft.versionNumber}`:'Create first draft'}
           </button>
         </section>
       ) : null}
 
       <VersionHistory
         overview={overview}
+        pending={overviewPending}
         versionById={versionById}
         selectedId={editor?.version.id ?? null}
-        busy={busy}
+        busy={busy||readOnlyMode}
         onOpen={openVersion}
         onClone={createDraft}
       />
@@ -612,7 +609,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
               </p>
             </div>
             <span className={`${styles.badge} ${readOnly ? styles.published : styles.draft}`}>
-              {editor.version.id === overview.currentVersionId
+              {editor.version.id === overview?.currentVersionId
                 ? 'Current published'
                 : readOnly
                   ? 'Superseded'

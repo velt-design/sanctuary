@@ -13,17 +13,17 @@ import type { LocalFirstEntityKey, LocalFirstEntitySyncState } from './types';
 export function useAliasedEntitySyncState(
   entityId: string | null | undefined,
   buildEntityKey: (id: string) => LocalFirstEntityKey,
-  fallbackEntityKey: LocalFirstEntityKey,
+  fallbackEntityKey: LocalFirstEntityKey | null,
 ): LocalFirstEntitySyncState {
   const snapshot = useSyncExternalStore(subscribeToLocalFirstStore, getLocalFirstStoreSnapshot, getLocalFirstStoreSnapshot);
 
   useEffect(() => {
-    void ensureLocalFirstStoreReady();
-  }, []);
+    if (fallbackEntityKey) void ensureLocalFirstStoreReady();
+  }, [fallbackEntityKey]);
 
-  if (!snapshot.hydrated) {
+  if (!snapshot.hydrated || !fallbackEntityKey) {
     return {
-      entityKey: fallbackEntityKey,
+      entityKey: fallbackEntityKey ?? "",
       status: 'idle',
       pendingCount: 0,
       updatedAt: new Date(0).toISOString(),

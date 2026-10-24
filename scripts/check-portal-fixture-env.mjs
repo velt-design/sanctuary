@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import net from 'node:net';
+import { portalNextDevOwner, readProcessArgv } from './ci/portal-next-process-owner.mjs';
 
 const ROOT = process.cwd();
 const DEFAULT_PORT = 3011;
@@ -83,7 +84,9 @@ function processInfo(pid) {
   }
 
   const commandLine = run('ps', ['-p', String(pid), '-o', 'args=']);
-  return { pid: String(pid), commandLine };
+  const parentPid = run('ps', ['-p', String(pid), '-o', 'ppid=']).trim();
+  const parentCommandLine = parentPid ? run('ps', ['-p', parentPid, '-o', 'args=']) : '';
+  return { pid: String(pid), parentPid, commandLine, parentCommandLine, argv: readProcessArgv(pid), parentArgv: readProcessArgv(parentPid) };
 }
 
 function listeningPid(targetPort) {
@@ -111,20 +114,14 @@ function isPortAvailable(targetPort) {
   });
 }
 
-function isPortalNextDevProcess(info) {
-  const commandLine = `${info?.commandLine ?? ''} ${info?.parentCommandLine ?? ''}`
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-  return commandLine.includes('next') && commandLine.includes('dev');
-}
 
 async function checkLocalServerSlot() {
   const pid = listeningPid(port);
   if (pid) {
     const info = processInfo(pid);
-    const commandLine = info?.parentCommandLine || info?.commandLine || 'unknown command';
+    const commandLine = info?.commandLine || 'unknown command';
     const displayPid = info?.pid ?? pid ?? 'unknown';
-    const processHint = isPortalNextDevProcess(info)
+    const processHint = portalNextDevOwner(info, ROOT)
       ? `Detected an existing portal Next dev server on port ${port} (PID ${displayPid}).`
       : `Port ${port} is already in use (PID ${displayPid}).`;
 

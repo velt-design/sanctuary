@@ -20,11 +20,11 @@ import type { Contact } from '@/lib/types/contact';
 
 const CONTACT_DETAILS_AUTOSAVE_DELAY_MS = 700;
 
-function toDraft(contact: Contact): PortalContactDetailsDraft {
+function toDraft(contact: Contact | null): PortalContactDetailsDraft {
   return normalizeContactDetailsDraft({
-    displayName: contact.displayName,
-    email: contact.email,
-    phone: contact.phone,
+    displayName: contact?.displayName ?? "",
+    email: contact?.email ?? "",
+    phone: contact?.phone ?? "",
   });
 }
 
@@ -50,15 +50,15 @@ function syncLabel(args: {
   return null;
 }
 
-export function useContactDetailsDraft(contact: Contact, hostKey: string) {
+export function useContactDetailsDraft(contact: Contact | null, hostKey: string) {
   const queryClient = useQueryClient();
-  const entityKey = useMemo(() => buildContactDetailsEntityKey(contact.id), [contact.id]);
+  const entityKey = useMemo(() => contact ? buildContactDetailsEntityKey(contact.id) : null, [contact?.id]);
   const serverDraft = useMemo(
     () => toDraft(contact),
-    [contact.displayName, contact.email, contact.phone],
+    [contact?.displayName, contact?.email, contact?.phone],
   );
   const workingCopy = useLocalWorkingCopy<PortalContactDetailsDraft>(entityKey, serverDraft);
-  const syncState = useAliasedEntitySyncState(contact.id, buildContactDetailsEntityKey, entityKey);
+  const syncState = useAliasedEntitySyncState(contact?.id, buildContactDetailsEntityKey, entityKey);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<PortalContactDetailsDraft>(serverDraft);
   const [confirmedDraft, setConfirmedDraft] = useState<PortalContactDetailsDraft>(serverDraft);
@@ -118,12 +118,13 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
   }, []);
 
   const canSave = useMemo(
-    () => Boolean(draft.displayName.trim()) && isValidOptionalContactEmail(draft.email),
-    [draft],
+    () => Boolean(contact) && Boolean(draft.displayName.trim()) && isValidOptionalContactEmail(draft.email),
+    [contact, draft],
   );
   const dirty = useMemo(() => !sameDraft(draft, confirmedDraft), [confirmedDraft, draft]);
 
   const persistDraft = useCallback(async (candidate: PortalContactDetailsDraft) => {
+    if (!contact || !entityKey) return false;
     const nextDraft = normalizeContactDetailsDraft(candidate);
     if (!nextDraft.displayName || !isValidOptionalContactEmail(nextDraft.email)) return false;
 
@@ -136,6 +137,7 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
     }
 
     const previousContact = lastQueuedContactRef.current;
+    if (!previousContact) return false;
     const optimisticContact = patchContactDetailsCaches(queryClient, hostKey, previousContact, nextDraft);
     lastQueuedContactRef.current = optimisticContact;
     lastQueuedDraftRef.current = nextDraft;
@@ -167,7 +169,7 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
       setEnqueueError(error instanceof Error ? error.message : 'Could not queue contact details.');
       return false;
     }
-  }, [confirmedDraft, contact.id, entityKey, hostKey, queryClient, syncState.pendingCount, workingCopy]);
+  }, [confirmedDraft, contact?.id, entityKey, hostKey, queryClient, syncState.pendingCount, workingCopy]);
 
   useEffect(() => {
     if (!isEditing || !dirty || !canSave) return;
@@ -185,13 +187,14 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
   }, [canSave, dirty, isEditing, persistDraft]);
 
   const updateDraftField = useCallback((field: keyof PortalContactDetailsDraft, value: string) => {
+    if (!contact) return;
     const nextDraft = { ...draftRef.current, [field]: value };
     draftRef.current = nextDraft;
     setDraft(nextDraft);
     setHasLocalIntent(true);
     setEnqueueError(null);
     void workingCopy.setWorkingCopy(normalizeContactDetailsDraft(nextDraft));
-  }, [workingCopy]);
+  }, [contact, workingCopy]);
 
   const finishEditing = useCallback(() => {
     if (!canSave) return;
@@ -223,6 +226,7 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
   }, [confirmedDraft, syncState.pendingCount, syncState.status, workingCopy.hasLocalCopy, workingCopy.value]);
 
   const retry = useCallback(async () => {
+    if (!contact || !entityKey || !lastQueuedContactRef.current) return;
     setEnqueueError(null);
     const retryDraft = normalizeContactDetailsDraft(workingCopy.value);
     setDraft(retryDraft);
@@ -234,7 +238,7 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
       lastEnqueuedSerializedRef.current = null;
       await persistDraft(retryDraft);
     }
-  }, [entityKey, hostKey, persistDraft, queryClient, workingCopy.value]);
+  }, [contact, entityKey, hostKey, persistDraft, queryClient, workingCopy.value]);
 
   const reviewLocalDraft = useCallback(() => {
     const localDraft = normalizeContactDetailsDraft(workingCopy.value);
@@ -244,7 +248,7 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
   }, [workingCopy.value]);
 
   const hasTerminalConflict = syncState.status === 'conflict';
-  const displayed = isEditing
+  const displayed = !entityKey || hydratedEntityRef.current !== entityKey ? serverDraft : isEditing
     ? draft
     : hasTerminalConflict
       ? confirmedDraft
@@ -255,20 +259,20 @@ export function useContactDetailsDraft(contact: Contact, hostKey: string) {
   const canRetry = Boolean(enqueueError) || syncState.status === 'offline' || syncState.status === 'error' || hasTerminalConflict;
 
   return {
-    canRetry,
+    canRetry: Boolean(contact) && canRetry,
     canSave,
     displayed,
     draft,
-    error,
+    error: contact ? error : null,
     finishEditing,
-    isEditing,
+    isEditing: Boolean(contact) && isEditing,
     isSaving: syncState.status === 'queued' || syncState.status === 'syncing',
     resetEditing,
     retry,
     reviewLocalDraft,
     saveCurrentDraft,
-    setIsEditing,
-    statusText: syncLabel({ status: syncState.status, dirty, lastSyncedAt: syncState.lastSyncedAt }),
+    setIsEditing: (value: boolean) => { if (contact) setIsEditing(value); },
+    statusText: !contact ? null : syncLabel({ status: syncState.status, dirty, lastSyncedAt: syncState.lastSyncedAt }),
     updateDraftField,
   };
 }

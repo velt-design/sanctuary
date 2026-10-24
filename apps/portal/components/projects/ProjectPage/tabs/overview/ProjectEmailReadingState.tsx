@@ -21,6 +21,13 @@ function useReadingState(scope = '') {
 
 const ReadingContext = createContext<ReturnType<typeof useReadingState> | null>(null);
 
+/** Capture an existing owner without allocating a second fallback state. */
+export const useProjectEmailReadingContext = () => useContext(ReadingContext);
+
+export function ProjectEmailReadingScope({ value, children }: { value: ReturnType<typeof useReadingState> | null; children: ReactNode }) {
+  return <ReadingContext.Provider value={value}>{children}</ReadingContext.Provider>;
+}
+
 export function ProjectEmailReadingProvider({ children, scope = '' }: { children: ReactNode; scope?: string }) {
   return <ReadingContext.Provider value={useReadingState(scope)}>{children}</ReadingContext.Provider>;
 }

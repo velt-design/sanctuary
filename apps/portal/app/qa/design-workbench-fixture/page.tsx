@@ -4,6 +4,8 @@ import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import DesignWorkbenchFixtureClient from '@/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchFixtureClient';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
+import ProgressiveWorkbenchFixture from './ProgressiveWorkbenchFixture';
+import { progressiveWorkbenchFixture, type WorkbenchFixtureScenario } from './progressiveRead.server';
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -67,6 +69,15 @@ export default async function DesignWorkbenchFixturePage({
         </section>
       </main>
     );
+  }
+
+  if (resolveQueryParam(resolvedSearchParams?.progressive) === '1') {
+    if (!fixture.draft) notFound();
+    const source = resolveQueryParam(resolvedSearchParams?.source) === 'b' ? 'b' : 'a';
+    const requested = resolveQueryParam(resolvedSearchParams?.scenario);
+    const scenario: WorkbenchFixtureScenario = requested === 'failure' || requested === 'denied' || requested === 'empty' ? requested : 'complete';
+    const { projectId, estimateId, read } = progressiveWorkbenchFixture(fixture, source, scenario);
+    return <ProgressiveWorkbenchFixture projectId={projectId} estimateId={estimateId} initialRead={read} draft={fixture.draft} />;
   }
 
   return (

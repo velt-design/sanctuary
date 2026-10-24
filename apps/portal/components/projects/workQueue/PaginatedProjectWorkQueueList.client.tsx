@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState,type ReactNode } from 'react';
 import { Card, DataStatePanel, Pagination, SearchFilterBar } from '@/components/ui/foundation';
 import type { ProjectCommandStaffSummary } from '@/lib/projects/commandCentre/types';
 import ProjectWorkQueueList from './ProjectWorkQueueList';
@@ -14,22 +14,29 @@ import {
   type WorkQueueFilters,
 } from './workQueueFilters';
 import styles from './PaginatedProjectWorkQueueList.module.css';
+import WorkQueueSurface from './WorkQueueSurface';
+import {useWorkQueueWorkspace} from '@/app/staff/projects/work-queue/WorkQueueWorkspace';
 
 export default function PaginatedProjectWorkQueueList({
   entries,
   staff,
   host,
   mutationsEnabled = true,
-  reassignmentEnabled = true,
+  reassignmentEnabled = true,pending=false,statusPanel,
 }: {
   entries: WorkQueueEntryView[];
   staff: ProjectCommandStaffSummary[];
   host: string;
   mutationsEnabled?: boolean;
-  reassignmentEnabled?: boolean;
+  reassignmentEnabled?: boolean;pending?:boolean;statusPanel?:ReactNode;
 }) {
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<WorkQueueFilters>(DEFAULT_WORK_QUEUE_FILTERS);
+  const workspace=useWorkQueueWorkspace();
+  const [localPage,setLocalPage]=useState(1);
+  const page=workspace?.page??localPage;
+  const setPage=workspace?.setPage??setLocalPage;
+  const [localFilters,setLocalFilters]=useState<WorkQueueFilters>(DEFAULT_WORK_QUEUE_FILTERS);
+  const filters=workspace?.filters??localFilters;
+  const setFilters=workspace?.setFilters??setLocalFilters;
   const filteredEntries = useMemo(
     () => filterWorkQueueEntries(entries, staff, filters),
     [entries, filters, staff],
@@ -64,49 +71,18 @@ export default function PaginatedProjectWorkQueueList({
     setPage(1);
   };
 
-  return (
-    <div className={styles.wrapper}>
-      <Card title="Find work" padding="compact" aria-label="Work Queue filters">
-        <SearchFilterBar
-          query={filters.query}
-          onQueryChange={(value) => setFilter('query', value)}
-          queryPlaceholder="Project, action, reason or owner…"
-          searchId="workQueueSearch"
-          collapseFiltersOnNarrow
-          filters={[
-            { id: 'workQueueOwner', label: 'Owner', value: filters.owner, onChange: (value) => setFilter('owner', value), options: ownerOptions },
-            { id: 'workQueueStage', label: 'Stage', value: filters.stage, onChange: (value) => setFilter('stage', value), options: stageOptions },
-            {
-              id: 'workQueueDue',
-              label: 'When',
-              value: filters.dueGroup,
-              onChange: (value) => setFilter('dueGroup', value as WorkQueueFilters['dueGroup']),
-              options: [
-                { value: 'all', label: 'Any time' },
-                { value: 'overdue', label: 'Overdue' },
-                { value: 'today', label: 'Today / ready now' },
-                { value: 'nextSevenBusinessDays', label: 'Next 7 business days' },
-                { value: 'blocked', label: 'Blocked' },
-                { value: 'needsTriage', label: 'Needs triage' },
-              ],
-            },
-          ]}
-          onClearAll={clearFilters}
-        />
-      </Card>
-
-      {hasFilters && !filteredEntries.length ? (
+  const surface={filters,setFilter,clearFilters,ownerOptions,stageOptions,
+    content:(statusPanel??(pending?<ProjectWorkQueueList contentsOnly pending entries={[]} staff={staff} host={host} mutationsEnabled={false}/>:hasFilters && !filteredEntries.length ? (
         <DataStatePanel state="filtered-empty" onClear={clearFilters} />
       ) : (
-        <ProjectWorkQueueList
+        <ProjectWorkQueueList contentsOnly
           entries={visible.entries}
           staff={staff}
           host={host}
           mutationsEnabled={mutationsEnabled}
           reassignmentEnabled={reassignmentEnabled}
         />
-      )}
-      {filteredEntries.length ? (
+      ))),pagination:<>{!pending&&!statusPanel&&filteredEntries.length ? (
         <div className={styles.pagination}>
           <Pagination
             currentPage={visible.page}
@@ -115,7 +91,8 @@ export default function PaginatedProjectWorkQueueList({
             onPageChange={setPage}
           />
         </div>
-      ) : null}
-    </div>
-  );
+      ) : null}</>};
+  useLayoutEffect(()=>{workspace?.publishList(surface);});
+  useLayoutEffect(()=>()=>workspace?.publishList(null),[workspace?.publishList]);
+  return workspace?null:<WorkQueueSurface {...surface}/>;
 }

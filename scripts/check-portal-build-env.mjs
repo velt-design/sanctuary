@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
+import { portalNextDevOwner, readProcessArgv } from './ci/portal-next-process-owner.mjs';
 
 const ROOT = process.cwd();
 const PORTAL_DIR = path.join(ROOT, 'apps', 'portal');
@@ -55,7 +56,7 @@ function processInfo(pid) {
   const commandLine = run('ps', ['-p', String(pid), '-o', 'args=']);
   const parentPid = run('ps', ['-p', String(pid), '-o', 'ppid=']).trim();
   const parentCommandLine = parentPid ? run('ps', ['-p', parentPid, '-o', 'args=']) : '';
-  return { pid: String(pid), parentPid, commandLine, parentCommandLine };
+  return { pid: String(pid), parentPid, commandLine, parentCommandLine, argv: readProcessArgv(pid), parentArgv: readProcessArgv(parentPid) };
 }
 
 function listeningPid(targetPort) {
@@ -83,53 +84,37 @@ function isPortAvailable(targetPort) {
   });
 }
 
-function normalizedCommand(info) {
-  return `${info?.commandLine ?? ''} ${info?.parentCommandLine ?? ''}`.toLowerCase().replace(/\s+/g, ' ');
-}
-
-function isNextDevProcess(info) {
-  const commandLine = normalizedCommand(info);
-  return commandLine.includes('next') && commandLine.includes('dev');
-}
-
 function findPortalNextDevProcess() {
-  const normalizedPortalDir = PORTAL_DIR.toLowerCase().replace(/\\/g, '/');
-
+  let records;
   if (process.platform === 'win32') {
-    const output = ps(
-      `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine -match 'next' -and $_.CommandLine -match 'dev' } | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)|$($_.CommandLine)" }`,
-    );
-    for (const line of output.split(/\r?\n/).filter(Boolean)) {
-      const [pid, parentPid, ...commandParts] = line.split('|');
-      const info = processInfo(pid) ?? { pid, parentPid, commandLine: commandParts.join('|') };
-      const commandLine = normalizedCommand(info).replace(/\\/g, '/');
-      if (commandLine.includes(normalizedPortalDir) || commandLine.includes('apps/portal')) {
-        return info;
-      }
-    }
-    return null;
+    const output = ps("Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(node|nodejs|next)(\\.exe)?$' } | Select-Object ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Compress");
+    try {
+      const parsed = JSON.parse(output || '[]');
+      records = (Array.isArray(parsed) ? parsed : [parsed]).map(info => ({
+        pid: String(info.ProcessId), parentPid: String(info.ParentProcessId), commandLine: info.CommandLine || '',
+      }));
+    } catch { return null; }
+  } else {
+    records = run('ps', ['-eo', 'pid=,ppid=,args=']).split(/\r?\n/).flatMap(line => {
+      const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/);
+      return match ? [{ pid: match[1], parentPid: match[2], commandLine: match[3], argv: readProcessArgv(match[1]) }] : [];
+    });
   }
-
-  const output = run('ps', ['-eo', 'pid=,ppid=,args=']);
-  for (const line of output.split(/\r?\n/).filter((entry) => /next.*dev/i.test(entry))) {
-    const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/);
-    if (!match) continue;
-    const [, pid, parentPid, commandLine] = match;
-    const info = processInfo(pid) ?? { pid, parentPid, commandLine };
-    const normalized = normalizedCommand(info);
-    if (normalized.includes(normalizedPortalDir) || normalized.includes('apps/portal')) {
-      return info;
-    }
+  const byPid = new Map(records.map(info => [info.pid, info]));
+  for (const info of records) {
+    const owner = portalNextDevOwner({ ...info, parentCommandLine: byPid.get(info.parentPid)?.commandLine, parentArgv: byPid.get(info.parentPid)?.argv }, ROOT);
+    if (owner) return owner;
   }
   return null;
 }
 
 function failForProcess(info, reason) {
-  const commandLine = info?.parentCommandLine || info?.commandLine || 'unknown command';
+  const commandLine = info?.commandLine || 'unknown command';
   const displayPid = info?.pid ?? 'unknown';
   fail([
     `${reason} (PID ${displayPid}).`,
     `Command: ${commandLine}`,
+    ...(info?.ownerPid ? [`Next dev parent (PID ${info.ownerPid}): ${info.ownerCommandLine}`] : []),
     'Portal build-dependent gates need Next build to own the portal .next workspace.',
     'Stop the existing portal dev server manually, then rerun the command.',
     'This preflight does not terminate processes or delete lock files.',
@@ -145,7 +130,7 @@ async function main() {
   const pid = listeningPid(DEFAULT_PORT);
   if (pid) {
     const info = processInfo(pid);
-    if (isNextDevProcess(info)) {
+    if (portalNextDevOwner(info, ROOT)) {
       failForProcess(info, `Detected an existing Next dev server on port ${DEFAULT_PORT} before portal build`);
     }
   }
@@ -154,7 +139,7 @@ async function main() {
     const available = await isPortAvailable(DEFAULT_PORT);
     if (!available && pid) {
       const info = processInfo(pid);
-      if (isNextDevProcess(info)) {
+      if (portalNextDevOwner(info, ROOT)) {
         failForProcess(info, `Detected ${path.relative(ROOT, LOCK_PATH)} while port ${DEFAULT_PORT} is occupied by Next dev`);
       }
     }

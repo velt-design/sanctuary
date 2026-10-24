@@ -7,7 +7,7 @@ import styles from './ProjectIndexLifecycleCells.module.css';
 export default function ProjectIndexLifecycleCells({ project }: { project: Project }) {
   const stage = normalizePipelineStageKey(project.status ?? 'NEW');
   const state = project.effectiveState;
-  const age = projectStageAge(project.stageChangedAt);
+  const age = state === 'CLOSED' ? null : projectStageAge(project.stageChangedAt);
   return <>
     <TableCell data-column="Stage"><div className={styles.statusCell}>
       {state !== 'CLOSED' ? <ProjectStageBadge stage={stage ?? 'new'} compact /> : null}

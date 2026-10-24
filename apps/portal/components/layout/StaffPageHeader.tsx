@@ -1,20 +1,17 @@
 'use client';
 
-import PageHeader, { type PageHeaderProps } from './PageHeader';
+import StaffPageHeaderSurface, { type StaffPageHeaderProps } from './StaffPageHeaderSurface';
 import GlobalPortalSearch from './GlobalPortalSearch.client';
-
-type StaffPageHeaderProps = Omit<PageHeaderProps, 'utility'> & {
-  searchShortcutEnabled?: boolean;
-};
 
 export default function StaffPageHeader({
   searchShortcutEnabled = true,
   ...headerProps
 }: StaffPageHeaderProps) {
   return (
-    <PageHeader
+    <StaffPageHeaderSurface
       {...headerProps}
-      utility={<GlobalPortalSearch shortcutEnabled={searchShortcutEnabled} />}
+      searchShortcutEnabled={searchShortcutEnabled}
+      search={<GlobalPortalSearch shortcutEnabled={searchShortcutEnabled} />}
     />
   );
 }

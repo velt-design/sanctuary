@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import {
-  TONI_DESIGN_BOOKLET_ASSETS,
   createProjectDesignBookletDraft,
   createToniDesignBookletDraft,
   neutralizeProjectDesignBookletMedia,
@@ -24,97 +23,20 @@ import {
   uploadProjectDesignBookletAssetClient,
 } from "@/lib/designBooklets/projectClient";
 import type {
-  ProjectDesignBookletAsset,
   ProjectDesignBookletSaveState,
   ProjectDesignBookletSnapshot,
 } from "@/lib/designBooklets/projectTypes";
 import type {
-  DesignBookletAssetSource,
   DesignBookletDraft,
   DesignBookletDrawingItem,
 } from "@/lib/designBooklets/types";
+import { initialDesignBookletAssets, persistedPreviewAsset, snapshotAssets, type DesignBookletAssetMap } from "./previewAssets";
 import type {
   DesignBookletPreviewAsset,
   DesignBookletPreviewAssetState,
 } from "./previewAssets";
 import { preloadDesignBookletImage } from "./preloadDesignBookletImage";
 import { renderDesignBookletPdfPreview } from "./renderDesignBookletPdfPreview";
-
-type DesignBookletAssetMap = Record<string, DesignBookletPreviewAsset>;
-
-export function previewAssetFromSource(
-  source: DesignBookletAssetSource,
-): DesignBookletPreviewAsset {
-  const defaultAsset = TONI_DESIGN_BOOKLET_ASSETS[source.defaultAssetId];
-  const useDefaultAsset = source.useDefaultAsset !== false;
-  return {
-    id: source.assetId,
-    src: useDefaultAsset ? defaultAsset.src : "",
-    alt: source.altText,
-    label: useDefaultAsset ? defaultAsset.label : "No image selected",
-    defaultAssetId: source.defaultAssetId,
-    state: useDefaultAsset ? "loading" : "empty",
-  };
-}
-
-function initialDesignBookletAssets(
-  draft: DesignBookletDraft,
-): DesignBookletAssetMap {
-  return Object.fromEntries(
-    allDesignBookletAssetSources(draft).map((source) => [
-      source.assetId,
-      previewAssetFromSource(source),
-    ]),
-  );
-}
-
-function persistedPreviewAsset(
-  source: DesignBookletAssetSource,
-  asset: ProjectDesignBookletAsset,
-): DesignBookletPreviewAsset {
-  return {
-    id: source.assetId,
-    src: asset.src,
-    alt: source.altText,
-    label: asset.label,
-    defaultAssetId: source.defaultAssetId,
-    state: "loading",
-  };
-}
-
-function snapshotAssets(
-  snapshot: ProjectDesignBookletSnapshot,
-): DesignBookletAssetMap {
-  const next = initialDesignBookletAssets(snapshot.draft);
-  const sources = new Map(
-    allDesignBookletAssetSources(snapshot.draft).map((source) => [
-      source.assetId,
-      source,
-    ]),
-  );
-  for (const asset of snapshot.assets) {
-    const source = sources.get(asset.assetId);
-    if (source) next[asset.assetId] = persistedPreviewAsset(source, asset);
-  }
-  const persistedById = new Map(
-    snapshot.assets.map((asset) => [asset.assetId, asset]),
-  );
-  for (const page of snapshot.draft.contentPages) {
-    if (page.kind !== "drawings") continue;
-    for (const drawing of page.drawings) {
-      if (!drawing.pdf) continue;
-      const preview = next[drawing.image.assetId];
-      const document = persistedById.get(drawing.pdf.assetId);
-      if (preview && document?.mediaType === "application/pdf") {
-        next[drawing.image.assetId] = {
-          ...preview,
-          sourcePdfSrc: document.src,
-        };
-      }
-    }
-  }
-  return next;
-}
 
 function drawingFromDraft(
   draft: DesignBookletDraft,
@@ -173,6 +95,7 @@ export function useProjectDesignBookletController(projectId?: string) {
     linkedProjectId ? "loading" : "standalone",
   );
   const [persistenceError, setPersistenceError] = useState("");
+  const [readAttempt, setReadAttempt] = useState(0);
   const blobUrlsRef = useRef(new Set<string>());
   const assetLoadersRef = useRef(new Map<string, HTMLImageElement>());
   const loadedRef = useRef(!linkedProjectId);
@@ -275,6 +198,7 @@ export function useProjectDesignBookletController(projectId?: string) {
     void loadProjectDesignBookletClient(linkedProjectId)
       .then((snapshot) => {
         if (cancelled) return;
+        if (snapshot.project.id !== linkedProjectId) throw new Error("The booklet project identity did not match.");
         const projectDraft = neutralizeProjectDesignBookletMedia(
           snapshot.draft,
         );
@@ -305,8 +229,9 @@ export function useProjectDesignBookletController(projectId?: string) {
 
     return () => {
       cancelled = true;
+      loadedRef.current = false;
     };
-  }, [linkedProjectId]);
+  }, [linkedProjectId, readAttempt]);
 
   const queueSave = useCallback(
     (nextDraft: DesignBookletDraft): Promise<void> => {
@@ -372,7 +297,8 @@ export function useProjectDesignBookletController(projectId?: string) {
   }, [draft, linkedProjectId, queueSave]);
 
   const flushSave = useCallback(async (): Promise<void> => {
-    if (!linkedProjectId || !loadedRef.current) return;
+    if (!linkedProjectId) return;
+    if (!loadedRef.current) throw new Error("Wait for the project booklet to load before preparing a PDF.");
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
@@ -443,7 +369,7 @@ export function useProjectDesignBookletController(projectId?: string) {
 
   const replaceAsset = useCallback(
     async (assetId: string, file: File | undefined): Promise<void> => {
-      if (!file) return;
+      if (!loadedRef.current || !file) return;
       if (!["image/png", "image/jpeg"].includes(file.type)) {
         setPersistenceError("Choose a PNG or JPEG image.");
         setSaveState(linkedProjectId ? "error" : "standalone");
@@ -515,7 +441,7 @@ export function useProjectDesignBookletController(projectId?: string) {
 
   const replaceDrawingPdf = useCallback(
     async (drawingId: string, file: File | undefined): Promise<void> => {
-      if (!file) return;
+      if (!loadedRef.current || !file) return;
       if (file.type !== "application/pdf") {
         setPersistenceError("Choose a PDF drawing.");
         setSaveState(linkedProjectId ? "error" : "standalone");
@@ -651,6 +577,7 @@ export function useProjectDesignBookletController(projectId?: string) {
 
   const selectDrawingPdfPage = useCallback(
     async (drawingId: string, pageNumber: number): Promise<void> => {
+      if (!loadedRef.current) return;
       const drawing = drawingFromDraft(draftRef.current, drawingId);
       if (!drawing?.pdf || drawing.pdf.pageNumber === pageNumber) return;
       if (
@@ -775,6 +702,7 @@ export function useProjectDesignBookletController(projectId?: string) {
 
   const copyAsset = useCallback(
     async (sourceAssetId: string, targetAssetId: string): Promise<void> => {
+      if (!loadedRef.current) return;
       const sourceAsset = assets[sourceAssetId];
       const targetAsset = assets[targetAssetId];
       if (!sourceAsset || !targetAsset || !sourceAsset.src) return;
@@ -846,12 +774,26 @@ export function useProjectDesignBookletController(projectId?: string) {
     [assets, linkedProjectId, revokeAssetUrl],
   );
 
+  const updateDraft: Dispatch<SetStateAction<DesignBookletDraft>> = useCallback((next) => {
+    if (loadedRef.current) setDraft(next);
+  }, []);
+  const updateAssets: Dispatch<SetStateAction<DesignBookletAssetMap>> = useCallback((next) => {
+    if (loadedRef.current) setAssets(next);
+  }, []);
+  const retryRead = useCallback(() => {
+    if (!linkedProjectId || loadedRef.current) return;
+    setSaveState("loading");
+    setPersistenceError("");
+    setReadAttempt((value) => value + 1);
+  }, [linkedProjectId]);
+
   return {
     linkedProjectId,
     draft,
-    setDraft,
+    setDraft: updateDraft,
     assets,
-    setAssets: setAssets as Dispatch<SetStateAction<DesignBookletAssetMap>>,
+    setAssets: updateAssets,
+    retryRead,
     project,
     saveState,
     persistenceError,

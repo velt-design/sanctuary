@@ -47,6 +47,7 @@ type SharedProps = {
   onRefresh: () => void;
   initialStaff?: ProjectCommandStaffSummary[];
   positionLabel?: string;
+  embedded?: boolean;
   ownerLabel?: string;
 };
 
@@ -154,6 +155,7 @@ export default function ProjectWorkSection({
   stale,
   onRefresh,
   initialStaff,
+  embedded = false,
 }: ProjectWorkSectionProps) {
   const prohibitedServerPrimary = isProhibitedProjectWorkPrimary(
     projectWork.primaryAction,
@@ -232,13 +234,7 @@ export default function ProjectWorkSection({
       : []),
   ];
 
-  return (
-    <ProjectWorkFilesCard
-      positionLabel={positionLabel}
-      className={styles.card}
-      projectId={projectId}
-      host={host}
-    >
+  const content = (
       <div
       data-project-work-section="true"
       data-project-work-model="v2"
@@ -408,6 +404,10 @@ export default function ProjectWorkSection({
           </AlertBanner>
         ) : null}
       </div>
+  );
+  return embedded ? content : (
+    <ProjectWorkFilesCard positionLabel={positionLabel} className={styles.card} projectId={projectId} host={host}>
+      {content}
     </ProjectWorkFilesCard>
   );
 }

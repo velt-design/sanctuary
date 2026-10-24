@@ -1,8 +1,9 @@
-import { initialReportAttempt } from '@/components/marketingPerformance/initialReportAttempt';
-import type { InitialReport } from '@/lib/marketingPerformance/reportRead';
+import {initialFinancialAttempt} from './initialFinancialAttempt';
+import {loadFinancialProfitParts,type FinancialProfitLoader} from './loadFinancialProfitParts';
+import type {InitialFinancialSeed} from '@/lib/xero/financials/profitParts';
 import { financialRequestKey } from '@/lib/xero/financials/contract';
 import { useEffect, useRef, useState } from 'react';
-import { financialPanelSchema, type FinancialEvidence, type FinancialsQuery, type FinancialPanelQuery, type FinancialSection } from '@/lib/xero/financials/contract';
+import { financialPanelSchema, type FinancialEvidence, type FinancialDisplayEvidence, type FinancialsQuery, type FinancialPanelQuery, type FinancialSection } from '@/lib/xero/financials/contract';
 
 export type FinancialsLoader = (query: FinancialPanelQuery, signal: AbortSignal) => Promise<FinancialEvidence>;
 const loadFinancials: FinancialsLoader = async (query, signal) => {
@@ -15,20 +16,28 @@ const loadFinancials: FinancialsLoader = async (query, signal) => {
   return report;
 };
 export class FinancialAccessError extends Error {}
-export default function useFinancials(query: FinancialsQuery & {section?:FinancialSection}, revision: number, loader = loadFinancials, seed?:InitialReport<FinancialEvidence>) {
-  const [initial]=useState(()=>initialReportAttempt(seed,loader,report=>{const value=financialPanelSchema.parse(report);if(financialRequestKey({...value.position.query,section:value.requestedSection})!==seed?.key)throw new Error('The source returned different report dates or basis. Retry.');return value;},()=>new Error('Xero is unavailable. Retry.')));
-  const [report, setReport] = useState<FinancialEvidence | null>(null), [busy, setBusy] = useState(true), [error, setError] = useState('');
-  const [retained, setRetained] = useState<FinancialEvidence | null>(null);
-  const [profitEvidence, setProfitEvidence] = useState<FinancialEvidence | null>(null);
+export default function useFinancials(query: FinancialsQuery & {section?:FinancialSection}, revision: number, loader?:FinancialsLoader, seed?:InitialFinancialSeed, enabled=true, profitLoader?:FinancialProfitLoader) {
+  const fullLoader=loader??loadFinancials,partLoader=profitLoader??loadFinancialProfitParts;
+  const progressive=!loader||Boolean(profitLoader),owner=progressive?partLoader:fullLoader;
+  const [initial]=useState(()=>initialFinancialAttempt(seed,owner));
+  const [report,setReport]=useState<FinancialDisplayEvidence|null>(null),[busy,setBusy]=useState(true),[error,setError]=useState('');
+  const [retained,setRetained]=useState<FinancialDisplayEvidence|null>(null);
+  const [profitEvidence,setProfitEvidence]=useState<FinancialDisplayEvidence|null>(null);
+  const requestKey=financialRequestKey({...query,section:query.section??'profit'});
+  type ReadOwner={key:string;revision:number;full:typeof fullLoader;parts:typeof partLoader};
+  const [activeRead,setActiveRead]=useState<ReadOwner|null>(null),[reportOwner,setReportOwner]=useState<ReadOwner|null>(null);
+  const matches=(value:ReadOwner|null)=>Boolean(value&&value.key===requestKey&&value.revision===revision&&value.full===fullLoader&&value.parts===partLoader);
   const sequence = useRef(0);
   useEffect(() => {
+    if (!enabled) return;
     const seq = ++sequence.current, controller = new AbortController();
-    setBusy(true); setError('');
+    const readOwner={key:requestKey,revision,full:fullLoader,parts:partLoader};
+    setActiveRead(readOwner);setBusy(true); setError('');
     const request={from:query.from,to:query.to,basis:query.basis,section:query.section??'profit'};
-    (initial.take(financialRequestKey(request),revision,loader)??loader(request, controller.signal)).then(report => {
-      if (!controller.signal.aborted && sequence.current === seq) {
-        if('requestedSection' in report && report.requestedSection!==(query.section??'profit'))throw new Error('The source returned a different financial section. Retry.');
-        setReport(report);
+    const accept=(report:FinancialDisplayEvidence)=>{
+      if(controller.signal.aborted||sequence.current!==seq)return;
+      if('requestedSection' in report&&report.requestedSection!==(query.section??'profit'))throw new Error('The source returned a different financial section. Retry.');
+        setReportOwner(readOwner);setReport(report);
         setProfitEvidence(old => report.position.profitAndLoss.status === 'available' ? report : old && JSON.stringify(old.position.query) === JSON.stringify(report.position.query) && old.position.identity.tenantId === report.position.identity.tenantId ? old : null);
         setRetained(old => {
           if (!old || JSON.stringify(old.position.query) !== JSON.stringify(report.position.query) || old.position.identity.tenantId !== report.position.identity.tenantId) return report;
@@ -38,14 +47,16 @@ export default function useFinancials(query: FinancialsQuery & {section?:Financi
           }
           return next;
         });
-      }
-    }).catch(error => {
+    };
+    const read=initial.take(financialRequestKey(request),revision,owner,accept)
+      ??(progressive&&request.section==='profit'?partLoader(request,controller.signal,accept):fullLoader(request,controller.signal));
+    read.then(accept).catch(error => {
       if (!controller.signal.aborted && sequence.current === seq) {
-        if (error instanceof FinancialAccessError || error?.status===401 || error?.status===403) { setReport(null); setRetained(null); setProfitEvidence(null); }
+        if (error instanceof FinancialAccessError || error?.status===401 || error?.status===403 || error?.clearEvidence===true) { setReport(null); setRetained(null); setProfitEvidence(null); }
         setError(error instanceof Error ? error.message : 'Xero is unavailable. Retry.');
       }
     }).finally(() => { if (!controller.signal.aborted && sequence.current === seq) setBusy(false); });
     return () => controller.abort();
-  }, [query.from, query.to, query.basis, query.section, revision, loader, initial]);
-  return { report, retained, profitEvidence, busy, error };
+  }, [query.from, query.to, query.basis, query.section, revision, fullLoader, partLoader, progressive, owner, initial, enabled,requestKey]);
+  return {report,retained,profitEvidence,busy:busy||(enabled&&!matches(activeRead)),error:matches(activeRead)?error:'',reportIsCurrent:matches(reportOwner)};
 }

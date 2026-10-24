@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
-  PORTAL_INSTANT_ROUTE_DEFINITIONS,
   portalInstantRouteReleasesOnCommit,
   portalInstantRouteTarget,
+  resolvePortalSameOriginUrl,
 } from './portalInstantRoutes';
 
-describe('portal instant route registry', () => {
+describe('portal instant route selection', () => {
   it.each([
     ['/dashboard', 'dashboard'],
     ['/staff/projects', 'projects-index'],
@@ -27,14 +27,51 @@ describe('portal instant route registry', () => {
     expect(portalInstantRouteTarget('https://other.test/dashboard', 'https://portal.test/dashboard')).toBeNull();
   });
 
-  it('requires every registered route to provide a truthful frame contract', () => {
-    for (const definition of Object.values(PORTAL_INSTANT_ROUTE_DEFINITIONS)) {
-      expect(definition.route).toBeTruthy();
-      expect(definition.title).toBeTruthy();
-      expect(definition.description).toBeTruthy();
-      expect(definition.kind).toBeTruthy();
+  it.each([
+    ['dashboard', true], ['projects-index', false], ['contacts-index', false], ['schedule', true],
+    ['work-queue', true], ['design-list', true], ['running-jobs', true], ['calculator', true], ['project-detail', true],
+  ] as const)('retains the exact release policy for %s', (route, commits) => {
+    expect(portalInstantRouteReleasesOnCommit(route)).toBe(commits);
+  });
+
+  it.each([
+    ['/', 'dashboard'], ['/staff/running-jobs', 'running-jobs'], ['/schedule', 'schedule'],
+  ])('retains the existing broader alias %s without changing its URL', (path, route) => {
+    const href = path + '?from=projects#details';
+    const target = portalInstantRouteTarget(href, 'https://portal.test/dashboard');
+    expect(target?.route).toBe(route);
+    expect(target?.url.href).toBe('https://portal.test' + href);
+    expect(Object.keys(target ?? {}).sort()).toEqual(['route', 'url']);
+  });
+});
+
+
+describe('same-origin URL resolution without route policy', () => {
+  it('retains relative path, encoded identity, query and hash with a URL base', () => {
+    const url = resolvePortalSameOriginUrl('./%20proj_A?tab=files#notes', new URL('https://portal.test/staff/projects/'));
+    expect(url?.href).toBe('https://portal.test/staff/projects/%20proj_A?tab=files#notes');
+    // Resolution is policy-free: an API URL is not a route selection.
+    expect(resolvePortalSameOriginUrl('/api/staff/v1/search?q=Beta', 'https://portal.test/dashboard')?.pathname).toBe('/api/staff/v1/search');
+    expect(portalInstantRouteTarget('/api/staff/v1/search?q=Beta', 'https://portal.test/dashboard')).toBeNull();
+  });
+
+  it.each([
+    ['//foreign.test/dashboard', 'https://portal.test/dashboard'],
+    ['http://portal.test/dashboard', 'https://portal.test/dashboard'],
+    ['/dashboard', 'http://['],
+    ['http://[', 'https://portal.test/dashboard'],
+  ])('rejects malformed or different-origin URL %s with base %s', (href, base) => {
+    expect(resolvePortalSameOriginUrl(href, base)).toBeNull();
+  });
+
+  it('preserves the existing target API browser and server defaults independently of the resolver', () => {
+    expect(portalInstantRouteTarget('/dashboard')?.url.origin).toBe(window.location.origin);
+    expect(portalInstantRouteTarget('/schedule', new URL('https://portal.test/dashboard'))?.route).toBe('schedule');
+    vi.stubGlobal('window', undefined);
+    try {
+      expect(portalInstantRouteTarget('/dashboard')?.url.href).toBe('http://localhost/dashboard');
+    } finally {
+      vi.unstubAllGlobals();
     }
-    expect(portalInstantRouteReleasesOnCommit('schedule')).toBe(true);
-    expect(portalInstantRouteReleasesOnCommit('projects-index')).toBe(false);
   });
 });

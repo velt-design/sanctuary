@@ -1,13 +1,14 @@
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
-import DesignWorkbenchEstimateClient from './DesignWorkbenchEstimateClient';
+import { requireStaffPageAccess } from '@/lib/auth';
+import DesignWorkbenchReadHost from './DesignWorkbenchReadHost';
+import { loadWorkbenchPageRead } from './loadWorkbenchPageRead.server';
 import DesignWorkbenchFixtureClient from './DesignWorkbenchFixtureClient';
-import { loadDesignWorkbenchRouteContext } from '@/lib/drawings/loadDesignWorkbenchRouteContext';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
-import { loadProjectEstimateDetail } from '@/lib/estimates/loadProjectEstimateDetail';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
 type PageParams = { projectId: string };
@@ -44,19 +45,6 @@ function renderInvalidFixtureLines(fixtureSlug: string): string[] {
   ];
 }
 
-function renderNoEstimateLines(context: {
-  providedEstimateId: string | null;
-  providedRequestId: string | null;
-}): string[] {
-  const lines = ['No usable estimate exists for this project yet. Create or generate an estimate before opening the workbench.'];
-  if (context.providedEstimateId) {
-    lines.push(`Supplied estimateId: ${context.providedEstimateId}`);
-  }
-  if (context.providedRequestId) {
-    lines.push(`Supplied requestId: ${context.providedRequestId}`);
-  }
-  return lines;
-}
 
 export default async function DesignWorkbenchPage({
   params,
@@ -136,77 +124,7 @@ export default async function DesignWorkbenchPage({
     );
   }
 
-  const context = await loadDesignWorkbenchRouteContext({
-    projectId: normalizedProjectId,
-    estimateId,
-    requestId,
-  });
-
-  if (context.kind === 'project_unavailable') {
-    return renderUnavailable('We could not load this project. It may have been deleted, or access is temporarily unavailable.');
-  }
-
-  if (context.kind === 'ready') {
-    let estimateDetail = null;
-
-    try {
-      estimateDetail = await loadProjectEstimateDetail(normalizedProjectId, context.estimate.id);
-    } catch {
-      return renderUnavailable('We could not load the selected estimate for this project. It may have been deleted, or access is temporarily unavailable.');
-    }
-
-    if (!estimateDetail) {
-      return renderUnavailable('We could not load the selected estimate for this project. It may have been deleted, or access is temporarily unavailable.');
-    }
-
-    return (
-      <main
-        className={styles.page}
-        data-project-id={normalizedProjectId}
-        data-workbench-context={context.kind}
-        data-estimate-id={context.estimate.id}
-        data-request-id={context.request?.id}
-      >
-        <section className={styles.surface}>
-          <div className={styles.surfaceInner}>
-            <DesignWorkbenchEstimateClient
-              estimate={estimateDetail}
-              projectName={context.project.name}
-              siteAddress={context.project.siteAddress}
-              backHref={backHref}
-              debugExportEnabled={isPortalPageDebugExportEnabled()}
-            />
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main
-      className={styles.page}
-      data-project-id={normalizedProjectId}
-      data-workbench-context={context.kind}
-      data-estimate-id={context.providedEstimateId ?? undefined}
-      data-request-id={context.providedRequestId ?? undefined}
-    >
-      <section className={styles.surface}>
-        <div className={styles.surfaceInner}>
-          <h1 className={styles.title}>Design Workbench</h1>
-          <p className={styles.subtitle}>{context.project.name}</p>
-          {renderNoEstimateLines({
-            providedEstimateId: context.providedEstimateId,
-            providedRequestId: context.providedRequestId,
-          }).map((line) => (
-            <p key={line} className={styles.subtitle}>
-              {line}
-            </p>
-          ))}
-          <Link href={backHref} className={styles.backLink}>
-            Back to Project
-          </Link>
-        </div>
-      </section>
-    </main>
-  );
+  await requireStaffPageAccess(`/staff/projects/${encodeURIComponent(normalizedProjectId)}/design-workbench`);
+  const initialRead = loadWorkbenchPageRead({ projectId: normalizedProjectId, estimateId, requestId });
+  return <PortalGuardedPage pathname={`/staff/projects/${encodeURIComponent(normalizedProjectId)}/design-workbench`} completion={{}} publicFrame={false}><DesignWorkbenchReadHost projectId={normalizedProjectId} estimateId={estimateId} requestId={requestId} initialRead={initialRead} backHref={backHref} debugExportEnabled={isPortalPageDebugExportEnabled()} /></PortalGuardedPage>;
 }

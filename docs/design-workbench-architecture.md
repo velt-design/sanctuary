@@ -50,6 +50,67 @@ Every implementation proposal touching workbench, drawing runtime, package geome
 - If consolidating functions or types, list all parameter/field differences and how each difference is preserved, parameterized, or intentionally dropped.
 - Which consumers were grepped before changing the boundary?
 
+## Progressive read composition (22 October 2026 local candidate)
+
+Gate0: legacy audit rows N/A; this changes UI/read composition, neither builds
+on legacy nor resumes the paused Studio work. There are no Phase2 costing/input
+or house-form/composition changes. All DrawingWorkbench, WorkbenchChrome, live
+EstimateClient, baked FixtureClient and draft-persistence consumers were searched.
+The identical Save action fields (label, statusText, disabled, onSave) are preserved
+in the shared action type; no behavior/function consolidation drops parameters.
+
+The read host places the actual Chrome and three-column frame above deferred
+route context and matching complete estimate reads. One mode owner preserves safe
+Plan/3D/Sheet selection; Back remains available. The genuine runtime retains the
+same object-first draft/store, geometry and save behavior and cannot mount for a
+null/fake estimate. A same-selection refresh may retain verified contents read-only
+with explicit updating/failure, while new/denied identities clear them. The Save
+callback is identity-owned from the first commit. Existing request-cached staff
+authority, context selection/fallback and protected source loaders remain; no new
+business API, solver input, durable cache or provider action is introduced.
+The server owner reuses the existing context selection (project snapshot, then
+estimate metadata/design-request reads) once and starts one exact complete detail
+read only after that selection is genuine. Those dependencies remain authoritative;
+there is no usable geometry from a null estimate or calculator snapshot. Context
+labels can arrive before detail/runtime. Ordinary router Refresh/Retry uses the
+same page-owned promises; no duplicate query, polling or new endpoint is added.
+Flight thenables are normalized with Promise.resolve and retired reads cannot
+replace the selected source. Same-selection retained contents are labelled and
+read-only; access-ending/mismatched/confirmed-absent reads remove them. An access-ending
+detail failure also clears earlier context labels and request/selection attributes,
+including after a previously ready same-selection read.
+
+The persistent Chrome has one mode owner. Only the runtime's non-semantic div
+uses display:contents; labelled workbench and viewport sections plus both actual
+asides remain. The bridge preserves all four Save action fields and invokes the
+latest handler; its key/read/exact-estimate ownership disables old callbacks on
+the first changed-read commit. Existing object-first actions, persistence, locking,
+keyboard and mode rendering stay with their current owners. The large live client
+keeps only the additive bridge/read-only prop; async selection/error/recovery are
+extracted into ReadHost and loadWorkbenchPageRead rather than added inline there.
+
+Connected tests cover real live runtime/store/rails with only the heavy viewport
+renderer substituted: zero local-draft hydration/viewport before complete identity,
+two genuine baked house and two pergola object records, nonempty committed house
+shapes, unchanged existing pergola diagnostics, one artifact across mode changes,
+read-only controls and zero API commands. This does not claim every baked pergola
+has valid committed geometry. The existing mono-standard fixture has no object
+first draft and therefore is not evidence of nonempty live geometry.
+
+The gated progressive fixture uses existing multi-house-u-two-pergola, a fictional
+browser storage owner and two fictional estimate keys, restoring the previous
+owner on unmount. It mounts this same host/live runtime read-only and rejects all
+API requests. Controlled900ms context plus1400ms dependent detail delays establish
+ordering, not production speed. Existing baked fixture behavior is unchanged.
+Independent optimized review verified actual nested Flight/context before detail,
+viewport/read states, Refresh, A/B isolation, private-label clearing and protected
+entry/Back. The fixture's router-owned Retry uses the same host transition with
+an adaptor navigating to the complete scenario; production Retry remains
+router.refresh. Coded permission denial and recovery were independently checked.
+Current normal/protected builds and unchanged bundle limits pass. Real edit/save,
+provider speed, large-project performance and protected saved geometry remain
+unverified; the protected example had no saved object-first geometry.
+
 ## Current State
 
 The post-breakaway workbench is object-first and intentionally strict:
@@ -177,3 +238,31 @@ npm run docs:impact
 ```
 
 For non-trivial work, run `npm run architecture:changed` with an appropriate `WORKTREE_OWNER_PATTERNS` declaration.
+
+
+UI module ownership retains the established static boundary. Only runtime mount,
+hooks, draft hydration and solve are conditional on matching complete identity;
+Three/3D retains its separate intent-owned import. Removing an unnecessary whole-UI
+dynamic layer avoids adding the same UI core to the lazy union. This is a boundary
+simplification, not removal of geometry capability or a claim of equivalent total
+byte savings. Current compiled initial/lazy/whole-route gates pass unchanged;
+solver/input and persistence behavior are unchanged.
+
+
+The installed estimate adapter throws the raw Supabase res.error. Its installed
+PostgrestError class exposes code/message/details/hint without the response HTTP
+status, so numeric-status handling alone did not invalidate a cached design. The
+shared context/detail catch owner now clears on explicit401/403/404 status,
+insufficient-privilege42501, JWT PGRST301/302/303, and explicit PT401/PT403/PT404.
+These follow the [PostgREST error mappings](https://docs.postgrest.org/en/v13/references/errors.html);
+there is no message matching. Connection08006, timeout57014, internal/schema codes,
+PGRST300 configuration error and unknown failures retain verified same-selection
+contents read-only with Retry. Installed-reader→mock Supabase→actual ReadHost tests
+cover permission/JWT clearing and a transient retained design; both catch sites
+share the same classifier. No protected revocation or live grant change is tested.
+The gated denied scenario now throws actual PostgrestError42501 without status,
+and independent optimized review verified this clearing/recovery path. Numeric
+HTTP-status and coded-adapter regressions remain distinct; no real authority
+revocation or live grant change is claimed.
+
+The ordinary Workbench leaf also uses the existing Portal selected-source lifetime gate after its unchanged fresh staff guard. This retires the same ReadHost only when another route is accepted; geometry, dirty/Save, read/source and fixture behavior are unchanged. Gate0: legacy audit rows N/A, no legacy build-on, no Phase2/commercial dependency or parameter consolidation. This is route lifetime composition only, not an engine or runtime redesign.

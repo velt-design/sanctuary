@@ -1,3 +1,4 @@
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 import SiteVisitsAgenda from '@/components/site-visits/SiteVisitsAgenda';
 import { connection } from 'next/server';
 import { requireStaffPageAccess } from '@/lib/auth';
@@ -10,9 +11,9 @@ export default async function SiteVisitsPage({searchParams}:{searchParams?:Promi
   const requestHeaders=await headers();
   const callback=regionalDocumentCallback(requestHeaders.get(DOCUMENT_CALLBACK_HEADER));
   // Transport context selects scheduling only. RSC returns/prefetch keep the API path.
-  if(callback?.split('?')[0]!=='/staff/site-visits')return <SiteVisitsAgenda />;
+  if(callback?.split('?')[0]!=='/staff/site-visits')return <PortalGuardedPage pathname="/staff/site-visits" completion={{}} publicFrame={false}><SiteVisitsAgenda /></PortalGuardedPage>;
   const search=await searchParams??{};
   const first=(value:string|string[]|undefined)=>(Array.isArray(value)?value[0]:value)||null;
   const scope={project:first(search.project),visit:first(search.visit)};
-  return <SiteVisitsAgenda initialRead={loadCalendarVisitsInitialRead(session.user.id,requestHeaders.get('host')??'',scope)} />;
+  return <PortalGuardedPage pathname="/staff/site-visits" completion={{}} publicFrame={false}><SiteVisitsAgenda initialRead={loadCalendarVisitsInitialRead(session.user.id,requestHeaders.get('host')??'',scope)} /></PortalGuardedPage>;
 }

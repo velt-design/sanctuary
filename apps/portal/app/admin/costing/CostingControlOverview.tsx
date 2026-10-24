@@ -71,23 +71,25 @@ export function CostingStatusSummary(props: {
   latestDraft: CostingConfigurationVersionSummary | null;
   selectedVersion: CostingConfigurationVersionSummary | null;
   dirty: boolean;
+  readState?:'pending'|'ready'|'unavailable';
 }) {
+  const unknown=props.readState&&props.readState!=='ready'?props.readState==='pending'?'Reading…':'Unavailable':null;
   return (
     <section className={styles.statusGrid} aria-label="Pricing configuration status">
       <StatusCard
         label="Active pricing"
-        value={props.currentVersion
+        value={unknown??(props.currentVersion
           ? props.currentVersion.name
-          : 'Legacy calculator settings'}
-        detail={props.currentVersion
+          : 'Legacy calculator settings')}
+        detail={unknown?'Current pricing must be verified.':props.currentVersion
           ? `Version ${props.currentVersion.versionNumber} · published ${formatCostingDate(props.currentVersion.publishedAt)}`
           : 'Existing calculator behaviour remains active until a version is published.'}
         tone={props.currentVersion ? 'success' : 'neutral'}
       />
       <StatusCard
         label="Latest draft"
-        value={props.latestDraft ? props.latestDraft.name : 'No draft in progress'}
-        detail={props.latestDraft
+        value={unknown??(props.latestDraft?props.latestDraft.name:'No draft in progress')}
+        detail={unknown?'Draft records must be verified.':props.latestDraft
           ? `Last updated ${formatCostingDate(props.latestDraft.updatedAt)} by ${props.latestDraft.updatedByEmail}`
           : 'Create a draft to propose a supported pricing change.'}
         tone={props.latestDraft ? 'warning' : 'neutral'}
@@ -109,7 +111,8 @@ export function CostingStatusSummary(props: {
 }
 
 export function VersionHistory(props: {
-  overview: CostingConfigurationOverview;
+  overview: CostingConfigurationOverview|null;
+  pending?:boolean;
   versionById: Map<string, CostingConfigurationVersionSummary>;
   selectedId: string | null;
   busy: boolean;
@@ -124,10 +127,9 @@ export function VersionHistory(props: {
           <p className={styles.muted}>Drafts, publication notes and immutable pricing records.</p>
         </div>
         <span className={styles.muted}>
-          {props.overview.versions.length} {props.overview.versions.length === 1 ? 'version' : 'versions'}
+          {props.overview?`${props.overview.versions.length} ${props.overview.versions.length===1?'version':'versions'}`:props.pending?'Reading versions…':'Version count unavailable'}
         </span>
       </div>
-      {props.overview.versions.length ? (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -141,12 +143,13 @@ export function VersionHistory(props: {
               </tr>
             </thead>
             <tbody>
-              {props.overview.versions.map((version) => (
+              {!props.overview&&<tr><td colSpan={6} role={props.pending?'status':undefined}>{props.pending?'Reading pricing versions…':'Pricing versions unavailable.'}</td></tr>}
+              {props.overview?.versions.map((version) => (
                 <VersionRow
                   key={version.id}
                   version={version}
                   basedOn={version.basedOnVersionId ? props.versionById.get(version.basedOnVersionId) ?? null : null}
-                  current={version.id === props.overview.currentVersionId}
+                  current={version.id === props.overview?.currentVersionId}
                   selected={version.id === props.selectedId}
                   busy={props.busy}
                   onOpen={() => props.onOpen(version.id)}
@@ -156,12 +159,10 @@ export function VersionHistory(props: {
             </tbody>
           </table>
         </div>
-      ) : (
-        <div className={styles.emptyHistory}>
+      {props.overview&&!props.overview.versions.length&&<div className={styles.emptyHistory}>
           <strong>No versioned pricing history yet</strong>
           <span>The legacy calculator settings remain active. Your first draft will copy them exactly.</span>
-        </div>
-      )}
+        </div>}
     </section>
   );
 }

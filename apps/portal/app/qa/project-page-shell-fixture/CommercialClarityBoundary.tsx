@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter,useSearchParams } from 'next/navigation';
 import { buildLegacyQuotePaymentSchedule } from '@/lib/quotes/paymentSchedule';
 import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -10,22 +10,10 @@ import { estimates, invoice, projectId, quotes, schedule } from './commercialCla
 
 /** Synthetic read-only data for the actual Commercial views; no live credentials. */
 export default function CommercialClarityBoundary({ children }: { children: ReactNode }) {
-  const router = useRouter();
+  const router = useRouter();const params=useSearchParams(),progressive=params.get('progressive')==='1',failure=params.get('readFailure')==='1';
   const [notice, setNotice] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    window.fetch = (input, init) => {
-      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, window.location.href);
-      if (url.pathname.startsWith('/api/')) {
-        return Promise.resolve(new Response(JSON.stringify({ error: 'Sample preview: server actions are unavailable. No records were changed.' }), { status: 403, headers: { 'Content-Type': 'application/json' } }));
-      }
-      return originalFetch(input, init);
-    };
-    setReady(true);
-    return () => { window.fetch = originalFetch; };
-  }, []);
-  const [client] = useState(() => {
+  const [{client,reads}] = useState(() => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false, refetchOnWindowFocus: false } } });
     for (const host of ['fixture', supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown']) {
       queryClient.setQueryData(qk.estimates.metaByProject(host, projectId), estimates);
@@ -47,10 +35,42 @@ export default function CommercialClarityBoundary({ children }: { children: Reac
         project: { name: 'Fixture project', siteAddress: 'Fixture site', region: 'Auckland', quoteRef: quote.quoteRef },
       });
     }
-    return queryClient;
+    const reads=new Map<string,{body:unknown;delay:number}>(),host='fixture';
+    reads.set(`/api/projects/${projectId}/estimates`,{body:{estimates},delay:900});
+    reads.set(`/api/projects/${projectId}/quotes`,{body:{quotes},delay:1200});
+    reads.set(`/api/staff/v1/projects/${projectId}/job-packs`,{body:{jobPacks:queryClient.getQueryData(qk.jobPacks.list(host,projectId))},delay:1100});
+    reads.set(`/api/staff/v1/projects/${projectId}/invoices`,{body:{invoices:[invoice]},delay:1200});
+    reads.set(`/api/staff/v1/projects/${projectId}/invoice-schedule`,{body:{schedule},delay:650});
+    reads.set(`/api/admin/projects/${projectId}/invoice-drafts`,{body:{enabled:false,drafts:[]},delay:500});
+    for(const estimate of estimates){reads.set(`/api/estimates/${estimate.id}`,{body:{estimate:queryClient.getQueryData(qk.estimates.detail(host,estimate.id))},delay:1500});reads.set('/api/staff/v1/job-packs/powdercoating?estimateId='+estimate.id,{body:{overrides:{version:null,rows:[]},options:[],persistenceAvailable:false,profileOptionsAvailable:false,warningMessage:null},delay:1800});}
+    for(const quote of quotes)reads.set(`/api/quotes/${quote.id}`,{body:{quoteVersion:queryClient.getQueryData(qk.quotes.detail(host,quote.id))},delay:1500});
+    if(progressive)queryClient.clear();
+    return {client:queryClient,reads};
   });
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    const failed=new Set<string>();
+    window.fetch = async(input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      if (url.pathname.startsWith('/api/')) {
+        const method=init?.method??(input instanceof Request?input.method:'GET');
+        const key=url.pathname+(url.pathname.endsWith('/powdercoating')?'?estimateId='+url.searchParams.get('estimateId'):'');
+        const read=reads.get(key);
+        if(progressive&&method.toUpperCase()==='GET'&&read){
+          const signal=init?.signal??(input instanceof Request?input.signal:undefined);
+          await new Promise<void>((resolve,reject)=>{if(signal?.aborted){reject(new DOMException('Aborted','AbortError'));return;}const timer=setTimeout(resolve,read.delay);signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('Aborted','AbortError'));},{once:true});});
+          if(failure&&!failed.has(key)){failed.add(key);return Response.json({error:'Synthetic read failure. Retry the same fictional source.'},{status:503});}
+          return Response.json(read.body);
+        }
+        return Promise.resolve(new Response(JSON.stringify({ error: 'Sample preview: server actions are unavailable. No records were changed.' }), { status: 403, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return originalFetch(input, init);
+    };
+    setReady(true);
+    return () => { window.fetch = originalFetch; };
+  }, [progressive,failure,reads]);
   if (!ready) return <p role="status">Loading sample project...</p>;
-  return <QueryClientProvider client={client}><div onClickCapture={(event) => {
+  return <QueryClientProvider client={client}>{progressive&&<p>Controlled fictional reads: schedule650 ms, lists900–1200 ms, detail1500 ms, powdercoating overrides1800 ms. Every server command and unlisted API request is rejected. The actual Commercial queries and owners are used.</p>}<div onClickCapture={(event) => {
     const anchor = (event.target as HTMLElement).closest('a[href]');
     if (!anchor) return;
     const url = new URL(anchor.getAttribute('href')!, window.location.href);
@@ -58,6 +78,8 @@ export default function CommercialClarityBoundary({ children }: { children: Reac
     event.preventDefault(); event.stopPropagation();
     if (url.pathname === `/staff/projects/${projectId}`) {
       url.searchParams.set('commercial', '1');
+      if(progressive)url.searchParams.set('progressive','1');
+      if(failure)url.searchParams.set('readFailure','1');
       router.push(`/qa/project-page-shell-fixture?${url.searchParams.toString()}`);
     } else setNotice('This sample covers Commercial and Job Packs. No sign-in is needed; use the tabs above.');
   }}>{notice ? <p role="status">{notice}</p> : null}{children}</div></QueryClientProvider>;

@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DataStatePanel } from '@/components/ui/foundation';
 import PdfInlinePreview from './QuotePdfInlinePreview';
 
-export default function InvoicePdfInlinePreview({ url }: { url: string }) {
+export default function InvoicePdfInlinePreview({ url, enabled = true, readVersion = 0 }: { url: string; enabled?: boolean; readVersion?: number }) {
   const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<{ url: string; data?: Uint8Array; error?: string } | null>(null);
+  const key = JSON.stringify([url, attempt, readVersion]);
+  const [result, setResult] = useState<{ key: string; data?: Uint8Array; error?: string } | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     setResult(null);
     void (async () => {
@@ -17,16 +18,14 @@ export default function InvoicePdfInlinePreview({ url }: { url: string }) {
         if (!response.ok) throw new Error(`Could not load invoice PDF (${response.status}).`);
         if (!response.headers.get('content-type')?.includes('application/pdf')) throw new Error('The invoice PDF response was not available.');
         const data = new Uint8Array(await response.arrayBuffer());
-        if (!controller.signal.aborted) setResult({ url, data });
+        if (!controller.signal.aborted) setResult({ key, data });
       } catch (error) {
-        if (!controller.signal.aborted) setResult({ url, error: error instanceof Error ? error.message : 'Could not load invoice PDF.' });
+        if (!controller.signal.aborted) setResult({ key, error: error instanceof Error ? error.message : 'Could not load invoice PDF.' });
       }
     })();
     return () => controller.abort();
-  }, [attempt, url]);
+  }, [key, url, enabled]);
 
-  const current = result?.url === url ? result : null;
-  if (current?.error) return <DataStatePanel state="error" title="Invoice PDF unavailable" description={current.error} onRetry={() => setAttempt((value) => value + 1)} />;
-  if (!current?.data) return <p role="status">Loading invoice PDF...</p>;
-  return <PdfInlinePreview data={current.data} />;
+  const current = enabled && result?.key === key ? result : null;
+  return <PdfInlinePreview data={current?.data ?? null} pending={enabled && !current} readError={!enabled ? "Invoice access unavailable." : current?.error} onRetry={enabled ? () => setAttempt((value) => value + 1) : undefined} />;
 }

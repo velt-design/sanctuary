@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/portal-progressive-ui-20261022": false,
       "codex/meta-tracking-health-evidence-20261024": false,
       "codex/meta-paused-copy-proof-20261024": false,
       "codex/finance-register-20261023": false,

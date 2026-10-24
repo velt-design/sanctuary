@@ -52,40 +52,88 @@ describe("AI database image pre-pull", () => {
   );
 
   it.each([
-    "toomanyrequests: retry-after: 769.793µs, allowed: 44000/minute",
-    "toomanyrequests: retry-after: 283.837µs, allowed: 44000/minute",
-    "docker: Error response from daemon: toomanyrequests: retry-after: 975.847µs, allowed: 44000/minute",
-  ])("uses the same bounded backoff for the observed GHCR throttle: %s", async (stderr) => {
-    const failure = { status: 1, stdout: "", stderr };
-    const io = fixture([failure, failure, success]);
+    "docker: toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute",
+    "Error response from daemon: toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 0ns, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 12ms, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 1.5s, allowed: 44000/minute",
+  ])("uses fixed backoff for the registry duration/rate format: %s", async (stderr) => {
+    const io = fixture([{ status: 125, stderr }, success]);
     await pullAiDatabaseImage(image, io);
-    expect(io.run).toHaveBeenCalledTimes(3);
-    expect(io.run.mock.calls.every(([command, args]) => command === "docker" && args[0] === "pull" && args[1] === image)).toBe(true);
-    expect(io.sleep.mock.calls).toEqual([[30_000], [60_000]]);
-    expect(io.log.mock.calls.filter(([line]) => line === stderr)).toHaveLength(2);
+    expect(io.run.mock.calls.map(call => call.slice(0, 2))).toEqual([
+      ["docker", ["pull", image]], ["docker", ["pull", image]],
+    ]);
+    expect(io.sleep.mock.calls).toEqual([[30_000]]);
+    expect(io.log).toHaveBeenCalledWith(stderr);
   });
 
-  it("stops after three GHCR throttles without running the database or a fourth pull", async () => {
-    const failure = { status: 1, stderr: "toomanyrequests: retry-after: 769.793µs, allowed: 44000/minute" };
+  it("bounds the new throttle format to three pulls without retrying a database command", async () => {
+    const failure = { status: 1, stderr: "docker: toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute" };
     const io = fixture([failure, failure, failure]);
     await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 3/3");
-    expect(io.run).toHaveBeenCalledTimes(3);
+    expect(io.run.mock.calls.map(call => call.slice(0, 2))).toEqual(Array(3).fill(["docker", ["pull", image]]));
     expect(io.sleep.mock.calls).toEqual([[30_000], [60_000]]);
   });
 
   it.each([
-    "denied: requested access to the resource is denied",
-    "manifest unknown",
-    "network timeout",
-    "toomanyrequests: Other rate limit",
-    "toomanyrequests: Data limit exceeded",
-    "prefix toomanyrequests: Rate exceeded suffix",
+    "Error response from daemon: toomanyrequests: Rate exceeded",
+    "docker: toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute",
+  ])("allows ordinary Docker image/layer progress alongside an exact throttle: %s", async (message) => {
+    const progress = [
+      `${image}: Pulling from supabase/postgres`,
+      "589002ba0eae: Pulling fs layer", "57804ff103dd: Waiting", "c4a696be414d: Downloading",
+      "7ce308e2ffa2: Verifying Checksum", "a30c76310f19: Download complete", "660756a43d4f: Extracting",
+      "680fc4bdf277: Pull complete", "8e1fc576b6fa: Already exists",
+      "43e20f33e9f4: Downloading [==>  ]  1.2MB/3.4MB", "ae15d2920fc6: Retrying in 1 seconds",
+    ].join("\n");
+    const io = fixture([{ status: 1, stdout: progress, stderr: message }, success]);
+    await pullAiDatabaseImage(image, io);
+    expect(io.run).toHaveBeenCalledTimes(2);
+    expect(io.sleep.mock.calls).toEqual([[30_000]]);
+    expect(io.log).toHaveBeenCalledWith(`${progress}\n${message}`);
+  });
+
+  for (const message of [
+    "docker: Error response from daemon: toomanyrequests: retry-after: 975.847µs, allowed: 44000/minute",
+    "Error response from daemon: toomanyrequests: Rate exceeded",
+    "docker: toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute",
+  ]) {
+    it.each([
+      "Error response from daemon: denied: requested access to the resource is denied",
+      "manifest unknown", "network timeout", "unrecognized failure reason",
+    ])(`stops a mixed failed pull despite ${message}: %s`, async (fatal) => {
+      for (const result of [
+        { status: 1, stdout: message, stderr: fatal },
+        { status: 1, stdout: fatal, stderr: message },
+      ]) {
+        const io = fixture([result, success]);
+        await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 1/3");
+        expect(io.run).toHaveBeenCalledTimes(1);
+        expect(io.sleep).not.toHaveBeenCalled();
+        expect(io.log).toHaveBeenCalledWith(`${result.stdout}\n${result.stderr}`);
+      }
+    });
+  }
+
+  it.each([
     "toomanyrequests: retry-after: Infinityµs, allowed: 44000/minute",
     "toomanyrequests: retry-after: -1µs, allowed: 44000/minute",
     "toomanyrequests: retry-after: 1µs, allowed: 0/minute",
     "toomanyrequests: retry-after: 1µs, allowed: unknown/minute",
     "toomanyrequests: retry-after: 1h, allowed: 44000/minute",
     "toomanyrequests: retry-after: 1µs, allowed: 44000/minute suffix",
+    "denied: requested access to the resource is denied",
+    "manifest unknown",
+    "network timeout",
+    "toomanyrequests: Other rate limit",
+    "toomanyrequests: Data limit exceeded",
+    "prefix toomanyrequests: Rate exceeded suffix",
+    "prefix toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 31.411µs, allowed: 44000/minute suffix",
+    "toomanyrequests: retry-after: NaNs, allowed: 44000/minute",
+    "toomanyrequests: retry-after: -1s, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 1s, allowed: 0/minute",
+    "toomanyrequests: retry-after: 1s, allowed: 44000/second",
   ])("does not retry another failure: %s", async (stderr) => {
     const io = fixture([{ status: 1, stdout: "", stderr }]);
     await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 1/3");
@@ -122,6 +170,92 @@ describe("AI database image pre-pull", () => {
     expect(io.sleep).not.toHaveBeenCalled();
   });
 
+  it.each([
+    "toomanyrequests: retry-after: 769.793µs, allowed: 44000/minute",
+    "toomanyrequests: retry-after: 283.837µs, allowed: 44000/minute",
+    "docker: Error response from daemon: toomanyrequests: retry-after: 975.847µs, allowed: 44000/minute",
+  ])("uses the same bounded backoff for the observed GHCR throttle: %s", async (stderr) => {
+    const failure = { status: 1, stdout: "", stderr };
+    const io = fixture([failure, failure, success]);
+    await pullAiDatabaseImage(image, io);
+    expect(io.run).toHaveBeenCalledTimes(3);
+    expect(io.run.mock.calls.every(([command, args]) => command === "docker" && args[0] === "pull" && args[1] === image)).toBe(true);
+    expect(io.sleep.mock.calls).toEqual([[30_000], [60_000]]);
+    expect(io.log.mock.calls.filter(([line]) => line === stderr)).toHaveLength(2);
+  });
+
+  it("stops after three GHCR throttles without running the database or a fourth pull", async () => {
+    const failure = { status: 1, stderr: "toomanyrequests: retry-after: 769.793µs, allowed: 44000/minute" };
+    const io = fixture([failure, failure, failure]);
+    await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 3/3");
+    expect(io.run).toHaveBeenCalledTimes(3);
+    expect(io.sleep.mock.calls).toEqual([[30_000], [60_000]]);
+  });
+
+
+  describe("configuration-download throttle wrapper", () => {
+    const wrapped = "error pulling image configuration: download failed after attempts=1: toomanyrequests: retry-after: 549.614µs, allowed: 44000/minute";
+    const progress = [
+      image + ": Pulling from supabase/postgres",
+      "589002ba0eae: Pulling fs layer", "57804ff103dd: Waiting",
+      "c4a696be414d: Downloading [==>  ]  1.2MB/3.4MB",
+    ].join("\n");
+
+    it.each(["stdout", "stderr"] as const)("recognizes the captured wrapper with progress in %s", async (stream) => {
+      const io = fixture([{ status: 1, [stream]: progress + "\n" + wrapped }, success]);
+      await pullAiDatabaseImage(image, io);
+      expect(io.run.mock.calls.map(call => call.slice(0, 2))).toEqual(Array(2).fill(["docker", ["pull", image]]));
+      expect(io.sleep.mock.calls).toEqual([[30_000]]);
+      expect(io.log).toHaveBeenCalledWith(progress + "\n" + wrapped);
+    });
+
+    it.each(["permission denied", "network timeout", "unrecognized failure reason"])("does not retry a mixed wrapper and %s", async (fatal) => {
+      for (const result of [
+        { status: 1, stdout: progress + "\n" + wrapped, stderr: fatal },
+        { status: 1, stdout: fatal, stderr: progress + "\n" + wrapped },
+      ]) {
+        const io = fixture([result, success]);
+        await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 1/3");
+        expect(io.run).toHaveBeenCalledTimes(1);
+        expect(io.sleep).not.toHaveBeenCalled();
+        expect(io.log).toHaveBeenCalledWith(result.stdout + "\n" + result.stderr);
+      }
+    });
+
+    it.each([
+      wrapped.replace("attempts=1", "attempts=2"), wrapped.replace("attempts=1", "attempts=01"),
+      wrapped.replace("download failed", "permission denied"), "prefix " + wrapped, wrapped + " suffix",
+      wrapped.replace("549.614µs", "NaNs"), wrapped.replace("549.614µs", "-1s"),
+      wrapped.replace("549.614µs", "1us"), wrapped.replace("44000/minute", "0/minute"),
+      wrapped.replace("44000/minute", "44000/second"),
+      wrapped.replace("retry-after: 549.614µs, allowed: 44000/minute", "Rate exceeded"),
+    ])("keeps unsupported wrapped failures fatal: %s", async (stderr) => {
+      const io = fixture([{ status: 1, stdout: progress, stderr }, success]);
+      await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 1/3");
+      expect(io.run).toHaveBeenCalledTimes(1);
+      expect(io.sleep).not.toHaveBeenCalled();
+    });
+
+    it("exhausts three wrapped pulls with unchanged bounds and no fourth pull", async () => {
+      const failed = { status: 1, stdout: progress, stderr: wrapped };
+      const io = fixture([failed, failed, failed, success]);
+      await expect(pullAiDatabaseImage(image, io)).rejects.toThrow("attempt 3/3");
+      expect(io.run.mock.calls).toEqual(Array(3).fill(["docker", ["pull", image], {
+        encoding: "utf8", timeout: 120_000, maxBuffer: 10 * 1024 * 1024,
+      }]));
+      expect(io.sleep.mock.calls).toEqual([[30_000], [60_000]]);
+    });
+
+    it("does not retry process errors or a terminated wrapped pull", async () => {
+      for (const extra of [{ error: new Error("spawn docker ETIMEDOUT") }, { signal: "SIGTERM" }]) {
+        const io = fixture([{ status: null, stderr: wrapped, ...extra }, success]);
+        await expect(pullAiDatabaseImage(image, io)).rejects.toThrow();
+        expect(io.run).toHaveBeenCalledTimes(1);
+        expect(io.sleep).not.toHaveBeenCalled();
+      }
+    });
+  });
+
   it("keeps pre-pull before one ordinary harness step, with no workflow retry or failure bypass", () => {
     const workflow = readFileSync(".github/workflows/ai-foundation.yml", "utf8");
     const databaseJob = workflow.slice(workflow.indexOf("  database-contract:"));
@@ -133,7 +267,7 @@ describe("AI database image pre-pull", () => {
     expect(databaseJob.match(/run: npm run test:ai:db/g)).toHaveLength(1);
     expect(databaseJob).not.toMatch(/continue-on-error|always\(\)|retry|while |until /);
     const backgroundDatabaseJob = backgroundJob.slice(backgroundJob.indexOf("  database-contract:"));
-    expect(backgroundDatabaseJob).toMatch(/name: Pull database image with bounded throttle recovery\s+env:\s+AI_TASK_LEDGER_DB_IMAGE: \$\{\{ matrix.image \}\}\s+run: node scripts\/ci\/pull-ai-db-image\.mjs\s+- name: Isolated logged-PGMQ database contract\s+run: npm run test:jobs:db/);
+    expect(backgroundDatabaseJob).toMatch(/- name: Pull database image with bounded throttle recovery\s+env:\s+AI_TASK_LEDGER_DB_IMAGE: \$\{\{ matrix.image \}\}\s+run: node scripts\/ci\/pull-ai-db-image\.mjs\s+- name: Isolated logged-PGMQ database contract\s+run: npm run test:jobs:db/);
     expect(backgroundDatabaseJob.match(/run: npm run test:jobs:db/g)).toHaveLength(1);
     expect(backgroundDatabaseJob.match(/run: node scripts\/test-xero-payment-concurrency\.mjs/g)).toHaveLength(1);
     expect(backgroundDatabaseJob).not.toMatch(/continue-on-error|always\(\)|retry|while |until /);

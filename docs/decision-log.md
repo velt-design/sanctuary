@@ -171,6 +171,21 @@ additional render and a fixed completion window. No public route, Origin policy,
 customer attribution or ordinary retry rule changes. The private receipt is an
 operator-installed exception, not an automatic admission or a production result.
 
+## 2026-10-22: Keep readiness at both actual parent and source owner
+
+A child table can own truthful pending values yet remain hidden by its connected
+parent's metadata condition. Exercise ordinary route entry as well as ready-parent
+fixtures. Mount authorised independent table reads early, gate record effects at
+their genuine authority boundary, and require verified readiness for legacy empty
+rows. Preview evidence must match complete current renderer input before the first
+new-selection commit, including the debounce interval. Pending project booklets
+must neither show default customer/pages nor mount writes for an unverified source.
+Owners: quotes-invoices-job-packs.md and design-booklets.md. Optimized13 independent
+rechecks closed both connected-parent and false-empty defects; provider/business
+commands remain outside that UI proof. The same identity rule keeps Workbench
+Chrome early while withholding draft hydration/solve until a matching estimate;
+its Save bridge carries source identity from the first commit.
+
 ## 2026-10-22: Keep sticky state out of measured layout
 
 The inline mobile estimate observer watched a section whose height it changed
@@ -189,6 +204,18 @@ lazy FilesTab now own entry/layout; existing explorer controllers, protected
 reads and return state remain unchanged. Verify the real frame and outer layout
 constraints, including entry from a scrolled Overview and direct reload, rather
 than accepting an isolated file-card fixture as integration evidence.
+
+## 2026-10-22: Preserve report membership while sections populate independently
+
+A complete source read is not automatically the final cross-report selection.
+Designer RPC history includes unlinked/orphan visits, so its totals still need
+Hub membership even without filters. Keep the real section mounted while it
+waits. Complete unfiltered quote-source figures can appear earlier with source
+read time and an explicit pending project-context check; the completed Hub
+intersection remains authoritative and can restate them after source-time skew.
+Use coherent fictional IDs in both initial and fallback fixtures, and exercise
+mismatched membership rather than infer invariant totals from coherent fixtures.
+Owner: `marketing-performance.md`.
 
 ## 2026-10-22: Preserve query cancellation policy through initial-read adapters
 
@@ -6760,3 +6787,29 @@ adjacent preview even on a wide desktop. Selected Files now spans the project
 row; Work and neighboring owners retain their existing layout and state.
 Responsive acceptance must include the actual containing layout and its width,
 not only viewport width or the leaf component. Owner: `project-sharepoint-files.md`.
+
+
+## 2026-10-22: real report interfaces before complete evidence
+
+Owner correction: an approximate loading page is not the actual interface.
+Keep the real calendar, metric, control and table owners present while their data
+arrives. Distinguish first real interface, first complete useful value, interaction
+and final report completion. Independent complete reports may populate separately;
+project-filtered totals must wait for complete selection evidence. Normalize
+server promise inputs before chaining React Flight thenables, and match a Schedule
+seed's view/day/range before it enters a query cache. A source denial clears private
+report values; a failed read never becomes a zero or empty-business claim.
+Owners: `schedule.md`, `marketing-performance.md`; focused actual-client/query and
+report-control continuity tests. Hosted performance remains unverified.
+
+## 2026-10-23: Keep actual public search separate from guarded evidence
+
+The seven-frame shared root exposed the foundation barrel evaluator and search
+query/result responsibilities. Replace only the demonstrated public barrel edges
+with existing primitive owners. Keep the same input/controller public; register
+its reader only from the matching freshly guarded leaf. Registration and input
+evidence carry source/query identity, so denial, late publication or cleanup cannot
+rebind old results. Default nonframe behavior remains. The attempted all-five
+server-layout composition added recurring Flight payload without enough JS relief
+and is removed. Source closure tests are not a bundle or latency pass; the unchanged
+compiled limits and connected browser checks remain required.

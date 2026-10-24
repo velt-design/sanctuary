@@ -1,11 +1,13 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Project } from '@/lib/types/project';
+import type {ProjectsIndexParams,ProjectsIndexResponse} from '@/lib/projects/projectsIndexContract';
 import { projectStatusLabel } from '@/lib/types/project';
 import styles from './ProjectsIndexClient.module.css';
-import ProjectIndexToolbar from './ProjectIndexToolbar';
+import ProjectsIndexFrame from './ProjectsIndexFrame';
+import {useProjectsIndexWorkspace} from './ProjectsIndexWorkspace';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
@@ -51,7 +53,6 @@ import {
   DataStatePanel,
   DestructiveConfirmation,
   Input,
-  LoadingSkeleton,
   PageLayout,
   Pagination,
   Table,
@@ -73,23 +74,33 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
 
 export default function ProjectsIndexClient({
   initialFilters,
-  initialRead,
+  initialRead,readLoader,readOnly=false,
 }: {
   initialFilters?: ProjectsIndexFilters;
   initialRead?: ProjectsIndexInitialRead;
+  readLoader?:(params:ProjectsIndexParams)=>Promise<ProjectsIndexResponse>;readOnly?:boolean;
 }) {
+  const workspace=useProjectsIndexWorkspace();
   const router = useRouter();
   const { finishInstantRoute } = usePortalRouteTransition();
   const { openProject } = useProjectInstantOpen();
   const searchParams = useSearchParams();
   const toast = useToast();
   const { role, user } = usePortalSession();
-  const isAdmin = role === 'admin';
+  const isAdmin = !readOnly&&role === 'admin';
   const { view, update: updateView, reset: resetView, restoreScroll } = useProjectIndexView(
-    initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()),
+    initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()), workspace??undefined,
   );
   const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, page, pageSize } = view;
-  const setPage = (page: number) => updateView({ page }, false);
+  const selection = JSON.stringify(projectsIndexParamsFromView(view));
+  const currentPageOwner = useRef({ publish: workspace?.publish, selection });
+  currentPageOwner.current = { publish: workspace?.publish, selection };
+  const pageOwnerAlive = useRef(true);
+  useLayoutEffect(() => { pageOwnerAlive.current = true; return () => { pageOwnerAlive.current = false; }; }, []);
+  const publishOwner = workspace?.publish;
+  const setPage = (page: number) => {
+    if (pageOwnerAlive.current && currentPageOwner.current.publish === publishOwner && currentPageOwner.current.selection === selection) updateView({ page }, false);
+  };
   const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -107,7 +118,7 @@ export default function ProjectsIndexClient({
   const projectMutations = useProjectsIndexMutations(host);
   const projectsIndex = useProjectsIndexData(
     projectsIndexParamsFromView({ ...view, query: debouncedQuery }),
-    { ownerId: user?.id ?? null, initialRead },
+    { ownerId: user?.id ?? null, initialRead,loader:readLoader },
   );
   const projects = projectsIndex.data?.projects.rows ?? [];
   const contacts = projectsIndex.data?.contacts.rows ?? [];
@@ -155,16 +166,16 @@ export default function ProjectsIndexClient({
   };
 
   const beginEdit = useCallback((project: Project, field: ProjectIndexEditableField, currentValue: string) => {
-    if (projectMutations.isCellPending(project.id, field)) return;
+    if (readOnly||projectMutations.isCellPending(project.id, field)) return;
     setEditing({ id: project.id, field, value: currentValue });
-  }, [projectMutations]);
+  }, [projectMutations,readOnly]);
 
   const cancelEdit = useCallback(() => {
     setEditing(null);
   }, []);
 
   const commitEdit = useCallback(() => {
-    if (!editing) return;
+    if (!editing||readOnly) return;
     const project = projects.find((p) => p.id === editing.id);
     if (!project) {
       setEditing(null);
@@ -201,7 +212,7 @@ export default function ProjectsIndexClient({
     const contact = project.contactId ? contactsById.get(project.contactId) ?? null : null;
     void projectMutations.saveInlineEdit({ project, contact, field, value: trimmed });
     setEditing(null);
-  }, [contactsById, editing, projectMutations, projects, toast]);
+  }, [contactsById, editing, projectMutations, projects, toast, readOnly]);
 
   const handleEditKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -213,7 +224,7 @@ export default function ProjectsIndexClient({
         event.preventDefault();
         const fieldContainer = event.currentTarget.parentElement;
         cancelEdit();
-        window.requestAnimationFrame(() => fieldContainer?.querySelector<HTMLButtonElement>('button')?.focus());
+        window.requestAnimationFrame(() => {if(fieldContainer?.isConnected)fieldContainer.querySelector<HTMLButtonElement>('button')?.focus();});
       }
     },
     [cancelEdit, commitEdit],
@@ -235,70 +246,10 @@ export default function ProjectsIndexClient({
       })()
     : '';
 
-  return (
-    <PageLayout
-      width="full"
-      density="compact"
-      className={styles.page}
-      data-projects-index-state={projectsIndex.state}
-      data-projects-index-background-ready={projectsIndex.backgroundReady ? 'true' : 'false'}
-    >
-      <StaffPageHeader
-        title="Projects"
-        variant="index"
-        count={projectsIndex.data ? `${projectsIndex.data.projects.totalCount} projects` : projectsIndex.state === 'unavailable' || projectsIndex.state === 'refresh-failed' ? 'Projects unavailable' : 'Loading projects'}
-        primaryAction={{ label: 'New project', href: '/staff/projects/new' }}
-        right={
-          <HeaderActions>
-            <ButtonLink variant="tertiary" href="/staff/projects/design-packages">Drafting Queue</ButtonLink>
-            <ButtonLink variant="secondary" href="/staff/projects/running-jobs">Running Jobs</ButtonLink>
-          </HeaderActions>
-        }
-      />
-
-      <ListCountBanner
-        totalCount={projectsIndex.data?.projects.totalCount ?? null}
-        visibleCount={projects.length}
-        entityLabelSingular="project"
-        entityLabelPlural="projects"
-        truncated={projectsIndex.data?.projects.truncated ?? false}
-      />
-      <div className={styles.stack}>
-        <ProjectIndexToolbar view={view} onChange={updateView} onReset={resetView} />
-
-        <Card
-          title="Projects"
-          padding="none"
-          aria-label="Projects list"
-          action={(
-            <div className={styles.muted} suppressHydrationWarning>
-              {projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? 'Updating…' : null}
-              {projectsIndex.state === 'fresh' ? `${rangeStart}–${rangeEnd} of ${totalCount}` : null}
-              {projectsIndex.state === 'unavailable' ? 'Access unavailable' : null}
-              {projectsIndex.state === 'refresh-failed' ? 'Refresh failed' : null}
-            </div>
-          )}
-        >
-            {projectsIndex.state === 'refresh-failed' ? (
-              <DataStatePanel
-                state={projects.length ? 'stale' : 'error'}
-                onRetry={() => void projectsIndex.retry()}
-              />
-            ) : null}
-            {filteredProjects.length ? (
-              <>
-                <Table aria-label="Projects">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Stage</TableHead>
-                      <TableHead>Time in stage</TableHead>
-                      <TableHead>Next action</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+  const frame={read:projectsIndex,canCreate:!readOnly,
+    countNotice:<ListCountBanner totalCount={projectsIndex.data?.projects.totalCount ?? null} visibleCount={projects.length} entityLabelSingular="project" entityLabelPlural="projects" truncated={projectsIndex.data?.projects.truncated ?? false}/>,
+    pagination:projects.length>0?<Pagination currentPage={page} totalPages={projectsIndex.data?.projects.totalPages ?? 1} itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`} onPageChange={setPage}/>:null,
+    rows:<>
                     {filteredProjects.map((p) => {
                       const contact = p.contactId ? contactsById.get(p.contactId) : null;
                       const clientLabel = contact?.displayName ?? p.clientName ?? '—';
@@ -338,7 +289,7 @@ export default function ProjectsIndexClient({
                           );
                         }
 
-                        if (!editable) {
+                        if (!editable||readOnly) {
                           return <span className={styles.muted}>{currentValue || '—'}</span>;
                         }
 
@@ -397,61 +348,21 @@ export default function ProjectsIndexClient({
                           <ProjectIndexLifecycleCells project={p} />
                           <ProjectIndexAccountabilityCells project={p} />
                           <TableCell data-column="Actions">
-                            <ProjectIndexActions project={p} host={host} client={clientLabel} nameEditor={renderEditable('name', nameValue, 'Project name', true)}
+                            {readOnly?null:<ProjectIndexActions project={p} host={host} client={clientLabel} nameEditor={renderEditable('name', nameValue, 'Project name', true)}
                               phone={renderEditable('phone', phoneValue, phoneEditable ? 'Add phone' : 'No contact linked', phoneEditable)}
                               address={renderEditable('address', addressValue, 'Add address', true)}
                               stageBusy={isStatusBusyRow} archiveBusy={isArchiveBusy} isAdmin={isAdmin}
                               onOpen={() => { prepareProjectOpen(p.id); openProject(p.id); }}
                               onCorrect={() => setStageCorrectionTarget(p)}
                               onArchive={() => toggleArchive(p)}
-                              onDelete={() => { setDeleteTarget(p); setDeleteConfirmText(''); setDeleteReason(''); }} />
+                              onDelete={() => { setDeleteTarget(p); setDeleteConfirmText(''); setDeleteReason(''); }} />}
                           </TableCell>
                         </TableRow>
                       );
 
                       return rowEl;
                     })}
-                  </TableBody>
-                </Table>
-                <Pagination
-                  currentPage={page}
-                  totalPages={projectsIndex.data?.projects.totalPages ?? 1}
-                  itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`}
-                  onPageChange={setPage}
-                />
-              </>
-            ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
-              <LoadingSkeleton rows={5} columns={4} label="Updating projects…" />
-            ) : projectsIndex.state === 'unavailable' ? (
-              <DataStatePanel state="unavailable" />
-            ) : projectsIndex.state === 'refresh-failed' ? (
-              null
-            ) : (
-              <DataStatePanel
-                state={
-                  debouncedQuery
-                  || journeyFilter !== 'all'
-                  || stageFilter !== 'all'
-                  || stateFilter !== 'all'
-                  || ownerFilter !== 'all'
-                    ? 'filtered-empty'
-                    : 'empty'
-                }
-                onClear={
-                  debouncedQuery
-                  || journeyFilter !== 'all'
-                  || stageFilter !== 'all'
-                  || stateFilter !== 'all'
-                  || ownerFilter !== 'all'
-                    ? resetView
-                    : undefined
-                }
-              />
-            )}
-        </Card>
-      </div>
-
-      <DestructiveConfirmation
+                    </>,overlays:<>      <DestructiveConfirmation
         open={Boolean(deleteTarget)}
         title="Delete project?"
         description="Project data and linked records will be permanently removed."
@@ -586,6 +497,8 @@ export default function ProjectsIndexClient({
 
       <ProjectRowTooltip host={host} visibleInfo={visibleInfo} fallbackClientName={visibleFallback} />
 
-    </PageLayout>
-  );
+</>};
+  useLayoutEffect(()=>{workspace?.publish({selection:JSON.stringify(projectsIndexParamsFromView({...view,query:debouncedQuery})),...frame});});
+  useLayoutEffect(()=>()=>workspace?.publish(null),[workspace?.publish]);
+  return workspace?null:<ProjectsIndexFrame {...frame} view={view} updateView={updateView} resetView={resetView}/>;
 }

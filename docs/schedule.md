@@ -1,5 +1,68 @@
 # Schedule
 
+## Progressive real interface candidate (22 October 2026)
+
+For ordinary document entry, the Schedule page starts its request-owned seed
+without awaiting the full Board or Gantt report. A valid, overwritten Schedule
+navigation callback omits that extra report after the same fresh leaf access gate;
+navigation and intent-prefetch retain the client's guarded query/prefetched cache.
+The real client and selected view render independently. The document seed
+is consumed through the existing tracked query, normalized with `Promise.resolve`
+for React Flight thenables, matched by view, Auckland day and Gantt range, then
+retired. An unavailable initial read uses normal authenticated API recovery; schema
+not-ready keeps the legacy fallback. No shared evidence cache is added.
+
+The current actual-frame split gives ScheduleFrame, ScheduleBoardSurface and
+ScheduleGanttSurface one stable public DOM owner. Pure date-axis calculation is
+in ScheduleGanttCalendarModel; the complete ScheduleGanttModel reuses it and adds
+verified crew/work rows. ScheduleSurfaceContext separates public viewport controls
+from source-owned evidence. Private Board/Gantt runtimes portal rows/empty evidence
+into those existing slots; one DndContext still spans unscheduled and lane rows.
+The public provider reads neutral density/label-width settings only; crew visibility
+and record state remain guarded. Old-source publications and cleanup cannot change
+a newer source's slots. ScheduleFrameOutput alone imports the private renderers;
+legacy ssr:false behavior is retained. Fresh bundle and browser proof is pending.
+
+The persistent Workspace owns the unscheduled panel's collapse state and updates
+the same public Frame urgently before and after guarded adoption. Private clients
+receive its stable adoption setter, without subscribing to that neutral value.
+Toggle and View unscheduled jobs share an intent setter that retains choices
+through pending or unavailable evidence; healthy source defaults stay separate.
+Stable viewport callbacks keep an unrelated panel toggle from republishing private
+Board rows. Initial source defaults, early user choice and standalone behavior
+remain with their existing owners. This removes unnecessary work; current
+compiled bundle, interaction and performance targets still require verification.
+
+`ScheduleBoardView` and `ScheduleGanttView` supply their verified pending values. Gantt dates,
+calendar lines, scale and density controls are real before crews/work arrive.
+Crew rows come from actual known crew data. Missing active-view records never
+become zero totals or an empty-business claim. Board/Gantt switches retain real
+view controls; incomplete view data cannot be moved or edited. Errors and Retry
+stay within the interface. Initial read failures do not claim an unsaved command;
+Schema diagnostics remain with the established V2 schema-not-ready legacy
+fallback. Unreachable table/code repair markup was retired from generic V2 read
+errors; the only assignments to that state carry a message, never table facts. The decorative Schedule route fallback is removed.
+
+Focused component coverage includes the deferred server seed through the real
+query client under StrictMode and a void-returning Flight thenable, no duplicate
+initial browser read, and existing Board/Gantt mutation/trust regressions.
+Pending attention counts and crew membership read as pending, never zero; roster
+controls remain disabled until real crew data exists. Calendar date/scale/density
+controls remain usable. The gated fixture keeps Board/Gantt navigation inside its
+fictional route; normal Schedule navigation retains its canonical path. Its
+controlled failure consumes both automatic attempts before explicit Retry recovers.
+
+`/qa/schedule-progressive-fixture` is separately gated fictional proof of the same
+client/server-promise path, with delayed read-only loaders and no provider access.
+It does not establish hosted timing or successful production mutations.
+
+The12 lazy-budget regression came only from CSS chunk coalescing; Schedule lazy
+JavaScript sizes/hashes were unchanged. Twelve orphan Gantt presentation classes
+for retired popover/column/text owners were removed after all-consumer and dynamic
+reference searches. Actual Gantt/route regressions pass; the unchanged84,000-byte
+gzip gate remains unresolved until the next canonical compilation.
+
+
 Schedule V2 owns install planning. The Outlook site-visit agenda is a separate
 source-backed workflow at `/staff/site-visits`, available under Schedule navigation.
 
@@ -675,3 +738,10 @@ Dormant Site Visits checks (only for direct compatibility QA or an approved reac
 
 - Site visit list loads without Board/Gantt data dependency.
 - Booking, confirming, rescheduling, and unscheduling route through staff APIs.
+
+
+The development-only Board diagnostics use the same pending/error ownership as
+the actual Board. Its real empty pending model has no diagnostic counts; the
+disclosure shows Reading or Unavailable until verified diagnostics exist, then
+retains the original genuine counts. It neither invents zero diagnostics nor
+dereferences missing nested debug fields while the initial read is pending.

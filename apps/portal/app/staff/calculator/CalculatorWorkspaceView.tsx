@@ -1,5 +1,6 @@
 'use client';
 
+import { useCalculatorSessionRead } from './CalculatorSessionReadContext';
 import {
   type ComponentProps,
   type ElementType,
@@ -121,6 +122,7 @@ export default function CalculatorWorkspaceView({
   saveOutcome,
   projectPicker,
 }: CalculatorWorkspaceViewProps) {
+  const {ready}=useCalculatorSessionRead();
   const CalculatorRoot: ElementType = embedded ? 'section' : 'main';
   const [activeResultTab, setActiveResultTab] =
     useState<CalculatorResultInspectorTab>('pricing');
@@ -249,7 +251,7 @@ export default function CalculatorWorkspaceView({
                 data-calculator-configuration-main
                 onFocusCapture={handleConfigurationFocus}
               >
-                {jobTemplatePicker ? <CalculatorJobTemplatePicker {...jobTemplatePicker} /> : null}
+                {jobTemplatePicker ? <div inert={!ready}><CalculatorJobTemplatePicker {...jobTemplatePicker} /></div> : null}
                 <CalculatorConfigurationForm {...configurationForm} isEmbedded={embedded} />
               </div>
             </div>
@@ -297,10 +299,10 @@ export default function CalculatorWorkspaceView({
         </div>
       </div>
 
-      <CalculatorInfillWorkspace {...infillWorkspace} />
+      {ready ? <><CalculatorInfillWorkspace {...infillWorkspace} />
       <CalculatorSaveDialogs {...saveDialogs} />
       <CalculatorSaveOutcomeDialog {...saveOutcome} />
-      {projectPicker ? <CalculatorProjectPicker {...projectPicker} /> : null}
+      {projectPicker ? <CalculatorProjectPicker {...projectPicker} /> : null}</> : null}
     </CalculatorRoot>
   );
 }

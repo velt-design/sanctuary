@@ -2,6 +2,7 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScheduleItem } from '@/lib/types/scheduling';
 import ScheduleBoardView, { type ScheduleBoardViewProps } from './ScheduleBoardView';
+import { EMPTY_SCHEDULE_BOARD_MODEL } from './ScheduleBoardModelShared';
 import { SCHEDULE_HIDDEN_CREWS_STORAGE_KEY } from './useScheduleCrewVisibility';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
@@ -659,4 +660,29 @@ describe('ScheduleBoardView', () => {
 
     rendered.unmount();
   });
+});
+
+
+it('keeps the actual development Board before its pending diagnostics exist, then shows error or genuine counts', () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  const pending = baseProps({ dataPending: true, installers: [], schedulable: EMPTY_SCHEDULE_BOARD_MODEL.schedulable,
+    unscheduledJobs: [], unscheduledJobsAll: [] });
+  const rendered = renderIntoDocument(<ScheduleBoardView {...pending} />);
+  try {
+    const details = rendered.container.querySelector('details');
+    const lanes = rendered.container.querySelector('[aria-label="Installer lanes"]');
+    expect(lanes).not.toBeNull();
+    expect(details?.textContent).toContain('Reading schedule diagnostics');
+    expect(details?.textContent).not.toContain('No estimates');
+    expect(details?.textContent).not.toMatch(/\b0\b/);
+    rendered.rerender(<ScheduleBoardView {...pending} dataError />);
+    expect(rendered.container.querySelector('details')).toBe(details);
+    expect(details?.textContent).toContain('Schedule diagnostics unavailable');
+    expect(details?.textContent).not.toContain('Reading');
+    rendered.rerender(<ScheduleBoardView {...baseProps()} />);
+    expect(rendered.container.querySelector('details')).toBe(details);
+    expect(rendered.container.querySelector('[aria-label="Installer lanes"]')).toBe(lanes);
+    expect(details?.textContent).toContain('No estimates0');
+    expect(details?.textContent).toContain('Projects1');
+  } finally { rendered.unmount(); vi.unstubAllEnvs(); }
 });

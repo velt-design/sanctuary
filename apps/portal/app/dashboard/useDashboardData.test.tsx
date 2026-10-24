@@ -3,9 +3,11 @@ import { ApiError } from '@/lib/repo/apiClient';
 import { qk } from '@/lib/queries/keys';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 import { useDashboardData } from './useDashboardData';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const useQuery = vi.fn();
 const retry = vi.fn();
+let client: QueryClient;
 const cached = {
   updatedAtIso: '2026-04-02T00:00:00.000Z',
   kpis: { newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
@@ -25,20 +27,25 @@ function Probe() {
   const result = useDashboardData('today');
   return <div data-state={result.state} data-known={result.data ? 'true' : 'false'} />;
 }
+function renderProbe() {
+  return renderIntoDocument(<QueryClientProvider client={client}><Probe /></QueryClientProvider>);
+}
 
 describe('useDashboardData', () => {
   beforeEach(() => {
     useQuery.mockReset();
     retry.mockReset();
+    client = new QueryClient();
   });
 
   afterEach(() => {
+    client.clear();
     document.body.innerHTML = '';
   });
 
   it('uses the user-owned dashboard query and always refreshes quietly on mount', () => {
     useQuery.mockReturnValue({ data: cached, error: null, isFetching: true, refetch: retry });
-    const rendered = renderIntoDocument(<Probe />);
+    const rendered = renderProbe();
 
     expect(useQuery).toHaveBeenCalledWith(expect.objectContaining({
       queryKey: qk.dashboard.data('today'),
@@ -46,22 +53,23 @@ describe('useDashboardData', () => {
       retry: expect.any(Function),
     }));
     expect(rendered.container.firstElementChild?.getAttribute('data-state')).toBe('cached');
+    expect(client.getQueryCache().find({ queryKey: qk.dashboard.data('today') })).toBeDefined();
     rendered.unmount();
   });
 
   it('distinguishes pending, cached, and fresh reads', () => {
     useQuery.mockReturnValueOnce({ data: undefined, error: null, isFetching: true, refetch: retry });
-    const pending = renderIntoDocument(<Probe />);
+    const pending = renderProbe();
     expect(pending.container.firstElementChild?.getAttribute('data-state')).toBe('pending');
     pending.unmount();
 
     useQuery.mockReturnValueOnce({ data: cached, error: null, isFetching: true, refetch: retry });
-    const cachedRender = renderIntoDocument(<Probe />);
+    const cachedRender = renderProbe();
     expect(cachedRender.container.firstElementChild?.getAttribute('data-state')).toBe('cached');
     cachedRender.unmount();
 
     useQuery.mockReturnValueOnce({ data: cached, error: null, isFetching: false, refetch: retry });
-    const fresh = renderIntoDocument(<Probe />);
+    const fresh = renderProbe();
     expect(fresh.container.firstElementChild?.getAttribute('data-state')).toBe('fresh');
     fresh.unmount();
   });
@@ -73,7 +81,7 @@ describe('useDashboardData', () => {
       isFetching: false,
       refetch: retry,
     });
-    const rendered = renderIntoDocument(<Probe />);
+    const rendered = renderProbe();
 
     expect(rendered.container.firstElementChild?.getAttribute('data-state')).toBe('refresh-failed');
     expect(rendered.container.firstElementChild?.getAttribute('data-known')).toBe('true');
@@ -87,7 +95,7 @@ describe('useDashboardData', () => {
       isFetching: false,
       refetch: retry,
     });
-    const rendered = renderIntoDocument(<Probe />);
+    const rendered = renderProbe();
 
     expect(rendered.container.firstElementChild?.getAttribute('data-state')).toBe('unavailable');
     expect(rendered.container.firstElementChild?.getAttribute('data-known')).toBe('false');

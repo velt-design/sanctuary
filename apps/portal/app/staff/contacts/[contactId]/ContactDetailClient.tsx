@@ -10,7 +10,6 @@ import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/Fo
 import {
   Card,
   EmptyState,
-  LoadingSkeleton,
   PageLayout,
   Table,
   TableBody,
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/foundation/FoundationSurfaces';
+import { ApiError } from '@/lib/repo/apiClient';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { contactDetailQueryOptions } from '@/lib/queries/contacts';
@@ -31,7 +31,12 @@ import styles from '../contacts.module.css';
 import { isValidOptionalContactEmail, useContactDetailsDraft } from './useContactDetailsDraft';
 
 type ContactDetailsViewProps = {
-  contact: Contact;
+  contact: Contact | null;
+  contactId?: string;
+  pending?: boolean;
+  missing?: boolean;
+  onRetry?: () => void;
+  onRetryProjects?: () => void;
   hostKey: string;
   loadError: string | null;
   projects: Project[];
@@ -41,6 +46,11 @@ type ContactDetailsViewProps = {
 
 export function ContactDetailsView({
   contact,
+  contactId = contact?.id ?? "",
+  pending = !contact,
+  missing = false,
+  onRetry,
+  onRetryProjects,
   hostKey,
   loadError,
   projects,
@@ -69,19 +79,19 @@ export function ContactDetailsView({
     <PageLayout className={styles.page}>
       <StaffPageHeader
         variant="detail"
-        title={displayed.displayName || contact.displayName}
+        title={contact ? displayed.displayName || contact.displayName : pending ? "Reading contact" : missing ? "Contact not found" : "Contact unavailable"}
         description="Customer details and linked project history."
-        breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: displayed.displayName || contact.displayName }]}
+        breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: contact ? displayed.displayName || contact.displayName : 'Contact' }]}
         right={
           <HeaderActions>
             <PortalIndexLink variant="secondary" href="/staff/contacts">Contacts</PortalIndexLink>
-            <ButtonLink href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>Create Project</ButtonLink>
+            <ButtonLink disabled={!contact} href={`/staff/projects/new?contactId=${encodeURIComponent(contactId)}`}>Create Project</ButtonLink>
           </HeaderActions>
         }
       />
-      <p className={styles.detailMeta}>Contact ID: {contact.id}</p>
+      <p className={styles.detailMeta}>Contact ID: {contactId}</p>
 
-      {loadError ? <AlertBanner tone="warning" title="Latest contact refresh failed">{loadError}</AlertBanner> : null}
+      {loadError ? <AlertBanner tone="warning" title={contact ? "Latest contact refresh failed" : "Contact unavailable"} action={onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined}>{loadError}</AlertBanner> : null}
 
       <Card
         title="Contact info"
@@ -95,7 +105,7 @@ export function ContactDetailsView({
                 <Button variant="secondary" disabled={isSaving} onClick={resetEditing}>Reset</Button>
               </>
             ) : (
-              <Button variant="secondary" onClick={() => setIsEditing(true)}>Edit</Button>
+              <Button variant="secondary" disabled={!contact} onClick={() => setIsEditing(true)}>Edit</Button>
             )}
           </div>
         }
@@ -130,7 +140,7 @@ export function ContactDetailsView({
                     onBlur={saveCurrentDraft}
                     required
                   />
-                ) : displayed.displayName}
+                ) : !contact ? pending ? "Reading name…" : "Unavailable" : displayed.displayName}
               </TableCell>
             </TableRow>
             <TableRow>
@@ -145,7 +155,7 @@ export function ContactDetailsView({
                     onBlur={saveCurrentDraft}
                     error={!isValidOptionalContactEmail(draft.email) ? 'Email must include "@".' : undefined}
                   />
-                ) : displayed.email || '\u2014'}
+                ) : !contact ? pending ? 'Reading email…' : 'Unavailable' : displayed.email || '\u2014'}
               </TableCell>
             </TableRow>
             <TableRow>
@@ -159,19 +169,16 @@ export function ContactDetailsView({
                     onChange={(event) => updateDraftField('phone', event.target.value)}
                     onBlur={saveCurrentDraft}
                   />
-                ) : displayed.phone || '\u2014'}
+                ) : !contact ? pending ? 'Reading phone…' : 'Unavailable' : displayed.phone || '\u2014'}
               </TableCell>
             </TableRow>
-            <TableRow><TableHead scope="row">Created</TableHead><TableCell>{formatPortalDateTime(contact.createdAt)}</TableCell></TableRow>
-            <TableRow><TableHead scope="row">Updated</TableHead><TableCell>{formatPortalDateTime(contact.updatedAt)}</TableCell></TableRow>
+            <TableRow><TableHead scope="row">Created</TableHead><TableCell>{contact ? formatPortalDateTime(contact.createdAt) : pending ? "Reading created date…" : "Unavailable"}</TableCell></TableRow>
+            <TableRow><TableHead scope="row">Updated</TableHead><TableCell>{contact ? formatPortalDateTime(contact.updatedAt) : pending ? "Reading updated date…" : "Unavailable"}</TableCell></TableRow>
           </TableBody>
         </Table>
       </Card>
 
       <Card title="Projects" aria-label="Projects for contact" padding="none">
-        {!projectsLoaded ? (
-          <LoadingSkeleton rows={3} columns={4} label="Loading projects" />
-        ) : projects.length ? (
           <Table className={styles.responsiveTable}>
             <TableHeader><TableRow><TableHead>Project</TableHead><TableHead className={styles.mobileOptional}>Region</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
             <TableBody>
@@ -183,31 +190,16 @@ export function ContactDetailsView({
                   <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/projects/${encodeURIComponent(project.id)}`}>Open</ButtonLink></TableCell>
                 </TableRow>
               ))}
+              {!projects.length ? <TableRow><TableCell colSpan={4}>
+                {!projectsLoaded && !projectsError ? <p role="status">Reading linked projects…</p> : <EmptyState compact
+                  title={projectsError ? 'Projects unavailable' : 'No linked projects'}
+                  description={projectsError ? 'The project list could not be loaded.' : 'Create a project to connect work with this contact.'}
+                  action={projectsError && onRetryProjects ? <Button variant="secondary" onClick={onRetryProjects}>Retry projects</Button> : !projectsError && contact ? <ButtonLink href={`/staff/projects/new?contactId=${encodeURIComponent(contactId)}`}>Create Project</ButtonLink> : undefined} />}
+              </TableCell></TableRow> : null}
             </TableBody>
           </Table>
-        ) : (
-          <EmptyState
-            compact
-            title={projectsError ? 'Projects unavailable' : 'No linked projects'}
-            description={projectsError ? 'The project list could not be loaded.' : 'Create a project to connect work with this contact.'}
-            action={!projectsError ? <ButtonLink href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>Create Project</ButtonLink> : undefined}
-          />
-        )}
-      </Card>
-    </PageLayout>
-  );
-}
 
-function ContactDetailState({ title, description }: { title: string; description: string }) {
-  return (
-    <PageLayout className={styles.page}>
-      <StaffPageHeader
-        variant="detail"
-        title="Contact"
-        breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: 'Contact' }]}
-        right={<HeaderActions><PortalIndexLink variant="secondary" href="/staff/contacts">Contacts</PortalIndexLink></HeaderActions>}
-      />
-      <EmptyState title={title} description={description} />
+      </Card>
     </PageLayout>
   );
 }
@@ -237,23 +229,24 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
     toast.error(projectsQuery.error instanceof Error ? projectsQuery.error.message : 'Failed to load projects.');
   }, [projectsQuery.error, toast]);
 
-  if (typeof contactQuery.data === 'undefined') {
-    return <ContactDetailState title="Loading contact" description="Retrieving the latest saved contact details." />;
-  }
-
-  if (!contactQuery.data) {
-    return <ContactDetailState title="Contact not found" description="This contact does not exist in the portal database." />;
-  }
+  const denied = [contactQuery.error, projectsQuery.error].some(error => error instanceof ApiError && [401, 403, 404].includes(error.status));
+  const missing = contactQuery.data === null && !contactQuery.error;
+  const visibleContact = denied ? null : contactQuery.data ?? null;
 
   return (
     <ContactDetailsView
-      key={contactQuery.data.id}
-      contact={contactQuery.data}
+      key={contactId}
+      contact={visibleContact}
+      contactId={contactId}
+      pending={!denied && !missing && !contactQuery.error && !contactQuery.data}
+      missing={missing}
+      onRetry={() => void contactQuery.refetch()}
+      onRetryProjects={() => void projectsQuery.refetch()}
       hostKey={host}
       loadError={contactQuery.error instanceof Error ? contactQuery.error.message : null}
-      projects={projectsQuery.data ?? []}
+      projects={denied || missing ? [] : projectsQuery.data ?? []}
       projectsLoaded={typeof projectsQuery.data !== 'undefined'}
-      projectsError={Boolean(projectsQuery.error)}
+      projectsError={denied || missing || Boolean(projectsQuery.error)}
     />
   );
 }

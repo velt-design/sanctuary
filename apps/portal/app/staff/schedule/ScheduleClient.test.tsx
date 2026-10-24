@@ -1,10 +1,18 @@
-import { act } from 'react';
+import { act, StrictMode } from 'react';
+import type { SchedulePageSeed } from '@/lib/scheduling/serverSchedulePageSeed';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import ScheduleClient from './ScheduleClient';
 import { qk } from '@/lib/queries/keys';
 import type { ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { renderIntoDocument as renderHarness } from '../../../../../test/reactHarness';
+
+// This command/query suite already substitutes the private Board/Gantt renderer
+// below. Its substitute owns the test rows; do not add a second public viewport
+// alongside it. Actual surface/portal ownership is covered by the real renderer
+// and connected Workspace suites, without these substitutions.
+vi.mock('./ScheduleBoardSurface', () => ({ default: () => null }));
+vi.mock('./ScheduleGanttSurface', () => ({ default: () => null }));
 
 // Failed assertions must not leave query observers and mutation listeners alive.
 const renderIntoDocument: typeof renderHarness = (ui) => {
@@ -579,6 +587,41 @@ describe('ScheduleClient', () => {
     document.body.innerHTML = '';
   });
 
+  it('mounts the real board during a Flight seed and consumes it without a duplicate browser read under StrictMode', async () => {
+    let resolve!: (value: SchedulePageSeed) => void;
+    // React Flight thenables may return void rather than another chained promise.
+    const initialSeed = {then(yes: (value: SchedulePageSeed) => void) { resolve = yes; }} as unknown as Promise<SchedulePageSeed>;
+    const queryClient = new QueryClient({defaultOptions:{queries:{retry:false}}});
+    const rendered = renderIntoDocument(<StrictMode><QueryClientProvider client={queryClient}><ScheduleClient initialSeed={initialSeed}/></QueryClientProvider></StrictMode>);
+    await act(async()=>{});
+    expect(rendered.container.querySelector('[aria-label="Unscheduled jobs"]')).not.toBeNull();
+    expect(dndMocks.latestBoardProps.dataPending).toBe(true);
+    expect(dndMocks.latestBoardProps.interaction.moveDisabled).toBe(true);
+    expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+    await act(async()=>resolve({initialScheduleMode:'v2',initialSeedKind:'board',today:'2026-04-07',initialV2Snapshot:initialSnapshot}));
+    await vi.waitFor(()=>expect(dndMocks.latestBoardProps.dataPending).toBe(false));
+    expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co','2026-04-07'))).toEqual(initialSnapshot);
+    expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it.each(['board','gantt'] as const)('keeps an initial %s read failure separate from command errors and recovers through Retry', async (view) => {
+    searchParamsString=view==='gantt'?'view=gantt':'';
+    const read=vi.fn().mockRejectedValue(new Error('Synthetic initial read unavailable'));
+    const queryClient=new QueryClient({defaultOptions:{queries:{retryDelay:0}}});
+    const rendered=renderIntoDocument(<QueryClientProvider client={queryClient}><ScheduleClient snapshotLoaders={{board:read,gantt:read}}/></QueryClientProvider>);
+    await vi.waitFor(()=>expect(rendered.container.textContent).toContain('Schedule data could not load'));
+    expect(rendered.container.textContent).not.toContain('Schedule change was not saved');
+    expect(rendered.container.textContent).not.toContain('Supabase SQL editor');
+    expect(rendered.container.textContent).not.toContain('Save failed');
+    expect(view==='board'?dndMocks.latestBoardProps.dataPending:ganttMocks.latestProps?.dataPending).toBe(true);
+    read.mockResolvedValue(initialSnapshot);
+    await act(async()=>[...rendered.container.querySelectorAll('button')].find(button=>button.textContent==='Retry')!.click());
+    await vi.waitFor(()=>expect(rendered.container.textContent).not.toContain('Schedule data could not load'));
+    expect(read).toHaveBeenCalledTimes(3);
+    rendered.unmount();
+  });
+
   it('renders immediately from the seeded v2 snapshot and passes it into the query cache as initial data', async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -924,6 +967,17 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
+  it('keeps real view changes within the gated fictional route when its explicit navigation boundary is supplied', async () => {
+    const replaceState=vi.spyOn(window.history,'replaceState');
+    const queryClient=new QueryClient({defaultOptions:{queries:{retry:false}}});
+    const rendered=renderIntoDocument(<QueryClientProvider client={queryClient}><ScheduleClient navigationPath="/qa/schedule-progressive-fixture" initialV2Snapshot={initialSnapshot}/></QueryClientProvider>);
+    await act(async()=>{});
+    const gantt=[...rendered.container.querySelectorAll('button')].find(button=>button.textContent==='Gantt')!;
+    act(()=>gantt.click());
+    expect(replaceState).toHaveBeenCalledWith(null,'','/qa/schedule-progressive-fixture?view=gantt');
+    expect(routerReplace).not.toHaveBeenCalled();rendered.unmount();
+  });
+
   it('follows canonical URL changes without asking the server to rebuild the page', async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -1117,7 +1171,7 @@ describe('ScheduleClient', () => {
       boardButton?.click();
     });
 
-    expect(rendered.container.textContent).toContain('Loading schedule data from the portal database…');
+    expect(dndMocks.latestBoardProps.dataPending).toBe(true);expect(dndMocks.latestBoardProps.unscheduledJobs).toEqual([]);expect(dndMocks.latestBoardProps.interaction.moveDisabled).toBe(true);
 
     await act(async () => {
       await Promise.resolve();
