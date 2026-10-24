@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-24: Scope a documented tracking key to its protocol location
+
+Meta ConversionActionQuery documents literal action.type. Permit it only in
+direct clauses of root adTracking arrays and preserve its original value; generic
+creative JSON and all existing bounds remain strict. Health diagnostic flags
+must mirror that actual tracking predicate, while old saved flags remain history.
+Do not generalize dotted-key permission, infer unseen response contents or replace
+exact donor/copy comparison with successful parsing. Owners: creative contracts,
+`marketing-performance.md`, `testing-and-qa.md`.
+
 ## 2026-10-24: Preserve unknown creative settings with a paused native reference
 
 Actual approved video settings exceeded the reconstruction contract. The bounded

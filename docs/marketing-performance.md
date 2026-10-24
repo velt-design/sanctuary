@@ -378,6 +378,21 @@ release remains subject to the owning task's review and production approval.
 
 ## Optional original-ad tracking evidence (24 October 2026, local candidate)
 
+The paired tracking-protocol correction permits literal `action.type` only in
+direct object clauses of a root adTracking array, as documented by Meta's
+[ConversionActionQuery](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/conversionactionquery.py).
+The Source/Velt creative contracts preserve its exact key/value and every other
+generic bounded-JSON, reserved-key, scope, pixel/LEAD and purpose guard. Other
+dotted/case-modified/misplaced keys remain invalid; generic creative JSON stays
+strict. The new helper stays local to each contract rather than introducing a
+cross-app runtime dependency. Existing native donor/copy hashes compare complete
+tracking, and copy POST bodies remain unchanged. Source projection mirrors the
+same then-current adTracking predicate; wirev1 and historical flags are unchanged.
+This changes two native contract blobs, requiring a new reviewed 13-owner binding
+before any separately admitted proof, but no schema/request/limit/policy change.
+Velt consumer releases first. Actual publishing-response acceptance and the full
+approved page/creative publication-and-measurement outcome remain unverified.
+
 `campaignMonitor/tracking-evidence.ts` derives only compiled structural metadata
 from `tracking_specs` added to the existing campaign-filtered ads GET. Only the
 four exact original rows carry optional `trackingEvidence` in the strict health
@@ -390,7 +405,7 @@ optional local projection failure alone becomes unavailable without losing healt
 Counts mean UTF-8 bytes of JSON.stringify (capped6001), visited values including
 root (capped501), and maximum root-zero depth (capped9). Strings use JavaScript
 UTF-16 length and the unchanged charCode>8 rule. Finite violation enums mirror the
-current creative bounded-JSON predicate without changing it. Skipped descendants
+then-current adTracking predicate. Historical snapshots retain their saved flags. Skipped descendants
 make scanComplete=false; actionTypeKey is null if an unseen known key cannot be
 ruled out. Missing/unavailable are distinct from empty tracking. No dynamic key,
 value, path, hash, URL, raw response or error string is retained. The explicit
