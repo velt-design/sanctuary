@@ -9,7 +9,17 @@ const object = (state: ExecutorState, kind: 'creative' | 'control' | 'challenger
 export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind: EffectKind, now = Date.now()): WireEffect {
   let path: string, body: Record<string, string>, target: string | null = null;
   const name = `velt-${plan.experiment}-${kind}`;
-  if (kind === 'create_creative') {
+  if (plan.control.format==='native_reference') {
+    if(plan.purpose!=='paused_capability'||plan.control.sourceAd!==plan.controlAd||!plan.originalAds.includes(plan.controlAd))throw new ExecutorFailure('scope');
+    if(kind==='create_control'){
+      if(object(state,'control'))throw new ExecutorFailure('scope');
+      path=`${plan.controlAd}/copies`;body={adset_id:plan.scope.adset,status_option:'PAUSED'};
+    }else if(kind==='pause_control'){
+      target=object(state,'control')??null;
+      if(!target||plan.originalAds.includes(target))throw new ExecutorFailure('scope');
+      path=target;body={status:'PAUSED'};
+    }else throw new ExecutorFailure('scope');
+  } else if (kind === 'create_creative') {
     if (object(state, 'creative')) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/adcreatives`;
     if (plan.control.format === 'video_assets'||plan.control.format==='video_story') {

@@ -30,12 +30,23 @@ export const registeredCreativeAdSchema = z.object({ experiment: z.uuid(), id: e
   template: z.string().regex(/^[a-f0-9]{64}$/), purpose: z.enum(['paused_capability','formal_experiment']), delivery: z.boolean(),
   startsAt: z.iso.datetime({ offset: true }), endsAt: z.iso.datetime({ offset: true }) }).strict();
 export type RegisteredCreativeAd = z.infer<typeof registeredCreativeAdSchema>;
+// Finite structural evidence only. Counts saturate at the first rejected value:
+// UTF-8 JSON bytes6001, value nodes501 and root-zero depth9. No provider keys/values.
+export const trackingRules = ['bytes','nodes','depth','array_length','object_keys','key_syntax','reserved_key','string_length','control_character','non_json'] as const;
+export const trackingEvidenceSchema = z.discriminatedUnion('status', [
+  z.object({version:z.literal(1),status:z.literal('observed'),type:z.enum(['null','boolean','number','string','array','object','unsupported']),
+    utf8Bytes:z.number().int().min(0).max(6001),nodes:z.number().int().min(1).max(501),depth:z.number().int().min(0).max(9),scanComplete:z.boolean(),
+    violations:z.array(z.enum(trackingRules)).max(trackingRules.length).refine(rows=>new Set(rows).size===rows.length),actionTypeKey:z.boolean().nullable()}).strict(),
+  z.object({version:z.literal(1),status:z.enum(['missing','unavailable'])}).strict(),
+]);
+export type TrackingEvidence = z.infer<typeof trackingEvidenceSchema>;
+
 export const campaignHealthSchema = z.object({
   version: z.literal('sanctuary-campaign-health-v1'), account: entityId, campaign: entityId, adset: entityId,
   observedAt: z.iso.datetime(), currency: z.literal('NZD'), timezone: z.literal(TIMEZONE),
   periods: z.object({ today: periodSchema, week: periodSchema }).strict(),
   campaignStatus: status, adsetStatus: status, dailyBudget: amount,
-  ads: z.array(z.object({ id: entityId, label: adLabel, status, today: metricsSchema, week: metricsSchema }).strict()).length(4)
+  ads: z.array(z.object({ id: entityId, label: adLabel, status, today: metricsSchema, week: metricsSchema, trackingEvidence:trackingEvidenceSchema.optional() }).strict()).length(4)
     .refine(rows => new Set(rows.map(row => row.id)).size === 4),
   creativeAds: z.array(registeredCreativeAdSchema.extend({ status, today: metricsSchema, week: metricsSchema }).strict()).max(40).refine(rows => new Set(rows.map(row => row.id)).size === rows.length).optional(),
   steadyAds: z.array(steadyAdSchema.safeExtend({ status, today: metricsSchema, week: metricsSchema })).max(40).refine(rows => new Set(rows.map(row => row.id)).size === rows.length && rows.filter(row => row.current).length <= 4 && new Set(rows.filter(row => row.current).map(row => row.donor)).size === rows.filter(row => row.current).length).optional(),

@@ -1,5 +1,26 @@
 # Testing And QA
 
+Tracking health evidence: run campaignMonitor/tracking-evidence, reader and http
+unit suites, actual current-validator parity vectors and bounded transport tests.
+Cover UTF-8 bytes versus UTF-16 length, root-zero depth/value-node caps, missing,
+unavailable, invalid/reserved secret keys and unchanged original input. Keep core
+metrics/inventory unchanged, project only four originals, and fail once on provider
+field rejection or oversize with no retry/limit change. With the existing local
+SANCTUARY_DISPOSABLE_POSTGRES_BIN, tracking-native.test.ts applies actual reporting
+and health SQL, proves five fenced GETs/complete/deliver, retain:false/no snapshot,
+completion byte hash and Stop. Its ignored synthetic report feeds Velt's native
+monitor save/read/repeat fixture. No remote database, SDK or Meta effects occur.
+Pair with Velt legacy/strict unknowns and byte-identical model-evidence tests.
+
+Paused native-copy candidate: run the creative authority tests and existing
+`scripts/test-meta-creative-ledger-db.mjs` with local disposable PG17. The harness
+installs the forward native-copy patch, checks original-donor/purpose/wire guards,
+one-use uncertain dispatch, exact registered canary proof, Stop, shared reservation
+and owned cleanup, then rechecks legacy capability in isolated synthetic state.
+No actual provider, vault, customer or production operation is performed. Pair
+with Velt's connected native-copy runtime and unchanged native receipt tests;
+synthetic success does not verify Meta response fields or full settings parity.
+
 The AI and Background Jobs PostgreSQL 17 matrices fetch the official Supabase
 image from GHCR at the existing immutable `sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`
 manifest. Its manifest, configuration and all 29 layers match the prior public
@@ -2594,7 +2615,7 @@ Wave 2 reversible-write coverage starts with `apps/portal/app/staff/projects/pro
 
 Ordinary authenticated route changes must keep the current surface usable, show the thin portal progress bar immediately, and apply `aria-busy` only to the clicked control. Cold document delivery retains its existing fresh authentication boundary. `npm run test:portal:shell` covers the shared transition owner and navigation controls; authenticated routing smoke verifies Schedule view changes never show the blocking overlay.
 
-The current progressive-UI contract uses the same actual neutral controls/layout before protected facts, with fresh root and leaf authority still required for private readers and commands. The 23 October 2026 cold-load decision retains the existing route-specific cold shell ceilings of 3,500–4,500 ms and useful-content ceilings of 6,500–9,000 ms. In-app feedback remains 100 ms, cached first-useful UI 500 ms and raw long tasks 50 ms, with the existing Calculator exception. The original five captures, clocks, markers and raw cold 100 ms product flags remain unchanged diagnostics; governing cold acceptance uses the existing per-route cold ceilings. Historical results below remain historical.
+The current progressive-UI contract uses the same actual neutral controls/layout before protected facts, with fresh root and leaf authority still required for private readers and commands. The 23 October 2026 cold-load decision retains the existing route-specific cold shell ceilings of 3,500–4,500 ms and useful-content ceilings of 6,500–9,000 ms. In-app feedback remains 100 ms and cached first-useful UI 500 ms, with the existing Calculator exception. The 24 October 2026 decision applies the 50 ms raw long-task limit to in-app journeys; cold long tasks remain reported diagnostics alongside the existing per-route cold ceilings. The original five captures, clocks, markers, raw cold 100 ms product flags and raw cold long-task measurements remain unchanged; governing cold acceptance uses the existing per-route cold ceilings. Historical results below remain historical.
 
 The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms, and are enforced against the five-run p75 aggregate. Existing cold-route and Schedule-toggle ceilings remain per-run and were not changed.
 
@@ -3296,8 +3317,8 @@ These delays establish controlled state ordering, not production latency. The
 protected endpoints/auth/API JSON contracts are unchanged. Optimized12 browser coverage passed with the documented R10/R11 defects; both
 independently closed on13. Optimized13 also passed preview/Booklet recovery and
 identity journeys. Earlier accepted Schedule/Dashboard/Financial/admin proof is
-reused where source is unchanged. Current local candidate18 passes all six Portal plus separate Schedule gates
-with unchanged thresholds.
+reused where source is unchanged. Historical local candidate18 passed all six Portal plus separate Schedule gates
+with its then-current unchanged thresholds; this is not current-release evidence.
 
 
 ### Object-first Workbench actual-reader lane (22 October 2026)

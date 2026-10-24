@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-24: Preserve unknown creative settings with a paused native reference
+
+Actual approved video settings exceeded the reconstruction contract. The bounded
+capability now has a reference-only copy path with unchanged original creative ID,
+tracking and source lineage required by readback. Do not loosen authored creative
+parsers, invent missing settings, rename the copied ad or treat HTTP success as
+full preservation. Native references cannot enter formal creation or delivery.
+Owners: `supabase-schema-map.md`, `testing-and-qa.md`; actual provider proof remains
+separate from synthetic local acceptance.
+
 ## 2026-10-23: Preserve the database image while changing its registry
 
 Repeated public ECR `Data limit exceeded` responses prevented database setup,

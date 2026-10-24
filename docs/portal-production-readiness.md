@@ -1,6 +1,20 @@
 # Portal Production Readiness
 
-## Progressive Portal current local status (22 October 2026)
+## Progressive Portal current release status (24 October 2026)
+
+The current progressive candidate has passed both production-mode build lanes,
+the unchanged Portal and Schedule bundle gates, and all twelve current CI jobs.
+The five-run evidence meets all sixteen regression rules, all in-app feedback
+and useful-content targets, and the existing cold-route ceilings. The 24 October
+decision applies the 50 ms raw long-task limit to in-app journeys; measured cold
+long tasks remain reported without changing the collectors or limits. Fresh root
+and leaf authority, actual neutral UI before private facts, source retirement,
+and native navigation remain required. Production release is authorised, but
+latest-main integration, its current release checks, and genuine read-only
+Finance/invoice/PDF verification remain to be completed. No release, schema
+installation or financial action is established by this status note.
+
+## Historical progressive Portal local status (22 October 2026)
 
 Active journeys are implemented and locally verified on candidate18, including
 canonical Files integration and identity-safe Workbench recovery. Normal and
