@@ -1,5 +1,14 @@
 # Decision Log
 
+## 2026-10-24: Patch the shared Zod validator without changing application contracts
+
+The production dependency audit identified GHSA-mrhx-c7xc-m3w5 in Zod versions
+below 4.6.6. Pin both apps to the first patched release, 4.6.6, and update only
+its lockfile entries. Keep application schemas, query and command contracts,
+collection limits and failure handling unchanged. Validator/type checks and
+the security audit verify compatibility; this correction is not evidence that
+an application endpoint was exploited. Owner: `testing-and-qa.md`.
+
 ## 2026-10-24: Preserve unknown creative settings with a paused native reference
 
 Actual approved video settings exceeded the reconstruction contract. The bounded
