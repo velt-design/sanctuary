@@ -1,5 +1,15 @@
 # Testing And QA
 
+Tracking protocol correction: run creative-executor/tracking.test.ts and authority
+tests for exact direct-clause action.type preservation, canonical hash equality,
+all other dotted/case/location denials, old bounds/reserved keys, generic creative
+field rejection and native cross-purpose denial. campaignMonitor/tracking-evidence
+must retain parity with the actual adTracking validator, finite privacy-safe
+wirev1 and historical snapshots. Pair with the Velt connected native runtime for
+exact donor/copied tracking, full settings hashes, drift, Stop, uncertainty/no
+replay and registered owned cleanup. No SQL owner changes; reuse unchanged native
+ledger evidence rather than implying fixtures prove actual provider permission.
+
 Tracking health evidence: run campaignMonitor/tracking-evidence, reader and http
 unit suites, actual current-validator parity vectors and bounded transport tests.
 Cover UTF-8 bytes versus UTF-16 length, root-zero depth/value-node caps, missing,
