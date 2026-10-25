@@ -10,8 +10,9 @@ restores the original styles and reading position; it does not add a second
 gutter allowance. Schedule and operational sheets reserve their own inner gutter.
 
 Projects, Contacts, Commercial lists and Finance own deliberate column widths
-and a truthful minimum reading region. Index pagers have a permanent control
-row above the table. Unknown counts remain unknown, and pending, empty and failed
+and a truthful minimum reading region. Index pagers stay in the existing list header, including disabled controls while
+their count is unknown; the range has one owner. Fixed-layout columns have one
+CSS owner rather than duplicated JSX declarations. Unknown counts remain unknown, and pending, empty and failed
 reads use the same real table. Source authority, saved anchors and commands are
 unchanged. Header action space can be allocated before capability is known, but
 no unauthorized control is rendered or activated.
@@ -21,7 +22,8 @@ issue and keep Retry visible where supported; existing full explanations and
 review actions use the existing floating-panel owner without resizing the work.
 Commercial accepted work remains reachable from its named control. Real payment
 schedule, Finance summary and Dashboard card regions retain bounded reading
-areas, with overflow available rather than discarded content. Access, Pricebook,
+areas, with overflow available rather than discarded content. Dashboard visits has an
+explicit track in each responsive layout, so its read cannot resize other rows. Access, Pricebook,
 contact/project forms and Files use the same local status ownership. Validation
 and command controllers remain with their original owners. Imports keeps its file
 picker and summary above explicitly selected file results.

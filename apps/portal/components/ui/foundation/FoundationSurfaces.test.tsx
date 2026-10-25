@@ -5,6 +5,22 @@ import { Pagination } from './FoundationPagination';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
 describe('foundation surfaces', () => {
+  it('retains real pager buttons disabled for an unknown count, then enables the same controls for a checked page', () => {
+    const change = vi.fn();
+    const view = renderIntoDocument(<Pagination compact currentPage={2} totalPages={null} onPageChange={change} />);
+    const previous = view.container.querySelector<HTMLButtonElement>('[aria-label="Previous page"]')!;
+    const next = view.container.querySelector<HTMLButtonElement>('[aria-label="Next page"]')!;
+    expect(previous.disabled).toBe(true); expect(next.disabled).toBe(true);
+    expect(view.container.querySelector('[aria-label="Page 1"]')).toBeNull();
+    act(() => next.click()); expect(change).not.toHaveBeenCalled();
+    view.rerender(<Pagination compact currentPage={2} totalPages={3} onPageChange={change} itemSummary="51–100 of 140" />);
+    expect(view.container.querySelector('[aria-label="Previous page"]')).toBe(previous);
+    expect(view.container.querySelector('[aria-label="Next page"]')).toBe(next);
+    expect(next.disabled).toBe(false); act(() => next.click()); expect(change).toHaveBeenCalledWith(3);
+    view.rerender(<Pagination compact currentPage={2} totalPages={null} disabled onPageChange={change} />);
+    expect(next.disabled).toBe(true); expect(next.isConnected).toBe(true);
+    view.unmount();
+  });
   it('keeps the same native table when its route owns a bounded reading viewport', () => {
     const view = renderIntoDocument(<Table viewportClassName="route-viewport"><TableBody><TableRow><TableCell>Reading…</TableCell></TableRow></TableBody></Table>);
     const table = view.container.querySelector('table')!;

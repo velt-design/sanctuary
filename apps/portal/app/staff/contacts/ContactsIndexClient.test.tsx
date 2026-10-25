@@ -89,7 +89,7 @@ describe('ContactsIndexClient', () => {
       }return results.get(key);
     });
     let pager:((page:number)=>void)|undefined;
-    function Observe(){const workspace=useContactsIndexWorkspace();pager=(workspace?.evidence?.pagination as any)?.props.onPageChange;return null;}
+    function Observe(){const workspace=useContactsIndexWorkspace();pager=workspace?.evidence?.onPageChange;return null;}
     const root=(owner:object|null,denied=false)=><ContactsIndexWorkspace owner={owner} entryIdentity="same-entry" unavailable={denied}><GuardedContactsIndexClient readOnly/><Observe/></ContactsIndexWorkspace>;
     const view=renderIntoDocument(root(ownerA));const table=view.container.querySelector('table'),body=view.container.querySelector('tbody'),head=view.container.querySelector('thead'),input=view.container.querySelector<HTMLInputElement>('#contactSearch')!;
     expect(useContactsIndexData).not.toHaveBeenCalled();expect(view.container.textContent).toContain('Reading contacts');

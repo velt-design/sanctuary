@@ -54,7 +54,6 @@ import {
   DestructiveConfirmation,
   Input,
   PageLayout,
-  Pagination,
   Table,
   TableBody,
   TableCell,
@@ -91,7 +90,7 @@ export default function ProjectsIndexClient({
   const { view, update: updateView, reset: resetView, restoreScroll } = useProjectIndexView(
     initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()), workspace??undefined,
   );
-  const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, page, pageSize } = view;
+  const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, page } = view;
   const selection = JSON.stringify(projectsIndexParamsFromView(view));
   const currentPageOwner = useRef({ publish: workspace?.publish, selection });
   currentPageOwner.current = { publish: workspace?.publish, selection };
@@ -147,9 +146,6 @@ export default function ProjectsIndexClient({
   }, [contacts]);
 
   const filteredProjects = projects;
-  const totalCount = projectsIndex.data?.projects.totalCount ?? 0;
-  const rangeStart = totalCount ? (page - 1) * pageSize + 1 : 0;
-  const rangeEnd = Math.min(page * pageSize, totalCount);
 
   const prepareProjectOpen = useCallback(
     (projectId: string) => {
@@ -248,7 +244,7 @@ export default function ProjectsIndexClient({
 
   const frame={read:projectsIndex,canCreate:!readOnly,
     countNotice:<ListCountBanner compact totalCount={projectsIndex.data?.projects.totalCount ?? null} visibleCount={projects.length} entityLabelSingular="project" entityLabelPlural="projects" truncated={projectsIndex.data?.projects.truncated ?? false}/>,
-    pagination:projects.length>0?<Pagination currentPage={page} totalPages={projectsIndex.data?.projects.totalPages ?? 1} itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`} onPageChange={setPage}/>:null,
+    onPageChange:setPage,
     rows:<>
                     {filteredProjects.map((p) => {
                       const contact = p.contactId ? contactsById.get(p.contactId) : null;

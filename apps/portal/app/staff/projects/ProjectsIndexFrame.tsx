@@ -5,17 +5,18 @@ import type {ProjectIndexView} from './projectIndexView';
 import ProjectIndexToolbar from './ProjectIndexToolbar';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import HeaderActions from '@/components/layout/HeaderActions';
-import { Button, ButtonLink } from '@/components/ui/foundation/FoundationControls';
+import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import ReadStatus from '@/components/page-state/ReadStatus';
+import {Pagination} from '@/components/ui/foundation/FoundationPagination';
 import { Card, PageLayout, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation/FoundationSurfaces';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import styles from './ProjectsIndexClient.module.css';
 export type ProjectsIndexFrameRead=Pick<ReturnType<typeof useProjectsIndexData>,'state'|'backgroundReady'>&{
   data?:ReturnType<typeof useProjectsIndexData>['data'];retry:()=>unknown;
 };
-export default function ProjectsIndexFrame({read,view,updateView,resetView,rows,overlays,countNotice,pagination,canCreate=false}:{
+export default function ProjectsIndexFrame({read,view,updateView,resetView,rows,overlays,countNotice,onPageChange,canCreate=false}:{
   read:ProjectsIndexFrameRead;view:ProjectIndexView;updateView:(patch:Partial<ProjectIndexView>,resetPage?:boolean)=>void;
-  resetView:()=>void;rows?:ReactNode;overlays?:ReactNode;countNotice?:ReactNode;pagination?:ReactNode;canCreate?:boolean;
+  resetView:()=>void;rows?:ReactNode;overlays?:ReactNode;countNotice?:ReactNode;onPageChange?:(page:number)=>void;canCreate?:boolean;
 }){
   const {query,journeyFilter,stageFilter,stateFilter,ownerFilter,page,pageSize}=view;
   const rowCount=read.data?.projects.rows.length??0;
@@ -53,15 +54,15 @@ export default function ProjectsIndexFrame({read,view,updateView,resetView,rows,
           padding="none"
           aria-label="Projects list"
           action={(
-            <ReadStatus title={read.state === 'fresh' ? `${rangeStart}–${rangeEnd} of ${totalCount}` : read.state === 'unavailable' ? 'Access unavailable' : read.state === 'refresh-failed' ? 'Refresh failed' : 'Updating…'}
+            <ReadStatus title={read.state === 'unavailable' ? 'Access unavailable' : read.state === 'refresh-failed' ? 'Refresh failed' : read.state === 'cached' ? 'Updating…' : !read.data ? 'Reading…' : ''}
               tone={read.state === 'refresh-failed' ? 'warning' : read.state === 'unavailable' ? 'error' : 'neutral'}
-              action={<>{countNotice}{read.state === 'refresh-failed' ? <Button variant="tertiary" size="small" onClick={() => void read.retry()}>Retry</Button> : null}</>}
-              details={read.state === 'refresh-failed' ? <DataStatePanel state={rowCount ? 'stale' : 'error'} onRetry={() => void read.retry()} /> : undefined} />
+              action={<><Pagination compact currentPage={page} totalPages={read.data?.projects.totalPages ?? null} disabled={!onPageChange} onPageChange={onPageChange} itemSummary={read.data ? `${rangeStart}–${rangeEnd} of ${totalCount}` : undefined}/>{countNotice}</>}
+              onRetry={read.state === 'refresh-failed' ? read.retry : undefined}
+              details={read.state === 'refresh-failed' ? <DataStatePanel state={rowCount ? 'stale' : 'error'} /> : undefined} />
           )}
         >
-                <div className={styles.pagerSlot}>{pagination}</div>
                 <Table aria-label="Projects" className={styles.indexTable} viewportClassName={styles.listViewport}>
-                  <colgroup><col style={{width:'27%'}}/><col style={{width:'12%'}}/><col style={{width:'15%'}}/><col style={{width:'29%'}}/><col style={{width:'10%'}}/><col style={{width:'7%'}}/></colgroup>
+
                   <TableHeader>
                     <TableRow>
                       <TableHead>Project</TableHead>

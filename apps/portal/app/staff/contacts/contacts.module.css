@@ -21,8 +21,7 @@
 .responsiveTable td { overflow-wrap:anywhere; }
 .listViewport { min-height:320px; }
 .listCard > header { min-height:72px; align-items:center; }
-.listCard > header > :last-child { min-width:0; flex:1 1 270px; max-width:460px; }
-.pagerSlot { min-height:64px; display:grid; align-items:center; padding-inline:var(--ui-space-3); }
+.listCard > header > :last-child { min-width:0; flex:1 1 270px; max-width:680px; }
 @media(max-width:767px) {
  .listCard > header { display:grid; gap:0; } .listCard > header > :last-child { width:100%; max-width:none; }
  .responsiveTable th:nth-child(1) { width:76%; } .responsiveTable th:nth-child(5) { width:24%; }

@@ -2,8 +2,9 @@
 
 import type { ReactNode } from 'react';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
-import { Button, Input, Select } from '@/components/ui/foundation/FoundationControls';
+import { Input, Select } from '@/components/ui/foundation/FoundationControls';
 import ReadStatus from '@/components/page-state/ReadStatus';
+import {Pagination} from '@/components/ui/foundation/FoundationPagination';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import {
   Card,
@@ -42,12 +43,12 @@ export type ContactsIndexFrameProps = {
   setSort: (value: ContactsIndexSort) => void;
   contactsIndex: ContactsIndexFrameRead;
   actions?: ReactNode;
-  rows?:ReactNode;countNotice?:ReactNode;pagination?:ReactNode;
+  rows?:ReactNode;countNotice?:ReactNode;onPageChange?:(page:number)=>void;
 };
 
 export default function ContactsIndexFrame({
   query, debouncedQuery, page, pageSize, sort,
-  setQuery, setPage, setPageSize, setSort, contactsIndex, actions, rows, countNotice, pagination,
+  setQuery, setPage, setPageSize, setSort, contactsIndex, actions, rows, countNotice, onPageChange,
 }: ContactsIndexFrameProps) {
   const contacts = contactsIndex.data?.contacts.rows ?? [];
   const totalCount = contactsIndex.data?.contacts.totalCount ?? 0;
@@ -64,7 +65,7 @@ export default function ContactsIndexFrame({
         variant="index"
         title="Contacts"
         description="Search customer records, review linked projects, or add a new enquiry contact."
-        count={contactsIndex.data?.contacts.totalCount ?? 'Reading contacts'}
+        count={contactsIndex.data?.contacts.totalCount ?? (contactsIndex.state==='unavailable'||contactsIndex.state==='refresh-failed'?'Contacts unavailable':'Reading contacts')}
         right={
           <div className={styles.actionSlot}>{actions}</div>
         }
@@ -109,22 +110,19 @@ export default function ContactsIndexFrame({
           title="All contacts"
           className={styles.listCard}
           action={(
-            <ReadStatus title={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'
-                ? 'Updating...'
-                : contactsIndex.state === 'refresh-failed'
-                  ? contacts.length ? `Refresh failed · ${rangeStart}–${rangeEnd} of ${totalCount}` : 'Refresh failed'
-                  : contactsIndex.state==='unavailable'?'Access unavailable':`${rangeStart}–${rangeEnd} of ${totalCount}`}
+            <ReadStatus title={contactsIndex.state==='unavailable'?'Access unavailable':contactsIndex.state==='refresh-failed'?'Refresh failed':contactsIndex.state==='cached'?'Updating...':!contactsIndex.data?'Reading…':''}
               tone={contactsIndex.state==='refresh-failed'?'warning':contactsIndex.state==='unavailable'?'error':'neutral'}
-              action={<>{countNotice}{contactsIndex.state==='refresh-failed'?<Button variant="tertiary" size="small" onClick={()=>void contactsIndex.retry()}>Retry</Button>:null}</>}
+              action={<><Pagination compact currentPage={page} totalPages={contactsIndex.data?.contacts.totalPages ?? null} disabled={!onPageChange} onPageChange={onPageChange} itemSummary={contactsIndex.data?`${rangeStart}–${rangeEnd} of ${totalCount}`:undefined}/>{countNotice}</>}
+              onRetry={contactsIndex.state==='refresh-failed'?contactsIndex.retry:undefined}
               details={contactsIndex.state==='refresh-failed'?<DataStatePanel state="stale" title="Could not refresh contacts" description={contacts.length?'Showing the last saved list.':'No saved list is available. Retry the request.'}/>:undefined}/>
+
           )}
           aria-label="Contacts list"
           aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}
           padding="none"
         >
-          <div className={styles.pagerSlot}>{pagination}</div>
                   <Table className={styles.responsiveTable} viewportClassName={styles.listViewport}>
-                    <colgroup><col style={{width:'28%'}}/><col className={styles.mobileOptional} style={{width:'26%'}}/><col className={styles.mobileOptional} style={{width:'16%'}}/><col className={styles.mobileOptional} style={{width:'18%'}}/><col style={{width:'12%'}}/></colgroup>
+
                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
                     <TableBody>
                       {rows}

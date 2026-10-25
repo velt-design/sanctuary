@@ -603,9 +603,7 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
       ) : null}
     </>, render: (invoiceSearch) => {
   const visibleInvoices=invoices.filter(invoice=>[invoice.invoiceRef,invoice.quoteRef,invoice.reference,invoice.status,invoice.paymentTermLabel].some(value=>String(value??'').toLocaleLowerCase().includes(invoiceSearch.trim().toLocaleLowerCase())));
-      return { noMatches: <>
-      {!invoicesQuery.isPending&&!invoicesQuery.isError&&invoices.length>0&&!visibleInvoices.length ? <DataStatePanel state="empty" title="No matching invoices" description="Try another reference or clear the search." /> : null}
-      </>, rows: <>
+      return { noMatches: !invoicesQuery.isPending&&!invoicesQuery.isError&&invoices.length>0&&!visibleInvoices.length ? <DataStatePanel state="empty" title="No matching invoices" description="Try another reference or clear the search." /> : null, rows: <>
           {!invoices.length&&(accessEnded||invoicePending||invoicesQuery.isError)&&<TableRow><TableCell colSpan={6}><span role={invoicePending?'status':undefined}>{invoicePending?'Reading invoices…':'Invoices unavailable. Retry the read.'}</span></TableCell></TableRow>}
           {visibleInvoices.map((invoice) => {
             const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT' && !invoice.finalFailure;

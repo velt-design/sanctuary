@@ -132,3 +132,8 @@
 @media (prefers-reduced-motion: reduce) {
   .skeletonRow span { animation: none; }
 }
+
+.pagination[data-compact] { min-width: 0; gap: var(--ui-space-2); }
+.pagination[data-compact] .paginationSummary { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pagination[data-compact] .paginationControls { max-width: 280px; overflow-x: auto; scrollbar-width: thin; }
+@media (max-width: 767px) { .pagination[data-compact] { flex-direction: row; align-items: center; } .pagination[data-compact] .paginationControls { max-width: 150px; } }

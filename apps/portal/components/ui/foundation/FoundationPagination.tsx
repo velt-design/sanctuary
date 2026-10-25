@@ -16,29 +16,32 @@ function pageItems(currentPage: number, totalPages: number): Array<number | 'ell
   return items;
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange, itemSummary }: {
+export function Pagination({ currentPage, totalPages, onPageChange, itemSummary, disabled = false, compact = false }: {
   currentPage: number;
-  totalPages: number;
+  totalPages: number | null;
+  disabled?: boolean;
+  compact?: boolean;
   onPageChange?: (page: number) => void;
   itemSummary?: ReactNode;
 }) {
-  const safeTotal = Math.max(1, totalPages);
-  const safeCurrent = Math.min(Math.max(1, currentPage), safeTotal);
+  const safeTotal = totalPages === null ? null : Math.max(1, totalPages);
+  const safeCurrent = safeTotal === null ? Math.max(1, currentPage) : Math.min(Math.max(1, currentPage), safeTotal);
+  const paused = disabled || safeTotal === null;
   return (
-    <nav className={styles.pagination} aria-label="Pagination">
+    <nav className={styles.pagination} data-compact={compact || undefined} aria-label="Pagination">
       {itemSummary ? <div className={styles.paginationSummary}>{itemSummary}</div> : null}
       <div className={styles.paginationControls}>
-        <button type="button" aria-label="Previous page" onClick={() => onPageChange?.(safeCurrent - 1)} disabled={safeCurrent === 1}>
+        <button type="button" aria-label="Previous page" onClick={() => onPageChange?.(safeCurrent - 1)} disabled={paused || safeCurrent === 1}>
           <ChevronLeft aria-hidden="true" />
         </button>
-        {pageItems(safeCurrent, safeTotal).map((item, index) => item === 'ellipsis' ? (
+        {(safeTotal === null ? [] : pageItems(safeCurrent, safeTotal)).map((item, index) => item === 'ellipsis' ? (
           <span key={`ellipsis-${index}`} aria-hidden="true">…</span>
         ) : (
-          <button key={item} type="button" aria-label={`Page ${item}`} aria-current={item === safeCurrent ? 'page' : undefined} onClick={() => onPageChange?.(item)}>
+          <button key={item} type="button" aria-label={`Page ${item}`} aria-current={item === safeCurrent ? 'page' : undefined} disabled={paused} onClick={() => onPageChange?.(item)}>
             {item}
           </button>
         ))}
-        <button type="button" aria-label="Next page" onClick={() => onPageChange?.(safeCurrent + 1)} disabled={safeCurrent === safeTotal}>
+        <button type="button" aria-label="Next page" onClick={() => onPageChange?.(safeCurrent + 1)} disabled={paused || safeCurrent === safeTotal}>
           <ChevronRight aria-hidden="true" />
         </button>
       </div>

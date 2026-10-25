@@ -3,7 +3,6 @@ import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import styles from './workQueuePage.module.css';
 import ReadStatus from '@/components/page-state/ReadStatus';
-import {Button} from '@/components/ui/foundation/FoundationControls';
 export type WorkQueuePageEvidence={state:string;count?:string;admin:ReactNode;notices:ReactNode;noticeTitle?:string;retry?:()=>void};
 export default function WorkQueueFrame({state,count,admin,notices,noticeTitle,retry,children}:WorkQueuePageEvidence&{children:ReactNode}){
   return <PageLayout width="full" density="compact" className={styles.page} data-project-work-queue-state={state}
@@ -11,7 +10,7 @@ export default function WorkQueueFrame({state,count,admin,notices,noticeTitle,re
     <StaffPageHeader title="Work Queue" variant="index" description="One server-confirmed operational obligation per project." count={count}/>
     <ReadStatus title={noticeTitle??(state==='fresh'?'Queue current':state==='unavailable'||state==='not-ready'?'Queue unavailable':state==='error'?'Queue could not load':'Reading work queue…')}
       tone={state==='error'||state==='unavailable'||state==='not-ready'?'error':noticeTitle&&state!=='cached'?'warning':'neutral'}
-      action={state==='refresh-failed'&&retry?<Button variant="tertiary" size="small" onClick={retry}>Retry</Button>:undefined}
+      onRetry={state==='refresh-failed'?retry:undefined}
       details={noticeTitle?notices:undefined}/>
     {children}{admin}
   </PageLayout>;

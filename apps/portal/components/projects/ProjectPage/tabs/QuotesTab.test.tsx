@@ -190,12 +190,12 @@ const quoteDetail = {
 let activeQuoteDetail: any = quoteDetail;
 
 let oldQuotePublish:((value:QuotesListEvidence|null)=>void)|undefined;
-function ManagedQuotes({allowed,owner,pending}:{allowed:boolean;owner:object;pending:boolean}) {
+function ManagedQuotes({allowed,owner,pending,empty=false}:{allowed:boolean;owner:object;pending:boolean;empty?:boolean}) {
  const controls=useQuotesListControls('proj_1'),published=useOwnedPortalPublication<QuotesListEvidence>(allowed?owner:null);
  const binding=useMemo(()=>({controls,publish:published.publish}),[controls,published.publish]);
  if(allowed)oldQuotePublish=published.publish;
- const producer=useMemo(()=>allowed?<QuotesListView {...({projectId:'proj_1',quotes:pending?[]:[quoteDetail],quotesLoading:pending,quotesError:null,retryQuotes:vi.fn(),
-  openCreate:vi.fn(),selectQuote:vi.fn(),prefetchQuoteDetail:vi.fn(),createOpen:false,closeCreate:vi.fn(),createEstimateId:'',setCreateEstimateId:vi.fn(),createInternalName:'',setCreateInternalName:vi.fn(),estimatesLoading:false,estimates:[],createQuote:vi.fn(),createMode:'estimate',setCreateMode:vi.fn(),manualDescription:'',setManualDescription:vi.fn(),manualQty:'1',setManualQty:vi.fn(),manualPrice:'',setManualPrice:vi.fn(),createBusy:false,isAdmin:false,deleteQuote:vi.fn(),supersedeQuote:vi.fn(),supersedePendingId:null,renameTarget:null,renamePending:false,renameQuote:vi.fn(),closeRename:vi.fn(),saveRename:vi.fn()} as any)} listSurface={binding}/>:null,[allowed,pending,binding]);
+ const producer=useMemo(()=>allowed?<QuotesListView {...({projectId:'proj_1',quotes:pending||empty?[]:[quoteDetail],quotesLoading:pending,quotesError:null,retryQuotes:vi.fn(),
+  openCreate:vi.fn(),selectQuote:vi.fn(),prefetchQuoteDetail:vi.fn(),createOpen:false,closeCreate:vi.fn(),createEstimateId:'',setCreateEstimateId:vi.fn(),createInternalName:'',setCreateInternalName:vi.fn(),estimatesLoading:false,estimates:[],createQuote:vi.fn(),createMode:'estimate',setCreateMode:vi.fn(),manualDescription:'',setManualDescription:vi.fn(),manualQty:'1',setManualQty:vi.fn(),manualPrice:'',setManualPrice:vi.fn(),createBusy:false,isAdmin:false,deleteQuote:vi.fn(),supersedeQuote:vi.fn(),supersedePendingId:null,renameTarget:null,renamePending:false,renameQuote:vi.fn(),closeRename:vi.fn(),saveRename:vi.fn()} as any)} listSurface={binding}/>:null,[allowed,pending,empty,binding]);
  return <><QuotesListSurface query={controls.query} onQueryChange={controls.setQuery} showHistory={controls.showHistory} onHistoryChange={controls.setShowHistory}
   onInteraction={controls.markInteracted} evidence={published.value} unavailable={!allowed}/>{producer}</>;
 }
@@ -212,6 +212,17 @@ it('preserves actual quote Find/history/table/focus across held authority and pe
  expect(input.value).toBe('Q-1001');expect(document.activeElement).toBe(input);expect(table?.textContent).toContain('Q-1001');
  view.rerender(tree(false,a,false));expect(table?.textContent).not.toContain('Q-1001');expect(view.container.querySelector('#quote-search')).toBe(input);
  view.rerender(tree(true,b,false));act(()=>old(null));expect(table?.textContent).toContain('Q-1001');expect(input.value).toBe('Q-1001');view.unmount();
+});
+
+it('uses the genuine empty quote state in the real table and never inserts an empty fragment row on normal adoption',()=>{
+ const owner={},view=renderIntoDocument(<ManagedQuotes allowed owner={owner} pending={false} empty/>);
+ const table=view.container.querySelector('table')!,input=view.container.querySelector('input');
+ expect(table.querySelector('tbody')?.textContent).toContain('No quotes yet.');
+ expect(table.querySelectorAll('tbody tr')).toHaveLength(1);
+ view.rerender(<ManagedQuotes allowed owner={owner} pending={false}/>);
+ expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('input')).toBe(input);
+ expect(table.textContent).toContain('Q-1001');expect(Array.from(table.querySelectorAll('tbody tr')).every(row=>Boolean(row.textContent?.trim()))).toBe(true);
+ view.unmount();
 });
 
 describe('QuotesTab draft ownership UI', () => {

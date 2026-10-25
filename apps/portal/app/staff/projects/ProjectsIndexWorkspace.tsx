@@ -3,7 +3,7 @@ import {createContext,useContext,useEffect,useMemo,useRef,useState,type Componen
 import {useOwnedPortalPublication} from '@/components/page-state/PortalPageSource';
 import {parseProjectIndexView,projectIndexViewHref,projectsIndexParamsFromView,type ProjectIndexView} from './projectIndexView';
 import ProjectsIndexFrame from './ProjectsIndexFrame';
-type Evidence=Pick<ComponentProps<typeof ProjectsIndexFrame>,'read'|'rows'|'overlays'|'countNotice'|'pagination'|'canCreate'>&{selection:string};
+type Evidence=Pick<ComponentProps<typeof ProjectsIndexFrame>,'read'|'rows'|'overlays'|'countNotice'|'onPageChange'|'canCreate'>&{selection:string};
 export type PublicProjectIndexView={view:ProjectIndexView;update:(patch:Partial<ProjectIndexView>,resetPage?:boolean)=>void;reset:()=>void;changed:boolean};
 type Controller=PublicProjectIndexView&{selection:string;publish:(value:Evidence|null)=>void};
 const Context=createContext<Controller|null>(null);
@@ -51,7 +51,7 @@ export function ProjectsIndexWorkspace({owner,visible,entryIdentity,search,navig
   return <Context.Provider value={visible?controller:null}>
     {visible?<ProjectsIndexFrame view={view} updateView={controller.update} resetView={controller.reset}
       read={evidence?.read??{state:unavailable?'unavailable':'pending',backgroundReady:false,retry:()=>onRetry?.()}}
-      rows={evidence?.rows} overlays={evidence?.overlays} countNotice={evidence?.countNotice} pagination={evidence?.pagination} canCreate={Boolean(evidence?.canCreate)}/>:null}
+      rows={evidence?.rows} overlays={evidence?.overlays} countNotice={evidence?.countNotice} onPageChange={evidence?.onPageChange} canCreate={Boolean(evidence?.canCreate)}/>:null}
     {children}
   </Context.Provider>;
 }
