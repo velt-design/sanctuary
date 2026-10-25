@@ -1,3 +1,15 @@
+## Consent-delayed Meta Lead queue
+
+The existing enquiry success event and submission UUID may wait in memory for
+the existing Meta runtime's Script readiness callback. No new pixel, loader,
+provider request, contact field or offline conversion is added. The queue holds
+at most eight events for sixty seconds, clears on withdrawal/unmount, and checks
+current permission again before dispatch. Its bounded consent-scoped recent-UUID
+set prevents repeat dispatch, including after an uncertain queue throw; Meta's original eventID
+remains the provider deduplication identity. A blocked runtime may still leave
+delivery unconfirmed. Local fake-timer tests establish timing and serialization,
+not a genuine provider Lead receipt or a measured production loss.
+
 ## Authored landing copy boundary, local continuation
 
 New plain text is limited by shared approved vocabulary, slot and length checks

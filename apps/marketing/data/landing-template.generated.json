@@ -1,5 +1,5 @@
 {
-  "hash": "8a6b060b3d1f104938ad2bf64b51d2dd57e610b1c731ee2ce8d1ea4e1f67ca4f",
+  "hash": "69148abdf068919756a60c2db9f82acaad383e7dc4a1bfc78c107de56b50d356",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -67,7 +67,7 @@
     ],
     [
       "apps/marketing/app/contact/ContactEnquiryForm.tsx",
-      "ac1627da1cddd0d99b306e957cfcbb2357ca58d050ddb35344482de3f1742bac"
+      "7e21c4be965531725ba3d9cc62d81da817210caa81492d95b09f3e90ace47ad1"
     ],
     [
       "apps/marketing/app/contact/ContactFormIntro.tsx",
@@ -895,7 +895,7 @@
     ],
     [
       "apps/marketing/components/MetaPixel.tsx",
-      "d29f17adacdf85ec035c0933f61c31dd68482a552df2ea7275a3f22533c7e355"
+      "d377133d7396895cc8f81ed0fac62e3fa612032da50b3c59f034773464a4c9ce"
     ],
     [
       "apps/marketing/components/PortalMode.tsx",
@@ -1084,6 +1084,10 @@
     [
       "apps/marketing/lib/landingPriceTableStore.ts",
       "220c59b15b6a38ea6a5ecadcc33876d27d0cc914792764ea42ce583f5f62365e"
+    ],
+    [
+      "apps/marketing/lib/metaLead.ts",
+      "70ab31f05c073b00b0247683622fc47721c387e30d90327eb8a83e5724ce3a60"
     ],
     [
       "apps/marketing/lib/projectDetailNavigation.ts",

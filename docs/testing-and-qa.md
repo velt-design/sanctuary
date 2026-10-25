@@ -1,5 +1,13 @@
 # Testing And QA
 
+Consent-delayed Lead checks: run components/MetaPixel.lead.test.tsx and
+lib/metaLead.test.ts with trackingConsent and configuredFormRecovery. The connected
+fixture mounts the actual form, delayed MetaPixel and first-party runtime, fences
+all network/vendor insertion, and covers fast/ordinary success, same-ID retry,
+denial, unresolved consent, withdrawal and duplicate readiness. Unit checks cover
+expiry, finite storage and no repeated dispatch after uncertainty. Preserve the
+existing pixel/load timing and distinguish these fixtures from hosted delivery.
+
 Tracking protocol correction: run creative-executor/tracking.test.ts and authority
 tests for exact direct-clause action.type preservation, canonical hash equality,
 all other dotted/case/location denials, old bounds/reserved keys, generic creative

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { useConsent } from '@/components/ConsentProvider';
+import { clearPendingMetaLeads, flushPendingMetaLeads } from '../lib/metaLead';
 
 export default function MetaPixel() {
   const { consent } = useConsent();
@@ -10,6 +11,7 @@ export default function MetaPixel() {
 
   useEffect(() => {
     if (!consent.marketing) {
+      clearPendingMetaLeads();
       setShouldLoad(false);
       return;
     }
@@ -29,10 +31,12 @@ export default function MetaPixel() {
     return () => {
       window.removeEventListener('load', schedule);
       if (timerId !== null) window.clearTimeout(timerId);
+      clearPendingMetaLeads();
     };
   }, [consent.marketing]);
 
   if (!consent.marketing || !shouldLoad) return null;
 
-  return <Script id="sp-runtime-meta" src="/runtime-meta.js" strategy="afterInteractive" />;
+  return <Script id="sp-runtime-meta" src="/runtime-meta.js" strategy="afterInteractive"
+    onReady={() => flushPendingMetaLeads(consent.marketing)} />;
 }
