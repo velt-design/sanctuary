@@ -33,7 +33,7 @@ Apply `20260911000001_installer_payout_workflow.sql` through the normal migratio
 
 ## Costing Source Of Truth
 
-### Short-projection pitched startup (manifest v2.11, local candidate)
+### Short-projection pitched startup (manifest v2.11, release candidate)
 
 Jordan's 23 October instruction, amended on 26 October, reduces the once-per-job
 operational startup allowance by **$500 ex GST before markup** when every pergola
@@ -56,6 +56,14 @@ At a 1.30 multiplier, the full $500 reduction lowers an undiscounted customer
 price by $747.50 including GST. The admin impact review includes both the 6 x 3 m
 boundary and an explicitly 5-degree 6 x 2.8 m example. The website configurator's
 actual 3-degree mono geometry remains unchanged and receives this reduction at projections up to 3 m.
+
+Jordan authorised production release on 26 October, subject to checking the
+current pricebook and preserving all other pricing. Prepare the candidate from
+the current published control with only `baseManifestVersion` changed to `v2.11`;
+never replace its rates or optional accessory/installed schedules with defaults.
+Recheck the active publication identity before the atomic publish; a changed
+baseline requires a fresh comparison. Private rate/comparison receipts stay in
+the owning task's private evidence, outside the public repository.
 
 Deploy compatible Portal and Marketing code before creating a fresh draft from
 the active published rates. A fresh draft advances to `v2.11` while preserving
