@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SpreadsheetAdapter } from '@/components/spreadsheet/types';
 import spreadsheetStyles from '@/components/spreadsheet/spreadsheet.module.css';
 import type { EstimateDetail } from '@/lib/estimates/types';
+import {jobPackSheetPresentation} from '@/lib/jobPacks/sheetPresentation';
 import { normalizePowdercoatProfile } from '@/lib/jobPacks/powdercoating';
 import type {
   JobPackPowdercoatOverrideState,
@@ -99,11 +100,11 @@ function SheetToolbar({
   showHideNotesToggle,
   showNotesColumn,
   onShowNotesColumnChange,
-  warningMessage,
+  warningMessage,pending=false,readOnly=false,onRetry,
 }: {
-  detail: EstimateDetail;
+  onRetry?:()=>void;pending?:boolean;readOnly?:boolean;detail: EstimateDetail|null;
   sheet: JobPackSheetKey;
-  trueCostExGst: number;
+  trueCostExGst: number|null;
   estimateTotal: number | null | undefined;
   onSheetChange: (sheet: JobPackSheetKey) => void;
   onBackToList: () => void;
@@ -117,7 +118,7 @@ function SheetToolbar({
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleDownloadPdf = useCallback(async () => {
-    if (isDownloadingPdf) return;
+    if (isDownloadingPdf||!detail||readOnly) return;
     setIsDownloadingPdf(true);
     setDownloadError(null);
     try {
@@ -132,7 +133,7 @@ function SheetToolbar({
     } finally {
       setIsDownloadingPdf(false);
     }
-  }, [detail.id, detail.versionLabel, isDownloadingPdf, sheet, showNotesColumn]);
+  }, [detail,readOnly,isDownloadingPdf, sheet, showNotesColumn]);
 
   return (
     <div className={spreadsheetStyles.toolbar}>
@@ -168,25 +169,25 @@ function SheetToolbar({
 
       <div className={spreadsheetStyles.toolbarSecondary}>
         <div className={spreadsheetStyles.toolbarMeta}>
-          <span>{detail.versionLabel}</span>
-          <span>{formatDate(detail.createdAt)}</span>
-          <span>{formatEstimateStatus(detail.status)}</span>
+          <span>{detail?.versionLabel??(pending?'Reading version…':'Version unavailable')}</span>
+          <span>{detail?formatDate(detail.createdAt):pending?'Reading date…':'Date unavailable'}</span>
+          <span>{detail?formatEstimateStatus(detail.status):pending?'Reading status…':'Status unavailable'}</span>
           {estimateTotal !== null && estimateTotal !== undefined ? <span>{`Estimate ${formatMoney(estimateTotal)}`}</span> : null}
-          <span>{`True cost ${formatMoney(trueCostExGst)}`}</span>
+          <span>{trueCostExGst===null?pending?'True cost Reading…':'True cost unavailable':`True cost ${formatMoney(trueCostExGst)}`}</span>
         </div>
 
-        <button type="button" className={spreadsheetStyles.toolbarAction} disabled={isDownloadingPdf} onClick={handleDownloadPdf}>
+        <button type="button" className={spreadsheetStyles.toolbarAction} disabled={isDownloadingPdf||!detail||readOnly} onClick={handleDownloadPdf}>
           {isDownloadingPdf ? 'Downloading PDF...' : 'Download PDF'}
         </button>
 
-        <button type="button" className={spreadsheetStyles.toolbarAction} onClick={onOpenEstimate}>
+        <button type="button" className={spreadsheetStyles.toolbarAction} disabled={!detail} onClick={()=>{if(detail)onOpenEstimate();}}>
           Open estimate
         </button>
       </div>
 
       {warningMessage ? (
         <div className={spreadsheetStyles.toolbarWarning} role="status" aria-live="polite">
-          {warningMessage}
+          {warningMessage} {!pending&&onRetry&&<button type="button" className={spreadsheetStyles.toolbarAction} onClick={onRetry}>Retry job pack</button>}
         </div>
       ) : null}
 
@@ -203,7 +204,8 @@ export { coerceJobPackSheet, type JobPackSheetKey };
 
 export function useJobPackSpreadsheetAdapter({
   hostKey,
-  detail,
+  readOnly: sourceReadOnly = false,
+  detail,pending=false,error=null,refreshing=false,onRetry,
   sheet,
   onSheetChange,
   onBackToList,
@@ -211,7 +213,8 @@ export function useJobPackSpreadsheetAdapter({
   showNotesColumn,
   onShowNotesColumnChange,
 }: {
-  hostKey: string;
+  readOnly?: boolean;
+  onRetry?:()=>void;pending?:boolean;error?:string|null;refreshing?:boolean;hostKey: string;
   detail: EstimateDetail | null;
   sheet: JobPackSheetKey;
   onSheetChange: (sheet: JobPackSheetKey) => void;
@@ -273,7 +276,21 @@ export function useJobPackSpreadsheetAdapter({
   );
 
   return useMemo(() => {
-    if (!detail || !workbook) return null;
+    const needsPowdercoat=sheet==='materials'||sheet==='powdercoating-order';
+    const denied=powdercoatQuery.error instanceof ApiError&&[401,403,404].includes(powdercoatQuery.error.status);
+    const powdercoatReady=Boolean(powdercoatQuery.data&&!powdercoatQuery.isError&&!powdercoatQuery.isFetching);
+    const readOnly=sourceReadOnly||refreshing||Boolean(error)||!powdercoatReady;
+    if (!detail || !workbook || (needsPowdercoat&&(!powdercoatQuery.data||denied))) {
+      const definition={title:'Job Pack',...jobPackSheetPresentation(sheet),groups:[],defaultActiveKey:'a' as const,emptyMessage:'No job pack records.'};
+      const reading=pending||Boolean(detail&&needsPowdercoat&&(powdercoatQuery.isPending||powdercoatQuery.isFetching));
+      return {
+       title:detail?`Job Pack ${detail.versionLabel}`:'Job Pack',
+       toolbar:<SheetToolbar detail={detail} sheet={sheet} trueCostExGst={null} estimateTotal={detail?.summary.total} onSheetChange={onSheetChange} onBackToList={onBackToList} onOpenEstimate={onOpenEstimate} showHideNotesToggle={Boolean(definition.notesColumnKey)} showNotesColumn={showNotesColumn} onShowNotesColumnChange={onShowNotesColumnChange} warningMessage={reading?null:error??powdercoatWarningMessage??'Job pack records unavailable.'} onRetry={()=>{if(powdercoatQuery.isError){if(!powdercoatQuery.isFetching)void powdercoatQuery.refetch();}else onRetry?.();}} pending={reading} readOnly/>,
+       columns:resolveVisibleJobPackColumns(definition,showNotesColumn),allRows:[],rowNumberRows:[],groups:[],zoomStorageKey:`sp_job_pack_${sheet}_zoom_v1`,defaultActiveKey:resolveVisibleJobPackDefaultActiveKey(definition,showNotesColumn),loading:reading,hasError:!reading,
+       loadingMessage:'Reading verified job pack…',errorMessage:error??'Job pack source records unavailable. Retry the read.',emptyMessage:definition.emptyMessage,
+       getRowId:row=>row.id,isEditableKey:(_key):_key is JobPackEditableCellKey=>false,getRowClassName:()=>'',getCellClassName:()=>spreadsheetStyles.bodyCell,formatCellValue:()=>'',renderCellContent:()=>null,getEditorValue:()=>'',renderEditor:()=>null,onCellActivated:()=> 'noop' as const,
+      };
+    }
 
     const activeSheet = workbook.sheets[sheet] ?? workbook.sheets[DEFAULT_JOB_PACK_SHEET];
     const visibleColumns = resolveVisibleJobPackColumns(activeSheet, showNotesColumn);
@@ -285,6 +302,7 @@ export function useJobPackSpreadsheetAdapter({
       toolbar: (
         <SheetToolbar
           detail={detail}
+          readOnly={sourceReadOnly||refreshing||Boolean(error)||(needsPowdercoat&&!powdercoatReady)}
           sheet={sheet}
           trueCostExGst={workbook.jobPack.summary.totals.trueCostExGst}
           estimateTotal={detail.summary.total ?? null}
@@ -294,7 +312,8 @@ export function useJobPackSpreadsheetAdapter({
           showHideNotesToggle={Boolean(activeSheet.notesColumnKey)}
           showNotesColumn={showNotesColumn}
           onShowNotesColumnChange={onShowNotesColumnChange}
-          warningMessage={sheet === 'powdercoating-order' ? powdercoatWarningMessage : null}
+          warningMessage={error??(sheet === 'powdercoating-order'||needsPowdercoat ? powdercoatWarningMessage : null)}
+          onRetry={()=>{if(powdercoatQuery.isError){if(!powdercoatQuery.isFetching)void powdercoatQuery.refetch();}else onRetry?.();}}
         />
       ),
       columns: visibleColumns,
@@ -304,18 +323,18 @@ export function useJobPackSpreadsheetAdapter({
       zoomStorageKey: `sp_job_pack_${sheet}_zoom_v1`,
       defaultActiveKey,
       loading: false,
-      hasError: false,
+      hasError: Boolean(error),
       loadingMessage: 'Loading job pack...',
-      errorMessage: 'Failed to load the job pack workbook.',
+      errorMessage: error??'Failed to load the job pack workbook.',
       emptyMessage: activeSheet.emptyMessage,
       getRowId: (row) => row.id,
-      isEditableKey: (key): key is JobPackEditableCellKey => key === 'a' || key === 'c' || key === 'd',
+      isEditableKey: (key): key is JobPackEditableCellKey => !readOnly&&(key === 'a' || key === 'c' || key === 'd'),
       getRowClassName: () => '',
       getCellClassName: ({ row, column, active, editing, saving, conflict }) => {
         const classes = [spreadsheetStyles.bodyCell];
         if (column.frozen) classes.push(spreadsheetStyles.frozenCell);
         if (
-          sheet === 'powdercoating-order' &&
+          !readOnly&&sheet === 'powdercoating-order' &&
           row.powdercoat &&
           (column.key === 'a' || column.key === 'd' || (column.key === 'c' && row.powdercoat.stockLengthOptionsM.length > 1))
         ) {
@@ -423,14 +442,14 @@ export function useJobPackSpreadsheetAdapter({
           />
         );
       },
-      optimisticEditing: detail
+      optimisticEditing: !readOnly&&detail
         ? {
             getLatestConfirmedModel: () => readPowdercoatResponse().overrides.rows,
             displayModel: (_queueKey, model) => {
               setDisplayedPowdercoatRows(model);
             },
             prepareEdit: ({ row, rowId, key, value, displayedModel }) => {
-              if (sheet !== 'powdercoating-order' || !row.powdercoat) {
+              if (readOnly||sheet !== 'powdercoating-order' || !row.powdercoat) {
                 return { kind: 'noop' } as const;
               }
 
@@ -524,7 +543,7 @@ export function useJobPackSpreadsheetAdapter({
           }
         : undefined,
       onCellActivated: async ({ trigger, row, key, seed, beginEdit }) => {
-        if (sheet !== 'powdercoating-order' || !row.powdercoat) return 'noop';
+        if (readOnly||sheet !== 'powdercoating-order' || !row.powdercoat) return 'noop';
         if (key !== 'a' && key !== 'c' && key !== 'd') return 'noop';
         if (!powdercoatData.options.length && key === 'a') return 'noop';
         if (row.powdercoat.origin === 'draft' && key !== 'a') return 'noop';
@@ -544,7 +563,7 @@ export function useJobPackSpreadsheetAdapter({
       },
     };
   }, [
-    detail,
+    sourceReadOnly,detail,pending,error,refreshing,onRetry,powdercoatQuery.refetch,powdercoatQuery.error,powdercoatQuery.data,powdercoatQuery.isError,powdercoatQuery.isPending,powdercoatQuery.isFetching,
     onBackToList,
     onOpenEstimate,
     onSheetChange,

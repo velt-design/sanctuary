@@ -16,6 +16,7 @@ import type { QuotePaymentTerm } from "@/lib/quotes/paymentSchedule";
 import type { QuoteLineItem, QuoteVersionDetail } from "@/lib/quotes/types";
 import { isLocalQuoteId } from "@/lib/localFirst/portalEntities";
 import styles from "./QuotesTab.module.css";
+import QuoteMetadata from "./QuoteMetadata";
 import QuoteLineItemsEditor from "./QuoteLineItemsEditor";
 import QuotePaymentTermsEditor from "./QuotePaymentTermsEditor";
 import QuotePdfInlinePreview from "./QuotePdfInlinePreview";
@@ -35,7 +36,8 @@ type Setter<T> = Dispatch<SetStateAction<T>>;
 
 type QuoteDetailViewProps = {
   projectId: string;
-  detail: QuoteVersionDetail;
+  detail: QuoteVersionDetail|null;
+  pending?:boolean;readError?:string;onRetry?:()=>void;
   draftDirty: boolean;
   draftSyncPending: boolean;
   guardUnsavedDraft: (action: () => void) => void;
@@ -68,7 +70,6 @@ type QuoteDetailViewProps = {
   quotePdfPreviewLoading: boolean;
   quotePdfPreviewError: string | null;
   quotePdfPreviewData: Uint8Array | null;
-  quotePdfPreviewKey: string | null;
   draftExpiry: string;
   setDraftExpiry: Setter<string>;
   draftReference: string;
@@ -121,7 +122,7 @@ type QuoteDetailViewProps = {
 
 export default function QuoteDetailView({
   projectId,
-  detail,
+  detail,pending=false,readError='',onRetry,
   draftDirty,
   draftSyncPending,
   guardUnsavedDraft,
@@ -154,7 +155,6 @@ export default function QuoteDetailView({
   quotePdfPreviewLoading,
   quotePdfPreviewError,
   quotePdfPreviewData,
-  quotePdfPreviewKey,
   draftExpiry,
   setDraftExpiry,
   draftReference,
@@ -190,23 +190,24 @@ export default function QuoteDetailView({
   dialogs,
 }: QuoteDetailViewProps) {
   const commercial = useProjectCommercialContext();
-  useProjectViewDraftGuard(draftDirty);
-  const expired = detail.status !== "ACCEPTED" && isExpired(detail.expiresAt);
+  useProjectViewDraftGuard(Boolean(detail&&draftDirty));
+  const unknown=pending?'Reading…':'Unavailable';
+  const expired = detail?.status !== "ACCEPTED" && isExpired(detail?.expiresAt);
   const hasNewerEstimate = refreshUsesLatestDesign;
-  const commercialWorkflowReady = detail.commercialWorkflowReady !== false;
-  const unfinishedDelivery = Boolean(detail.unfinishedDelivery);
+  const commercialWorkflowReady = Boolean(detail&&!pending&&!readError&&detail.commercialWorkflowReady !== false);
+  const unfinishedDelivery = Boolean(detail?.unfinishedDelivery);
   const editableDraft =
-    commercial.actionsAvailable &&
+    Boolean(detail)&&!pending&&!readError&&commercial.actionsAvailable &&
     commercialWorkflowReady &&
-    detail.status === "DRAFT" &&
-    detail.isCurrentDraft &&
+    detail?.status === "DRAFT" &&
+    detail?.isCurrentDraft &&
     !unfinishedDelivery;
   const deliveryPreparedVersion =
     commercialWorkflowReady &&
     (unfinishedDelivery ||
-      (detail.status === "DRAFT" &&
-        !detail.isCurrentDraft &&
-        Boolean(detail.deliveryPreparedAt)));
+      (detail?.status === "DRAFT" &&
+        !detail?.isCurrentDraft &&
+        Boolean(detail?.deliveryPreparedAt)));
 
   return (
     <div
@@ -224,10 +225,12 @@ export default function QuoteDetailView({
           &larr; Back to quotes
         </button>
       </div>
+      {(!detail||readError)&&<p role={pending?'status':'alert'}>{readError||(pending?'Reading verified quote version…':'Quote version unavailable.')} {readError&&detail?'Earlier verified version remains read-only.':''} {readError&&onRetry&&<button type="button" onClick={onRetry}>Retry quote</button>}</p>}
+      {detail&&pending&&<p role="status">Updating quote version. Earlier verified details remain read-only.</p>}
       <StickyActionBar
         className={styles.quoteActionBar}
         status={
-          <QuoteStatusBadge
+          detail?<QuoteStatusBadge
             status={detail.status}
             detail={
               draftDirty
@@ -236,25 +239,25 @@ export default function QuoteDetailView({
                   ? "Syncing"
                   : undefined
             }
-          />
+          />:<span>{unknown}</span>
         }
-        meta={`${detail.commercialScopeKind === "add_on" ? "Add-on · " : ""}${detail.quoteRef} · v${detail.versionNumber}`}
+        meta={detail?`${detail.commercialScopeKind === "add_on" ? "Add-on · " : ""}${detail.quoteRef} · v${detail.versionNumber}`:unknown}
         issues={
           !commercialWorkflowReady
             ? "Commercial actions unavailable"
-            : !detail.isCurrentDraft && detail.status === "DRAFT"
+            : !detail?.isCurrentDraft && detail?.status === "DRAFT"
             ? deliveryPreparedVersion
               ? "Delivery prepared"
               : "Superseded draft"
             : unfinishedDelivery
               ? "Delivery finalisation incomplete"
               : expired
-                ? `Expired ${detail.expiresAt ?? ""}`
+                ? `Expired ${detail?.expiresAt ?? ""}`
                 : undefined
         }
       >
-        {commercial.actionsAvailable ? <div className={styles.detailActions}>
-          {!commercialWorkflowReady && detail.status !== "ACCEPTED" ? (
+        {detail&&!pending&&!readError&&commercial.actionsAvailable ? <div className={styles.detailActions}>
+          {!commercialWorkflowReady && detail?.status !== "ACCEPTED" ? (
             <button
               type="button"
               className={styles.primaryButton}
@@ -279,7 +282,7 @@ export default function QuoteDetailView({
             >
               Review prepared delivery
             </button>
-          ) : detail.status === "SENT" && !expired ? (
+          ) : detail?.status === "SENT" && !expired ? (
             <button
               type="button"
               className={styles.primaryButton}
@@ -287,7 +290,7 @@ export default function QuoteDetailView({
             >
               Resend
             </button>
-          ) : detail.status === "ACCEPTED" ? (
+          ) : detail?.status === "ACCEPTED" ? (
             openJobPackHref ? (
               <Link className={styles.primaryButton} href={openJobPackHref}>
                 Open Job Pack
@@ -330,7 +333,7 @@ export default function QuoteDetailView({
                         onClick={openRefreshModal}
                         disabled={
                           refreshBusy ||
-                          isLocalQuoteId(detail.id) ||
+                          (!detail||isLocalQuoteId(detail.id)) ||
                           draftSyncPending
                         }
                       >
@@ -364,7 +367,7 @@ export default function QuoteDetailView({
                         type="button"
                         className={`${styles.moreActionsItem} ${styles.moreActionsDanger}`}
                         onClick={openDeleteConfirm}
-                        disabled={isLocalQuoteId(detail.id) || draftSyncPending}
+                        disabled={(!detail||isLocalQuoteId(detail.id)) || draftSyncPending}
                       >
                         Delete draft
                       </button>
@@ -383,9 +386,9 @@ export default function QuoteDetailView({
                     ) : null}
                     {!unfinishedDelivery &&
                     commercialWorkflowReady &&
-                    (detail.status === "SENT" ||
-                      detail.status === "ACCEPTED" ||
-                      detail.status === "DECLINED") ? (
+                    (detail?.status === "SENT" ||
+                      detail?.status === "ACCEPTED" ||
+                      detail?.status === "DECLINED") ? (
                       <button
                         type="button"
                         className={styles.moreActionsItem}
@@ -404,7 +407,7 @@ export default function QuoteDetailView({
                         {reviseBusy ? "Creating revision..." : "Create revision"}
                       </button>
                     ) : null}
-                    {detail.status === "ACCEPTED" ? (
+                    {detail?.status === "ACCEPTED" ? (
                       <Link
                         className={styles.moreActionsItemLink}
                         href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}
@@ -413,7 +416,7 @@ export default function QuoteDetailView({
                       </Link>
                     ) : null}
                     {canSupersedeQuote &&
-                    (detail.status === "SENT" || detail.status === "ACCEPTED") ? (
+                    (detail?.status === "SENT" || detail?.status === "ACCEPTED") ? (
                       <button
                         type="button"
                         className={styles.moreActionsItem}
@@ -445,7 +448,7 @@ export default function QuoteDetailView({
                     ) : null}
                     <a
                       className={styles.moreActionsItemLink}
-                      href={quotePdfUrl(detail.id)}
+                      href={quotePdfUrl(detail!.id)}
                     >
                       Download PDF
                     </a>
@@ -459,11 +462,11 @@ export default function QuoteDetailView({
 
       {expired ? (
         <div className={styles.expiredBanner}>
-          Expired on {detail.expiresAt ?? "—"}
+          Expired on {detail?detail.expiresAt??"—":unknown}
         </div>
       ) : null}
 
-      {!commercialWorkflowReady ? (
+      {detail?.commercialWorkflowReady===false ? (
         <div className={styles.workflowWarning} role="status">
           <strong>Commercial actions are temporarily unavailable.</strong>{" "}
           This quote is available read-only, but delivery, revision, and
@@ -478,7 +481,7 @@ export default function QuoteDetailView({
           frozen email is delivered or safely retried. Create a revision for
           further changes.
         </div>
-      ) : !detail.isCurrentDraft && detail.status === "DRAFT" ? (
+      ) : !detail?.isCurrentDraft && detail?.status === "DRAFT" ? (
         <div className={styles.expiredBanner}>
           Superseded draft — preserved for history and read-only. Create a
           revision to continue.
@@ -490,157 +493,35 @@ export default function QuoteDetailView({
           <div className={styles.cardHeader}>
             <h4 className={styles.cardTitle}>Quote preview</h4>
           </div>
-          {detail.status === "DRAFT" && draftDirty ? (
+          {detail?.status === "DRAFT" && draftDirty ? (
             <div className={styles.metaWarning}>
               Preview includes your current local draft edits before sync
               completes.
             </div>
           ) : null}
-          {detail.status === "DRAFT" && !draftDirty && draftSyncPending ? (
+          {detail?.status === "DRAFT" && !draftDirty && draftSyncPending ? (
             <div className={styles.metaWarning}>
               Preview is rendered from the current local draft while background
               sync completes.
             </div>
           ) : null}
-          {quotePdfPreviewLoading ? (
-            <p className={styles.note}>Rendering quote preview...</p>
-          ) : null}
-          {quotePdfPreviewError ? (
-            <div className={styles.errorText}>
-              {quotePdfPreviewError}{" "}
-              {detail.status === "DRAFT" ||
-              isLocalQuoteId(detail.id) ||
-              draftSyncPending ? null : (
-                <a href={quotePdfUrl(detail.id)}>Download PDF</a>
-              )}
-            </div>
-          ) : null}
-          {!quotePdfPreviewLoading &&
-          !quotePdfPreviewError &&
-          quotePdfPreviewData ? (
-            <div className={styles.quotePreviewFrameWrap}>
-              <QuotePdfInlinePreview
-                key={quotePdfPreviewKey}
-                data={quotePdfPreviewData}
-              />
-            </div>
-          ) : null}
+          {quotePdfPreviewError && detail && detail.status !== "DRAFT" && !isLocalQuoteId(detail.id) && !draftSyncPending ? <a href={quotePdfUrl(detail.id)}>Download PDF</a> : null}
+          <div className={styles.quotePreviewFrameWrap}>
+            <QuotePdfInlinePreview
+              data={detail && !quotePdfPreviewError ? quotePdfPreviewData : null}
+              pending={!detail ? pending : quotePdfPreviewLoading || (!quotePdfPreviewData && !quotePdfPreviewError)}
+              readError={quotePdfPreviewError ?? (!detail && !pending ? "Quote PDF unavailable." : undefined)}
+            />
+          </div>
         </section>
       ) : (
         <>
-          <section className={styles.card}>
-            <div className={styles.cardHeader}>
-              <h4 className={styles.cardTitle}>Quote details</h4>
-            </div>
-            <div className={styles.metaGrid}>
-              <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Customer on this quote</div>
-                <div className={styles.metaValue}>
-                  {detail.customerName || "Customer"}
-                </div>
-                <div className={styles.metaValueMuted}>
-                  Saved with this version
-                </div>
-              </div>
-              <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Current contact</div>
-                <div className={styles.metaValue}>
-                  {detail.contact.name || "—"}
-                </div>
-                <div className={styles.metaValueMuted}>
-                  {detail.contact.email || "—"}
-                </div>
-                {detail.contact.phone ? (
-                  <div className={styles.metaValueMuted}>
-                    {detail.contact.phone}
-                  </div>
-                ) : null}
-              </div>
-              <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Quote number</div>
-                <div className={styles.metaValue}>{detail.quoteRef}</div>
-                <div className={styles.metaValueMuted}>
-                  v{detail.versionNumber}
-                </div>
-              </div>
-              <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Issue date</div>
-                <div className={styles.metaValue}>
-                  {editableDraft
-                    ? "Set on send"
-                    : formatDateShort(detail.sentAt)}
-                </div>
-                <div className={styles.metaLabel}>Expiry date</div>
-                {editableDraft ? (
-                  <input
-                    className={styles.metaInput}
-                    type="date"
-                    value={draftExpiry}
-                    onChange={(e) => setDraftExpiry(e.target.value)}
-                    placeholder="30 days from send"
-                  />
-                ) : (
-                  <div className={styles.metaValue}>
-                    {detail.expiresAt ?? "—"}
-                  </div>
-                )}
-              </div>
-              <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Reference</div>
-                {editableDraft ? (
-                  <input
-                    className={styles.metaInput}
-                    value={draftReference}
-                    onChange={(e) => setDraftReference(e.target.value)}
-                    placeholder="Optional reference"
-                  />
-                ) : (
-                  <div className={styles.metaValue}>
-                    {detail.reference || "—"}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className={styles.metaBlock}>
-              <div className={styles.metaLabel}>Source estimate</div>
-              <div className={styles.metaValue}>
-                {detail.sourceEstimateVersionId ? (
-                  <Link
-                    href={`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(detail.sourceEstimateVersionId)}`}
-                  >
-                    Open estimate {detail.sourceEstimateVersionLabel}
-                  </Link>
-                ) : "Manual quote · no source estimate"}
-              </div>
-              <div className={styles.metaValueMuted}>
-                Pricing source:{" "}
-                {detail.pricingSource === "manual"
-                  ? "Admin-entered line items"
-                  : detail.pricingSource === "workbench_solved"
-                  ? "Solved design snapshot"
-                  : "Calculator estimate snapshot"}
-              </div>
-              {editableDraft ? (
-                <div className={styles.metaNote}>
-                  {detail.pricingSource === "manual"
-                    ? "This quote is edited directly and is not linked to calculator pricing."
-                    : "Draft quotes are independent once created. Design edits do not overwrite quote wording, pricing, deposit, expiry, or reference unless you explicitly refresh from design."}
-                </div>
-              ) : null}
-              {editableDraft && hasNewerEstimate ? (
-                <div className={styles.metaWarning}>
-                  A newer design ({refreshEstimateTarget?.versionLabel}) exists.
-                  This quote was built from design{" "}
-                  {detail.sourceEstimateVersionLabel}.
-                </div>
-              ) : null}
-            </div>
-          </section>
+          <QuoteMetadata projectId={projectId} detail={detail} editableDraft={editableDraft} draftExpiry={draftExpiry} setDraftExpiry={setDraftExpiry} draftReference={draftReference} setDraftReference={setDraftReference} hasNewerEstimate={hasNewerEstimate} refreshEstimateTarget={refreshEstimateTarget} unknown={unknown}/>
 
           <QuoteLineItemsEditor
             editable={editableDraft}
-            draftItems={draftItems}
+            draftItems={detail?draftItems:[]}
+            readState={detail?'ready':pending?'pending':'error'}
             setDraftItems={setDraftItems}
             unitInputDrafts={unitInputDrafts}
             setUnitInputDrafts={setUnitInputDrafts}
@@ -667,25 +548,25 @@ export default function QuoteDetailView({
               <div className={styles.totalItem}>
                 <div className={styles.metaLabel}>Total (inc GST)</div>
                 <div className={styles.totalValue}>
-                  {detailTotals
+                  {detail&&detailTotals
                     ? formatMoneyFromCents(detailTotals.totalIncGstCents)
-                    : "—"}
+                    : unknown}
                 </div>
               </div>
               <div className={styles.totalItem}>
                 <div className={styles.metaLabel}>Total (ex GST)</div>
                 <div className={styles.totalValue}>
-                  {detailTotals
+                  {detail&&detailTotals
                     ? formatMoneyFromCents(detailTotals.totalExGstCents)
-                    : "—"}
+                    : unknown}
                 </div>
               </div>
               <div className={styles.totalItem}>
                 <div className={styles.metaLabel}>GST</div>
                 <div className={styles.totalValue}>
-                  {detailTotals
+                  {detail&&detailTotals
                     ? formatMoneyFromCents(detailTotals.gstCents)
-                    : "—"}
+                    : unknown}
                 </div>
               </div>
             </div>
@@ -693,8 +574,9 @@ export default function QuoteDetailView({
 
           <QuotePaymentTermsEditor
             editable={editableDraft}
-            quoteTotalIncGstCents={detailTotals?.totalIncGstCents ?? detail.totals.totalIncGstCents}
-            terms={draftPaymentTerms}
+            quoteTotalIncGstCents={detail?(detailTotals?.totalIncGstCents??detail.totals.totalIncGstCents):null}
+            pending={pending}
+            terms={detail?draftPaymentTerms:[]}
             setTerms={setDraftPaymentTerms}
           />
 
@@ -714,7 +596,7 @@ export default function QuoteDetailView({
                   />
                 ) : (
                   <div className={styles.readonlyBlock}>
-                    {detail.introText || "—"}
+                    {detail?detail.introText||"—":unknown}
                   </div>
                 )}
               </div>
@@ -729,14 +611,14 @@ export default function QuoteDetailView({
                   />
                 ) : (
                   <div className={styles.readonlyBlock}>
-                    {detail.termsText || "—"}
+                    {detail?detail.termsText||"—":unknown}
                   </div>
                 )}
               </div>
             </div>
           </section>
 
-          {detail.status === "SENT" ? (
+          {detail?.status === "SENT" ? (
             <section className={styles.card}>
               <div className={styles.cardHeader}>
                 <h4 className={styles.cardTitle}>Decision</h4>
@@ -775,7 +657,6 @@ export default function QuoteDetailView({
             <div className={styles.cardHeader}>
               <h4 className={styles.cardTitle}>Send log</h4>
             </div>
-            {detail.sendLogs.length ? (
               <div className={styles.tableWrap}>
                 <table className={styles.logTable}>
                   <thead>
@@ -788,7 +669,8 @@ export default function QuoteDetailView({
                     </tr>
                   </thead>
                   <tbody>
-                    {detail.sendLogs.map((log) => (
+                    {(!detail||!detail.sendLogs.length)&&<tr><td colSpan={5} role={pending?'status':undefined}>{detail?'No send attempts yet.':unknown}</td></tr>}
+                    {detail?.sendLogs.map((log) => (
                       <tr key={log.id}>
                         <td>{log.to.join(", ") || "—"}</td>
                         <td>{log.subject || "—"}</td>
@@ -804,13 +686,10 @@ export default function QuoteDetailView({
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <p className={styles.muted}>No send attempts yet.</p>
-            )}
           </section>
         </>
       )}
-      {dialogs}
+      {detail&&dialogs}
     </div>
   );
 }

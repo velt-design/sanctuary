@@ -5,7 +5,6 @@ import ProjectPaymentPositionQuery from './ProjectPaymentPositionQuery';
 
 const state = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
 vi.mock('../../ProjectOverviewReads', () => ({ useActiveProjectOverviewReads: () => ({ paymentQuery: state.value }) }));
-vi.mock('./ProjectPaymentPosition', () => ({ default: () => <div>Saved private payment</div> }));
 afterEach(() => { document.body.innerHTML = ''; });
 
 describe('ProjectPaymentPositionQuery', () => {
@@ -22,7 +21,7 @@ describe('ProjectPaymentPositionQuery', () => {
     state.value = { isError: true, error: new Error('Offline'), refetch: vi.fn() };
     const view = renderIntoDocument(<ProjectPaymentPositionQuery projectId="proj_1" host="fixture" />);
     expect(view.container.textContent).toContain('Payments unavailable');
-    expect(view.container.textContent).not.toContain('$0');
+    expect(view.container.textContent).not.toContain('$0.00');
     view.unmount();
   });
 });

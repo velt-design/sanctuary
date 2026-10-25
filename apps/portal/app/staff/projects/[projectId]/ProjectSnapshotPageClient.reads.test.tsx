@@ -1,16 +1,18 @@
+// Private read tests observe the same snapshot props at the extracted public shell boundary.
 import { act } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import { qk } from '@/lib/queries/keys';
-import { useActiveProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
+import { useOptionalProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
 import ProjectMainTabs from '@/components/projects/ProjectPage/ProjectMainTabs';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
+vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', () => ({ default: () => null }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const state = vi.hoisted(() => ({ search: '', preload: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(state.search) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(state.search) }));
 vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
   preloadProjectOverviewModule: state.preload,
   OverviewTab: () => <div data-testid="overview-tab" />,
@@ -21,19 +23,20 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'host', supabaseRuntimeUrl: () => 'https://host.supabase.co' }));
 vi.mock('@/components/debug/PortalDebugExportButton', () => ({ default: () => null }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
-vi.mock('@/components/projects/ProjectPage/ProjectPageFrame', () => ({
-  default: ({ snapshot, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab, statusPanel }: any) => {
-    const { commandQuery, paymentQuery } = useActiveProjectOverviewReads(host, snapshot.project.id);
-    return <div data-frame={snapshot.project.id} data-snapshot={snapshotState}>
-      <span>{snapshot.project.name}</span>
+vi.mock('@/components/projects/ProjectPage/ProjectPageShellSurface', () => ({
+  default: ({ snapshot, projectId, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab, statusPanel, privateContentReady }: any) => {
+    const reads = useOptionalProjectOverviewReads(host, projectId);
+    const commandQuery = reads?.commandQuery, paymentQuery = reads?.paymentQuery;
+    return <div data-frame={snapshot?.project.id} data-snapshot={snapshotState} data-actual-frame>
+      <span>{snapshot?.project.name ?? 'Reading project…'}</span>
       {statusPanel}
-      <span data-command={commandQuery.data?.projectId}>{commandQuery.data?.projectId}</span>
-      <span data-payment={paymentQuery.data?.paidIncGstCents} />
-      <span data-command-fetching={String(commandQuery.isFetching)} data-tab={optimisticTab} />
+      <span data-command={commandQuery?.data?.projectId}>{commandQuery?.data?.projectId}</span>
+      <span data-payment={paymentQuery?.data?.paidIncGstCents} />
+      <span data-command-fetching={String(commandQuery?.isFetching)} data-tab={optimisticTab} />
       <button onClick={() => onTabSelect('estimates')}>Commercial</button>
       <button onClick={() => onTabSelect('activity')}>Overview</button>
-      <ProjectMainTabs snapshot={snapshot} host={host} optimisticTab={optimisticTab}
-        snapshotState={snapshotState} snapshotContentReady={snapshotContentReady} tab={tab} />
+      <ProjectMainTabs snapshot={snapshot} projectId={projectId} host={host} optimisticTab={optimisticTab}
+        snapshotState={snapshotState} snapshotContentReady={snapshotContentReady} tab={tab} privateContentReady={privateContentReady} />
     </div>;
   },
 }));
@@ -189,12 +192,12 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     view = renderIntoDocument(element('proj_1', 'job-packs'));
     await answer('summary');
     expect(view.container.querySelector('[data-project-active-tab="job-packs"]')).not.toBeNull();
-    expect(view.container.querySelector('[data-project-job-packs-availability="pending"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
     expect(view.container.querySelector('[data-testid="overview-tab"]')).toBeNull();
-    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).toBeNull();
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
     await answer('snapshot', 500);
-    expect(view.container.querySelector('[data-project-job-packs-availability="unavailable"]')).not.toBeNull();
-    expect(view.container.textContent).toContain('Retry the project refresh above.');
+    expect(view.container.querySelector('[data-project-snapshot-state="refresh-failed"]')).not.toBeNull();
+    expect([...view.container.querySelectorAll('button')].some((button) => button.textContent === 'Retry')).toBe(true);
     expect(count('command-centre')).toBe(0);
     expect(count('invoice-schedule')).toBe(0);
     expect(state.preload).not.toHaveBeenCalled();
@@ -241,10 +244,11 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     state.search = 'tab=job-packs';
     view = renderIntoDocument(element('proj_1', 'job-packs'));
     await answer('summary');
-    expect(view.container.querySelector('[data-project-job-packs-availability="pending"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
     await answer('snapshot', status);
     expect(view.container.querySelector('[data-project-snapshot-state="unavailable"]')).not.toBeNull();
-    expect(view.container.querySelector('[data-project-tab-body]')).toBeNull();
+    expect(view.container.querySelector('[data-project-tab-body]')?.children).toHaveLength(0);
+    expect(view.container.querySelector('[data-testid="job-packs-tab"]')).toBeNull();
     expect(view.container.textContent).not.toContain('Private proj_1');
     expect(view.container.textContent).not.toContain('Retry');
     expect(count('command-centre')).toBe(0);

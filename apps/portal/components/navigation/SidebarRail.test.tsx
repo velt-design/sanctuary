@@ -11,6 +11,7 @@ const transitionMocks = vi.hoisted(() => ({
   routerReplace: vi.fn(),
 }));
 
+
 let mockPathname = '/dashboard';
 
 function preventDocumentNavigation(event: Event): void {
@@ -94,7 +95,7 @@ describe('SidebarRail', () => {
 
     expect(window.location.pathname).toBe('/staff/projects');
     expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/projects', { scroll: false });
-    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('projects-index');
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('projects-index', { href: '/staff/projects' });
     expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
 
     rendered.unmount();
@@ -109,7 +110,7 @@ describe('SidebarRail', () => {
 
     expect(window.location.pathname).toBe('/staff/contacts');
     expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/contacts', { scroll: false });
-    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('contacts-index');
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('contacts-index', { href: '/staff/contacts' });
     expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
 
     rendered.unmount();
@@ -136,7 +137,7 @@ describe('SidebarRail', () => {
     );
 
     expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
-      href: '/schedule',
+      href: '/staff/schedule',
       label: 'Schedule',
       source: 'sidebar-rail',
       control: scheduleLink,
@@ -157,11 +158,25 @@ describe('SidebarRail', () => {
     });
 
     expect(transitionMocks.routerPrefetch).toHaveBeenCalledTimes(1);
-    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/schedule');
-    expect(transitionMocks.prefetchQuery).toHaveBeenCalledTimes(1);
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/staff/schedule');
+    expect(transitionMocks.prefetchQuery).not.toHaveBeenCalled();
 
     rendered.unmount();
   });
+  it.each(['mouseover', 'focusin', 'pointerdown', 'touchstart'])('keeps Contacts and Schedule intent public-only on %s', eventName => {
+    const view = renderIntoDocument(<SidebarRail role="staff" />);
+    for (const label of ['Contacts', 'Schedule']) {
+      act(() => linkByLabel(view.container, label).dispatchEvent(new Event(eventName, { bubbles: true, cancelable: true })));
+    }
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/staff/contacts');
+    expect(transitionMocks.routerPrefetch).toHaveBeenCalledWith('/staff/schedule');
+    expect(transitionMocks.prefetchQuery).not.toHaveBeenCalled();
+    expect(transitionMocks.beginInstantRoute).not.toHaveBeenCalled();
+    expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/dashboard');
+    view.unmount();
+  });
+
 });
 
  it('shows Finance only when the server grants finance navigation',()=>{

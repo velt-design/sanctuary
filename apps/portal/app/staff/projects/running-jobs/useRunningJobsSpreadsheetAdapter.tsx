@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import {useSpreadsheetWorkspace} from '@/components/spreadsheet/SpreadsheetWorkspace';
+import RunningJobsToolbar,{DEFAULT_RUNNING_JOBS_FILTERS,type RunningJobsFilters} from './RunningJobsToolbar';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -29,23 +31,8 @@ import { mutateRunningJobCell } from '@/lib/repo/runningJobsRepo';
 import { ApiError } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
-type Filters = {
-  search: string;
-  year: string;
-  crewId: string;
-  stage: string;
-  overdueOnly: boolean;
-  showCompleted: boolean;
-};
 
-const DEFAULT_FILTERS: Filters = {
-  search: '',
-  year: 'all',
-  crewId: 'all',
-  stage: 'all',
-  overdueOnly: false,
-  showCompleted: false,
-};
+
 
 const TODAY_YMD = new Date().toISOString().slice(0, 10);
 
@@ -118,7 +105,7 @@ function setInRecord(record: Record<string, boolean>, key: string, value: boolea
   return next;
 }
 
-function groupRowsByFilters(groups: RunningJobsResponse['groups'], filters: Filters): RunningJobsResponse['groups'] {
+function groupRowsByFilters(groups: RunningJobsResponse['groups'], filters: RunningJobsFilters): RunningJobsResponse['groups'] {
   const query = filters.search.trim().toLowerCase();
   const rows = flattenRunningJobGroups(groups).filter((row) => {
     if (filters.year !== 'all' && rowYearValue(row) !== filters.year) {
@@ -159,83 +146,8 @@ function patchResponse(
   };
 }
 
-function Toolbar({
-  filters,
-  onChange,
-  years,
-  crews,
-  stages,
-  totalRows,
-  visibleRows,
-  generatedAt,
-}: {
-  filters: Filters;
-  onChange: (patch: Partial<Filters>) => void;
-  years: string[];
-  crews: RunningJobsResponse['lookups']['crews'];
-  stages: string[];
-  totalRows: number;
-  visibleRows: number;
-  generatedAt: string | null;
-}) {
-  return (
-    <div className={styles.toolbar}>
-      <input
-        className={styles.toolbarInput}
-        type="search"
-        placeholder="Search jobs"
-        value={filters.search}
-        onChange={(event) => onChange({ search: event.target.value })}
-      />
 
-      <select className={styles.toolbarSelect} value={filters.year} onChange={(event) => onChange({ year: event.target.value })}>
-        <option value="all">All years</option>
-        {years.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
-
-      <select className={styles.toolbarSelect} value={filters.crewId} onChange={(event) => onChange({ crewId: event.target.value })}>
-        <option value="all">All crews</option>
-        {crews.map((crew) => (
-          <option key={crew.id} value={crew.id}>
-            {crew.shortCode ?? crew.name}
-          </option>
-        ))}
-      </select>
-
-      <select className={styles.toolbarSelect} value={filters.stage} onChange={(event) => onChange({ stage: event.target.value })}>
-        <option value="all">All stages</option>
-        {stages.map((stage) => (
-          <option key={stage} value={stage}>
-            {stage}
-          </option>
-        ))}
-      </select>
-
-      <label className={styles.toolbarToggle}>
-        <input type="checkbox" checked={filters.overdueOnly} onChange={(event) => onChange({ overdueOnly: event.target.checked })} />
-        <span>Overdue only</span>
-      </label>
-
-      <label className={styles.toolbarToggle}>
-        <input type="checkbox" checked={filters.showCompleted} onChange={(event) => onChange({ showCompleted: event.target.checked })} />
-        <span>Show completed</span>
-      </label>
-
-      <div className={styles.meta}>
-        <span>
-          {visibleRows} of {totalRows} jobs
-        </span>
-        <span>{generatedAt ? `Generated ${generatedAt.replace('T', ' ').slice(0, 16)}` : 'Loading...'}</span>
-      </div>
-    </div>
-  );
-}
-
-export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
+export function useRunningJobsSpreadsheetAdapter({loader,readOnly=false}:{loader?:()=>Promise<RunningJobsResponse>;readOnly?:boolean}={}): SpreadsheetAdapter<
   RunningJobRow,
   RunningJobCellKey,
   RunningJobEditableCellKey,
@@ -246,9 +158,12 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
   const queryClient = useQueryClient();
   const host = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const queryKey = qk.runningJobs.list(host);
-  const query = useQuery(runningJobsQueryOptions(host));
+  const query = useQuery({...runningJobsQueryOptions(host),...(loader?{queryFn:loader}:{})});
 
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const workspace=useSpreadsheetWorkspace();
+  const [localFilters,setLocalFilters] = useState<RunningJobsFilters>(DEFAULT_RUNNING_JOBS_FILTERS);
+  const filters=workspace?.kind==='running'?workspace.runningFilters:localFilters;
+  const setFilters=workspace?.kind==='running'?workspace.setRunningFilters:setLocalFilters;
 
   useEffect(() => {
     if (!query.error) return;
@@ -256,8 +171,11 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
     toast.error(message);
   }, [query.error, toast]);
 
-  const allGroups = query.data?.groups ?? [];
-  const lookups = query.data?.lookups ?? { crews: [], salesPeople: [] };
+  const denied=query.error instanceof ApiError&&[401,403].includes(query.error.status);
+  const data=denied?undefined:query.data;
+  const readState=!data?(query.isPending||query.isFetching?'pending':'unavailable'):undefined;
+  const allGroups = data?.groups ?? [];
+  const lookups = data?.lookups ?? { crews: [], salesPeople: [] };
   const filteredGroups = useMemo(() => groupRowsByFilters(allGroups, filters), [allGroups, filters]);
   const allRows = useMemo(() => flattenRunningJobGroups(allGroups), [allGroups]);
   const visibleRows = useMemo(() => flattenRunningJobGroups(filteredGroups), [filteredGroups]);
@@ -392,15 +310,15 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
         letter: column.letter,
         label: column.label,
         widthPx: column.widthPx,
-        editable: column.editable,
+        editable: !readOnly&&column.editable,
         frozen: column.frozen,
         sourceLabel: column.sourceLabel ?? null,
       })),
-    [],
+    [readOnly],
   );
 
   const toolbar = (
-    <Toolbar
+    <RunningJobsToolbar
       filters={filters}
       onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
       years={years}
@@ -408,7 +326,7 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
       stages={stages}
       totalRows={allRows.length}
       visibleRows={visibleRows.length}
-      generatedAt={query.data?.generatedAt ?? null}
+      generatedAt={data?.generatedAt??null} readState={readState} onRetry={()=>void query.refetch()}
     />
   );
 
@@ -421,14 +339,14 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
     groups: filteredGroups.map((group) => ({ key: `year_${group.year}`, label: String(group.year), rows: group.rows })),
     zoomStorageKey: 'sp_running_jobs_sheet_zoom_v1',
     defaultActiveKey: 'client_name',
-    loading: query.isLoading,
+    loading: readState==='pending',
     hasError: Boolean(query.error),
     loadingMessage: 'Loading running jobs...',
     errorMessage: 'Could not load running jobs.',
     emptyMessage: 'No matching jobs.',
     getRowId: (row) => row.projectId,
     isRowSelectable: (row) => !isLegacySheetRow(row),
-    isEditableKey: (key): key is RunningJobEditableCellKey => RUNNING_JOBS_COLUMNS.some((column) => column.key === key && column.editable),
+    isEditableKey: (key): key is RunningJobEditableCellKey => !readOnly&&RUNNING_JOBS_COLUMNS.some((column) => column.key === key && column.editable),
     getRowClassName: (row) => {
       const classNames = [styles.row];
       if (isLegacySheetRow(row)) classNames.push(styles.rowLegacy);
@@ -473,7 +391,7 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
           <div className={styles.clientCell}>
             <span>{text || 'Untitled'}</span>
             {isLegacySheetRow(row) ? <span className={styles.projectLinkMuted}>Legacy</span> : null}
-            {!isLegacySheetRow(row) ? (
+            {!isLegacySheetRow(row)&&!readOnly ? (
               <Link
                 className={styles.projectLink}
                 href={`/staff/projects/${encodeURIComponent(row.projectId)}`}
@@ -638,6 +556,7 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
         setDisplayedRunningJobRow(queueKey, model);
       },
       prepareEdit: ({ row, rowId, key, value, confirmedModel }) => {
+        if(readOnly)return {kind:'error',message:'This fictional preview is read-only.'};
         const normalized = normalizeRunningJobCellInput(key, value);
         if (!normalized.ok) {
           return { kind: 'error', message: normalized.error } as const;
@@ -671,6 +590,7 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
       },
     },
     onCellActivated: async ({ trigger, row, key, seed, beginEdit, commitValue }) => {
+      if(readOnly)return 'noop';
       if (!RUNNING_JOBS_COLUMNS.some((column) => column.key === key && column.editable)) {
         return 'noop';
       }

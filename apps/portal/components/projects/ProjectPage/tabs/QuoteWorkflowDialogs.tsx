@@ -596,22 +596,9 @@ export default function QuoteWorkflowDialogs({
                   The PDF below is attached automatically.
                 </p>
               </div>
-              {sendReviewPdfLoading ? (
-                <p className={styles.note}>Loading quote PDF...</p>
-              ) : null}
-              {sendReviewPdfError ? (
-                <div className={styles.errorText}>{sendReviewPdfError}</div>
-              ) : null}
-              {!sendReviewPdfLoading &&
-              !sendReviewPdfError &&
-              !sendReviewPdfData ? (
-                <p className={styles.note}>No PDF preview available.</p>
-              ) : null}
-              {!sendReviewPdfError && sendReviewPdfData ? (
-                <div className={styles.quotePreviewFrameWrap}>
-                  <QuotePdfInlinePreview data={sendReviewPdfData} />
-                </div>
-              ) : null}
+              <div className={styles.quotePreviewFrameWrap}>
+                <QuotePdfInlinePreview data={sendReviewPdfError ? null : sendReviewPdfData} pending={sendReviewPdfLoading || (!sendReviewPdfData && !sendReviewPdfError)} readError={sendReviewPdfError ?? undefined} />
+              </div>
             </div>
           )}
           <div className={`${styles.modalFooter} ${styles.sendModalFooter}`}>

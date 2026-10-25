@@ -10,10 +10,10 @@ const filters = hubDefaults(fixtureFilters);
 const apply = vi.fn();
 const mounts = vi.fn();
 type Component<View extends keyof ReportViewLoaders> = Awaited<ReturnType<ReportViewLoaders[View]>>['default'];
-const Overview: Component<'overview'> = ({ hub }) => <h2>Overview {hub.projects.length}</h2>;
-const Enquiries: Component<'enquiries'> = ({ rows }) => <h2>Enquiries {rows.length}</h2>;
+const Overview: Component<'overview'> = ({ hub }) => <h2>Overview {hub?.projects?.length??0}</h2>;
+const Enquiries: Component<'enquiries'> = ({ rows }) => <h2>Enquiries {rows?.length??0}</h2>;
 const Sales: Component<'sales'> = ({ filters }) => { useEffect(() => { mounts(); }, []); return <h2>Sales {filters.source || 'all sources'}</h2>; };
-const Portfolio: Component<'portfolio'> = ({ projects }) => <h2>Portfolio {projects.length}</h2>;
+const Portfolio: Component<'portfolio'> = ({ projects }) => <h2>Portfolio {projects?.length??0}</h2>;
 function makeLoaders(): ReportViewLoaders {
   return { overview: vi.fn(async () => ({ default: Overview })), enquiries: vi.fn(async () => ({ default: Enquiries })), sales: vi.fn(async () => ({ default: Sales })), portfolio: vi.fn(async () => ({ default: Portfolio })) };
 }
@@ -54,7 +54,7 @@ it('keeps honest pending content when data wins the race against a slow module',
   const view = renderIntoDocument(<Harness view="portfolio" loaders={loaders} />); await flush();
   expect(view.container.textContent).toBe('Preparing report view…');
   await act(async () => pending.resolve({ default: Portfolio }));
-  expect(view.container.textContent).toBe(`Portfolio ${hubFixture.projects.length}`); expect(loaders.portfolio).toHaveBeenCalledTimes(1); view.unmount();
+  expect(view.container.textContent).toBe(`Portfolio ${hubFixture.projects?.length??0}`); expect(loaders.portfolio).toHaveBeenCalledTimes(1); view.unmount();
 });
 
 it('shows a rejected module and makes a fresh retry attempt without caching rejection', async () => {
@@ -62,7 +62,7 @@ it('shows a rejected module and makes a fresh retry attempt without caching reje
   const view = renderIntoDocument(<Harness view="enquiries" loaders={loaders} />); await flush();
   expect(view.container.querySelector('[role=alert]')).not.toBeNull();
   await act(async () => view.container.querySelector('button')!.click());
-  expect(view.container.textContent).toBe(`Enquiries ${hubFixture.enquiries.rows.length}`); expect(loaders.enquiries).toHaveBeenCalledTimes(2); expect(loaders.overview).not.toHaveBeenCalled(); view.unmount();
+  expect(view.container.textContent).toBe(`Enquiries ${hubFixture.enquiries.rows?.length??0}`); expect(loaders.enquiries).toHaveBeenCalledTimes(2); expect(loaders.overview).not.toHaveBeenCalled(); view.unmount();
 });
 
 it.each(['resolve', 'reject'] as const)('ignores a stale %s after the selected view changes', async outcome => {
@@ -73,7 +73,7 @@ it.each(['resolve', 'reject'] as const)('ignores a stale %s after the selected v
   await act(async () => { if (outcome === 'resolve') old.resolve({ default: Sales }); else old.reject(new Error('Old selection failed')); });
   expect(view.container.textContent).toBe('Preparing report view…'); expect(view.container.querySelector('[role=alert]')).toBeNull();
   await act(async () => next.resolve({ default: Portfolio }));
-  expect(view.container.textContent).toBe(`Portfolio ${hubFixture.projects.length}`); view.unmount();
+  expect(view.container.textContent).toBe(`Portfolio ${hubFixture.projects?.length??0}`); view.unmount();
 });
 
 it('does not import Marketing panels for null/Financials and discards a previous loader owner', async () => {

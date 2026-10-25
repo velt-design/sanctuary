@@ -8,13 +8,13 @@ import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import ReportDetail from './ReportDetail';
 import styles from './MarketingPerformance.module.css';
 
-export default function HubRecords({hub,filters,synthetic,eventKind,apply,productionSnapshot=false}: {hub:HubReport;filters:HubFilters;synthetic:boolean;eventKind:string;productionSnapshot?:boolean;apply:(f:HubFilters)=>void}) {
+export default function HubRecords({hub,filters,synthetic,eventKind,apply,productionSnapshot=false,pending=false}: {hub:HubReport|null;pending?:boolean;filters:HubFilters;synthetic:boolean;eventKind:string;productionSnapshot?:boolean;apply:(f:HubFilters)=>void}) {
   const [page,setPage] = useState(0);
   useEffect(()=>{ const n=Number(new URLSearchParams(window.location.search).get('recordsPage'));setPage(Number.isInteger(n)&&n>0?n:0); },[filters,eventKind]);
-  const selected=selectHub(hub,filters);
+  const selected=hub?selectHub(hub,filters):null;
   const date=(value:string)=>new Date(value).toLocaleDateString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium'});
   const link=(id:string,enquiry:string|null)=>synthetic ? `/qa/marketing-performance-fixture/project?project=${id}&enquiry=${enquiry??''}&return=${encodeURIComponent(typeof window==='undefined'?'':window.location.search)}` : `${productionSnapshot?'https://portal.sanctuarypergolas.co.nz':''}/staff/projects/proj_${id}?tab=${filters.view==='sales'?'quotes':'activity'}`;
-  const entries=filters.view==='enquiries' ? selected.enquiries.map(r=>({
+  const entries=selected?(filters.view==='enquiries' ? selected.enquiries.map(r=>({
     id:r.enquiryId,projectId:r.projectId,enquiry:r.enquiryId,name:r.projectName??'Unlinked enquiry',date:r.receivedAt,source:r.source,campaign:r.campaign,
     detail:r.origin?'Origin enquiry':r.projectId?'Repeat submission; outcome credited to origin':'No linked project',
     evidence:[r.qualification==='unreviewed'?'Awaiting assessment':r.qualification==='ineligible'?'Outside configured qualification criteria':r.qualification==='unavailable'?'Assessment unavailable':r.qualification.replaceAll('_',' '),
@@ -27,7 +27,7 @@ export default function HubRecords({hub,filters,synthetic,eventKind,apply,produc
     const p=selected.projectMap.get(e.projectId)!;
     return {id:e.id,projectId:p.id,enquiry:p.originId,name:p.name??'Unnamed project',date:e.day,source:p.source,campaign:p.campaign,
       detail:eventLabels[e.kind],evidence:`${eventDetail(e)}${e.amountCents===null?'':` · ${money(e.amountCents)} NZD incl. GST`}`};
-  });
+  })):[];
   const current=Math.min(page,Math.max(0,Math.ceil(entries.length/25)-1));
   const change=(n:number)=>{setPage(n);const url=new URL(window.location.href);url.searchParams.set('recordsPage',String(n));window.history.replaceState(null,'',url);};
   return <Card title="Underlying records" padding="compact">
@@ -35,16 +35,16 @@ export default function HubRecords({hub,filters,synthetic,eventKind,apply,produc
       {evidenceForView(filters.view).map(([key,label])=><option key={key} value={key}>{key==='all'?'All matching records':label}</option>)}
       {filters.view==='portfolio'&&<option value="paid">Projects marked paid</option>}
     </Select>}
-    <p id="hub-record-count" role="status">{entries.length} {filters.view==='enquiries'?'submissions':filters.view==='sales'?'recorded events':'projects'} match · {filters.view==='sales'?(eventKind?eventKind==='receipts'?'Payments and reversals':eventLabels[eventKind as HubEvent['kind']]:'All event types'):'Current filters'}</p>
+    <p id="hub-record-count" role="status">{hub?entries.length:pending?'Reading…':'Unavailable'} {filters.view==='enquiries'?'submissions':filters.view==='sales'?'recorded events':'projects'} match · {filters.view==='sales'?(eventKind?eventKind==='receipts'?'Payments and reversals':eventLabels[eventKind as HubEvent['kind']]:'All event types'):'Current filters'}</p>
     <div className={`${styles.tableScroll} ${styles.evidenceTable}`} tabIndex={0} role="region" aria-label="Underlying hub records">
       <Table><TableHeader><TableRow><TableHead>Project / record</TableHead><TableHead>{filters.view==='enquiries'?'Received':filters.view==='sales'?'Event date':'Project created'} (NZ)</TableHead><TableHead>Observed source / campaign</TableHead><TableHead>Recorded evidence</TableHead></TableRow></TableHeader>
-        <TableBody>{entries.slice(current*25,(current+1)*25).map(r=><TableRow key={r.id}>
+        <TableBody>{!hub&&<TableRow><TableCell colSpan={4} role={pending?'status':undefined}>{pending?'Reading complete underlying records…':'Underlying records unavailable.'}</TableCell></TableRow>}{entries.slice(current*25,(current+1)*25).map(r=><TableRow key={r.id}>
           <TableHead scope="row" className={styles.source}>{r.projectId?<a href={link(r.projectId,r.enquiry)}>{r.name}</a>:r.name}<span>{r.detail}</span><span className={styles.recordId} title={r.id}>{r.id}</span></TableHead>
           <TableCell>{filters.view==='sales'?r.date:date(r.date)}</TableCell><TableCell className={styles.source}>{r.source??UNKNOWN_SOURCE}<span>{r.campaign??NO_CAMPAIGN}</span></TableCell><TableCell>{r.evidence}</TableCell>
         </TableRow>)}</TableBody></Table>
-      {!entries.length&&<p>No matching records. Clear filters or choose another view. Projects without receipts are available in Project portfolio.</p>}
+      {hub&&!entries.length&&<p>No matching records. Clear filters or choose another view. Projects without receipts are available in Project portfolio.</p>}
     </div>
-    <div className={styles.pagination}><Button variant="secondary" disabled={!current} onClick={()=>change(current-1)}>Previous</Button><span>Page {current+1} of {Math.max(1,Math.ceil(entries.length/25))}</span><Button variant="secondary" disabled={(current+1)*25>=entries.length} onClick={()=>change(current+1)}>Next</Button></div>
+    <div className={styles.pagination}><Button variant="secondary" disabled={!hub||!current} onClick={()=>change(current-1)}>Previous</Button><span>{hub?`Page ${current+1} of ${Math.max(1,Math.ceil(entries.length/25))}`:pending?'Reading pages…':'Pages unavailable'}</span><Button variant="secondary" disabled={!hub||(current+1)*25>=entries.length} onClick={()=>change(current+1)}>Next</Button></div>
     <ReportDetail title="Inspecting records" label="About these records"><p>Open a project to inspect Original enquiry or Commercial evidence. Browser Back restores this view. Source on Sales and Portfolio comes only from the earliest saved enquiry, never a later repeat submission.</p></ReportDetail>
   </Card>;
 }

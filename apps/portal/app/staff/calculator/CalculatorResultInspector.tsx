@@ -1,5 +1,6 @@
 'use client';
 
+import { useCalculatorSessionRead } from './CalculatorSessionReadContext';
 import {
   type ComponentProps,
   forwardRef,
@@ -106,6 +107,8 @@ const CalculatorResultInspector = forwardRef<
   const tabListRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<CalculatorResultInspectorTab, HTMLButtonElement>());
   const focusFrameRef = useRef<number | null>(null);
+  const {ready,error}=useCalculatorSessionRead();
+  const unknownLabel=error?"Result unavailable":"Reading estimate…";
   const readiness = quoteStatus.readinessSummary;
 
   const focusTabButton = useCallback(
@@ -190,12 +193,12 @@ const CalculatorResultInspector = forwardRef<
           <h2 className={styles.title}>Result inspector</h2>
           <div className={styles.trustState} aria-label="Result readiness">
             <span
-              className={readinessClassName(readiness.tone)}
-              title={readiness.accessibleLabel}
+              className={readinessClassName(ready ? readiness.tone : 'waiting')}
+              title={ready ? readiness.accessibleLabel : unknownLabel}
             >
-              {readiness.label}
+              {ready ? readiness.label : unknownLabel}
             </span>
-            {pricingSummary.issuesCount > 0 ? (
+            {ready && pricingSummary.issuesCount > 0 ? (
               <button
                 type="button"
                 className={styles.issueButton}
@@ -251,6 +254,7 @@ const CalculatorResultInspector = forwardRef<
         aria-labelledby={`${tabSetId}-pricing-tab`}
         hidden={activeTab !== 'pricing'}
       >
+        {ready ? <>
         <CalculatorPricingDetails {...pricingSummary} />
         <CalculatorItemPricingBreakdown
           preview={pricingPreview}
@@ -258,6 +262,7 @@ const CalculatorResultInspector = forwardRef<
         />
         {actualCostEstimateId ? <CalculatorActualCostReview estimateId={actualCostEstimateId} /> : null}
         {priceImpact ? <PriceImpactPanel {...priceImpact} /> : null}
+        </> : <p role="status">{unknownLabel}</p>}
       </div>
 
       <div
@@ -267,7 +272,9 @@ const CalculatorResultInspector = forwardRef<
         aria-labelledby={`${tabSetId}-materials-tab`}
         hidden={activeTab !== 'materials'}
       >
+        {ready ? <>
         <CalculatorPreviewDetails {...previewDetails} view="materials" />
+        </> : <p role="status">{unknownLabel}</p>}
       </div>
 
       <div
@@ -277,7 +284,9 @@ const CalculatorResultInspector = forwardRef<
         aria-labelledby={`${tabSetId}-labour-tab`}
         hidden={activeTab !== 'labour'}
       >
+        {ready ? <>
         <CalculatorPreviewDetails {...previewDetails} view="labour" />
+        </> : <p role="status">{unknownLabel}</p>}
       </div>
 
       <div
@@ -287,11 +296,13 @@ const CalculatorResultInspector = forwardRef<
         aria-labelledby={`${tabSetId}-workings-tab`}
         hidden={activeTab !== 'workings'}
       >
+        {ready ? <>
         <div className={styles.trustedWorking}>
           <CalculatorRafterExplanation {...rafterExplanation} />
           <ModuleViewsCard {...moduleViews} />
         </div>
         <CalculatorPreviewDetails {...previewDetails} view="workings" />
+        </> : <p role="status">{unknownLabel}</p>}
       </div>
 
       <div
@@ -301,8 +312,10 @@ const CalculatorResultInspector = forwardRef<
         aria-labelledby={`${tabSetId}-issues-tab`}
         hidden={activeTab !== 'issues'}
       >
+        {ready ? <>
         <QuoteStatusCard {...quoteStatus} />
         <CalculatorPreviewDetails {...previewDetails} view="issues" />
+        </> : <p role="status">{unknownLabel}</p>}
       </div>
     </section>
   );

@@ -1,3 +1,4 @@
+import {ApiError} from '@/lib/repo/apiClient';
 import { act, useSyncExternalStore } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -91,3 +92,5 @@ describe('quote creation identity handoff', () => {
     expect(client.getQueryData(qk.quotes.versionsByProject('host', 'proj_test'))).toEqual([expect.objectContaining({ id: durableId })]);
   });
 });
+
+it('clears a genuine cached quote after a denied refresh without changing its selection identity',async()=>{client.setQueryData(qk.quotes.detail('host',durableId),durable);nativePush(null,'',`/staff/projects/proj_test?tab=quotes&quoteId=${durableId}`);mount();await settle();expect(selection.detail?.id).toBe(durableId);h.get.mockRejectedValueOnce(new ApiError('Access ended',{status:403,body:null}));await act(async()=>{await selection.quoteDetailQuery.refetch();});await settle();expect(selection.selectedId).toBe(durableId);expect(selection.detail).toBeNull();expect(client.getQueryData(qk.quotes.detail('host',durableId))).toBeTruthy();});

@@ -7,25 +7,26 @@ const journeys = [['configured', 'Configured pergola'], ['help', 'Help me choose
 export default function EnquiryJourneysPreview({ endpoint = '/api/staff/v1/email-previews/website-autoresponder' }: { endpoint?: string }) {
   const [journey, setJourney] = useState<string>('configured');
   const [mobile, setMobile] = useState(false);
-  const [preview, setPreview] = useState<{ subject: string; htmlLight: string } | null>(null);
-  const [error, setError] = useState(false);
+  const [result,setResult]=useState<{key:string;layout:{subject:string;htmlLight:string}}|null>(null);
+  const [revision,setRevision]=useState(0),[failedKey,setFailedKey]=useState('');
+  const readKey=`${endpoint}:${journey}:${revision}`,preview=result?.key===readKey?result.layout:null;
+  const error=failedKey===readKey;
   useEffect(() => {
     const controller = new AbortController();
-    setPreview(null); setError(false);
+    setResult(null);setFailedKey('');
     fetch(`${endpoint}?variant=experience-${journey}`, { signal: controller.signal })
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
-      .then(data => { const layout = (data.data ?? data).layouts?.[0]; if (!layout) throw new Error(); setPreview(layout); })
-      .catch(() => { if (!controller.signal.aborted) setError(true); });
+      .then(data => { const layout = (data.data ?? data).layouts?.[0]; if (!layout) throw new Error(); if(!controller.signal.aborted)setResult({key:readKey,layout}); })
+      .catch(() => { if (!controller.signal.aborted) setFailedKey(readKey); });
     return () => controller.abort();
-  }, [endpoint, journey]);
+  }, [endpoint, journey,revision,readKey]);
   return <section className={styles.panel} aria-label="Proposed enquiry journeys">
     <h2 >Proposed enquiry journeys</h2>
     <p className={styles.description}>Five distinct confirmations. Preview only until the production email switch is enabled.</p>
     <div className={styles.choices}>{journeys.map(([key, label]) => <Button type="button" key={key} variant={journey === key ? 'primary' : 'secondary'} aria-pressed={journey === key} onClick={() => setJourney(key)}>{label}</Button>)}</div>
     <label className={styles.size}><input type="checkbox" checked={mobile} onChange={e => setMobile(e.target.checked)} />Mobile email width</label>
-    {error ? <p role="alert">The email preview could not load. Choose a journey to try again.</p> : !preview ? <p role="status">Loading preview…</p> : <>
-      <p className={styles.subject}><strong>Subject:</strong> {preview.subject}</p>
-      <iframe title={`${journey} enquiry confirmation`} sandbox="" srcDoc={preview.htmlLight} className={styles.frame} style={{ width: mobile ? 390 : 760 }} />
-    </>}
+    {error ? <p role="alert">The email preview could not load. <Button type="button" variant="secondary" onClick={()=>setRevision(value=>value+1)}>Retry preview</Button></p> : !preview ? <p role="status">Loading preview…</p> : null}
+    <p className={styles.subject}><strong>Subject:</strong> {preview?.subject??(error?'Unavailable':'Reading…')}</p>
+    <iframe title={`${journey} enquiry confirmation`} aria-busy={!preview&&!error} sandbox="" srcDoc={preview?.htmlLight} className={styles.frame} style={{ width: mobile ? 390 : 760 }} />
   </section>;
 }

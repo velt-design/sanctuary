@@ -1,3 +1,4 @@
+export const DASHBOARD_TASK_TITLE_MAX_LENGTH = 240;
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import type { ProjectOperationalStateCounts } from '@/lib/projects/workItems/stateCounts';
 

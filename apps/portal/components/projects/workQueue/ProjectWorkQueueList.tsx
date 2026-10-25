@@ -12,26 +12,18 @@ export default function ProjectWorkQueueList({
   staff,
   host,
   mutationsEnabled = true,
-  reassignmentEnabled = true,
+  reassignmentEnabled = true,pending=false,contentsOnly=false,
 }: {
   entries: WorkQueueEntryView[];
   staff: ProjectCommandStaffSummary[];
   host: string;
   mutationsEnabled?: boolean;
-  reassignmentEnabled?: boolean;
+  reassignmentEnabled?: boolean;pending?:boolean;contentsOnly?:boolean;
 }) {
-  if (!entries.length) {
-    return (
-      <EmptyState
-        title="No current project work"
-        description="Waiting, closed, archived, and far-future projects stay out of the operational queue."
-      />
-    );
-  }
 
-  return (
-    <div className={styles.groups}>
-      {WORK_QUEUE_GROUPS.map((group) => {
+  const content = (
+    <>
+      {pending?<p role="status">Reading the complete work queue…</p>:!entries.length?<EmptyState title="No current project work" description="Waiting, closed, archived, and far-future projects stay out of the operational queue."/>:WORK_QUEUE_GROUPS.map((group) => {
         const items = entries.filter((entry) => entry.group === group.key);
         if (!items.length) return null;
         const headingId = `work-queue-${group.key}`;
@@ -61,6 +53,7 @@ export default function ProjectWorkQueueList({
           </section>
         );
       })}
-    </div>
+    </>
   );
+  return contentsOnly?content:<div className={styles.groups}>{content}</div>;
 }

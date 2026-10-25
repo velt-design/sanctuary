@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, createContext, useState } from 'react';
+import { act, createContext, useMemo, useState } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../../test/reactHarness';
 import ProjectSharePointFilesPanel from './ProjectSharePointFilesPanel';
 import FilesTab from '../FilesTab';
+import {ProjectFilesSurface,ProjectFilesWorkspace,useFilesControls,type ProjectFilesEvidence,type FilesControls} from '../ProjectFilesSurface';
+import {useOwnedPortalPublication} from '@/components/page-state/PortalPageSource';
 import { PortalAuthContext } from '@/components/auth/PortalAuthProvider';
 import { emptyFilesNavigation, filesNavigationKey, readFilesNavigation, writeFilesNavigation } from './projectFilesNavigation';
 vi.mock('next/link', () => ({ default: ({ children, href, prefetch: _prefetch, ...props }: any) => <a href={href} {...props}>{children}</a> }));
@@ -41,6 +43,48 @@ async function click(container: ParentNode, text: string) { await act(async () =
 async function selectFile(container: ParentNode, name: string) { const found = [...container.querySelectorAll('button')].find(b => b.className.includes('filename') && b.textContent?.includes(name)); expect(found, name).toBeTruthy(); await act(async () => found!.click()); await flush(); }
 async function find(container: ParentNode, term: string) { const input = container.querySelector('input')!; await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, term); input.dispatchEvent(new Event('input', { bubbles: true })); }); await flush(); }
 function normalSource(url: string) { if (url.includes('/open?')) return new Response('ACTUAL SELECTED PDF', { headers: { 'content-type': 'application/pdf' } }); const p = new URL(url, 'https://fixture').searchParams; return Response.json({ ...ready, rootId: p.get('rootId') ?? rootId, folderId: p.get('folderId') ?? 'root', items: p.get('folderId') ? [item('Design'), { ...item('Rhino'), name: 'Original.3dm', size: 470000000, viewable: false, contentType: 'application/octet-stream' }, ...Array.from({ length: 8 }, (_, i) => item('Other drawing '+i))] : [cad] }); }
+
+let retiredFilesPublish:((value:ProjectFilesEvidence|null)=>void)|undefined;
+let currentFilesControls:FilesControls;
+function ManagedFiles({allowed,owner,projectId='proj_fixture'}:{allowed:boolean;owner:object;projectId?:string}) {
+ const controls=useFilesControls(projectId),publication=useOwnedPortalPublication<ProjectFilesEvidence>(allowed?owner:null);
+ currentFilesControls=controls;
+ const surface=useMemo(()=>({controls,publish:publication.publish}),[controls,publication.publish]);
+ const producer=useMemo(()=>allowed?<FilesTab projectId={projectId} host="fixture" surface={surface}/>:null,[allowed,surface,projectId]);
+ if(allowed)retiredFilesPublish=publication.publish;
+ return <ProjectFilesWorkspace projectId={projectId}><ProjectFilesSurface controls={controls} evidence={publication.value} unavailable={!allowed} workspace/>
+ {producer}</ProjectFilesWorkspace>;
+}
+it.each(['setTerm','setSource','interact','receive'] as const)('isolates the first B %s update from A neutral source/Find/scroll intent and rejects retired A callbacks',operation=>{
+ const owner={};mounted=renderIntoDocument(wrap(<ManagedFiles allowed={false} owner={owner} projectId="proj_A"/>));const a=currentFilesControls!;
+ act(()=>{a.setTerm('A name');a.setSource('website');a.interact();});expect(currentFilesControls!.term).toBe('A name');
+ mounted.rerender(wrap(<ManagedFiles allowed={false} owner={owner} projectId="proj_B"/>));const b=currentFilesControls!;
+ expect(b.term).toBe('');expect(b.source).toBe('sharepoint');expect(b.interacted).toBe(false);expect(b.edited).toBe(false);
+ act(()=>{if(operation==='setTerm')b.setTerm('B name');else if(operation==='setSource')b.setSource('website');else if(operation==='interact')b.interact();else b.receive('B saved','sharepoint');});
+ expect(currentFilesControls!.projectId).toBe('proj_B');expect(currentFilesControls!.term).toBe(operation==='setTerm'?'B name':operation==='receive'?'B saved':'');expect(currentFilesControls!.source).toBe(operation==='setSource'?'website':'sharepoint');expect(currentFilesControls!.interacted).toBe(operation==='interact');
+ const current=currentFilesControls!;act(()=>{a.setTerm('Late A');a.setSource('website');a.interact();a.receive('Late saved A','website');});expect(currentFilesControls).toBe(current);expect(fetcher).not.toHaveBeenCalled();
+});
+it('adopts only B early Find/default source into the real guarded Explorer after A website intent retires',async()=>{
+ fetcher.mockImplementation(async()=>Response.json({...ready,items:[item('B name'),item('A name')]}));
+ const a={},b={};mounted=renderIntoDocument(wrap(<ManagedFiles allowed={false} owner={a} projectId="proj_A"/>));act(()=>{currentFilesControls!.setTerm('A name');currentFilesControls!.setSource('website');currentFilesControls!.interact();});
+ mounted.rerender(wrap(<ManagedFiles allowed={false} owner={b} projectId="proj_B"/>));await find(mounted.container,'B name');const input=mounted.container.querySelector('input'),table=mounted.container.querySelector('table');
+ mounted.rerender(wrap(<ManagedFiles allowed owner={b} projectId="proj_B"/>));await flush();
+ expect(fetcher).toHaveBeenCalled();expect(fetcher.mock.calls.every(([url])=>String(url).includes('/proj_B/'))).toBe(true);expect(mounted.container.textContent).toContain('B name.pdf');expect(mounted.container.textContent).not.toContain('A name.pdf');expect(mounted.container.querySelector('input')).toBe(input);expect(mounted.container.querySelector('table')).toBe(table);expect(currentFilesControls!.source).toBe('sharepoint');
+});
+it('keeps one actual Files workspace/filter/list through held authority, metadata, early safe Find, denial and fresh-owner recovery',async()=>{
+ let resolve!:(value:Response)=>void;fetcher.mockImplementation(()=>new Promise<Response>(accept=>{resolve=accept;}));
+ writeFilesNavigation(filesNavigationKey('fixture','staff-a','proj_fixture'),{...emptyFilesNavigation(),rootId,term:'Old saved filter',scrolls:{[`${rootId}:root`]:900}});
+ const a={},b={};mounted=renderIntoDocument(wrap(<ManagedFiles allowed={false} owner={a}/>));
+ const c=mounted.container,input=c.querySelector<HTMLInputElement>('[aria-label="Find in this folder"]')!,panel=c.querySelector('section[aria-label="SharePoint project files"]'),list=c.querySelector('[aria-label="Files list"]')!,table=c.querySelector('table'),head=table?.querySelector('thead'),body=table?.querySelector('tbody');
+ expect(fetcher).not.toHaveBeenCalled();expect(input.disabled).toBe(false);expect(c.textContent).not.toContain('Current project');
+ act(()=>{input.focus();Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Beta');input.dispatchEvent(new Event('input',{bubbles:true}));list.dispatchEvent(new Event('wheel',{bubbles:true}));});
+ mounted.rerender(wrap(<ManagedFiles allowed owner={a}/>));await flush();expect(fetcher).toHaveBeenCalledTimes(1);expect(input.value).toBe('Beta');
+ const old=retiredFilesPublish!;await act(async()=>{resolve(Response.json({...ready,items:[item('Alpha'),item('Beta')]}));});await flush();
+ expect(c.querySelector('section[aria-label="SharePoint project files"]')).toBe(panel);expect(c.querySelector('table')).toBe(table);expect(c.querySelector('thead')).toBe(head);expect(c.querySelector('tbody')).toBe(body);expect(c.querySelector('[aria-label="Files list"]')).toBe(list);expect(c.querySelector('[aria-label="Find in this folder"]')).toBe(input);
+ expect(c.textContent).toContain('Beta.pdf');expect(c.textContent).not.toContain('Alpha.pdf');expect(input.value).toBe('Beta');expect(document.activeElement).toBe(input);
+ mounted.rerender(wrap(<ManagedFiles allowed={false} owner={a}/>));expect(c.textContent).not.toContain('Beta.pdf');expect(c.querySelector('[aria-label="Find in this folder"]')).toBe(input);expect(input.value).toBe('Beta');
+ mounted.rerender(wrap(<ManagedFiles allowed owner={b}/>));await flush();act(()=>old(null));expect(c.textContent).toContain('Beta.pdf');expect(c.querySelector('table')).toBe(table);
+});
 it('deduplicates initial observers and equivalent explicit-root return without an extra read', async () => {
   fetcher.mockImplementation(async (url: string) => normalSource(url)); const c = await render();
   expect(fetcher).toHaveBeenCalledTimes(1); await selectFile(c, '3 CAD'); expect(fetcher).toHaveBeenCalledTimes(2);

@@ -4,6 +4,13 @@ import { Table, TableBody, TableRow } from '@/components/ui/foundation';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import type { ProjectsIndexProject } from '@/lib/projects/projectsIndexContract';
 import ProjectIndexAccountabilityCells from './ProjectIndexAccountabilityCells';
+const { drawerRender } = vi.hoisted(() => ({ drawerRender: vi.fn() }));
+vi.mock('@/components/ui/drawer/Drawer', async (original) => {
+  const actual = await original<typeof import('@/components/ui/drawer/Drawer')>();
+  return { ...actual, Drawer: (props: React.ComponentProps<typeof actual.Drawer>) => {
+    drawerRender(props); return <actual.Drawer {...props} />;
+  } };
+});
 
 function project(
   overrides: Partial<ProjectsIndexProject> = {},
@@ -83,5 +90,26 @@ describe('ProjectIndexAccountabilityCells', () => {
     expect(closed.container.textContent).toContain('Unassigned');
     expect(closed.container.textContent).toContain('Closed: Lost - Timing deferred');
     closed.unmount();
+  });
+
+  it('mounts only requested attention, preserves focus and shows current evidence after close', () => {
+    drawerRender.mockClear();
+    const rendered = renderCells(project());
+    const trigger = rendered.container.querySelector<HTMLButtonElement>('[aria-label="Attention details for Deck Build"]')!;
+    try {
+      expect(drawerRender).not.toHaveBeenCalled();
+      act(() => trigger.focus()); act(() => trigger.click());
+      expect(drawerRender).toHaveBeenCalledWith(expect.objectContaining({ open: true, title: 'Next attention' }));
+      expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Open the project to review future work');
+      act(() => document.querySelector('[data-drawer-overlay]')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+      expect(document.querySelector('[role="dialog"]')).toBeNull(); expect(document.activeElement).toBe(trigger);
+      drawerRender.mockClear();
+      rendered.rerender(<Table><TableBody><TableRow><ProjectIndexAccountabilityCells project={project({ effectiveState: 'WAITING', waitingReason: 'Current waiting evidence' })} /></TableRow></TableBody></Table>);
+      expect(drawerRender).not.toHaveBeenCalled();
+      act(() => trigger.click());
+      expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Current waiting evidence');
+      act(() => document.querySelector('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+      expect(document.querySelector('[role="dialog"]')).toBeNull(); expect(document.activeElement).toBe(trigger);
+    } finally { rendered.unmount(); }
   });
 });

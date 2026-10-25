@@ -22,7 +22,7 @@ import type {
   HouseTerminalEndToggleRequest,
   MoveRequest,
 } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
-import WorkbenchChrome from './WorkbenchChrome';
+import WorkbenchChrome, { type WorkbenchDraftSaveAction } from './WorkbenchChrome';
 import WorkbenchViewportHost from './WorkbenchViewportHost';
 import styles from './DrawingWorkbench.module.css';
 
@@ -46,12 +46,8 @@ type DrawingWorkbenchProps = {
   backHref?: string;
   /** Project name shown at the top-left of the workbench chrome. */
   projectLabel?: string | null;
-  draftSaveAction?: {
-    label: string;
-    statusText: string | null;
-    disabled: boolean;
-    onSave: () => void;
-  } | null;
+  draftSaveAction?: WorkbenchDraftSaveAction | null;
+  showChrome?: boolean;
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
@@ -69,6 +65,7 @@ type DrawingWorkbenchProps = {
 
 export default function DrawingWorkbench({
   sheetLabel,
+  showChrome = true,
   viewportMode,
   objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
@@ -100,14 +97,14 @@ export default function DrawingWorkbench({
   onDetachHouseFormAtSeam,
 }: DrawingWorkbenchProps) {
   return (
-    <section className={styles.workbench} aria-label="Drawing workbench">
-      <WorkbenchChrome
+    <section className={`${styles.workbench} ${showChrome ? "" : styles.withoutChrome}`} aria-label={showChrome ? "Drawing workbench" : "Drawing workbench viewport"}>
+      {showChrome ? <WorkbenchChrome
         viewportMode={viewportMode}
         onViewportModeChange={onViewportModeChange}
         backHref={backHref}
         projectLabel={projectLabel ?? null}
         draftSaveAction={draftSaveAction ?? null}
-      />
+      /> : null}
       <WorkbenchViewportHost
         sheetLabel={sheetLabel}
         viewportMode={viewportMode}

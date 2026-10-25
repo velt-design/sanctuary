@@ -35,17 +35,8 @@ export default function EmailPreviewClient({
         </div>
       ) : null}
 
-      {controller.loading ? (
-        <div className={styles.loading} role="status">
-          <span />
-          <div>
-            <strong>Rendering the workbench</strong>
-            <p>Preparing three exact customer emails in light and dark.</p>
-          </div>
-        </div>
-      ) : (
-        <EmailPreviewCanvas controller={controller} />
-      )}
+      <EmailPreviewCanvas controller={controller} />
+
     </section>
   );
 }

@@ -3,11 +3,11 @@ import { DataStatePanel, PageLayout } from '@/components/ui/foundation';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 import { isProjectTabKey } from '@/lib/projects/projectTabs';
-import { ProjectCorrespondenceWarmRead } from '@/components/projects/ProjectPage/tabs/overview/ProjectCorrespondenceWarmRead';
 import { requireStaffPageAccess } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { DOCUMENT_CALLBACK_HEADER, regionalDocumentCallback } from '@/lib/regionalDocumentAccess';
 import { loadProjectWorkInitialRead } from './loadProjectWorkInitialRead';
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -40,6 +40,7 @@ export default async function ProjectDetailPage({
   const calculatorWorkspace = tab === 'estimates' && Boolean(estimateId || fromEstimateId || newDesign);
   if (!projectId.trim()) {
     return (
+      <PortalGuardedPage pathname={`/staff/projects/${encodeURIComponent(projectId)}`} completion={{}} publicFrame={false}>
       <PageLayout width="full" data-ui-foundation-consumer="project-detail">
         <StaffPageHeader
           variant="detail"
@@ -54,6 +55,7 @@ export default async function ProjectDetailPage({
           description="The project link is invalid. Return to Projects and choose a record."
         />
       </PageLayout>
+      </PortalGuardedPage>
     );
   }
 
@@ -64,7 +66,7 @@ export default async function ProjectDetailPage({
     ? loadProjectWorkInitialRead(projectId, { userId: session.user.id, isAdmin: session.role === 'admin' })
     : undefined;
   return (
-    <ProjectCorrespondenceWarmRead projectId={projectId} enabled={tab === 'activity'}>
+    <PortalGuardedPage pathname={`/staff/projects/${encodeURIComponent(projectId)}`} completion={{}} publicFrame={false}>
     <ProjectSnapshotPageClient
       projectId={projectId}
       tab={tab}
@@ -73,6 +75,6 @@ export default async function ProjectDetailPage({
       debugExportEnabled={isPortalPageDebugExportEnabled()}
       initialRead={initialRead}
     />
-    </ProjectCorrespondenceWarmRead>
+    </PortalGuardedPage>
   );
 }

@@ -1,13 +1,13 @@
 import { afterEach,beforeEach,expect,it,vi } from 'vitest';
 import {renderToStaticMarkup} from 'react-dom/server';
-const h=vi.hoisted(()=>({access:vi.fn(),headers:vi.fn(),client:vi.fn(),read:vi.fn(),commercial:vi.fn(),designer:vi.fn(),financial:vi.fn(),diagnostics:vi.fn()}));
+const h=vi.hoisted(()=>({access:vi.fn(),headers:vi.fn(),client:vi.fn(),read:vi.fn(),commercial:vi.fn(),designer:vi.fn(),financial:vi.fn(),financialParts:vi.fn(),diagnostics:vi.fn()}));
 vi.mock('@/lib/performance/documentRenderDiagnostics',()=>({getDocumentRenderDiagnostics:h.diagnostics}));
 vi.mock('@/lib/auth',()=>({requireStaffPageAccess:h.access}));
 vi.mock('next/headers',()=>({headers:h.headers}));
 vi.mock('@/lib/supabase/serverClient',()=>({getSupabaseServerAuth:h.client}));
 vi.mock('@/lib/marketingPerformance/readHub.server',()=>({readHub:h.read,hubReadFailure:()=>({ok:false,status:503,error:'The hub could not be loaded. Please retry.'})}));
 vi.mock('@/lib/marketingPerformance/readOverview.server',()=>({readCommercial:h.commercial,readDesigner:h.designer,overviewFailure:()=>({ok:false,status:503,error:'Unavailable'})}));
-vi.mock('@/lib/xero/financials/readPortal.server',()=>({readPortalFinancials:h.financial,financialReadFailure:()=>({ok:false,status:503,error:'Unavailable'})}));
+vi.mock('@/lib/xero/financials/readPortal.server',()=>({readPortalFinancials:h.financial,startPortalFinancialProfitParts:h.financialParts,financialProfitFailure:()=>({ok:false,status:503,error:'Unavailable'}),financialReadFailure:()=>({ok:false,status:503,error:'Unavailable'})}));
 vi.mock('next/navigation',()=>({notFound:()=>{throw new Error('not-found');}}));
 vi.mock('@/components/marketingPerformance/MarketingPerformance',()=>({default:()=> <div data-marketing-client/>}));
 import Page from './page';
@@ -18,7 +18,7 @@ import { prepareProxyDocumentDiagnostics } from '@/lib/performance/documentDiagn
 import { expandReport } from '@/lib/marketingPerformance/columnarReports';
 const documentHeaders=()=>new Headers({accept:'text/html','sec-fetch-dest':'document',[DOCUMENT_CALLBACK_HEADER]:'/staff/marketing-performance?view=sales&start=2026-09-01&end=2026-09-22'});
 const owner={role:'staff',user:{email:'jordan@sanctuarypergolas.co.nz',email_confirmed_at:'2026-01-01'}};
-beforeEach(()=>{vi.unstubAllEnvs();vi.resetAllMocks();h.diagnostics.mockResolvedValue(null);h.headers.mockResolvedValue(new Headers());h.client.mockResolvedValue({rpc:vi.fn()});h.read.mockResolvedValue({ok:true,report:hubFixture});h.financial.mockResolvedValue({ok:false,status:503,error:'Unavailable'});});
+beforeEach(()=>{vi.unstubAllEnvs();vi.resetAllMocks();h.diagnostics.mockResolvedValue(null);h.headers.mockResolvedValue(new Headers());h.client.mockResolvedValue({rpc:vi.fn()});h.read.mockResolvedValue({ok:true,report:hubFixture});h.financial.mockResolvedValue({ok:false,status:503,error:'Unavailable'});h.financialParts.mockResolvedValue({ok:false,status:503,error:'Unavailable'});});
 afterEach(()=>{vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();});
 it('retains the existing staff and confirmed-developer gates before rendering any Marketing view',async()=>{
  h.access.mockRejectedValueOnce(new Error('redirect:login'));
@@ -36,7 +36,7 @@ it('starts a safe streamed read after authority without awaiting it or changing 
  h.access.mockResolvedValue(owner);h.headers.mockResolvedValue(documentHeaders());
  let resolve!:(result:HubReadResult)=>void;
  h.read.mockReturnValue(new Promise<HubReadResult>(yes=>{resolve=yes;}));
- const page=await Page(),seed=page.props.initialHubSeed;
+ const gated=await Page(),page=gated.props.children,seed=page.props.initialHubSeed;
  expect(h.read).toHaveBeenCalledWith(await h.client.mock.results[0].value,'2026-09-01','2026-09-22');
  expect(Object.keys(seed).sort()).toEqual(['end','result','start']);
  expect(page.props).not.toHaveProperty('initialFilters');
@@ -59,27 +59,27 @@ it('does not start an initial read for RSC, prefetch, Financials or invalid date
  variants[1].set('rsc','1');variants[2].set('next-router-prefetch','1');
  variants[3].set(DOCUMENT_CALLBACK_HEADER,'/staff/marketing-performance?view=financials');
  variants[4].set(DOCUMENT_CALLBACK_HEADER,'/staff/marketing-performance?start=2026-02-30');
- for(const headers of variants){h.headers.mockResolvedValue(headers);expect((await Page()).props.initialHubSeed).toBeUndefined();}
+ for(const headers of variants){h.headers.mockResolvedValue(headers);expect((await Page()).props.children.props.initialHubSeed).toBeUndefined();}
  expect(h.client).not.toHaveBeenCalled();expect(h.read).not.toHaveBeenCalled();
  expect(h.diagnostics).not.toHaveBeenCalled();
 });
 it('converts client-setup failures to public results rather than serializing server exceptions',async()=>{
  h.access.mockResolvedValue(owner);h.headers.mockResolvedValue(documentHeaders());h.client.mockRejectedValue(new Error('private connection details'));
- const page=await Page();expect(await page.props.initialHubSeed.result).toEqual({ok:false,status:503,error:'The hub could not be loaded. Please retry.'});
+ const page=(await Page()).props.children;expect(await page.props.initialHubSeed.result).toEqual({ok:false,status:503,error:'The hub could not be loaded. Please retry.'});
  expect(h.read).not.toHaveBeenCalled();
 });
 
 it('starts Overview evidence together without waiting for Hub, and only selected Financial evidence',async()=>{
  h.access.mockResolvedValue(owner);const headers=documentHeaders();headers.set(DOCUMENT_CALLBACK_HEADER,'/staff/marketing-performance?view=overview&start=2026-09-01&end=2026-09-22');h.headers.mockResolvedValue(headers);
  const pending=new Promise(()=>{});h.read.mockReturnValue(pending);h.commercial.mockReturnValue(pending);h.designer.mockReturnValue(pending);
- const overview=await Page();expect(h.client).toHaveBeenCalledOnce();expect(h.read).toHaveBeenCalledOnce();expect(h.commercial).toHaveBeenCalledOnce();expect(h.designer).toHaveBeenCalledOnce();expect(overview.props.initialCommercialSeed).toBeDefined();expect(h.financial).not.toHaveBeenCalled();
- vi.clearAllMocks();h.access.mockResolvedValue(owner);h.headers.mockResolvedValue(new Headers({accept:'text/html','sec-fetch-dest':'document',[DOCUMENT_CALLBACK_HEADER]:'/staff/marketing-performance?view=financials&financeSection=profit&financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=cash'}));h.financial.mockReturnValue(pending);
- const financial=await Page();expect(financial.props.initialFinancialSeed.key).toBe('profit:2026-09-01:2026-09-30:cash');expect(h.financial).toHaveBeenCalledOnce();expect(h.client).not.toHaveBeenCalled();expect(h.commercial).not.toHaveBeenCalled();expect(h.designer).not.toHaveBeenCalled();
+ const overview=(await Page()).props.children;expect(h.client).toHaveBeenCalledOnce();expect(h.read).toHaveBeenCalledOnce();expect(h.commercial).toHaveBeenCalledOnce();expect(h.designer).toHaveBeenCalledOnce();expect(overview.props.initialCommercialSeed).toBeDefined();expect(h.financial).not.toHaveBeenCalled();
+ vi.clearAllMocks();h.access.mockResolvedValue(owner);h.headers.mockResolvedValue(new Headers({accept:'text/html','sec-fetch-dest':'document',[DOCUMENT_CALLBACK_HEADER]:'/staff/marketing-performance?view=financials&financeSection=profit&financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=cash'}));h.financialParts.mockReturnValue(pending);
+ const financial=(await Page()).props.children;expect(financial.props.initialFinancialSeed.key).toBe('profit:2026-09-01:2026-09-30:cash');expect(h.financialParts).toHaveBeenCalledOnce();expect(h.financial).not.toHaveBeenCalled();expect(h.client).not.toHaveBeenCalled();expect(h.commercial).not.toHaveBeenCalled();expect(h.designer).not.toHaveBeenCalled();
 });
 
 it('does not start live Financial or Overview seeds from the private snapshot preview',async()=>{
  h.access.mockResolvedValue(owner);h.headers.mockResolvedValue(new Headers({accept:'text/html','sec-fetch-dest':'document',[DOCUMENT_CALLBACK_HEADER]:'/staff/marketing-performance?view=overview'}));vi.stubEnv('MARKETING_PERFORMANCE_PREVIEW','production-snapshot');vi.stubEnv('VERCEL_ENV','preview');
- const page=await Page();expect(page.props.initialCommercialSeed).toBeUndefined();expect(page.props.initialDesignerSeed).toBeUndefined();expect(page.props.initialFinancialSeed).toBeUndefined();expect(h.commercial).not.toHaveBeenCalled();expect(h.designer).not.toHaveBeenCalled();expect(h.financial).not.toHaveBeenCalled();
+ const page=(await Page()).props.children;expect(page.props.initialCommercialSeed).toBeUndefined();expect(page.props.initialDesignerSeed).toBeUndefined();expect(page.props.initialFinancialSeed).toBeUndefined();expect(h.commercial).not.toHaveBeenCalled();expect(h.designer).not.toHaveBeenCalled();expect(h.financial).not.toHaveBeenCalled();
  expect(h.diagnostics).not.toHaveBeenCalled();
 });
 
@@ -96,7 +96,7 @@ it('times the complete client/read chains without awaiting or serializing the th
  h.client.mockReturnValue(new Promise(yes=>{clientReady=yes;}));
  h.read.mockReturnValue(new Promise(yes=>{hubReady=yes;}));h.commercial.mockReturnValue(new Promise(yes=>{commercialReady=yes;}));
  h.designer.mockRejectedValue(new Error('private connection details'));
- const page=await Page();expect(h.read).not.toHaveBeenCalled();expect(log).not.toHaveBeenCalled();
+ const page=(await Page()).props.children;expect(h.read).not.toHaveBeenCalled();expect(log).not.toHaveBeenCalled();
  vi.advanceTimersByTime(40);clientReady({rpc:vi.fn()});await Promise.resolve();await Promise.resolve();
  expect(h.client).toHaveBeenCalledOnce();expect(h.read).toHaveBeenCalledOnce();expect(h.commercial).toHaveBeenCalledOnce();expect(h.designer).toHaveBeenCalledOnce();
  const failure={ok:false as const,status:503,error:'Safe unavailable result'};vi.advanceTimersByTime(20);commercialReady(failure);
@@ -115,7 +115,7 @@ it('times the complete client/read chains without awaiting or serializing the th
 it('keeps public client-setup failures and results unchanged when diagnostic logging rejects',async()=>{
  observedOverview();vi.spyOn(console,'info').mockImplementation(()=>Promise.reject(new Error('logger failure')));
  h.client.mockRejectedValue(new Error('private client failure'));
- const page=await Page();
+ const page=(await Page()).props.children;
  expect(await page.props.initialHubSeed.result).toEqual({ok:false,status:503,error:'The hub could not be loaded. Please retry.'});
  expect(await page.props.initialCommercialSeed.result).toEqual({ok:false,status:503,error:'Unavailable'});
  expect(await page.props.initialDesignerSeed.result).toEqual({ok:false,status:503,error:'Unavailable'});
@@ -124,7 +124,16 @@ it('keeps public client-setup failures and results unchanged when diagnostic log
 it('stops late Overview emits after expiry without retiring or rereading the report',async()=>{
  vi.useFakeTimers();observedOverview(30);const log=vi.spyOn(console,'info').mockImplementation(()=>undefined);
  let ready!:(result:HubReadResult)=>void;h.read.mockReturnValue(new Promise(yes=>{ready=yes;}));h.commercial.mockResolvedValue({ok:false,status:503});h.designer.mockResolvedValue({ok:false,status:503});
- const page=await Page();await Promise.all([page.props.initialCommercialSeed.result,page.props.initialDesignerSeed.result]);log.mockClear();
+ const page=(await Page()).props.children;await Promise.all([page.props.initialCommercialSeed.result,page.props.initialDesignerSeed.result]);log.mockClear();
  vi.advanceTimersByTime(31);const result={ok:true as const,report:hubFixture};ready(result);
  expect(expandReport('hub',(await page.props.initialHubSeed.result).report)).toEqual(hubFixture);expect(h.read).toHaveBeenCalledOnce();expect(log).not.toHaveBeenCalled();
+});
+
+it.each(['rsc','next-router-prefetch'])('renders the actual Financial selection for %s without starting document-only reads',async(kind)=>{
+ h.access.mockResolvedValue(owner);const headers=documentHeaders();headers.set(kind,'1');h.headers.mockResolvedValue(headers);
+ const query={view:'financials',financeSection:'bank',financeBasis:'cash',financeFrom:'2026-09-01',financeTo:'2026-09-30'};
+ const page=(await Page({searchParams:Promise.resolve(query)})).props.children;
+ expect(new URLSearchParams(page.props.initialQuery).get('financeSection')).toBe('bank');
+ expect(page.props.initialHubSeed).toBeUndefined();expect(page.props.initialFinancialSeed).toBeUndefined();
+ expect(h.client).not.toHaveBeenCalled();expect(h.read).not.toHaveBeenCalled();expect(h.financial).not.toHaveBeenCalled();
 });

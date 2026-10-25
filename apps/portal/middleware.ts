@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createProxySupabase } from '@/lib/supabase/proxyClient';
-import { isRegionalDocumentPath, prepareRegionalDocumentAccess } from '@/lib/regionalDocumentAccess';
+import { isRegionalDocumentPath, isRegionalNavigationPath, prepareRegionalPageAccess } from '@/lib/regionalDocumentAccess';
 import { DOCUMENT_ID_HEADER, prepareProxyDocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
 import type { PortalAccessTimingObserver } from '@/lib/portalAccess';
 import {
@@ -64,13 +64,17 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === '/qa/finance-register' ||
     path === PROJECT_WORK_QUEUE_FIXTURE_PATH ||
     path === SCHEDULE_OPS_FIXTURE_PATH ||
+    path === '/qa/schedule-progressive-fixture' ||
+    path === '/qa/portal-progressive-fixture' ||
+    path === '/qa/portal-progressive-fixture/dashboard-read' ||
     path === AI_ACTIVITY_FIXTURE_PATH ||
     path === '/qa/email-review-fixture' ||
     path === '/qa/finance-payment-fixture' ||
     path === '/qa/xero-summary-fixture' ||
     path === '/qa/enquiry-qualification-fixture' ||
     path === '/qa/marketing-performance-fixture' ||
-    path === '/qa/marketing-performance-fixture/project'
+    path === '/qa/marketing-performance-fixture/project' ||
+    path === '/qa/marketing-performance-fixture/financial-read'
   );
 }
 
@@ -172,7 +176,7 @@ export async function middleware(req: NextRequest) {
   const startedAt = performance.now();
   const { requestHeaders, diagnostics } = prepareProxyDocumentDiagnostics(req);
   try {
-    const document = prepareRegionalDocumentAccess(req, requestHeaders);
+    const document = prepareRegionalPageAccess(req, requestHeaders);
     let response: NextResponse;
     if (document.eligible) {
       const transport = createProxySupabase(req);
@@ -184,7 +188,7 @@ export async function middleware(req: NextRequest) {
       response = await runProxy(req, document.headers, diagnostics?.accessObserver('proxy'));
     }
     // Denials and non-document variants of these private pages must not be cached.
-    if (isRegionalDocumentPath(req.nextUrl.pathname)) response.headers.set('Cache-Control', 'private, no-store');
+    if (isRegionalDocumentPath(req.nextUrl.pathname) || isRegionalNavigationPath(req.nextUrl.pathname)) response.headers.set('Cache-Control', 'private, no-store');
     diagnostics?.record('proxy.complete', startedAt, response.status >= 300 && response.status < 400 ? 'redirect' : 'complete');
     if (diagnostics) response.headers.set(DOCUMENT_ID_HEADER, diagnostics.id);
     return response;

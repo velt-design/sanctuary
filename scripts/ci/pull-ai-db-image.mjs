@@ -2,9 +2,11 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
-// GHCR also returns a numeric microsecond hint. Keep the existing conservative
-// backoff rather than scheduling rapid retries from that hint.
-const throttleLine = /^(?:docker: )?(?:Error response from daemon: )?toomanyrequests: (?:Rate exceeded|retry-after: [0-9]{1,9}(?:\.[0-9]{1,9})?µs, allowed: [1-9][0-9]{0,8}\/minute)$/;
+const throttleLine = /^(?:docker: )?(?:Error response from daemon: )?toomanyrequests: (?:Rate exceeded|retry-after: \d+(?:\.\d+)?(?:ns|µs|ms|s), allowed: [1-9]\d*\/minute)$/;
+const configurationThrottleLine = /^error pulling image configuration: download failed after attempts=1: toomanyrequests: retry-after: \d+(?:\.\d+)?(?:ns|µs|ms|s), allowed: [1-9]\d*\/minute$/;
+const isThrottleLine = (line) => throttleLine.test(line) || configurationThrottleLine.test(line);
+const imageProgressLine = /^[a-zA-Z0-9@_.:/-]+: Pulling from [a-z0-9._/-]+$/;
+const layerProgressLine = /^[a-f0-9]{12}: (?:Pulling fs layer|Waiting|Downloading|Verifying Checksum|Download complete|Extracting|Pull complete|Already exists|Retrying in \d+ seconds)(?: \[[=> ]+\]\s+[\d.]+[kMGT]?B(?:\/[\d.]+[kMGT]?B)?)?$/;
 const backoffMs = [30_000, 60_000];
 
 // Pull only: database startup and SQL remain in the subsequent, single-run harness.
@@ -27,12 +29,14 @@ export async function pullAiDatabaseImage(image, {
     if (result.error) throw new Error(`AI database image pull could not complete: ${result.error.message}`);
     if (result.status === 0) return;
 
-    const throttled = output.split(/\r?\n/).some((line) => throttleLine.test(line));
+    const lines = output.split(/\r?\n/).filter((line) => line.trim());
+    const throttled = lines.some(isThrottleLine) &&
+      lines.every((line) => isThrottleLine(line) || imageProgressLine.test(line) || layerProgressLine.test(line));
     if (!throttled || result.status === null || attempt === 3) {
       throw new Error(`AI database image pull failed on attempt ${attempt}/3 (exit ${result.status}).`);
     }
     const waitMs = backoffMs[attempt - 1];
-    log(`Registry reported a recognized toomanyrequests throttle; retrying pull in ${waitMs / 1000}s.`);
+    log(`Registry reported toomanyrequests: Rate exceeded; retrying pull in ${waitMs / 1000}s.`);
     await sleep(waitMs);
   }
 }

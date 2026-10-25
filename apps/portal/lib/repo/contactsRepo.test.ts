@@ -66,4 +66,13 @@ describe('contactsRepo schema guardrails', () => {
     );
     expect(updateMock).toHaveBeenCalledTimes(1);
   });
+  it('preserves a failed create readback as a retryable source error rather than claiming the contact is absent', async () => {
+    const maybeSingle=vi.fn().mockResolvedValue({data:null,error:{message:'Read access ended',code:'42501'},status:403});
+    const insert=vi.fn(()=>({select:()=>({single:async()=>({error:null})})}));
+    getSupabaseBrowser.mockReturnValue({from:()=>({insert,select:()=>({eq:()=>({maybeSingle})})})});
+    const {createContact}=await import('./contactsRepo');
+    await expect(createContact({id:'ct_11111111-1111-4111-8111-111111111111',displayName:'Fictional contact',email:'fictional@example.invalid',phone:''})).rejects.toMatchObject({status:403});
+    expect(insert).toHaveBeenCalledTimes(1);expect(maybeSingle).toHaveBeenCalledTimes(1);
+  });
+
 });

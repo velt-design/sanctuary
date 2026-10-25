@@ -10,13 +10,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useSelectedLayoutSegments } from 'next/navigation';
+import { PortalPageSourceProvider, usePortalPageSourceController } from './PortalPageSource';
+import PortalActualFrames from './PortalActualFrames';
 import PortalNavigationProgress from './PortalNavigationProgress';
-import ProjectsIndexPendingFrame from './ProjectsIndexPendingFrame';
-import ContactsIndexPendingFrame from './ContactsIndexPendingFrame';
 import { retainPortalHistory } from './portalHistoryGuard';
 import {
-  PORTAL_INSTANT_ROUTE_DEFINITIONS,
   portalInstantRouteReleasesOnCommit,
   portalInstantRouteTarget,
   type PortalInstantRoute,
@@ -37,7 +36,7 @@ type PortalRouteTransitionInput = {
 
 type PortalRouteTransitionContextValue = {
   beginRouteTransition: (input: PortalRouteTransitionInput) => void;
-  beginInstantRoute: (route: PortalInstantRoute, options?: { label?: string | null }) => void;
+  beginInstantRoute: (route: PortalInstantRoute, options?: { label?: string | null; href?: string }) => void;
   finishInstantRoute: (route: PortalInstantRoute) => void;
   instantRoute: PortalInstantRoute | null;
   instantRouteLabel: string | null;
@@ -119,6 +118,11 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   useEffect(retainPortalHistory, []);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const segments = useSelectedLayoutSegments();
+  const canonicalPath = `/${segments.filter(segment => !segment.startsWith('(') && segment !== '__PAGE__').join('/')}`;
+  const pageSource = usePortalPageSourceController(pathname, canonicalPath, searchParams.toString());
+  const beginPageSource = pageSource.begin;
+  const cancelPageSource = pageSource.cancel;
   const routeKey = useMemo(() => routeKeyFor(pathname, searchParams), [pathname, searchParams]);
   const previousRouteKeyRef = useRef<string | null>(null);
   const maxTimerRef = useRef<number | null>(null);
@@ -185,7 +189,10 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   );
 
   const beginInstantRoute = useCallback(
-    (route: PortalInstantRoute, options?: { label?: string | null }) => {
+    (route: PortalInstantRoute, options?: { label?: string | null; href?: string }) => {
+      if (options?.href && new URL(options.href, window.location.href).pathname !== window.location.pathname) {
+        beginPageSource(options.href);
+      }
       clearTimer(instantRouteTimerRef);
       instantRouteRef.current = route;
       setInstantRoute(route);
@@ -198,7 +205,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
         setInstantRouteLabel(null);
       }, MAX_INSTANT_ROUTE_MS);
     },
-    [clearTimer],
+    [beginPageSource, clearTimer],
   );
 
   const beginRouteTransition = useCallback(
@@ -208,7 +215,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
 
       const target = portalInstantRouteTarget(input.href, window.location.href);
       if (target && target.url.pathname !== window.location.pathname) {
-        beginInstantRoute(target.route, { label: input.label });
+        beginInstantRoute(target.route, { label: input.label, href: input.href });
       }
 
       activeRef.current = true;
@@ -248,6 +255,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
 
   useEffect(() => {
     const handlePopState = () => {
+      cancelPageSource();
       clearTimer(instantRouteTimerRef);
       instantRouteRef.current = null;
       setInstantRoute(null);
@@ -256,7 +264,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [clearTimer, finishRouteTransition]);
+  }, [cancelPageSource, clearTimer, finishRouteTransition]);
 
   const value = useMemo(
     () => ({
@@ -283,37 +291,17 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
 
   return (
     <PortalRouteTransitionContext.Provider value={value}>
+      <PortalPageSourceProvider value={pageSource}>
       {children}
       {visible ? <PortalNavigationProgress ariaLabel={ariaLabel} /> : null}
+      </PortalPageSourceProvider>
     </PortalRouteTransitionContext.Provider>
   );
 }
 
+/** One real frame sits beside Next's retained outlet; private children are source-gated. */
 export function PortalInstantRouteContent({ children }: { children: ReactNode }) {
-  const { instantRoute, instantRouteLabel } = usePortalRouteTransition();
-  const instantDefinition = instantRoute
-    ? PORTAL_INSTANT_ROUTE_DEFINITIONS[instantRoute]
-    : null;
-
-  return (
-    <>
-      {instantRoute === 'projects-index' ? <ProjectsIndexPendingFrame /> : null}
-      {instantRoute === 'contacts-index' ? <ContactsIndexPendingFrame /> : null}
-      {instantRoute && instantDefinition && instantRoute !== 'projects-index' && instantRoute !== 'contacts-index' ? (
-        <ProjectsIndexPendingFrame
-          instantRoute={instantRoute}
-          title={instantDefinition.title}
-          description={instantDefinition.description}
-          projectLabel={instantRouteLabel}
-        />
-      ) : null}
-      <div
-        style={{ display: instantRoute ? 'none' : 'contents' }}
-        aria-hidden={instantRoute ? 'true' : undefined}
-        data-portal-route-content="true"
-      >
-        {children}
-      </div>
-    </>
-  );
+  return <div style={{display:'contents'}} data-portal-route-content="true">
+    <PortalActualFrames>{children}</PortalActualFrames>
+  </div>;
 }

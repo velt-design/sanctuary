@@ -2,20 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireStaffContext = vi.fn();
 const getDashboardData = vi.fn();
+const startDashboardRead=vi.fn();
 
 vi.mock('@/lib/api/staffApi', () => ({
   requireStaffContext,
 }));
 
 vi.mock('@/lib/dashboard/getDashboardData', () => ({
-  getDashboardData,
+  getDashboardData,startDashboardRead,
 }));
 
 describe('GET /api/dashboard', () => {
   beforeEach(() => {
     vi.resetModules();
     requireStaffContext.mockReset();
-    getDashboardData.mockReset();
+    getDashboardData.mockReset();startDashboardRead.mockReset();
 
     requireStaffContext.mockResolvedValue({
       ok: true,
@@ -80,4 +81,10 @@ describe('GET /api/dashboard', () => {
     expect(res.headers.get('cache-control')).toBe('private, no-store');
     await expect(res.json()).resolves.toEqual({ error: 'Dashboard exploded' });
   });
+  it('does not start negotiated parts before the existing staff gate succeeds',async()=>{
+    requireStaffContext.mockResolvedValueOnce({ok:false,response:new Response(null,{status:403})});
+    const {GET}=await import('./route');const response=await GET(new Request('http://localhost/api/dashboard',{headers:{Accept:'application/x-ndjson'}}));
+    expect(response.status).toBe(403);expect(response.headers.get('vary')).toBe('Accept');expect(startDashboardRead).not.toHaveBeenCalled();
+  });
+
 });

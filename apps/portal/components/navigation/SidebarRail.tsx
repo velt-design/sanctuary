@@ -4,14 +4,11 @@ import Link from 'next/link';
 import { isNavParentActive as isActive } from './navRouteMatch';
 import { usePathname, useRouter } from 'next/navigation';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { visibleNavItems } from './navItems';
 import UserMenu from './UserMenu';
 import styles from './SidebarRail.module.css';
 import { useQueryClient } from '@tanstack/react-query';
-import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
-import { todayYmd } from '@/lib/scheduling/date';
-import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import {
   shouldHandleRouteTransitionClick,
   shouldStartRouteTransitionForHref,
@@ -19,6 +16,7 @@ import {
 } from '@/components/page-state/PortalRouteTransition';
 import {
   openPortalIndexInstantly,
+  openPortalActualFrameInstantly,
   portalIndexTarget,
   preloadPortalIndex,
 } from '@/lib/queries/portalIndexNavigation';
@@ -47,12 +45,11 @@ export default function SidebarRail({
   const queryClient = useQueryClient();
   const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
 
-  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const today = useMemo(() => todayYmd(), []);
   const prefetchedRef = useRef(new Set<string>());
 
   const prefetchFor = useCallback(
-    (key: string, href: string) => {
+    (_key: string, href: string) => {
+
       if (portalIndexTarget(href)) {
         preloadPortalIndex(queryClient, router, href);
         return;
@@ -62,13 +59,9 @@ export default function SidebarRail({
         prefetchedRef.current.add(routeToken);
         router.prefetch(href);
       }
-      if (key !== 'schedule') return;
-      const token = `${key}:${hostKey}:${today}`;
-      if (prefetchedRef.current.has(token)) return;
-      prefetchedRef.current.add(token);
-      void queryClient.prefetchQuery(scheduleV2SnapshotQueryOptions(hostKey, today));
+      // Schedule data belongs to the guarded selected read owner.
     },
-    [hostKey, queryClient, router, today],
+    [queryClient, router],
   );
 
   const handleNavClick = useCallback(
@@ -77,7 +70,7 @@ export default function SidebarRail({
       if (!shouldStartRouteTransitionForHref(href)) return;
       const indexTarget = portalIndexTarget(href);
       if (indexTarget) {
-        beginInstantRoute(indexTarget.route);
+        beginInstantRoute(indexTarget.route, { href });
         if (openPortalIndexInstantly(event, router, href)) return;
       }
 
@@ -87,6 +80,7 @@ export default function SidebarRail({
         source: 'sidebar-rail',
         control: event.currentTarget,
       });
+      openPortalActualFrameInstantly(event, router, href);
     },
     [beginInstantRoute, beginRouteTransition, router],
   );

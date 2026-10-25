@@ -182,4 +182,16 @@ describe('getDashboardData', () => {
 
     expect(data.projectWorkQueue).toEqual([]);
   });
+  it('starts each original source once and exposes complete portfolio counts without awaiting the independent snapshot',async()=>{
+    let resolve!:(value:unknown)=>void;
+    getDashboardSnapshotCached.mockReturnValueOnce(new Promise(yes=>{resolve=yes;}));
+    const {startDashboardRead,finishDashboardRead}=await import('./getDashboardData');
+    const reads=startDashboardRead({queueMode:'today',userId:'user_1',supabase:{} as never});
+    expect(await reads.pipelineCounts).toMatchObject({pipelineCounts:{NEW:2},pipelineCountsAvailable:true});
+    let completed=false;const full=finishDashboardRead(reads).then(value=>{completed=true;return value;});
+    await Promise.resolve();expect(completed).toBe(false);
+    for(const source of [getDashboardSnapshotCached,listDashboardRecentEstimates,listRecentProjectNoteActivity,listVisibleDashboardTasks,getProjectWorkQueue,getProjectOperationalStateCounts,getDashboardPipelineCounts])expect(source).toHaveBeenCalledTimes(1);
+    resolve({updated_at:'2026-10-22T00:00:00Z'});expect((await full).updatedAtIso).toBe('2026-10-22T00:00:00Z');
+  });
+
 });

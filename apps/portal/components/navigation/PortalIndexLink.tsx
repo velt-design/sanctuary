@@ -6,8 +6,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ComponentProps } from 'react';
 import { ButtonLink, type ButtonVariant, type ControlSize } from '@/components/ui/foundation/FoundationControls';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
-import { shouldHandleRouteTransitionClick } from '@/components/page-state/PortalRouteTransition';
-import { openPortalIndexInstantly, portalIndexTarget, preloadPortalIndex } from '@/lib/queries/portalIndexNavigation';
+import { shouldHandleRouteTransitionClick, shouldStartRouteTransitionForHref } from '@/components/page-state/PortalRouteTransition';
+import { openPortalIndexInstantly, openPortalActualFrameInstantly, portalIndexTarget, preloadPortalIndex } from '@/lib/queries/portalIndexNavigation';
+import { publicFramePath } from '@/components/page-state/PortalPageSource';
 
 type PortalIndexLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
   href: string;
@@ -23,6 +24,7 @@ export default function PortalIndexLink({
   onMouseEnter,
   onPointerDown,
   onTouchStart,
+  onNavigate,
   prefetch = false,
   variant,
   size,
@@ -31,13 +33,24 @@ export default function PortalIndexLink({
 }: PortalIndexLinkProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { beginInstantRoute } = usePortalRouteTransition();
-  const prepare = () => preloadPortalIndex(queryClient, router, href);
+  const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
+  const prepare = () => {
+    if (disabled || href.startsWith('#')) return;
+    if ((props.target && props.target !== '_self') || (props.download != null && props.download !== false)) return;
+    if (preloadPortalIndex(queryClient, router, href)) return;
+    // Other destinations keep native navigation and warm only their route on
+    // intent. They do not borrow index API reads or the instant index URL path.
+    if (!shouldStartRouteTransitionForHref(href)) return;
+    const path = new URL(href, window.location.href).pathname;
+    if (!path.startsWith('/staff/') || /^\/staff\/(?:api|auth|login|logout)(?:\/|$)/.test(path)) return;
+    router.prefetch(href);
+  };
 
   const linkProps = {
     ...props,
     href,
     prefetch,
+    onNavigate,
     onClick: (event: Parameters<NonNullable<ComponentProps<typeof Link>['onClick']>>[0]) => {
         if (disabled) {
           event.preventDefault();
@@ -45,9 +58,23 @@ export default function PortalIndexLink({
         }
         onClick?.(event);
         if (event.defaultPrevented || !shouldHandleRouteTransitionClick(event)) return;
+        if (props.download != null && props.download !== false) return;
         const target = portalIndexTarget(href);
-        if (!target) return;
-        beginInstantRoute(target.route);
+        const publicFrame = Boolean(publicFramePath(href, window.location.href))
+          && shouldStartRouteTransitionForHref(href);
+        if (target || publicFrame) {
+          let cancelled = false;
+          onNavigate?.({ preventDefault: () => { cancelled = true; } });
+          if (cancelled) { event.preventDefault(); return; }
+        }
+        if (!target) {
+          if (publicFrame) {
+            beginRouteTransition({ href, source: 'dashboard-link', control: event.currentTarget });
+            openPortalActualFrameInstantly(event, router, href);
+          }
+          return;
+        }
+        beginInstantRoute(target.route, { href });
         openPortalIndexInstantly(event, router, href);
       },
     onFocus: (event: Parameters<NonNullable<ComponentProps<typeof Link>['onFocus']>>[0]) => { onFocus?.(event); if (!event.defaultPrevented) prepare(); },

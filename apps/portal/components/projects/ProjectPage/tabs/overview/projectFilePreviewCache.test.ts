@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import { discardProjectPreviews, PREVIEW_CACHE_MAX_BYTES, PREVIEW_LEASE_MS, readPreview, reconcileFolderPreviews, retainPreview, setPreviewOwner, subscribePreview, type PreviewScope } from './projectFilePreviewCache';
 import { ProjectPdfStream } from './ProjectPdfStream';
+import * as owner from './projectFilePreviewOwner';
 const scope: PreviewScope = { owner: 'host:staff', projectId: 'project', rootId: 'root', folderId: 'folder', itemId: 'file' };
 const body = { bytes: new Uint8Array([1,2,3]), mime: 'image/png', name: 'Current.png', version: '"v1"' };
 afterEach(() => vi.useRealTimers());
@@ -70,4 +71,42 @@ it('keeps a currently displayed large original alive when background neighbors e
   retainPreview(client, { ...scope, itemId: 'neighbor' }, { ...body, bytes: new Uint8Array(3 * 1024 * 1024) }, true);
   expect(readPreview(client, scope, [])?.bytes.length).toBe(30 * 1024 * 1024);
   expect(readPreview(client, { ...scope, itemId: 'neighbor' }, [])).toBeNull(); expect(listener).not.toHaveBeenCalledWith(null); release();
+});
+
+it('shares the original facade APIs with the direct owner and one client store', () => {
+  expect(setPreviewOwner).toBe(owner.setPreviewOwner);
+  expect(discardProjectPreviews).toBe(owner.discardProjectPreviews);
+  expect(reconcileFolderPreviews).toBe(owner.reconcileFolderPreviews);
+  const client = new QueryClient(); owner.setPreviewOwner(client, scope.owner);
+  retainPreview(client, scope, body, true, 100);
+  const listener = vi.fn(), release = subscribePreview(client, scope, listener);
+  owner.discardPreview(client, scope);
+  expect(readPreview(client, scope, [])).toBeNull(); expect(listener).toHaveBeenCalledExactlyOnceWith(null);
+  retainPreview(client, scope, body, true, 200);
+  expect(readPreview(client, scope, [])).toMatchObject(body); expect(listener).toHaveBeenLastCalledWith(body);
+  owner.discardProjectPreviews(client, scope.owner, scope.projectId);
+  expect(readPreview(client, scope, [])).toBeNull(); expect(listener).toHaveBeenLastCalledWith(null); release();
+});
+
+it('applies direct-core version/deletion/denial observations to private bodies and current subscribers before late publication', () => {
+  const client = new QueryClient(); owner.setPreviewOwner(client, scope.owner);
+  retainPreview(client, scope, body, true, 100);
+  const listener = vi.fn(), release = subscribePreview(client, scope, listener);
+  const current = { id: scope.itemId, name: 'New.png', kind: 'file' as const, size: 3, modifiedAt: null, viewable: true, eTag: '"v2"' };
+  owner.reconcileFolderPreviews(client, scope.owner, scope.projectId, scope.rootId, scope.folderId, [current], true, 200);
+  expect(readPreview(client, scope, [])).toBeNull(); expect(listener).toHaveBeenCalledExactlyOnceWith(null);
+  retainPreview(client, scope, body, true, 100);
+  expect(readPreview(client, scope, [])).toBeNull(); expect(listener).toHaveBeenCalledTimes(1);
+  const verified = { ...body, version: '"v2"' }; retainPreview(client, scope, verified, true, 300);
+  expect(readPreview(client, scope, [])).toMatchObject(verified); expect(listener).toHaveBeenLastCalledWith(verified);
+  owner.reconcileFolderPreviews(client, scope.owner, scope.projectId, scope.rootId, scope.folderId, [], true, 400);
+  retainPreview(client, scope, verified, true, 300);
+  expect(readPreview(client, scope, [])).toBeNull(); expect(listener).toHaveBeenLastCalledWith(null);
+  owner.reconcileFolderPreviews(client, scope.owner, scope.projectId, scope.rootId, scope.folderId, [current], true, 500);
+  retainPreview(client, scope, verified, true, 600);
+  owner.setPreviewOwner(client, null);
+  expect(readPreview(client, scope, [])).toBeNull(); expect(listener).toHaveBeenLastCalledWith(null);
+  const calls = listener.mock.calls.length;
+  retainPreview(client, scope, verified, true, 700);
+  expect(readPreview(client, scope, [])).toBeNull(); expect(listener).toHaveBeenCalledTimes(calls); release();
 });

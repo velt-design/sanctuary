@@ -1,8 +1,10 @@
-import { act } from 'react';
+import {act,Profiler} from 'react';
 import { afterEach,expect,it,vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 import Financials from './Financials';
 import OutstandingView from './OutstandingView';
+import {sampleFinancialPanel} from '@/app/qa/marketing-performance-fixture/financialFixtures';
+import type {FinancialPanel} from '@/lib/xero/financials/contract';
 import { sampleFinancials } from '@/app/qa/marketing-performance-fixture/financialFixtures';
 import type { Financials as FinancialsData, FinancialsQuery } from '@/lib/xero/financials/contract';
 const query={from:'2026-09-01',to:'2026-09-30',basis:'accrual' as const};
@@ -30,7 +32,7 @@ it('missing comparison and partial families stay explicit with retry while curre
   const bills=[...view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(button=>button.textContent==='Bills to pay')!;await act(async()=>bills.click());
   expect(view.container.textContent).toContain('Bills to pay unavailable');
   const details=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!;act(()=>details.click());
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('does not currently grant');expect(view.container.querySelectorAll('tbody tr')).toHaveLength(0);view.unmount();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('does not currently grant');expect(view.container.querySelector('tbody')?.textContent).toContain('Document evidence unavailable');expect(view.container.querySelectorAll('tbody button')).toHaveLength(0);view.unmount();
 });
 it('keeps one status row and dated evidence through a changed selection, failed read and retry',async()=>{
   window.history.replaceState(null,'','/?financeFrom=2026-09-02&financeTo=2026-09-30&financeBasis=accrual');
@@ -47,4 +49,34 @@ it('keeps one status row and dated evidence through a changed selection, failed 
   const retry=[...region.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Retry')!;act(()=>retry.click());
   await act(async()=>pending[2].resolve(sampleFinancials({...selected,basis:'cash'})));
   expect(region.children.length).toBe(children);expect(region.textContent).toContain('2026-09-02 to 2026-09-30 · NZD · cash');view.unmount();
+});
+
+it.each(['bank','receivables','payables'] as const)('keeps the actual %s table and safe controls through initial failure, Retry and genuine rows',async section=>{
+ const params=`financeSection=${section}&financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=accrual`;window.history.replaceState(null,'','/?'+params);
+ const waiting:Array<{resolve:(value:FinancialPanel)=>void;reject:(error:Error)=>void}>=[],loader=vi.fn(()=>new Promise<FinancialPanel>((resolve,reject)=>waiting.push({resolve,reject})));
+ const view=renderIntoDocument(<Financials loader={loader} synthetic initialQuery={params}/>);const table=view.container.querySelector('table')!,input=view.container.querySelector<HTMLInputElement>('input:not([type="checkbox"])');
+ expect(table.textContent).toContain(section==='bank'?'Bank account':'Issued');expect(table.textContent).toContain('Reading');expect(view.container.textContent).not.toContain('No outstanding');expect(view.container.textContent).not.toContain('No matching');expect(view.container.textContent).not.toContain('$0');
+ if(input)act(()=>{const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!;set.call(input,'Sample');input.dispatchEvent(new Event('input',{bubbles:true}));});
+ await act(async()=>waiting[0].reject(new Error('Source offline')));expect(view.container.querySelector('table')).toBe(table);expect(table.textContent).toContain('unavailable');
+ const retry=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Retry')!;await act(async()=>retry.click());await act(async()=>waiting[1].resolve(sampleFinancialPanel({...query,section})));
+ expect(view.container.querySelector('table')).toBe(table);if(input){expect(view.container.contains(input)).toBe(true);expect(input.value).toBe('Sample');}expect(table.querySelectorAll('tbody button').length).toBeGreaterThan(0);view.unmount();
+});
+
+it('never commits a failed/unavailable state for a newly selected AR/AP/basis request before that request has failed',async()=>{
+ const params='financeSection=receivables&financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=accrual';window.history.replaceState(null,'','/?'+params);
+ const waiting:Array<{resolve:(value:FinancialPanel)=>void;reject:(error:Error)=>void}>=[],loader=vi.fn(()=>new Promise<FinancialPanel>((resolve,reject)=>waiting.push({resolve,reject})));
+ const commits:Array<{section:string;busy:string|null;text:string}>=[];
+ const view=renderIntoDocument(<Profiler id="financial-owner" onRender={()=>{const region=document.querySelector('#financial-results');if(region)commits.push({section:document.querySelector('[role="tab"][aria-selected="true"]')?.textContent??'',busy:region.getAttribute('aria-busy'),text:region.textContent??''});}}><Financials loader={loader} initialQuery={params} synthetic/></Profiler>);
+ await act(async()=>waiting[0].resolve(sampleFinancialPanel({...query,section:'receivables'})));
+ const tab=(text:string)=>[...view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(button=>button.textContent===text)!;
+ commits.length=0;act(()=>tab('Bills to pay').click());expect(commits.length).toBeGreaterThan(0);expect(commits.every(commit=>commit.busy==='true'&&!commit.text.includes('unavailable')&&!commit.text.includes('Financial reports unavailable'))).toBe(true);
+ await act(async()=>waiting[1].resolve(sampleFinancialPanel({...query,section:'payables'})));commits.length=0;
+ act(()=>tab('Money owed').click());expect(commits.every(commit=>commit.busy==='true'&&!commit.text.includes('Document evidence unavailable'))).toBe(true);
+ await act(async()=>waiting[2].reject(new Error('Actual selected-source failure')));expect(view.container.textContent).toContain('Financial reports unavailable');commits.length=0;
+ const basis=view.container.querySelectorAll<HTMLSelectElement>('select')[1];act(()=>{basis.value='cash';basis.dispatchEvent(new Event('change',{bubbles:true}));});expect(commits.length).toBeGreaterThan(0);expect(commits.every(commit=>commit.busy==='true'&&!commit.text.includes('Financial reports unavailable'))).toBe(true);
+ await act(async()=>waiting[3].resolve(sampleFinancialPanel({...query,basis:'cash',section:'receivables'})));
+ const period=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='2026-09-01 – 2026-09-30')!;act(()=>period.click());const from=[...document.querySelectorAll('label')].find(label=>label.textContent==='From')!.control as HTMLInputElement;
+ act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(from,'2026-09-02');from.dispatchEvent(new Event('input',{bubbles:true}));});commits.length=0;
+ act(()=>[...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button=>button.textContent==='Apply')!.click());expect(commits.length).toBeGreaterThan(0);expect(commits.every(commit=>commit.busy==='true'&&!commit.text.includes('Financial reports unavailable'))).toBe(true);
+ await act(async()=>waiting[4].reject(new Error('Date read failed')));expect(view.container.textContent).toContain('Financial reports unavailable');expect(view.container.textContent).toContain('2026-09-02');view.unmount();
 });

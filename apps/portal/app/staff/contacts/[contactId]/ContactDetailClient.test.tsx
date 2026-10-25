@@ -236,3 +236,26 @@ describe('ContactDetailClient', () => {
     rendered.unmount();
   });
 });
+
+
+describe('actual Contact detail while identity is pending', () => {
+  it('retains its actual field and project table owners and permits independently verified linked projects', () => {
+    const props={hostKey:'host',loadError:null,projects:[{id:'proj_fixture',name:'Fictional courtyard',createdAt:'2026-10-22T00:00:00Z'}] as any[],projectsLoaded:true,projectsError:false};
+    const view=renderIntoDocument(<ContactDetailsView {...props} contact={null} contactId="ct_1"/>);
+    const info=view.container.querySelector('[aria-label="Contact info"]'), headers=view.container.querySelector('thead');
+    expect(view.container.textContent).toContain('Reading name'); expect(view.container.textContent).toContain('Fictional courtyard');
+    expect(view.container.textContent).not.toContain('Contact not found');
+    expect([...view.container.querySelectorAll('button')].find(button=>button.textContent==='Edit')?.disabled).toBe(true);
+    expect(view.container.querySelector('a[href^="/staff/projects/new"]')?.getAttribute('aria-disabled')).toBe('true');
+    view.rerender(<ContactDetailsView {...props} contact={contact} contactId="ct_1"/>);
+    expect(view.container.querySelector('[aria-label="Contact info"]')).toBe(info); expect(view.container.querySelector('thead')).toBe(headers);
+    expect(view.container.textContent).toContain('Taylor'); view.unmount();
+  });
+  it('renders an error and Retry inside the same interface when contact identity cannot be read',()=>{
+    const retry=vi.fn();
+    const view=renderIntoDocument(<ContactDetailsView contact={null} contactId="ct_1" pending={false} hostKey="host" loadError="Synthetic read failure" onRetry={retry} projects={[]} projectsLoaded={false} projectsError={false}/>);
+    expect(view.container.textContent).toContain('Contact unavailable'); expect(view.container.textContent).not.toContain('Loading contact');
+    expect(view.container.querySelector('thead')).not.toBeNull();
+    click([...view.container.querySelectorAll('button')].find(button=>button.textContent==='Retry')??null); expect(retry).toHaveBeenCalledOnce(); view.unmount();
+  });
+});

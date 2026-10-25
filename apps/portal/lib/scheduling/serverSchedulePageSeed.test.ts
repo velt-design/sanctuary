@@ -66,6 +66,7 @@ describe('loadSchedulePageSeed', () => {
     await expect(loadSchedulePageSeed({ view: 'board' })).resolves.toEqual({
       initialScheduleMode: 'v2',
       initialSeedKind: 'board',
+      today: '2026-04-07',
       initialV2Snapshot: {
         generatedAt: '2026-04-07T00:00:00.000Z',
         installers: [
@@ -107,7 +108,7 @@ describe('loadSchedulePageSeed', () => {
         closures: [],
       },
     });
-    expect(loadScheduleBoardResponse).toHaveBeenCalled();
+    expect(loadScheduleBoardResponse).toHaveBeenCalledExactlyOnceWith({ today: '2026-04-07' });
     expect(loadScheduleGanttResponse).not.toHaveBeenCalled();
   });
 

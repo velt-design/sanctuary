@@ -84,7 +84,7 @@ it('customer approval submits no company default fields', async () => {
  vi.stubGlobal('fetch',fetcher);
  view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
  const form=button('Save customer link')!.closest('form')!;
- form.querySelector<HTMLSelectElement>('select')!.value=id;
+ await act(async()=>{const select=form.querySelector<HTMLSelectElement>('select')!;select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));});
  await act(async()=>form.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
  await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
  const body=JSON.parse(fetcher.mock.calls[1][1].body);
@@ -113,7 +113,7 @@ it.each(['customer', 'defaults'] as const)('offers resume only after both prereq
  view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} />); await inspect();
  const save=async(kind:'customer'|'defaults')=>{
   const form=button(kind==='customer'?'Save customer link':'Save company defaults')!.closest('form')!;
-  if(kind==='customer') form.querySelector<HTMLSelectElement>('select[name="contactId"]')!.value=id;
+  if(kind==='customer') await act(async()=>{const select=form.querySelector<HTMLSelectElement>('select[name="contactId"]')!;select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));});
   else {form.querySelector<HTMLSelectElement>('select[name="accountCode"]')!.value='200';form.querySelector<HTMLSelectElement>('select[name="taxType"]')!.value='OUTPUT2';}
   await act(async()=>form.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
   await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
@@ -123,4 +123,35 @@ it.each(['customer', 'defaults'] as const)('offers resume only after both prereq
  await save(first==='customer'?'defaults':'customer');
  expect(button('Resume existing invoice transfer')).toBeDefined();
  expect(fetcher.mock.calls.map(call=>JSON.parse(call[1].body).action)).toEqual(['inspect',first==='customer'?'confirmCustomer':'confirmDefaults',first==='customer'?'confirmDefaults':'confirmCustomer']);
+});
+
+it('mounts real forms before genuine invoice context, preserves the Find node and sends only one inspect after authority is verified',async()=>{
+ let resolve!:(value:typeof review.context|null)=>void;const contextRead=new Promise<typeof review.context|null>(yes=>{resolve=yes;});const fetcher=vi.fn().mockResolvedValue(Response.json(review));vi.stubGlobal('fetch',fetcher);
+ view=renderIntoDocument(<MappingReview invoiceId={id} contextRead={contextRead}/>);const input=view.container.querySelector<HTMLInputElement>('input[name="contactName"]')!,customer=view.container.querySelector('select[name="contactId"]');
+ expect(fetcher).not.toHaveBeenCalled();expect(button('Check Xero records')!.disabled).toBe(true);expect(view.container.textContent).toContain('Reading accounting defaults');expect(view.container.textContent).not.toContain('No accounting defaults have been confirmed');
+ await act(async()=>resolve(review.context));expect(fetcher).toHaveBeenCalledOnce();expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({action:'inspect',invoiceId:id});expect(view.container.querySelector('input[name="contactName"]')).toBe(input);expect(view.container.querySelector('select[name="contactId"]')).toBe(customer);
+});
+it('failed or absent initial context stays unavailable with retry and starts no provider inspection',async()=>{
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);view=renderIntoDocument(<MappingReview invoiceId={id} contextRead={Promise.resolve(null)}/>);await inspect();expect(view.container.textContent).toContain('Invoice unavailable');expect(view.container.textContent).toContain('Try again');expect(fetcher).not.toHaveBeenCalled();expect(button('Check Xero records')!.disabled).toBe(true);expect(button('Save customer link')!.disabled).toBe(true);expect(button('Save company defaults')!.disabled).toBe(true);
+});
+
+it('requires fresh customer confirmation after an inspection changes the source while preserving the real form node',async()=>{
+ const contact={id,name:'Example',email:''};const fetcher=vi.fn().mockResolvedValueOnce(Response.json({...review,contacts:[contact]})).mockResolvedValueOnce(Response.json({...review,contacts:[contact],checkedAt:'2026-09-15T00:00:00Z'}));vi.stubGlobal('fetch',fetcher);
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context}/>);await inspect();const form=button('Save customer link')!.closest('form')!,checkbox=form.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+ await act(async()=>checkbox.click());expect(checkbox.checked).toBe(true);await act(async()=>button('Check Xero records')!.click());expect(button('Save customer link')!.closest('form')).toBe(form);expect(checkbox.checked).toBe(false);
+ await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
+it('also resets the retained company-default confirmation after a new inspection, even when defaults remain unconfirmed',async()=>{
+ const records={...review,accounts:[{id,code:'200',name:'Sales'}],taxes:[{type:'OUTPUT2',name:'GST',effectiveRate:15}]};const fetcher=vi.fn().mockResolvedValueOnce(Response.json(records)).mockResolvedValueOnce(Response.json({...records,checkedAt:'2026-09-15T00:00:00Z'}));vi.stubGlobal('fetch',fetcher);
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context}/>);await inspect();const checkbox=button('Save company defaults')!.closest('form')!.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+ await act(async()=>checkbox.click());expect(checkbox.checked).toBe(true);await act(async()=>button('Check Xero records')!.click());expect(button('Save company defaults')!.closest('form')!.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(false);
+});
+
+it('supports a read-only fictional read seam without sending provider commands, retaining forms and resetting fresh confirmations',async()=>{
+ let finish!:(value:typeof review)=>void;const loader=vi.fn(()=>new Promise<typeof review>(yes=>{finish=yes;}));const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ view=renderIntoDocument(<MappingReview invoiceId={id} initialContext={review.context} inspectLoader={loader} readOnly/>);await inspect();const customer=view.container.querySelector('select[name="contactId"]')!,defaults=view.container.querySelector('select[name="accountCode"]')!;
+ await act(async()=>finish({...review,customerCreationEnabled:false}));const checkbox=view.container.querySelector<HTMLInputElement>('input[name="confirmed"]')!;await act(async()=>checkbox.click());expect(checkbox.checked).toBe(true);expect(button('Save customer link')!.disabled).toBe(true);expect(button('Save company defaults')!.disabled).toBe(true);
+ await act(async()=>checkbox.closest('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(fetcher).not.toHaveBeenCalled();await act(async()=>button('Check Xero records')!.click());await act(async()=>finish({...review,checkedAt:'2026-10-22T01:00:00Z',customerCreationEnabled:false}));
+ expect(view.container.querySelector('select[name="contactId"]')).toBe(customer);expect(view.container.querySelector('select[name="accountCode"]')).toBe(defaults);expect(checkbox.checked).toBe(false);expect(fetcher).not.toHaveBeenCalled();
 });

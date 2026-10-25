@@ -1,0 +1,33 @@
+import { act, StrictMode } from 'react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { renderIntoDocument } from '../../../../../test/reactHarness';
+import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, bindLocalFirstStoreOwner, getLocalFirstStoreOwner, getLocalFirstStoreSnapshot } from '@/lib/localFirst/store';
+import Fixture from './ProgressiveWorkbenchFixture';
+import type { WorkbenchPageRead } from '@/app/staff/projects/[projectId]/design-workbench/workbenchPageRead';
+const { mounted, refresh, replace } = vi.hoisted(() => ({ mounted: vi.fn(), refresh: vi.fn(), replace: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh, replace }) }));
+vi.mock('@/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchReadHost', () => ({ default: (props: any) => { mounted(props); return <button onClick={props.retryRead}>Retry workbench</button>; } }));
+afterEach(() => { __resetLocalFirstStoreForTests(); vi.restoreAllMocks(); vi.unstubAllGlobals(); mounted.mockClear(); refresh.mockClear(); replace.mockClear(); });
+
+it('prepares only fictional object drafts before the actual runtime, denies all API commands and preserves the real Retry/Flight route', async () => {
+  __setLocalFirstStorageAdapterForTests({ get: async () => undefined, set: async () => undefined });
+  bindLocalFirstStoreOwner('previous-browser-owner');
+  const original = vi.fn(); vi.stubGlobal('fetch', original);
+  window.history.replaceState(null, '', '/qa/design-workbench-fixture?fixture=mono-standard&progressive=1&scenario=failure');
+  const fixture = getSanctuaryGeometryWorkbenchFixture('multi-house-u-two-pergola')!;
+  const initialRead: WorkbenchPageRead = { context: Promise.resolve({ kind: 'context', context: { kind: 'project_unavailable' } }), estimate: Promise.resolve({ kind: 'estimate', estimate: null }) };
+  const view = renderIntoDocument(<StrictMode><Fixture projectId="proj_workbench_progressive_a" estimateId="est_workbench_progressive_a" initialRead={initialRead} draft={fixture.draft!} /></StrictMode>);
+  await act(async () => mounted.mock.lastCall![0].initialRead.estimate);
+  expect(mounted.mock.lastCall![0].readOnly).toBe(true);
+  expect(getLocalFirstStoreOwner()).toBe('qa-progressive-workbench-fictional');
+  expect(JSON.stringify(getLocalFirstStoreSnapshot().state)).toContain('est_workbench_progressive_a');
+  expect((await window.fetch('/api/estimates/real', { method: 'PUT' })).status).toBe(403);
+  expect((await window.fetch('/api/staff/v1/projects/real/snapshot')).status).toBe(403);
+  expect(original).not.toHaveBeenCalled();
+  act(() => Array.from(view.container.querySelectorAll('button')).find((button) => button.textContent === 'Read B')!.click());
+  expect(replace.mock.lastCall![0]).toContain('source=b');
+  act(() => Array.from(view.container.querySelectorAll('button')).find((button) => button.textContent === 'Retry workbench')!.click());
+  expect(replace.mock.lastCall![0]).toContain('scenario=complete'); expect(refresh).not.toHaveBeenCalled();
+  view.unmount(); expect(getLocalFirstStoreOwner()).toBe('previous-browser-owner'); expect(window.fetch).toBe(original);
+});

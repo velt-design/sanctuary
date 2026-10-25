@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import CalculatorGridClient from '@/app/staff/calculator/CalculatorGridClient';
 import CalculatorDesignNavigationSelect from '@/app/staff/calculator/CalculatorDesignNavigationSelect';
 import type {
   CalculatorDesignNavigation,
@@ -12,6 +12,7 @@ import type {
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { Button, Card, DataStatePanel, LoadingSkeleton, Select } from '@/components/ui/foundation';
+import type { EstimatesListBinding } from './EstimatesListSurface';
 import EstimatesListView from './EstimatesListView';
 import styles from './ProjectCalculatorTab.module.css';
 import CommercialInternalNameDialog from './CommercialInternalNameDialog';
@@ -23,6 +24,30 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
 import { getLocalFirstWorkingCopy, resolveLocalFirstId } from '@/lib/localFirst/store';
 import { buildEstimateEntityKey, isLocalEstimateId } from '@/lib/localFirst/portalEntities';
+
+const loadCalculatorEditor = () => import('@/app/staff/calculator/CalculatorGridClient');
+
+class CalculatorCodeBoundary extends Component<{ children: ReactNode; onRetry: () => void }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() { return { failed: true }; }
+
+  render() {
+    return this.state.failed ? <DataStatePanel state="error" title="Calculator tools unavailable"
+      description="The calculator could not open. Retry to prepare its tools again."
+      onRetry={this.props.onRetry} /> : this.props.children;
+  }
+}
+
+function ProjectCalculatorEditor({ workspace }: { workspace: CalculatorProjectWorkspace }) {
+  const [attempt, setAttempt] = useState(0);
+  const Editor = useMemo(() => dynamic(loadCalculatorEditor, {
+    loading: () => <p role="status">Preparing calculator tools…</p>,
+  }), [attempt]);
+  return <CalculatorCodeBoundary key={attempt} onRetry={() => setAttempt(current => current + 1)}>
+    <Editor workspace={workspace} />
+  </CalculatorCodeBoundary>;
+}
 
 function versionNumber(label: string): number {
   const match = label.match(/\d+/);
@@ -55,10 +80,14 @@ export default function ProjectCalculatorTab({
   host,
   projectId,
   projectName = 'Project estimate',
+  projectReady = true,
+  estimatesList,
 }: {
   host: string;
   projectId: string;
   projectName?: string;
+  projectReady?: boolean;
+  estimatesList?: EstimatesListBinding;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -348,10 +377,11 @@ export default function ProjectCalculatorTab({
   }, [host, projectId, queryClient, renamePending, renameTarget, toast]);
 
   const hasCalculatorIntent = Boolean(editEstimateId || fromEstimateId || newDesign);
-  if (!hasCalculatorIntent) {
+  if (!hasCalculatorIntent || !projectReady) {
     return (
       <>
       <EstimatesListView
+        listSurface={estimatesList}
         projectId={projectId}
         estimates={estimates}
         quotes={estimateQuotesQuery.isError ? undefined : estimateQuotesQuery.data}
@@ -472,7 +502,7 @@ export default function ProjectCalculatorTab({
         </Card>
       ) : editEstimateId || fromEstimateId || newDesign ? (
         <div className={styles.calculatorSurface}>
-          <CalculatorGridClient workspace={workspace} />
+          <ProjectCalculatorEditor key={projectId} workspace={workspace} />
         </div>
       ) : (
         <LoadingSkeleton rows={4} columns={4} label="Opening Calculator" />
