@@ -1,12 +1,14 @@
 'use client';
 
+import ReadStatus from '@/components/page-state/ReadStatus';
+
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import HeaderActions from '@/components/layout/HeaderActions';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { Button, ButtonLink, Input } from '@/components/ui/foundation/FoundationControls';
-import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/FoundationFeedback';
+import { TaskScheduleFeedback } from '@/components/ui/foundation/FoundationFeedback';
 import {
   Card,
   EmptyState,
@@ -91,14 +93,14 @@ export function ContactDetailsView({
       />
       <p className={styles.detailMeta}>Contact ID: {contactId}</p>
 
-      {loadError ? <AlertBanner tone="warning" title={contact ? "Latest contact refresh failed" : "Contact unavailable"} action={onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined}>{loadError}</AlertBanner> : null}
+      <ReadStatus title={loadError ? contact ? 'Latest contact refresh failed' : 'Contact unavailable' : pending ? 'Reading contact…' : 'Contact current'} tone={loadError ? 'warning' : 'neutral'} action={loadError && onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined} details={loadError ? <p>{loadError}</p> : undefined} />
 
       <Card
         title="Contact info"
         aria-label="Contact info"
         action={
           <div className={styles.detailActions}>
-            {statusText ? <TaskScheduleFeedback state={error ? 'retry' : isSaving ? 'saving' : 'saved'}>{statusText}</TaskScheduleFeedback> : null}
+            <div className={styles.detailFeedback}>{statusText ? <TaskScheduleFeedback state={error ? 'retry' : isSaving ? 'saving' : 'saved'}>{statusText}</TaskScheduleFeedback> : null}</div>
             {isEditing ? (
               <>
                 <Button disabled={!canSave} onClick={finishEditing}>Done</Button>
@@ -110,24 +112,11 @@ export function ContactDetailsView({
           </div>
         }
       >
-        {error ? (
-          <div className={styles.status}>
-            <AlertBanner
-              tone="error"
-              title="Contact changes need attention"
-              action={canRetry ? (
-                <div className={styles.detailActions}>
-                  <Button variant="secondary" onClick={() => void retry()}>Retry now</Button>
-                  <Button variant="tertiary" onClick={reviewLocalDraft}>Review changes</Button>
-                </div>
-              ) : undefined}
-            >
-              {error}
-            </AlertBanner>
-          </div>
-        ) : null}
+        <ReadStatus title={error ? 'Contact changes need attention' : 'Contact details'} tone={error ? 'error' : 'neutral'}
+          action={error && canRetry ? <div className={styles.detailActions}><Button variant="secondary" onClick={() => void retry()}>Retry now</Button><Button variant="tertiary" onClick={reviewLocalDraft}>Review changes</Button></div> : undefined}
+          details={error ? <p>{error}</p> : undefined} />
 
-        <Table className={styles.detailTable}>
+        <Table className={styles.detailTable}><colgroup><col style={{width:'27%'}}/><col style={{width:'73%'}}/></colgroup>
           <TableBody>
             <TableRow>
               <TableHead scope="row">Name</TableHead>
@@ -179,7 +168,7 @@ export function ContactDetailsView({
       </Card>
 
       <Card title="Projects" aria-label="Projects for contact" padding="none">
-          <Table className={styles.responsiveTable}>
+          <Table className={styles.responsiveTable} viewportClassName={styles.listViewport}><colgroup><col style={{width:'60%'}}/><col className={styles.mobileOptional} style={{width:'15%'}}/><col className={styles.mobileOptional} style={{width:'17%'}}/><col style={{width:'8%'}}/></colgroup>
             <TableHeader><TableRow><TableHead>Project</TableHead><TableHead className={styles.mobileOptional}>Region</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
             <TableBody>
               {projects.map((project) => (

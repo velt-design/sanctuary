@@ -305,7 +305,9 @@ describe('CostingControlCentre', () => {
     await click(buttonByText(rendered.container, 'Save & validate'));
 
     expect(crewDayHours.getAttribute('aria-invalid')).toBe('true');
-    expect(rendered.container.textContent).toContain('Crew day length: Must be a finite number between 1 and 24.');
+    expect(rendered.container.textContent).toContain('Pricing change could not be completed');
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Crew day length: Must be a finite number between 1 and 24.');
     rendered.unmount();
   });
 

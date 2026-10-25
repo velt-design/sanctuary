@@ -12,6 +12,17 @@ vi.mock('next/link', () => ({
 }));
 
 describe('PageHeader', () => {
+  it('allocates a primary-action place without inventing an unknown permission or replacing the actual control', () => {
+    const view = renderIntoDocument(<PageHeader variant="index" title="Projects" reservePrimaryAction />);
+    const actions = view.container.querySelector('[data-page-header-actions]')!;
+    expect(actions).not.toBeNull();
+    expect(actions.querySelector('a,button')).toBeNull();
+    const slot = actions.firstElementChild;
+    view.rerender(<PageHeader variant="index" title="Projects" reservePrimaryAction primaryAction={{label:'New project',href:'/staff/projects/new'}} />);
+    expect(view.container.querySelector('[data-page-header-actions]')?.firstElementChild).toBe(slot);
+    expect(slot?.querySelector('a')?.getAttribute('href')).toBe('/staff/projects/new');
+    view.unmount();
+  });
   afterEach(() => {
     document.body.innerHTML = '';
   });

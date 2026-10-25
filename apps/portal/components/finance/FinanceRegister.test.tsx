@@ -33,6 +33,22 @@ it('keeps real filters and table headings available while the first read remains
   expect(mounted.container.textContent).not.toContain('No matching records');
   expect(mounted.container.textContent).not.toContain('0 records');
 });
+it('retains the actual table, deliberate columns and search through first read, empty filtering and failure',async()=>{
+  let resolveRead!:(value:Response)=>void;
+  vi.mocked(fetch).mockReturnValueOnce(new Promise(resolve=>{resolveRead=resolve;}));
+  mounted=renderIntoDocument(<FinanceRegister/>);
+  const table=mounted.container.querySelector('table')!,head=table.querySelector('thead'),search=mounted.container.querySelector('input[name=search]');
+  const columns=Array.from(table.querySelectorAll('col')).map(col=>col.style.width);
+  expect(columns).toHaveLength(7);expect(columns.every(Boolean)).toBe(true);
+  await act(async()=>resolveRead(response()));await settle();
+  expect(mounted.container.querySelector('table')).toBe(table);expect(table.querySelector('thead')).toBe(head);
+  vi.mocked(fetch).mockResolvedValueOnce(response({...data,rows:[],count:0}));click('Refresh');await settle();
+  expect(table.textContent).toContain('No matching records');
+  expect(mounted.container.querySelector('input[name=search]')).toBe(search);
+  vi.mocked(fetch).mockRejectedValueOnce(new Error('unavailable'));click('Refresh');await settle();
+  expect(mounted.container.querySelector('table')).toBe(table);expect(mounted.container.textContent).toContain('Try again');
+  expect(Array.from(table.querySelectorAll('col')).map(col=>col.style.width)).toEqual(columns);
+});
 it('shows partial owing, successful portal delivery and a separate stale provider notice',async()=>{
   mounted=renderIntoDocument(<FinanceRegister/>); await settle();
   expect(mounted.container.textContent).toMatch(/NZD\s*60\.00/);

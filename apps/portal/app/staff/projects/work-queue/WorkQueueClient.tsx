@@ -74,6 +74,8 @@ export default function WorkQueueClient({
           : 'fresh';
 
   const page={state,count:queue.data&&!notReady&&!unavailable?`${entries.length} projects`:undefined,
+    noticeTitle:state==='refresh-failed'?'Queue refresh failed':staffQuery.error?'Staff names unavailable':state==='cached'?'Updating the queue…':undefined,
+    retry:()=>{void queue.refetch();},
     admin:!readOnly&&canReviewInactiveEnquiries?<InactiveEnquiryReview host={host}/>:null,
     notices:<>      {state === 'cached' ? (
         <div className={styles.refreshing} role="status">Updating the queue...</div>

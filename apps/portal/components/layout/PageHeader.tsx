@@ -31,6 +31,7 @@ export type PageHeaderProps = {
   utility?: ReactNode;
   back?: { label: string; href: string } | null;
   primaryAction?: HeaderPrimaryAction | null;
+  reservePrimaryAction?: boolean;
   secondaryActions?: MoreMenuItem[] | null;
   className?: string;
   variant?: PageHeaderVariant;
@@ -66,6 +67,7 @@ export default function PageHeader({
   utility,
   back,
   primaryAction,
+  reservePrimaryAction = false,
   secondaryActions,
   className,
   variant = 'default',
@@ -75,19 +77,9 @@ export default function PageHeader({
   const variantClass = styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
   const rootClassName = cx(styles.root, usesFoundation && styles.foundation, variantClass, className);
   const primaryLabel = primaryAction?.loading ? 'Working…' : primaryAction?.label;
-  const hasActions = Boolean(back || primaryAction || (secondaryActions && secondaryActions.length) || right || meta);
+  const hasActions = Boolean(reservePrimaryAction || back || primaryAction || (secondaryActions && secondaryActions.length) || right || meta);
 
-  const actions = hasActions ? (
-    <div className={styles.right} data-page-header-actions="true">
-      {meta ? <div className={styles.meta}>{meta}</div> : null}
-      {back ? (
-        usesFoundation ? (
-          <ButtonLink href={back.href} variant="secondary">{back.label}</ButtonLink>
-        ) : (
-          <Link className={surface.buttonSecondary} href={back.href}>{back.label}</Link>
-        )
-      ) : null}
-      {primaryAction ? (
+  const primaryContent = primaryAction ? (
         primaryAction.href ? (
           usesFoundation ? (
             <ButtonLink
@@ -130,7 +122,19 @@ export default function PageHeader({
             </button>
           )
         )
+      ) : null;
+
+  const actions = hasActions ? (
+    <div className={styles.right} data-page-header-actions="true">
+      {meta ? <div className={styles.meta}>{meta}</div> : null}
+      {back ? (
+        usesFoundation ? (
+          <ButtonLink href={back.href} variant="secondary">{back.label}</ButtonLink>
+        ) : (
+          <Link className={surface.buttonSecondary} href={back.href}>{back.label}</Link>
+        )
       ) : null}
+      {reservePrimaryAction ? <div className={styles.primarySlot}>{primaryContent}</div> : primaryContent}
       {secondaryActions && secondaryActions.length ? (
         <MoreMenu items={secondaryActions} disabled={Boolean(primaryAction?.loading)} />
       ) : null}

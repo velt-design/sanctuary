@@ -301,3 +301,7 @@
   }
 }
 
+
+.crewTableWrap { min-height: 320px; }
+.crewTable { table-layout: fixed; min-width: 1000px; }
+.crewTable td { overflow-wrap: anywhere; }

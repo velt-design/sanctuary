@@ -406,6 +406,8 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
     closed: commercial.closed, schedule, schedulePending,
     scheduleEyebrow: !schedule ? schedulePending ? 'Reading payment position…' : 'Payment position unavailable' : (schedule.acceptedQuotes?.length ?? 0) > 1
       ? `${schedule.acceptedQuotes?.length} accepted quote scopes` : schedule.acceptedQuoteVersionId ? `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}` : 'Standalone project billing',
+    noticeTitle: accessEnded ? 'Invoice access unavailable' : recoveryNotice ? 'Action completed; refresh required' : scheduleQuery.isError&&!schedulePending ? 'Could not load the job payment schedule' : invoicesQuery.isError&&!invoicePending ? 'Could not load invoices' : undefined,
+    noticeAction: recoveryNotice ? <Button size="small" variant="secondary" loading={recoveryRefreshPending} onClick={() => void retryRecoveryRefresh()}>Refresh invoice data</Button> : accessEnded || scheduleQuery.isError || invoicesQuery.isError ? <Button size="small" variant="secondary" onClick={() => { for (const query of [invoicesQuery, scheduleQuery, draftsQuery]) if (query.isError && !query.isFetching) void query.refetch(); }}>Retry</Button> : undefined,
     beforeSchedule: <>
       {accessEnded&&<DataStatePanel state="unavailable" title="Invoice access unavailable" description="The current invoice read authority ended. Retry before reviewing records or making a change." onRetry={()=>{for(const query of [invoicesQuery,scheduleQuery,draftsQuery])if(query.isError&&!query.isFetching)void query.refetch();}}/>}
       {recoveryNotice ? (

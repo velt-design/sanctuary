@@ -251,6 +251,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
+/* Ordinary staff pages keep their document width with or without overflow.
+ * The existing rail-only Workbench/standalone owners are deliberately excluded. */
+html:has([data-portal-sidebar-mode='pinned']) { scrollbar-gutter: stable; }
 body {
   margin: 0;
   font-family: var(--ui-font-body);

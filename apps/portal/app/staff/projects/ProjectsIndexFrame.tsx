@@ -5,7 +5,8 @@ import type {ProjectIndexView} from './projectIndexView';
 import ProjectIndexToolbar from './ProjectIndexToolbar';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import HeaderActions from '@/components/layout/HeaderActions';
-import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
+import { Button, ButtonLink } from '@/components/ui/foundation/FoundationControls';
+import ReadStatus from '@/components/page-state/ReadStatus';
 import { Card, PageLayout, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation/FoundationSurfaces';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import styles from './ProjectsIndexClient.module.css';
@@ -31,6 +32,7 @@ export default function ProjectsIndexFrame({read,view,updateView,resetView,rows,
     >
       <StaffPageHeader
         title="Projects"
+        reservePrimaryAction
         variant="index"
         count={read.data ? `${read.data.projects.totalCount} projects` : read.state === 'unavailable' || read.state === 'refresh-failed' ? 'Projects unavailable' : 'Loading projects'}
         primaryAction={canCreate?{ label: 'New project', href: '/staff/projects/new' }:undefined}
@@ -42,30 +44,24 @@ export default function ProjectsIndexFrame({read,view,updateView,resetView,rows,
         }
       />
 
-      {countNotice}
       <div className={styles.stack}>
         <ProjectIndexToolbar view={view} onChange={updateView} onReset={resetView} />
 
         <Card
+          className={styles.listCard}
           title="Projects"
           padding="none"
           aria-label="Projects list"
           action={(
-            <div className={styles.muted} suppressHydrationWarning>
-              {read.state === 'pending' || read.state === 'cached' ? 'Updating…' : null}
-              {read.state === 'fresh' ? `${rangeStart}–${rangeEnd} of ${totalCount}` : null}
-              {read.state === 'unavailable' ? 'Access unavailable' : null}
-              {read.state === 'refresh-failed' ? 'Refresh failed' : null}
-            </div>
+            <ReadStatus title={read.state === 'fresh' ? `${rangeStart}–${rangeEnd} of ${totalCount}` : read.state === 'unavailable' ? 'Access unavailable' : read.state === 'refresh-failed' ? 'Refresh failed' : 'Updating…'}
+              tone={read.state === 'refresh-failed' ? 'warning' : read.state === 'unavailable' ? 'error' : 'neutral'}
+              action={<>{countNotice}{read.state === 'refresh-failed' ? <Button variant="tertiary" size="small" onClick={() => void read.retry()}>Retry</Button> : null}</>}
+              details={read.state === 'refresh-failed' ? <DataStatePanel state={rowCount ? 'stale' : 'error'} onRetry={() => void read.retry()} /> : undefined} />
           )}
         >
-            {read.state === 'refresh-failed' ? (
-              <DataStatePanel
-                state={rowCount ? 'stale' : 'error'}
-                onRetry={() => void read.retry()}
-              />
-            ) : null}
-                <Table aria-label="Projects">
+                <div className={styles.pagerSlot}>{pagination}</div>
+                <Table aria-label="Projects" className={styles.indexTable} viewportClassName={styles.listViewport}>
+                  <colgroup><col style={{width:'27%'}}/><col style={{width:'12%'}}/><col style={{width:'15%'}}/><col style={{width:'29%'}}/><col style={{width:'10%'}}/><col style={{width:'7%'}}/></colgroup>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Project</TableHead>
@@ -106,7 +102,6 @@ export default function ProjectsIndexFrame({read,view,updateView,resetView,rows,
             )}</TableCell></TableRow>}
                   </TableBody>
                 </Table>
-                {pagination}
         </Card>
       </div>
 

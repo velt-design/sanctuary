@@ -121,3 +121,13 @@
 @media (max-width: 720px) {
   .wrapper .table { min-width: 0; max-width: 100%; width: 100%; }
 }
+
+.listViewport { min-height: 320px; }
+@media (min-width: 721px) {
+  .table { table-layout: fixed; width: 100%; }
+  .table td { overflow-wrap: anywhere; }
+}
+
+.header { min-height: 88px; }
+.headerActionSlot { min-height: 44px; min-width: 290px; }
+@media (max-width: 720px) { .header { display: grid; } .headerActionSlot { min-width: 0; } }

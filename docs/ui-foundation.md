@@ -1,5 +1,37 @@
 # Staff Portal UI System
 
+## Stable work surfaces (26 October 2026)
+
+Ordinary staff pages reserve the document scrollbar gutter using the existing
+pinned-sidebar surface identity, including collapsed and mobile layouts. The
+rail-only Workbench and authenticated standalone owners retain their existing
+scroll policy. Overlay locking preserves the measured staff document width and
+restores the original styles and reading position; it does not add a second
+gutter allowance. Schedule and operational sheets reserve their own inner gutter.
+
+Projects, Contacts, Commercial lists and Finance own deliberate column widths
+and a truthful minimum reading region. Index pagers have a permanent control
+row above the table. Unknown counts remain unknown, and pending, empty and failed
+reads use the same real table. Source authority, saved anchors and commands are
+unchanged. Header action space can be allocated before capability is known, but
+no unauthorized control is rendered or activated.
+
+`ReadStatus` is a compact, persistent local presentation slot. Failures name the
+issue and keep Retry visible where supported; existing full explanations and
+review actions use the existing floating-panel owner without resizing the work.
+Commercial accepted work remains reachable from its named control. Real payment
+schedule, Finance summary and Dashboard card regions retain bounded reading
+areas, with overflow available rather than discarded content. Access, Pricebook,
+contact/project forms and Files use the same local status ownership. Validation
+and command controllers remain with their original owners. Imports keeps its file
+picker and summary above explicitly selected file results.
+
+Geometry acceptance requires actual pending, ready, empty, failure/retry and
+return journeys, plus narrow/mobile layouts and overlay lock/unlock. DOM tests
+establish control/source continuity, not measured pixels or production speed.
+Original performance and bundle ceilings remain unchanged.
+
+
 ## Actual progressive Portal interfaces (22 October 2026 candidate)
 
 Earlier active Portal journeys retain their local implementation and verification

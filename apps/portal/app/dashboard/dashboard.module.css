@@ -796,3 +796,12 @@
     transition-duration: 0s !important;
   }
 }
+
+/* Current section content scrolls inside its actual card instead of moving its neighbours. */
+.cardBody { scrollbar-gutter: stable; }
+.taskError { min-height: 44px; box-sizing: border-box; max-height: 44px; overflow: auto; }
+@media (max-width: 1180px) {
+  .workspaceGrid > * { height: 340px; min-height: 0; overflow: hidden; }
+}
+
+.taskError:empty { background: transparent; border-color: transparent; }

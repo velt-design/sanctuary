@@ -53,6 +53,11 @@ describe('Contacts actual frame', () => {
     const view = renderIntoDocument(<Frame />);
     const input = view.container.querySelector<HTMLInputElement>('#contactSearch')!;
     const table = view.container.querySelector('table');
+    const columns = Array.from(table!.querySelectorAll('col')).map(col => col.style.width);
+    expect(columns).toHaveLength(5);
+    expect(columns.every(Boolean)).toBe(true);
+    const viewport = table!.parentElement;
+    const status = view.container.querySelector('[role="status"]');
     const heading = view.container.querySelector('h1');
     act(() => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Fictional');
@@ -61,6 +66,9 @@ describe('Contacts actual frame', () => {
     view.rerender(<Frame read={fresh} />);
     expect(view.container.textContent).toContain('Fictional Contact');
     expect(view.container.querySelector('table')).toBe(table);
+    expect(table?.parentElement).toBe(viewport);
+    expect(Array.from(table!.querySelectorAll('col')).map(col => col.style.width)).toEqual(columns);
+    expect(status?.isConnected).toBe(true);
     expect(view.container.querySelector('h1')).toBe(heading);
     expect(view.container.querySelector('#contactSearch')).toBe(input);
     expect(input.value).toBe('Fictional');

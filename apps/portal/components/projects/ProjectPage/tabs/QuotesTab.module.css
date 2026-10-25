@@ -1448,3 +1448,13 @@
 .historyToggle input { accent-color: var(--ui-action); }
 .historyToggle span { margin-left: auto; }
 .rowClickable[data-historical='true'] { background: var(--ui-surface-secondary); }
+
+.wrapper[data-quotes-view="list"] .tableWrap { min-height: 320px; }
+@media (min-width: 721px) {
+  .wrapper[data-quotes-view="list"] .listTable { table-layout: fixed; width: 100%; }
+  .wrapper[data-quotes-view="list"] .listTable td { overflow-wrap: anywhere; }
+}
+
+.wrapper[data-quotes-view="list"] .header { min-height: 88px; }
+.listHeaderActionSlot { min-height: 44px; min-width: 130px; }
+@media (max-width: 720px) { .wrapper[data-quotes-view="list"] .header { display: grid; } }

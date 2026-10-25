@@ -135,7 +135,9 @@ describe('ContactsIndexClient', () => {
     useContactsIndexData.mockReturnValue(indexResult('refresh-failed'));
     const rendered = renderIntoDocument(<ContactsIndexClient />);
     expect(rendered.container.textContent).toContain('Alex Mason');
-    expect(rendered.container.textContent).toContain('Could not refresh contacts');
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('Could not refresh contacts');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true})));
     const retryButton = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Retry');
     act(() => retryButton?.click());
     expect(retry).toHaveBeenCalled();
@@ -160,7 +162,9 @@ describe('ContactsIndexClient', () => {
   it('does not claim to show or update a saved list when the first refresh fails', () => {
     useContactsIndexData.mockReturnValue(indexResult('refresh-failed', []));
     const rendered = renderIntoDocument(<ContactsIndexClient />);
-    expect(rendered.container.textContent).toContain('No saved list is available. Retry the request.');
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('No saved list is available. Retry the request.');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true})));
     expect(rendered.container.textContent).not.toContain('Showing the last saved list.');
     expect(rendered.container.textContent).not.toContain('Updating contacts...');
     rendered.unmount();

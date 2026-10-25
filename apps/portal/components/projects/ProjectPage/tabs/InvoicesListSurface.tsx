@@ -6,9 +6,10 @@ import { MetricGrid } from '@/components/ui/foundation/FoundationOperational';
 import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
 import type { EstimatesListBinding } from './EstimatesListSurface';
 import styles from './InvoicesTab.module.css';
+import ReadStatus from '@/components/page-state/ReadStatus';
 export type InvoicesListEvidence = {
   pending?:boolean; closed: boolean; schedule: ProjectInvoiceSchedule | null; schedulePending: boolean; scheduleEyebrow: ReactNode;
-  beforeSchedule: ReactNode; scheduleDetails: ReactNode; beforeHistory: ReactNode; historyEyebrow: ReactNode;
+  beforeSchedule: ReactNode; scheduleDetails: ReactNode; beforeHistory: ReactNode; historyEyebrow: ReactNode; noticeTitle?: string; noticeAction?: ReactNode;
   dialogs: ReactNode; render: (query: string) => { noMatches: ReactNode; rows: ReactNode };
 };
 export type InvoicesListBinding = Omit<EstimatesListBinding, 'publish'> & { publish: (value: InvoicesListEvidence | null) => void };
@@ -44,20 +45,22 @@ export default function InvoicesListSurface({ query, onQueryChange, evidence, un
   return <div className={styles.wrapper}>
     <div className={styles.header}><h3 className={styles.title}>Invoices</h3>
       <p className={styles.subtitle}>NZD inc GST · payment schedule, money received and invoice history.</p></div>
-    {evidence?.beforeSchedule}
-    <Card title={evidence?.closed ? 'Recorded payment schedule' : 'Job payment schedule'}
+    <ReadStatus title={evidence?.noticeTitle ?? (unavailable ? 'Invoices unavailable' : !evidence || evidence.pending ? 'Reading invoices…' : 'Invoices current')}
+      tone={unavailable ? 'error' : evidence?.noticeTitle ? 'warning' : 'neutral'} action={evidence?.noticeAction} details={evidence?.beforeSchedule} />
+    <Card className={styles.paymentSchedule} title={evidence?.closed ? 'Recorded payment schedule' : 'Job payment schedule'}
       eyebrow={evidence?.scheduleEyebrow ?? (unavailable ? 'Payment position unavailable' : 'Reading payment position…')}
       padding="none" headingLevel={4} aria-label="Invoice schedule">
       <InvoiceScheduleTotalsSurface schedule={evidence?.schedule ?? null} pending={evidence ? evidence.schedulePending : !unavailable} closed={evidence?.closed} />
       {evidence?.scheduleDetails}
+      {evidence?.beforeHistory}
     </Card>
-    {evidence?.beforeHistory}
     <Card title="Invoice history" eyebrow={evidence?.historyEyebrow ?? (unavailable ? 'Invoice count unavailable' : 'Reading invoices…')} padding="none" headingLevel={4}>
       <SearchFilterBar query={query} onQueryChange={onQueryChange} queryPlaceholder="Search invoice, quote or status" searchId="invoice-search" filters={[]} onClearAll={() => onQueryChange('')} />
-      {content?.noMatches}
-      <Table aria-label="Invoices" className={styles.invoiceTable}><TableHeader><TableRow>
+      <Table aria-label="Invoices" className={styles.invoiceTable} viewportClassName={styles.listViewport}>
+        <colgroup>{[20, 18, 18, 14, 16, 14].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}</colgroup>
+        <TableHeader><TableRow>
         <TableHead>Invoice</TableHead><TableHead>Quote</TableHead><TableHead>Amount inc GST</TableHead><TableHead>Due</TableHead><TableHead>Delivery</TableHead><TableHead>Actions</TableHead>
-      </TableRow></TableHeader><TableBody>{content ? content.rows : <TableRow><TableCell colSpan={6}><span role={unavailable ? undefined : 'status'}>{unavailable ? 'Invoices unavailable. Retry the read.' : 'Reading invoices…'}</span></TableCell></TableRow>}</TableBody></Table>
+      </TableRow></TableHeader><TableBody>{content?.noMatches ? <TableRow><TableCell colSpan={6}>{content.noMatches}</TableCell></TableRow> : null}{content ? content.rows : <TableRow><TableCell colSpan={6}><span role={unavailable ? undefined : 'status'}>{unavailable ? 'Invoices unavailable. Retry the read.' : 'Reading invoices…'}</span></TableCell></TableRow>}</TableBody></Table>
     </Card>
     {evidence?.dialogs}
   </div>;

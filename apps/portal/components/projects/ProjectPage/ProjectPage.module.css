@@ -248,3 +248,5 @@
     justify-content: flex-start;
   }
 }
+.readStatusSlot { min-height:44px; }
+.readStatusSlot > p { margin:0; display:flex; align-items:center; min-height:44px; color:var(--ui-text-muted); font-size:var(--ui-font-size-small); }

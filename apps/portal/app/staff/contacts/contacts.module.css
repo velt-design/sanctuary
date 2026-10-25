@@ -1,4 +1,5 @@
 .page { display: grid; align-content: start; gap: var(--ui-density-section-gap); }
+.actionSlot { min-inline-size:124px; min-block-size:44px; display:flex; align-items:center; }
 .stack { display: grid; gap: var(--ui-density-section-gap); min-width: 0; }
 .searchField { max-width: 452px; }
 .listControls { display: grid; grid-template-columns: minmax(240px, 2fr) minmax(160px, 1fr) minmax(130px, 0.6fr); gap: var(--ui-space-3); align-items: end; }
@@ -12,6 +13,20 @@
 .detailTable th { width: 180px; color: var(--ui-text-muted); }
 .detailTable td { overflow-wrap: anywhere; }
 .responsiveTable { min-width: 100%; table-layout: fixed; }
+.responsiveTable th:nth-child(1) { width:28%; }
+.responsiveTable th:nth-child(2) { width:26%; }
+.responsiveTable th:nth-child(3) { width:16%; }
+.responsiveTable th:nth-child(4) { width:18%; }
+.responsiveTable th:nth-child(5) { width:12%; }
+.responsiveTable td { overflow-wrap:anywhere; }
+.listViewport { min-height:320px; }
+.listCard > header { min-height:72px; align-items:center; }
+.listCard > header > :last-child { min-width:0; flex:1 1 270px; max-width:460px; }
+.pagerSlot { min-height:64px; display:grid; align-items:center; padding-inline:var(--ui-space-3); }
+@media(max-width:767px) {
+ .listCard > header { display:grid; gap:0; } .listCard > header > :last-child { width:100%; max-width:none; }
+ .responsiveTable th:nth-child(1) { width:76%; } .responsiveTable th:nth-child(5) { width:24%; }
+}
 .status { margin-bottom: var(--ui-space-4); }
 .dialog { display: grid; gap: var(--ui-space-4); padding: var(--ui-space-5); }
 .dialogHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ui-space-4); padding-bottom: var(--ui-space-3); border-bottom: var(--ui-border-width) solid var(--ui-border); }
@@ -40,3 +55,10 @@
 .fileInput {
   display: none;
 }
+
+.detailTable { table-layout: fixed; width: 100%; }
+.detailTable td { overflow-wrap: anywhere; }
+.detailFeedback { min-width: 140px; min-height: 32px; }
+.formGrid > * { min-height: 108px; }
+
+@media (max-width: 767px) { .responsiveTable col:first-child { width: 76% !important; } .responsiveTable col:last-child { width: 24% !important; } }

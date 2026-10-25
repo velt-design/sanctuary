@@ -19,6 +19,6 @@ export function contactsRecordSlots(read:ContactsIndexFrameRead,page:number,page
                           <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{formatPortalDateTime(contact.createdAt)}</TableCell>
                           <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
                         </TableRow>
-                      ))}</>,countNotice:<ListCountBanner totalCount={read.data?.contacts.totalCount??null} visibleCount={contacts.length} entityLabelSingular="contact" entityLabelPlural="contacts" truncated={read.data?.contacts.truncated??false}/>,
+                      ))}</>,countNotice:<ListCountBanner compact totalCount={read.data?.contacts.totalCount??null} visibleCount={contacts.length} entityLabelSingular="contact" entityLabelPlural="contacts" truncated={read.data?.contacts.truncated??false}/>,
  pagination:contacts.length>0?<Pagination currentPage={page} totalPages={read.data?.contacts.totalPages??1} itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} contacts`} onPageChange={onPageChange}/>:null};
 }

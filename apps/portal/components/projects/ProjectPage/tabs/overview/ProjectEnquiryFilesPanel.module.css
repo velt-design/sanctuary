@@ -29,3 +29,7 @@
     flex-direction: column;
   }
 }
+
+.viewport { min-height: 320px; }
+.table { table-layout: fixed; width: 100%; }
+.table td { overflow-wrap: anywhere; }

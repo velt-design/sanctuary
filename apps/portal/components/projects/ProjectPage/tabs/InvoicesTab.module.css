@@ -176,3 +176,12 @@
 @media (max-width: 720px) {
   .wrapper .invoiceTable { min-width: 0; max-width: 100%; width: 100%; }
 }
+
+.listViewport { min-height: 320px; }
+@media (min-width: 721px) {
+  .invoiceTable { table-layout: fixed; width: 100%; }
+  .invoiceTable td { overflow-wrap: anywhere; }
+}
+
+.paymentSchedule { height: 360px; overflow: auto; scrollbar-gutter: stable; }
+.paymentSchedule > header { min-height: 72px; }

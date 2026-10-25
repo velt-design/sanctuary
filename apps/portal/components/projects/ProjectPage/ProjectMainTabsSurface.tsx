@@ -57,7 +57,7 @@ export default function ProjectMainTabsSurface({
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
       >
-        {!privateContentReady || !commercial ? statusPanel : null}
+        <div className={layout.readStatusSlot}>{!privateContentReady || !commercial ? statusPanel ?? (!privateContentReady ? <p role="status">Reading project…</p> : null) : null}</div>
         {publicBody ?? (privateContentReady ? body : null)}
       </div>
     </section>

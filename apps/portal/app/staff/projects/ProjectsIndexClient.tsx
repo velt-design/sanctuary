@@ -247,7 +247,7 @@ export default function ProjectsIndexClient({
     : '';
 
   const frame={read:projectsIndex,canCreate:!readOnly,
-    countNotice:<ListCountBanner totalCount={projectsIndex.data?.projects.totalCount ?? null} visibleCount={projects.length} entityLabelSingular="project" entityLabelPlural="projects" truncated={projectsIndex.data?.projects.truncated ?? false}/>,
+    countNotice:<ListCountBanner compact totalCount={projectsIndex.data?.projects.totalCount ?? null} visibleCount={projects.length} entityLabelSingular="project" entityLabelPlural="projects" truncated={projectsIndex.data?.projects.truncated ?? false}/>,
     pagination:projects.length>0?<Pagination currentPage={page} totalPages={projectsIndex.data?.projects.totalPages ?? 1} itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`} onPageChange={setPage}/>:null,
     rows:<>
                     {filteredProjects.map((p) => {

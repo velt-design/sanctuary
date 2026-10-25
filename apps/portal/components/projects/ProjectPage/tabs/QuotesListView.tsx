@@ -148,6 +148,9 @@ export default function QuotesListView({
     pending:quotesLoading,
     closed: commercial.closed,
     headerActions: commercial.actionsAvailable ? <button type="button" className={styles.primaryButton} onClick={openCreate}>Create quote</button> : null,
+    hasAccepted: currentAcceptedIds.size > 0,
+    statusTitle: quotesError ? (quotes.length ? 'Showing saved quote versions' : 'Could not load quote versions') : undefined,
+    statusAction: quotesError ? <Button variant="secondary" onClick={retryQuotes}>Retry</Button> : undefined,
     accepted: <>
       {currentAcceptedIds.size > 0 ? (
         <Card title={commercial.closed ? "Recorded accepted agreement" : quotesError ? "Saved accepted work" : "Current accepted work"} padding="compact" headingLevel={4}>

@@ -5,6 +5,16 @@ import { Pagination } from './FoundationPagination';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
 describe('foundation surfaces', () => {
+  it('keeps the same native table when its route owns a bounded reading viewport', () => {
+    const view = renderIntoDocument(<Table viewportClassName="route-viewport"><TableBody><TableRow><TableCell>Reading…</TableCell></TableRow></TableBody></Table>);
+    const table = view.container.querySelector('table')!;
+    expect(table.parentElement?.classList.contains('route-viewport')).toBe(true);
+    expect(table.hasAttribute('viewportClassName')).toBe(false);
+    view.rerender(<Table viewportClassName="route-viewport"><TableBody><TableRow><TableCell>Current record</TableCell></TableRow></TableBody></Table>);
+    expect(view.container.querySelector('table')).toBe(table);
+    expect(table.textContent).toBe('Current record');
+    view.unmount();
+  });
   afterEach(() => { document.body.innerHTML = ''; });
 
   it('preserves heading and native table semantics', () => {
