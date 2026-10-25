@@ -28,6 +28,7 @@ import { calculateOpenPergolaRafterLayout, isOpenPergolaRoof, OPEN_PERGOLA_DEFAU
 import { buildRafterCutLengthExplanationV1 } from './rafterExplanation';
 import { calculateAcrylicRafterLayoutV1, RAFTER_SPACING_MM_MAX } from './rafterLayout';
 import { calculateSoffitBracketCountV1 } from './soffitBracketLayout';
+import { defaultRoofPitchDeg, normalizeEnteredRoofPitchDeg } from './roofPitch';
 
 const GST_RATE = 0.15;
 const DEFAULT_POST_CUT_HEIGHT_M = 2.4;
@@ -373,8 +374,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const projectionM = roofSpanM;
   const postCutHeightM = toPositiveNumber(inputs.post_cut_height_m, DEFAULT_POST_CUT_HEIGHT_M);
-  const roofPitchDegRaw = typeof inputs.roof_pitch_deg === 'number' ? inputs.roof_pitch_deg : Number.parseFloat(String(inputs.roof_pitch_deg ?? ''));
-  const roofPitchDeg = isOpenRoof ? 0 : Number.isFinite(roofPitchDegRaw) ? clamp(roofPitchDegRaw, 0, 85) : null;
+  const roofPitchDeg = normalizeEnteredRoofPitchDeg(inputs.roof_pitch_deg, isOpenRoof);
 
   const postCountRaw = typeof inputs.post_count === 'number' ? inputs.post_count : Number.parseInt(String(inputs.post_count ?? ''), 10);
   const postCount = Number.isFinite(postCountRaw) && postCountRaw > 0 ? Math.round(postCountRaw) : DEFAULT_POST_COUNT;
@@ -564,7 +564,6 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
       ? lengthM * projectionM + hipCornerLengthBM * hipCornerProjectionBM
       : lengthM * projectionM;
 
-  const pitchDefaults = (config?.rules as any)?.geometry?.roof_pitch_defaults_deg as Record<string, number> | undefined;
   const boxRules = (config?.rules as any)?.geometry?.box_perimeter as any;
   const boxBeamDepthMm = Number(boxRules?.box_beam_depth_mm ?? 300);
   const boxRafterDepthMm = Number(boxRules?.box_rafter_depth_mm ?? 80);
@@ -577,11 +576,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const boxMinPitchDeg = Number(boxRules?.box_min_pitch_deg ?? 3);
   const pitchedSetbacksMm = boxRules?.pitched_setbacks ?? { house_setback_mm: 150, outer_setback_mm: 50 };
   const gableSetbacksMm = boxRules?.gable_setbacks ?? { eave_setback_mm: 50, ridge_allowance_mm: 0 };
-  const defaultPitchRaw = Number(
-    pitchDefaults?.[roofType] ??
-      (roofType === 'low_gable' ? 10 : roofType === 'gable' || roofType === 'hip' || roofType === 'hip_corner' ? 25 : 5),
-  );
-  const defaultPitch = Number.isFinite(defaultPitchRaw) ? defaultPitchRaw : 5;
+  const defaultPitch = defaultRoofPitchDeg(roofType, config);
   const isBoxGable = isBoxPerimeter && (roofType === 'gable' || roofType === 'low_gable');
   const isBoxPitched = isBoxPerimeter && roofType === 'pitched';
 

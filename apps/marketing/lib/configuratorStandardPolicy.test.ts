@@ -7,7 +7,7 @@ import { calculateConfiguratorPricing } from './configuratorReviewPrice';
 import { configuratorAccessoryReview } from './configuratorAccessoryReview';
 import type { PreviewDraft } from '../components/configurator-prototype/previewDraft.types';
 
-function configuration(version: 'v2.8' | 'v2.9' | 'v2.10') {
+function configuration(version: 'v2.8' | 'v2.9' | 'v2.10' | 'v2.11') {
   const base = loadCostingConfigV1(), control = snapshotCostingControlConfigV1(base);
   control.baseManifestVersion = version;
   control.accessoryRates = structuredClone(ACCESSORY_REVIEW_RATES);
@@ -24,6 +24,22 @@ function design(family: 'mono' | 'gable' | 'box', material: 'acrylic' | 'solid' 
       finish: { material, layout: 'central', acrylicBays: 2, profile: 'corrugated', trayWidth: 400, ceiling: 'thermopine-100' } } };
 }
 describe('versioned website Standard policy', () => {
+  it.each([
+    ['mono', 2800], ['mono', 3000], ['mono', 3100],
+    ['gable', 2800], ['gable', 3000], ['box', 2800], ['box', 3000],
+  ] as const)('applies the startup rule to the actual pitch of %s website offers at %s mm projection', (family, projectionMm) => {
+    const input = design(family);
+    input.input.projectionMm = projectionMm;
+    const before = calculateFrozenConfiguratorPrice(input, configuration('v2.10'))!;
+    const after = calculateFrozenConfiguratorPrice(input, configuration('v2.11'))!;
+    expect(after.base.siteOutput.materials).toEqual(before.base.siteOutput.materials);
+    expect(after.base.siteOutput.install).toEqual(before.base.siteOutput.install);
+    expect(after.base.protectedInstallationExGst).toBe(before.base.protectedInstallationExGst);
+    expect(after.customerPrice.breakdown.slice(1)).toEqual(before.customerPrice.breakdown.slice(1));
+    if (family === 'mono') expect(after.base.siteOutput.pergolas[0].modules[0].derived.roof_pitch_deg_used).toBeCloseTo(3, 8);
+    expect(before.base.price.incGst - after.base.price.incGst).toBeCloseTo(family === 'mono' && projectionMm <= 3000 ? 747.5 : 0, 2);
+  });
+
   it.each(['v2.8', 'v2.9'] as const)('reproduces the complete pre-correction frozen %s result', version => {
     const hashes = (['mono', 'gable', 'box'] as const).map(family => {
       const frozen = calculateFrozenConfiguratorPrice(design(family), configuration(version));

@@ -33,6 +33,38 @@ Apply `20260911000001_installer_payout_workflow.sql` through the normal migratio
 
 ## Costing Source Of Truth
 
+### Short-projection pitched startup (manifest v2.11, local candidate)
+
+Jordan's 23 October instruction, amended on 26 October, reduces the once-per-job
+operational startup allowance by **$500 ex GST before markup** when every pergola
+and every module is pitched at **5 degrees or below** with projection **up to and
+including 3 m**. A projection above 3 m, a pitch above 5 degrees, a box-perimeter frame,
+any nonqualifying module, and empty scopes retain the full allowance.
+The positive `roof_span_m` input remains authoritative over its `projection_m`
+alias; missing spans do not qualify. Entered and default pitch use the shared
+`engine/roofPitch.ts` parsing, clamping and config-driven defaults consumed by
+`derive.ts`. An omitted pitch qualifies only when that default resolves to 5 or below;
+open pitched frames resolve to zero and qualify when their other criteria fit. Box-frame fall remains owned by
+`derive.ts`. No Standard/Bespoke, material, finish, access or attachment restriction
+is added beyond the effective maximum 5-degree pitched requirement. The configured startup cannot fall
+below zero; its editable full-rate value remains unchanged.
+
+`simpleRangePricing.ts` owns this effective-version-gated commercial rule.
+Materials, installation and protected installer payments, variable overhead,
+design and approval allowances, discounts and selling multipliers are unchanged.
+At a 1.30 multiplier, the full $500 reduction lowers an undiscounted customer
+price by $747.50 including GST. The admin impact review includes both the 6 x 3 m
+boundary and an explicitly 5-degree 6 x 2.8 m example. The website configurator's
+actual 3-degree mono geometry remains unchanged and receives this reduction at projections up to 3 m.
+
+Deploy compatible Portal and Marketing code before creating a fresh draft from
+the active published rates. A fresh draft advances to `v2.11` while preserving
+all editable rates. Review its manifest-only diff and impact, then publish only
+with production approval. Cloning a historical version retains its original
+effective manifest for rollback. Published `v2.10` and older prices, frozen quotes
+and the legacy `v2.9` fallback remain unchanged. An active version older than
+`v2.10` also needs reconciliation of intervening policy changes before publication.
+
 ### Standard and Bespoke pricing (manifest v2.10)
 
 The Portal displays **Standard** for the retained `simple` wire value. From
@@ -46,12 +78,13 @@ design allowance from $1,200 to **$600 ex GST before the existing selling markup
 and productive installation time from `1.2x` to `1.1x`. Mobilisation, the $800
 additional-pergola and $300 additional-module design allocations, engineering and
 consent allowances, operational overhead and the selling multiplier are unchanged.
-Previously eligible Standard prices remain unchanged. No new unusual-work
+Under v2.10, previously eligible Standard prices remain unchanged. No new unusual-work
 allowance or Studio costing path is introduced.
 
 Deploying this compatible code does not publish new prices. The admin workflow
-must create a fresh draft from the active published rates, advancing its effective
-manifest to `v2.10`, review its exact diff and representative impact, and publish
+originally advanced a fresh draft from the active published rates to effective
+manifest `v2.10`. Current fresh drafts advance to `v2.11` as above. Review the exact
+diff and representative impact, and publish
 atomically after both Portal and marketing use compatible code. Preserve every
 editable rate; the intended change from `v2.9` is the manifest only. An older active
 manifest needs separate reconciliation of intervening semantics before publication.
@@ -59,7 +92,7 @@ Published `v2.9` and earlier snapshots retain their historical policy and output
 The supported legacy fallback (no publication pointer or missing publication
 schema) is explicitly pinned to effective `v2.9` while preserving its material,
 labour and curve overrides. Its provenance snapshot records that version. A fresh
-admin draft still advances to `v2.10`, so fallback cannot activate the new policy
+admin draft now advances to `v2.11`, so fallback cannot activate the new policy
 merely by deploying code.
 Rollback clones the prior published version, retaining its original effective
 manifest. `simpleRangePricing.ts` owns the versioned eligibility and policy choice;
@@ -198,7 +231,7 @@ Changing any code-owned item is a normal package semantic change with package re
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
 - Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
 
-The active package manifest is `v2.10`, with the Standard/Bespoke policy described above. It retains the `v2.5` powdercoat assumptions, `$1,000 ex GST` operational startup and the `v2.6` infill labour policy below, then adds the reviewed ceiling catalogue. Compatible earlier published controls retain their original commercial semantics after their original content hash is verified; the two material identities first introduced in `v2.5` are still hydrated where required. A fresh draft copies the active editable rates and advances to the current package manifest. Cloning an older version preserves that version's commercial semantics for rollback.
+The active package manifest is `v2.11`, with the short-projection startup and Standard/Bespoke policies described above. It retains the `v2.5` powdercoat assumptions, the full `$1,000 ex GST` operational startup before the qualifying `$500` reduction, and the `v2.6` infill labour policy below, then adds the reviewed ceiling catalogue. Compatible earlier published controls retain their original commercial semantics after their original content hash is verified; the two material identities first introduced in `v2.5` are still hydrated where required. A fresh draft copies the active editable rates and advances to the current package manifest. Cloning an older version preserves that version's commercial semantics for rollback.
 
 Manifest `v2.6` adds one `60`-minute productive labour allowance per job containing any infills and another `30` minutes per genuinely sloping or triangular opening. The once-per-job action is assigned to the first infill-bearing module so module and infill explanations reconcile, but it is deduplicated across pergolas, modules and standalone existing-pergola infills. Both allowances use the existing `$75/h ex GST` crew rate, feed the established overhead/customer-price sequence, and receive the existing Bespoke productive-time multiplier when applicable. Existing per-opening set-out, cutting, supports, fitting and finishing actions remain unchanged; there is no infill minimum price. Published `v2.5` and earlier controls do not receive either allowance.
 
