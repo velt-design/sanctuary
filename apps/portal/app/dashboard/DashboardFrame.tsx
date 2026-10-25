@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { DashboardParts } from '@/lib/dashboard/dashboardParts';
 import type { DashboardData } from '@/lib/dashboard/types';
-import stateStyles from '@/components/page-state/PageState.module.css';
+import stateStyles from '@/components/page-state/PageMessagePanel.module.css';
 import ReadStatus from '@/components/page-state/ReadStatus';
 import PipelineCountsSurface,{type JourneyCounts} from './_components/PipelineCountsSurface';
 

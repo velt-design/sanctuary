@@ -5,7 +5,7 @@ import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
 import type { ContactsIndexPageSize, ContactsIndexSort } from '@/lib/contacts/contactsIndexContract';
 import ContactsIndexFrame, { type ContactsIndexFrameRead } from './ContactsIndexFrame';
 
-type PublishedRead = { owner: object; selection: string; read: ContactsIndexFrameRead; actions: ReactNode; rows:ReactNode; countNotice:ReactNode; onPageChange:(page:number)=>void };
+type PublishedRead = { owner: object; selection: string; read: ContactsIndexFrameRead; actions: ReactNode; rows:ReactNode; countNotice:ReactNode; pagination:import('@/components/ui/foundation/PaginationSurface').PaginationEvidence };
 
 function useContactsController(initialQuery: string, owner: object | null, entryIdentity: object | string) {
   const [entry, setEntry] = useState(entryIdentity);
@@ -50,7 +50,7 @@ export function ContactsIndexWorkspace({ initialQuery = '', owner, children, vis
     {visible ? <ContactsIndexFrame {...controller}
       contactsIndex={unavailable ? { state: 'unavailable', backgroundReady: false, retry: onRetry ?? PENDING_READ.retry }
         : evidence?.read ?? PENDING_READ}
-      rows={evidence?.rows} countNotice={evidence?.countNotice} onPageChange={evidence?.onPageChange}
+      rows={evidence?.rows} countNotice={evidence?.countNotice} pagination={evidence?.pagination}
       actions={evidence?.actions} /> : null}
     {children}
   </ContactsWorkspaceContext.Provider>;

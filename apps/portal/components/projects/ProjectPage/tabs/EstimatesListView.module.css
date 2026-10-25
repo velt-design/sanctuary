@@ -130,4 +130,8 @@
 
 .header { min-height: 88px; }
 .headerActionSlot { min-height: 44px; min-width: 290px; }
-@media (max-width: 720px) { .header { display: grid; } .headerActionSlot { min-width: 0; } }
+@media (max-width: 720px) {
+  .header { display: grid; grid-template-rows: minmax(56px, auto) 96px; }
+  .headerActionSlot { min-width: 0; height: 96px; }
+  .headerActions { height: 96px; align-content: start; }
+}

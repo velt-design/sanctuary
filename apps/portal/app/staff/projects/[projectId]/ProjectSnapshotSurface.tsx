@@ -79,8 +79,7 @@ export default function ProjectSnapshotSurface({ projectId, tab, evidence, navig
             }} onIntent={(next) => {
               if (evidence?.commercial) evidence.commercial.onIntent(next);
               else onTabIntent?.('estimates');
-            }} quoteViews={navigation.activeTab === 'quotes' ? evidence?.commercial?.quoteViews : null}>
-            {evidence?.commercial?.notice}
+            }} quoteViews={navigation.activeTab === 'quotes' ? evidence?.commercial?.quoteViews : null} notice={evidence?.commercial?.notice}>
             <div inert={evidence?.commercial?.inert} style={{ display: 'contents' }}>
               {navigation.activeTab === 'estimates' && !calculatorWorkspace && estimatesListControls ? <EstimatesListSurface
                 query={estimatesListControls.query} onQueryChange={estimatesListControls.setQuery} onInteraction={estimatesListControls.markInteracted}

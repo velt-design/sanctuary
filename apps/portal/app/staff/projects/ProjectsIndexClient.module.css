@@ -96,3 +96,9 @@
 .indexTable th:nth-child(4) { width: 29%; }
 .indexTable th:nth-child(5) { width: 10%; }
 .indexTable th:nth-child(6) { width: 7%; }
+
+.listHeaderActions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-2); }
+@media (max-width: 767px) {
+  .listHeaderActions { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px 64px; }
+  .listHeaderActions > :last-child { justify-self: end; }
+}

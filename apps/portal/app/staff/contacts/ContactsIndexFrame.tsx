@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import { Input, Select } from '@/components/ui/foundation/FoundationControls';
 import ReadStatus from '@/components/page-state/ReadStatus';
-import {Pagination} from '@/components/ui/foundation/FoundationPagination';
+import {PaginationSurface, type PaginationEvidence} from '@/components/ui/foundation/PaginationSurface';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import {
   Card,
@@ -43,17 +43,13 @@ export type ContactsIndexFrameProps = {
   setSort: (value: ContactsIndexSort) => void;
   contactsIndex: ContactsIndexFrameRead;
   actions?: ReactNode;
-  rows?:ReactNode;countNotice?:ReactNode;onPageChange?:(page:number)=>void;
+  rows?:ReactNode;countNotice?:ReactNode;pagination?:PaginationEvidence;
 };
 
 export default function ContactsIndexFrame({
-  query, debouncedQuery, page, pageSize, sort,
-  setQuery, setPage, setPageSize, setSort, contactsIndex, actions, rows, countNotice, onPageChange,
+  query, pageSize, sort,
+  setQuery, setPageSize, setSort, contactsIndex, actions, rows, countNotice, pagination,
 }: ContactsIndexFrameProps) {
-  const contacts = contactsIndex.data?.contacts.rows ?? [];
-  const totalCount = contactsIndex.data?.contacts.totalCount ?? 0;
-  const rangeStart = totalCount ? (page - 1) * pageSize + 1 : 0;
-  const rangeEnd = Math.min(page * pageSize, totalCount);
 
   return (
     <PageLayout
@@ -110,11 +106,11 @@ export default function ContactsIndexFrame({
           title="All contacts"
           className={styles.listCard}
           action={(
-            <ReadStatus title={contactsIndex.state==='unavailable'?'Access unavailable':contactsIndex.state==='refresh-failed'?'Refresh failed':contactsIndex.state==='cached'?'Updating...':!contactsIndex.data?'Reading…':''}
+            <div className={styles.listHeaderActions}><ReadStatus title={contactsIndex.state==='unavailable'?'Access unavailable':contactsIndex.state==='refresh-failed'?'Refresh failed':contactsIndex.state==='cached'?'Updating...':!contactsIndex.data?'Reading…':''}
               tone={contactsIndex.state==='refresh-failed'?'warning':contactsIndex.state==='unavailable'?'error':'neutral'}
-              action={<><Pagination compact currentPage={page} totalPages={contactsIndex.data?.contacts.totalPages ?? null} disabled={!onPageChange} onPageChange={onPageChange} itemSummary={contactsIndex.data?`${rangeStart}–${rangeEnd} of ${totalCount}`:undefined}/>{countNotice}</>}
+              action={countNotice}
               onRetry={contactsIndex.state==='refresh-failed'?contactsIndex.retry:undefined}
-              details={contactsIndex.state==='refresh-failed'?<DataStatePanel state="stale" title="Could not refresh contacts" description={contacts.length?'Showing the last saved list.':'No saved list is available. Retry the request.'}/>:undefined}/>
+              details={contactsIndex.state==='refresh-failed'?<DataStatePanel state="stale" title="Could not refresh contacts" description={contactsIndex.data?.contacts.rows.length?'Showing the last saved list.':'No saved list is available. Retry the request.'}/>:undefined}/><PaginationSurface compact evidence={pagination}/></div>
 
           )}
           aria-label="Contacts list"
@@ -126,7 +122,7 @@ export default function ContactsIndexFrame({
                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
                     <TableBody>
                       {rows}
-                      {!contacts.length&&<TableRow><TableCell colSpan={5}>{contactsIndex.state==='pending'||contactsIndex.state==='cached'?<p role="status">Reading contacts…</p>:contactsIndex.state==='unavailable'?<DataStatePanel state="unavailable" title="Contacts unavailable" description="Your current session cannot access the Contacts list." onRetry={()=>void contactsIndex.retry()}/>:contactsIndex.state==='fresh'?<DataStatePanel state={debouncedQuery.trim()?'filtered-empty':'empty'} title={debouncedQuery.trim()?'No contacts match your search.':'No contacts found.'} description={debouncedQuery.trim()?'Clear or adjust the search.':'Create the first contact to begin.'} onClear={debouncedQuery.trim()?()=>setQuery(''):undefined}/>:null}</TableCell></TableRow>}
+                      {!contactsIndex.data&&<TableRow><TableCell colSpan={5}>{contactsIndex.state==='pending'||contactsIndex.state==='cached'?<p role="status">Reading contacts…</p>:contactsIndex.state==='unavailable'?<DataStatePanel state="unavailable" title="Contacts unavailable" description="Your current session cannot access the Contacts list." onRetry={()=>void contactsIndex.retry()}/>:null}</TableCell></TableRow>}
                     </TableBody>
                   </Table>
 

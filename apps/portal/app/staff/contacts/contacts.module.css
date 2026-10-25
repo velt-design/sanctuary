@@ -61,3 +61,9 @@
 .formGrid > * { min-height: 108px; }
 
 @media (max-width: 767px) { .responsiveTable col:first-child { width: 76% !important; } .responsiveTable col:last-child { width: 24% !important; } }
+
+.listHeaderActions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-2); }
+@media (max-width: 767px) {
+  .listHeaderActions { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px 64px; }
+  .listHeaderActions > :last-child { justify-self: end; }
+}

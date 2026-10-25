@@ -12,7 +12,11 @@ gutter allowance. Schedule and operational sheets reserve their own inner gutter
 Projects, Contacts, Commercial lists and Finance own deliberate column widths
 and a truthful minimum reading region. Index pagers stay in the existing list header, including disabled controls while
 their count is unknown; the range has one owner. Fixed-layout columns have one
-CSS owner rather than duplicated JSX declarations. Unknown counts remain unknown, and pending, empty and failed
+CSS owner rather than duplicated JSX declarations. The actual pager shell owns
+fixed arrow, number and range areas; the current guarded list owner supplies
+genuine numbers, ranges and empty/filter facts. On narrow screens the existing
+card header allocates status and pager rows, keeping Retry and completeness
+details from displacing the arrows. Unknown counts remain unknown, and pending, empty and failed
 reads use the same real table. Source authority, saved anchors and commands are
 unchanged. Header action space can be allocated before capability is known, but
 no unauthorized control is rendered or activated.
@@ -20,6 +24,9 @@ no unauthorized control is rendered or activated.
 `ReadStatus` is a compact, persistent local presentation slot. Failures name the
 issue and keep Retry visible where supported; existing full explanations and
 review actions use the existing floating-panel owner without resizing the work.
+Commercial hold/readiness notices have one persistent local slot, with an explicit
+issue title and review action; their full context stays available in Details.
+Estimates reserves its actual responsive two-action layout before authority arrives.
 Commercial accepted work remains reachable from its named control. Real payment
 schedule, Finance summary and Dashboard card regions retain bounded reading
 areas, with overflow available rather than discarded content. Dashboard visits has an
@@ -27,6 +34,11 @@ explicit track in each responsive layout, so its read cannot resize other rows. 
 contact/project forms and Files use the same local status ownership. Validation
 and command controllers remain with their original owners. Imports keeps its file
 picker and summary above explicitly selected file results.
+
+Message/error page and action CSS belongs to `PageMessagePanel`; legacy public
+auth styles compose those same declarations. Public retry/message consumers do
+not import the retired page/skeleton style namespace. Default noncompact
+pagination and excluded specialised surface behavior remain unchanged.
 
 Geometry acceptance requires actual pending, ready, empty, failure/retry and
 return journeys, plus narrow/mobile layouts and overlay lock/unlock. DOM tests

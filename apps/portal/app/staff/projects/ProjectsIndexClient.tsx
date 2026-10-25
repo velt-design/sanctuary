@@ -1,5 +1,7 @@
 'use client';
 
+import {paginationEvidence} from '@/components/ui/foundation/FoundationPagination';
+
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Project } from '@/lib/types/project';
@@ -99,6 +101,9 @@ export default function ProjectsIndexClient({
   const publishOwner = workspace?.publish;
   const setPage = (page: number) => {
     if (pageOwnerAlive.current && currentPageOwner.current.publish === publishOwner && currentPageOwner.current.selection === selection) updateView({ page }, false);
+  };
+  const clearFilters = () => {
+    if (pageOwnerAlive.current && currentPageOwner.current.publish === publishOwner && currentPageOwner.current.selection === selection) resetView();
   };
   const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -244,8 +249,29 @@ export default function ProjectsIndexClient({
 
   const frame={read:projectsIndex,canCreate:!readOnly,
     countNotice:<ListCountBanner compact totalCount={projectsIndex.data?.projects.totalCount ?? null} visibleCount={projects.length} entityLabelSingular="project" entityLabelPlural="projects" truncated={projectsIndex.data?.projects.truncated ?? false}/>,
-    onPageChange:setPage,
+    pagination:paginationEvidence(page,projectsIndex.data?.projects.totalPages??null,setPage,projectsIndex.data?.projects.totalCount!=null?`${projectsIndex.data.projects.totalCount?(page-1)*view.pageSize+1:0}–${Math.min(page*view.pageSize,projectsIndex.data.projects.totalCount)} of ${projectsIndex.data.projects.totalCount}`:undefined),
     rows:<>
+      {!projects.length && projectsIndex.data && projectsIndex.state === 'cached' ? <TableRow><TableCell colSpan={6}><p role="status">Reading projects…</p></TableCell></TableRow> : null}
+      {!projects.length && projectsIndex.state === 'fresh' ? <TableRow><TableCell colSpan={6}>              <DataStatePanel
+                state={
+                  query
+                  || journeyFilter !== 'all'
+                  || stageFilter !== 'all'
+                  || stateFilter !== 'all'
+                  || ownerFilter !== 'all'
+                    ? 'filtered-empty'
+                    : 'empty'
+                }
+                onClear={
+                  query
+                  || journeyFilter !== 'all'
+                  || stageFilter !== 'all'
+                  || stateFilter !== 'all'
+                  || ownerFilter !== 'all'
+                    ? clearFilters
+                    : undefined
+                }
+              /></TableCell></TableRow> : null}
                     {filteredProjects.map((p) => {
                       const contact = p.contactId ? contactsById.get(p.contactId) : null;
                       const clientLabel = contact?.displayName ?? p.clientName ?? '—';

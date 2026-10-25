@@ -138,24 +138,24 @@ export default function CommercialTab({
           </div>
         ) : null}
   </>;
-  const notice = <ProjectCommercialScope value={commercial}>{statusPanel}<CommercialProjectNotice projectId={projectId} view={activeView} /></ProjectCommercialScope>;
   const detailPrompt = !projectReady ? <p role={projectState === "pending" || projectState === "summary" ? "status" : undefined}>{projectState === "pending" || projectState === "summary" ? "Reading project details…" : "Project details unavailable. Retry the project read above."}</p> : null;
+  const notice = <ProjectCommercialScope value={commercial}><CommercialProjectNotice projectId={projectId} view={activeView} compact
+    unavailable={!projectReady && projectState !== 'pending' && projectState !== 'summary'} details={statusPanel || detailPrompt ? <>{statusPanel}{detailPrompt}</> : undefined} /></ProjectCommercialScope>;
   const chrome: CommercialTabChrome = { view: activeView, onSelect: setView, onIntent: preload,
-    notice: <>{notice}{detailPrompt}</>, quoteViews, quoteDetail: Boolean(selectedQuoteId), inert: readOnly && projectReady };
+    notice, quoteViews, quoteDetail: Boolean(selectedQuoteId), inert: readOnly && projectReady };
   useLayoutEffect(() => { publishCommercial?.(chrome); }, [publishCommercial, chrome]);
   useLayoutEffect(() => () => publishCommercial?.(null), [publishCommercial]);
   const managed = Boolean(publishCommercial || estimatesList && activeView === 'estimates' && !calculatorWorkspace);
   const contents = <Suspense key={activeView} fallback={<p role="status" data-commercial-code-pending={activeView}>Preparing {activeView} tools...</p>}>
     <div inert={readOnly && projectReady} style={{ display: 'contents' }}>
-      {!managed ? detailPrompt : null}
       {activeView === 'estimates' ? <EstimatesTab key={projectId} host={host} projectId={projectId}
         projectName={projectReady ? projectName : undefined} projectReady={projectReady}
-        estimatesList={estimatesList ? { ...estimatesList, notice: <>{notice}{detailPrompt}</>, inert: readOnly && projectReady, onSelect: setView, onIntent: preload } : undefined} />
+        estimatesList={estimatesList ? { ...estimatesList, notice, inert: readOnly && projectReady, onSelect: setView, onIntent: preload } : undefined} />
       : activeView === 'quotes' ? <QuotesTab key={projectId} projectId={projectId} selectedQuoteId={selectedQuoteId}
         onSelectedQuoteChange={setSelectedQuoteId} listSurface={quotesList} />
       : <InvoicesTab key={projectId} projectId={projectId} listSurface={invoicesList} />}
     </div>
   </Suspense>;
   return managed ? contents : <CommercialTabSurface view={activeView} calculatorWorkspace={calculatorWorkspace}
-    onSelect={setView} onIntent={preload} quoteViews={quoteViews}>{notice}{contents}</CommercialTabSurface>;
+    onSelect={setView} onIntent={preload} quoteViews={quoteViews} notice={notice}>{contents}</CommercialTabSurface>;
 }

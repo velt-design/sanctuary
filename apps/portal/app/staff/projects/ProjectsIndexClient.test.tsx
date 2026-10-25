@@ -12,7 +12,7 @@ import { PROJECTS_INDEX_QUERY_SCOPE } from '@/lib/queries/projectsIndex';
 let publishedPager:((page:number)=>void)|undefined;
 vi.mock('@/components/ui/foundation/FoundationPagination',async original=>{
  const actual=await original<typeof import('@/components/ui/foundation/FoundationPagination')>();
- return {...actual,Pagination:(props:Parameters<typeof actual.Pagination>[0])=>{publishedPager=props.onPageChange;return <actual.Pagination {...props}/>;}};
+ return {...actual,paginationEvidence:(...args:Parameters<typeof actual.paginationEvidence>)=>{publishedPager=args[2];return actual.paginationEvidence(...args);}};
 });
 const replace = vi.fn();
 const prefetch = vi.fn();

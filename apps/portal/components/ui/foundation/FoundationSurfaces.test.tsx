@@ -10,6 +10,8 @@ describe('foundation surfaces', () => {
     const view = renderIntoDocument(<Pagination compact currentPage={2} totalPages={null} onPageChange={change} />);
     const previous = view.container.querySelector<HTMLButtonElement>('[aria-label="Previous page"]')!;
     const next = view.container.querySelector<HTMLButtonElement>('[aria-label="Next page"]')!;
+    const numberSlot = next.previousElementSibling;
+    const rangeSlot = next.closest('nav')!.firstElementChild;
     expect(previous.disabled).toBe(true); expect(next.disabled).toBe(true);
     expect(view.container.querySelector('[aria-label="Page 1"]')).toBeNull();
     act(() => next.click()); expect(change).not.toHaveBeenCalled();
@@ -17,8 +19,27 @@ describe('foundation surfaces', () => {
     expect(view.container.querySelector('[aria-label="Previous page"]')).toBe(previous);
     expect(view.container.querySelector('[aria-label="Next page"]')).toBe(next);
     expect(next.disabled).toBe(false); act(() => next.click()); expect(change).toHaveBeenCalledWith(3);
+    expect(next.previousElementSibling).toBe(numberSlot);
+    expect(next.closest('nav')!.firstElementChild).toBe(rangeSlot);
+    view.rerender(<Pagination compact currentPage={50} totalPages={100} onPageChange={change} itemSummary="2451–2500 of 5000" />);
+    expect(view.container.querySelector('[aria-label="Previous page"]')).toBe(previous);
+    expect(view.container.querySelector('[aria-label="Next page"]')).toBe(next);
+    expect(next.previousElementSibling).toBe(numberSlot);
+    expect(numberSlot?.textContent).toContain('100');
+    expect(view.container.querySelector('[aria-current="page"]')?.textContent).toBe('50');
     view.rerender(<Pagination compact currentPage={2} totalPages={null} disabled onPageChange={change} />);
     expect(next.disabled).toBe(true); expect(next.isConnected).toBe(true);
+    view.unmount();
+  });
+  it('keeps the default pager numbers inline with its original clamp and summary behavior', () => {
+    const change = vi.fn();
+    const view = renderIntoDocument(<Pagination currentPage={20} totalPages={3} onPageChange={change} itemSummary="Verified range" />);
+    const next = view.container.querySelector<HTMLButtonElement>('[aria-label="Next page"]')!;
+    expect(next.disabled).toBe(true);
+    expect(next.previousElementSibling?.getAttribute('aria-label')).toBe('Page 3');
+    expect(next.closest('nav')!.hasAttribute('data-compact')).toBe(false);
+    act(() => view.container.querySelector<HTMLButtonElement>('[aria-label="Previous page"]')!.click());
+    expect(change).toHaveBeenCalledWith(2);
     view.unmount();
   });
   it('keeps the same native table when its route owns a bounded reading viewport', () => {
