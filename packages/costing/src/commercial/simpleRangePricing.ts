@@ -7,6 +7,8 @@ import commercialPolicyV6Json from '../config/commercial_policy_v6_2026-08-11.js
 import type { CostingConfigV1 } from '../engine/config';
 import type { OverheadV1, SiteInputsV1 } from '../engine/types';
 import { isCostingManifestAtLeast } from '../manifestVersion';
+import { isOpenPergolaRoof } from '../engine/openPergola';
+import { defaultRoofPitchDeg, normalizeEnteredRoofPitchDeg } from '../engine/roofPitch';
 
 export type PricingClassificationV2 = 'simple' | 'bespoke';
 export type ApprovalRequirementV2 = 'neither' | 'engineering_required' | 'full_building_consent';
@@ -190,6 +192,22 @@ export function productiveInstallTimeMultiplierV5(
   return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1;
 }
 
+function qualifiesForShortProjectionStartup(inputs: SiteInputsV1, config: CostingConfigV1): boolean {
+  return inputs.pergolas.length > 0 && inputs.pergolas.every((pergola) =>
+    pergola.modules.length > 0 && pergola.modules.every((module) => {
+      // Match the costing input's positive roof_span_m precedence over its
+      // projection alias, but never qualify an absent span using a default.
+      const roofSpan = Number.parseFloat(String(module.roof_span_m ?? ''));
+      const projection = Number.isFinite(roofSpan) && roofSpan > 0
+        ? roofSpan : Number.parseFloat(String(module.projection_m ?? ''));
+      const pitch = normalizeEnteredRoofPitchDeg(module.roof_pitch_deg, isOpenPergolaRoof(module.roof_material))
+        ?? defaultRoofPitchDeg('pitched', config);
+      return module.pergola_style === 'pitched' && !module.box_perimeter_enabled
+        && Number.isFinite(projection) && projection > 0 && projection <= 3 && pitch <= 5;
+    }),
+  );
+}
+
 export function buildCommercialOverheadV5(
   config: CostingConfigV1,
   inputs: SiteInputsV1,
@@ -203,8 +221,10 @@ export function buildCommercialOverheadV5(
   const additionalModuleCount = Math.max(0, moduleCount - pergolaCount);
   const crewDayHours = Math.max(0.01, Number(policy.operational_overhead.productive_crew_day_hours));
   const crewDays = Math.max(0, Number(productiveCrewHours) || 0) / crewDayHours;
+  const startupReduction = isCostingManifestAtLeast(config, 2, 11) && qualifiesForShortProjectionStartup(inputs, config) ? 500 : 0;
+  const startup = Math.max(0, Number(policy.operational_overhead.startup_per_job_ex_gst) - startupReduction);
   const ops = roundMoney(
-    Number(policy.operational_overhead.startup_per_job_ex_gst)
+    startup
       + crewDays * Number(policy.operational_overhead.variable_per_productive_crew_day_ex_gst),
   );
   const sales = resolvedClassification === 'bespoke'

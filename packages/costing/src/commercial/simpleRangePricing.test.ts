@@ -98,7 +98,7 @@ describe('Version 2 commercial policy', () => {
   it('keeps v2.9 Standard pricing unchanged and adds actual extras once before markup', () => {
     const base = loadCostingConfigV1();
     const old = applyCostingControlConfigV1(base, { ...snapshotCostingControlConfigV1(base), baseManifestVersion: 'v2.9' });
-    expect(calculateSiteCostV1(site(), base)).toEqual(calculateSiteCostV1(site(), old));
+    expect(calculateSiteCostV1(site(), { ...base, appliedControlManifestVersion: 'v2.10' })).toEqual(calculateSiteCostV1(site(), old));
     const withoutExtras = calculateSiteCostV1(site({ pricing_classification: 'bespoke' }), base);
     const withExtras = calculateSiteCostV1(site({ pricing_classification: 'bespoke', extras_allowance_ex_gst: 200, travel_ex_gst: 100 }), base);
     expect(withExtras.totals.cost_ex_gst - withoutExtras.totals.cost_ex_gst).toBeCloseTo(300, 2);
@@ -162,14 +162,14 @@ describe('Version 2 commercial policy', () => {
     expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
   });
 
-  it('uses one $1000 startup and $500 per pro-rated productive crew-day', () => {
-    const config = loadCostingConfigV1();
+  it('preserves the historical $1000 startup and pro-rated variable allowance', () => {
+    const config = { ...loadCostingConfigV1(), appliedControlManifestVersion: 'v2.10' };
     expect(buildCommercialOverheadV5(config, site(), 8, 'simple').total_ex_gst).toBe(1500);
     expect(buildCommercialOverheadV5(config, site(), 12, 'simple').total_ex_gst).toBe(1750);
     expect(buildCommercialOverheadV5(config, site(), 16, 'simple').total_ex_gst).toBe(2000);
 
-    const at29 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 2.9 })] }] }));
-    const at30 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 3 })] }] }));
+    const at29 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 2.9 })] }] }), config);
+    const at30 = calculateSiteCostV1(site({ pergolas: [{ modules: [module({ projection_m: 3 })] }] }), config);
     expect(at29.overhead.method).toBe('unified_commercial_v5');
     expect(at30.overhead.method).toBe('unified_commercial_v5');
     expect(at29.overhead.total_ex_gst).toBeGreaterThanOrEqual(500);
@@ -190,7 +190,7 @@ describe('Version 2 commercial policy', () => {
     expect(dayCycleActions.every((action) => action.qty === 1)).toBe(true);
     expect(fixedMobilisationActions.length).toBeGreaterThan(0);
     expect(fixedMobilisationActions.every((action) => action.qty === 1)).toBe(true);
-    expect(result.overhead.total_ex_gst).toBe(1466.88);
+    expect(result.overhead.total_ex_gst).toBe(966.88);
     expect(result.pricing_policy?.customer_price_multiplier).toBe(1.3);
     expect(result.pricing_policy?.customer_price_uplift_pct).toBe(0);
   });
@@ -223,31 +223,31 @@ describe('Version 2 commercial policy', () => {
     expect(bespokeMobilisation?.minutes).toBe(simpleMobilisation?.minutes);
   });
 
-  it('calculates the agreed 6m x 3m customer-price anchors', () => {
+  it.each(['v2.10', 'v2.11'])('calculates the versioned 6m x 3m customer-price anchors for %s', (version) => {
     const standard = module({ post_count: 4, house_connection_type: 'soffit', roof_pitch_deg: 5 });
     const scenarios = [
-      [site({ pergolas: [{ modules: [standard] }] }), 12_324.24],
-      [site({ pricing_classification: 'bespoke', pergolas: [{ modules: [standard] }] }), 13_630.86],
-      [site({ pergolas: [{ modules: [{ ...standard, pergola_style: 'gable' }] }] }), 13_207.24],
-      [site({ pergolas: [{ modules: [{ ...standard, box_perimeter_enabled: true }] }] }), 15_374.52],
+      [site({ pergolas: [{ modules: [standard] }] }), 12_324.24, 11_576.74],
+      [site({ pricing_classification: 'bespoke', pergolas: [{ modules: [standard] }] }), 13_630.86, 12_883.36],
+      [site({ pergolas: [{ modules: [{ ...standard, pergola_style: 'gable' }] }] }), 13_207.24, 13_207.24],
+      [site({ pergolas: [{ modules: [{ ...standard, box_perimeter_enabled: true }] }] }), 15_374.52, 15_374.52],
     ] as const;
 
-    for (const [inputs, expectedIncGst] of scenarios) {
-      const result = calculateSiteCostV1(inputs);
+    for (const [inputs, historicalPrice, currentPrice] of scenarios) {
+      const result = calculateSiteCostV1(inputs, { ...loadCostingConfigV1(), appliedControlManifestVersion: version });
       const customerPrice = calculateCustomerPriceFromCostEx(
         result.totals.cost_ex_gst,
         0,
         result.pricing_policy?.customer_price_uplift_pct,
         result.pricing_policy?.customer_price_multiplier,
       );
-      expect(customerPrice?.incGst).toBe(expectedIncGst);
+      expect(customerPrice?.incGst).toBe(version === 'v2.10' ? historicalPrice : currentPrice);
     }
   });
 
-  it('keeps the 6m x 3m fascia / three-post Simple reference near $11,500 inc GST', () => {
+  it.each([['v2.10', 11_484.03], ['v2.11', 10_736.53]] as const)('reproduces the 6m x 3m fascia / three-post Simple reference for %s', (version, expectedIncGst) => {
     const result = calculateSiteCostV1(site({
       pergolas: [{ modules: [module({ roof_pitch_deg: 5 })] }],
-    }));
+    }), { ...loadCostingConfigV1(), appliedControlManifestVersion: version });
     const customerPrice = calculateCustomerPriceFromCostEx(
       result.totals.cost_ex_gst,
       0,
@@ -255,7 +255,7 @@ describe('Version 2 commercial policy', () => {
       result.pricing_policy?.customer_price_multiplier,
     );
 
-    expect(customerPrice?.incGst).toBe(11_484.03);
+    expect(customerPrice?.incGst).toBe(expectedIncGst);
   });
 
   it('preserves the $500 startup for published v2.4 configurations', () => {

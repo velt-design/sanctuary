@@ -246,6 +246,9 @@ describe('costing configuration admin publication', () => {
 
   it('persists bounded draft identity when cloning a source version', async () => {
     const source = draftVersion();
+    source.config.baseManifestVersion = 'v2.10';
+    source.baseManifestVersion = 'v2.10';
+    source.contentHash = hashCostingControlConfig(source.config);
     getCostingConfigurationVersionById.mockResolvedValue(source);
     const insert = vi.fn();
     const builder: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -276,11 +279,14 @@ describe('costing configuration admin publication', () => {
       name: 'Copy of supplier update',
       purpose: 'Check the previous supplier assumptions.',
       based_on_version_id: source.id,
+      base_manifest_version: 'v2.10',
+      config_json: expect.objectContaining({ baseManifestVersion: 'v2.10' }),
     }));
   });
 
   it.each([
     { source: 'published', version: 'v1.8', versionId: 'published-v1' },
+    { source: 'published', version: 'v2.10', versionId: 'published-v10' },
     { source: 'legacy-overrides', version: 'v2.9', versionId: null },
   ])('makes a fresh draft the explicit upgrade point from $source', async ({ source, version, versionId }) => {
     const base = loadCostingConfigV1();
@@ -313,7 +319,7 @@ describe('costing configuration admin publication', () => {
       base_manifest_version: base.manifest.version,
       based_on_version_id: versionId,
       config_json: expect.objectContaining({
-        baseManifestVersion: 'v2.10',
+        baseManifestVersion: 'v2.11',
         labour: expect.objectContaining({ crewHourRateExGst: 82 }),
       }),
     }));

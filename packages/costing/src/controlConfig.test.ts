@@ -69,7 +69,7 @@ describe('costing control configuration', () => {
     expect(validation.ok).toBe(true);
 
     const applied = applyCostingControlConfigV1(base, historical);
-    expect(applied.manifest.version).toBe('v2.10');
+    expect(applied.manifest.version).toBe('v2.11');
     expect(applied.appliedControlManifestVersion).toBe('v1.7');
     expect(
       applied.installActions.actions.find((action) => action.id === 'infill.setup_setout_each')?.base_minutes,
@@ -200,7 +200,7 @@ describe('costing control configuration', () => {
     ]);
 
     const impact = previewCostingControlImpactV1(base, applyCostingControlConfigV1(base, after));
-    expect(impact).toHaveLength(4);
+    expect(impact).toHaveLength(5);
     expect(impact.every((row) => row.afterInstallExGst >= row.beforeInstallExGst)).toBe(true);
     expect(impact.some((row) => row.deltaExGst > 0)).toBe(true);
   });
