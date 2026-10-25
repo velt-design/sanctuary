@@ -14,7 +14,7 @@ import {
 } from '@/lib/portalAccess';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { DOCUMENT_CALLBACK_HEADER, regionalDocumentCallback } from './regionalDocumentAccess';
+import { DOCUMENT_CALLBACK_HEADER, NAVIGATION_CALLBACK_HEADER, regionalDocumentCallback, regionalNavigationCallback } from './regionalDocumentAccess';
 import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
 
 export type PortalSession = {
@@ -104,12 +104,16 @@ async function requirePortalSessionPageAccess(callbackUrl: string): Promise<Port
 
 export async function requireStaffPageAccess(callbackUrl: string): Promise<PortalSession> {
   // Middleware overwrites this redirect-only context. It never supplies access.
-  const context = regionalDocumentCallback((await headers()).get(DOCUMENT_CALLBACK_HEADER));
+  const requestHeaders = await headers();
+  const context = regionalDocumentCallback(requestHeaders.get(DOCUMENT_CALLBACK_HEADER))
+    ?? regionalNavigationCallback(requestHeaders.get(NAVIGATION_CALLBACK_HEADER));
   return requirePortalSessionPageAccess(context ?? callbackUrl);
 }
 
 export async function requireRegionalDocumentAccess(): Promise<void> {
-  const callback = regionalDocumentCallback((await headers()).get(DOCUMENT_CALLBACK_HEADER));
+  const requestHeaders = await headers();
+  const callback = regionalDocumentCallback(requestHeaders.get(DOCUMENT_CALLBACK_HEADER))
+    ?? regionalNavigationCallback(requestHeaders.get(NAVIGATION_CALLBACK_HEADER));
   if (callback) await requirePortalSessionPageAccess(callback);
 }
 

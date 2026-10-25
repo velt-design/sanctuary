@@ -211,3 +211,22 @@
     min-height: 38rem;
   }
 }
+
+/* The persistent actual frame owns Chrome before record/geometry runtime exists.
+ * Only the runtime's non-semantic div becomes display:contents; its asides and
+ * labelled Drawing workbench section retain their accessibility semantics. */
+.readShell { grid-template-rows: auto minmax(0, 1fr); row-gap: var(--portal-density-8); position: relative; }
+.runtimeContents { display: contents; }
+.readChrome { grid-column: 2; grid-row: 1; min-width: 0; }
+.readShell > .runtimeContents > .configuratorColumn { grid-column: 1; grid-row: 1 / span 2; }
+.readShell > .runtimeContents > .workspaceColumn { grid-column: 2; grid-row: 2; }
+.readShell > .runtimeContents > .inspectorColumn { grid-column: 3; grid-row: 1 / span 2; }
+.readStatus { grid-column: 2; grid-row: 2; align-self: start; justify-self: start; max-width: 100%; z-index: 1; padding: var(--portal-density-8); background: var(--portal-section-background); }
+@media (max-width: 1023px) {
+  .readShell { grid-template-rows: auto auto minmax(38rem, auto) auto; }
+  .readChrome { grid-column: 1; grid-row: 2; }
+  .readShell > .runtimeContents > .configuratorColumn { grid-column: 1; grid-row: 1; }
+  .readShell > .runtimeContents > .workspaceColumn { grid-column: 1; grid-row: 3; }
+  .readShell > .runtimeContents > .inspectorColumn { grid-column: 1; grid-row: 4; }
+  .readStatus { grid-column: 1; grid-row: 3; }
+}

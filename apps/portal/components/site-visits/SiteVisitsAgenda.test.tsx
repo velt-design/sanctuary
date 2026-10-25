@@ -66,7 +66,7 @@ describe('Site visit URL and return state',()=>{
     const before=(left:Node,right:Node)=>expect(left.compareDocumentPosition(right)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     before(group,context);before(attending,context);before(search,context);
     expect(count.getAttribute('data-pending')).toBe('true');
-    expect(mounted.container.textContent).toContain('Loading site visits');
+    expect(mounted.container.textContent).toContain('Reading the saved visit agenda');
     act(()=>mounted!.container.querySelector<HTMLAnchorElement>('a')!.click());
     act(()=>review.click());
     expect(new URL(window.location.href).searchParams.get('view')).toBe('review');

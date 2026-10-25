@@ -15,7 +15,7 @@ vi.mock('@/components/ui/foundation',()=>({
   Button:(props:React.ButtonHTMLAttributes<HTMLButtonElement>)=><button {...props}/>,
   ButtonLink:(props:React.AnchorHTMLAttributes<HTMLAnchorElement>)=><a {...props}/>,
   Card:({children}:{children:React.ReactNode})=><div>{children}</div>,
-  DataStatePanel:()=> <p>Unavailable</p>,
+  DataStatePanel:({onRetry}:{onRetry:()=>void})=> <p>Unavailable<button onClick={onRetry}>Retry</button></p>,
 }));
 import ConfiguratorRevisionClient from './ConfiguratorRevisionClient';
 const project='11111111-1111-4111-8111-111111111111';
@@ -54,4 +54,12 @@ it('removes an old review when recalculation fails rather than leaving a stale s
   await click('Calculate revised price');
   expect(container.querySelector('[role=alert]')?.textContent).toContain('Approved pricebook');
   expect(Array.from(container.querySelectorAll('button')).some(b=>b.textContent==='Save as new estimate')).toBe(false);
+});
+
+it('keeps actual design actions pending and failed without allowing calculation, then isolates a different project',async()=>{
+ const refetch=vi.fn();mocks.query.mockReturnValue({isPending:true,isFetching:true,isError:false,data:undefined,refetch});await render(<ConfiguratorRevisionClient projectId={project}/>);
+ const calculate=button('Calculate revised price'),back=container.querySelector('a')!;expect(calculate.disabled).toBe(true);expect(container.textContent).toContain('Reading saved configured design');expect(back.textContent).toBe('Back to project estimates');await click('Calculate revised price');expect(mocks.api).not.toHaveBeenCalled();
+ mocks.query.mockReturnValue({isPending:false,isFetching:false,isError:true,data:undefined,refetch});await act(async()=>root!.render(<ConfiguratorRevisionClient projectId={project}/>));expect(button('Calculate revised price')).toBe(calculate);await click('Retry');expect(refetch).toHaveBeenCalledOnce();expect(calculate.disabled).toBe(true);
+ mocks.query.mockReturnValue({isPending:false,isFetching:false,isError:false,data:{projectId:project,sourceEstimateId:'source-a',design:original,marketingOrigin:'https://example.invalid'},refetch});await act(async()=>root!.render(<ConfiguratorRevisionClient projectId={project}/>));mocks.api.mockResolvedValueOnce(prepared);await click('Calculate revised price');expect(button('Save as new estimate')).toBeTruthy();
+ mocks.query.mockReturnValue({isPending:true,isFetching:true,isError:false,data:undefined,refetch});await act(async()=>root!.render(<ConfiguratorRevisionClient projectId="project-b"/>));expect(container.textContent).not.toContain('including GST');expect(container.querySelector('a')?.getAttribute('href')).toContain('project-b');expect(button('Calculate revised price').disabled).toBe(true);
 });

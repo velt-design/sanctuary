@@ -1,13 +1,24 @@
 import { notFound } from "next/navigation";
+import QuoteEmailFixture from "./QuoteEmailFixture";
+import { renderQuoteReadyEmail } from "@/lib/emails/quote";
 import { renderDepositInvoiceEmail } from "@/lib/emails/invoice";
 import type { DepositInvoiceArtifactPreview } from "@/lib/invoices/types";
 import InvoiceArtifactPreviewFixtureClient from "./InvoiceArtifactPreviewFixtureClient";
 
 const FIXTURE_INVOICE_ID = "inv_11111111-1111-4111-8111-111111111111";
 
-export default async function InvoiceArtifactPreviewFixturePage() {
+export default async function InvoiceArtifactPreviewFixturePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
   if (process.env.ENABLE_PORTAL_QA_FIXTURES !== "1") notFound();
 
+  const query = await searchParams;
+  if (query?.quoteEmail === "1") {
+    const previews = await Promise.all(["A", "B"].map(async (name) => {
+      const subject = `Fictional quote draft ${name}`;
+      const output = await renderQuoteReadyEmail({ to: "customer@example.invalid", subject, name: `Courtyard ${name}`, quote_number: `Q-FIXTURE-${name}`, project_name: `Courtyard ${name}`, quote_total_inc_gst: "$5,750.00", quote_accept_link: "https://preview.invalid/quote/fixture?token=preview-only" });
+      return { subject, html: output.html, text: output.text ?? null };
+    }));
+    return <QuoteEmailFixture previews={previews} />;
+  }
   const rendered = await renderDepositInvoiceEmail({
     to: ["customer@example.invalid"],
     subject: "Deposit invoice - INV-2026-0147",
@@ -49,5 +60,5 @@ export default async function InvoiceArtifactPreviewFixturePage() {
     source: "prospective",
   };
 
-  return <InvoiceArtifactPreviewFixtureClient preview={preview} />;
+  return <InvoiceArtifactPreviewFixtureClient preview={preview} progressive={query?.progressive === "1"} />;
 }

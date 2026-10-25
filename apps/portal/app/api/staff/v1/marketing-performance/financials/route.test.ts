@@ -57,3 +57,16 @@ it.each([
  const result=await GET(request());expect(result.status).toBe(status);
  expect(mocks.close).toHaveBeenCalledOnce();expect(await result.text()).not.toContain('Private');
 });
+
+it('negotiates private parts only after the same staff/developer and fresh matching finance authority, while JSON remains unchanged',async()=>{
+ const streaming=()=>new Request(request().url,{headers:{Accept:'application/x-ndjson'}});
+ mocks.staff.mockResolvedValueOnce({ok:false,response:Response.json({error:'Sign in'},{status:401})});expect((await GET(streaming())).status).toBe(401);
+ mocks.developer.mockReturnValueOnce(false);expect((await GET(streaming())).status).toBe(403);
+ for(const grant of [null,{user:{id:'different'}}]){
+  mocks.finance.mockResolvedValueOnce(grant);const response=await GET(streaming());
+  expect(response.headers.get('cache-control')).toBe('private, no-store');expect(response.headers.get('vary')).toBe('Accept');
+  const frames=(await response.text()).trim().split('\n').map(line=>JSON.parse(line));expect(frames).toEqual([{key:'profit:2026-09-01:2026-09-30:accrual',phase:'invalidated',result:{ok:false,status:403,error:'Current developer and finance access are required.'}}]);
+ }
+ expect(mocks.runtime).not.toHaveBeenCalled();expect(mocks.read).not.toHaveBeenCalled();
+ const json=await GET(request());expect(json.headers.get('content-type')).toContain('application/json');expect(await json.json()).toEqual({report:{synthetic:true}});
+});

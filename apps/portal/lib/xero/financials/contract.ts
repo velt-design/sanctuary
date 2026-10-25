@@ -31,7 +31,7 @@ const panelPosition = financePositionSchema.extend({
   receivables:z.union([financePositionSchema.shape.receivables,notRequested]),
   payables:z.union([financePositionSchema.shape.payables,notRequested]),
 });
-export const financialPanelSchema = z.object({
+const financialPanelBase = z.object({
   schemaVersion:z.literal('sanctuary.financial-panel.v1'),
   requestedSection:z.enum(['profit','bank','receivables','payables']),
   position:panelPosition, checkedAt:z.string().datetime(),
@@ -39,7 +39,11 @@ export const financialPanelSchema = z.object({
   previous:z.object({query:financialsQuery,report:z.union([reportEvidence,notRequested])}).strict(),
   yearAgo:z.object({query:financialsQuery,report:z.union([reportEvidence,notRequested])}).strict(),
   months:z.array(z.object({query:financialsQuery,report:z.union([reportEvidence,notRequested])}).strict()).length(6),
-}).strict().superRefine((value,ctx)=>{
+ }).strict();
+type PanelValidation = Omit<z.infer<typeof financialPanelBase>, 'schemaVersion' | 'months'> & {
+  months?: z.infer<typeof financialPanelBase>['months'];
+};
+function validateFinancialPanel(value: PanelValidation, ctx: z.RefinementCtx) {
   const selected=value.requestedSection==='profit'?'profitAndLoss':value.requestedSection==='bank'?'bankSummary':value.requestedSection;
   for(const family of ['profitAndLoss','bankSummary','receivables','payables'] as const){
     if((value.position[family].status==='not_requested')===(family===selected))ctx.addIssue({code:'custom',message:'Financial family does not match requested section.'});
@@ -50,14 +54,26 @@ export const financialPanelSchema = z.object({
     if(source.from!==query.from||source.to!==query.to||source.basis!==(selected==='bankSummary'?'bank_movements':query.basis)||(value.position.organisation.status==='available'&&source.currency!==value.position.organisation.data.baseCurrency))ctx.addIssue({code:'custom',message:'Selected report dates, basis or currency do not match.'});
   }
   const query=value.position.query,expected=[previousQuery(query),yearAgoQuery(query),...trendQueries(query)];
-  for(const [index,item] of [value.previous,value.yearAgo,...value.months].entries()){
+  for(const [index,item] of [value.previous,value.yearAgo,...(value.months??[])].entries()){
     const same=(a:{from:string;to:string;basis:string},b:FinancialsQuery)=>a.from===b.from&&a.to===b.to&&a.basis===b.basis;
     if(!same(item.query,expected[index])||(item.report.status==='not_requested')!==(selected!=='profitAndLoss')||(item.report.status==='available'&&(!same(item.report.data,item.query)||(value.position.organisation.status==='available'&&item.report.data.currency!==value.position.organisation.data.baseCurrency))))ctx.addIssue({code:'custom',message:'Financial comparison does not match selected dates, basis or section.'});
   }
   if(value.checkedAt<value.position.checkedAt)ctx.addIssue({code:'custom',message:'Invalid source read window.'});
-});
+}
+export const financialPanelSchema = financialPanelBase.superRefine(validateFinancialPanel);
+/** Complete selected P&L and both comparisons, independently of monthly trend.
+ * It is a distinct evidence contract, never an incomplete FinancialPanel. */
+export const financialCurrentSchema = financialPanelBase.omit({months:true}).extend({
+  schemaVersion:z.literal('sanctuary.financial-profit-current.v1'),
+  requestedSection:z.literal('profit'),
+  previous:z.object({query:financialsQuery,report:reportEvidence}).strict(),
+  yearAgo:z.object({query:financialsQuery,report:reportEvidence}).strict(),
+}).superRefine(validateFinancialPanel);
+export type FinancialCurrent = z.infer<typeof financialCurrentSchema>;
+
 export type FinancialPanel = z.infer<typeof financialPanelSchema>;
 export type FinancialEvidence = Financials | FinancialPanel;
+export type FinancialDisplayEvidence = FinancialEvidence | FinancialCurrent;
 export type FinancialPanelQuery = FinancialsQuery & {section:FinancialSection};
 export type FinancialSelection = FinancialsQuery & { section: FinancialSection; comparison: 'previous' | 'yearAgo'; detail: string };
 

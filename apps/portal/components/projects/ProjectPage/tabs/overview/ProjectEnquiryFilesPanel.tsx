@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/foundation";
 import type { ProjectEnquiryAttachment } from "@/lib/projects/enquiryAttachments/types";
 import styles from "./ProjectEnquiryFilesPanel.module.css";
+import {EnquiryFilesSurface} from "../ProjectFilesSurface";
 
 const submittedDate = new Intl.DateTimeFormat("en-NZ", {
   day: "numeric",
@@ -65,47 +66,9 @@ export default function ProjectEnquiryFilesPanel({
       : null),
   });
 
-  if (query.isPending) {
-    return <LoadingSkeleton rows={3} columns={3} label="Loading enquiry files" />;
-  }
-  if (query.isError) {
-    return (
-      <DataStatePanel
-        state="error"
-        title="Enquiry files could not be loaded"
-        description="No file access was granted. Retry the staff-only request."
-        onRetry={() => void query.refetch()}
-      />
-    );
-  }
-
-  const attachments = query.data.attachments;
-  if (!attachments.length) {
-    return (
-      <DataStatePanel
-        state="empty"
-        title="No website enquiry files"
-        description="Files submitted with the website enquiry will appear here automatically."
-      />
-    );
-  }
-
-  return (
-    <div className={styles.panel}>
-      <p className={styles.intro}>
-        Private files supplied with this project&apos;s website enquiry.
-      </p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>File</TableHead>
-            <TableHead>Submitted</TableHead>
-            <TableHead>Size</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {attachments.map((attachment) => (
+  const attachments=query.data?.attachments;
+  const status=query.isPending?<LoadingSkeleton rows={3} columns={3} label="Loading enquiry files"/>:query.isError?<DataStatePanel state="error" title="Enquiry files could not be loaded" description="No file access was granted. Retry the staff-only request." onRetry={()=>void query.refetch()}/>:!attachments?.length?<DataStatePanel state="empty" title="No website enquiry files" description="Files submitted with the website enquiry will appear here automatically."/>:null;
+  return <EnquiryFilesSurface evidence={{status,rows:attachments?<>{attachments.map((attachment) => (
             <TableRow key={attachment.id}>
               <TableCell>
                 <strong className={styles.filename}>{attachment.filename}</strong>
@@ -158,9 +121,5 @@ export default function ProjectEnquiryFilesPanel({
                 </div>
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
+          ))}</>:null}}/>;
 }

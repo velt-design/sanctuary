@@ -20,7 +20,7 @@ it('retains geometry through parent remount without retaining stale quote values
  let resolve!:(r:CommercialReport)=>void;
  const pending=()=>new Promise<CommercialReport>(r=>{resolve=r;});
  const refreshed=renderIntoDocument(<CommercialOverview {...props} loader={pending}/>);
- expect(refreshed.container.querySelector('section')?.style.minHeight).toBe('860px');expect(refreshed.container.textContent).not.toContain('Quoted value');
+ expect(refreshed.container.querySelector('section')?.style.minHeight).toBe('860px');expect(refreshed.container.querySelector<HTMLButtonElement>('[aria-label="Inspect Quoted value"]')?.disabled).toBe(true);expect(refreshed.container.textContent).toContain('Reading…');
  await act(async()=>resolve(report));expect(refreshed.container.textContent).toContain('Quoted value');refreshed.unmount();bounds.mockRestore();sessionStorage.clear();
 });
 
@@ -85,11 +85,31 @@ it('keeps real source rows inspectable through independent commercial loading, f
  expect(view.container.textContent).toContain('Reading quote values and timing');inspectSource();
  await act(async()=>reads[0].reject(new Error('Synthetic commercial failure')));
  expect(view.container.querySelector('[role="alert"]')?.textContent).toContain('Synthetic commercial failure');
- expect(view.container.querySelector('[aria-label="Inspect Quoted value"]')).toBeNull();inspectSource();
+ expect(view.container.querySelector<HTMLButtonElement>('[aria-label="Inspect Quoted value"]')?.disabled).toBe(true);inspectSource();
  const retry=[...view.container.querySelectorAll('button')].find(button=>button.textContent==='Retry commercial report')!;
  act(()=>retry.click());expect(reads).toHaveLength(2);
  expect(view.container.textContent).toContain('Reading quote values and timing');inspectSource();
  await act(async()=>reads[1].resolve(commercialFixture(hubFixture,filters)));
  expect(view.container.querySelector('[aria-label="Inspect Quoted value"]')).not.toBeNull();inspectSource();
  view.unmount();
+});
+
+it.each([['quoted','Quoted value'],['accepted','Accepted value'],['average','Average accepted quote'],['enquiryDays','Enquiry to first quote'],['acceptanceDays','First quote to acceptance']])('returns a URL-restored %s drawer to its real metric after evidence arrives',async(metric,label)=>{
+ window.history.replaceState(null,'','/?commercialMetric='+metric);
+ let resolve!:(report:CommercialReport)=>void;
+ const view=renderIntoDocument(<CommercialOverview hub={hubFixture} filters={hubDefaults(fixtureFilters)} apply={vi.fn()} loader={()=>new Promise<CommercialReport>(yes=>{resolve=yes;})}/>);
+ await act(async()=>{});expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+ await act(async()=>resolve(commercialFixture(hubFixture,fixtureFilters)));
+ const target=view.container.querySelector<HTMLButtonElement>(`[aria-label="Inspect ${label}"]`)!;
+ await act(async()=>{document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label^="Close"]')!.click();});
+ await vi.waitFor(()=>expect(document.activeElement).toBe(target));
+ expect(document.querySelector('[role="dialog"]')).toBeNull();view.unmount();window.history.replaceState(null,'','/');
+});
+it('keeps ordinary click-owned drawer focus restoration',async()=>{
+ window.history.replaceState(null,'','/');
+ const view=renderIntoDocument(<CommercialOverview hub={hubFixture} filters={hubDefaults(fixtureFilters)} apply={vi.fn()} loader={async()=>commercialFixture(hubFixture,fixtureFilters)}/>);await act(async()=>{});
+ const target=view.container.querySelector<HTMLButtonElement>('[aria-label="Inspect Quoted value"]')!;
+ await act(async()=>{target.focus();target.click();});
+ await act(async()=>{document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label^="Close"]')!.click();});
+ expect(document.activeElement).toBe(target);view.unmount();window.history.replaceState(null,'','/');
 });

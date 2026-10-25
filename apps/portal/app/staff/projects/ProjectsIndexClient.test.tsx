@@ -9,6 +9,11 @@ import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { ApiError } from '@/lib/repo/apiClient';
 import { PROJECTS_INDEX_QUERY_SCOPE } from '@/lib/queries/projectsIndex';
 
+let publishedPager:((page:number)=>void)|undefined;
+vi.mock('@/components/ui/foundation/FoundationPagination',async original=>{
+ const actual=await original<typeof import('@/components/ui/foundation/FoundationPagination')>();
+ return {...actual,Pagination:(props:Parameters<typeof actual.Pagination>[0])=>{publishedPager=props.onPageChange;return <actual.Pagination {...props}/>;}};
+});
 const replace = vi.fn();
 const prefetch = vi.fn();
 const openProject = vi.fn();
@@ -196,6 +201,16 @@ describe('ProjectsIndexClient', () => {
     document.body.innerHTML = '';
   });
 
+  it('keeps real table headers and usable filters mounted through the initial read',()=>{
+    let pending=true;useQueryMock.mockImplementation(options=>({data:pending?undefined:matchingIndexData(options),error:null,isFetching:pending,isPlaceholderData:false,refetch:vi.fn()}));
+    const view=renderIntoDocument(<ProjectsIndexClient/>),table=view.container.querySelector('table'),header=view.container.querySelector('thead'),search=view.container.querySelector<HTMLInputElement>('#projectSearch')!;
+    expect(header?.textContent).toContain('Next action');expect(view.container.textContent).toContain('Reading projects');expect(search.disabled).toBe(false);
+    const filters=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.startsWith('Filters'))!;expect(filters.disabled).toBe(false);
+    act(()=>filters.click());expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    act(()=>[...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button=>button.textContent==='Cancel')!.click());
+    pending=false;view.rerender(<ProjectsIndexClient/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('thead')).toBe(header);expect(view.container.querySelector('#projectSearch')).toBe(search);expect(view.container.textContent).toContain('Deck Build');view.unmount();
+  });
+
   it('renders fresh index data through the combined authenticated query', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
@@ -342,7 +357,7 @@ describe('ProjectsIndexClient', () => {
     act(() => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
 
     expect(rendered.container.textContent).not.toContain('Deck Build');
-    expect(rendered.container.textContent).toContain('Updating projects…');
+    expect(rendered.container.textContent).toContain('Reading projects…');
     rendered.unmount();
   });
 
@@ -359,7 +374,7 @@ describe('ProjectsIndexClient', () => {
     );
 
     expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('pending');
-    expect(rendered.container.textContent).toContain('Updating projects…');
+    expect(rendered.container.textContent).toContain('Reading projects…');
     expect(rendered.container.textContent).not.toContain('No projects yet');
     rendered.unmount();
   });
@@ -456,6 +471,23 @@ describe('ProjectsIndexClient', () => {
     expect(openProject).toHaveBeenCalledWith('proj_1');
 
     rendered.unmount();
+  });
+
+  it('publishes the genuine pager and rejects a saved callback after its selection or owner retires',async()=>{
+    useQueryMock.mockImplementation(options=>{
+      const data=matchingIndexData(options);data.projects.totalCount=100;data.projects.totalPages=2;
+      return {data,error:null,isFetching:false,isPlaceholderData:false,refetch:vi.fn()};
+    });
+    const rendered=renderIntoDocument(<ProjectsIndexClient initialFilters={ALL_FILTERS}/>);
+    const table=rendered.container.querySelector('table'),body=rendered.container.querySelector('tbody');
+    const history=vi.spyOn(window.history,'replaceState');
+    const first=publishedPager!;expect(first).toBeTypeOf('function');
+    act(()=>first(2));expect(new URLSearchParams(window.location.search).get('page')).toBe('2');
+    const previous=publishedPager!;const input=rendered.container.querySelector<HTMLInputElement>('#projectSearch')!;
+    act(()=>changeInputValue(input,'Different selection'));await act(async()=>{await Promise.resolve();});
+    history.mockClear();act(()=>previous(1));expect(history).not.toHaveBeenCalled();
+    expect(rendered.container.querySelector('table')).toBe(table);expect(rendered.container.querySelector('tbody')).toBe(body);
+    const retired=publishedPager!;rendered.unmount();history.mockClear();act(()=>retired(1));expect(history).not.toHaveBeenCalled();history.mockRestore();
   });
 
   it('closes an inline editor immediately and shows background save state before the request settles', async () => {

@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { cleanProjectIndexHref, readProjectIndexPosition, rememberProjectIndexPosition } from '@/lib/projects/projectIndexSession';
 import { parseProjectIndexView, projectIndexViewHref, type ProjectIndexView } from './projectIndexView';
 import type { ProjectsIndexFilters } from './projectIndexFilters';
+import type {PublicProjectIndexView} from './ProjectsIndexWorkspace';
 
-export function useProjectIndexView(initialFilters?: ProjectsIndexFilters, sessionKey?: string | null) {
+export function useProjectIndexView(initialFilters?: ProjectsIndexFilters, sessionKey?: string | null, controlled?:PublicProjectIndexView) {
   const params = useSearchParams();
   const [view, setView] = useState<ProjectIndexView>(() => ({
     ...parseProjectIndexView(new URLSearchParams(params.toString())), ...initialFilters,
@@ -17,12 +18,18 @@ export function useProjectIndexView(initialFilters?: ProjectsIndexFilters, sessi
   const observed = useRef(signature);
   const pendingPosition = useRef(readProjectIndexPosition(sessionKey));
   const observedSession = useRef(sessionKey);
+  // Saved row anchors belong to the verified staff reader, never the public
+  // controller. An early explicit filter change supersedes saved position.
+  if(controlled?.changed)pendingPosition.current=null;
 
   useEffect(() => {
     if (observedSession.current !== sessionKey) {
       observedSession.current = sessionKey;
-      pendingPosition.current = readProjectIndexPosition(sessionKey);
+      pendingPosition.current = controlled?.changed ? null : readProjectIndexPosition(sessionKey);
     }
+    // A shared public controller owns URL adoption; its explicit filter must
+    // not re-arm a saved row position during the same passive-effect commit.
+    if(controlled){observed.current=signature;return;}
     if (observed.current === signature) return;
     observed.current = signature;
     const next = JSON.parse(signature) as ProjectIndexView;
@@ -30,9 +37,10 @@ export function useProjectIndexView(initialFilters?: ProjectsIndexFilters, sessi
     current.current = next;
     pendingPosition.current = readProjectIndexPosition(sessionKey);
     setView(next);
-  }, [signature, sessionKey]);
+  }, [signature, sessionKey, controlled]);
 
   function update(patch: Partial<ProjectIndexView>, resetPage = true) {
+    if(controlled){pendingPosition.current=null;controlled.update(patch,resetPage);return;}
     const next = { ...current.current, ...(resetPage ? { page: 1 } : {}), ...patch };
     current.current = next;
     pendingPosition.current = null;
@@ -74,5 +82,5 @@ export function useProjectIndexView(initialFilters?: ProjectsIndexFilters, sessi
     };
   }, [sessionKey]);
 
-  return { view, update, restoreScroll, reset: () => update(parseProjectIndexView(new URLSearchParams())) };
+  return { view:controlled?.view??view, update, restoreScroll, reset: () => update(parseProjectIndexView(new URLSearchParams())) };
 }

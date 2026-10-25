@@ -17,7 +17,7 @@ export function useCommercialListState<T>(projectId: string, section: string, in
   }];
 }
 
-export function useCommercialListScroll(projectId: string, section: string, ready: boolean) {
+export function useCommercialListScroll(projectId: string, section: string, ready: boolean, restore = true) {
   const client = useOptionalPortalQueryClient();
   useEffect(() => {
     if (!ready || !client) return;
@@ -28,7 +28,7 @@ export function useCommercialListScroll(projectId: string, section: string, read
     client.setQueryData(activeKey, section);
     // A detail return keeps its list position. A different tab must not yank
     // the current viewport to that tab's old position after its read completes.
-    const frame = !returningToList || saved === undefined ? null : requestAnimationFrame(() => window.scrollTo({ top: saved, behavior: 'instant' }));
+    const frame = !restore || !returningToList || saved === undefined ? null : requestAnimationFrame(() => window.scrollTo({ top: saved, behavior: 'instant' }));
     let position = window.scrollY;
     const remember = () => { position = window.scrollY; };
     window.addEventListener('scroll', remember, { passive: true });
@@ -37,5 +37,5 @@ export function useCommercialListScroll(projectId: string, section: string, read
       window.removeEventListener('scroll', remember);
       client.setQueryData(key, position);
     };
-  }, [client, projectId, ready, section]);
+  }, [client, projectId, ready, restore, section]);
 }

@@ -868,3 +868,15 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     expect(css).toMatch(/\.ganttBar,[\s\S]*transition:\s*none;/);
   });
 });
+
+it('keeps real timeline controls usable while missing counts are pending rather than zero',async()=>{
+ const props={...ganttProps(),dataPending:true,installers:[],laneItems:new Map(),visibleScheduleItems:[],scheduleBars:[]};
+ const rendered=renderIntoDocument(<ScheduleGanttView {...props}/>);await flushEffects();
+ const crews=rendered.container.querySelector('summary[aria-label="Crew filters loading"]')!;
+ expect(crews.getAttribute('aria-disabled')).toBe('true');expect(crews.textContent).not.toContain('0 of 0');
+ const attention=[...rendered.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.includes('Needs attention'))!;
+ expect(attention.disabled).toBe(true);expect(attention.textContent).toContain('Reading');
+ expect(rendered.container.querySelector<HTMLSelectElement>('[aria-label="Timeline scale"]')?.disabled).toBe(false);
+ expect(rendered.container.querySelector<HTMLSelectElement>('[aria-label="Density"]')?.disabled).toBe(false);
+ rendered.unmount();
+});

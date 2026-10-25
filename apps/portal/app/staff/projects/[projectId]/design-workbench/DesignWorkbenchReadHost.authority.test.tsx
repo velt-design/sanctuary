@@ -1,0 +1,41 @@
+import { act, useLayoutEffect } from 'react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { PostgrestError } from '@supabase/supabase-js';
+import { renderIntoDocument } from '../../../../../../../test/reactHarness';
+import ReadHost from './DesignWorkbenchReadHost';
+import { loadWorkbenchPageRead } from './loadWorkbenchPageRead.server';
+import { loadProjectEstimateDetail } from '@/lib/estimates/loadProjectEstimateDetail';
+import type { WorkbenchRouteContext, WorkbenchPageRead } from './workbenchPageRead';
+import type { EstimateDetail } from '@/lib/estimates/types';
+const { query, save } = vi.hoisted(() => ({ query: vi.fn(), save: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock('@/lib/supabase/serverClient', () => ({ getSupabaseServerAuth: async () => { const builder: any = { select: () => builder, eq: () => builder, maybeSingle: query }; return { from: () => builder }; } }));
+vi.mock('./DesignWorkbenchEstimateClient', () => ({ default: (props: any) => {
+  useLayoutEffect(() => { props.externalChrome.onSaveActionChange({ label: 'Save workbench draft', statusText: 'Unsaved changes', disabled: false, onSave: save }); return () => props.externalChrome.onSaveActionChange(null); }, [props.externalChrome.onSaveActionChange]);
+  return <div data-private-runtime data-read-only={String(props.readOnly)}>{props.projectName}</div>;
+} }));
+afterEach(() => { query.mockReset(); save.mockReset(); });
+const projectId = 'proj_00000000-0000-4000-8000-000000000001', estimateId = 'est_00000000-0000-4000-8000-000000000002';
+const context: WorkbenchRouteContext = { kind: 'ready', project: { id: projectId, name: 'Private verified project', siteAddress: null }, estimate: { id: estimateId, versionLabel: 'V1', status: 'draft', createdAt: '2026-10-22', isActiveDraft: true, selectionSource: 'query' }, request: null, estimateWarning: null, requestWarning: null, providedEstimateId: estimateId, providedRequestId: null };
+
+it.each(['42501', 'PGRST301', 'PGRST302', 'PGRST303', '08006'])('connects actual status-less estimate read %s to cached runtime authority', async (code) => {
+  const estimate = { id: estimateId, projectId, editability: { isLocked: false } } as EstimateDetail;
+  const ready = loadWorkbenchPageRead({ projectId, estimateId }, { context: async () => context, estimate: async () => estimate });
+  const element = (initialRead: WorkbenchPageRead) => <ReadHost projectId={projectId} estimateId={estimateId} requestId={null} initialRead={initialRead} backHref="/staff/projects" />;
+  const view = renderIntoDocument(element(ready));
+  await act(async () => ready.estimate);
+  expect(view.container.querySelector('[data-private-runtime]')).not.toBeNull();
+  const error = new PostgrestError({ code, message: 'Private database error', details: '', hint: '' });
+  query.mockResolvedValue({ data: null, error, status: code === '08006' ? 503 : 403 });
+  const next = loadWorkbenchPageRead({ projectId, estimateId }, { context: async () => context, estimate: loadProjectEstimateDetail });
+  view.rerender(element(next));
+  await act(async () => next.estimate);
+  expect(query).toHaveBeenCalledOnce(); expect(error).not.toHaveProperty('status');
+  const transient = code === '08006';
+  expect(Boolean(view.container.querySelector('[data-private-runtime]'))).toBe(transient);
+  expect(view.container.textContent?.includes('Private verified project')).toBe(transient);
+  expect(view.container.querySelector('main')?.hasAttribute('data-estimate-id')).toBe(transient);
+  if (transient) expect(view.container.querySelector('[data-private-runtime]')?.getAttribute('data-read-only')).toBe('true');
+  expect((view.container.querySelector('[data-workbench-save-draft]') as HTMLButtonElement).disabled).toBe(true);
+  expect(save).not.toHaveBeenCalled(); view.unmount();
+});

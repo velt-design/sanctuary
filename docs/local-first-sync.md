@@ -2,6 +2,15 @@
 
 The portal uses local-first primitives for heavy staff editing flows where routine edits should feel instant while durable business state remains server-authoritative.
 
+The progressive Contact Detail owner can mount before metadata by passing a null
+entity key. `useLocalWorkingCopy` then performs no entity lookup, reports no
+hydrated working copy and rejects saves until a real key exists; clearing is a
+no-op. Alias sync likewise performs no lookup with a null fallback key. Existing
+non-null callers retain their working-copy, alias and queue behavior. No fabricated
+Contact or guessed private entity is used to fill pending fields. Contact editing
+still begins only after genuine metadata. Nullable-key/default-path tests and the
+existing contact autosave/conflict tests cover this boundary.
+
 ## Core Files
 
 - `apps/portal/lib/localFirst/store.ts`: IndexedDB-backed persisted state, working copies, aliases, queue state.
@@ -121,3 +130,8 @@ Current local signal from 2026-05-03: `npx vitest run apps/portal/lib/localFirst
 Manually verify pending, failed, retry, and lock states for changed entity flows.
 
 Before enabling future workbench-backed saved pricing, manual QA must include local-first estimate create/update under calculator pricing and blocked workbench-solved pricing, retry after a transient failure, durable ID alias resolution, dependent quote/design-request queue release, and `ESTIMATE_LOCKED` conflict handling for sent, accepted, and declined quote-backed estimates.
+
+The nullable working-copy and alias hooks defer storage hydration as well as
+entity lookup when their identity key is null. Calculator save-outcome tracking
+uses a null key until a genuine outcome exists. Ordinary non-null keys retain
+the authenticated owner binding and existing persistence behavior.

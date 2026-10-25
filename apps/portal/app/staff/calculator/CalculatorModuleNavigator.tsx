@@ -1,5 +1,6 @@
 'use client';
 
+import { useCalculatorSessionRead } from './CalculatorSessionReadContext';
 import { useMemo, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
 import {
@@ -38,11 +39,13 @@ export default function CalculatorModuleNavigator({
   onMoveModule,
   onRemoveModule,
 }: CalculatorModuleNavigatorProps) {
+  const {ready,error}=useCalculatorSessionRead();
+  const unknownLabel=error?"Modules unavailable":"Reading modules…";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [movingModuleIndex, setMovingModuleIndex] = useState<number | null>(null);
   const [moveTargetPergolaId, setMoveTargetPergolaId] = useState('');
 
-  const activeItem = model.items.find((item) => item.isActive) ?? model.items[0] ?? null;
+  const activeItem = ready ? model.items.find((item) => item.isActive) ?? model.items[0] ?? null : null;
   const movingItem = movingModuleIndex === null ? null : model.items[movingModuleIndex] ?? null;
   const moveTargets = useMemo(
     () => pergolas.filter((pergola) => pergola.id !== movingItem?.pergolaId),
@@ -104,21 +107,21 @@ export default function CalculatorModuleNavigator({
           <div>
             <h2 className={styles.title}>Modules</h2>
             <p className={styles.summary}>
-              {`${moduleCount} module${moduleCount === 1 ? '' : 's'} across ${model.groups.length} pergola${model.groups.length === 1 ? '' : 's'}`}
+              {!ready ? unknownLabel : `${moduleCount} module${moduleCount === 1 ? '' : 's'} across ${model.groups.length} pergola${model.groups.length === 1 ? '' : 's'}`}
             </p>
           </div>
-          <button type="button" className={styles.addPergolaButton} onClick={() => addPergola(closeAfter)}>
+          <button type="button" className={styles.addPergolaButton} disabled={!ready} onClick={() => addPergola(closeAfter)}>
             Add pergola
           </button>
         </div>
 
         <div className={styles.groups}>
-          {model.groups.length === 0 ? (
+          {!ready ? <p role="status">{unknownLabel}</p> : model.groups.length === 0 ? (
             <p className={styles.emptyGroup}>
               No pergolas in this estimate. Add one if this scope includes a pergola.
             </p>
           ) : null}
-          {model.groups.map((group) => (
+          {(ready ? model.groups : []).map((group) => (
             <section key={group.pergolaId} className={styles.group} aria-labelledby={`${surface}-${group.pergolaId}-heading`}>
               <div className={styles.groupHeader}>
                 <h3 id={`${surface}-${group.pergolaId}-heading`} className={styles.groupTitle}>
@@ -243,10 +246,10 @@ export default function CalculatorModuleNavigator({
       >
         <span>
           <strong>{activeItem?.label ?? 'Modules'}</strong>
-          <span>{activeItem ? `${activeItem.styleLabel} · ${activeItem.dimensionsLabel}` : 'Choose a module'}</span>
+          <span>{!ready ? unknownLabel : activeItem ? `${activeItem.styleLabel} · ${activeItem.dimensionsLabel}` : 'Choose a module'}</span>
         </span>
         <span className={styles.mobileLauncherCount}>
-          {model.totalIssueCount
+          {!ready ? unknownLabel : model.totalIssueCount
             ? calculatorIssueCountLabel(model.totalIssueCount)
             : calculatorModuleCountLabel(moduleCount)}
         </span>

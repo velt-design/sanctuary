@@ -11,8 +11,8 @@ export default function ProjectPageFixtureFrame(props: Omit<ComponentProps<typeo
   const stateParam = useSearchParams().get('snapshotState');
   const stateOverride = stateParam === 'summary' || stateParam === 'refresh-failed' || stateParam === 'fresh' ? stateParam : undefined;
   const snapshotState = stateOverride ?? props.snapshotState;
-  const navigation = useProjectTabSelection(props.snapshot.project.id, props.tab, props.snapshot.project.hasJobPacks);
-  const reads = useProjectOverviewReads(props.host, props.snapshot.project.id, navigation.activeTab === 'activity');
+  const navigation = useProjectTabSelection(props.projectId ?? props.snapshot?.project.id ?? "", props.tab, props.snapshot?.project.hasJobPacks);
+  const reads = useProjectOverviewReads(props.host, props.projectId ?? props.snapshot?.project.id ?? "", navigation.activeTab === 'activity');
   const retry = () => {
     const url = new URL(window.location.href);
     url.searchParams.set('snapshotState', 'summary');

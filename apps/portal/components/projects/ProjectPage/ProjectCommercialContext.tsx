@@ -18,6 +18,11 @@ const Context = createContext<CommercialContext>({
 });
 export const useProjectCommercialContext = () => useContext(Context);
 
+/** Published private nodes keep their originating guarded value; this owns no state. */
+export function ProjectCommercialScope({ value, children }: { value: CommercialContext; children: ReactNode }) {
+  return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+
 export function ProjectCommercialProvider({ projectId, work, ready, children }: {
   projectId: string; work?: ProjectWorkProjection; ready: boolean; children: ReactNode;
 }) {
@@ -36,7 +41,7 @@ export function ProjectCommercialProvider({ projectId, work, ready, children }: 
 /** Presentation acknowledgement only. Existing command permissions and safeguards still apply. */
 export function CommercialProjectNotice({ projectId, view }: { projectId: string; view: string }) {
   const context = useProjectCommercialContext();
-  if (!context.ready) return <AlertBanner tone="info" title="Commercial actions paused">The current project state needs to finish loading. Saved records remain available; use the project refresh above if it failed.</AlertBanner>;
+  if (!context.ready) return <AlertBanner tone="info" title="Commercial actions paused">Record actions require a verified current project state. Retry any failed project reads above.</AlertBanner>;
   if (!context.paused) return null;
   return <AlertBanner tone="info" title={context.status ?? 'Project on hold'}>
     <p>{context.closed

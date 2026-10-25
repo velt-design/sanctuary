@@ -1,4 +1,5 @@
-import { act } from "react";
+import { act, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
 import Frame from "./ProjectPageFrame";
@@ -6,8 +7,9 @@ import ProjectSnapshotNotice from './ProjectSnapshotNotice';
 import { useProjectTabSelection } from "./useProjectTabSelection";
 import type { ComponentProps } from "react";
 function ProjectPageFrame(props: Omit<ComponentProps<typeof Frame>, 'optimisticTab' | 'onTabSelect'>) {
-  const navigation = useProjectTabSelection(props.snapshot.project.id, props.tab, Boolean(props.snapshot.project.hasJobPacks));
-  return <Frame {...props} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab} />;
+  const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  const navigation = useProjectTabSelection(props.projectId ?? props.snapshot?.project.id ?? "", props.tab, Boolean(props.snapshot?.project.hasJobPacks));
+  return <QueryClientProvider client={client}><Frame {...props} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab} /></QueryClientProvider>;
 }
 
 let mockSearchParams = "tab=activity";
@@ -31,7 +33,7 @@ vi.mock("@/components/ui/toast/ToastProvider", () => ({
 
 vi.mock("@/lib/repo/projectsRepo", () => ({ deleteProject: vi.fn() }));
 
-vi.mock("./ProjectTabNavigation", () => ({
+vi.mock("./ProjectTabNavigationSurface", () => ({
   default: ({ initialTab, optimisticTab, onTabSelect, tabAvailabilityReady }: any) => (
     <nav
       data-testid="header-tabs"
@@ -155,6 +157,7 @@ describe("ProjectPageFrame", () => {
   });
   afterEach(() => {
     mockSearchParams = "tab=activity";
+    act(() => window.history.replaceState(null, "", "/"));
     document.body.innerHTML = "";
   });
 
@@ -273,6 +276,7 @@ describe("ProjectPageFrame", () => {
     ).toBe("job-packs");
 
     mockSearchParams = "tab=estimates";
+    act(() => window.history.replaceState(null, "", "/staff/projects/proj_123?tab=estimates"));
     rendered.rerender(
       <ProjectPageFrame snapshot={snapshot} host="host" tab="activity" />,
     );

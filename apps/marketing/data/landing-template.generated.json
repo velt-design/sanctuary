@@ -1,5 +1,5 @@
 {
-  "hash": "d73e5192732f300616052c000657f06afb1f7f1feb7bcd594cf6f1b83ebe0ae0",
+  "hash": "495986c7ce00834905273f5212a0f55e82c68206acd55b5194d49126b85cc767",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -2012,7 +2012,7 @@
     "three": "0.183.2",
     "three-stdlib": "2.36.1",
     "web-vitals": "5.1.0",
-    "zod": "4.1.13"
+    "zod": "4.6.6"
   },
   "publicAssets": {
     "apps/marketing/public/images/project-atelier-shu-05.jpg": "9c762a91326ab1d34c83bba898b405316fb5f9ae2b5afb531e9e4f8365b7ba6f",

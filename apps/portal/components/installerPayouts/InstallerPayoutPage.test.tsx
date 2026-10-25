@@ -44,3 +44,11 @@ it('retains the entered invoice on failure and uses admin endpoint without chang
   await waitFor(()=>expect(fetcher).toHaveBeenCalledTimes(2));
   expect(fetcher.mock.calls[1][0]).toContain('/api/admin/');
 });
+
+it('keeps the actual payout sheet pending and on failure, recovers and clears denied evidence',async()=>{
+ let finish!:(response:Response)=>void;const fetcher=vi.fn(()=>new Promise<Response>(yes=>{finish=yes;}));vi.stubGlobal('fetch',fetcher);await render(<InstallerPayoutPage projectId="project-a"/>);
+ const sheet=document.querySelector('[aria-label="Confirmed payout sheet"]')!;expect(sheet.textContent).toContain('Installation scope');expect(sheet.textContent).toContain('Reading');expect(sheet.textContent).not.toContain('$0.00');expect(sheet.textContent).not.toContain('No installer agreement');
+ await act(async()=>finish(Response.json({error:'Read failed'},{status:503})));expect(document.querySelector('[aria-label="Confirmed payout sheet"]')).toBe(sheet);expect(sheet.textContent).toContain('Unavailable');await fireEvent.click(screen.getByText('Reload'));await act(async()=>finish(Response.json({events:[agreement],canEdit:false})));expect(sheet.textContent).toContain('Install frame');
+ await fireEvent.click(screen.getByText('Reload'));expect(sheet.textContent).toContain('Install frame');await act(async()=>finish(Response.json({error:'Access ended'},{status:403})));expect(sheet.textContent).not.toContain('Install frame');expect(sheet.textContent).toContain('Unavailable');expect(screen.queryByText('Add to this agreement')).toBeNull();
+ await act(async()=>root.render(<InstallerPayoutPage projectId="project-b"/>));expect(document.body.textContent).not.toContain('Crew');expect(document.body.textContent).toContain('Reading verified payout');
+});

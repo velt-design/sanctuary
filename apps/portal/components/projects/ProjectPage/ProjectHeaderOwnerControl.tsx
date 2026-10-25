@@ -14,19 +14,24 @@ import { Button } from "@/components/ui/foundation";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import ProjectOwnerControls from "./tabs/overview/ProjectOwnerControls";
 import styles from "./ProjectPage.module.css";
+import ProjectHeaderOwnerSurface from "./ProjectHeaderOwnerSurface";
 
 export default function ProjectHeaderOwnerControl({
   project,
+  projectId = project?.id ?? "",
   host,
   active,
   expectedWorkModel,
   externallyPaused = false,
+  pending: metadataPending = !project,
 }: {
-  project: ProjectPageSnapshot["project"];
+  project: ProjectPageSnapshot["project"] | null;
+  projectId?: string;
   host: string;
   active: boolean;
-  expectedWorkModel: ProjectPageSnapshot["workModel"];
+  expectedWorkModel?: ProjectPageSnapshot["workModel"];
   externallyPaused?: boolean;
+  pending?: boolean;
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -34,7 +39,7 @@ export default function ProjectHeaderOwnerControl({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const commandQuery = useQuery({
-    ...projectCommandCentreQueryOptions(host, project.id),
+    ...projectCommandCentreQueryOptions(host, projectId),
     enabled: false,
   });
   const coordinatedData =
@@ -44,10 +49,11 @@ export default function ProjectHeaderOwnerControl({
       ? commandQuery.data
       : null;
   const owner = coordinatedData?.owner ?? null;
-  const resolvedOwner = owner ? owner.owner : project.owner;
-  const displayName = resolvedOwner?.displayName ?? "Unassigned";
-  const ownerKey = resolvedOwner?.key ?? "unassigned";
+  const resolvedOwner = owner ? owner.owner : project?.owner;
+  const displayName = resolvedOwner?.displayName ?? (project ? "Unassigned" : metadataPending ? "Reading owner" : "Owner unavailable");
+  const ownerKey = resolvedOwner?.key ?? (project ? "unassigned" : "unknown");
   const controlsPaused =
+    !project ||
     pending ||
     externallyPaused ||
     commandQuery.isFetching ||
@@ -71,11 +77,11 @@ export default function ProjectHeaderOwnerControl({
         patchProjectCommandCentreCache(
           queryClient,
           host,
-          project.id,
+          projectId,
           response.commandCentre,
         );
       }
-      await invalidateProjectWorkReads(queryClient, host, project.id);
+      await invalidateProjectWorkReads(queryClient, host, projectId);
       if (response.refreshRequired) void commandQuery.refetch();
       toast.success(
         response.command.replayed
@@ -110,13 +116,10 @@ export default function ProjectHeaderOwnerControl({
           <span>{displayName}</span>
         </button>
       ) : (
-        <span className={styles.mastheadOwner} data-project-owner={ownerKey}>
-          <strong>Owner</strong>
-          <span>{displayName}</span>
-        </span>
+        <ProjectHeaderOwnerSurface ownerKey={ownerKey} displayName={displayName} pending={metadataPending} />
       )}
 
-      {open && owner ? (
+      {open && owner && project ? (
         <PipelineModal
           open
           size="sm"
@@ -138,7 +141,7 @@ export default function ProjectHeaderOwnerControl({
           }
         >
           <ProjectOwnerControls
-            projectId={project.id}
+            projectId={projectId}
             stage={project.stage}
             owner={owner}
             disabled={controlsPaused}

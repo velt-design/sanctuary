@@ -1,10 +1,13 @@
-import { act, type ReactNode } from "react";
+import { act, useMemo, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../test/reactHarness";
 import { ApiError } from "@/lib/repo/apiClient";
+import ProjectOverviewSurface,{useOverviewControls,type ProjectOverviewEvidence} from './ProjectOverviewSurface';
+import {useOwnedPortalPublication} from '@/components/page-state/PortalPageSource';
 
 const useQueryMock = vi.fn();
 const invalidateQueriesMock = vi.fn();
+vi.mock('./overview/ProjectEnquiryReceiptPanel',()=>({default:()=> <p data-guarded-enquiry>Verified original enquiry</p>}));
 
 vi.mock('@/components/site-visits/ProjectNextVisit', () => ({default:({projectId}:{projectId:string})=><section data-next-visit-project={projectId}>Next site visit</section>}));
 
@@ -68,22 +71,13 @@ vi.mock("./overview/ProjectWorkSection", () => ({
   ),
 }));
 
-vi.mock("./overview/ProjectWorkFilesCard", () => ({
-  default: ({ children }: { children: ReactNode }) => (
-    <div data-project-work-files-card="true">{children}</div>
-  ),
+vi.mock("./overview/ProjectWorkFilesCard", async (original) => ({
+  ...await original<typeof import('./overview/ProjectWorkFilesCard')>(),
 }));
-
 vi.mock("./overview/ProjectRecentNotesEvents", () => ({
-  default: ({ projectId }: { projectId: string }) => (
-    <section
-      data-testid="mock-recent"
-      data-project-id={projectId}
-      data-recent-notes-events="true"
-    >
-      Recent notes and events
-    </section>
-  ),
+ projectRecentNotesEvidence:({projectId,statusPanel}:{projectId:string;statusPanel?:ReactNode})=>({
+  notes:<section data-testid="mock-recent" data-project-id={projectId}>Recent notes and events</section>,events:null,statusPanel,
+ }),
 }));
 
 import OverviewTab from "./OverviewTab";
@@ -164,6 +158,15 @@ function queryState(overrides: Record<string, unknown> = {}) {
   };
 }
 
+let retiredOverview:((value:ProjectOverviewEvidence|null)=>void)|undefined;
+function ManagedOverview({allowed,owner}:{allowed:boolean;owner:object}) {
+ const controls=useOverviewControls('proj_1'),publication=useOwnedPortalPublication<ProjectOverviewEvidence>(allowed?owner:null);
+ const surface=useMemo(()=>({controls,publish:publication.publish}),[controls,publication.publish]);
+ if(allowed)retiredOverview=publication.publish;
+ const producer=useMemo(()=>allowed?<OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" surface={surface}/>:null,[allowed,surface]);
+ return <><ProjectOverviewSurface controls={controls} evidence={publication.value} unavailable={!allowed} onFiles={()=>undefined}/>{producer}</>;
+}
+
 async function settleLazyComponents() {
   await act(async () => {
     await Promise.all([
@@ -187,6 +190,18 @@ describe("OverviewTab", () => {
 
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  it('keeps the actual Overview layout/cards/disclosures and early Work-panel selection through guarded facts, denial and old cleanup',async()=>{
+    const a={},b={};useQueryMock.mockReturnValue(queryState({data:{projectId:'proj_1',workModel:'v2',currentDesign:{source:'estimate',price:{totalIncGstCents:null},warnings:[]},projectWork:v2Projection,owner:{}}}));
+    const view=renderIntoDocument(<ManagedOverview allowed={false} owner={a}/>),layout=view.container.querySelector('[data-project-overview-layout]'),card=view.container.querySelector('[aria-label="Project Work"]'),details=[...view.container.querySelectorAll('details')];
+    expect(useQueryMock).not.toHaveBeenCalled();expect(view.container.querySelector('[data-guarded-enquiry]')).toBeNull();
+    act(()=>[...view.container.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(button=>button.textContent==='Original enquiry')!.click());
+    expect(card?.getAttribute('data-project-work-panel')).toBe('enquiry');view.rerender(<ManagedOverview allowed owner={a}/>);await settleLazyComponents();const old=retiredOverview!;
+    expect(useQueryMock).toHaveBeenCalled();expect(view.container.querySelector('[data-guarded-enquiry]')).not.toBeNull();expect(view.container.querySelector('[data-project-overview-layout]')).toBe(layout);expect(view.container.querySelector('[aria-label="Project Work"]')).toBe(card);
+    expect([...view.container.querySelectorAll('details')]).toEqual(details);expect(card?.getAttribute('data-project-work-panel')).toBe('enquiry');
+    view.rerender(<ManagedOverview allowed={false} owner={a}/>);expect(view.container.querySelector('[data-guarded-enquiry]')).toBeNull();expect(view.container.querySelector('[data-testid="mock-current-design"]')).toBeNull();
+    view.rerender(<ManagedOverview allowed owner={b}/>);await settleLazyComponents();act(()=>old(null));expect(view.container.querySelector('[data-guarded-enquiry]')).not.toBeNull();expect(view.container.querySelector('[aria-label="Project Work"]')).toBe(card);view.unmount();
   });
 
   it("composes one V2 Project Work surface with orientation, commercial facts and recent history", async () => {
@@ -320,7 +335,7 @@ describe("OverviewTab", () => {
     expect(rendered.container.textContent).not.toContain("No current design");
     expect(
       rendered.container.querySelector('[data-testid="mock-recent"]'),
-    ).toBeNull();
+    ).not.toBeNull();
     rendered.unmount();
   });
 
@@ -467,7 +482,7 @@ describe("OverviewTab", () => {
       rendered.container.querySelector('[data-testid="mock-project-work"]'),
     ).toBeNull();
     expect(
-      rendered.container.querySelector('[data-project-work-files-card="true"]'),
+      rendered.container.querySelector('[aria-label="Project Work"]'),
     ).not.toBeNull();
     expect(
       Array.from(rendered.container.querySelectorAll("button")).filter(
@@ -500,7 +515,7 @@ describe("OverviewTab", () => {
 
     expect(rendered.container.textContent).toContain("Project Work is not ready");
     expect(
-      rendered.container.querySelector('[data-project-work-files-card="true"]'),
+      rendered.container.querySelector('[aria-label="Project Work"]'),
     ).not.toBeNull();
     rendered.unmount();
   });
@@ -531,7 +546,7 @@ describe("OverviewTab", () => {
       "Could not load the Project Overview",
     );
     expect(rendered.container.textContent).toContain(
-      "No next action or commercial position is available",
+      "No next action is available",
     );
     expect(rendered.container.textContent).not.toContain("No current design");
     expect(
@@ -540,7 +555,7 @@ describe("OverviewTab", () => {
       ),
     ).toHaveLength(1);
     act(() => {
-      (rendered.container.querySelector("button") as HTMLButtonElement).click();
+      ([...rendered.container.querySelectorAll("button")].find(button => button.textContent === "Retry") as HTMLButtonElement).click();
     });
     expect(refetch).toHaveBeenCalledOnce();
     rendered.unmount();

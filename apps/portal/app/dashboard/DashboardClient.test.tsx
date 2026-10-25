@@ -17,9 +17,9 @@ vi.mock('./useDashboardData', () => ({
 }));
 
 vi.mock('./DashboardView', () => ({
-  default: ({ data, state, onRetry }: { data: DashboardData; state: string; onRetry: () => void }) => (
-    <main data-dashboard-state={state} data-project-count={data.kpis.newLeads}>
-      <h1>Dashboard</h1>
+  default: ({ data, state, onRetry }: { data: DashboardData|null; state: string; onRetry: () => void }) => (
+    <main data-dashboard-state={state} data-project-count={data?.kpis.newLeads}>
+      <h1>Dashboard</h1>{state==='pending'?'Reading dashboard…':!data?'Could not load the dashboard':null}
       <button type="button" onClick={onRetry}>Retry saved dashboard</button>
     </main>
   ),
@@ -73,18 +73,18 @@ describe('DashboardClient', () => {
   it('reads the selected queue through the cache-first dashboard owner', () => {
     const rendered = renderIntoDocument(<DashboardClient queueMode="next7" />);
 
-    expect(useDashboardData).toHaveBeenCalledWith('next7');
+    expect(useDashboardData).toHaveBeenCalledWith('next7',undefined,undefined);
     expect(rendered.container.querySelector('[data-dashboard-state="fresh"]')).not.toBeNull();
     expect(rendered.container.firstElementChild?.getAttribute('data-project-count')).toBe('2');
     rendered.unmount();
   });
 
-  it('renders a truthful frame before any cached or fresh data exists', () => {
+  it('passes pending state to the same actual view before any data exists', () => {
     useDashboardData.mockReturnValue(result('pending'));
     const rendered = renderIntoDocument(<DashboardClient queueMode="today" />);
 
     expect(rendered.container.querySelector('[data-dashboard-state="pending"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Updating dashboard...');
+    expect(rendered.container.textContent).toContain('Reading dashboard…');
     expect(rendered.container.textContent).not.toContain('Dashboard unavailable');
     rendered.unmount();
   });

@@ -7,11 +7,12 @@ const GANTT_COMPACT_MAX_HEIGHT_PX = 360;
 
 export type ScheduleGanttLayoutMode = 'timeline' | 'compact' | 'compact-short';
 
-export function useScheduleGanttLayoutMode() {
+export function useScheduleGanttLayoutMode(active = true) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [mode, setMode] = useState<ScheduleGanttLayoutMode>('timeline');
 
   useLayoutEffect(() => {
+    if (!active) return;
     const root = rootRef.current;
     if (!root) return;
     const update = () => {
@@ -33,7 +34,7 @@ export function useScheduleGanttLayoutMode() {
       observer?.disconnect();
       window.removeEventListener('resize', update);
     };
-  }, []);
+  }, [active]);
 
   return { rootRef, mode };
 }

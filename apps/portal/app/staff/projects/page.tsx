@@ -1,3 +1,5 @@
+import GuardedGlobalPortalSearch from '@/components/layout/GuardedGlobalPortalSearch';
+import {PortalGuardedPage} from '@/components/page-state/PortalPageSource';
 import ProjectsIndexClient from './ProjectsIndexClient';
 import { requireStaffPageAccess } from '@/lib/auth';
 import { loadProjectsIndexInitialRead } from './loadProjectsIndexInitialRead';
@@ -11,7 +13,8 @@ export default async function StaffProjectsPage({ searchParams }: {
   const session = await requireStaffPageAccess('/staff/projects');
   // Middleware's existing document context selects scheduling only. The fresh
   // page gate above remains mandatory. RSC navigation/prefetch keeps the API read.
-  if (!regionalDocumentCallback((await headers()).get(DOCUMENT_CALLBACK_HEADER))) return <ProjectsIndexClient />;
+  if (!regionalDocumentCallback((await headers()).get(DOCUMENT_CALLBACK_HEADER))) return <PortalGuardedPage pathname="/staff/projects" completion={{}}>
+    <GuardedGlobalPortalSearch/><ProjectsIndexClient /></PortalGuardedPage>;
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(await searchParams ?? {})) {
     for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) search.append(key, item);
@@ -19,5 +22,6 @@ export default async function StaffProjectsPage({ searchParams }: {
   const params = projectsIndexParamsFromView(parseProjectIndexView(search));
   // Pass the in-flight read through Flight. The client keeps its controls
   // mounted while React Query waits; the route never awaits the full index.
-  return <ProjectsIndexClient initialRead={loadProjectsIndexInitialRead(session.user.id, params)} />;
+  return <PortalGuardedPage pathname="/staff/projects" completion={{}}>
+    <GuardedGlobalPortalSearch/><ProjectsIndexClient initialRead={loadProjectsIndexInitialRead(session.user.id, params)} /></PortalGuardedPage>;
 }

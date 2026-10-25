@@ -234,7 +234,6 @@ export default function CommercialWorkflowFixtureClient({
       quotePdfPreviewLoading={false}
       quotePdfPreviewError={null}
       quotePdfPreviewData={null}
-      quotePdfPreviewKey={null}
       draftExpiry={draftExpiry}
       setDraftExpiry={setDraftExpiry}
       draftReference={draftReference}

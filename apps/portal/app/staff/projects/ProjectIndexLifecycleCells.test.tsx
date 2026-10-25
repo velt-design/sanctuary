@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Table, TableBody, TableRow } from '@/components/ui/foundation';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectIndexLifecycleCells from './ProjectIndexLifecycleCells';
+import * as age from './projectStageAge';
 
 const project = { id: 'proj_1', createdAt: '2026-07-31T00:00:00Z', updatedAt: '2026-09-23T00:00:00Z', status: 'SENT', effectiveState: 'WAITING' } as const;
 describe('Project lifecycle summary', () => {
@@ -29,5 +30,23 @@ describe('Project lifecycle summary', () => {
     const rendered = renderIntoDocument(<Table><TableBody><TableRow><ProjectIndexLifecycleCells project={{ ...project, effectiveState: undefined }} /></TableRow></TableBody></Table>);
     expect(rendered.container.textContent).toContain('State unavailable');
     rendered.unmount();
+  });
+  it('does not derive discarded CLOSED ages and resumes the original current age when the same row reopens', () => {
+    vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-09-23T01:00:00Z'));
+    const derive=vi.spyOn(age,'projectStageAge');
+    const item={...project,stageChangedAt:'2026-09-20T13:00:00Z'};
+    const tree=(state:'CLOSED'|'WAITING'|'ARCHIVED')=><Table><TableBody><TableRow><ProjectIndexLifecycleCells project={{...item,effectiveState:state}}/></TableRow></TableBody></Table>;
+    const rendered=renderIntoDocument(tree('CLOSED'));
+    try {
+      expect(derive).not.toHaveBeenCalled();
+      expect(rendered.container.querySelector('[aria-label="Time in stage not applicable for closed projects"]')?.textContent).toBe('—');
+      const cell=rendered.container.querySelector('[data-column="Time in stage"]');
+      rendered.rerender(tree('WAITING'));
+      expect(derive).toHaveBeenCalledOnce();expect(derive).toHaveBeenCalledWith(item.stageChangedAt);
+      expect(cell?.textContent).toContain('2 days');expect(cell?.querySelector('time')?.textContent).toBe('21 Sept 2026');
+      rendered.rerender(tree('CLOSED'));expect(derive).toHaveBeenCalledOnce();expect(cell?.textContent).toBe('—');
+      rendered.rerender(tree('ARCHIVED'));expect(derive).toHaveBeenCalledTimes(2);expect(cell?.textContent).toContain('2 days');
+      expect(rendered.container.querySelector('[data-column="Time in stage"]')).toBe(cell);
+    } finally {rendered.unmount();derive.mockRestore();vi.useRealTimers();}
   });
 });

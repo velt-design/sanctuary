@@ -1,0 +1,22 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { progressiveWorkbenchFixture } from './progressiveRead.server';
+afterEach(() => vi.useRealTimers());
+it('uses the actual context/exact-estimate owner with distinct delayed nested results and no protected data read', async () => {
+  vi.useFakeTimers();
+  const fixture = getSanctuaryGeometryWorkbenchFixture('multi-house-u-two-pergola')!;
+  const source = progressiveWorkbenchFixture(fixture, 'b', 'complete');
+  const context = vi.fn(), estimate = vi.fn();
+  void source.read.context.then(context); void source.read.estimate.then(estimate);
+  await vi.advanceTimersByTimeAsync(900);
+  expect(context).toHaveBeenCalledOnce(); expect(estimate).not.toHaveBeenCalled();
+  expect(context.mock.lastCall![0].context.project.name).toBe('Fictional courtyard B');
+  await vi.advanceTimersByTimeAsync(1400);
+  expect(estimate.mock.lastCall![0].estimate.id).toBe(source.estimateId);
+  expect(estimate.mock.lastCall![0].estimate.projectId).toBe(source.projectId);
+  const denied = progressiveWorkbenchFixture(fixture, 'a', 'denied'); await vi.runAllTimersAsync();
+  expect(await denied.read.estimate).toMatchObject({ kind: 'error', accessEnded: true });
+  const empty = progressiveWorkbenchFixture(fixture, 'a', 'empty'); await vi.runAllTimersAsync();
+  expect(await empty.read.context).toMatchObject({ kind: 'context', context: { kind: 'no_estimate' } });
+  expect(await empty.read.estimate).toEqual({ kind: 'estimate', estimate: null });
+});

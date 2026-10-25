@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import EstimatesListSurface, { type EstimatesListEvidence, type EstimatesListBinding } from './EstimatesListSurface';
 import { useCommercialListScroll, useCommercialListState } from './useCommercialListState';
 
 import {
@@ -9,14 +10,8 @@ import {
   ButtonLink,
   DataStatePanel,
   EmptyState,
-  LoadingSkeleton,
   OverflowMenu,
-  SearchFilterBar,
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
   type BadgeTone,
 } from '@/components/ui/foundation';
@@ -47,6 +42,7 @@ export default function EstimatesListView({
   onOpen,
   onDuplicate,
   onRename,
+  listSurface,
 }: {
   projectId: string;
   estimates: EstimateMeta[];
@@ -60,83 +56,50 @@ export default function EstimatesListView({
   onOpen: (estimateId: string) => void;
   onDuplicate: (estimateId: string) => void;
   onRename: (estimate: EstimateMeta) => void;
+  listSurface?: EstimatesListBinding;
 }) {
   const commercial = useProjectCommercialContext();
-  const [query, setQuery] = useCommercialListState(projectId, 'estimates', '');
-  useCommercialListScroll(projectId, 'estimates', !loading);
+  const [savedQuery, setSavedQuery] = useCommercialListState(projectId, 'estimates', '');
+  const query = listSurface?.controls.query ?? savedQuery;
+  const restoreScroll = useRef(!listSurface?.controls.interacted);
+  useCommercialListScroll(projectId, 'estimates', !loading, restoreScroll.current);
+  if(listSurface?.controls.interacted)restoreScroll.current=false;
+  const adopted = listSurface?.controls.adopted;
+  useLayoutEffect(() => { if(!loading)adopted?.(); }, [adopted,loading]);
+  useLayoutEffect(() => {
+    if (!listSurface) return;
+    if (listSurface.controls.edited) {
+      if (savedQuery !== query) setSavedQuery(query);
+    } else listSurface.controls.adoptSavedQuery(savedQuery);
+  }, [listSurface, savedQuery, query, setSavedQuery]);
   const accepted = useMemo(() => acceptedEstimateQuoteIds(quotes ?? []), [quotes]);
-  const visibleEstimates = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    if (!needle) return estimates;
-    return estimates.filter((estimate) => [
-      estimate.internalName,
-      estimate.versionLabel,
-      estimate.createdBy,
-    ].some((value) => String(value ?? '').toLocaleLowerCase().includes(needle)));
-  }, [estimates, query]);
-
-  return (
-    <div className={styles.wrapper} role="region" aria-label="Estimates" data-estimates-view="list">
-      <div className={styles.header}>
-        <div>
-          <h3 className={styles.title}>Estimates</h3>
-          <p className={styles.subtitle}>Working designs · accepted quotes remain the agreement.</p>
-        </div>
-        {commercial.actionsAvailable && <div className={styles.headerActions}>
-          <Button variant="secondary" onClick={onCreateAddOn}>Create add-on estimate</Button>
-          <Button onClick={onCreate}>Create estimate</Button>
-        </div>}
-      </div>
-
-      {loading ? <LoadingSkeleton rows={4} columns={5} label="Loading estimates" /> : null}
-      {error ? (
-        <DataStatePanel
-          state={estimates.length ? 'stale' : 'error'}
-          title={estimates.length ? 'Showing saved estimates' : 'Could not load estimates'}
-          description={error}
-          onRetry={onRetry}
-        />
-      ) : null}
-
-      {!loading && !error && !estimates.length ? (
-        <EmptyState
-          title="No estimates yet"
+  const evidence = useMemo<EstimatesListEvidence>(() => ({
+    pending:loading,
+    notice: listSurface?.notice,
+    onSelect: listSurface?.onSelect, onIntent: listSurface?.onIntent,
+    inert: listSurface?.inert,
+    headerActions: commercial.actionsAvailable ? <div className={styles.headerActions}>
+      <Button variant="secondary" onClick={onCreateAddOn}>Create add-on estimate</Button>
+      <Button onClick={onCreate}>Create estimate</Button>
+    </div> : null,
+    status: error ? <DataStatePanel state={estimates.length ? 'stale' : 'error'}
+      title={estimates.length ? 'Showing saved estimates' : 'Could not load estimates'}
+      description={error} onRetry={onRetry} /> : null,
+    render: (query) => {
+      const needle = query.trim().toLocaleLowerCase();
+      const visibleEstimates = !needle ? estimates : estimates.filter((estimate) => [
+        estimate.internalName, estimate.versionLabel, estimate.createdBy,
+      ].some((value) => String(value ?? '').toLocaleLowerCase().includes(needle)));
+      return {
+        empty: !loading && !error && !estimates.length ? <EmptyState title="No estimates yet"
           description={commercial.closed ? 'No estimates were saved for this closed project.' : 'Create the first estimate to start pricing this project.'}
-          action={commercial.actionsAvailable ? <Button onClick={onCreate}>Create estimate</Button> : undefined}
-        />
-      ) : null}
-
-      {estimates.length ? (
-        <SearchFilterBar
-          query={query}
-          onQueryChange={setQuery}
-          queryPlaceholder="Search estimate names or versions"
-          searchId="estimate-search"
-          filters={[]}
-          onClearAll={() => setQuery('')}
-        />
-      ) : null}
-
-      {!loading && estimates.length && !visibleEstimates.length ? (
-        <EmptyState
-          title="No matching estimates"
-          description="Try a different internal name or version."
-          action={<Button variant="secondary" onClick={() => setQuery('')}>Clear search</Button>}
-        />
-      ) : null}
-
-      {visibleEstimates.length ? (
-        <Table aria-label="Project estimates" className={styles.table}>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Estimate</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Linked quotes</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+          action={commercial.actionsAvailable ? <Button onClick={onCreate}>Create estimate</Button> : undefined} /> : null,
+        noMatches: !loading && estimates.length && !visibleEstimates.length ? <EmptyState title="No matching estimates"
+            description="Try a different internal name or version."
+            action={<Button variant="secondary" onClick={() => (listSurface?.controls.setQuery ?? setSavedQuery)('')}>Clear search</Button>} /> : null,
+        rows: <>
+          {loading && !estimates.length && <TableRow><TableCell colSpan={5}><span role="status">Reading estimates…</span></TableCell></TableRow>}
+          {error && !estimates.length && <TableRow><TableCell colSpan={5}>Estimates unavailable. Retry the read.</TableCell></TableRow>}
             {visibleEstimates.map((estimate) => {
               const status = estimateStatus(estimate);
               const name = estimateDisplayName(estimate, estimates);
@@ -185,17 +148,23 @@ export default function EstimatesListView({
                     <div className={styles.actions}>
                       <Button size="small" variant="secondary" onClick={open}>{openLabel}</Button>
                       <OverflowMenu label={`Actions for ${name}`} menuLabel={name} items={[
-                        { label: 'Rename', onSelect: () => onRename(estimate) },
-                        { label: 'Duplicate', disabled: !commercial.actionsAvailable, onSelect: () => onDuplicate(estimate.id) },
+                        { label: 'Rename', disabled:loading||Boolean(error)||!commercial.actionsAvailable,onSelect: () => onRename(estimate) },
+                        { label: 'Duplicate', disabled: loading||Boolean(error)||!commercial.actionsAvailable, onSelect: () => onDuplicate(estimate.id) },
                       ]} />
                     </div>
                   </TableCell>
                 </TableRow>
               );
             })}
-          </TableBody>
-        </Table>
-      ) : null}
-    </div>
-  );
+        </>,
+      };
+    },
+  }), [accepted, commercial, error, estimates, listSurface, loading, onCreate, onCreateAddOn, onDuplicate, onOpen, onRename, onRetry, quoteReadState, quotes, setSavedQuery]);
+  useLayoutEffect(() => {
+    if (!listSurface) return;
+    listSurface.publish(evidence);
+  }, [listSurface, evidence]);
+  const publish = listSurface?.publish;
+  useLayoutEffect(() => () => publish?.(null), [publish]);
+  return listSurface ? null : <EstimatesListSurface query={query} onQueryChange={setSavedQuery} evidence={evidence} />;
 }

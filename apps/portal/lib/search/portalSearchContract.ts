@@ -35,3 +35,7 @@ export type PortalSearchResponse = {
   generatedAt: string;
 };
 
+
+export function normalizePortalSearchQuery(query: string): string {
+  return query.trim().toLocaleLowerCase('en-NZ');
+}

@@ -1,5 +1,18 @@
 # Running Jobs
 
+
+Running Jobs shares the actual SpreadsheetSurface and neutral filter/zoom controller with its guarded SpreadsheetRuntime. Genuine adapter rows/editors portal into the same tbody after selected fresh authority. Staff/crew options, local-first state, optimistic saves, locks and conflicts stay guarded. Early zoom/filter choices survive adoption; retired callbacks cannot focus a new viewport. Connected coverage is not current compiled/budget/CI acceptance.
+## Actual spreadsheet before records (22 October 2026 candidate)
+
+The actual shared spreadsheet viewport, column letters/labels and zoom remain
+mounted during initial loading, failure and complete empty selections. A status
+row distinguishes missing records from empty business activity. The actual
+search/filter toolbar remains usable before rows arrive; its missing counts do
+not read as zero. Pending/error metadata and Retry stay in the same toolbar.
+Access-ending read errors clear retained rows. Existing edits, optimistic queues,
+field ownership and concurrency behavior remain with the adapter/domain owners.
+
+
 Running Jobs is the portal replacement for the active install spreadsheet.
 
 ## Ownership

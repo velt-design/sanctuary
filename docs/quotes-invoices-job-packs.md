@@ -1,6 +1,14 @@
 # Quotes, Invoices, And Job Packs
 
+## Commercial surface and code ownership
+
+The actual Commercial toolbar persists across Estimates, Quotes and Invoices before the current guarded source arrives. `EstimatesListSurface`, `QuotesListSurface` and `InvoicesListSurface` own their same real Find controls, headers and tables; neutral query/history/scroll intent survives adoption. The existing source-owned `ProjectSnapshotEvidence` receives genuine rows, read status and actions. Pending is Reading with nullable facts, not fabricated empty records, counts or money. Only the guarded controllers read saved preferences, queries, working copies and financial state; early public interaction wins their first adoption. Standalone Commercial composes these same surfaces once, and selected quote details or calculator workspaces retain their guarded editor owners.
+
+The guarded Estimates record/controller is composed inside the already-lazy Commercial owner. Opening its actual Find/table no longer requires the calculator editor runtime. Only a genuine edit, revision or new-design selection loads that same Grid, with local preparation/error/Retry; list queries, working-copy aliases, save callbacks, URL/dirty guards and source retirement stay with their existing owners. The standalone Calculator keeps its static Grid import. This source split does not establish bundle fit or the original five-run timing targets.
+
 ## Finance register (23 October 2026 local candidate)
+
+The register and bookmarked Xero review both publish their existing guarded leaf completion to the Portal page-source owner. Accepted navigation retires the old private Finance body immediately while Next keeps its outlet mounted; a valid cached return can restore that same completion. The ordinary payment-pilot gate and Xero owner's complete guard/read setup run before the wrapper, with register filters, tables, providers and commands unchanged.
 
 `/staff/payments` opens the cross-project Invoices register on Outstanding, with
 Quotes alongside it and the existing accounting tools under Xero checks. The
@@ -159,6 +167,53 @@ Recovery uses a new audited `NATIVE` or corrected assignment command with fresh
 evidence and revision. Deployment/reconciliation never accepts a customer's
 quote or creates an invoice on their behalf.
 
+## Actual commercial owners before independent reads (22 October 2026 candidate)
+
+Commercial mounts its selected real Estimates, Quotes or Invoices owner before
+project metadata arrives. Their existing project-keyed authenticated reads remain
+authoritative. Safe Find, history and return controls stay available; no Project
+DTO or customer is invented. Selected calculator runtime/draft effects still wait
+for verified project metadata, and quote URL auto-create waits for current
+commercial authority before consuming intent and again after its estimate read.
+Job Packs similarly mounts its real toolbar/table before availability metadata;
+final confirmed availability retains canonical tab coercion. PDF/override commands
+need verified source/project authority. Genuine empty line/send/history rows
+require complete source readiness; failed or pending line reads cannot claim zero
+items. Optimized12 evidence is qualified by these two parent/empty-state defects;
+both corrections independently passed optimized13 source and ordinary protected
+entry rechecks. The retained12 failure evidence is not a successful budget result.
+
+Invoice artifact modes, delivery field labels and actual preview viewport now
+mount before metadata/PDF reads. They show Reading/Unavailable for unknown subject,
+recipients and attachment names. PDF bytes arrive independently through the same
+protected endpoint; pages exist only after the actual PDF document establishes
+its count. The shared nullable PDF owner retains teardown, worker fallback and
+all existing Files/quote consumers. Canonical9411232a brings the approved Files
+cache and single ProjectPdfStream transport: the shared viewer now retains that
+stream/preload API alongside nullable byte inputs, source identity clearing and
+read Retry. The stream remains one protected fetch with copied progressive chunks,
+not added PDF range HTTP requests.
+Quote email retains the same subject and sandboxed iframe through its220ms draft
+debounce, error and Retry. Selection-owned results mask older content on the first
+new-draft commit. Quote PDF keys use the complete existing renderer input,
+including payment terms/header rather than a stale saved draft render hash. Exact
+renderer/provider/send contracts are unchanged; no live commands are tested.
+
+## Finance interface-first composition (22 October 2026 candidate)
+
+After the existing finance session gate and selection validation, Finance review
+starts its same single repository read and returns the actual header, views,
+search and invoice-table columns. Only real status, tbody and pagination await
+that shared promise. Pending/error rows name missing evidence instead of empty
+success. Existing action priorities, invoice flags, guidance, history and pagination
+queries are unchanged; no unverified invoice creates an action or provider call.
+Mapping passes its one deferred portal context to the actual client/forms. Its
+safe customer-name input remains present; Xero inspection starts only after a
+genuine invoice context. Unknown accounting defaults are Reading/Unavailable,
+never 'not confirmed'. Missing/failed context offers retry and keeps commands
+unavailable. Customer/default confirmations and durable command identities retain
+their original handlers. Source/connected checks are separate from protected
+optimized entry proof; no live provider or business mutation coverage is claimed.
 
 
 ## Current workflow clarity (20 October 2026 local candidate)
@@ -673,3 +728,49 @@ create dialog displays the shared family name and directs name changes to Rename
 The optimistic create and queued request retain that same family name, matching
 `ensureQuote`. New or unnamed families and manual quote scopes retain the optional
 name field. Creating a version does not rename historical versions.
+
+Mapping forms retain their DOM through reads, but customer and accounting-default
+confirmations reset for each genuine reviewed source, including a new check whose
+defaults remain null. Retaining a form must not preserve a previous confirmation.
+The narrow read-only fixture seam cannot invoke save/create/resume commands; normal
+production defaults still use the existing protected mapping APIs.
+
+### Actual commercial read owners (22 October 2026 candidate12)
+
+Estimates and Quotes keep real search and table headers through initial reads,
+empty results and failures. New safe query selections work while records are
+unknown; mutations on retained rows require their verified read. Quote detail
+keeps Back, saved-quote field labels, line-item columns, totals, payment terms and
+send-log columns in the same owners. `QuoteMetadata` owns the nullable saved fields;
+no placeholder QuoteVersionDetail or customer is constructed. Draft form adoption
+runs before the first ready commit, preserving real draft totals instead of a
+one-render zero/unsaved state. Confirmed absence/error never permits quote commands.
+Quote PDF and delivery contracts remain unchanged; exact preview content requires
+its genuine source.
+
+Invoices keep actual payment metric labels and history/search/columns before the
+two existing invoice/schedule reads settle. Each source can fill independently.
+Totals still come only from the complete authoritative schedule. Financial handlers
+require the verified reads, and authority-ending errors clear cached evidence and
+record dialogs. Existing reconciliation, command identity, draft/approval and
+provider safeguards remain. This is UI/read composition evidence, not a real
+financial-write test.
+
+`sheetPresentation` owns the same data-independent Job Pack columns and note
+visibility used by complete workbook builders and the pending spreadsheet. It moves
+no calculator/costing formulas or input interpretation. The actual toolbar, sheet
+choice, notes toggle, zoom and column header remain before estimate data. A saved
+estimate can fill Summary/labour/overhead/input sheets independently, but material
+and powdercoating rows require the existing complete override source to avoid
+presenting an unmodified intermediate set as final. No fake estimate/workbook/row
+is built. Powdercoat edits require verified current source/options, and PDF/download
+actions retain their existing source prerequisites and output contracts.
+
+The existing gated `project-page-shell-fixture?commercial=1&progressive=1` extends
+its approved fictional GET boundary, using the actual Commercial queries/owners.
+Schedule650 ms, lists900–1200 ms, detail1500 ms and powdercoat1800 ms are controlled
+scenarios. `readFailure=1` fails each allowlisted path once; explicit Retry recovers.
+All non-GET and unlisted API requests are rejected, including PDF/send/record
+commands. This fixture's preparation is not production-entry timing proof. Its
+coherent data is three estimates, three quote versions and one invoice; larger
+production commercial dataset timings have not been claimed.

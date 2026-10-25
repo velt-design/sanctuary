@@ -1,8 +1,12 @@
 'use client';
+import ScheduleCrewFilterPanel from './ScheduleCrewFilterPanel';
 
 import { deriveScheduleStatus } from './scheduleItemStatus';
 
-import { useMemo } from 'react';
+import { useMemo, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { ScheduleSurfaceProvider, useScheduleSurfaceController } from './ScheduleSurfaceContext';
+import ScheduleBoardSurface from './ScheduleBoardSurface';
 import type { ReactNode } from 'react';
 import {
   closestCenter,
@@ -48,6 +52,8 @@ export type { ScheduleBoardMenuAction } from './ScheduleBoardCards';
 export type { ScheduleBoardDrop, ScheduleBoardDropDebug } from './useScheduleBoardDragController';
 
 export type ScheduleBoardViewProps = {
+  dataPending?: boolean;
+  dataError?: boolean;
   today: string;
   scheduleMode: 'v2' | 'legacy';
   installers: Installer[];
@@ -151,26 +157,15 @@ function LaneDropZone({
   );
 }
 
-function UnscheduledDropZone({
-  children,
-  onMount,
-}: {
-  children: ReactNode;
-  onMount?: (node: HTMLDivElement | null) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled' });
-  return (
-    <div
-      ref={(node) => {
-        setNodeRef(node);
-        onMount?.(node);
-      }}
-      className={styles.unscheduledBody}
-      data-over={isOver ? 'true' : 'false'}
-    >
-      {children}
-    </div>
-  );
+function UnscheduledDropZone({ children, onMount }: { children: ReactNode; onMount?: (node: HTMLDivElement | null) => void }) {
+  const surface = useScheduleSurfaceController()!;
+  const target = surface.slots.unscheduled;
+  const { setNodeRef } = useDroppable({ id: 'unscheduled' });
+  useLayoutEffect(() => {
+    setNodeRef(target); onMount?.(target);
+    return () => { setNodeRef(null); onMount?.(null); };
+  }, [target, setNodeRef, onMount]);
+  return target ? createPortal(children, target) : null;
 }
 
 function describeDropTarget(input: {
@@ -198,7 +193,9 @@ function describeDropTarget(input: {
   return `Drop in ${crewName} · position ${target.insertionIndex + 1}, before ${targetName}.`;
 }
 
-export default function ScheduleBoardView({
+function ScheduleBoardRuntime({
+  dataPending = false,
+  dataError = false,
   today,
   scheduleMode,
   installers,
@@ -223,6 +220,8 @@ export default function ScheduleBoardView({
   buildJobMenuActions,
   buildDowntimeMenuActions,
 }: ScheduleBoardViewProps) {
+  const surface = useScheduleSurfaceController()!;
+
   const activeInstallers = useMemo(() => installers.filter((installer) => installer.active), [installers]);
   const activeInstallerIds = useMemo(() => activeInstallers.map((installer) => installer.id), [activeInstallers]);
   const { hiddenCrewIds, toggleCrew, hideCrews, showAllCrews } = useScheduleCrewVisibility(activeInstallerIds);
@@ -304,6 +303,15 @@ export default function ScheduleBoardView({
       })
     : '';
 
+  useLayoutEffect(() => { boardScrollRef.current = surface.slots.lanes; }, [boardScrollRef, surface.slots.lanes]);
+  useLayoutEffect(() => {
+    surface.publishBoard({ unscheduledCount: dataPending ? null : unscheduledJobs.length,
+      visibleCrewCount: dataPending ? null : visibleInstallers.length,
+      crewFilter: { panel:<ScheduleCrewFilterPanel crews={crewFilterOptions} hiddenCrewIds={hiddenCrewIds} hiddenItemCount={hiddenItemCount} emptyCrewIds={emptyCrewIds} disabled={Boolean(activeDragId)} readState={dataPending?dataError?'unavailable':'pending':undefined} onToggleCrew={toggleCrew} onHideCrews={hideCrews} onShowAllCrews={showAllCrews}/>, readState: dataPending ? dataError ? 'unavailable' : 'pending' : undefined,
+        crews: crewFilterOptions, hiddenCrewIds, hiddenItemCount, emptyCrewIds, disabled: Boolean(activeDragId),
+        onToggleCrew: toggleCrew, onHideCrews: hideCrews, onShowAllCrews: showAllCrews } });
+  });
+  useLayoutEffect(() => () => surface.publishBoard(null), [surface.publishBoard]);
   return (
     <DndContext
       sensors={sensors}
@@ -315,44 +323,9 @@ export default function ScheduleBoardView({
       onDragCancel={clearDragState}
       onDragEnd={handleDragEnd}
     >
-      <div className={styles.dragLiveRegion} role="status" aria-live="assertive">
-        {dropDescription}
-      </div>
-      <div className={styles.panels}>
-        <aside
-          className={cx(styles.leftPanel, unscheduledCollapsed && styles.leftPanelCollapsed)}
-          data-collapsed={unscheduledCollapsed ? 'true' : 'false'}
-          aria-label="Unscheduled jobs"
-        >
-          <div className={styles.panelHeader}>
-            <h2 className={styles.panelTitle}>Unscheduled</h2>
-            <div className={styles.panelHeaderActions}>
-              <span className={styles.muted}>{unscheduledJobs.length}</span>
-              <button
-                type="button"
-                className={styles.panelCollapseButton}
-                aria-label={unscheduledCollapsed ? 'Expand unscheduled panel' : 'Collapse unscheduled panel'}
-                aria-expanded={!unscheduledCollapsed}
-                onClick={onToggleUnscheduledCollapsed}
-              >
-                {unscheduledCollapsed ? '▸' : '◂'}
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.filters}>
-            <input
-              className={cx(styles.input, styles.boardSearchInput)}
-              aria-label="Search unscheduled projects"
-              placeholder="Search projects…"
-              value={query}
-              onChange={(e) => onQueryChange(e.target.value)}
-            />
-            <p className={styles.hint}>Only deposit-stage projects with at least one active estimate appear here.</p>
-          </div>
-
+      {surface.slots.live ? createPortal(dropDescription, surface.slots.live) : null}
           <UnscheduledDropZone onMount={(node) => (unscheduledBodyRef.current = node)}>
-            {unscheduledJobs.length ? (
+            {dataPending ? <p className={styles.note} role={dataError ? undefined : 'status'}>{dataError ? 'Unscheduled projects unavailable. Retry the schedule.' : 'Reading unscheduled projects…'}</p> : unscheduledJobs.length ? (
               <div className={styles.cardList}>
                 {unscheduledJobs.map((job) => (
                   <UnscheduledJobCard
@@ -377,11 +350,12 @@ export default function ScheduleBoardView({
               </div>
             )}
           </UnscheduledDropZone>
-
+      {surface.slots.debug ? createPortal((<>
           {process.env.NODE_ENV === 'development' ? (
             <details className={styles.debugDetails}>
               <summary className={styles.debugSummary}>Debug: schedulable jobs</summary>
               <div className={styles.debugBody}>
+                {dataPending ? <p role="status">{dataError ? 'Schedule diagnostics unavailable.' : 'Reading schedule diagnostics...'}</p> : <>
                 <div className={styles.debugRow}>
                   <span className={styles.muted}>Projects</span>
                   <span>{schedulable.debug.totalProjects}</span>
@@ -430,63 +404,16 @@ export default function ScheduleBoardView({
                   <span className={styles.muted}>Estimate archived</span>
                   <span>{schedulable.debug.scheduleItems.estimateNotSchedulable}</span>
                 </div>
+                </>}
               </div>
             </details>
           ) : null}
-        </aside>
-
-        <section className={styles.mainPanel} aria-label="Installer lanes">
-          <div className={cx(styles.legendRow, styles.boardControls)} aria-label="Schedule controls">
-            <div className={styles.boardLegend}>
-              {scheduleMode === 'v2' ? (
-                <>
-                  <span className={styles.legendItem}>
-                    <span className={styles.legendSwatch} />
-                    Forecast
-                  </span>
-                  <span className={styles.legendItem}>
-                    <span className={styles.legendDot} aria-hidden="true" />
-                    Pinned
-                  </span>
-                  <span className={styles.legendItem}>
-                    <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
-                    Conflict
-                  </span>
-                </>
-              ) : null}
-              <label className={cx(styles.toggleControl, styles.boardToggleControl)}>
-                <input
-                  type="checkbox"
-                  className={styles.toggleCheckbox}
-                  checked={showCompleted}
-                  onChange={(e) => onShowCompletedChange(e.target.checked)}
-                />
-                Show completed jobs
-              </label>
-            </div>
-            {activeInstallers.length > 0 ? (
-              <ScheduleCrewFilter
-                crews={crewFilterOptions}
-                hiddenCrewIds={hiddenCrewIds}
-                hiddenItemCount={hiddenItemCount}
-                emptyCrewIds={emptyCrewIds}
-                disabled={Boolean(activeDragId)}
-                onToggleCrew={toggleCrew}
-                onHideCrews={hideCrews}
-                onShowAllCrews={showAllCrews}
-              />
-            ) : null}
-          </div>
-          <div
-            className={styles.lanes}
-            ref={boardScrollRef}
-            data-board-lanes="true"
-            data-visible-crew-count={visibleInstallers.length}
-          >
+      </>), surface.slots.debug) : null}
+      {surface.slots.lanes ? createPortal((<>
             {visibleInstallers.length === 0 ? (
               <div className={styles.allCrewsHidden}>
                 <p className={styles.emptyLaneTitle}>
-                  {activeInstallers.length === 0 ? 'No active crews available' : 'All crews are hidden'}
+                  {dataPending ? (dataError ? 'Schedule unavailable' : 'Reading crews and scheduled work…') : activeInstallers.length === 0 ? 'No active crews available' : 'All crews are hidden'}
                 </p>
                 {activeInstallers.length > 0 ? (
                   <>
@@ -604,10 +531,10 @@ export default function ScheduleBoardView({
                         <span className={styles.colorDot} style={{ background: installer.color }} />
                         <h3 className={styles.laneTitle}>{installer.name}</h3>
                       </div>
-                      {nextAvailable ? <div className={styles.smallMeta}>Next available: {formatShortDate(nextAvailable)}</div> : null}
+                      {!dataPending && nextAvailable ? <div className={styles.smallMeta}>Next available: {formatShortDate(nextAvailable)}</div> : null}
                     </div>
                     <div className={styles.laneCounts}>
-                      <span className={styles.laneLoad}>{formatScheduleCrewLoad(ids.length, forecastDays)}</span>
+                      <span className={styles.laneLoad}>{dataPending ? dataError ? 'Scheduled work unavailable' : 'Reading scheduled work…' : formatScheduleCrewLoad(ids.length, forecastDays)}</span>
                       {attentionCount > 0 ? <span className={styles.laneIssueCount}>{attentionCount} need attention</span> : null}
                     </div>
                   </div>
@@ -632,8 +559,8 @@ export default function ScheduleBoardView({
                           <div className={styles.emptyLaneIcon} aria-hidden="true">
                             ↓
                           </div>
-                          <p className={styles.emptyLaneTitle}>Drop jobs here</p>
-                          <p className={styles.emptyLaneHint}>Drag from Unscheduled or move from another crew</p>
+                          <p className={styles.emptyLaneTitle}>{dataPending ? dataError ? 'Scheduled work unavailable' : 'Reading scheduled work…' : 'Drop jobs here'}</p>
+                          {!dataPending && <p className={styles.emptyLaneHint}>Drag from Unscheduled or move from another crew</p>}
                         </div>
                       )}
                     </LaneDropZone>
@@ -641,11 +568,20 @@ export default function ScheduleBoardView({
                 </section>
               );
             })}
-          </div>
-        </section>
-      </div>
-
+      </>), surface.slots.lanes) : null}
+      {surface.slots.boardOverlay ? createPortal((<>
       <ScheduleBoardDragOverlay activeId={activeDragId} target={boardDropTarget} crewName={installers.find((crew) => crew.id === overLaneId)?.name} />
+      </>), surface.slots.boardOverlay) : null}
     </DndContext>
   );
+}
+
+export default function ScheduleBoardView(props: ScheduleBoardViewProps) {
+  const surface = useScheduleSurfaceController();
+  const owner = useRef({});
+  if (surface) return <ScheduleBoardRuntime {...props} />;
+  return <ScheduleSurfaceProvider owner={owner.current} today={props.today} ganttActive={false}>
+    <ScheduleBoardSurface {...props} />
+    <ScheduleBoardRuntime {...props} />
+  </ScheduleSurfaceProvider>;
 }

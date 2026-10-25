@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { DashboardPersonalTask } from '@/lib/dashboard/types';
-import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
-import dash from '../dashboard.module.css';
-import { Button, Input } from '@/components/ui/foundation/FoundationControls';
-import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+
+
+
+
+
 import { newId } from '@/lib/utils/id';
+import DashboardTaskRows from './DashboardTaskRows';
+import DashboardTasksSurface from './DashboardTasksSurface';
+import { useDashboardWorkspace } from '../DashboardWorkspace';
 
 async function readTaskResponse(res: Response): Promise<DashboardPersonalTask> {
   const body = await res.json().catch(() => null);
@@ -18,9 +21,13 @@ async function readTaskResponse(res: Response): Promise<DashboardPersonalTask> {
   return body.task as DashboardPersonalTask;
 }
 
-export default function DashboardTasksCard({ initialTasks }: { initialTasks: DashboardPersonalTask[] }) {
-  const [tasks, setTasks] = useState(initialTasks);
-  const [title, setTitle] = useState('');
+export default function DashboardTasksCard({ initialTasks,pending=false,readOnly=false }: { initialTasks: DashboardPersonalTask[]|null;pending?:boolean;readOnly?:boolean }) {
+  const [tasks, setTasks] = useState(initialTasks??[]);
+  const [sourceTasks, setSourceTasks] = useState(initialTasks);
+  const workspace = useDashboardWorkspace();
+  const [localTitle, setLocalTitle] = useState('');
+  const title=workspace?.title??localTitle;
+  const setTitle=workspace?.setTitle??setLocalTitle;
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
@@ -28,24 +35,25 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   const createTaskIdRef = useRef(newId());
   const pendingTaskIdsRef = useRef(new Set<string>());
 
-  useEffect(() => {
-    setTasks((current) => {
-      const currentById = new Map(current.map((task) => [task.id, task]));
-      const refreshed = initialTasks.map((task) => pendingTaskIds.has(task.id)
-        ? currentById.get(task.id) ?? task
-        : task);
-      const refreshedIds = new Set(refreshed.map((task) => task.id));
-      return [
-        ...refreshed,
-        ...current.filter((task) => !refreshedIds.has(task.id)),
-      ];
-    });
-    // Pending task state is read only to preserve optimistic rows while a new
-    // server snapshot arrives; completing a mutation must not reapply an old prop.
-  }, [initialTasks]);
+  // Adopt a changed source before committing its ready UI. A passive effect would
+  // briefly label a genuine nonempty response as empty. Pending mutations retain
+  // their current row, and settling one must never reapply an older source prop.
+  if (initialTasks !== sourceTasks) {
+    setSourceTasks(initialTasks);
+    if (initialTasks) {
+      setTasks((current) => {
+        const currentById = new Map(current.map((task) => [task.id, task]));
+        const refreshed = initialTasks.map((task) => pendingTaskIds.has(task.id)
+          ? currentById.get(task.id) ?? task
+          : task);
+        const refreshedIds = new Set(refreshed.map((task) => task.id));
+        return [...refreshed, ...current.filter((task) => !refreshedIds.has(task.id))];
+      });
+    }
+  }
 
   async function createTask() {
-    if (submitLockedRef.current) return;
+    if (submitLockedRef.current||!initialTasks||readOnly||(workspace&&!workspace.isCurrent())) return;
     const nextTitle = title.trim();
     if (!nextTitle) {
       setError('Task title required');
@@ -75,7 +83,7 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   }
 
   async function toggleTask(task: DashboardPersonalTask, completed: boolean) {
-    if (pendingTaskIdsRef.current.has(task.id)) return;
+    if (!initialTasks||readOnly||pendingTaskIdsRef.current.has(task.id)||(workspace&&!workspace.isCurrent())) return;
     pendingTaskIdsRef.current.add(task.id);
     const previousTask = task;
     const optimistic: DashboardPersonalTask = {
@@ -111,64 +119,8 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
     }
   }
 
-  return (
-    <section className={`${styles.section} ${dash.card} ${dash.tasksCard}`} aria-label="My Tasks">
-      <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
-        <div>
-          <h2 className={styles.sectionTitle}>My Tasks</h2>
-          <div className={`${styles.muted} ${dash.cardSubheading}`}>
-            Personal reminders.
-          </div>
-        </div>
-      </div>
-      <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        <form
-          className={dash.taskComposer}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void createTask();
-          }}
-        >
-          <Input
-            fieldClassName={dash.taskInputField}
-            className={dash.taskInput}
-            aria-label="New dashboard task"
-            placeholder="Add a task..."
-            value={title}
-            maxLength={DASHBOARD_TASK_TITLE_MAX_LENGTH}
-            onChange={(event) => {
-              setTitle(event.target.value);
-              if (error) setError(null);
-            }}
-            disabled={submitting}
-          />
-          <Button className={dash.taskAddButton} type="submit" loading={submitting} disabled={!title.trim()}>
-            Add
-          </Button>
-        </form>
-        {error ? <div className={dash.taskError}>{error}</div> : null}
-
-        {tasks.length ? (
-          <TaskList className={dash.taskList} ariaLabel="Personal tasks">
-            {tasks.map((task) => {
-              const completed = Boolean(task.completedAt);
-              return (
-                <TaskRow
-                  key={task.id}
-                  className={dash.taskBubble}
-                  checked={completed}
-                  disabled={pendingTaskIds.has(task.id)}
-                  label={task.title}
-                  controlAriaLabel={`Complete ${task.title}`}
-                  onChange={(checked) => void toggleTask(task, checked)}
-                />
-              );
-            })}
-          </TaskList>
-        ) : (
-          <div className={dash.emptyState}>No personal tasks yet.</div>
-        )}
-      </div>
-    </section>
-  );
+  const surface = {rows:<DashboardTaskRows tasks={tasks} readOnly={readOnly} pendingTaskIds={pendingTaskIds} toggleTask={toggleTask}/>,title,setTitle,initialTasks,tasks,pending,readOnly,error,setError,submitting,pendingTaskIds,createTask,toggleTask};
+  useLayoutEffect(()=>{workspace?.publishTasks(surface);});
+  useLayoutEffect(()=>()=>workspace?.publishTasks(null),[workspace?.publishTasks]);
+  return workspace?null:<DashboardTasksSurface {...surface}/>;
 }

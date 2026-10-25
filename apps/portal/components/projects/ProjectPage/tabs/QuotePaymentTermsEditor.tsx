@@ -9,7 +9,7 @@ import styles from "./QuotePaymentTermsEditor.module.css";
 
 type Props = {
   editable: boolean;
-  quoteTotalIncGstCents: number;
+  quoteTotalIncGstCents: number|null;pending?:boolean;
   terms: QuotePaymentTerm[];
   setTerms: Dispatch<SetStateAction<QuotePaymentTerm[]>>;
 };
@@ -29,8 +29,9 @@ function newTerm(index: number): QuotePaymentTerm {
   };
 }
 
-export default function QuotePaymentTermsEditor({ editable, quoteTotalIncGstCents, terms, setTerms }: Props) {
-  const evaluation = evaluateQuotePaymentSchedule(terms, quoteTotalIncGstCents);
+export default function QuotePaymentTermsEditor({ editable, quoteTotalIncGstCents, terms, setTerms,pending=false }: Props) {
+  const evaluation = quoteTotalIncGstCents===null?null:evaluateQuotePaymentSchedule(terms, quoteTotalIncGstCents);
+  editable=editable&&evaluation!==null;
 
   const update = (index: number, patch: Partial<QuotePaymentTerm>) => {
     setTerms((current) => current.map((term, termIndex) => termIndex === index ? { ...term, ...patch } : term));
@@ -40,15 +41,16 @@ export default function QuotePaymentTermsEditor({ editable, quoteTotalIncGstCent
     <section className={styles.card} aria-label="Payment schedule">
       <div className={styles.header}><h4 className={styles.title}>Payment schedule</h4><span className={styles.note}>Including GST</span></div>
       <ol className={styles.readOnlyTerms}>
-        {evaluation.terms.map((term) => <li key={term.id}><span>{term.label}</span><strong>{money(term.resolvedAmountIncGstCents)}</strong></li>)}
+        {!evaluation&&<li role={pending?'status':undefined}>{pending?'Reading payment terms…':'Payment terms unavailable.'}</li>}
+        {evaluation?.terms.map((term) => <li key={term.id}><span>{term.label}</span><strong>{money(term.resolvedAmountIncGstCents)}</strong></li>)}
       </ol>
       <details className={styles.calculationDetails}>
         <summary>How payments are calculated</summary>
         <p>Fixed payments are deducted first. Percentages apply to the remaining balance.</p>
-        {evaluation.terms.map((term) => <p key={term.id}>{term.label}: {term.calculationType === "fixed" ? `${money(term.fixedAmountIncGstCents ?? 0)} fixed` : `${term.percentageOfRemainder}% of the remaining balance`}</p>)}
-        <p>Total: {money(evaluation.allocatedTotalIncGstCents)} of {money(quoteTotalIncGstCents)}</p>
+        {evaluation?.terms.map((term) => <p key={term.id}>{term.label}: {term.calculationType === "fixed" ? `${money(term.fixedAmountIncGstCents ?? 0)} fixed` : `${term.percentageOfRemainder}% of the remaining balance`}</p>)}
+        <p>Total: {evaluation?money(evaluation.allocatedTotalIncGstCents):(pending?'Reading…':'Unavailable')} of {quoteTotalIncGstCents===null?(pending?'Reading…':'Unavailable'):money(quoteTotalIncGstCents)}</p>
       </details>
-      {evaluation.errors.length ? <ul className={styles.errors} role="alert">{evaluation.errors.map((error) => <li key={error}>{error}</li>)}</ul> : null}
+      {evaluation&&evaluation.errors.length ? <ul className={styles.errors} role="alert">{evaluation?.errors.map((error) => <li key={error}>{error}</li>)}</ul> : null}
     </section>
   );
 
@@ -67,7 +69,7 @@ export default function QuotePaymentTermsEditor({ editable, quoteTotalIncGstCent
       </div>
 
       <div className={styles.rows}>
-        {evaluation.terms.map((term, index) => (
+        {evaluation?.terms.map((term, index) => (
           <div className={styles.row} key={term.id}>
             <div className={styles.position}>{index + 1}</div>
             <label className={styles.field}>
@@ -115,13 +117,13 @@ export default function QuotePaymentTermsEditor({ editable, quoteTotalIncGstCent
       </div>
 
       <div className={styles.summary}>
-        <span>Fixed: {money(evaluation.fixedTotalIncGstCents)}</span>
-        <span>Percentage pool: {money(evaluation.percentagePoolIncGstCents)}</span>
-        <span>Allocated: {money(evaluation.allocatedTotalIncGstCents)} of {money(quoteTotalIncGstCents)}</span>
+        <span>Fixed: {evaluation?money(evaluation.fixedTotalIncGstCents):(pending?'Reading…':'Unavailable')}</span>
+        <span>Percentage pool: {evaluation?money(evaluation.percentagePoolIncGstCents):(pending?'Reading…':'Unavailable')}</span>
+        <span>Allocated: {evaluation?money(evaluation.allocatedTotalIncGstCents):(pending?'Reading…':'Unavailable')} of {quoteTotalIncGstCents===null?(pending?'Reading…':'Unavailable'):money(quoteTotalIncGstCents)}</span>
       </div>
-      {evaluation.errors.length ? (
+      {evaluation&&evaluation.errors.length ? (
         <ul className={styles.errors}>
-          {evaluation.errors.map((error) => <li key={error}>{error}</li>)}
+          {evaluation?.errors.map((error) => <li key={error}>{error}</li>)}
         </ul>
       ) : null}
     </section>

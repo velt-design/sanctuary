@@ -330,3 +330,7 @@
     gap: var(--portal-density-10) var(--portal-density-18);
   }
 }
+
+.withoutChrome {
+  grid-template-rows: minmax(0, 1fr);
+}

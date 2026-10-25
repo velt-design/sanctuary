@@ -85,3 +85,12 @@ describe('AccessClient crew state', () => {
     rendered.unmount();
   });
 });
+
+ it('keeps the real crew table while its roster is pending, failed and retried',async()=>{
+  let finish!:(response:Response)=>void;const fetcher=vi.fn(()=>new Promise<Response>(yes=>{finish=yes;}));vi.stubGlobal('fetch',fetcher);
+  const rendered=renderAccess();await flush();const table=rendered.container.querySelector('table')!;
+  expect(table.querySelector('thead')).toBeTruthy();expect(table.textContent).toContain('Reading schedule crews');expect(table.textContent).not.toContain('No crews found');
+  await act(async()=>finish(Response.json({error:'Offline'},{status:503})));await flush();expect(rendered.container.querySelector('table')).toBe(table);expect(table.textContent).toContain('Schedule crews unavailable');expect(table.textContent).not.toContain('No crews found');
+  const retry=[...rendered.container.querySelectorAll('button')].find(b=>b.textContent?.includes('Retry'));expect(retry).toBeTruthy();await act(async()=>retry!.click());await flush();await act(async()=>finish(Response.json({crews:[crew,secondCrew]})));await flush();
+  expect(rendered.container.querySelector('table')).toBe(table);expect(table.querySelector('input[value="North crew"]')).toBeTruthy();rendered.unmount();
+ });

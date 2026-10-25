@@ -176,7 +176,7 @@ describe('EmailPreviewClient', () => {
   it('provides synchronized fixture, comparison, focus, viewport, theme, zoom and reset controls', async () => {
     const rendered = renderIntoDocument(<EmailPreviewClient />);
     expect(rendered.container.textContent).toContain(
-      'Rendering the workbench',
+      'Reading exact email HTML…',
     );
     await flushEffects();
 

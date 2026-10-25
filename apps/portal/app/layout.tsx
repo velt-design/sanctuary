@@ -40,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // can enter the root shell. Descendant layout redirects can run in parallel.
     await requireRegionalDocumentAccess();
     // Navigation is advisory; finance routes and commands recheck the current grant.
-    const financeSession = await (diagnostics?.routeTemplate === '/staff/marketing-performance'
+    const financeSessionPromise = (diagnostics?.routeTemplate === '/staff/marketing-performance'
       ? diagnostics.measure('navigation.finance', () => getPaymentPilotSession(), result =>
         result ? 'complete' : paymentPilotEnabled() ? 'empty' : 'skipped')
       : getPaymentPilotSession()).catch(() => null);
@@ -56,6 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       cssVars = {} as CSSProperties;
     }
 
+    const financeSession = await financeSessionPromise;
     diagnostics?.record('layout.complete', startedAt, accessState.kind);
     return (
       <html lang="en" className={portalInter.variable} style={cssVars}>

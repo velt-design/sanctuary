@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import {useSpreadsheetWorkspace} from '@/components/spreadsheet/SpreadsheetWorkspace';
+import DraftingQueueToolbar,{DEFAULT_DRAFTING_QUEUE_FILTERS,type DraftingQueueFilters,DESIGN_LIST_STATUSES,formatStatusLabel} from './DraftingQueueToolbar';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -31,25 +33,10 @@ import { ApiError } from '@/lib/repo/apiClient';
 import { mutateDesignListCell } from '@/lib/repo/designPackagesRepo';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
-type Filters = {
-  search: string;
-  year: string;
-  designerId: string;
-  status: string;
-  overdueOnly: boolean;
-  showCompleted: boolean;
-};
 
-const DEFAULT_FILTERS: Filters = {
-  search: '',
-  year: 'all',
-  designerId: 'all',
-  status: 'all',
-  overdueOnly: false,
-  showCompleted: false,
-};
 
-const DESIGN_LIST_STATUSES: readonly DesignRequestStatus[] = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'DONE', 'CANCELLED'];
+
+
 const DESIGN_LIST_PRIORITY_TIERS: readonly DesignRequestPriorityTier[] = ['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'];
 const TODAY_YMD = new Date().toISOString().slice(0, 10);
 
@@ -59,9 +46,6 @@ function toYmd(value: string | null): string {
   return match ? match[1] : value;
 }
 
-function formatStatusLabel(value: DesignRequestStatus): string {
-  return value.replace(/_/g, ' ');
-}
 
 function formatTierLabel(value: DesignRequestPriorityTier): string {
   if (value === 'UNPRICED') return 'Unpriced';
@@ -131,7 +115,7 @@ function isCompletedRow(row: DesignListRow): boolean {
   return row.status === 'DONE' || row.status === 'CANCELLED';
 }
 
-function groupRowsByFilters(rows: DesignListRow[], filters: Filters): Array<{ year: number; rows: DesignListRow[] }> {
+function groupRowsByFilters(rows: DesignListRow[], filters: DraftingQueueFilters): Array<{ year: number; rows: DesignListRow[] }> {
   const query = filters.search.trim().toLowerCase();
   const filteredRows = rows.filter((row) => {
     if (filters.year !== 'all' && String(yearForDesignListRow(row)) !== filters.year) return false;
@@ -163,82 +147,8 @@ function replaceResponseRow(prev: DesignPackagesResponse, updatedRow: DesignList
   };
 }
 
-function Toolbar({
-  filters,
-  onChange,
-  years,
-  designers,
-  totalRows,
-  visibleRows,
-  generatedAt,
-}: {
-  filters: Filters;
-  onChange: (patch: Partial<Filters>) => void;
-  years: string[];
-  designers: DesignPackagesResponse['lookups']['designers'];
-  totalRows: number;
-  visibleRows: number;
-  generatedAt: string | null;
-}) {
-  return (
-    <div className={styles.toolbar}>
-      <input
-        className={styles.toolbarInput}
-        type="search"
-        placeholder="Search jobs"
-        value={filters.search}
-        onChange={(event) => onChange({ search: event.target.value })}
-      />
 
-      <select className={styles.toolbarSelect} value={filters.year} onChange={(event) => onChange({ year: event.target.value })}>
-        <option value="all">All years</option>
-        {years.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
-
-      <select className={styles.toolbarSelect} value={filters.designerId} onChange={(event) => onChange({ designerId: event.target.value })}>
-        <option value="all">All designers</option>
-        <option value="unassigned">Unassigned</option>
-        {designers.map((designer) => (
-          <option key={designer.id} value={designer.id}>
-            {designer.label}
-          </option>
-        ))}
-      </select>
-
-      <select className={styles.toolbarSelect} value={filters.status} onChange={(event) => onChange({ status: event.target.value })}>
-        <option value="all">All statuses</option>
-        {DESIGN_LIST_STATUSES.map((status) => (
-          <option key={status} value={status}>
-            {formatStatusLabel(status)}
-          </option>
-        ))}
-      </select>
-
-      <label className={styles.toolbarToggle}>
-        <input type="checkbox" checked={filters.overdueOnly} onChange={(event) => onChange({ overdueOnly: event.target.checked })} />
-        <span>Overdue only</span>
-      </label>
-
-      <label className={styles.toolbarToggle}>
-        <input type="checkbox" checked={filters.showCompleted} onChange={(event) => onChange({ showCompleted: event.target.checked })} />
-        <span>Show completed</span>
-      </label>
-
-      <div className={styles.meta}>
-        <span>
-          {visibleRows} of {totalRows} requests
-        </span>
-        <span>{generatedAt ? `Generated ${generatedAt.replace('T', ' ').slice(0, 16)}` : 'Loading...'}</span>
-      </div>
-    </div>
-  );
-}
-
-export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
+export function useDesignListSpreadsheetAdapter({loader,readOnly=false}:{loader?:()=>Promise<DesignPackagesResponse>;readOnly?:boolean}={}): SpreadsheetAdapter<
   DesignListRow,
   DesignListCellKey,
   DesignListEditableCellKey,
@@ -249,9 +159,12 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   const queryClient = useQueryClient();
   const host = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const queryKey = qk.designPackages.list(host);
-  const query = useQuery(designPackagesQueryOptions(host));
+  const query = useQuery({...designPackagesQueryOptions(host),...(loader?{queryFn:loader}:{})});
 
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const workspace=useSpreadsheetWorkspace();
+  const [localFilters,setLocalFilters] = useState<DraftingQueueFilters>(DEFAULT_DRAFTING_QUEUE_FILTERS);
+  const filters=workspace?.kind==='design'?workspace.designFilters:localFilters;
+  const setFilters=workspace?.kind==='design'?workspace.setDesignFilters:setLocalFilters;
 
   useEffect(() => {
     if (!query.error) return;
@@ -259,8 +172,11 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
     toast.error(message);
   }, [query.error, toast]);
 
-  const allRows = query.data?.rows ?? [];
-  const lookups = query.data?.lookups ?? { designers: [] };
+  const denied=query.error instanceof ApiError&&[401,403].includes(query.error.status);
+  const data=denied?undefined:query.data;
+  const readState=!data?(query.isPending||query.isFetching?'pending':'unavailable'):undefined;
+  const allRows = data?.rows ?? [];
+  const lookups = data?.lookups ?? { designers: [] };
   const filteredGroups = useMemo(() => groupRowsByFilters(allRows, filters), [allRows, filters]);
   const visibleRows = useMemo(() => filteredGroups.flatMap((group) => group.rows), [filteredGroups]);
   const rowNumberRows = useMemo(() => allRows.slice().sort(compareDesignListRows), [allRows]);
@@ -370,14 +286,14 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   );
 
   const toolbar = (
-    <Toolbar
+    <DraftingQueueToolbar
       filters={filters}
       onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
       years={years}
       designers={lookups.designers}
       totalRows={allRows.length}
       visibleRows={visibleRows.length}
-      generatedAt={query.data?.generatedAt ?? null}
+      generatedAt={data?.generatedAt??null} readState={readState} onRetry={()=>void query.refetch()}
     />
   );
 
@@ -390,7 +306,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
     groups: filteredGroups.map((group) => ({ key: `year_${group.year}`, label: String(group.year), rows: group.rows })),
     zoomStorageKey: 'sp_design_list_sheet_zoom_v1',
     defaultActiveKey: 'quote_name',
-    loading: query.isLoading,
+    loading: readState==='pending',
     hasError: Boolean(query.error),
     loadingMessage: 'Loading drafting queue...',
     errorMessage: 'Could not load drafting queue.',
@@ -580,6 +496,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         setDisplayedDesignListRow(queueKey, model);
       },
       prepareEdit: ({ row, key, value, confirmedModel }) => {
+        if(readOnly)return {kind:'error',message:'This fictional preview is read-only.'};
         const normalized = normalizeDesignListCellInput(key, value);
         if (!normalized.ok) {
           return { kind: 'error', message: normalized.error } as const;
@@ -611,6 +528,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
       },
     },
     onCellActivated: async ({ trigger, key, beginEdit, seed }) => {
+      if(readOnly)return 'noop';
       if (key !== 'designer' && key !== 'design_ready' && key !== 'priority' && key !== 'notes') {
         return 'noop';
       }

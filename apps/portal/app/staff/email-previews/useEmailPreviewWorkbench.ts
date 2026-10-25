@@ -52,7 +52,8 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
     useState<PreviewViewport>(DEFAULTS.viewport);
   const [theme, setTheme] = useState<PreviewTheme>(DEFAULTS.theme);
   const [zoom, setZoom] = useState<PreviewZoom>(DEFAULTS.zoom);
-  const [preview, setPreview] = useState<PreviewResponse | null>(null);
+  const [readPreview, setPreview] = useState<PreviewResponse | null>(null);
+  const [acceptedKey,setAcceptedKey]=useState(''),[activeKey,setActiveKey]=useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [renderRevision, setRenderRevision] = useState(0);
@@ -69,9 +70,11 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
     blinds,
   );
 
+  const readKey=`${previewEndpoint??''}:${renderRevision}:${variant}`;
+  const preview=acceptedKey===readKey?readPreview:null;
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    setActiveKey(readKey);setLoading(true);
     setLoadError(null);
     setPreview(null);
     setDeliveryConfirmation(null);
@@ -79,10 +82,11 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
 
     void loadEmailPreview(variant, controller.signal, previewEndpoint)
       .then((body) => {
+        if(controller.signal.aborted)return;
         if (body.variant !== variant) {
           throw new Error('The preview response did not match the selected enquiry.');
         }
-        setPreview(body);
+        setAcceptedKey(readKey);setPreview(body);
       })
       .catch((caught: unknown) => {
         if (controller.signal.aborted) return;
@@ -97,7 +101,7 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
       });
 
     return () => controller.abort();
-  }, [previewEndpoint, renderRevision, variant]);
+  }, [previewEndpoint, renderRevision, variant,readKey]);
 
   const selectedLayout = useMemo(
     () =>
@@ -237,8 +241,8 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
     variant,
     preview,
     selectedLayout,
-    loading,
-    loadError,
+    loading:loading||activeKey!==readKey,
+    loadError:activeKey===readKey?loadError:null,
     renderRevision,
     deliveryConfirmation,
     delivery,

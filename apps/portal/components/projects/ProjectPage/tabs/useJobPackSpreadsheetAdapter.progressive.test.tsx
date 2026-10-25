@@ -1,0 +1,23 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {renderIntoDocument} from '../../../../../../test/reactHarness';
+import {useJobPackSpreadsheetAdapter} from './useJobPackSpreadsheetAdapter';
+import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
+import type {EstimateDetail} from '@/lib/estimates/types';
+import {emptyPowdercoatSheetResponse,buildWorkbook,JOB_PACK_SHEETS} from '@/lib/jobPacks/workbook';
+import {jobPackSheetPresentation} from '@/lib/jobPacks/sheetPresentation';
+Element.prototype.scrollIntoView=vi.fn();
+const state=vi.hoisted(()=>({query:{data:undefined as unknown,isPending:true,isError:false,isFetching:true,error:null as unknown,refetch:vi.fn()}}));
+vi.mock('@tanstack/react-query',()=>({queryOptions:(value:unknown)=>value,useQuery:()=>state.query,useQueryClient:()=>({getQueryData:vi.fn(),setQueryData:vi.fn()})}));
+vi.mock('@/components/ui/toast/ToastProvider',()=>({useToast:()=>({error:vi.fn()})}));
+const detail:EstimateDetail={id:'fictional-estimate',projectId:'fictional-project',versionLabel:'V1',createdAt:'2026-10-01T00:00:00Z',status:'draft',summary:{total:690},isActiveDraft:false,hasSentQuote:true,jobPackEligible:true,jobPackGeneratedAt:'2026-10-02T00:00:00Z',jobPackQuoteVersionId:'fictional-quote',editability:{isLocked:true,lockReason:'quote_sent',lockedAt:null,lockedByQuoteVersionId:'fictional-quote',lockedByQuoteRef:'F-1',lockedByQuoteVersionNumber:1,hasDraftQuotes:false,draftQuoteCount:0},calculatorSnapshot:{inputs:{schemaVersion:'v2',modules:[]},outputs:{materials:{lines:[{id:'fixture.hardware',label:'Fictional fixing',unit:'ea',qty:2,unit_ex_gst:50,total_ex_gst:100}],totals:{materials_ex_gst:100}},install:{actions:[],totals:{install_ex_gst:200}},overhead:{total_ex_gst:300,ops_ex_gst:100,sales_ex_gst:200,method:'fixture'},totals:{cost_ex_gst:600}}}};
+function Host({value=null,pending=true,error=null,sheet='materials'}:{value?:EstimateDetail|null;pending?:boolean;error?:string|null;sheet?:'materials'|'summary'}){const adapter=useJobPackSpreadsheetAdapter({hostKey:'fictional',detail:value,pending,error,sheet,onSheetChange:()=>undefined,onBackToList:()=>undefined,onOpenEstimate:()=>undefined,showNotesColumn:false,onShowNotesColumnChange:()=>undefined});return adapter?<SpreadsheetPageTemplate adapter={adapter} embedded/>:null;}
+afterEach(()=>{document.body.innerHTML='';state.query={data:undefined,isPending:true,isError:false,isFetching:true,error:null,refetch:vi.fn()};});
+it('keeps the actual sheet toolbar/columns while estimate and required overrides read independently, then shows complete rows',()=>{
+ const view=renderIntoDocument(<Host/>),table=view.container.querySelector('table'),toolbar=view.container.querySelector('select[aria-label="Job pack sheet"]'),zoom=view.container.querySelector('[aria-label="Sheet zoom"]');expect(table?.textContent).toContain('Stock length');expect(table?.textContent).toContain('Reading verified job pack');expect(view.container.textContent).not.toContain('True cost $0');expect([...view.container.querySelectorAll('button')].find(b=>b.textContent==='Download PDF')?.disabled).toBe(true);
+ view.rerender(<Host value={detail} pending={false}/>);expect(table?.textContent).not.toContain('Fictional fixing');expect(table?.textContent).toContain('Reading verified job pack');view.rerender(<Host value={detail} pending={false} sheet="summary"/>);expect(table?.textContent).toContain('True cost ex GST');expect(table?.textContent).toContain('$600.00');
+ view.rerender(<Host value={detail} pending={false}/>);state.query={data:emptyPowdercoatSheetResponse(),isPending:false,isError:false,isFetching:false,error:null,refetch:vi.fn()};view.rerender(<Host value={detail} pending={false}/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('[aria-label="Job pack sheet"]')).toBe(toolbar);expect(view.container.querySelector('[aria-label="Sheet zoom"]')).toBe(zoom);expect(table?.textContent).toContain('Fictional fixing');expect(view.container.textContent).toContain('True cost $600.00');view.unmount();
+});
+it('uses the same genuine column definitions for all settled sheets and represents failures without fabricated rows',()=>{
+ const workbook=buildWorkbook(detail,{version:null,rows:[]},[]);for(const sheet of JOB_PACK_SHEETS){expect(workbook.sheets[sheet.key].columns).toEqual(jobPackSheetPresentation(sheet.key).columns);}
+ const view=renderIntoDocument(<Host pending={false} error="Read failed"/>);expect(view.container.querySelector('thead')?.textContent).toContain('Item');expect(view.container.textContent).toContain('Read failed');expect(view.container.querySelector('[data-cell-id]')).toBeNull();view.unmount();
+});

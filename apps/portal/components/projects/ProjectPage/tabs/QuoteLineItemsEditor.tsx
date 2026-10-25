@@ -20,6 +20,7 @@ import {
 type Setter<T> = Dispatch<SetStateAction<T>>;
 
 type QuoteLineItemsEditorProps = {
+  readState?: 'ready' | 'pending' | 'error';
   editable: boolean;
   draftItems: QuoteLineItem[];
   setDraftItems: Setter<QuoteLineItem[]>;
@@ -53,6 +54,7 @@ type QuoteLineItemsEditorProps = {
 
 export default function QuoteLineItemsEditor({
   editable,
+  readState = 'ready',
   draftItems,
   setDraftItems,
   unitInputDrafts,
@@ -98,6 +100,7 @@ export default function QuoteLineItemsEditor({
             </tr>
           </thead>
           <tbody>
+            {readState!=='ready'&&<tr><td colSpan={4} role={readState==='pending'?'status':undefined}>{readState==='pending'?'Reading line items…':'Line items unavailable.'}</td></tr>}
             {draftItems.map((item, idx) => {
               const unitInputValue =
                 unitInputDrafts[item.id] ??
@@ -566,7 +569,7 @@ export default function QuoteLineItemsEditor({
                 </tr>
               );
             })}
-            {!draftItems.length ? (
+            {readState === 'ready' && !draftItems.length ? (
               <tr>
                 <td
                   colSpan={editable ? 5 : 4}

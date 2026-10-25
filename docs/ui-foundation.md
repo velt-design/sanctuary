@@ -1,5 +1,163 @@
 # Staff Portal UI System
 
+## Actual progressive Portal interfaces (22 October 2026 candidate)
+
+Earlier active Portal journeys retain their local implementation and verification
+evidence. The current seven-route follow-on has compiled Contacts/Schedule proof
+and connected source coverage for the remaining five frames. Its combined fresh
+build, unchanged budgets, actual held-route journeys and current required CI are
+still required. Sanctuary production approval remains separate; no local result
+is production release authority.
+
+The shared route-transition owner retains Next's outlet while the accepted
+selection mounts its actual public controls. Private clients await the matching
+fresh guarded leaf. It no longer uses Projects, Contacts or generic imitation frames. Clicked-control progress, timeout, history
+and route-completion ownership remain. Keeping the old page visible is not proof
+that the destination itself renders progressively; its actual owner must do that.
+The global Blueprint screen and all decorative route loading files are retired.
+The now-unused Project/Contact/generic pending-frame family is removed after a
+complete consumer search. Project route data is started without awaiting it after
+the necessary fresh staff gate; deleting a fallback does not prove other clients
+progressive. Existing authentication and route grants remain the boundary.
+
+The Contacts/Schedule split now passes both local production builds and unchanged
+route budgets, including Calculator's zero-lazy requirement. Actual held Flight,
+denial/recovery, history and all eleven original Schedule interaction cases pass.
+These are local observations, not current CI latency or production evidence.
+
+The seven-route source candidate extends the same selected-frame owner to
+Dashboard, Projects, Work Queue, Drafting Queue and Running Jobs. It reuses the
+actual card/form/table/viewport components. Public controllers hold neutral input,
+URL filters and zoom; only a selected fresh guarded leaf mounts private queries,
+per-user position reads, adapters, mutations and record controls. The opaque
+completion remains correlation, never authority. No root/leaf access check,
+query key, API or performance ceiling changes. ContactsFrame stays static;
+Schedule's guarded rows still portal into its original public calendar slots,
+with one private DndContext. Private controller and evidence contexts are separate.
+
+DashboardFrame keeps the real cards, task composer and TodayVisitsSurface mounted
+while independent guarded producers fill complete sections. Public card/body owners
+consume source-bound row slots; record formatting, portfolio derivation, visit
+freshness and task rows stay in the guarded producer. Public Work Queue selection
+has no record-filtering/presentation dependency. The full seven-route initial
+payload exceeded the unchanged ceilings before this ownership correction; a fresh
+compiled fit remains required.
+
+ProjectsIndexFrame owns the actual toolbar/table; its public URL view survives held entry adoption,
+while saved per-user positions are consulted only by the guarded reader and yield
+to explicit early filters. WorkQueueFrame/Surface retain actual filters/groups;
+derived staff options and command/admin owners remain guarded. The shared
+SpreadsheetSurface owns actual headers, columns, viewport and neutral zoom for
+both operational sheets. The guarded SpreadsheetRuntime portals genuine rows and
+editors into that same table, preserving the existing adapter/save/lock/conflict
+owners. Job Packs uses the same standalone composition. Retired publications,
+composer completions and sheet activation/save callbacks cannot replace, clear or
+focus a newer public surface. No unknown count is presented as zero.
+
+This five-route extension has connected source coverage; fresh aggregate bundle
+fit, actual Next held adoption/history and current CI/long-task ceilings remain
+unverified until the composed artifact is checked. It is not whole-Portal or
+production acceptance.
+
+DashboardClient mounts the same DashboardView and actual card owners before any
+records exist. Its seven existing reads now feed complete sections independently:
+portfolio counts, operational-state counts, work preview, personal tasks, activity,
+estimates and the retained snapshot. The existing staff gate and read clients stay
+unchanged. `startDashboardRead` owns one promise per source; both ordinary JSON
+and negotiated NDJSON use those promises and the same pure result assembler.
+The normal Dashboard query key/cache contains only complete DashboardData.
+A WeakMap observation tied to that Query object exposes validated same-queue
+parts during reads and incomplete-source recovery; it is removed with query GC,
+not a second durable business cache. Complete parts survive an independent source
+failure and Retry. After a failed Refresh, prior aggregate journey counts remain
+withheld under the existing policy; a complete journey-count part verified for
+the current request remains available if an independent section fails. Missing
+parts are unavailable, never zero. Protocol failure,
+truncation, cancellation and access denial clear streamed parts. Query changes
+cannot borrow another queue's parts. Already-issued Supabase reads settle after
+disconnect; delivery stops and no replacement read is started. There is no added
+remote authority round trip beyond the existing Dashboard staff gate.
+
+Today's visits remain independent. Task text stays editable while its own task
+source is pending; creation and row commands require that verified source.
+A changed task source is adopted before its ready UI commits, avoiding a false
+empty state while preserving optimistic in-flight rows and the input node.
+Actual portfolio/state readiness and full background readiness are separate DOM
+markers. The negotiated response is private/no-store with Vary: Accept and one
+4 MiB total byte bound. Seven part frames and a terminal marker reconstruct the
+complete result without repeating a final aggregate. The representative fictional
+framing overhead is asserted below 1024 bytes. Existing server limits are five
+recent estimates, eight activity items, five queue entries and 100 personal tasks;
+these configured source limits are not candidate timings or proof at production
+scale. Fictional fixtures establish section ordering and bounded transport size,
+not live portfolio populations.
+
+CalculatorSessionBoundary now keeps the actual workspace, field nodes, module
+navigation, pricing slots and result tabs mounted during draft restoration. The
+context withholds unverified values and guards input/save actions. Tab selection
+and resize remain safe. Record/output children, including geometry and actual-cost
+queries, mount only when the matching draft is ready. The existing Grid costing
+and draft-persistence gates still prevent calculating or saving a default draft
+for a pending saved identity. Nullable local-first keys also defer hydration until
+an identity exists; verified default, unsaved-edit, lock and retry rules remain.
+
+The shared spreadsheet retains its real column letters, labels, viewport and zoom
+through pending, empty, failure and completed reads. A status row owns missing
+records; no business/filler record rows are invented during the read. Running
+Jobs and Drafting Queue toolbar owners keep safe search/filter controls active,
+show pending counts instead of zero and offer Retry. Their query-authority ending
+errors clear retained rows. The toolbar extractions reduce the adapter hotspots
+without moving domain calculations or persistence out of their existing owners.
+
+| Slice | Current state |
+| --- | --- |
+| Schedule, Marketing Overview | Optimized actual-interface/complete-value and recovery review passed, including read-error and restored-focus corrections. |
+| Shared transition, Dashboard, spreadsheets | Actual owners compiled/reviewed; Dashboard independent section transport and corrected state/task arrival verified in optimized build8. Existing budget gates pass. |
+| Projects/Contacts lists, Project detail, Work Queue, Site Visits | Actual owners and protected ordinary Project/filter/return journeys checked; initial null-state and route-fallback corrections reviewed. PR261 request reads and Files selection remain. Commercial inner subviews remain in the active map. |
+| Contact detail | Actual fields/card/table compiled; independent linked projects and blocked GET/retry/recovery reviewed. Source regressions distinguish confirmed absence from read errors and denial; browser denial/null is not claimed. |
+| Calculator | Actual Grid/session pending-to-ready and no-premature-costing/persistence regressions pass; compiled actual-composition reviewed. No costing-price or business-save proof claimed. |
+| P&L independent current/monthly parts | Optimized build9 nested Flight, HTTP chunks, complete selected figures before trend, fatal Refresh clearing and recovery independently verified. The same pool, fresh authority, immediate invalidation and compact tail retain full JSON semantics. |
+| Remaining Marketing | Hub Enquiries/Sales/Portfolio and Bank/AR/AP mount actual owners through pending/error/retry. Optimized build10 composition reviewed; Financial section handoff correction independently closed on optimized11, including both AR/AP directions and failed-read/date/basis first commits. Hub membership remains one coherent RPC dependency. |
+| Finance review/mapping | Actual server header/search/invoice columns precede one shared read; mapping forms precede deferred verified invoice and inspect only genuine context. Build10 read composition reviewed; customer/default confirmation reset independently closed on optimized11 with retained forms and no provider commands. Protected provider commands were not exercised. |
+| Admin/operational | Costing mounts actual workflow/status/history before its one overview read, without creating a draft; at most100 historical versions retain the existing read limit. Crews retain actual headers and Retry. Configured-design actions require a verified source. Payout retains actual sheet fields with unknown values and clears denied evidence. Optimized11 scoped pending/error/Retry and node continuity reviewed for Costing, crews and fictional payout. Protected Configurator Reading/404/Retry/Back reviewed; ready revision remains unverified because that project has no saved configured source. Configurator has staff/source gates, no feature flag; payout alone remains flag-gated. |
+| Project commercial subviews and email tools | Same actual list/detail/table owners now accept pending/error and verified source, with safe search/Back and guarded commands. Job Pack column presentation is shared with the complete workbook; required powdercoat overrides gate material/order rows, independent Summary can fill earlier. Email recipient/body fields and exact-preview viewport owners persist without fabricated records or HTML. Optimized12 independent journeys passed with two qualified defects: initial quote lines also claimed empty, and the connected Commercial parent withheld safe owners until metadata. Both independently closed on optimized13: failed Quote retains only Unavailable/Retry, and ordinary protected Estimates/Quotes/Invoices/Job Packs expose real controls/table before metadata. Source authority-loss/create regressions preserve command safety. |
+| Artifact previews and Booklet | Actual PDF/email viewport and delivery owners retain unknown values through independent reads, failure/Retry, A/B identity, Close focus and narrow layout. Project Booklet retains blank locked fields until verified identity, then the same fields/viewport through recovery and return. Independent optimized review passed without provider/publication/business commands. Canonical Files full-tab/preparation/cache/single-stream ownership is integrated with nullable Project/PDF states. Composition and synthetic stream checks pass; the approved staging Files source returned403, so this task did not obtain actual protected provider/stream browser evidence. This is a proof limit, not an inferred product defect. Incoming accepted capability is retained. |
+| Active object-first Workbench | Actual Chrome/frame precedes context and matching complete-estimate reads. One Plan/3D/Sheet owner persists; runtime hooks/store/solve require the exact verified estimate, and Save callbacks are identity-owned from the first commit. Independent optimized review verified same controls, context before detail, cached transient failure read-only, numeric and status-less permission denial clearing all private labels/runtime, router-owned Retry, A/B isolation, absence and protected entry/Back. Established static UI ownership and intent-deferred3D satisfy unchanged budgets. Tests verify zero early hydration/solve, two house/two pergola records and nonempty committed house geometry; existing pergola diagnostics remain, with no valid committed-pergola or protected saved-geometry claim. Engine/legacy/paused boundaries are unchanged. |
+
+The existing gated fixture additionally offers `?view=costing`, `?view=mapping`
+and `?view=payout`, with `&operationalFailure=1` for initial failure and explicit
+Retry/Check/Reload recovery. Costing's overview and Mapping's invoice context use
+nested server promises; Mapping's subsequent fictional inspection and Payout's
+read use client-owned cancellable delays. These are actual production components
+with narrow read seams and explicit command guards. Every fixture command is
+withheld, and Payout's transport rejects non-GET requests. Known fictional empty
+pricing history is labelled only after its complete read. The mapping lane permits
+reviewing inputs and resetting confirmations across new reads, but cannot save
+customers/defaults or resume transfers. The flag/preview-only fixture boundary and
+ordinary protected route gates are unchanged. These delays are controlled scenarios,
+not production timings or business-mutation proof.
+
+`/qa/portal-progressive-fixture` mounts the actual DashboardClient, TodayVisits,
+RunningJobsClient, ProjectSnapshotPageClient, CalculatorGridClient, spreadsheet and transition provider with fictional read
+loaders and an isolated QueryClient. Commands are explicitly read-only there;
+it does not prove live writes or all domain-link destinations. No provider or
+authentication path is weakened. Verification commands/scenarios belong to
+`testing-and-qa.md`; real provider commands and production acceptance remain separate.
+
+Projects/Contacts tables now own pending/error/empty rows inside the same real
+headers; their safe filter controls remain available. Work Queue retains its
+actual filters/groups owner, and Site Visits retains its date and summary heading.
+Project detail keeps its actual header, tabs, Work/Files card, commercial price
+disclosure, payment metrics and history disclosure before independent reads.
+No project/person or empty work projection is fabricated. Metadata editors mount
+only after a genuine summary, preventing premature private local-draft access;
+work actions also wait for verified metadata/current work. Complete history stays
+unknown until the full snapshot. Access-ending reads remove private contents.
+Project route UUID/app-ID normalization retains the original canonical cache and
+work-command identity. The same Work/Files owner preserves selection as data arrives.
+
+All six canonical Portal route budgets and the separate Schedule gate pass on the current local candidate without changing thresholds. Existing orphan Gantt selectors were retired; Workbench retains its established UI module boundary and deferred3D.
+
 ## Finance register (23 October 2026 preview revision)
 
 Finance keeps Invoices and Quotes as the primary tabs, with Xero checks as a
@@ -104,7 +262,25 @@ the snapshot client owns load/error state.
 Fixture geometry covers summary, failure, retry and fresh rendering at desktop
 and phone widths; actual early return-click verification remains a release check.
 
-`GlobalPortalSearch.client` only exposes selectable results whose normalized response
+`GlobalPortalSearchSurface` owns the same actual input, query, focus and shortcut
+controller. The selected public frames import that surface without the private
+reader. After fresh selected-leaf adoption, `GuardedGlobalPortalSearch` registers
+a source-specific existing Loadable reader; no private query, cache read or result
+client mounts while that source is pending or denied. Input evidence and callbacks
+are qualified by both registration identity and typed query. Explicit Search
+API401/403 taints Search cache evidence for that identity-owned QueryClient until
+a genuine allowed read; transient503 retains truthful same-query cached results.
+No page invalidation or query cancellation is added. Retired publications
+and cleanup cannot restore old results or clear a newer owner. Default nonframe
+headers retain the same private reader and search behavior; standalone Job Packs
+continues through that header. Exact primitive-owner imports at the demonstrated
+public edges avoid evaluating unrelated foundation exports. The rejected all-five
+server-layout composition is removed; fresh complete bundle and browser evidence
+remain required, with no claimed saving from source-only attribution.
+
+The Schedule crew disclosure keeps its same public details, summary and panel container. Guarded Board/Gantt owners supply the original roster/hidden-preference panel children; pending or unavailable evidence disables the same trigger without inventing crew options. Standalone views compose that same surface with the same panel. The Dashboard date label imports only locale/timezone constants; formatter implementations and their existing re-exports retain their behavior. Search source ownership and its proven loader are unchanged by these record-presentation boundaries.
+
+`GlobalPortalSearchRead` only exposes selectable results whose normalized response
 query exactly matches the current input. Same-query cached results remain useful;
 changing query clears old links immediately while the pending read is announced.
 Errors offer a real retry. `GlobalPortalSearchState` owns the active overlay instance
@@ -854,3 +1030,5 @@ supported-contract omission. No rows were changed. The existing Project Work
 gate passed 420 tests; its imported dashboard migration test now normalises the
 new SQL payload to committed LF on Windows while retaining the deliberately CRLF
 old-function scenario. Both SQL suites pass all 11 tests after the owner correction.
+
+The actual `DataStatePanel` and its copy/type now have the focused `FoundationDataState` primitive owner; `FoundationFeedback` reexports that same component for existing consumers. Public Contacts, Projects, Work Queue and Schedule surfaces import the focused primitive, while other financial/permission/task feedback stays with its existing owner. Rendering, styles and retry/clear behavior are unchanged.

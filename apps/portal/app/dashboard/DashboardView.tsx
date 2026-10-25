@@ -1,65 +1,19 @@
-import type { DashboardData } from '@/lib/dashboard/types';
-import stateStyles from '@/components/page-state/PageState.module.css';
-import PipelineCountsCard from './_components/PipelineCountsCard';
-import RecentActivityCard from './_components/RecentActivityCard';
+import {preparePipelineCounts} from './_components/PipelineCountsCard';
+import type { ComponentProps } from 'react';
+import type { VisitSnapshot } from '@/lib/siteVisits/contract';
+import DashboardFrame from './DashboardFrame';
+import {ProjectWorkQueueCardRows} from './_components/ProjectWorkQueueCard';
+import {RecentActivityCardRows} from './_components/RecentActivityCard';
+import {RecentEstimatesCardRows} from './_components/RecentEstimatesCard';
+
 import DashboardTasksCard from './_components/DashboardTasksCard.client';
-import dash from './dashboard.module.css';
-import DashboardHero from './_components/DashboardHero';
-import RecentEstimatesCard from './_components/RecentEstimatesCard';
-import ProjectWorkQueueCard from './_components/ProjectWorkQueueCard';
 import TodayVisits from '@/components/site-visits/TodayVisits';
 
-export default function DashboardView({
-  data,
-  state = 'fresh',
-  onRetry,
-}: {
-  data: DashboardData;
-  state?: 'cached' | 'fresh' | 'refresh-failed';
-  onRetry?: () => void;
-}) {
-  return (
-    <main
-      className={dash.page}
-      data-ui-foundation-consumer="dashboard"
-      data-dashboard-state={state}
-      data-dashboard-background-ready={state === 'fresh' ? 'true' : 'false'}
-    >
-      <DashboardHero updatedAtIso={data.updatedAtIso} />
-
-      <div className={dash.content}>
-        {state === 'cached' ? (
-          <div className={dash.refreshStatus} role="status">Updating...</div>
-        ) : null}
-        {state === 'refresh-failed' ? (
-          <div className={`${stateStyles.inlineNotice} ${dash.refreshNotice}`} role="status">
-            <span>Could not refresh the dashboard. Showing the last saved information.</span>
-            {onRetry ? (
-              <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>Retry</button>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className={dash.layout}>
-          <PipelineCountsCard
-            counts={data.pipelineCounts}
-            countsAvailable={state !== 'refresh-failed' && data.pipelineCountsScope === 'open_enquiry_proposal_v1' && data.pipelineCountsAvailable === true}
-            stateCounts={data.projectStateCounts}
-            stateCountsAvailable={data.projectStateCountsAvailable !== false}
-          />
-
-          <div className={dash.workspaceGrid}>
-            <TodayVisits />
-            <ProjectWorkQueueCard
-              items={data.projectWorkQueue ?? []}
-              available={data.projectWorkQueueAvailable !== false}
-            />
-            <RecentActivityCard items={data.recentActivity} />
-            <RecentEstimatesCard items={data.recentEstimates} />
-            <DashboardTasksCard initialTasks={data.personalTasks} />
-          </div>
-        </div>
-      </div>
-    </main>
-  );
+export default function DashboardView({ visitsLoader,readOnly=false,...props }:
+  Omit<ComponentProps<typeof DashboardFrame>,'visits'|'tasksCard'> & {visitsLoader?:()=>Promise<VisitSnapshot>;readOnly?:boolean}) {
+  const tasks=props.parts?.personalTasks??props.data;
+  const work=props.parts?.projectWorkQueue??props.data,activity=props.parts?.recentActivity??props.data,estimates=props.parts?.recentEstimates??props.data;
+  return <DashboardFrame {...props} portfolioCounts={(props.parts?.pipelineCounts??props.data)?preparePipelineCounts((props.parts?.pipelineCounts??props.data)!.pipelineCounts):undefined} cardRows={{work:<ProjectWorkQueueCardRows items={work?.projectWorkQueue??[]}/>,activity:<RecentActivityCardRows items={activity?.recentActivity??[]}/>,estimates:<RecentEstimatesCardRows items={estimates?.recentEstimates??[]}/>}} visits={<TodayVisits loader={visitsLoader}/>}
+    tasksCard={<DashboardTasksCard initialTasks={tasks?.personalTasks??null}
+      pending={!tasks&&props.state!=='refresh-failed'} readOnly={readOnly}/>}/>;
 }

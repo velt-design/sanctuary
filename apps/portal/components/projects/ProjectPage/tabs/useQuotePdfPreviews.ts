@@ -55,33 +55,13 @@ export function useQuotePdfPreviews({
     [previewDetail],
   );
 
-  const quotePdfPreviewKey = useMemo(() => {
-    if (!previewDetail) return "";
-    if (
-      typeof previewDetail.renderHash === "string" &&
-      previewDetail.renderHash.trim()
-    ) {
-      return previewDetail.renderHash.trim();
-    }
-    const lineSignature = previewDetail.lineItems
-      .map(
-        (item) =>
-          `${item.description}:${item.qty}:${item.unitPriceIncGstCents}`,
-      )
-      .join("|");
-    return [
-      previewDetail.id,
-      previewDetail.status,
-      previewDetail.sentAt ?? "",
-      previewDetail.expiresAt ?? "",
-      previewDetail.reference ?? "",
-      previewDetail.depositPercent,
-      previewDetail.introText ?? "",
-      previewDetail.termsText ?? "",
-      previewDetail.totals.totalIncGstCents,
-      lineSignature,
-    ].join("::");
-  }, [previewDetail]);
+  // Match the renderer's complete input, including draft payment terms and header.
+  const quotePdfPreviewKey = useMemo(() => previewDetail ? JSON.stringify(previewDetail) : "", [previewDetail]);
+  const sendReviewKey = useMemo(() => reviewQuoteDetail ? JSON.stringify(reviewQuoteDetail) : "", [reviewQuoteDetail]);
+  const [quoteResultKey, setQuoteResultKey] = useState("");
+  const [reviewResultKey, setReviewResultKey] = useState("");
+  const quoteActive = pagePreviewFromUrl && Boolean(previewDetail);
+  const reviewActive = sendOpen && sendEditorMode === "review" && Boolean(reviewQuoteDetail);
 
   useEffect(() => {
     return () => {
@@ -98,6 +78,8 @@ export function useQuotePdfPreviews({
     }
 
     const abortController = new AbortController();
+    setQuoteResultKey(quotePdfPreviewKey);
+    setQuotePdfPreviewData(null);
     setQuotePdfPreviewLoading(true);
     setQuotePdfPreviewError(null);
 
@@ -192,20 +174,8 @@ export function useQuotePdfPreviews({
     }
 
     const abortController = new AbortController();
-    const cacheKey = [
-      reviewQuoteDetail.id,
-      reviewQuoteDetail.status,
-      reviewQuoteDetail.expiresAt ?? "",
-      reviewQuoteDetail.reference ?? "",
-      reviewQuoteDetail.depositPercent,
-      reviewQuoteDetail.totals.totalIncGstCents,
-      reviewQuoteDetail.lineItems
-        .map(
-          (item) =>
-            `${item.description}:${item.qty}:${item.unitPriceIncGstCents}`,
-        )
-        .join("|"),
-    ].join("::review::");
+    const cacheKey = sendReviewKey;
+    setReviewResultKey(cacheKey);
     const cached = cacheRef.current.get(cacheKey);
     if (cached) {
       setSendReviewPdfData(cached);
@@ -261,7 +231,7 @@ export function useQuotePdfPreviews({
     return () => {
       abortController.abort();
     };
-  }, [cacheRef, reviewQuoteDetail, sendEditorMode, sendOpen]);
+  }, [cacheRef, reviewQuoteDetail, sendEditorMode, sendOpen, sendReviewKey]);
 
   const resetSendReviewPdf = useCallback(() => {
     setSendReviewPdfData(null);
@@ -270,13 +240,13 @@ export function useQuotePdfPreviews({
   }, []);
 
   return {
-    quotePdfPreviewData,
-    quotePdfPreviewLoading,
-    quotePdfPreviewError,
+    quotePdfPreviewData: quoteActive && quoteResultKey === quotePdfPreviewKey ? quotePdfPreviewData : null,
+    quotePdfPreviewLoading: quoteActive && (quoteResultKey !== quotePdfPreviewKey || quotePdfPreviewLoading),
+    quotePdfPreviewError: quoteActive && quoteResultKey === quotePdfPreviewKey ? quotePdfPreviewError : null,
     quotePdfPreviewKey,
-    sendReviewPdfData,
-    sendReviewPdfLoading,
-    sendReviewPdfError,
+    sendReviewPdfData: reviewActive && reviewResultKey === sendReviewKey ? sendReviewPdfData : null,
+    sendReviewPdfLoading: reviewActive && (reviewResultKey !== sendReviewKey || sendReviewPdfLoading),
+    sendReviewPdfError: reviewActive && reviewResultKey === sendReviewKey ? sendReviewPdfError : null,
     resetSendReviewPdf,
   };
 }

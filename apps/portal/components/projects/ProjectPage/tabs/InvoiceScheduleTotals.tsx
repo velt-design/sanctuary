@@ -1,28 +1,9 @@
-import { MetricGrid } from '@/components/ui/foundation';
-import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
 import { useProjectCommercialContext } from '../ProjectCommercialContext';
+import { InvoiceScheduleTotalsSurface } from './InvoicesListSurface';
+import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
 
-function formatMoneyFromCents(value: number): string {
-  return Number.isFinite(value) ? new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(value / 100) : '-';
-}
-
-/** Read-only presentation of the authoritative schedule; never sums quote versions. */
-export default function InvoiceScheduleTotals({ schedule }: { schedule: ProjectInvoiceSchedule }) {
+/** Context adapter; the same pure totals owner also renders unknown public values. */
+export default function InvoiceScheduleTotals({ schedule, pending = false }: { schedule: ProjectInvoiceSchedule | null; pending?: boolean }) {
   const { closed } = useProjectCommercialContext();
-  return (
-<MetricGrid
-            ariaLabel="Accepted project quote payment totals"
-            columns={4}
-            items={[
-              { label: closed ? 'Recorded contract value' : 'Job total', value: formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents), detail: 'Accepted quotes and separate invoiced work' },
-              ...((schedule.standaloneTotalIncGstCents ?? 0) > 0 ? [
-                { label: 'Accepted quote value', value: formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
-                { label: 'Other invoiced work', value: formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0), detail: 'Separate charges outside current quotes' },
-              ] : []),
-              { label: 'Recorded payments', value: formatMoneyFromCents(schedule.paidIncGstCents), detail: schedule.unallocatedCreditIncGstCents > 0 ? `${formatMoneyFromCents(schedule.unallocatedCreditIncGstCents)} unallocated credit` : 'Net project payment ledger' },
-              { label: 'Open invoice balance', value: formatMoneyFromCents(schedule.outstandingIncGstCents), detail: 'Issued and unpaid; excludes work still to invoice' },
-              { label: closed ? 'Uncovered contract value' : 'Still to invoice', value: formatMoneyFromCents(schedule.remainingToInvoiceIncGstCents), detail: closed ? 'A recorded difference, not an instruction to bill. Review the closure agreement.' : 'Agreed work not yet covered by payments or open invoices' },
-            ]}
-          />
-  );
+  return <InvoiceScheduleTotalsSurface schedule={schedule} pending={pending} closed={closed} />;
 }

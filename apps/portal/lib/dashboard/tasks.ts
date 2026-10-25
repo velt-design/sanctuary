@@ -2,7 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { PORTAL_TIME_ZONE, portalTodayYmd } from '@/lib/format/portalDateTime';
 import type { DashboardPersonalTask } from './types';
 
-export const DASHBOARD_TASK_TITLE_MAX_LENGTH = 240;
+import {DASHBOARD_TASK_TITLE_MAX_LENGTH} from './types';
+export {DASHBOARD_TASK_TITLE_MAX_LENGTH} from './types';
 
 const TASK_COLUMNS = 'id,owner_id,title,completed_at,created_at,updated_at,deleted_at,sort_order';
 
