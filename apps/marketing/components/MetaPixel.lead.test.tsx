@@ -6,6 +6,7 @@ import ContactEnquiryForm from '../app/contact/ContactEnquiryForm';
 import { buildContactDesignBrief } from '../app/contact/contactDesignBrief';
 import { DEFAULT_PREVIEW_DRAFT } from './configurator-prototype/previewDraft';
 import { GET } from '../app/runtime-meta.js/route';
+import { CONSENT_UPDATED_EVENT } from '../lib/consent';
 
 const state = vi.hoisted(() => ({ marketing: true, decision: true,
   script: null as null | { src: string; onReady?: () => void } }));
@@ -105,3 +106,29 @@ it.each([{ marketing: false, decision: true }, { marketing: true, decision: fals
     expect(leads()).toHaveLength(0);
   },
 );
+
+it('uses current in-memory withdrawal after an API response waits, even when storage fails', async () => {
+  let settle: (value: unknown) => void = () => {};
+  network.mockImplementationOnce(() => new Promise(resolve => { settle = resolve; }));
+  await render(); await loadRuntime();
+  await act(async () => {
+    for (const [name, value] of Object.entries({ name: 'Synthetic Fixture', suburb: 'Albany', email: 'fixture@example.test' })) {
+      const input = host.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+      input.value = value; input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  state.marketing = false;
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Synthetic storage unavailable'); });
+  await render();
+  await act(async () => settle({ ok: true, status: 200, json: async () => ({ ok: true }) }));
+  expect(host.textContent).toContain('Your enquiry has been sent.'); expect(leads()).toHaveLength(0);
+});
+
+it('honours the provider consent event before its React state update commits', async () => {
+  await render(); await loadRuntime();
+  window.dispatchEvent(new CustomEvent(CONSENT_UPDATED_EVENT, {
+    detail: { consent: { marketing: false }, trackingBasis: 'user_choice' },
+  }));
+  await submit(); expect(leads()).toHaveLength(0);
+});

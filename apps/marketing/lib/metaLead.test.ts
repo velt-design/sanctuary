@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { clearPendingMetaLeads, emitMetaLead, flushPendingMetaLeads } from './metaLead';
+import { clearPendingMetaLeads, emitMetaLead, flushPendingMetaLeads, setMetaLeadPermission } from './metaLead';
 import { CONSENT_STORAGE_KEY, createStoredConsent } from './consent';
 
 const target = window as Window & { fbq?: (...args: unknown[]) => void };
 let sequence = 0;
 const identity = () => `synthetic-submission-${++sequence}`;
-beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); clearPendingMetaLeads(); delete target.fbq; });
-afterEach(() => { clearPendingMetaLeads(); delete target.fbq; vi.clearAllTimers(); vi.useRealTimers(); });
+beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); clearPendingMetaLeads(); setMetaLeadPermission(true); delete target.fbq; });
+afterEach(() => { setMetaLeadPermission(false); delete target.fbq; vi.clearAllTimers(); vi.useRealTimers(); });
 
 it('queues the original accepted event once and preserves its submission identity on readiness', () => {
   const id = identity(), event = { lead_event_id: id, enquiry_type: 'residential' };
@@ -36,6 +36,13 @@ it('expires an unavailable runtime queue and bounds its transient storage', () =
   for (const id of ids) emitMetaLead({ lead_event_id: id }, id, true);
   target.fbq = pixel; flushPendingMetaLeads(true);
   expect(pixel.mock.calls.map(call => call[3])).toEqual(ids.slice(1).map(id => ({ eventID: id })));
+});
+
+it('checks the elapsed deadline when the browser has delayed the expiry callback', () => {
+  const before = Date.now(); emitMetaLead({}, identity(), true);
+  vi.setSystemTime(before + 60_001);
+  const pixel = target.fbq = vi.fn(); flushPendingMetaLeads(true);
+  expect(pixel).not.toHaveBeenCalled();
 });
 
 it('clears pending work on disposal without claiming a dispatched event can be retried', () => {

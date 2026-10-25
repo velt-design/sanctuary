@@ -3,17 +3,28 @@
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { useConsent } from '@/components/ConsentProvider';
-import { clearPendingMetaLeads, flushPendingMetaLeads } from '../lib/metaLead';
+import { flushPendingMetaLeads, setMetaLeadPermission } from '../lib/metaLead';
+import { CONSENT_UPDATED_EVENT } from '../lib/consent';
 
 export default function MetaPixel() {
-  const { consent } = useConsent();
+  const { consent, hasTrackingDecision } = useConsent();
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
+    setMetaLeadPermission(hasTrackingDecision && consent.marketing);
+    const permissionChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ consent?: { marketing?: boolean }; trackingBasis?: string }>).detail;
+      setMetaLeadPermission(detail?.consent?.marketing === true &&
+        (detail.trackingBasis === 'user_choice' || detail.trackingBasis === 'regional_default'));
+    };
+    window.addEventListener(CONSENT_UPDATED_EVENT, permissionChanged);
+    const disposePermission = () => {
+      window.removeEventListener(CONSENT_UPDATED_EVENT, permissionChanged);
+      setMetaLeadPermission(false);
+    };
     if (!consent.marketing) {
-      clearPendingMetaLeads();
       setShouldLoad(false);
-      return;
+      return disposePermission;
     }
 
     let timerId: number | null = null;
@@ -31,9 +42,9 @@ export default function MetaPixel() {
     return () => {
       window.removeEventListener('load', schedule);
       if (timerId !== null) window.clearTimeout(timerId);
-      clearPendingMetaLeads();
+      disposePermission();
     };
-  }, [consent.marketing]);
+  }, [consent.marketing, hasTrackingDecision]);
 
   if (!consent.marketing || !shouldLoad) return null;
 
