@@ -17,11 +17,20 @@ export function createLandingPriceTableStore() {
   let generation = 0;
   let renewal: ReturnType<typeof setTimeout> | undefined;
   let expiration: ReturnType<typeof setTimeout> | undefined;
+  let lifecycleAttached = false;
+  let authorizationMode: boolean | null = null;
+  function detachLifecycle() {
+    window.removeEventListener('focus', refresh);
+    window.removeEventListener('pageshow', refresh);
+    document.removeEventListener('visibilitychange', visibility);
+    lifecycleAttached = false;
+  }
   const emit = (next: LandingTableState) => { state = next; listeners.forEach(listener => listener()); };
   const clearTimers = () => { clearTimeout(renewal); clearTimeout(expiration); };
   const invalidate = (status: LandingTableState['status'] = 'loading') => {
     clearTimers();
     emit({ status, table: null, expiresAt: 0, epoch: state.epoch + 1 });
+    if (!listeners.size) detachLifecycle();
   };
 
   function load(): Promise<void> {
@@ -45,10 +54,11 @@ export function createLandingPriceTableStore() {
         const expiresAt = started + Math.min(lease, LANDING_PRICE_LEASE_MS);
         if (!table || !Number.isFinite(lease) || lease <= 0 || expiresAt <= Date.now()) throw new Error('Invalid table lease');
         cached = table;
+        authorizationMode = funnel;
         clearTimers();
         emit({ status: 'ready', table, expiresAt, epoch: state.epoch });
         expiration = setTimeout(() => invalidate('unavailable'), expiresAt - Date.now());
-        renewal = setTimeout(() => { void load(); }, Math.max(funnel ? 1000 : 0, expiresAt - Date.now() - LANDING_PRICE_LEASE_MS / 2));
+        renewal = setTimeout(() => { if (listeners.size) void load(); }, Math.max(funnel ? 1000 : 0, expiresAt - Date.now() - LANDING_PRICE_LEASE_MS / 2));
       } catch {
         if (requestGeneration === generation && !signal.aborted) invalidate('unavailable');
       } finally {
@@ -62,7 +72,7 @@ export function createLandingPriceTableStore() {
     generation++; controller?.abort(); pending = null;
     invalidate();
   }
-  function refresh() { reset(); if (document.visibilityState !== 'hidden') void load(); }
+  function refresh() { reset(); if (listeners.size && document.visibilityState !== 'hidden') void load(); }
   function visibility() { if (document.visibilityState === 'hidden') reset(); else refresh(); }
   return {
     getSnapshot: () => state,
@@ -72,18 +82,24 @@ export function createLandingPriceTableStore() {
       const first = listeners.size === 0;
       listeners.add(listener);
       if (first) {
-        window.addEventListener('focus', refresh);
-        window.addEventListener('pageshow', refresh);
-        document.addEventListener('visibilitychange', visibility);
-        refresh();
+        if (!lifecycleAttached) {
+          window.addEventListener('focus', refresh);
+          window.addEventListener('pageshow', refresh);
+          document.addEventListener('visibilitychange', visibility);
+          lifecycleAttached = true;
+        }
+        // Route unmounts do not revoke a still-current server lease in a visible document.
+        // A hidden tab, focus/pageshow, expiry or different pricing mode still revokes it.
+        if (state.status !== 'ready' || state.expiresAt <= Date.now() || document.visibilityState === 'hidden'
+          || authorizationMode !== isInlineFunnelPath(window.location.pathname)) refresh();
+        else if (state.expiresAt - Date.now() <= LANDING_PRICE_LEASE_MS / 2) void load();
       }
       return () => {
         listeners.delete(listener);
         if (!listeners.size) {
-          window.removeEventListener('focus', refresh);
-          window.removeEventListener('pageshow', refresh);
-          document.removeEventListener('visibilitychange', visibility);
-          reset();
+          clearTimeout(renewal);
+          generation++; controller?.abort(); pending = null;
+          if (state.status !== 'ready' || state.expiresAt <= Date.now()) reset();
         }
       };
     },

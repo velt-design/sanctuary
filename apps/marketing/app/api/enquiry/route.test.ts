@@ -6,6 +6,18 @@ type Row = Record<string, any>;
 const SUBMISSION_ID = 'ad5e5929-32f8-4af9-989a-4de73a4dc5a2';
 const UPLOAD_SESSION_TOKEN = 'valid-upload-session-token';
 
+it('read-only preview rejects intake before any database or provider work', async () => {
+  const { POST } = await import('./route');
+  const calls = h.createClient.mock.calls.length;
+  vi.stubEnv('MARKETING_PREVIEW_READ_ONLY', 'true');
+  try {
+    const response = await POST(new Request('http://localhost/api/enquiry', { method: 'POST', body: '{}' }));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ ok: false, error: expect.stringContaining('preview cannot send enquiries') });
+    expect(h.createClient.mock.calls.length).toBe(calls);
+  } finally { vi.unstubAllEnvs(); }
+});
+
 const h = vi.hoisted(() => ({
   createClient: vi.fn(),
   calculateCostV1: vi.fn(() => ({

@@ -129,6 +129,13 @@ describe('AcrylicPergolaEnquiryForm Simple cover variant', () => {
     await submit();(container.querySelector('[name=email]') as HTMLInputElement).value='edited@example.test';await submit();
     const bodies=network.mock.calls.map(call=>JSON.parse(String(call[1]?.body)));
     expect(bodies[0].submissionId).toBe(bodies[1].submissionId);expect(bodies[1].email).toBe('edited@example.test');
+    expect(container.textContent).toContain('Your earlier enquiry was received.');
+    expect(container.textContent).toContain('Changes made after your first send attempt are not included');
+    expect(container.textContent).not.toContain('Project brief sent.');
+    expect(localStorage.getItem('sanctuary.enquiry-drafts.v1')).toContain('edited@example.test');
+    await act(async () => root?.unmount()); root = null;
+    const restored = await renderForm(pricedHandoff);
+    expect(restored.querySelector<HTMLInputElement>('[name=email]')?.value).toBe('edited@example.test');
     expect(identityReads).toEqual([undefined]);expect(JSON.stringify(layer)).not.toContain('edited@example');
     (layer[0].eventCallback as ()=>void)();
   });

@@ -66,8 +66,8 @@ it('hidden tabs clear authorization and revalidate cached content on return or r
   await tick(60000); expect(fetcher).toHaveBeenCalledTimes(1);
   visibility.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange')); await tick();
   expect(store.getSnapshot().status).toBe('ready');
-  stops.pop()!(); expect(store.getSnapshot().table).toBeNull();
-  stops.push(store.subscribe(vi.fn())); await tick(); expect(fetcher).toHaveBeenCalledTimes(3);
+  stops.pop()!(); expect(store.getSnapshot().status).toBe('ready');
+  stops.push(store.subscribe(vi.fn())); await tick(); expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
 it('retry recovers a failed initial request without retaining a prior lease', async () => {
@@ -75,4 +75,22 @@ it('retry recovers a failed initial request without retaining a prior lease', as
   vi.stubGlobal('fetch', fetcher); const store = mount(); await tick();
   expect(store.getSnapshot().status).toBe('unavailable'); store.retry(); await tick();
   expect(store.getSnapshot().status).toBe('ready');
+});
+
+it('reuses only an unexpired same-mode visible-document lease on route return', async () => {
+  const fetcher = vi.fn().mockResolvedValue(reply(ready)); vi.stubGlobal('fetch', fetcher);
+  const store = mount(); await tick(); const initial = store.getSnapshot(); stops.pop()!();
+  await tick(1000); stops.push(store.subscribe(vi.fn()));
+  expect(store.getSnapshot()).toBe(initial); expect(fetcher).toHaveBeenCalledTimes(1);
+  stops.pop()!(); await tick(30000); expect(store.getSnapshot().status).toBe('unavailable');
+  stops.push(store.subscribe(vi.fn())); await tick(); expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
+it('revokes an unmounted lease on tab hiding and never makes background price requests', async () => {
+  const fetcher = vi.fn().mockResolvedValue(reply(ready)); vi.stubGlobal('fetch', fetcher);
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const store = mount(); await tick(); stops.pop()!();
+  visibility.mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange'));
+  expect(store.getSnapshot().status).toBe('loading'); await tick(1000); expect(fetcher).toHaveBeenCalledTimes(1);
+  visibility.mockReturnValue('visible'); stops.push(store.subscribe(vi.fn())); await tick(); expect(fetcher).toHaveBeenCalledTimes(2);
 });

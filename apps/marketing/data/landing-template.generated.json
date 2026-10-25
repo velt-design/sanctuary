@@ -1,5 +1,5 @@
 {
-  "hash": "8a6b060b3d1f104938ad2bf64b51d2dd57e610b1c731ee2ce8d1ea4e1f67ca4f",
+  "hash": "552bde91b3752e6f3fa80f273b86da65e182603d93691cfbca43d86955915084",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -7,7 +7,7 @@
     ],
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css",
-      "6fee38e6338a86808373940401bbbd9f379d01e491d3a3e52f3e9555de41af22"
+      "3a26d3929f749a8422d76d9db14b7172c569962056177e882a50ae6d31b806e2"
     ],
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/AcrylicPergolaPage.tsx",
@@ -43,7 +43,7 @@
     ],
     [
       "apps/marketing/app/contact/ConfiguredEnquiryFields.tsx",
-      "b04f5e3c14cfcbfdbe06837656cd1c25ec7f1a8577416285cf000a9153af9265"
+      "6a3e1b10213b8715f0a06cb542ac495f664681dfe9f440c475ee75782bae73cc"
     ],
     [
       "apps/marketing/app/contact/ContactAttachmentFields.tsx",
@@ -67,7 +67,7 @@
     ],
     [
       "apps/marketing/app/contact/ContactEnquiryForm.tsx",
-      "ac1627da1cddd0d99b306e957cfcbb2357ca58d050ddb35344482de3f1742bac"
+      "d8deb9e08f00be05d6119848499034074f1c7ea9661ac931590ab9d962d1e30b"
     ],
     [
       "apps/marketing/app/contact/ContactFormIntro.tsx",
@@ -87,7 +87,7 @@
     ],
     [
       "apps/marketing/app/contact/ContactProjectPreferences.tsx",
-      "24610b737f648e8b185fd8d72ee096c012f8bd578ffbcf856b7ce4ea68751d05"
+      "fa4e062d8c47187b85b44837316ca40d9dc83fe63f7d78d391a2e6d484379f6a"
     ],
     [
       "apps/marketing/app/contact/ContactTechnicalFields.tsx",
@@ -107,7 +107,7 @@
     ],
     [
       "apps/marketing/app/layout.tsx",
-      "7eb6b40ab450b435ce4a103645512ba25e4bdf962d180396b5f3543d336f0a27"
+      "8d6fd27f1e86a5ec5e6624ed450c45b85e64832ee1ea6f709720d7a210673e56"
     ],
     [
       "apps/marketing/app/pergolas-auckland/content.ts",
@@ -778,8 +778,20 @@
       "97944cf3f38336d24342598295f0866e8a38b744dde7f30da1f94297e25b44af"
     ],
     [
+      "apps/marketing/components/enquiry/EnquiryDraftNotice.module.css",
+      "98359d0a5cb5b70414b949081344dde747f1e1950e69629ae9dec6629d9c015e"
+    ],
+    [
+      "apps/marketing/components/enquiry/EnquiryDraftNotice.tsx",
+      "1faa3d428c0ca0a89438cb49a437e3e605ea223cf49a94288605efa848f0cc4f"
+    ],
+    [
       "apps/marketing/components/enquiry/EnquiryErrorSummary.tsx",
       "a9dcbcf098a76d1c74ea71509432be8cd693f04d2aef3d822847df89f6546444"
+    ],
+    [
+      "apps/marketing/components/enquiry/useEnquiryDraft.ts",
+      "8e01ba712782aa8fc6bae213dfd383a66f81636feccd816e5cf7572f4befc9ac"
     ],
     [
       "apps/marketing/components/enquiry/useEnquiryInteraction.ts",
@@ -819,7 +831,7 @@
     ],
     [
       "apps/marketing/components/Header.tsx",
-      "068a01f153e5f487e929ef1f8d76d7cd6cd542482fb9d07a4c8b5deae375ea8f"
+      "fcc794f7e91a9745409586a62f1add69d00fd5a0baeef283fd17b19b17cd98f5"
     ],
     [
       "apps/marketing/components/HeaderEditorial.module.css",
@@ -927,7 +939,7 @@
     ],
     [
       "apps/marketing/components/ScrollReset.tsx",
-      "1fec6b4ec1f09d6290d69468d03cee18fa75521dca1dde940700ec85afe4a768"
+      "ca5f99a1326e149cb2ab95ba96ec7ea84ea820bfc92f95053291099121a567c6"
     ],
     [
       "apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.module.css",
@@ -935,7 +947,7 @@
     ],
     [
       "apps/marketing/components/simple-cover-calculator/SimpleCoverCalculator.tsx",
-      "83721627e8ac5710219a076d74c676721e86ed4d26c533acae516a69cd69f7c5"
+      "25340964fb0f59f0c43666d2bdcaeaf5b21ea9031336611240cfcde7b48f930c"
     ],
     [
       "apps/marketing/components/SiteFooter.module.css",
@@ -1026,6 +1038,14 @@
       "acb533920cb81d799260bcb6ced70917d65da46959627fe4332e9a3f1c7f3d32"
     ],
     [
+      "apps/marketing/lib/enquiryDraft.ts",
+      "ddf7250a586ce5e2d42992fe9769c7ccbf7b6d9ebb0364648bd71828952e22a7"
+    ],
+    [
+      "apps/marketing/lib/enquiryDraftFiles.ts",
+      "4aec886a0192630a739d3b6b5a9602fa5a8bc1fb60db6998106dca515ceedd4b"
+    ],
+    [
       "apps/marketing/lib/enquiryFormContract.ts",
       "feb1a39c5d19db3c6d9adeb866a052a4b7037f0caa4649b6535c72daf892841f"
     ],
@@ -1083,11 +1103,15 @@
     ],
     [
       "apps/marketing/lib/landingPriceTableStore.ts",
-      "220c59b15b6a38ea6a5ecadcc33876d27d0cc914792764ea42ce583f5f62365e"
+      "ada4ea657d0b8645abdc7dab6b135974e0058b369b70c045afdb6b68f5113c7b"
+    ],
+    [
+      "apps/marketing/lib/pageContinuity.ts",
+      "ffcb97759a9c41aadcf03d1fc26561a72afe8abc6d144f10a3dc3c6ebcb44987"
     ],
     [
       "apps/marketing/lib/projectDetailNavigation.ts",
-      "36565e926cd72015a1a530f7096eeaaad61b20ac3c97ec3f784087fe706e0db0"
+      "bc66014fd25215166d3babcca56cfd520bf828aa5089d8a845ec2f858cd4b2fe"
     ],
     [
       "apps/marketing/lib/projectFinderContinuation.ts",

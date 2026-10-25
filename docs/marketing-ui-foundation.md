@@ -1,5 +1,53 @@
 # Marketing UI Foundation
 
+## Marketing browsing and enquiry continuity (26 October 2026 candidate)
+
+Jordan authorised exact mobile Back position, fast return navigation and unfinished
+enquiry recovery for preview before production. `ScrollReset` delegates to
+`lib/pageContinuity`: bounded tab-local coordinates belong to history-entry IDs,
+including BODY and existing route containers. The shared owner temporarily uses
+native `history.scrollRestoration='manual'` and restores its previous mode on
+disposal. The former project-detail-only mode toggle is removed so a project
+cannot change that policy. New entries reset normally;
+fragments, project in-place navigation and collection/configurator return owners
+retain their established semantics. Restoration is cancelled by user input and
+only retries a temporarily short layout for at most one second.
+Marked desktop project switches retain their anchor owner before generic entry
+restoration. `projectDetailNavigation` supports both the photographic template's
+direct header and the older intro wrapper when aligning and focusing a case study.
+
+Header links fully prefetch public destinations; closed mobile-menu links do not
+prefetch. No HTML, service worker, token-route or private-data cache was added.
+`landingPriceTableStore` retains its one memory-only table during same-document
+route unmount only while the original server lease is valid. Hidden/focus/pageshow,
+expiry, failed renewal and pricing-mode changes still revoke authorization. It
+does not renew while unmounted or extend a lease with a local timestamp.
+
+`useEnquiryDraft` owns contact, configured/inline and shared SEO enquiry drafts.
+Editable fields and pathway/audience metadata are written synchronously to bounded
+browser storage (10 isolated form contexts, 32K text per context, 24-hour recovery).
+IndexedDB stores selected File blobs through the existing attachment limits,
+bounded to 60 MB across contexts. Expired blobs are pruned on enquiry access;
+missing/evicted/unavailable attachments produce an explicit request to reattach.
+The clear action removes local text/files. Fresh confirmed acceptance clears the
+draft; an idempotent replay retains later unsent edits and its existing warning.
+Shared SEO contexts include the actual form route and meaningful project/product
+identity; upstream attribution alone cannot merge distinct briefs. Both enquiry
+owners explain that a replay acknowledges the earlier brief, excluding later edits.
+The old unscoped configured-form session draft is consumed once into the current
+compatible form context, then removed. No draft fields are sent to analytics, and
+pricing leases, submission/upload tokens, experiment receipts and attribution are
+excluded. Recovered simple-cover inputs obtain a fresh result rather than storing
+a displayed price in the draft.
+
+The existing large form owners compose this focused persistence boundary; their
+validation, API submission and attachment pipeline remain their owners.
+`MARKETING_PREVIEW_READ_ONLY=true` fails intake, legacy contact, native fallback,
+attachment signing and cleanup closed before any backend/provider work, allowing
+safe preview review with truthful errors. Production defaults remain unchanged.
+Local integration, compiled-browser and independent-review evidence are recorded
+in the owning task record; this candidate section is not a release claim.
+
 ## Enquiry privacy-link continuity (22 October 2026)
 
 The shared `AdvertisingMeasurementNotice` opens its privacy policy and choices
@@ -7,9 +55,9 @@ in a clearly labelled new tab. Reading the notice must leave the original
 contact, configured-design or SEO enquiry mounted with its selected pathway,
 entered details, attachments and any recoverable submission error. An actual
 mobile check found that same-tab policy navigation followed by Back reset an
-unfinished contact brief. This uses native link behaviour rather than adding
-persistent storage of personal information; policy content and tracking choices
-remain unchanged.
+unfinished contact brief. That release used native link behaviour without adding
+draft storage. The 26 October continuity candidate above adds explicitly scoped
+browser-local draft recovery; the new-tab link and tracking choices remain.
 
 ## SEO enquiry mobile input sizing (22 October 2026)
 

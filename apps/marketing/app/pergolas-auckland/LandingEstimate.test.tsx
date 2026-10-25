@@ -21,7 +21,12 @@ function withDesign(): LandingSelectionState {
 }
 let container: HTMLDivElement, root: Root;
 beforeEach(() => { vi.useFakeTimers(); vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); container = document.createElement('div'); root = createRoot(container); });
-afterEach(async () => { await React.act(async () => root.unmount()); vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(async () => {
+  await React.act(async () => root.unmount());
+  // A fixture case represents a new document, while real route returns now retain a valid lease.
+  window.dispatchEvent(new Event('focus'));
+  vi.useRealTimers(); vi.unstubAllGlobals();
+});
 async function render(state: LandingSelectionState) { await React.act(async () => root.render(<LandingEstimate state={state} />)); }
 async function tick(ms: number) { await React.act(async () => vi.advanceTimersByTimeAsync(ms)); }
 

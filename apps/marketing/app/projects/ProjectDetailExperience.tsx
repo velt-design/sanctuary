@@ -275,14 +275,7 @@ export default function ProjectDetailExperience({
 
   useEffect(() => {
     const desktopQuery = window.matchMedia('(min-width: 900px)');
-    const previousScrollRestoration = window.history.scrollRestoration;
-    const syncScrollRestoration = () => {
-      window.history.scrollRestoration = desktopQuery.matches
-        ? 'manual'
-        : previousScrollRestoration;
-    };
     const enableDesktopProjectSwitching = () => {
-      syncScrollRestoration();
       if (!desktopQuery.matches) return;
       const currentSlug = getProjectDetailSlug(window.location.pathname);
       if (currentSlug && currentSlug !== selectionRef.current.project.slug) {
@@ -326,7 +319,6 @@ export default function ProjectDetailExperience({
     desktopQuery.addEventListener('change', enableDesktopProjectSwitching);
     window.addEventListener('popstate', handlePopState, { capture: true });
     return () => {
-      window.history.scrollRestoration = previousScrollRestoration;
       desktopQuery.removeEventListener('change', enableDesktopProjectSwitching);
       window.removeEventListener('popstate', handlePopState, { capture: true });
     };
