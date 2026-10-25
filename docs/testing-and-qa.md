@@ -1,5 +1,26 @@
 # Testing And QA
 
+Tracking health evidence: run campaignMonitor/tracking-evidence, reader and http
+unit suites, actual current-validator parity vectors and bounded transport tests.
+Cover UTF-8 bytes versus UTF-16 length, root-zero depth/value-node caps, missing,
+unavailable, invalid/reserved secret keys and unchanged original input. Keep core
+metrics/inventory unchanged, project only four originals, and fail once on provider
+field rejection or oversize with no retry/limit change. With the existing local
+SANCTUARY_DISPOSABLE_POSTGRES_BIN, tracking-native.test.ts applies actual reporting
+and health SQL, proves five fenced GETs/complete/deliver, retain:false/no snapshot,
+completion byte hash and Stop. Its ignored synthetic report feeds Velt's native
+monitor save/read/repeat fixture. No remote database, SDK or Meta effects occur.
+Pair with Velt legacy/strict unknowns and byte-identical model-evidence tests.
+
+Paused native-copy candidate: run the creative authority tests and existing
+`scripts/test-meta-creative-ledger-db.mjs` with local disposable PG17. The harness
+installs the forward native-copy patch, checks original-donor/purpose/wire guards,
+one-use uncertain dispatch, exact registered canary proof, Stop, shared reservation
+and owned cleanup, then rechecks legacy capability in isolated synthetic state.
+No actual provider, vault, customer or production operation is performed. Pair
+with Velt's connected native-copy runtime and unchanged native receipt tests;
+synthetic success does not verify Meta response fields or full settings parity.
+
 The AI and Background Jobs PostgreSQL 17 matrices fetch the official Supabase
 image from GHCR at the existing immutable `sha256:1e6caa31ec3acaf07fc9cd2e860aba029b26ff212f66731df7a0bde10be3e721`
 manifest. Its manifest, configuration and all 29 layers match the prior public

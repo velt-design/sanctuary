@@ -2,6 +2,7 @@ import 'server-only';
 import { createHmac } from 'node:crypto';
 import { z } from 'zod';
 import { metaRead } from '../meta/transport';
+import {projectTrackingEvidence} from './tracking-evidence';
 import type { Boundary } from '../meta/boundary';
 import type { MetaConfig } from '../meta/config';
 import { entityId, campaignScope, TIMEZONE, campaignPeriods, campaignHealthSchema, type CampaignHealth, registeredCreativeAdSchema, type RegisteredCreativeAd, steadyAdSchema, type SteadyAd } from './contract';
@@ -11,7 +12,7 @@ const money = z.string().regex(/^\d+(\.\d{1,2})?$/).transform(Number).refine(Num
 const metric = z.string().regex(/^\d+(\.\d+)?$/).transform(Number).refine(Number.isFinite);
 const state = z.string().regex(/^[A-Z_]{1,50}$/);
 const statusRow = z.object({ id: entityId, account_id: entityId, campaign_id: entityId, adset_id: entityId, effective_status: state,
-  creative: z.object({ id: entityId }).optional(),
+  creative: z.object({ id: entityId }).optional(), tracking_specs:z.unknown().optional(),
   campaign: z.object({ id: entityId, effective_status: state, daily_budget: numeric.optional() }),
   adset: z.object({ id: entityId, effective_status: state, daily_budget: numeric.optional() }) });
 const insight = z.object({ account_id: entityId, campaign_id: entityId, adset_id: entityId, ad_id: entityId,
@@ -33,7 +34,7 @@ export async function readCampaignHealth(config: Omit<MetaConfig, 'expiresAt'>, 
   const filtering = JSON.stringify([{ field: 'campaign.id', operator: 'IN', value: [CAMPAIGN] }]);
   const read = (edge: 'ads' | 'insights', fields: string, extra: Record<string, string> = {}) => boundary('report_read', async () =>
     (await metaRead(fetcher, `act_${ACCOUNT}/${edge}`, new URLSearchParams({ fields, filtering, limit: '100', appsecret_proof: proof, ...extra }), config.token)).body);
-  const states = page(statusRow, await read('ads', 'id,account_id,campaign_id,adset_id,effective_status,creative{id},campaign{id,effective_status,daily_budget},adset{id,effective_status,daily_budget}'));
+  const states = page(statusRow, await read('ads', 'id,account_id,campaign_id,adset_id,effective_status,tracking_specs,creative{id},campaign{id,effective_status,daily_budget},adset{id,effective_status,daily_budget}'));
   if (states.length !== ADS.length || new Set(states.map(row => row.id)).size !== ADS.length) throw new Error('Campaign ad coverage differs.');
   if (states.some(row => !ADS.includes(row.id) || row.account_id !== ACCOUNT || row.campaign_id !== CAMPAIGN || row.adset_id !== ADSET || row.campaign.id !== CAMPAIGN || row.adset.id !== ADSET)) throw new Error('Campaign scope differs.');
   if (steady.some(row => states.find(state => state.id === row.id)?.creative?.id !== row.creative)) throw new Error('Steady creative differs.');
@@ -61,7 +62,12 @@ export async function readCampaignHealth(config: Omit<MetaConfig, 'expiresAt'>, 
   return campaignHealthSchema.parse({ version: 'sanctuary-campaign-health-v1', account: ACCOUNT, campaign: CAMPAIGN, adset: ADSET,
     observedAt: now.toISOString(), currency: 'NZD', timezone: TIMEZONE, periods, campaignStatus: first.campaign.effective_status,
     adsetStatus: first.adset.effective_status, dailyBudget: (first.campaign.daily_budget ?? first.adset.daily_budget) === undefined ? null : (first.campaign.daily_budget ?? first.adset.daily_budget)! / 100,
-    ads: scope.ads.map(({ id, label }) => ({ id, label, status: states.find(row => row.id === id)!.effective_status, today: metrics('today', id), week: metrics('week', id) })),
+    ads: scope.ads.map(({ id, label }) => {
+      const row=states.find(row=>row.id===id)!;let trackingEvidence;
+      try{trackingEvidence=projectTrackingEvidence(row.tracking_specs,Object.hasOwn(row,'tracking_specs'));}
+      catch{trackingEvidence={version:1 as const,status:'unavailable' as const};}
+      return {id,label,status:row.effective_status,today:metrics('today',id),week:metrics('week',id),trackingEvidence};
+    }),
     creativeAds: registered.map(row => ({ ...row, status: states.find(state => state.id === row.id)!.effective_status, today: metrics('today', row.id), week: metrics('week', row.id) })),
     steadyAds: steady.map(row => ({ ...row, status: states.find(state => state.id === row.id)!.effective_status, today: metrics('today', row.id), week: metrics('week', row.id) })),
     attribution: 'Ad-set attribution settings; impression-time reporting' });

@@ -19,7 +19,7 @@ const payloads = {
   confirm: z.object({ requestHash: hash, objectId: z.string().regex(/^[1-9]\d{0,19}$/), evidenceHash: hash }).strict(),
   no_effect: z.object({ requestHash: hash, evidenceHash: hash, reason: z.literal('dispatch_not_started') }).strict(),
   receipt: z.object({}).strict(), measurement: z.object({}).strict(),
-  canary: z.object({ evidenceHash: hash }).strict(), cleanup: z.object({ evidenceHash: hash, terminalStudy: z.object({ id: z.string().regex(/^[1-9]\d{0,19}$/), end: z.number().int().positive(), observationEnd: z.number().int().positive(), observedAt: z.iso.datetime(), evidenceHash: hash, ended: z.literal(true) }).strict().nullable() }).strict(),
+  canary: z.object({ evidenceHash: hash, nativeCopy:z.object({sourceAd:z.string().regex(/^[1-9]\d{0,19}$/),creative:z.string().regex(/^[1-9]\d{0,19}$/),ad:z.string().regex(/^[1-9]\d{0,19}$/),requestHash:hash,readbackHash:hash}).strict().optional() }).strict(), cleanup: z.object({ evidenceHash: hash, terminalStudy: z.object({ id: z.string().regex(/^[1-9]\d{0,19}$/), end: z.number().int().positive(), observationEnd: z.number().int().positive(), observedAt: z.iso.datetime(), evidenceHash: hash, ended: z.literal(true) }).strict().nullable() }).strict(),
 };
 export function verifyCreativeCommand(raw: unknown, signature: string | null, now = Date.now()) {
   const body = JSON.stringify(raw), key = process.env.SANCTUARY_LANDING_EXPERIMENT_KEY;
