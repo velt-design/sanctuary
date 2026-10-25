@@ -7,6 +7,10 @@ all network/vendor insertion, and covers fast/ordinary success, same-ID retry,
 denial, unresolved consent, withdrawal and duplicate readiness. Unit checks cover
 expiry, finite storage and no repeated dispatch after uncertainty. Preserve the
 existing pixel/load timing and distinguish these fixtures from hosted delivery.
+MetaPixel.real-consent.test.tsx mounts the real consent owner and form. Both
+same-tab and storage-event withdrawal must beat a pending successful response
+before React commits, even with unavailable storage; the ordinary allowed case
+must still dispatch once.
 
 Tracking protocol correction: run creative-executor/tracking.test.ts and authority
 tests for exact direct-clause action.type preservation, canonical hash equality,

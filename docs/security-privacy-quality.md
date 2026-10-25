@@ -5,8 +5,10 @@ the existing Meta runtime's Script readiness callback. No new pixel, loader,
 provider request, contact field or offline conversion is added. The queue holds
 at most eight events for sixty seconds, clears on withdrawal/unmount, and checks
 the pixel layout's current in-memory permission again before every dispatch.
-The existing provider consent event makes withdrawal immediate before a React
-commit, including when storage fails and a submitted request resolves late.
+ConsentProvider emits the existing typed consent event synchronously when an
+explicit choice or valid storage event withdraws marketing permission, before
+React commits or storage is attempted. Its normal committed notification remains
+unchanged. This also covers a submitted request resolving while storage fails.
 The stored deadline also applies when browser timers are delayed. Its bounded consent-scoped recent-UUID
 set prevents repeat dispatch, including after an uncertain queue throw; Meta's original eventID
 remains the provider deduplication identity. A blocked runtime may still leave
