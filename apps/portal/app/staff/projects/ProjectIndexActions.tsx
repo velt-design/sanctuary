@@ -39,13 +39,13 @@ export default function ProjectIndexActions(props: Props) {
     {!project.isArchived && project.effectiveState !== 'CLOSED'
       ? <ProjectDeliveryAction projectId={project.id} host={host} completed={project.status === 'COMPLETED' || project.status === 'PAID'} disabled={stageBusy} renderTrigger={menu} />
       : menu()}
-    <Drawer title="Contact & location" open={contactOpen} onClose={() => setContactOpen(false)}>
+    {contactOpen ? <Drawer title="Contact & location" open={contactOpen} onClose={() => setContactOpen(false)}>
       {contactOpen ? <div className={styles.details}><h3>{name}</h3><p>{props.client}</p>
         <div><h4>Project name</h4>{props.nameEditor}</div>
         <div><h4>Phone</h4>{props.phone}</div>
         <div><h4>Site address</h4>{props.address}</div>
         <div><h4>Project created</h4><p>{formatPortalDate(project.createdAt)}</p></div>
       </div> : null}
-    </Drawer>
+    </Drawer> : null}
   </span>;
 }

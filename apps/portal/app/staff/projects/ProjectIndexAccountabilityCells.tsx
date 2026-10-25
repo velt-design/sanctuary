@@ -68,13 +68,13 @@ export default function ProjectIndexAccountabilityCells({
           {due ? <small>{due}</small> : null}
         </div>
         <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}>
-        <Drawer open={detailsOpen} title="Next attention" onClose={() => setDetailsOpen(false)}>
+        {detailsOpen ? <Drawer open={detailsOpen} title="Next attention" onClose={() => setDetailsOpen(false)}>
           <div>
             <h3>{title}</h3>
             {due ? <p>{due}</p> : null}
             <p>{reason}</p>
           </div>
-        </Drawer>
+        </Drawer> : null}
         </span>
       </TableCell>
       <TableCell data-column="Owner">
