@@ -1,0 +1,8 @@
+import type {CostingConfigurationOverview} from '@/lib/costing/configurationAdmin';
+import type {MappingReviewEvidence} from '@/app/staff/payments/mapping/MappingReview';
+import type {PayoutEvent} from '@/lib/installerPayouts/model';
+export const fictionalInvoice={sourceContactId:'99999999-0000-4000-8000-000000000901',invoiceRef:'FICTIONAL-901',customerName:'Fictional mapping review'};
+export function fictionalMapping():MappingReviewEvidence{return {context:fictionalInvoice,contacts:[{id:'fictional-contact',name:'Fictional mapping review',email:'fixture@example.test'}],accounts:[{id:'fictional-sales',code:'200',name:'Fictional sales',defaultTaxType:'OUTPUT2'}],taxes:[{type:'OUTPUT2',name:'GST on income',effectiveRate:15}],limited:false,checkedAt:new Date().toISOString(),defaults:null,savedLink:null,customerCreationEnabled:false};}
+export function fictionalCosting():CostingConfigurationOverview{return {currentVersionId:null,currentSource:'legacy-overrides',versions:[]};}
+export function fictionalPayout():PayoutEvent[]{return [{id:'fictional-agreement',sequence:1,kind:'agreement',created_at:'2026-10-01T00:00:00Z',created_by:'fictional-admin',payload:{installer:'Fictional crew',scope:'Fictional frame installation',exclusions:'Fictional electrical work excluded',paymentTerms:'On fictional completion',acceptanceReference:'Fictional acceptance',gstRegistered:true,sourceQuoteId:'fictional-quote',sourceEstimateId:'fictional-estimate',payoutExGst:1000,gst:150,totalPayable:1150}}];}
+export type OperationalReads={costing?:Promise<CostingConfigurationOverview|null>;mapping?:Promise<typeof fictionalInvoice|null>};

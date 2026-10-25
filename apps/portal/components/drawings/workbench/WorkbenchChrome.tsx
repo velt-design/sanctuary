@@ -28,17 +28,19 @@ function activeNavId(viewportMode: DrawingWorkbenchViewportMode): PrimaryNavId |
   return null;
 }
 
+export type WorkbenchDraftSaveAction = {
+  label: string;
+  statusText: string | null;
+  disabled: boolean;
+  onSave: () => void;
+};
+
 type WorkbenchChromeProps = {
   viewportMode: DrawingWorkbenchViewportMode;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   backHref?: string;
   projectLabel?: string | null;
-  draftSaveAction?: {
-    label: string;
-    statusText: string | null;
-    disabled: boolean;
-    onSave: () => void;
-  } | null;
+  draftSaveAction?: WorkbenchDraftSaveAction | null;
 };
 
 export default function WorkbenchChrome({

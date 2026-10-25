@@ -1,3 +1,5 @@
+"use client";
+import { useCalculatorSessionRead } from "./CalculatorSessionReadContext";
 import styles from './CalculatorGrid.module.css';
 import type { InputHTMLAttributes, ReactNode } from 'react';
 
@@ -57,6 +59,9 @@ export default function FieldTile({
   step,
   appearance = 'default',
 }: FieldTileProps) {
+  const {ready,error:readError}=useCalculatorSessionRead();
+  const readLabel=readError?'Unavailable':'Reading…';
+  if (!ready) { value=undefined; content=readLabel; disabled=true; helperText=undefined; error=undefined; }
   const helperId = helperText && !error ? `${id}-help` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
@@ -80,12 +85,13 @@ export default function FieldTile({
         <select
           id={id}
           className={styles.control}
-          value={String(value ?? '')}
-          onChange={(e) => onChange?.(e.target.value)}
+          value={ready ? String(value ?? '') : ''}
+          onChange={(e) => ready && onChange?.(e.target.value)}
           disabled={disabled}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
         >
+          {!ready ? <option value="">{readLabel}</option> : null}
           {(options ?? []).map((opt) => (
             <option key={opt.value} value={opt.value} disabled={opt.disabled}>
               {opt.label}
@@ -99,16 +105,18 @@ export default function FieldTile({
             className={styles.toggleBox}
             type="checkbox"
             checked={isChecked}
-            onChange={(e) => onChange?.(e.target.checked)}
+            ref={node=>{if(node)node.indeterminate=!ready;}}
+            aria-checked={!ready ? "mixed" : isChecked}
+            onChange={(e) => ready && onChange?.(e.target.checked)}
             disabled={disabled}
             aria-describedby={describedBy}
             aria-invalid={error ? true : undefined}
           />
-          <span className={styles.toggleText}>{isChecked ? 'On' : 'Off'}</span>
+          <span className={styles.toggleText}>{!ready ? readLabel : isChecked ? 'On' : 'Off'}</span>
         </div>
       ) : type === 'readOnly' ? (
         <output id={id} className={styles.readOnlyValue} aria-describedby={describedBy} data-field-part="control">
-          {String(value ?? '')}
+          {ready ? String(value ?? '') : readLabel}
         </output>
       ) : type === 'action' ? (
         <button
@@ -126,11 +134,11 @@ export default function FieldTile({
           id={id}
           className={styles.control}
           type={type === 'number' ? 'number' : 'text'}
-          value={String(value ?? '')}
-          onChange={(e) => onChange?.(e.target.value)}
-          onBlur={(e) => onBlur?.(e.target.value)}
+          value={ready ? String(value ?? '') : ''}
+          onChange={(e) => ready && onChange?.(e.target.value)}
+          onBlur={(e) => ready && onBlur?.(e.target.value)}
           onKeyDown={(event) => {
-            if (event.key !== 'Enter' || !onEnter) return;
+            if (!ready || event.key !== 'Enter' || !onEnter) return;
             event.preventDefault();
             onEnter(event.currentTarget.value);
           }}
@@ -141,6 +149,7 @@ export default function FieldTile({
             }
           }}
           disabled={disabled}
+          placeholder={!ready ? readLabel : undefined}
           inputMode={inputMode}
           min={type === 'number' ? min : undefined}
           max={type === 'number' ? max : undefined}

@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransform';
 import { buildPergolaTransformPosition } from '@/lib/drawings/commits/commitPergolaTransform';
+import type { WorkbenchDraftSaveAction } from '@/components/drawings/workbench/WorkbenchChrome';
+import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
@@ -44,6 +46,8 @@ import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type DesignWorkbenchEstimateClientProps = {
   estimate: EstimateDetail;
+  readOnly?: boolean;
+  externalChrome?: { viewportMode: DrawingWorkbenchViewportMode; onSaveActionChange: (action: WorkbenchDraftSaveAction | null) => void };
   projectName: string;
   siteAddress?: string | null;
   backHref?: string;
@@ -127,17 +131,20 @@ function geometryViewportStatesEqual(
 
 export default function DesignWorkbenchEstimateClient({
   estimate,
+  readOnly = false,
+  externalChrome,
   projectName,
   siteAddress,
   backHref,
   debugExportEnabled = false,
 }: DesignWorkbenchEstimateClientProps) {
   const router = useRouter();
-  const [ui, setUi] = useState(() =>
+  const [localUi, setUi] = useState(() =>
     buildInitialWorkbenchUiState({
       draft: null,
     }),
   );
+  const ui = externalChrome ? { ...localUi, viewportMode: externalChrome.viewportMode } : localUi;
   const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
     Record<string, DrawingWorkbenchViewportTransform>
   >({});
@@ -295,7 +302,7 @@ export default function DesignWorkbenchEstimateClient({
     ui,
   ]);
 
-  const isLocked = estimate.editability.isLocked;
+  const isLocked = readOnly || estimate.editability.isLocked;
   const meta = useMemo(
     () =>
       buildEstimateDrawingSheetMeta({
@@ -416,10 +423,14 @@ export default function DesignWorkbenchEstimateClient({
     isLocked,
     router,
   ]);
+  const saveCurrentDraftRef = useRef(handleSaveWorkbenchDraft);
+  saveCurrentDraftRef.current = handleSaveWorkbenchDraft;
+  const requestDraftSave = useCallback(() => { void saveCurrentDraftRef.current(); }, []);
+  const hasDrawingDraft = Boolean(effectiveDrawingDraft);
   const draftSaveAction = useMemo(() => {
     const disabled =
       isLocked ||
-      !effectiveDrawingDraft ||
+      !hasDrawingDraft ||
       draftSaveState.status === 'saving' ||
       !hasUnsavedWorkbenchDraft;
     const statusText =
@@ -436,17 +447,20 @@ export default function DesignWorkbenchEstimateClient({
       label: draftSaveState.status === 'saving' ? 'Saving...' : 'Save workbench draft',
       statusText,
       disabled,
-      onSave: () => {
-        void handleSaveWorkbenchDraft();
-      },
+      onSave: requestDraftSave,
     };
   }, [
     draftSaveState,
-    effectiveDrawingDraft,
-    handleSaveWorkbenchDraft,
+    hasDrawingDraft,
+    requestDraftSave,
     hasUnsavedWorkbenchDraft,
     isLocked,
   ]);
+  const reportSaveAction = externalChrome?.onSaveActionChange;
+  useLayoutEffect(() => {
+    reportSaveAction?.(draftSaveAction);
+    return () => reportSaveAction?.(null);
+  }, [reportSaveAction, draftSaveAction]);
   const outlineEditCommitHandler = useMemo(
     () =>
       isLocked
@@ -540,7 +554,7 @@ export default function DesignWorkbenchEstimateClient({
   );
 
   return (
-    <div className={styles.shell} data-workbench-density="compact">
+    <div className={externalChrome ? styles.runtimeContents : styles.shell} data-workbench-density="compact">
       {debugFixtureExport ? (
         <script
           type="application/json"
@@ -565,7 +579,7 @@ export default function DesignWorkbenchEstimateClient({
           <section className={styles.notice}>
             <p className={styles.noticeTitle}>Read Only</p>
             <p className={styles.noticeText}>
-              {estimate.editability.lockReason ?? 'This design is locked and can only be reviewed from the hidden workbench.'}
+              {readOnly ? 'Record actions are paused while the current workbench source is verified.' : estimate.editability.lockReason ?? 'This design is locked and can only be reviewed from the hidden workbench.'}
             </p>
           </section>
         ) : null}
@@ -585,6 +599,7 @@ export default function DesignWorkbenchEstimateClient({
       <div className={styles.workspaceColumn}>
         <div className={styles.workspaceSurface}>
         <DrawingWorkbench
+          showChrome={!externalChrome}
           sheetLabel={store.derived.projectSheetLabel}
           viewportMode={store.ui.viewportMode}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}

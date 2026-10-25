@@ -528,9 +528,8 @@ export default function AccessClient() {
         </form>
 
         {loadingCrews ? <p className={styles.helper}>Loading crews…</p> : null}
-        {!loadingCrews && crewsError ? <p className={styles.errorText}>{crewsError}</p> : null}
+        {!loadingCrews && crewsError ? <p className={styles.errorText}>{crewsError} <button type="button" onClick={()=>void loadCrews()}>Retry crews</button></p> : null}
 
-        {!loadingCrews ? (
           <div className={styles.crewTableWrap} role="region" aria-label="Schedule crews table">
             <table className={styles.crewTable}>
               <thead>
@@ -548,7 +547,7 @@ export default function AccessClient() {
               <tbody>
                 {crews.map((crew, index) => {
                   const disabledDeactivate = crew.is_active && crew.scheduled_item_count > 0;
-                  const rowBusy = savingCrewId === crew.id || reorderBusy;
+                  const rowBusy = loadingCrews||Boolean(crewsError)||savingCrewId === crew.id || reorderBusy;
                   return (
                     <tr key={crew.id} className={!crew.is_active ? styles.crewRowInactive : undefined}>
                       <td>
@@ -666,13 +665,12 @@ export default function AccessClient() {
                 })}
                 {!crews.length ? (
                   <tr>
-                    <td colSpan={8}>No crews found.</td>
+                    <td colSpan={8} role={loadingCrews?'status':undefined}>{loadingCrews?'Reading schedule crews…':crewsError?'Schedule crews unavailable.':'No crews found.'}</td>
                   </tr>
                 ) : null}
               </tbody>
             </table>
           </div>
-        ) : null}
       </div>
     </div>
   );

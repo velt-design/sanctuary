@@ -15,7 +15,8 @@ function request(): InstallerPayoutRequestV1 {
 
 describe('installer transition proposals', () => {
   it('reproduces the four published Version 11 labour reference totals', () => {
-    expect(COSTING_CONTROL_PREVIEW_SCENARIOS_V1.map(s => calculateSiteCostV1(s.inputs, publishedLabourFixture()).install.totals.install_ex_gst))
+    const publishedScenarioIds = ['standard-pitched-acrylic', 'gable-acrylic-hard-access', 'box-perimeter-timber', 'two-pergola-site'];
+    expect(COSTING_CONTROL_PREVIEW_SCENARIOS_V1.filter(s => publishedScenarioIds.includes(s.id)).map(s => calculateSiteCostV1(s.inputs, publishedLabourFixture()).install.totals.install_ex_gst))
       .toEqual([1743.61, 6311.07, 4348.38, 3747.77]);
   });
   it('normalises the old GST-inclusive formula and protects the live example', () => {

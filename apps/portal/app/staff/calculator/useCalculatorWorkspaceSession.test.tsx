@@ -10,6 +10,8 @@ import type { CalculatorDraftPersistence } from './calculatorDraftPersistence';
 import { makeDefaultCalculatorInputs } from './calculatorInputs';
 import { useCalculatorWorkspaceSession } from './useCalculatorWorkspaceSession';
 import CalculatorSessionBoundary from './CalculatorSessionBoundary';
+import CalculatorCommandBar from './CalculatorCommandBar';
+import FieldTile from './FieldTile';
 import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, ensureLocalFirstStoreReady, registerLocalFirstIdAlias } from '@/lib/localFirst/store';
 import { qk } from '@/lib/queries/keys';
 
@@ -27,8 +29,8 @@ function Probe({ options }: { options: WorkspaceSessionOptions }) {
   latest = useCalculatorWorkspaceSession(options);
   return (
     <CalculatorSessionBoundary ready={latest.draftReady} error={latest.draftLoadError} onRetry={latest.retryDraftLoad}>
-      <input aria-label="Length" value={latest.values.modules[0]?.lengthM ?? ''} readOnly />
-      <button type="button">Save</button>
+      <FieldTile id="length" label="Length" type="number" value={latest.values.modules[0]?.lengthM ?? ''}/>
+      <CalculatorCommandBar projectLabel="Fictional project" isEditingDesign={latest.isEditingDesign} activeModuleLabel="Module 1" readinessSummary={{tone:'ready',label:'Ready to save',accessibleLabel:'Ready to save',rootCauseCount:0,blockedCheckCount:0,reviewCount:0}} localDraftStatus={latest.localDraftStatus} saveLabel="Save" saveDisabled={false} onSave={()=>{}}/>
     </CalculatorSessionBoundary>
   );
 }
@@ -144,8 +146,9 @@ describe('useCalculatorWorkspaceSession', () => {
     const rendered = renderIntoDocument(<Probe options={options} />);
     await waitUntil(() => expect(options.estimateLoader).toHaveBeenCalled());
     expect(session().draftReady).toBe(false);
-    expect(document.querySelector('input')).toBeNull();
-    expect(document.body.textContent).not.toContain('Save');
+    expect(document.querySelector<HTMLInputElement>('input')?.disabled).toBe(true);
+    expect(document.querySelector<HTMLInputElement>('input')?.value).toBe('');
+    expect(document.querySelector<HTMLButtonElement>('[data-calculator-command-save]')?.disabled).toBe(true);
     const inputs = makeDefaultCalculatorInputs();
     inputs.modules[0].lengthM = '8.4';
     await act(async () => pending.resolve(makeEstimate({
@@ -246,7 +249,8 @@ describe('useCalculatorWorkspaceSession', () => {
     });
     const rendered = renderIntoDocument(<Probe options={options} />);
     await waitUntil(() => expect(document.body.textContent).toContain('Connection interrupted'));
-    expect(document.querySelector('input')).toBeNull();
+    expect(document.querySelector<HTMLInputElement>('input')?.disabled).toBe(true);
+    expect(document.querySelector<HTMLInputElement>('input')?.value).toBe('');
     const retry = Array.from(document.querySelectorAll('button')).find((button) => /retry/i.test(button.textContent ?? ''));
     expect(retry).toBeTruthy();
     await act(async () => retry!.click());

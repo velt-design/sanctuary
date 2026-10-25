@@ -1,3 +1,4 @@
+import ProgressiveReads from './ProgressiveReads';
 import { notFound } from 'next/navigation';
 import EmailPreviewWorkbenchPage from '@/app/staff/email-previews/EmailPreviewWorkbenchPage';
 
@@ -8,9 +9,9 @@ function arePortalQaFixturesEnabled(): boolean {
 export default function EmailPreviewWorkbenchFixturePage() {
   if (!arePortalQaFixturesEnabled()) notFound();
   return (
-    <EmailPreviewWorkbenchPage
+    <ProgressiveReads><EmailPreviewWorkbenchPage
       previewEndpoint="/api/qa/email-preview-workbench"
       qaFixture
-    />
+    /></ProgressiveReads>
   );
 }

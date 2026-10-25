@@ -1,4 +1,5 @@
 'use client';
+import type { ComponentProps } from 'react';
 import { designerLoader,designerAssignmentClient,designerOutcomeClient } from './designerFixtures';
 import { sampleMetaReport } from '@/lib/marketingIntegrations/meta/report';
 import type { MetaEvidenceLoader } from '@/lib/marketingPerformance/dataSources';
@@ -9,6 +10,7 @@ import { hubFixture } from './hubFixtures';
 import { representativeFixture, representativeFilters } from './representativeFixture';
 import { aucklandDay } from '@/lib/marketingPerformance/contract';
 import { fixtureFilters, fixtureReport, historicalFixtureRows } from './fixtures';
+import {readFinancialProfitPartsFrom,type FinancialProfitLoader} from '@/components/financials/loadFinancialProfitParts';
 import { financialsLoader } from './financialFixtures';
 import { commercialLoader, commercialCoverageScenario } from './commercialFixtures';
 import FinancialScenarioControl from './FinancialScenarioControl';
@@ -42,5 +44,11 @@ const metaLoader: MetaEvidenceLoader = async signal => {
   const fetchedAt=new Date(Date.now()-(mode==='stale'?48:1)*3600000).toISOString();
   return {status:'available',checkedAt:new Date().toISOString(),accountId:'123',expiresAt:new Date(Date.parse(fetchedAt)+7*86400000).toISOString(),report:{...sampleMetaReport({start:'2026-09-16',end:'2026-09-22'}),fetchedAt}};
 };
-export default function Fixture({representative=false}:{representative?:boolean}) { return <><MarketingPerformance assignmentClient={designerAssignmentClient} outcomeClient={designerOutcomeClient} designerLoader={designerLoader} commercialLoader={commercialLoader} financialsLoader={financialsLoader} metaLoader={metaLoader} googleLoader={googleFixtureLoader} metaSaleLoader={metaSaleFixtureLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
-  previewDescription={representative?'Representative demo · 1,200 fictional projects across active, archived and legacy work. Dates, sources and payment amounts are invented; missing-history patterns resemble the business. Demo ends 22 September 2026.':undefined} /><FinancialScenarioControl/></>; }
+const financialProfitLoader:FinancialProfitLoader=(query,signal,publish)=>{
+ const params=new URLSearchParams(window.location.search);
+ const source=new URLSearchParams({...query,financeScenario:params.get('financeScenario')??'complete'});
+ return readFinancialProfitPartsFrom('/qa/marketing-performance-fixture/financial-read?'+source,query,signal,publish);
+};
+type InitialSeeds = Pick<ComponentProps<typeof MarketingPerformance>,'initialHubSeed'|'initialCommercialSeed'|'initialDesignerSeed'|'initialFinancialSeed'|'initialQuery'>;
+export default function Fixture({representative=false,...seeds}:{representative?:boolean}&InitialSeeds) { return <><MarketingPerformance {...seeds} assignmentClient={designerAssignmentClient} outcomeClient={designerOutcomeClient} designerLoader={designerLoader} commercialLoader={commercialLoader} financialsLoader={financialsLoader} financialProfitLoader={seeds.initialQuery&&new URLSearchParams(seeds.initialQuery).get('progressive')==='1'?financialProfitLoader:undefined} metaLoader={metaLoader} googleLoader={googleFixtureLoader} metaSaleLoader={metaSaleFixtureLoader} loader={hubLoader} priorLoader={loader} synthetic initialFilters={representative?representativeFilters:fixtureFilters}
+  previewDescription={representative?'Representative demo · 1,200 fictional projects across active, archived and legacy work. Dates, sources and payment amounts are invented; missing-history patterns resemble the business. Demo ends 22 September 2026.':undefined} /><FinancialScenarioControl progressive={Boolean(seeds.initialQuery&&new URLSearchParams(seeds.initialQuery).get('progressive')==='1')}/></>; }

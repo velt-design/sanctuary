@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
 import { Button } from '@/components/ui/foundation/FoundationControls';
-import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import { AlertBanner } from '@/components/ui/foundation/FoundationAlert';
 import styles from './useScheduleConfirmation.module.css';
 
 type ScheduleConfirmationInput = {

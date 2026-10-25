@@ -44,18 +44,21 @@ export default function QuoteEmailPreviewPanel({
   attachmentNames,
 }: QuoteEmailPreviewPanelProps) {
   const [previewMode, setPreviewMode] = useState<PreviewMode>("desktop");
-  const [preview, setPreview] = useState<QuoteEmailPreview | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<{ key: string; preview?: QuoteEmailPreview; error?: string } | null>(null);
   const attachmentSignature = attachmentNames.join("\n");
+  const requestKey = JSON.stringify([active, quoteVersionId, mode, to, subject, personalNote, attachmentSignature, attempt]);
+  const current = result?.key === requestKey ? result : null;
+  const preview = current?.preview;
+  const error = current?.error;
+  const loading = active && Boolean(quoteVersionId) && !current;
+  const unknown = loading ? "Reading…" : "Unavailable";
 
   useEffect(() => {
     if (!active || !quoteVersionId) return;
 
     const abortController = new AbortController();
     const timeout = window.setTimeout(() => {
-      setLoading(true);
-      setError(null);
       void (async () => {
         try {
           const response = await fetch(
@@ -83,17 +86,11 @@ export default function QuoteEmailPreviewPanel({
           if (!response.ok) throw new Error(await readPreviewError(response));
           const rendered = (await response.json()) as QuoteEmailPreview;
           if (abortController.signal.aborted) return;
-          setPreview(rendered);
+          setResult({ key: requestKey, preview: rendered });
         } catch (previewError) {
           if (abortController.signal.aborted) return;
-          setPreview(null);
-          setError(
-            previewError instanceof Error
-              ? previewError.message
-              : "Failed to render email preview",
-          );
-        } finally {
-          if (!abortController.signal.aborted) setLoading(false);
+          setResult({ key: requestKey, error: previewError instanceof Error
+            ? previewError.message : "Failed to render email preview" });
         }
       })();
     }, 220);
@@ -104,6 +101,7 @@ export default function QuoteEmailPreviewPanel({
     };
   }, [
     active,
+    requestKey,
     attachmentSignature,
     mode,
     personalNote,
@@ -113,7 +111,7 @@ export default function QuoteEmailPreviewPanel({
   ]);
 
   return (
-    <section className={styles.emailPreviewSection} aria-label="Customer email preview">
+    <section className={styles.emailPreviewSection} aria-label="Customer email preview" aria-busy={loading}>
       <div className={styles.emailPreviewHeader}>
         <div>
           <div className={styles.metaLabel}>Customer email</div>
@@ -152,18 +150,17 @@ export default function QuoteEmailPreviewPanel({
           Rendering email preview...
         </p>
       ) : null}
-      {error ? <div className={styles.errorText}>{error}</div> : null}
+      {error ? <div className={styles.errorText}>{error} <button type="button" onClick={() => setAttempt((value) => value + 1)}>Retry preview</button></div> : null}
       {!loading && !error && !preview ? (
         <p className={styles.note}>No email preview available.</p>
       ) : null}
-      {preview ? (
-        <>
+      <>
           <div className={styles.emailPreviewSubject}>
             <span>Subject</span>
-            <strong>{preview.subject}</strong>
+            <strong>{preview?.subject ?? unknown}</strong>
           </div>
           {previewMode === "text" ? (
-            <pre className={styles.emailTextPreview}>{preview.text ?? ""}</pre>
+            <pre className={styles.emailTextPreview}>{preview?.text ?? (preview ? "" : unknown)}</pre>
           ) : (
             <div
               className={`${styles.emailPreviewViewport} ${
@@ -176,12 +173,11 @@ export default function QuoteEmailPreviewPanel({
                 title={`Quote email ${previewMode} preview`}
                 className={styles.emailPreviewFrame}
                 sandbox=""
-                srcDoc={preview.html}
+                srcDoc={preview?.html}
               />
             </div>
           )}
-        </>
-      ) : null}
+      </>
     </section>
   );
 }

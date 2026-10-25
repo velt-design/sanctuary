@@ -6,9 +6,9 @@ import { resolveDefaultScheduleGanttRange } from '@/lib/scheduling/scheduleGantt
 import { loadScheduleGanttResponse } from '@/lib/scheduling/scheduleGanttServer';
 import { mapScheduleBoardResponseToV2Snapshot, mapScheduleGanttResponseToV2Snapshot, type ScheduleV2Snapshot } from '@/lib/scheduling/scheduleV2Snapshot';
 
-type SchedulePageSeed =
+export type SchedulePageSeed =
   | { initialScheduleMode: 'legacy'; initialV2Snapshot: null }
-  | { initialScheduleMode: 'v2'; initialSeedKind: 'board' | 'gantt'; initialV2Snapshot: ScheduleV2Snapshot };
+  | { initialScheduleMode: 'v2'; initialSeedKind: 'board' | 'gantt'; today: string; rangeStart?: string; rangeEnd?: string; initialV2Snapshot: ScheduleV2Snapshot };
 
 export async function loadSchedulePageSeed(input?: { view?: 'board' | 'gantt' }): Promise<SchedulePageSeed> {
   const view = input?.view === 'gantt' ? 'gantt' : 'board';
@@ -24,6 +24,9 @@ export async function loadSchedulePageSeed(input?: { view?: 'board' | 'gantt' })
       return {
         initialScheduleMode: 'v2',
         initialSeedKind: 'gantt',
+        today,
+        rangeStart: range.rangeStart,
+        rangeEnd: range.rangeEnd,
         initialV2Snapshot: mapScheduleGanttResponseToV2Snapshot(gantt),
       };
     }
@@ -32,6 +35,7 @@ export async function loadSchedulePageSeed(input?: { view?: 'board' | 'gantt' })
     return {
       initialScheduleMode: 'v2',
       initialSeedKind: 'board',
+      today,
       initialV2Snapshot: mapScheduleBoardResponseToV2Snapshot(board),
     };
   } catch (error) {

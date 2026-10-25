@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRef,useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
-import { PageLayout,Button,DataStatePanel,LoadingSkeleton } from '@/components/ui/foundation';
+import { PageLayout,Button,DataStatePanel } from '@/components/ui/foundation';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { visibleVisits,isScheduledVisit,requiresVisitReview,visitGroupDay,visitDateOnly,visitDate,visitStamp } from '@/lib/siteVisits/calendarModel';
 import { personKey,personLabel,resolveVisitPersonKey } from '@/lib/siteVisits/reviewedVisit';
@@ -49,8 +49,9 @@ export default function SiteVisitsAgenda({initialRead}:{initialRead?:CalendarVis
         {data&&query.isError&&<Button variant="quiet" onClick={()=>void query.refetch()}>Retry loading saved visits</Button>}
         {message&&<p className={styles.notice} role="status">{message}</p>}
       </div>
-      {query.denied?<DataStatePanel state="unavailable" title="Site visit access unavailable" description="Your Portal session no longer has access." />:!data?query.isPending?<LoadingSkeleton rows={4} label="Loading site visits" />:<DataStatePanel state="error" title="Site visits unavailable" description="The calendar could not be loaded." onRetry={()=>void query.refetch()} />:<>
-        <div className={styles.summary}><h2>{view==='today'?visitDate(new Date().toISOString()):view==='review'?'Needs review':view==='history'?'Visit history':view==='changes'?'Calendar changes':view==='week'?'This week':'Upcoming visits'}</h2><p role="status">{view==='review'||view==='changes'||view==='history'?`${events.length} ${events.length===1?'entry':'entries'}`:`${scheduledCount} scheduled ${scheduledCount===1?'visit':'visits'}${events.some(v=>v.kind==='provisional')?` · ${events.filter(v=>v.kind==='provisional').length} provisional`:''}`}</p><small>All times New Zealand</small></div>
+        <div className={styles.summary}><h2>{view==='today'?visitDate(new Date().toISOString()):view==='review'?'Needs review':view==='history'?'Visit history':view==='changes'?'Calendar changes':view==='week'?'This week':'Upcoming visits'}</h2><p role="status">{!data?query.isPending?'Reading visits…':'Visit evidence unavailable':view==='review'||view==='changes'||view==='history'?`${events.length} ${events.length===1?'entry':'entries'}`:`${scheduledCount} scheduled ${scheduledCount===1?'visit':'visits'}${events.some(v=>v.kind==='provisional')?` · ${events.filter(v=>v.kind==='provisional').length} provisional`:''}`}</p><small>All times New Zealand</small></div>
+      {query.denied?<DataStatePanel state="unavailable" title="Site visit access unavailable" description="Your Portal session no longer has access." />:!data?query.isPending?<p role="status">Reading the saved visit agenda…</p>:<DataStatePanel state="error" title="Site visits unavailable" description="The calendar could not be loaded." onRetry={()=>void query.refetch()} />:<>
+
         {view==='review'&&<p className={styles.notice}>Resolve the specific questions or reconcile a changed Outlook booking. Verified Portal details stay saved.</p>}
         {events.length===0?<div className={styles.empty}><h3>No visits match this view</h3><p>{data.lastSuccess?'Try another view or clear the filters.':'Visits will appear after the first successful Outlook update.'}</p>{(person||search)&&<Button variant="secondary" onClick={()=>{select({person:'',q:''});searchRef.current?.focus();}}>Clear filters</Button>}</div>:[...groups].map(([day,items])=><section key={day} className={styles.day}><header><h2>{day==='unknown'?'Historical visits · date not recorded':visitDateOnly(day)}</h2><span>{items.length} {items.length===1?'entry':'entries'}</span></header>{items.map(visit=><VisitAgendaRow key={visit.id} visit={visit} questionFirst={view==='review'} />)}</section>)}
         <footer className={styles.footer}>{data.rangeStart&&data.rangeEnd?<span>Calendar range: {visitStamp(data.rangeStart)} to {visitStamp(data.rangeEnd)}.</span>:null}<span>Scheduled visits are not evidence of completion.</span></footer>

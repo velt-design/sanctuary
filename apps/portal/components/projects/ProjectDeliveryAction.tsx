@@ -77,7 +77,7 @@ export default function ProjectDeliveryAction({ projectId, host, completed = fal
       {renderTrigger ? renderTrigger(() => { if (!disabled) void load(); }) : <Button type="button" variant="secondary" size="small" disabled={disabled} onClick={() => void load()}>
         {completed ? 'Delivery completed' : 'Mark delivery completed'}
       </Button>}
-      <PipelineModal open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}
+      {open ? <PipelineModal open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}
         title={completed ? 'Delivery completion' : 'Mark delivery completed'}
         description="Delivery completion does not record payment or archive this project."
         actions={<Button type="button" variant="tertiary" disabled={busy} onClick={() => setOpen(false)}>Close</Button>}>
@@ -103,7 +103,7 @@ export default function ProjectDeliveryAction({ projectId, host, completed = fal
             : status.scheduled || !status.completed ? <Button disabled={busy || status.archived || (!status.scheduled && (!date || !note.trim()))}
               onClick={() => void save()}>{status.completed ? 'Reopen delivery' : 'Confirm delivery completed'}</Button> : null}
         </> : null}
-      </PipelineModal>
+      </PipelineModal> : null}
     </span>
   );
 }

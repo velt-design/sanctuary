@@ -1,3 +1,4 @@
+import { DataStatePanel as ActualDataStatePanel } from './FoundationDataState';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AlertBanner, DataStatePanel, FinancialSummary, PermissionBlockedControl, TaskScheduleFeedback } from './FoundationFeedback';
@@ -84,4 +85,15 @@ describe('production foundation patterns', () => {
     expect(rendered.container.textContent).toContain('42.7%');
     rendered.unmount();
   });
+});
+
+it('retains one exact data-state primitive through the original feedback API', () => {
+  expect(DataStatePanel).toBe(ActualDataStatePanel);
+  const retry = vi.fn(), clear = vi.fn();
+  const view = renderIntoDocument(<ActualDataStatePanel state="filtered-empty" onRetry={retry} onClear={clear}/>);
+  expect(view.container.querySelector('[data-state=filtered-empty]')?.getAttribute('role')).toBe('status');
+  expect(view.container.textContent).toContain('No matching results');
+  act(() => [...view.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!.click());
+  act(() => [...view.container.querySelectorAll('button')].find(button => button.textContent === 'Clear filters')!.click());
+  expect(retry).toHaveBeenCalledTimes(1); expect(clear).toHaveBeenCalledTimes(1); view.unmount();
 });

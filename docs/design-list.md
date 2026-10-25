@@ -1,5 +1,18 @@
 # Drafting Queue
 
+
+Drafting Queue shares the actual SpreadsheetSurface and neutral filter/zoom controller with its guarded SpreadsheetRuntime. Headers and safe filters can mount before the fresh selected leaf; only the guarded adapter reads rows, staff, working copies, locks or commands. Existing optimistic save/conflict/keyboard behavior and the Job Packs standalone consumer remain separate from public presentation. Connected continuity is covered; composed bundle/browser/CI evidence remains required.
+## Actual spreadsheet before records (22 October 2026 candidate)
+
+The actual shared spreadsheet viewport, column letters/labels and zoom remain
+mounted during initial loading, failure and complete empty selections. A status
+row distinguishes missing records from empty business activity. The actual
+search/filter toolbar remains usable before rows arrive; its missing counts do
+not read as zero. Pending/error metadata and Retry stay in the same toolbar.
+Access-ending read errors clear retained rows. Existing edits, optimistic queues,
+field ownership and concurrency behavior remain with the adapter/domain owners.
+
+
 The Drafting Queue is the portal replacement for the old operational design spreadsheet.
 
 ## Ownership

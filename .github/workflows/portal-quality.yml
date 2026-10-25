@@ -247,6 +247,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Performance diagnostic privacy and lifecycle contracts
+        run: npx vitest run test/playwright-support/portalPerformanceDiagnostics.test.ts
+
       - name: Build portal for production timing
         run: PORTAL_PLAYWRIGHT_DIST_DIR=.next/playwright-fixture npm run build:portal
 
@@ -268,6 +271,8 @@ jobs:
 
       - name: Capture five portal performance runs
         id: portal_performance
+        env:
+          PORTAL_PERF_DIAGNOSTICS: '1'
         run: |
           mkdir -p artifacts/portal-performance
           npm run portal:auth-runtime
@@ -286,6 +291,10 @@ jobs:
             echo "This gate must not silently skip. Confirm authenticated runtime prerequisites first, then inspect the route timing artifact if one was generated."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Emit bounded redacted performance diagnostics
+        if: always()
+        run: node playwright/support/portalPerformanceServer.cjs --emit
+
       - name: Validate and publish performance baseline
         if: always()
         run: node scripts/summarize-portal-performance.mjs artifacts/portal-performance
@@ -297,3 +306,14 @@ jobs:
           name: portal-performance-baseline
           path: artifacts/portal-performance/*.json
           if-no-files-found: warn
+
+      - name: Supplemental bounded native causal diagnostic
+        if: ${{ always() && steps.portal_performance.outcome == 'success' }}
+        env:
+          PORTAL_PERF_NATIVE_CAUSAL: '1'
+          PORTAL_PERF_DIAGNOSTICS: '0'
+          PORTAL_PERF_SERVER_OBSERVER: '0'
+          PLAYWRIGHT_NO_COPY_PROMPT: '1'
+        run: |
+          set -o pipefail
+          npx playwright test playwright/portal.performance-causal.spec.ts --project=portal-chromium --no-deps --workers=1 --retries=0 2>/dev/null | node --experimental-strip-types playwright/support/portalPerformanceCausal.ts --sanitize 2>/dev/null

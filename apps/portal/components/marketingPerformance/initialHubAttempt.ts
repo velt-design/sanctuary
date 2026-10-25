@@ -13,7 +13,7 @@ export function initialHubAttempt(seed?: InitialHubSeed, owner?: unknown) {
       if (retired) return null;
       if (!seed || currentOwner !== owner || revision !== 0 || filters.start !== seed.start || filters.end !== seed.end) { retired = true; return null; }
       pending ??= Promise.resolve(seed.result).then(result => {
-        if (!result.ok) throw new Error(result.error);
+        if (!result.ok) throw Object.assign(new Error(result.error),{status:result.status});
         const report = hubSchema.safeParse(expandReport('hub', result.report));
         if (!report.success || report.data.start !== seed.start || report.data.end !== seed.end)
           throw new Error('The evidence could not be verified. No partial totals are shown.');

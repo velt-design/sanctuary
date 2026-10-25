@@ -1,3 +1,4 @@
+import {jobPackSheetPresentation} from './sheetPresentation';
 import type { MaterialsLineV1 } from '@sp/costing';
 import type { SpreadsheetColumn, SpreadsheetGroup } from '@/components/spreadsheet/types';
 import type { EstimateDetail } from '@/lib/estimates/types';
@@ -302,18 +303,6 @@ function buildReadableInputs(inputs: unknown): ReadableInputs {
   return { modules: [], jobRows: [] };
 }
 
-function makeColumns(
-  defs: Array<{ key: JobPackCellKey; label: string; widthPx: number; frozen?: boolean; sourceLabel?: string | null }>,
-): SpreadsheetColumn<JobPackCellKey>[] {
-  return defs.map((def, index) => ({
-    ...def,
-    editable: false,
-    frozen: def.frozen ?? index === 0,
-    letter: String.fromCharCode(65 + index),
-    sourceLabel: def.sourceLabel ?? null,
-  }));
-}
-
 function makeRow(id: string, cells: Partial<Record<JobPackCellKey, string>>, tone: JobPackRow['tone'] = 'default'): JobPackRow {
   return { id, cells, tone };
 }
@@ -608,11 +597,7 @@ function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookCont
 
   return {
     title: 'Summary',
-    columns: makeColumns([
-      { key: 'a', label: 'Field', widthPx: 220 },
-      { key: 'b', label: 'Value', widthPx: 360 },
-      { key: 'c', label: 'Notes', widthPx: 240 },
-    ]),
+    ...jobPackSheetPresentation('summary'),
     groups: [
       { key: 'summary-project', label: 'Project snapshot', rows: summaryRows },
       { key: 'summary-estimate', label: 'Estimate', rows: estimateRows },
@@ -620,7 +605,6 @@ function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookCont
       { key: 'summary-config', label: 'Config versions', rows: configRows },
     ],
     defaultActiveKey: 'a',
-    notesColumnKey: 'c',
     emptyMessage: 'No job pack summary is available.',
   };
 }
@@ -708,17 +692,9 @@ function buildMaterialsSheet({
 
   return {
     title: 'Materials',
-    columns: makeColumns([
-      { key: 'a', label: 'Item', widthPx: 280 },
-      { key: 'b', label: 'Colour', widthPx: 160 },
-      { key: 'c', label: 'Stock length', widthPx: 140 },
-      { key: 'd', label: 'Qty', widthPx: 110 },
-      { key: 'e', label: 'Unit', widthPx: 100 },
-      { key: 'f', label: 'Notes', widthPx: 320 },
-    ]),
+    ...jobPackSheetPresentation('materials'),
     groups: [{ key: 'materials', label: 'Materials', showHeader: false, rows }],
     defaultActiveKey: 'a',
-    notesColumnKey: 'f',
     emptyMessage: 'No material rows are available for this job pack.',
   };
 }
@@ -733,19 +709,9 @@ function buildPowdercoatingOrderSheet(powdercoatRows: PowdercoatSpreadsheetRow[]
 
   return {
     title: 'Powdercoating Order',
-    columns: makeColumns([
-      { key: 'a', label: 'Profile', widthPx: 280 },
-      { key: 'b', label: 'Colour', widthPx: 160 },
-      { key: 'c', label: 'Stock length', widthPx: 140 },
-      { key: 'd', label: 'Qty', widthPx: 110 },
-      { key: 'e', label: 'Unit', widthPx: 100 },
-      ...(hasChangesColumn ? [{ key: 'g' as const, label: 'Changes', widthPx: 300 }] : []),
-      { key: 'f', label: 'Notes', widthPx: 320 },
-    ]),
+    ...jobPackSheetPresentation('powdercoating-order',hasChangesColumn),
     groups: [{ key: 'powdercoating-order', label: 'Powdercoating order', showHeader: false, rows }],
     defaultActiveKey: 'a',
-    notesColumnKey: 'f',
-    notesToggleColumnKeys: hasChangesColumn ? ['g', 'f'] : ['f'],
     emptyMessage: 'No powdercoating order rows are available for this job pack.',
   };
 }
@@ -798,15 +764,7 @@ function buildLabourSheet({ jobPack }: WorkbookContext): JobPackSheetModel {
 
   return {
     title: 'Labour',
-    columns: makeColumns([
-      { key: 'a', label: 'Action', widthPx: 280 },
-      { key: 'b', label: 'Scope', widthPx: 240 },
-      { key: 'c', label: 'Qty', widthPx: 100 },
-      { key: 'd', label: 'Unit', widthPx: 90 },
-      { key: 'e', label: 'Minutes', widthPx: 110 },
-      { key: 'f', label: 'Cost ex GST', widthPx: 150 },
-      { key: 'g', label: 'Category', widthPx: 180 },
-    ]),
+    ...jobPackSheetPresentation('labour'),
     groups: phaseGroups,
     defaultActiveKey: 'a',
     emptyMessage: 'No labour rows are available for this job pack.',
@@ -817,11 +775,7 @@ function buildOverheadsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
   const overhead = estimate.outputs.overhead;
   return {
     title: 'Overheads',
-    columns: makeColumns([
-      { key: 'a', label: 'Field', widthPx: 220 },
-      { key: 'b', label: 'Value', widthPx: 220 },
-      { key: 'c', label: 'Notes', widthPx: 320 },
-    ]),
+    ...jobPackSheetPresentation('overheads'),
     groups: [
       {
         key: 'overheads',
@@ -839,7 +793,6 @@ function buildOverheadsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
       },
     ],
     defaultActiveKey: 'a',
-    notesColumnKey: 'c',
     emptyMessage: 'No overhead data is available for this job pack.',
   };
 }
@@ -871,14 +824,9 @@ function buildInputsSheet({ readableInputs }: WorkbookContext): JobPackSheetMode
 
   return {
     title: 'Inputs',
-    columns: makeColumns([
-      { key: 'a', label: 'Field', widthPx: 240 },
-      { key: 'b', label: 'Value', widthPx: 260 },
-      { key: 'c', label: 'Notes', widthPx: 260 },
-    ]),
+    ...jobPackSheetPresentation('inputs'),
     groups,
     defaultActiveKey: 'a',
-    notesColumnKey: 'c',
     emptyMessage: 'No calculator inputs are available for this job pack.',
   };
 }

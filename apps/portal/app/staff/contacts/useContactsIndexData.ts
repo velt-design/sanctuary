@@ -3,7 +3,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ApiError } from '@/lib/repo/apiClient';
 import { contactsIndexQueryOptions } from '@/lib/queries/contactsIndex';
-import type { ContactsIndexParams } from '@/lib/contacts/contactsIndexContract';
+import type { ContactsIndexParams, ContactsIndexResponse } from '@/lib/contacts/contactsIndexContract';
+
+export type ContactsIndexLoader = (params: ContactsIndexParams) => Promise<ContactsIndexResponse>;
 
 type ContactsIndexReadState = 'pending' | 'cached' | 'fresh' | 'refresh-failed' | 'unavailable';
 
@@ -11,9 +13,10 @@ function isAccessEndingError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-export function useContactsIndexData(params: ContactsIndexParams) {
+export function useContactsIndexData(params: ContactsIndexParams, loader?: ContactsIndexLoader) {
   const query = useQuery({
     ...contactsIndexQueryOptions(params),
+    ...(loader ? { queryFn: () => loader(params) } : {}),
     placeholderData: keepPreviousData,
     refetchOnMount: 'always',
     retry: (failureCount, error) => !isAccessEndingError(error) && failureCount < 2,

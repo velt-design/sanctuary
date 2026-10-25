@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { ProjectActivityItem, ProjectNote } from "@/lib/projects/types";
 import { formatPortalDateTime } from "@/lib/format/portalDateTime";
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/foundation";
 import ProjectNotesPanel from "../_components/ProjectNotesPanel.client";
 import { hasProhibitedProjectWorkText } from "./projectWorkVisibilityPolicy";
-import styles from "./ProjectRecentNotesEvents.module.css";
+import { ProjectRecentNotesSurface } from "../ProjectOverviewSurface";
 
 function eventLabel(type: ProjectActivityItem["type"]): string {
   return type
@@ -19,44 +20,26 @@ function eventLabel(type: ProjectActivityItem["type"]): string {
     .replace(/^./, (value) => value.toUpperCase());
 }
 
-export default function ProjectRecentNotesEvents({
+export function projectRecentNotesEvidence({
   projectId,
   notes,
   events,
+  statusPanel,
+  readOnly = false,
+  pending = true,
 }: {
   projectId: string;
-  notes: ProjectNote[];
-  events: ProjectActivityItem[];
+  notes: ProjectNote[] | null;
+  events: ProjectActivityItem[] | null;
+  statusPanel?: ReactNode;
+  readOnly?: boolean;
+  pending?: boolean;
 }) {
-  const visibleEvents = events.filter(
+  const visibleEvents = events?.filter(
     (event) => !hasProhibitedProjectWorkText(event.title, event.detail),
   );
 
-  return (
-    <details>
-    <summary style={{ cursor: 'pointer', padding: 'var(--ui-space-3)', fontWeight: 600 }}>Team notes & portal history</summary>
-    <Card
-      className={styles.card}
-      title="Recent notes and events"
-      padding="none"
-      aria-label="Recent notes and events"
-      data-recent-notes-events="true"
-    >
-      <div className={styles.layout}>
-        <section
-          className={styles.notes}
-          aria-labelledby="project-notes-heading"
-        >
-          <h3 id="project-notes-heading">Team notes</h3>
-          <ProjectNotesPanel projectId={projectId} initialNotes={notes} compactComposer />
-        </section>
-        <section
-          className={styles.events}
-          aria-labelledby="project-events-heading"
-        >
-          <h3 id="project-events-heading">Recent system events</h3>
-          <p>Portal activity only. Customer conversations are not included here.</p>
-          {visibleEvents.length ? (
+  return { notes: notes ? <div inert={readOnly}><ProjectNotesPanel projectId={projectId} initialNotes={notes} compactComposer /></div> : <p role="status">{pending ? "Reading complete notes…" : "Complete notes unavailable"}</p>, events: !visibleEvents ? <p role="status">{pending ? "Reading complete events…" : "Complete events unavailable"}</p> : visibleEvents.length ? (
             <ActivityTimeline ariaLabel="Recent system events">
               {visibleEvents.map((event) => (
                 <ActivityTimelineItem
@@ -77,10 +60,7 @@ export default function ProjectRecentNotesEvents({
               title="No recent system events"
               description="No recent portal activity is recorded for this project."
             />
-          )}
-        </section>
-      </div>
-    </Card>
-    </details>
-  );
+          ), statusPanel };
 }
+
+export default function ProjectRecentNotesEvents(props: Parameters<typeof projectRecentNotesEvidence>[0]) { return <ProjectRecentNotesSurface {...projectRecentNotesEvidence(props)}/>; }

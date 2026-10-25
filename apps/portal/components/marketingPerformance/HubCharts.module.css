@@ -33,7 +33,7 @@
 .trendToolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; min-height:76px; }
 .trendToolbar > :first-child { width:150px; flex-shrink:0; }
 .comparisonCaption { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; margin:12px 0; color:var(--ui-text-muted); font-size:12px; }
-.outcomeScroll { max-height:460px; overflow:auto; }
+.outcomeScroll { height:min(460px,45vh); max-height:460px; overflow:auto; }
 .outcomeTable { width:100%; min-width:780px; table-layout:fixed; border-collapse:collapse; text-align:left; font-variant-numeric:tabular-nums; }
 .outcomeTable th,.outcomeTable td { padding:14px 12px; border-bottom:1px solid var(--ui-border); vertical-align:middle; }
 .outcomeTable thead th { position:sticky; top:0; z-index:1; background:var(--ui-surface-primary); font-size:12px; font-weight:600; }

@@ -5,7 +5,7 @@ import type { DashboardData } from '@/lib/dashboard/types';
 
 vi.mock('@/components/site-visits/TodayVisits', () => ({default:()=> <section>Today’s site visits</section>}));
 
-vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+vi.mock('@/components/navigation/PortalIndexLink', () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
 
@@ -113,6 +113,12 @@ describe('DashboardView', () => {
     const failed = renderToStaticMarkup(<DashboardView data={scoped} state="refresh-failed" />);
     expect(failed).not.toContain('>987<');
     expect(failed).toContain('journey=ENQUIRY&amp;state=OPEN');
+    const currentParts = renderToStaticMarkup(<DashboardView data={scoped} state="refresh-failed" parts={{ pipelineCounts: {
+      pipelineCounts: { NEW: 654 }, pipelineCountsScope: 'open_enquiry_proposal_v1', pipelineCountsAvailable: true,
+    } }} />);
+    expect(currentParts).toContain('>654<');
+    expect(currentParts).not.toContain('>987<');
+    expect(currentParts).toContain('Complete sections remain available');
   });
   it('renders the concept-led operational dashboard sections', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} />);

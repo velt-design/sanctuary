@@ -1,3 +1,4 @@
+import { ApiError } from './apiClient';
 import type { Contact } from '@/lib/types/contact';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
@@ -98,27 +99,24 @@ export async function listContacts(): Promise<Contact[]> {
 }
 
 export async function getContact(id: string): Promise<Contact | null> {
-  try {
-    const supabase = getSupabaseBrowser();
-    const uuid = uuidFromAppId(id, 'ct');
-    const { data, error } = await supabase.from('contacts').select('*').eq('id', uuid).single();
-    if (error || !data) return null;
+  const supabase = getSupabaseBrowser();
+  const uuid = uuidFromAppId(id, 'ct');
+  const { data, error, status } = await supabase.from('contacts').select('*').eq('id', uuid).maybeSingle();
+  if (error) throw new ApiError(wrapError('contacts', error).message, { status: status || 500, body: { code: error.code } });
+  if (!data) return null;
 
-    const createdAt = typeof (data as any)?.created_at === 'string' ? (data as any).created_at : nowIso();
-    const updatedAt = typeof (data as any)?.updated_at === 'string' ? (data as any).updated_at : createdAt;
-    const name = typeof (data as any)?.name === 'string' ? (data as any).name : '';
+  const createdAt = typeof (data as any)?.created_at === 'string' ? (data as any).created_at : nowIso();
+  const updatedAt = typeof (data as any)?.updated_at === 'string' ? (data as any).updated_at : createdAt;
+  const name = typeof (data as any)?.name === 'string' ? (data as any).name : '';
 
-    return {
-      id: appIdFromUuid('ct', (data as any).id),
-      displayName: name.trim(),
-      email: typeof (data as any)?.email === 'string' ? (data as any).email : '',
-      phone: typeof (data as any)?.phone === 'string' ? (data as any).phone : '',
-      createdAt,
-      updatedAt,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    id: appIdFromUuid('ct', (data as any).id),
+    displayName: name.trim(),
+    email: typeof (data as any)?.email === 'string' ? (data as any).email : '',
+    phone: typeof (data as any)?.phone === 'string' ? (data as any).phone : '',
+    createdAt,
+    updatedAt,
+  };
 }
 
 export async function createContact(data: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<Contact> {

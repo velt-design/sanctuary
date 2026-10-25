@@ -1,4 +1,9 @@
 import { act } from 'react';
+import StaffPageHeaderSurface from './StaffPageHeaderSurface';
+import GuardedGlobalPortalSearch from './GuardedGlobalPortalSearch';
+import {useOptionalGlobalPortalSearchState} from './GlobalPortalSearchState';
+import {PortalGuardedPage,PortalPageSourceProvider,usePortalPageSourceController} from '@/components/page-state/PortalPageSource';
+import {qk} from '@/lib/queries/keys';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
@@ -112,6 +117,17 @@ function searchResponse(query = 're', projectName = 'Remuera Residence') {
     }],
     generatedAt: '2026-07-22T00:00:00.000Z',
   };
+}
+
+let sourceControl:ReturnType<typeof usePortalPageSourceController>;
+let readerPublish:NonNullable<ReturnType<typeof useOptionalGlobalPortalSearchState>>['publishReader'];
+function CaptureReaderPublication(){readerPublish=useOptionalGlobalPortalSearchState()!.publishReader;return null;}
+function GuardedSearchHost({canonical,completion,denied=false}:{canonical:string;completion?:Record<string,never>;denied?:boolean}){
+ const source=usePortalPageSourceController(navigation.pathname,canonical,'');sourceControl=source;
+ return <PortalPageSourceProvider value={source}><GlobalPortalSearchStateProvider>
+   <StaffPageHeaderSurface title="Contacts"/><CaptureReaderPublication/>
+   {completion?<PortalGuardedPage pathname={canonical} completion={completion} unavailable={denied}><GuardedGlobalPortalSearch/></PortalGuardedPage>:null}
+ </GlobalPortalSearchStateProvider></PortalPageSourceProvider>;
 }
 
 describe('GlobalPortalSearch', () => {
@@ -510,6 +526,72 @@ describe('GlobalPortalSearch', () => {
     expect(document.querySelector('[role="listbox"]')).toBeNull();
     expect(loadedInput.value).toBe('re');
     rendered.unmount();
+  });
+
+  it('keeps the real typed input and focus without any private cache read before guarded adoption, then clears denied and retired owners', async()=>{
+    navigation.pathname='/staff/contacts';window.history.replaceState(null,'',navigation.pathname);
+    queryClient.setQueryData(qk.search.portal('re'),searchResponse());
+    const cache=vi.spyOn(queryClient,'getQueryData');
+    const a={},b={};
+    const ui=(completion?:Record<string,never>,denied=false)=><QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><GuardedSearchHost canonical="/staff/contacts" completion={completion} denied={denied}/></PortalQueryClientScope></QueryClientProvider>;
+    const view=renderIntoDocument(ui());const input=view.container.querySelector('input')!;
+    act(()=>input.focus());inputText(input,'re');
+    expect(input.readOnly).toBe(false);expect(document.activeElement).toBe(input);expect(cache).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();expect(document.querySelector('[role="option"]')).toBeNull();
+    view.rerender(ui(a));await act(async()=>{await vi.advanceTimersByTimeAsync(5);await Promise.resolve();});await flushQueryNotifications();
+    expect(cache).toHaveBeenCalledWith(qk.search.portal('re'));expect(document.querySelector('[role="option"]')?.textContent).toContain('Remuera Residence');expect(view.container.querySelector('input')).toBe(input);expect(input.value).toBe('re');expect(document.activeElement).toBe(input);
+    const publishA=readerPublish;
+    view.rerender(ui(a,true));expect(document.querySelector('[role="option"]')).toBeNull();expect(input.getAttribute('aria-controls')).toBeNull();expect(view.container.querySelector('input')).toBe(input);
+    cache.mockClear();inputText(input,'recovery');await flushQueryNotifications();expect(cache).not.toHaveBeenCalled();
+    queryClient.setQueryData(qk.search.portal('recovery'),searchResponse('recovery','Verified B'));
+    view.rerender(ui(b));await flushQueryNotifications();
+    expect(document.querySelector('[role="option"]')?.textContent).toContain('Verified B');
+    act(()=>publishA(null));expect(document.querySelector('[role="option"]')?.textContent).toContain('Verified B');
+    act(()=>publishA({component:()=>{throw new Error('retired reader mounted');}}));expect(document.querySelector('[role="option"]')?.textContent).toContain('Verified B');
+    view.unmount();cache.mockRestore();
+  });
+
+  it('retires private cached results immediately on A to pending B to A without clearing early text or reusing the old completion',async()=>{
+    navigation.pathname='/staff/contacts';window.history.replaceState(null,'',navigation.pathname);const a={},b={};
+    queryClient.setQueryData(qk.search.portal('re'),searchResponse());
+    const ui=(canonical:string,completion?:Record<string,never>)=><QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><GuardedSearchHost canonical={canonical} completion={completion}/></PortalQueryClientScope></QueryClientProvider>;
+    const view=renderIntoDocument(ui('/staff/contacts',a));const input=view.container.querySelector('input')!;act(()=>input.focus());inputText(input,'re');await flushQueryNotifications();
+    expect(document.querySelector('[role="option"]')).not.toBeNull();const oldPublish=readerPublish;
+    act(()=>{sourceControl.begin('/staff/projects');window.history.pushState(null,'','/staff/projects');});navigation.pathname='/staff/projects';
+    view.rerender(ui('/staff/contacts',a));expect(document.querySelector('[role="option"]')).toBeNull();inputText(input,'new');
+    act(()=>{sourceControl.begin('/staff/contacts');window.history.pushState(null,'','/staff/contacts');});navigation.pathname='/staff/contacts';
+    view.rerender(ui('/staff/contacts',a));expect(document.querySelector('[role="option"]')).toBeNull();expect(input.value).toBe('new');
+    queryClient.setQueryData(qk.search.portal('new'),searchResponse('new','Current A'));
+    view.rerender(ui('/staff/contacts',b));await flushQueryNotifications();expect(document.querySelector('[role="option"]')?.textContent).toContain('Current A');
+    act(()=>oldPublish(null));expect(document.querySelector('[role="option"]')?.textContent).toContain('Current A');expect(view.container.querySelector('input')).toBe(input);expect(document.activeElement).toBe(input);view.unmount();
+  });
+
+  it.each([401,403,503])('qualifies cached results after HTTP%s, preserves transient evidence, and recovers only from an allowed read',async status=>{
+    const view=renderSearch();const input=view.container.querySelector('input')!;act(()=>input.focus());inputText(input,'re');
+    await act(async()=>{await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS+1);});await flushQueryNotifications();expect(document.querySelector('[role="option"]')).not.toBeNull();
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({error:'Fictional read denied or unavailable'},{status}));
+    await act(async()=>{await queryClient.refetchQueries({queryKey:qk.search.portal('re'),exact:true});});await flushQueryNotifications();
+    const calls=vi.mocked(fetch).mock.calls.length;
+    if(status===503){expect(document.querySelector('[role="option"]')).not.toBeNull();expect(document.body.textContent).toContain('Could not refresh. Showing recent results.');view.unmount();return;}
+    expect(document.querySelector('[role="option"]')).toBeNull();expect(document.body.textContent).toContain('Search is unavailable.');
+    act(()=>input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})));expect(navigation.beginRouteTransition).not.toHaveBeenCalled();
+    await act(async()=>{await vi.advanceTimersByTimeAsync(200);});expect(fetch).toHaveBeenCalledTimes(calls);
+    act(()=>input.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));act(()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true})));expect(document.querySelector('[role="option"]')).toBeNull();
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json(searchResponse('re','Verified recovery')));
+    const retry=[...document.querySelectorAll('button')].find(button=>button.textContent==='Try again')!;act(()=>retry.click());await flushQueryNotifications();expect(document.querySelector('[role="option"]')?.textContent).toContain('Verified recovery');view.unmount();
+  });
+
+  it('does not revive another cached query when a denied reader is replaced, or let its late denied read clear the recovered owner',async()=>{
+    const pending=new Map<string,(response:Response)=>void>();vi.mocked(fetch).mockImplementation(url=>new Promise(resolve=>pending.set(new URL(String(url),'http://localhost').searchParams.get('q')!,resolve)));
+    navigation.pathname='/staff/contacts';window.history.replaceState(null,'',navigation.pathname);const a={},b={};
+    const ui=(completion:Record<string,never>)=><QueryClientProvider client={queryClient}><PortalQueryClientScope client={queryClient}><GuardedSearchHost canonical="/staff/contacts" completion={completion}/></PortalQueryClientScope></QueryClientProvider>;
+    const view=renderIntoDocument(ui(a));const input=view.container.querySelector('input')!;act(()=>input.focus());inputText(input,'older');await act(async()=>{await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS+1);});
+    inputText(input,'denied');await act(async()=>{await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS+1);});
+    await act(async()=>{pending.get('denied')!(Response.json({error:'Fictional denied'},{status:403}));});await flushQueryNotifications();expect(document.querySelector('[role="option"]')).toBeNull();
+    queryClient.setQueryData(qk.search.portal('cached'),searchResponse('cached','Old cached private record'));
+    view.rerender(ui(b));await flushQueryNotifications();expect(input.value).toBe('denied');expect(document.querySelector('[role="option"]')).toBeNull();const retiredDenied=pending.get('denied')!;
+    inputText(input,'cached');await act(async()=>{await vi.advanceTimersByTimeAsync(PORTAL_SEARCH_DEBOUNCE_MS+1);});expect(document.querySelector('[role="option"]')).toBeNull();expect(pending.has('cached')).toBe(true);
+    await act(async()=>{pending.get('cached')!(Response.json(searchResponse('cached','Current allowed record')));});await flushQueryNotifications();expect(document.querySelector('[role="option"]')?.textContent).toContain('Current allowed record');
+    await act(async()=>{pending.get('older')!(Response.json({error:'Late old denied'},{status:401}));retiredDenied(Response.json({error:'Late retired same-epoch denied'},{status:403}));});await flushQueryNotifications();expect(document.querySelector('[role="option"]')?.textContent).toContain('Current allowed record');expect(input.value).toBe('cached');view.unmount();
   });
 
 });

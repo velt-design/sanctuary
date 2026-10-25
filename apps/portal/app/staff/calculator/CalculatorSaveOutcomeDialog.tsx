@@ -31,7 +31,7 @@ export default function CalculatorSaveOutcomeDialog({
   const syncState = useAliasedEntitySyncState(
     outcome?.estimateId,
     buildEstimateEntityKey,
-    'estimate:detail:__calculator-save-outcome__',
+    outcome ? 'estimate:detail:__calculator-save-outcome__' : null,
   );
   if (!outcome) return null;
 

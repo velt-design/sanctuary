@@ -1,3 +1,4 @@
+// Private read tests observe the same snapshot props at the extracted public shell boundary.
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../test/reactHarness";
@@ -5,6 +6,7 @@ import { ApiError } from "@/lib/repo/apiClient";
 import { selectProjectView } from "@/components/projects/ProjectPage/projectViewNavigation";
 import type { PortalPageDebugExport } from "@/lib/debug/portalPageDebugExport";
 import ProjectSnapshotPageClient from "./ProjectSnapshotPageClient";
+vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', () => ({ default: () => null }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const useQueryMock = vi.fn();
@@ -12,7 +14,7 @@ const placeholderMock = vi.fn();
 const refetchMock = vi.fn();
 const removeQueriesMock = vi.fn();
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/components/projects/ProjectPage/projectTabModules", () => ({ preloadProjectOverviewModule: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock("@/components/navigation/ProjectsIndexLink", () => ({
@@ -41,7 +43,7 @@ vi.mock("@/lib/supabase/browserClient", () => ({
   supabaseRuntimeUrl: () => "https://host.supabase.co",
 }));
 
-vi.mock("@/components/projects/ProjectPage/ProjectPageFrame", () => ({
+vi.mock("@/components/projects/ProjectPage/ProjectPageShellSurface", () => ({
   default: ({
     snapshot,
     snapshotContentReady,
@@ -54,7 +56,7 @@ vi.mock("@/components/projects/ProjectPage/ProjectPageFrame", () => ({
       data-content-ready={String(snapshotContentReady)}
       data-snapshot-state={snapshotState}
     >
-      {snapshot.project.name}
+      {snapshot?.project.name ?? "Reading project"}
       {statusPanel}
       {[401, 403, 404].map((status) => (
         <button
@@ -447,7 +449,7 @@ describe("ProjectSnapshotPageClient", () => {
         '[data-project-snapshot-state="pending"]',
       ),
     ).not.toBeNull();
-    expect(rendered.container.textContent).toContain("Opening project");
+    expect(rendered.container.textContent).toContain("Reading project");
     expect(rendered.container.textContent).not.toContain("Project unavailable");
 
     rendered.unmount();

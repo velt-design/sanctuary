@@ -29,12 +29,12 @@ vi.mock('@/components/projects/workQueue/PaginatedProjectWorkQueueList.client', 
   default: ({
     entries,
     mutationsEnabled,
-    reassignmentEnabled,
+    reassignmentEnabled,statusPanel,
   }: {
     entries: unknown[];
     mutationsEnabled: boolean;
-    reassignmentEnabled: boolean;
-  }) => (
+    reassignmentEnabled: boolean;statusPanel?:ReactNode;
+  }) => statusPanel??(
     <div
       data-testid="queue-list"
       data-entry-count={entries.length}

@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
 import type { DashboardRecentEstimate } from '@/lib/dashboard/types';
@@ -21,21 +20,12 @@ function updatedLabel(value: string): string {
   }).format(date);
 }
 
-export default function RecentEstimatesCard({ items }: { items: DashboardRecentEstimate[] }) {
-  return (
-    <section className={`${styles.section} ${dash.card} ${dash.estimatesCard}`} aria-label="Recent Estimates">
-      <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
-        <div>
-          <h2 className={styles.sectionTitle}>Recent Estimates</h2>
-          <div className={`${styles.muted} ${dash.cardSubheading}`}>Latest saved draft estimates.</div>
-        </div>
-      </div>
-      <div className={`${styles.sectionBody} ${dash.cardBody}`}>
-        {items.length ? (
-          <ul className={dash.operationalList}>
+import {RecentEstimatesSurface} from './DashboardCardSurfaces';
+
+export function RecentEstimatesCardRows({items}:{items:DashboardRecentEstimate[]}){return (          <ul className={dash.operationalList}>
             {items.map((item) => (
               <li key={item.estimateId}>
-                <Link className={`${dash.operationalRow} ${dash.estimateRow}`} href={item.href}>
+                <PortalIndexLink className={`${dash.operationalRow} ${dash.estimateRow}`} href={item.href}>
                   <span className={dash.rowPrimary}>
                     <strong>{item.projectName}</strong>
                     <small><Badge>{item.versionLabel}</Badge> <span>Draft</span></small>
@@ -44,12 +34,11 @@ export default function RecentEstimatesCard({ items }: { items: DashboardRecentE
                     <strong>{item.customerPriceIncGst === null ? 'Price unavailable' : nzd.format(item.customerPriceIncGst)}</strong>
                     <time dateTime={item.updatedAt}>{updatedLabel(item.updatedAt)}</time>
                   </span>
-                </Link>
+                </PortalIndexLink>
               </li>
             ))}
-          </ul>
-        ) : <div className={dash.emptyState}>No saved draft estimates yet.</div>}
-      </div>
-    </section>
-  );
+          </ul>);}
+
+export default function RecentEstimatesCard({items,pending=false}:{items: DashboardRecentEstimate[]|null;pending?:boolean;}){
+ return <RecentEstimatesSurface rows={items?.length?<RecentEstimatesCardRows items={items}/>:undefined} hasItems={Boolean(items?.length)} known={items!==null} pending={pending}/>;
 }

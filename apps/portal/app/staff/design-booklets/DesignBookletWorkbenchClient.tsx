@@ -25,10 +25,8 @@ import BookletPageComposer from "./BookletPageComposer";
 import DesignBookletPages from "./DesignBookletPages";
 import styles from "./designBooklets.module.css";
 import { useDesignBookletPdfArtifact } from "./useDesignBookletPdfArtifact";
-import {
-  previewAssetFromSource,
-  useProjectDesignBookletController,
-} from "./useProjectDesignBookletController";
+import { useProjectDesignBookletController } from "./useProjectDesignBookletController";
+import { previewAssetFromSource } from "./previewAssets";
 
 type Props = {
   content: DesignBookletContentCatalog;
@@ -37,7 +35,11 @@ type Props = {
   qaFixture?: boolean;
 };
 
-export default function DesignBookletWorkbenchClient({
+export default function DesignBookletWorkbenchClient(props: Props) {
+  return <DesignBookletWorkbenchContent key={props.projectId?.trim() || "standalone"} {...props} />;
+}
+
+function DesignBookletWorkbenchContent({
   content,
   pdfEndpoint,
   projectId,
@@ -60,7 +62,10 @@ export default function DesignBookletWorkbenchClient({
     selectDrawingPdfPage,
     copyAsset,
     flushSave,
+    retryRead,
   } = useProjectDesignBookletController(projectId);
+  const projectReady = !linkedProjectId || project?.id === linkedProjectId;
+  const unknown = saveState === "error" ? "Unavailable" : "Reading…";
   const [selectedPageKey, setSelectedPageKey] = useState("cover");
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
@@ -261,6 +266,7 @@ export default function DesignBookletWorkbenchClient({
   }
 
   async function downloadPdf() {
+    if (!projectReady) return;
     setIsDownloading(true);
     setDownloadError("");
     try {
@@ -303,7 +309,7 @@ export default function DesignBookletWorkbenchClient({
                     : saveState === "loading"
                       ? "Loading project"
                       : saveState === "error"
-                        ? "Save needs attention"
+                        ? (projectReady ? "Save needs attention" : "Project booklet unavailable")
                         : "Project booklet"
               : "Preview only · not saved"}
           </strong>
@@ -325,6 +331,7 @@ export default function DesignBookletWorkbenchClient({
             className={styles.primaryButton}
             onClick={downloadPdf}
             disabled={
+              !projectReady ||
               isDownloading ||
               hasBlockingImageState ||
               saveState === "loading" ||
@@ -347,8 +354,8 @@ export default function DesignBookletWorkbenchClient({
             <summary>
               <span className={styles.detailsSummaryCopy}>
                 <span className={styles.sectionEyebrow}>Booklet details</span>
-                <strong>{draft.projectTitle}</strong>
-                <span>{selectionSummary}</span>
+                <strong>{projectReady ? draft.projectTitle : unknown}</strong>
+                <span>{projectReady ? selectionSummary : unknown}</span>
               </span>
               <span className={styles.detailsToggle} aria-hidden="true">
                 <span className={styles.detailsToggleClosed}>Edit</span>
@@ -362,7 +369,9 @@ export default function DesignBookletWorkbenchClient({
                   <span>Customer name</span>
                   <input
                     required
-                    value={draft.customerName}
+                    disabled={!projectReady}
+                    placeholder={projectReady ? undefined : unknown}
+                    value={projectReady ? draft.customerName : ""}
                     onChange={(event) =>
                       setDraft((current) => ({
                         ...current,
@@ -378,7 +387,9 @@ export default function DesignBookletWorkbenchClient({
                     required
                     className={styles.titleTextarea}
                     rows={2}
-                    value={draft.projectTitle}
+                    disabled={!projectReady}
+                    placeholder={projectReady ? undefined : unknown}
+                    value={projectReady ? draft.projectTitle : ""}
                     onChange={(event) =>
                       setDraft((current) => ({
                         ...current,
@@ -392,7 +403,8 @@ export default function DesignBookletWorkbenchClient({
                 <label className={styles.field}>
                   <span>Roof form</span>
                   <select
-                    value={draft.roofFormId}
+                    disabled={!projectReady}
+                    value={projectReady ? draft.roofFormId : ""}
                     onChange={(event) =>
                       setDraft((current) => ({
                         ...current,
@@ -401,6 +413,7 @@ export default function DesignBookletWorkbenchClient({
                       }))
                     }
                   >
+                    {!projectReady ? <option value="">{unknown}</option> : null}
                     {DESIGN_BOOKLET_ROOF_FORM_IDS.map((id) => (
                       <option key={id} value={id}>
                         {content.roofForms[id].name}
@@ -411,7 +424,8 @@ export default function DesignBookletWorkbenchClient({
                 <label className={styles.field}>
                   <span>Paper size</span>
                   <select
-                    value={draft.paperSize}
+                    disabled={!projectReady}
+                    value={projectReady ? draft.paperSize : ""}
                     onChange={(event) =>
                       setDraft((current) => ({
                         ...current,
@@ -420,6 +434,7 @@ export default function DesignBookletWorkbenchClient({
                       }))
                     }
                   >
+                    {!projectReady ? <option value="">{unknown}</option> : null}
                     {DESIGN_BOOKLET_PAPER_SIZE_IDS.map((id) => (
                       <option key={id} value={id}>
                         {DESIGN_BOOKLET_PAPER_SIZES[id].label} - landscape
@@ -430,7 +445,8 @@ export default function DesignBookletWorkbenchClient({
                 <label className={styles.field}>
                   <span>Roofing choice</span>
                   <select
-                    value={draft.materialId}
+                    disabled={!projectReady}
+                    value={projectReady ? draft.materialId : ""}
                     onChange={(event) =>
                       setDraft((current) => ({
                         ...current,
@@ -439,6 +455,7 @@ export default function DesignBookletWorkbenchClient({
                       }))
                     }
                   >
+                    {!projectReady ? <option value="">{unknown}</option> : null}
                     {DESIGN_BOOKLET_MATERIAL_IDS.map((id) => (
                       <option key={id} value={id}>
                         {content.materials[id].label}
@@ -459,9 +476,9 @@ export default function DesignBookletWorkbenchClient({
                 <p className={styles.sectionEyebrow}>Booklet structure</p>
                 <h2>Pages</h2>
               </div>
-              <span>{String(pageModel.length).padStart(2, "0")}</span>
+              <span>{projectReady ? String(pageModel.length).padStart(2, "0") : unknown}</span>
             </header>
-            <BookletPageComposer
+            {projectReady ? <BookletPageComposer
               draft={draft}
               selectedPageKey={selectedPageKey}
               assets={assets}
@@ -484,32 +501,31 @@ export default function DesignBookletWorkbenchClient({
               }}
               onUseAsCover={useAsCover}
               onAssetDisplayState={markAssetDisplayState}
-            />
+            /> : <p role={saveState === "loading" ? "status" : undefined}>{unknown}</p>}
           </section>
         </aside>
 
         <section
           className={styles.previewWorkspace}
           id="booklet-preview"
-          aria-label={`Landscape ${DESIGN_BOOKLET_PAPER_SIZES[draft.paperSize].label} booklet preview`}
-          data-paper-size={draft.paperSize}
+          aria-label={projectReady ? `Landscape ${DESIGN_BOOKLET_PAPER_SIZES[draft.paperSize].label} booklet preview` : "Booklet preview"}
+          data-paper-size={projectReady ? draft.paperSize : undefined}
         >
           <header className={styles.previewToolbar}>
             <div>
               <p className={styles.sectionEyebrow}>Page preview</p>
-              <h2>{selectedPage.label}</h2>
+              <h2>{projectReady ? selectedPage.label : unknown}</h2>
             </div>
             <div className={styles.previewControls}>
               <span>
-                {String(selectedPage.pageNumber).padStart(2, "0")} /{" "}
-                {String(pageModel.length).padStart(2, "0")}
+                {projectReady ? `${String(selectedPage.pageNumber).padStart(2, "0")} / ${String(pageModel.length).padStart(2, "0")}` : unknown}
               </span>
               <button
                 type="button"
                 onClick={() =>
                   setSelectedPageKey(pageModel[selectedPageIndex - 1].key)
                 }
-                disabled={selectedPageIndex === 0}
+                disabled={!projectReady || selectedPageIndex === 0}
               >
                 Previous
               </button>
@@ -518,7 +534,7 @@ export default function DesignBookletWorkbenchClient({
                 onClick={() =>
                   setSelectedPageKey(pageModel[selectedPageIndex + 1].key)
                 }
-                disabled={selectedPageIndex === pageModel.length - 1}
+                disabled={!projectReady || selectedPageIndex === pageModel.length - 1}
               >
                 Next
               </button>
@@ -527,13 +543,13 @@ export default function DesignBookletWorkbenchClient({
 
           <div className={styles.previewCanvas}>
             <div className={styles.pageStage}>
-              <DesignBookletPages
+              {projectReady ? <DesignBookletPages
                 selectedPageKey={selectedPageKey}
                 draft={draft}
                 content={content}
                 assets={assets}
                 onAssetDisplayState={markAssetDisplayState}
-              />
+              /> : <p role={saveState === "loading" ? "status" : undefined}>{saveState === "error" ? "Booklet preview unavailable." : "Reading project booklet…"}</p>}
             </div>
           </div>
         </section>
@@ -545,6 +561,7 @@ export default function DesignBookletWorkbenchClient({
       {persistenceError || downloadError ? (
         <p className={styles.errorMessage} role="alert">
           {persistenceError || downloadError}
+          {!projectReady && saveState === "error" ? <button type="button" onClick={retryRead}>Retry booklet</button> : null}
         </p>
       ) : null}
     </main>

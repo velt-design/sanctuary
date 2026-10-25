@@ -1,5 +1,4 @@
-const PORTAL_LOCALE = 'en-NZ';
-const PORTAL_TIME_ZONE = 'Pacific/Auckland';
+import { PORTAL_LOCALE, PORTAL_TIME_ZONE } from './portalDateConstants';
 
 type PortalFormatOptions = {
   fallback?: string;

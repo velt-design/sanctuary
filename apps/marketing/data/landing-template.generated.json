@@ -1,5 +1,5 @@
 {
-  "hash": "d73e5192732f300616052c000657f06afb1f7f1feb7bcd594cf6f1b83ebe0ae0",
+  "hash": "8a6b060b3d1f104938ad2bf64b51d2dd57e610b1c731ee2ce8d1ea4e1f67ca4f",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -1235,7 +1235,7 @@
     ],
     [
       "packages/costing/src/commercial/simpleRangePricing.ts",
-      "f8dd3ee13859732dca5d36ebc6bde42cdd6c01cadf061514ee800cc376b7f93d"
+      "3f6d91a6ed9a70778f17effe32385dcbf6b5b3be2c086a42f1a9fa34d29c0833"
     ],
     [
       "packages/costing/src/commercial/types.ts",
@@ -1270,8 +1270,8 @@
       "a388f61918048616b82feeb00e03675569b8d1283cab5fc79d23b09f49c8b8de"
     ],
     [
-      "packages/costing/src/config/costing_manifest_v2.10_2026-09-24.json",
-      "96ed46baba8ae50b15647b04905a543410675c970d25b8e03a3d8a35bb17f392"
+      "packages/costing/src/config/costing_manifest_v2.11_2026-10-23.json",
+      "dbee2348ff276f0a65bad3d0060ccc6d5879eae2c5a9d05ca7614108459d3f60"
     ],
     [
       "packages/costing/src/config/costing_rules_v1.3_2026-01-08.json",
@@ -1307,7 +1307,7 @@
     ],
     [
       "packages/costing/src/controlConfig.ts",
-      "2ceb400d624c4eb07353b54c3e5936ed171d9f44c252eab48d7914f07812618c"
+      "29ba519ab86d3013bdfc1265078b8519170f8da29973e578154fd57e3f3e1008"
     ],
     [
       "packages/costing/src/engine/bom.ts",
@@ -1331,11 +1331,11 @@
     ],
     [
       "packages/costing/src/engine/config.ts",
-      "579f5f6d7b6aa3e1d34bbce341a158c821bd8edb85f08718f6a25cb39b7bfdfd"
+      "00cddab318e71da24bbef0a6c4ceb4a13d8e4b90209516f2942db051e52f4878"
     ],
     [
       "packages/costing/src/engine/derive.ts",
-      "b5fdcf807b5179e3c69deda63a75c924424fd57f0c4a039e7eae28e329187fa1"
+      "ad99596f5a617d02e39aebb2ef49039a6b4edf424253667516e6f34f7378159a"
     ],
     [
       "packages/costing/src/engine/emptySite.ts",
@@ -1416,6 +1416,10 @@
     [
       "packages/costing/src/engine/ridgeProfile.ts",
       "2fd96d5e510ef3ba8184c442b5f11cb334aea40bd3a95372c0942672b28b922a"
+    ],
+    [
+      "packages/costing/src/engine/roofPitch.ts",
+      "744eb37cb8609e7847884daac17794bc65dce1f91e85fe6dc78f820d3aba21b8"
     ],
     [
       "packages/costing/src/engine/simpleSiteDayPolicy.ts",
@@ -2012,7 +2016,7 @@
     "three": "0.183.2",
     "three-stdlib": "2.36.1",
     "web-vitals": "5.1.0",
-    "zod": "4.1.13"
+    "zod": "4.6.6"
   },
   "publicAssets": {
     "apps/marketing/public/images/project-atelier-shu-05.jpg": "9c762a91326ab1d34c83bba898b405316fb5f9ae2b5afb531e9e4f8365b7ba6f",

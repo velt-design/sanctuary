@@ -5,6 +5,7 @@ import ProjectTabNavigation from './ProjectTabNavigation';
 
 const replaceMock = vi.fn();
 const preloadMock = vi.fn();
+const codeMock = vi.fn();
 let mockSearchParams = 'tab=activity';
 
 vi.mock('next/navigation', () => ({
@@ -19,6 +20,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('./projectTabModules', () => ({
   preloadProjectTab: (...args: unknown[]) => preloadMock(...args),
+  preloadProjectTabModule: (...args: unknown[]) => codeMock(...args),
 }));
 
 vi.mock('@/lib/supabase/browserClient', () => ({
@@ -36,7 +38,7 @@ describe('ProjectTabNavigation', () => {
   beforeEach(() => {
     mockSearchParams = 'tab=activity';
     replaceMock.mockReset();
-    preloadMock.mockReset();
+    preloadMock.mockReset(); codeMock.mockReset();
     for (const [method, original] of [['pushState', historyPush], ['replaceState', historyReplace]] as const) {
       vi.spyOn(window.history, method).mockImplementation((...args) => {
         original(...args);
@@ -161,4 +163,20 @@ describe('ProjectTabNavigation', () => {
     expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter', { scroll: false });
     rendered.unmount();
   });
+});
+
+it('prepares only code before guarded adoption while preserving the actual tab control and URL contract', () => {
+  mockSearchParams = 'tab=activity&campaign=winter'; preloadMock.mockReset(); codeMock.mockReset();
+  const select = vi.fn();
+  const view = renderIntoDocument(<ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1"
+    privateContentReady={false} onTabSelect={select}/>);
+  const commercial = [...view.container.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(tab => tab.textContent === 'Commercial')!;
+  act(() => { commercial.dispatchEvent(new FocusEvent('focusin', { bubbles: true })); commercial.click(); });
+  expect(codeMock).toHaveBeenCalledWith('estimates'); expect(preloadMock).not.toHaveBeenCalled();
+  expect(select).toHaveBeenCalledWith('estimates'); expect(window.location.search).toBe('?tab=estimates&campaign=winter');
+  view.rerender(<ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1" privateContentReady onTabSelect={select}/>);
+  expect([...view.container.querySelectorAll('[role=tab]')].find(tab => tab.textContent === 'Commercial')).toBe(commercial);
+  act(() => commercial.dispatchEvent(new FocusEvent('focusin', { bubbles: true })));
+  expect(preloadMock).toHaveBeenCalledWith('estimates', expect.objectContaining({ host: 'host', projectId: 'proj_1' }));
+  view.unmount();
 });

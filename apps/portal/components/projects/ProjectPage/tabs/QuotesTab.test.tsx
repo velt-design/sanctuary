@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act } from 'react';
+import { act,Profiler,useMemo } from 'react';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import QuotesTab from './QuotesTab';
+import QuotesListView from './QuotesListView';
+import QuotesListSurface,{useQuotesListControls,type QuotesListEvidence} from './QuotesListSurface';
+import {useOwnedPortalPublication} from '@/components/page-state/PortalPageSource';
+import {PortalQueryClientScope} from '@/lib/react-query/PortalQueryClientContext';
 import { buildOptimisticQuoteDetail } from '@/lib/localFirst/portalEntities';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCommercialContext';
@@ -184,6 +188,31 @@ const quoteDetail = {
   },
 } as const;
 let activeQuoteDetail: any = quoteDetail;
+
+let oldQuotePublish:((value:QuotesListEvidence|null)=>void)|undefined;
+function ManagedQuotes({allowed,owner,pending}:{allowed:boolean;owner:object;pending:boolean}) {
+ const controls=useQuotesListControls('proj_1'),published=useOwnedPortalPublication<QuotesListEvidence>(allowed?owner:null);
+ const binding=useMemo(()=>({controls,publish:published.publish}),[controls,published.publish]);
+ if(allowed)oldQuotePublish=published.publish;
+ const producer=useMemo(()=>allowed?<QuotesListView {...({projectId:'proj_1',quotes:pending?[]:[quoteDetail],quotesLoading:pending,quotesError:null,retryQuotes:vi.fn(),
+  openCreate:vi.fn(),selectQuote:vi.fn(),prefetchQuoteDetail:vi.fn(),createOpen:false,closeCreate:vi.fn(),createEstimateId:'',setCreateEstimateId:vi.fn(),createInternalName:'',setCreateInternalName:vi.fn(),estimatesLoading:false,estimates:[],createQuote:vi.fn(),createMode:'estimate',setCreateMode:vi.fn(),manualDescription:'',setManualDescription:vi.fn(),manualQty:'1',setManualQty:vi.fn(),manualPrice:'',setManualPrice:vi.fn(),createBusy:false,isAdmin:false,deleteQuote:vi.fn(),supersedeQuote:vi.fn(),supersedePendingId:null,renameTarget:null,renamePending:false,renameQuote:vi.fn(),closeRename:vi.fn(),saveRename:vi.fn()} as any)} listSurface={binding}/>:null,[allowed,pending,binding]);
+ return <><QuotesListSurface query={controls.query} onQueryChange={controls.setQuery} showHistory={controls.showHistory} onHistoryChange={controls.setShowHistory}
+  onInteraction={controls.markInteracted} evidence={published.value} unavailable={!allowed}/>{producer}</>;
+}
+
+it('preserves actual quote Find/history/table/focus across held authority and pending rows, without consulting saved private state before its owner',()=>{
+ const data=new Map<string,unknown>([[JSON.stringify(['commercialListView','proj_1','quotes-search']),'Old saved filter']]);
+ const cache={getQueryData:vi.fn((key:unknown)=>data.get(JSON.stringify(key))),setQueryData:vi.fn((key:unknown,value:unknown)=>data.set(JSON.stringify(key),value))};
+ const a={},b={};const tree=(allowed:boolean,owner:object,pending:boolean)=><PortalQueryClientScope client={cache as any}><ManagedQuotes allowed={allowed} owner={owner} pending={pending}/></PortalQueryClientScope>;
+ const view=renderIntoDocument(tree(false,a,true)),input=view.container.querySelector<HTMLInputElement>('#quote-search')!,table=view.container.querySelector('table'),head=table?.querySelector('thead'),body=table?.querySelector('tbody');
+ expect(cache.getQueryData).not.toHaveBeenCalled();expect(input.disabled).toBe(false);expect(view.container.textContent).not.toContain('Q-1001');
+ view.rerender(tree(true,a,true));const old=oldQuotePublish!;
+ act(()=>{input.focus();Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'Q-1001');input.dispatchEvent(new Event('input',{bubbles:true}));});
+ view.rerender(tree(true,a,false));expect(view.container.querySelector('#quote-search')).toBe(input);expect(view.container.querySelector('table')).toBe(table);expect(table?.querySelector('thead')).toBe(head);expect(table?.querySelector('tbody')).toBe(body);
+ expect(input.value).toBe('Q-1001');expect(document.activeElement).toBe(input);expect(table?.textContent).toContain('Q-1001');
+ view.rerender(tree(false,a,false));expect(table?.textContent).not.toContain('Q-1001');expect(view.container.querySelector('#quote-search')).toBe(input);
+ view.rerender(tree(true,b,false));act(()=>old(null));expect(table?.textContent).toContain('Q-1001');expect(input.value).toBe('Q-1001');view.unmount();
+});
 
 describe('QuotesTab draft ownership UI', () => {
   beforeEach(() => {
@@ -516,4 +545,40 @@ describe('QuotesTab draft ownership UI', () => {
     expect(acceptButton?.hasAttribute('disabled')).toBe(true);
     rendered.unmount();
   });
+ it('keeps real quote fields/line headers/return through pending, failure and ready without a zero-value or stale draft commit',async()=>{
+  let phase:'pending'|'error'|'ready'|'empty'='pending',calls=0;const retry=vi.fn();useQueryMock.mockImplementation(()=>{const index=calls++%4;return index===3?{data:phase==='ready'?quoteDetail:phase==='empty'?{...quoteDetail,lineItems:[]}:null,isPending:phase==='pending',isError:phase==='error',error:phase==='error'?new Error('Read failed'):null,refetch:retry}:{data:[],isPending:false,error:null};});
+  const commits:string[]=[];const element=()=> <Profiler id="quote-owner" onRender={()=>commits.push([...document.querySelectorAll('[class*="totalValue"]')].map(node=>node.textContent).join('|'))}><QuotesTab projectId="proj_1"/></Profiler>;const view=renderIntoDocument(element());const back=[...view.container.querySelectorAll('button')].find(b=>b.textContent?.includes('Back to quotes'))!,lineTable=view.container.querySelector('table')!;expect(view.container.textContent).toContain('Customer on this quote');expect(lineTable.textContent).toContain('Description');expect(lineTable.textContent).not.toContain('No line items.');expect(view.container.textContent).not.toContain('Taylor');expect(view.container.textContent).not.toContain('$0.00');expect(view.container.textContent).not.toContain('database upgrade');
+  phase='error';view.rerender(element());expect(lineTable.textContent).toContain('Line items unavailable.');expect(lineTable.textContent).not.toContain('No line items.');expect(view.container.querySelector('table')).toBe(lineTable);await act(async()=>[...view.container.querySelectorAll('button')].find(b=>b.textContent==='Retry quote')!.click());expect(retry).toHaveBeenCalledOnce();phase='ready';view.rerender(element());expect(view.container.querySelector('table')).toBe(lineTable);expect([...view.container.querySelectorAll('button')].find(b=>b.textContent?.includes('Back to quotes'))).toBe(back);expect(view.container.textContent).toContain('Taylor');expect(view.container.textContent).toContain('$100.00');expect(commits.join('|')).not.toContain('$0.00');view.unmount();phase='pending';const emptyView=renderIntoDocument(element());const emptyTable=emptyView.container.querySelector('table')!;phase='empty';emptyView.rerender(element());expect(emptyView.container.querySelector('table')).toBe(emptyTable);expect(emptyTable.textContent).toContain('No line items.');expect(emptyTable.textContent).not.toContain('unavailable');emptyView.unmount();
+ });
+
+  it('preserves URL create intent without creating before current project authority is ready', async () => {
+    searchParamsValue = 'createFromEstimateId=est_v2';
+    getQueryData.mockReturnValue({ id: 'est_v2', projectId: 'proj_1', commercialScopeId: null });
+    vi.mocked(buildOptimisticQuoteDetail).mockReturnValue(quoteDetail as any);
+    const element = (ready: boolean) => <ProjectCommercialProvider projectId="proj_1" ready={ready}><QuotesTab projectId="proj_1" /></ProjectCommercialProvider>;
+    const view = renderIntoDocument(element(false));
+    const table = view.container.querySelector('table');
+    expect(table).not.toBeNull();
+    expect(buildOptimisticQuoteDetail).not.toHaveBeenCalled();
+    expect(enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
+    expect(fetchQuery).not.toHaveBeenCalled();
+    await act(async () => view.rerender(element(true)));
+    expect(enqueueAndProcessLocalFirstMutation).toHaveBeenCalledOnce();
+    view.unmount();
+  });
+
+  it('does not create after an estimate read outlives current project authority', async () => {
+    searchParamsValue = 'createFromEstimateId=est_v2';
+    let resolve!: (value: unknown) => void;
+    fetchQuery.mockImplementationOnce(() => new Promise((accept) => { resolve = accept; }));
+    const element = (ready: boolean) => <ProjectCommercialProvider projectId="proj_1" ready={ready}><QuotesTab projectId="proj_1" /></ProjectCommercialProvider>;
+    const view = renderIntoDocument(element(true));
+    expect(fetchQuery).toHaveBeenCalledOnce();
+    view.rerender(element(false));
+    await act(async () => resolve({ id: 'est_v2', projectId: 'proj_1', commercialScopeId: null }));
+    expect(buildOptimisticQuoteDetail).not.toHaveBeenCalled();
+    expect(enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
 });

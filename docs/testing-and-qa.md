@@ -99,6 +99,57 @@ Lost-reply cases cover revoked/expired capacity and generation drift, exact
 prepare/probe replay, conflicting identities, unchanged native rows/counters,
 and signed probe receipt readback without capability renewal.
 
+## Guarded actual-frame handoff candidate
+
+The Contacts/Schedule split passes both local production builds, unchanged bundle
+limits (including Calculator zero-lazy), held-Flight/history/denial recovery and
+all eleven original Schedule ops cases. Connected harnesses keep the installed
+Board Loadable and real Dnd. Only the dev-only Diagnostics loader is isolated by
+its actual static component after an installed lazy/React act stall; this is not
+production lazy-module evidence. Diagnostics is included when
+`NODE_ENV !== 'production'`: `[aria-label="Schedule diagnostics"]` contains
+`Diagnostics (dev only)` and its Show/Hide disclosure. A focused fictional
+actual-development check can exercise that loader; production cannot.
+
+The composed seven-route source tests additionally cover actual Dashboard cards,
+Projects, Work Queue and both operational sheets before any guarded private hooks,
+with prior QueryClient/staff cache present. A runtime-import closure regression
+keeps guarded Dashboard row/portfolio/visit presenters and Work Queue record
+derivation out of the shared public frame. Same card/body nodes persist when
+private row slots fill; this is not a bundle-size assertion. They check the same controls through
+fresh adoption, denial and recovery; complete independent Dashboard sections
+survive secondary failure. Projects early filters survive restoration of the
+original Flight URL in field, URL and first query, while later same-path history
+search remains effective. Saved per-user row anchors are not read before guard
+and cannot override early filters. Spreadsheet cases retain genuine editing,
+commit/keyboard/zoom, and reject late save/activation focus from a retired runtime.
+Job Packs retains its standalone adapter/composition tests. Actual compiled Next,
+combined bundle fit and all locked performance/long-task checks remain required;
+source tests do not establish browser timings.
+
+The existing gated fictional lane is
+`/qa/portal-progressive-fixture?fixture=guarded-frames&route=contacts&q=Alpha`.
+Use `route=schedule&view=gantt`, or `route=dashboard|projects|work-queue|drafting|running`
+(each is a separate value). `guard=denied` denies the selected fictional source;
+`readFailure=1` exhausts the selected loader's automatic retry budget before its
+manual Retry can recover. Use Projects with `q=Fixture` and type while its guard
+is held. Scenario buttons request a genuine new fixture Flight; Retry never
+synthesizes local ready state. Guard1800ms/records700ms are controlled delays;
+Dashboard uses its existing bounded streamed fixture parts. The QA pathname is
+not the production destination latch. Projects, Dashboard, Work Queue and sheet
+commands are read-only; there is no synthetic business-write backend. Do not
+invoke guarded Schedule record commands. Its original ops fixture uses only the
+existing in-memory callbacks. Production/disabled-fixture denials stay unchanged.
+
+The same guarded fixture aligns its existing QueryClient scope with its own
+provider. Search checks may intercept only GET '/api/staff/v1/search' with coherent
+fictional responses and block unrelated API traffic. Type in the actual header
+search during a denied/held source, then adopt a fresh source: the input/text/focus
+persist and no cached results or search request appear before adoption. Same-query
+A/pending/B and denial/new-owner cases must not revive old ARIA or callbacks.
+The controlled-reader unit case isolates code arrival only; separate original
+search cases exercise the actual reader/default behavior. Production Loadable,
+full bundle fit and actual connected UI proof remain separate checks.
 
 ## Composed authored/native campaign layer (23 October 2026)
 
@@ -147,6 +198,159 @@ saved-design/full-designer return, attribution, error/retry and native fallback
 coverage. Google tests assert the panel leaves the viewport with its section
 rather than relying on the removed observer state. Local CUA inspection and
 authored browser coverage are recorded separately; emulation is not hardware.
+
+## Preview/booklet and connected parent checks (22 October 2026 candidate13)
+
+Use `/qa/invoice-artifact-preview-fixture?progressive=1&readFailure=1`, then Preview
+invoice. Metadata1400ms and independent PDF700ms fail once each; Retry in the same
+actual modal, select PDF/email/narrow/text while unknown and verify same summary,
+mode controls and viewport. This existing route intercepts only its exact fictional
+metadata GET and local QA PDF; all other API commands are refused.
+`/qa/invoice-artifact-preview-fixture?quoteEmail=1&readFailure=1` mounts the actual
+QuoteEmailPreviewPanel. Retry preview and switch DraftA/B rapidly during its220ms
+debounce plus1400ms source delay; no older subject/HTML may commit. Exact HTML is
+pre-rendered by the existing delivery renderer from fictional inputs. Only this
+fictional preview POST is answered in-browser; every send/other command is403.
+No protected real quote render/send POST is required for review.
+
+`/qa/design-booklet-workbench-fixture?progressive=1&readFailure=1` uses the actual
+project-linked client with its1400ms exact fictional GET. It starts with blank
+locked customer/title/select fields and unknown pages, then Retry booklet restores
+the same fields/preview viewport. `&project=b` selects the second fictional project.
+Source connected tests cover rapid A/B late results, no pending default saves,
+uploads or PDF publication, confirmed saved recovery and existing autosave/PDF.
+All fixture writes are403, including draft saves, signed uploads and PDF publish.
+These delays are controlled scenarios, never production timings or write proof.
+
+Recheck ordinary protected Project Commercial Estimates/Quotes/Invoices and Job
+Packs with metadata pending, then same-project read recovery/Back. Their actual
+query/table owners must mount before metadata; quote auto-create and Calculator
+new-design lifecycle must remain paused until genuine current authority. Connected
+actual-parent tests cover ProjectMainTabs through dynamic modules, the existing
+TanStack query and actual table/Find; source-authority regressions cover quote URL
+intent and authority loss during its estimate read. Quote line true-empty is
+asserted separately from pending/error in the actual QuotesTab path. R10/R11 independently closed on compiled13 with ordinary protected metadata-pending
+entry, same table/Find nodes and failed Quote→Retry→genuine rows. Schedule12 failed
+the mandatory84,000-byte lazy limit at84,132;13 passed at83,839 after orphan CSS
+retirement, with all other canonical route gates unchanged and passing.
+
+## Real progressive interface verification (22 October 2026 candidate)
+
+Exercise Schedule page/client/Board/Gantt tests and Marketing's progressive host,
+Commercial, initial-seed, module-loading and Financials suites. Pending controls
+must be the same actual nodes after complete data arrives. Verify no-view page
+selection defaults to Overview, filtered totals and all Designer totals wait for
+complete Hub membership, unfiltered complete Commercial source values appear with
+source time and pending context, and a later denial clears all
+private report values. Source/Designer/Financial data is never a partial zero.
+
+For actual optimized Flight proof, use the gated fictional
+`/qa/schedule-progressive-fixture?view=gantt` (1800 ms server seed; later reads
+1200 ms) and `/qa/marketing-performance-fixture?progressive=1` (Commercial500,
+Designer1100, Hub2400 ms). These availability controls test scheduling and continuity, not
+production speed. Record actual interface, first useful complete values and final
+content separately. Check view/date/detail return and failed reads/Retry, source
+identity, and actual control node continuity. Fixture commands are not a proof of
+business writes. Fixture pages reject disabled flags and production environments;
+protected staff/API routes keep their normal access controls.
+
+
+The same Marketing fixture with `?progressive=1&view=financials&financeSection=profit&financeFrom=2026-09-01&financeTo=2026-09-30&financeBasis=accrual`
+uses nested Flight parts from the actual Financial reader. Its gated
+`/qa/marketing-performance-fixture/financial-read?from=2026-09-01&to=2026-09-30&basis=accrual&section=profit`
+uses the same real bounded response/parser for subsequent Refresh, dates and basis.
+Controlled source delays are organisation100, essential periods500 and independent
+months1800 ms, using the existing two workers and exact-period deduplication.
+Observe complete selected metrics/comparisons/accounts before monthly completion,
+then all six exact periods, same control nodes, account detail/close and period changes.
+`financeScenario=partial` makes secondary domains honestly unavailable;
+`failure`, `late-denial` and `cleanup-failure` exercise fatal clearing. Change back
+to complete using the existing fictional scenario selector and Retry. No real
+provider/authentication or mutation backend is used. Probe actual HTTP part arrival
+and nested Flight independently of UI observations after optimized compilation;
+`data-financial-current=ready` requires genuine selected report values, while
+`data-financial-complete=true` requires the complete validated response.
+
+Connected Financial regressions cover real response/parser to actual Financials,
+StrictMode, nested void-returning Flight thenables, Refresh with prior full evidence,
+basis and A/B/A retirement, late invalidation, Retry, malformed/truncated/oversized
+streams, exact canonical reconstruction, early fresh authority, pool cancellation,
+source-once period reuse and cleanup after started workers settle. JSON/auth API
+regressions remain unchanged and negotiated authority/fixture denial are explicit.
+
+Remaining Hub views use the same gated Marketing fixture with
+`progressive=1&view=enquiries|sales|portfolio` and a 2400 ms complete Hub seed.
+Metric/table/chart owners and safe grouping/sort/evidence/date controls must exist
+before it; failure/Retry must preserve the same underlying table and unknown values.
+`failure=1` makes the initial source unavailable; remove it before ordinary Retry.
+Bank/AR/AP use `progressive=1&view=financials&financeSection=bank|receivables|payables`
+with a 1600 ms complete family seed; the existing fictional scenario selector then
+controls later reads. Verify Find text survives recovery, no false zero/empty state,
+and details require a genuine row. No test invents a partial cohort/currency total.
+
+Protected Finance composition proof is GET-only after existing staff/finance
+authority, using `/staff/payments?view=history` and Mapping without an invoice or
+with an invalid/nil invoice selection for unavailable/Retry only. Local pilot
+route admission may be enabled with provider/payment/observation/email effects
+disabled. Do not open Mapping with a genuine invoice for this read-only proof:
+verified context automatically POSTs inspection on mount, even without clicking
+an inspection button. Genuine inspection, confirmation, creation, resume, approval
+and payment actions are outside this proof.
+
+Use the gated fictional `/qa/portal-progressive-fixture?view=mapping` lane for
+connected form/confirmation reset checks; its commands are blocked. Source tests
+use the actual server stream with deferred repository evidence and preserve row
+action guidance/flags. Client tests cover no inspection before genuine context,
+unavailable/Retry and the same Find node, with mocked read/command boundaries.
+
+The gated `/qa/portal-progressive-fixture?view=dashboard` uses actual Dashboard
+queries with the same bounded server response and client stream parser as the
+protected API. Fictional source delays are portfolio350, state600, tasks900,
+work1200, estimates1400, activity1800 and snapshot2200 ms. Its explicitly gated
+`/qa/portal-progressive-fixture/dashboard-read` endpoint returns only these fictional
+sources. The staff API's authority is unchanged. `dashboardFailure=1` makes the
+first fixture read fail only the independent snapshot; complete sections stay
+visible and the ordinary manual Retry succeeds. The banner's fictional
+Refresh triggers the ordinary query invalidation path. Record HTTP frame arrival
+and completion privately, and observe actual UI separately after optimized build;
+source promises and browser-created streams alone do not prove Next/HTTP delivery.
+`data-dashboard-portfolio` and `data-project-state-counts` distinguish ready values
+from `data-dashboard-background-ready`, which requires the complete aggregate.
+
+`view=sheet` uses actual RunningJobs/Spreadsheet owners with an1800 ms fictional
+read. Visits remain independently650 ms. `sheetFailure=1` and `visitsFailure=1`
+fail once before ordinary Retry. Verify same-node controls, safe pending filters,
+zoom, return and no fabricated record rows. Domain links retain protected targets.
+
+`view=calculator&editEstimateId=fictional-saved-design` mounts actual CalculatorGridClient
+and its real draft/session/workspace owners. The fictional local restore takes500 ms
+and saved design1600 ms. `calculatorFailure=1` fails that design read once before
+normal Retry. Verify actual fields/result tabs before read, selection and node
+continuity, restored length8.4, and no costing request or default persistence while
+saved identity is unknown. Save is disabled; fictional persistence never accesses
+customer storage. The costing provider is deliberately unavailable, so this route
+proves read/interface recovery rather than a verified price or business save.
+
+Focused coverage includes actual Grid/session, Dashboard source-once assembly,
+response/parser/QueryClient integration, StrictMode, queue cancellation, Refresh,
+independent source failure, malformed/truncated streams, byte limits, fixture
+denial and contact repository/query/readback/quote prerequisites. Existing broad
+performance harness and budgets remain regression checks: their legacy heading,
+shell and route-progress "usefulContent" metrics do not establish this task's
+actual-interface, first-complete-useful-data or full-completion milestones.
+
+
+The same gated route's `view=project` mounts actual ProjectSnapshotPageClient,
+frame, header, tabs and Overview. Controlled fictional command/payment/summary/
+full-snapshot reads are650/900/1200/2400 ms. `project=b` selects a separate fictional
+record; the A/B controls exercise rapid identity changes. `projectFailure=1`
+fails each source once, followed by its ordinary Retry. Header tabs remain safe
+while metadata is pending. Commands are read-only, ancillary reads are synthetic,
+and all network mutations are refused. The Projects return opens the fictional
+list workspace. This route does not represent live mutation or provider coverage.
+The actual-query regression covers StrictMode read count, header/tab DOM identity,
+pending tab selection, initial failure/retry and A/B late-result isolation.
+
 
 ## Exact preparation recovery (22 October 2026)
 
@@ -2102,7 +2306,15 @@ Sanctuary AI contract changes should run `npm run test:ai`, `npm run packages:gu
 
 PR-AI-004/005 database changes additionally require `npm run test:ai:db`. `scripts/test-ai-task-ledger-db.mjs` starts and removes its own disposable database, applies the test-only bootstrap, runs each exact AI migration inside `BEGIN`/`ROLLBACK`, proves that its objects do not survive, reapplies the files in order, and executes the live task-ledger plus exact-approval contracts. Approval coverage includes cross-user reads, current admin role, request/decision replay, changed command identity, exact payload hash, rejection, expiry, task cancellation, explicit invalidation, duplicate consumption, decision preservation, append-only receipts, and frozen private envelopes. It reads no Supabase target credentials and must never run against a shared local, staging, or production database. The `AI Foundation` workflow runs the same harness on Supabase PostgreSQL 17 and upstream PostgreSQL 18. A missing Docker command or configured workflow is not a pass; wait for green executable evidence before deployment review.
 
-Before their single-run database harnesses, AI Foundation and Background Jobs explicitly pull the unchanged matrix image with `node scripts/ci/pull-ai-db-image.mjs`. Only the anchored `toomanyrequests: Rate exceeded` message or the observed GHCR `toomanyrequests: retry-after: <finite decimal in microseconds>, allowed: <positive integer>/minute` format permits another pull, including Docker daemon prefixes. Both use at most three attempts, 30/60-second backoff and a two-minute bound per attempt; the microsecond hint never shortens that backoff. Every failed response stays visible. Other failures, malformed hints, process errors and exhausted attempts stop the job before database startup. Neither workflow retries SQL or the harness. `npx vitest run test/ai-db-image-pull.test.ts` verifies both workflow bindings and this policy using synthetic command responses and no Docker, registry or database access.
+Before their single-run harnesses, AI Foundation and Background Jobs explicitly pull the unchanged matrix image with `node scripts/ci/pull-ai-db-image.mjs`. Only anchored `toomanyrequests: Rate exceeded` or `toomanyrequests: retry-after: <numeric duration>, allowed: <positive rate>/minute` messages, optionally prefixed by Docker or its daemon, permit another pull. The captured microsecond hint does not set the delay: at most three attempts retain fixed 30/60-second backoff and a two-minute bound per attempt. Every failed response stays visible. An exact throttle may accompany only recognised Docker image/layer progress; any other line in a failed pull, including a permission or transport failure, stops immediately. Other failures, process errors, and exhausted attempts stop the job before database startup. Neither workflow retries SQL or the harness. Background Jobs passes its existing matrix image through a step-local helper environment variable; the image, database assertions and isolation remain unchanged. `npx vitest run test/ai-db-image-pull.test.ts` verifies this policy using synthetic command responses and no Docker, registry, or database access.
+
+The same policy also recognises the captured, fully anchored `error pulling image configuration: download failed after attempts=1: ` wrapper only when followed by that exact numeric-duration/positive-rate throttle format. Other wrapper attempts or reasons and mixed permission, transport or unknown failures remain fatal. Recognising this response permits only the remaining bounded pull attempts; it does not guarantee registry availability or turn an exhausted third attempt into a pass.
+
+Dashboard link preparation is intent-only for the Hero, Work Queue, Recent Estimates, Recent Activity and Today's Visits owners. They reuse `PortalIndexLink` with viewport prefetch disabled by default and route preparation on focus, hover, pointer or touch intent. Other staff-page destinations retain their exact native href/selection and normal navigation; they do not start index API reads or use the instant index URL. The route-only fallback excludes API, authentication and outbound/public destinations. Existing index preloads, return filters and explicit prefetch props remain supported. Disabled, cancelled, external and same-page hash-only intents do not start new route work. Dashboard queries and independently complete facts are not cancelled. The connected Dashboard test verifies these actual owners with a pending secondary read; optimized browser checks and the unchanged five-run/16-gate/100-500-50 ms performance checks remain necessary. Reducing speculative work is not evidence that connection queuing caused the measured delay or that the latency/long-task targets now pass.
+
+Root, Portal and Marketing use Next.js 16.4.1 with its matching env/compiler packages, following the [official security release](https://github.com/vercel/next.js/releases/tag/v16.4.1) for GHSA-2464-fhr4-w9xw and GHSA-p3m5-59mp-jv5r. React and existing dependency overrides remain unchanged. Renew the actual installed-adapter/cookie/leaf-denial, Loadable/tab-return, Schedule, stream and intent checks, optimized app builds, bundle budgets, audits and browser/performance gates against this framework. Earlier 16.3.8 compiled evidence does not establish 16.4.1 behavior or latency. The Marketing template's generated signature tracks the new Next version; this does not publish a template or approve campaign/provider activity.
+
+The official PG17 matrix uses the approved public ECR mirror of the same immutable Supabase digest. Both workflow bindings retain one harness invocation after successful bounded image preparation; combined Docker/daemon prefixes are covered alongside the captured formats. This transport integration changes no SQL assertions or credentials.
 
 PR-AI-007 additionally requires `npm run test:jobs`, `npm run test:worker`, `npm run typecheck:worker`, `npm run build:worker`, and `npm run test:jobs:db`. The package/worker suites prove the exact four-field synthetic payload, fixed fixture results, zero external-effect policy, worker-routed handler coverage, invalid-input quarantine, and legacy-kind fail-safe behavior. The live background-job harness applies the AI task and approval prerequisites, rehearses the exact synthetic-execution migration inside `BEGIN`/`ROLLBACK`, proves no execution objects remain, then applies it and executes real PGMQ claim/progress/completion, exact replay, linked-cancellation rejection, zero-cost usage, deterministic evaluation, RLS/grant, append-only, and atomic mismatch-rollback contracts on PostgreSQL 17 and 18. It must never target a shared environment.
 
@@ -2302,6 +2514,107 @@ For a protected Vercel Preview, set `PORTAL_VERCEL_PROTECTION_BYPASS` only in th
 
 `npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Project Detail, Contacts, and Schedule; warm Dashboard to Projects/Contacts/Schedule/Work Queue/Drafting Queue/Running Jobs, Projects to project/Dashboard, browser back, and the current Overview, Commercial Estimates/Quotes/Invoices, and conditional Job Packs project tabs; and Schedule/Calculator interactions. The cold Project Detail journey discovers a real project in a separate authenticated context, then opens the canonical detail URL in a new context with no project-list or persisted-query cache so PROJECT-01 has a truthful cold-read signal. Each tab's feedback marker is its immediate selected state; useful content is the new tab's owned workflow or truthful local loading shell, while its URL, specialist bundle, and data may continue in the background. Independent project-tab selected-state and useful-content conditions are installed before the click and timestamped inside Chromium when the matching DOM state first becomes visible. The shared Commercial module's loading shell is scoped to the active tab body so Estimates can accept that truthful shell without matching stale content elsewhere. The following Playwright assertions still verify the semantic state, but driver polling and command round trips do not define the recorded elapsed time. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Dashboard-to-Projects and Dashboard-to-Contacts feedback ends when the canonical index URL reaches the browser, useful content requires that index's heading, controls, truthful list region, and state marker, and background completion requires its fresh authenticated index response. Project-opening background completion still requires both the fresh snapshot and active tab workflow. Portal Performance CI builds once and runs all five authenticated repetitions against `next start`; development compilation time must never be recorded as product latency. CI rejects missing journeys and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
 
+Warm-navigation useful-content clocks are armed inside Chromium before journey setup
+and the action. They latch the first simultaneous visible match of every original
+destination condition at its exact destination pathname. Original Playwright
+assertions and background waits still run. Installed Playwright expect retries
+can otherwise return at cumulative 100/350/850/1850 ms after an immediate check;
+that polling completion is not the DOM commit time. The capture uses ancestor
+visibility and nonzero rendered boxes, checks CSS/history-only changes, and retires
+on completion, timeout, replacement or failed assertions. Delayed retrieval does
+not move the timestamp. For display:contents direct text, installed Playwright
+can report a Range box despite visibility:hidden or content-visibility:hidden.
+Capture deliberately rejects those own/ancestor hidden styles while retaining
+visible direct text and span children; it is stricter than that locator quirk.
+This corrects measurement accuracy only: it credits no
+runtime improvement and does not establish that any CI journey meets its ceiling.
+All 16 enforced gates, five captures, p75 aggregation, raw samples and limits remain
+unchanged. These legacy interface markers remain separate from first complete
+useful facts and full data completion.
+
+The original warm assertion-to-capture mapping is:
+
+| Journey | Original useful assertion and capture conditions |
+| --- | --- |
+| Dashboard to Projects | Exact Projects level-1 heading, Filter this project list region, Projects list region, visible index-state marker |
+| Dashboard to Contacts | Exact Contacts heading, Search contacts region, Contacts list region, visible index-state marker |
+| Projects to project | Ready project shell and Project sections navigation, at the selected project's exact path |
+| Project Back to Projects | Projects list region at the Projects index path |
+| Projects to Dashboard | Exact Dashboard heading at the selected link's path |
+| Dashboard to Schedule | Exact Schedule heading at the selected link's path |
+| Dashboard to Work Queue | Original exact Work Queue heading, plus destination level-1 heading and actual queue owner; the retained Dashboard's Work Queue level-2 card must not satisfy destination readiness |
+| Dashboard to Drafting Queue | Exact Drafting Queue heading at the selected link's path |
+| Dashboard to Running Jobs | Exact Running Jobs heading at the selected link's path |
+
+Current headings come from PageHeader's plain string title, with accessories
+outside the heading. Native labelled sections and navigation supply the original
+region/navigation names. Capture selectors preserve those roles and labels and
+fail closed on name/role overrides; heading text is not a general accessible-name
+replacement. Hidden accessible ancestors cannot satisfy capture. The original
+getByRole assertions remain authoritative checks of the semantic names/levels.
+`playwright/portal.performance-clock.spec.ts` runs in the existing portal-fixture
+project with a locally fulfilled fictional document. It compares the real browser
+capture with actual commit and later assertion completion, including staggered and
+disappearing conditions, hidden/zero boxes, accessible-name overrides, history-only
+identity, delayed retrieval, timeout and repeated capture cleanup. It needs no
+provider, account, production QA route or business mutation. Cold-route,
+interaction and project-tab clocks are unchanged.
+
+The performance job additionally records bounded test-only transport diagnostics.
+They do not alter the existing DOM clock, assertions, five schema-v2 samples,
+p75 aggregation or 100/500/50 ms targets. Native Playwright request events/timing
+record fixed route/API/static/external categories, ordinals, status, absolute
+start/observation times, request-start/headers/end offsets and failure booleans.
+The nullable native requestStart offset carries Chromium's sendStart against
+the response-timing base when supplied. Installed Playwright can also normalise
+missing requestStart to response-end timing; a numeric value alone is therefore
+not proof of an exact wire-send instant. Preserve it as raw evidence alongside
+request-event receipts; it does not establish the cause of a delay.
+Response,
+finished and failed callbacks also record their own Date.now observation epochs,
+with null for events not observed. These are driver event receipts, not exact
+native network completion. Installed Playwright can replace startTime using
+Chromium response timing while responseEnd uses the original request timestamp;
+do not infer an absolute end by blindly adding that mixed-base tuple. Raw native
+values and the separate event observations remain unchanged evidence. Queries,
+record IDs, raw URLs/headers/bodies and error text are excluded. A diagnostic-only
+snapshot projects the matching existing DOM capture's start/completion into
+absolute time using performance.timeOrigin. It never recalculates, moves or
+retires the latch. Missing, replaced or not-yet-completed captures stay null;
+the unchanged metric wait may complete later. Requests/prefetch already started
+before the listener are outside this trace's coverage and must not be inferred
+absent. The CI loopback
+Next-start preload passively observes native undici operations for identity,
+role, theme, schedule and other reads, correlated to incoming request ordinals;
+it preserves fetch/Response objects, errors, callbacks and response streams.
+First Flight write and full HTTP completion remain distinct from committed UI
+and complete useful facts. This is diagnostic evidence, not a runtime improvement.
+
+Diagnostics require the explicit CI production-timing loopback target. The
+existing server command/hostname is preserved, since changing Next's hostname
+can change URL normalization; observation still requires the configured loopback
+origin and matching loopback socket/port. The fixed socket allowlist accepts only
+127.0.0.1, ::1 and ::ffff:127.0.0.1 on both ends, including the IPv4-mapped loopback
+accepted by Next's default dual-stack listener. They use
+separate local JSONL: at most128 network requests per warm journey,128 scoped
+page requests per server process,2 MiB per network-run file and512 KiB per server
+file. The existing job log emits only reconstructed allowlisted records between
+`PORTAL_PERFORMANCE_DIAGNOSTICS_BEGIN` and `PORTAL_PERFORMANCE_DIAGNOSTICS_END`,
+bounded to32 files,4096 rows and2 MiB, with explicit limit records. Existing five
+baseline JSON uploads and retention settings are unchanged; diagnostic files are
+not uploaded as extra artifacts. Absolute timestamps/categories allow phase
+comparison without public diagnostic headers or private paths. A local HTTP
+reconstruction cannot establish browser cache, DOM readiness or CI latency.
+
+`test:portal:browser` explicitly includes `portal.performance-clock.spec.ts` so
+all21 existing clock cases and the new native-event case run in the required
+fixture gate. The performance job explicitly runs
+`npx vitest run test/playwright-support/portalPerformanceDiagnostics.test.ts` for
+privacy, native metadata, callback/error/backpressure preservation, retirement,
+loopback exclusion and output bounds. That root test file is not included by the
+app-only Portal Vitest command. No app bundle, provider refresh, business write,
+new source/authority cache or production diagnostic route is introduced.
+
 `npm run portal:search-readiness` safely probes `portal_search_v1()` and the `portal_search_bigrams()` helper with the anonymous role, then makes a zero-row schema probe for the materialized Projects search document. A ready database must report that anonymous function execution is denied and that the generated column exists; missing function/column responses fail immediately with the exact migration path. The preflight never uses the service-role key, returns search data, or treats anonymous function execution as success. The authenticated performance gate remains the deployment proof for the policy-only init-plan migration because the anonymous preflight cannot inspect `pg_policies`.
 
 `npm run test:portal:search-performance` is the focused authenticated global-search gate and starts with that migration preflight. Its deterministic delayed-response case proves a cached repeat renders without a second request and previous results remain visible while a different query refreshes. Its live case samples five real no-store API reads, requires API wall-clock p75 plus the 50 ms debounce to stay at or below 400 ms, measures the first rendered result/empty state at or below 400 ms, then repeats the same normalized query and requires an in-memory cached result within 75 ms with no second request. It writes `artifacts/portal-search-performance.json` with raw API/server timings and rendered-result measurements. Apply the ordered `20260722_000001_portal_search_v1.sql`, `20260722_000002_portal_search_bigram_indexes.sql`, `20260722_000003_portal_search_materialized_columns.sql`, and `20260722_000004_portal_search_rls_initplan.sql` migrations before running it; a missing RPC, helper, generated-column, or policy migration is a failed prerequisite, not a skipped test.
@@ -2310,7 +2623,9 @@ For a focused five-run project-tab audit, run only `captures warm navigation and
 
 Wave 2 reversible-write coverage starts with `apps/portal/app/staff/projects/projectsIndexMutations.test.ts`, `ProjectsIndexClient.test.tsx`, and `apps/portal/lib/queries/projectCache.test.ts`. These tests use an intentionally unresolved request to prove cache/UI feedback occurs before network completion, then cover field-specific rollback, active/archived/all membership and count restoration, and separate QueryClients for user isolation. Server-confirmed success remains distinct from optimistic feedback; destructive delete and customer-facing side effects are outside the optimistic contract.
 
-Ordinary authenticated route changes must keep the current surface usable, show the thin portal progress bar immediately, and apply `aria-busy` only to the clicked control. Full-page Blueprint loading remains for cold route/authentication boundaries. `npm run test:portal:shell` covers the shared transition owner and navigation controls; authenticated routing smoke verifies Schedule view changes never show the blocking overlay.
+Ordinary authenticated route changes must keep the current surface usable, show the thin portal progress bar immediately, and apply `aria-busy` only to the clicked control. Cold document delivery retains its existing fresh authentication boundary. `npm run test:portal:shell` covers the shared transition owner and navigation controls; authenticated routing smoke verifies Schedule view changes never show the blocking overlay.
+
+The current progressive-UI contract uses the same actual neutral controls/layout before protected facts, with fresh root and leaf authority still required for private readers and commands. The 23 October 2026 cold-load decision retains the existing route-specific cold shell ceilings of 3,500–4,500 ms and useful-content ceilings of 6,500–9,000 ms. In-app feedback remains 100 ms and cached first-useful UI 500 ms, with the existing Calculator exception. The 24 October 2026 decision applies the 50 ms raw long-task limit to in-app journeys; cold long tasks remain reported diagnostics alongside the existing per-route cold ceilings. The original five captures, clocks, markers, raw cold 100 ms product flags and raw cold long-task measurements remain unchanged; governing cold acceptance uses the existing per-route cold ceilings. Historical results below remain historical.
 
 The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms, and are enforced against the five-run p75 aggregate. Existing cold-route and Schedule-toggle ceilings remain per-run and were not changed.
 
@@ -2980,6 +3295,105 @@ hosted streaming/source acceptance remain separate required activation checks.
 
 The isolated browser harness now clicks the real component's View/Download actions through the real open handler with synthetic auth/Graph boundaries. It verifies a PNG renders, an action failure can be retried, and a synthetic original arrives with its expected filename/bytes/hash. PDF bytes and MIME are checked separately; native PDF viewing and actual SharePoint/Rhino acceptance remain outstanding. Database regression coverage includes linked, queued, running and completed project deletion, audit retention and stale completion rejection.
 
+### Actual operational owner lane
+
+`/qa/portal-progressive-fixture?view=costing|mapping|payout` means three separate
+view values, not a literal pipe-delimited URL. Append `&operationalFailure=1` for
+initial unavailable reads and use Retry overview, Check Xero records or Reload to
+recover. The actual Costing control centre/history, Mapping review/default forms
+and Installer payout sheet own both pending and ready states. Controlled fictional
+server context/overview delays are700/1800 ms and subsequent read delays1200 ms;
+they are not production timing measurements. Costing and Mapping command guards
+are explicitly read-only; payout responses deny edit permission and its fictional
+transport rejects writes. No genuine invoice inspection/provider command is
+permitted by this lane. Existing fixture enable/preview guards still apply.
+
+For Financial section handoff, observe committed DOM while switching completed
+Money owed/Bills in both directions, basis and applied custom dates. A newly
+selected read must be Reading/aria-busy until its own result, with no one-render
+Unavailable or inherited error. Genuine terminal failure must still become
+Unavailable with Retry. Previously verified same-query Refresh evidence remains
+explicitly dated; fatal validity failures clear it.
+
+### Commercial and email actual-owner lane (candidate12)
+
+- `/qa/project-page-shell-fixture?commercial=1&progressive=1&tab=quotes&quoteId=qv_clarity_3`: fresh selected Quote detail, actual Back/metadata/line/payment/send-log owners; append `&readFailure=1` for failure then Retry quote. Back returns the real quote search/list; search/history controls remain usable while reads run.
+- `/qa/project-page-shell-fixture?commercial=1&progressive=1&tab=job-packs&estimateId=est_clarity_2&sheet=materials`: real spreadsheet/toolbar before estimate and override reads. Switch to Summary while overrides are pending, then back to Materials. The same shared column definitions fill when the required complete source arrives. Retry job pack recovers a failed required read. The coherent fixture's commands/unlisted APIs remain403; no business commands or PDF generation are exercised.
+- `/qa/project-page-shell-fixture?commercial=1&progressive=1&tab=invoices`: complete payment totals can arrive from the independent schedule before invoice history. Actual search and columns precede both; no zero amount is invented.
+- `/qa/email-review-fixture?progressive=1&readFailure=1`: existing30-record fictional browser-only API with350/900/1200 ms session/list/detail delays. Select Example project1, observe actual disabled Recipient/Subject/Body, Retry draft after the first selected-read failure; select1 then4 quickly to prove an older result cannot replace the selected record. Back returns the same list. Synthetic commands only affect this browser; no provider send exists.
+- `/qa/email-preview-workbench-fixture?progressive=1&readFailure=1`: existing exact local HTML renderer, delayed1200 ms per read. Actual layout/focus/viewport/theme/zoom and subject/preheader owners precede HTML. Try again and Retry preview recover. This mode rejects every send request. Empty initial iframe/viewport is explicitly unknown, never a fabricated email body.
+
+These delays establish controlled state ordering, not production latency. The
+protected endpoints/auth/API JSON contracts are unchanged. Optimized12 browser coverage passed with the documented R10/R11 defects; both
+independently closed on13. Optimized13 also passed preview/Booklet recovery and
+identity journeys. Earlier accepted Schedule/Dashboard/Financial/admin proof is
+reused where source is unchanged. Historical local candidate18 passed all six Portal plus separate Schedule gates
+with its then-current unchanged thresholds; this is not current-release evidence.
+
+
+### Object-first Workbench actual-reader lane (22 October 2026)
+
+Use `/qa/design-workbench-fixture?fixture=multi-house-u-two-pergola&progressive=1`.
+This existing opt-in hidden route mounts the actual WorkbenchReadHost and live
+EstimateClient/store/rails/viewport after a900ms context read and a1400ms dependent
+exact-estimate read. Plan/3D/Sheet/Back and the same disabled Save control exist
+before either read; no fake object rows or geometry are supplied while pending.
+These are fixed synthetic delays, not measured production latency.
+
+Append `&scenario=failure` for terminal selected-estimate503, `&scenario=denied`
+for status-less PostgrestError42501 clearing, `&scenario=empty` for genuine no-estimate and `&source=b` for the
+second fictional identity. Retry workbench uses the same actual host control/transition and a fixture-only
+read adaptor that router.replace navigates to the complete scenario. Production
+Retry still uses ordinary router.refresh. Independent optimized review and connected router-owned navigation tests verify
+this recovery; no history-only URL substitution is used.
+Read A/Read B perform actual RSC URL navigation; Fail read/Deny read select a
+new source read, and Refresh verified source uses ordinary router.refresh. Check
+same-selection contents retained read-only, no borrowed A labels/runtime during
+B, no old Save callbacks, mode/node continuity, late-result retirement and Back
+to the existing baked multi-object fixture. Protected ordinary Project→Workbench
+entry/return must be checked separately; this fixture is not auth/provider proof.
+
+Only the existing baked object-first draft is seeded into the existing browser
+store under a fictional owner and two fictional keys; prior owner is restored on
+unmount. Every API request is403 and all record commands remain read-only. The
+normal reader's project/estimate authority, exact selection/fallback and geometry
+inputs are unchanged. Existing non-progressive fixtures keep their old behavior;
+progressive mode rejects fixtures without an object-first draft. Focused tests use
+the real runtime/store/rails with the heavy viewport renderer substituted and
+assert two house/two pergola records plus nonempty genuine house shapes. Existing
+pergola diagnostics are preserved, not relabelled valid. Independent optimized
+read-state/identity/recovery proof passes; do not infer live persistence, protected
+saved geometry or production-scale speed from this lane.
+
+
+Canonical integration includes main9411232a (approved Files277 and
+landing279) with exact upstream SQL/operator code, no execution. A retained
+pre-integration stash preserves every prior tracked/untracked path. Files remains
+its full project tab with prepared directory/read state, scoped memory cache,
+original downloads and one protected progressive PDF stream. The nullable main
+Project frame passes its route identity to the actual FilesTab before metadata;
+no snapshot is fabricated. Overview/Work no longer owns obsolete embedded file
+props. Shared PDF tests cover byte pending/error/source clearing plus stream
+chunk delivery/completion and identity replacement without extra HTTP ranges.
+Legacy read test fixtures now accept nullable metadata and assert the actual
+Job Packs owner plus snapshot Retry, retaining all source counts, denial eviction,
+canonical availability coercion and route-change isolation. Incoming Graph/SQL
+implementation and operator enablement are unchanged; this is composition proof.
+The approved staging Files source returned403, so this task did not obtain actual
+protected provider/stream browser evidence. This is a proof limit, not an inferred
+product defect. Incoming accepted Files capability is retained; connected stream
+and real byte-PDF composition evidence remain separate.
+
+The current local candidate18 passes normal/protected builds, unchanged bundle
+gates, repository types/lint, five strict changed-file gates and the complete
+Portal suite (896 files, 5701 tests; one pre-existing skipped file and 13 skipped
+tests). Scoped independent review is complete. Dashboard fresh complete sections
+survived an independent failure with the same nodes; withholding old aggregate
+journey counts is covered by source/regression evidence. That browser fault did
+not take, and focus refetch prevented a new isolated Retry capture; prior verified
+recovery evidence is retained. Current required CI and Sanctuary production
+approval remain. No real provider or business commands were exercised.
+
 ## Steady retained-ad integration, local candidate (22 October 2026)
 
 The existing disposable PG17 creative-ledger harness now runs
@@ -3001,3 +3415,33 @@ public landing route suite checks the existing signed transport and rejects a
 steady receipt masquerading as a native arm. App typechecks, changed-file lint,
 architecture/docs guards and template generation check complete local proof.
 No synthetic fixture proves actual provider inventory or live attribution.
+
+
+### Supplemental native causal diagnostic (local candidate)
+
+The dedicated native spec runs once after successful completion of the unchanged
+five baseline captures, reusing their last auth state and production build. Its
+separate opt-in disables the original observer, media, HTML reports and raw
+server/framework output, including Playwright's separate error-context snapshot.
+A second in-memory schema filter covers runner failures
+before the safe reporter loads; shell pipefail retains failure status. No new
+artifact upload, credential setup, provider command or business POST is added.
+
+Raw CDP data stays bounded in memory and is discarded. Fixed JSONL markers carry
+only allowlisted event spans, finite numbers, and validated emitted public static
+chunk basenames/positions. Longest trace spans are selected across the full action;
+CPU locations have a separate quota and report sampled self-time/count with first
+and last sample bounds, not a continuous task. Trace and CPU offsets have separate
+origins. Unknown locations are numeric aggregates without names. Projection quotas
+remain explicit after successful full capture; this bounded subset does not prove
+complete task attribution. Missing data, action/CDP failure or raw-input truncation
+fails the diagnostic run. Failed capture takes precedence over projection quotas.
+The batch is bounded to 160 seconds (180-second test ceiling), 400 same-origin GETs,
+64 MiB raw input per capture, 128 trace spans plus 128 CPU locations per action and 2048 rows/512 KiB
+safe output. All other requests, including telemetry, are aborted. Sampling adds
+overhead and non-reproduction is inconclusive. Trace spans aggregate threads without
+main-thread attribution; a projected RunTask is not proof of the original browser
+main-thread long task. Sampled self-times cannot be added to trace durations.
+This provides causal evidence only;
+it does not change original clocks, five samples, 16 rules, 100/500/50 targets,
+Calculator exception or legacy useful-marker limitations recorded above.

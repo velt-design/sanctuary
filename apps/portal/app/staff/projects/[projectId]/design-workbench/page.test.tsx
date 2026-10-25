@@ -2,10 +2,14 @@ import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import DesignWorkbenchPage from './page';
+import { PortalGuardedPage } from '@/components/page-state/PortalPageSource';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import type { DesignListRow } from '@/lib/designPackages/types';
+import type { WorkbenchPageRead, WorkbenchContextRead } from './workbenchPageRead';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
 
+const staffGate = vi.hoisted(() => vi.fn().mockResolvedValue({ user: { id: 'staff_1' }, role: 'staff' }));
+vi.mock('@/lib/auth', () => ({ requireStaffPageAccess: staffGate }));
 const getProjectPageSnapshotMock = vi.fn();
 const loadProjectEstimateMetasMock = vi.fn();
 const loadProjectDesignPackageRowsMock = vi.fn();
@@ -115,6 +119,14 @@ function buildEstimateDetail(overrides: Partial<EstimateDetail> = {}): EstimateD
   };
 }
 
+async function pageRead(ui: ReactElement): Promise<WorkbenchContextRead | null> {
+  const child = ui.type === PortalGuardedPage ? (ui.props as { children: ReactElement }).children : ui;
+  const read = (child.props as { initialRead?: WorkbenchPageRead }).initialRead;
+  if (!read) return null;
+  const [context] = await Promise.all([read.context, read.estimate]);
+  return context;
+}
+
 describe('DesignWorkbenchPage', () => {
   beforeEach(() => {
     getProjectPageSnapshotMock.mockReset();
@@ -156,6 +168,7 @@ describe('DesignWorkbenchPage', () => {
     const ui = (await DesignWorkbenchPage({
       params: Promise.resolve({ projectId: '   ' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('Project unavailable');
@@ -170,11 +183,12 @@ describe('DesignWorkbenchPage', () => {
     const ui = (await DesignWorkbenchPage({
       params: Promise.resolve({ projectId: 'proj_1' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(getProjectPageSnapshotMock).toHaveBeenCalledWith('proj_1');
-    expect(markup).toContain('Project unavailable');
-    expect(markup).toContain('We could not load this project.');
+    expect(markup).toContain('Reading project');
+    expect(await pageRead(ui)).toMatchObject({ kind: 'context', context: { kind: 'project_unavailable' } });
     expect(loadProjectEstimateMetasMock).not.toHaveBeenCalled();
     expect(loadProjectDesignPackageRowsMock).not.toHaveBeenCalled();
     expect(loadProjectEstimateDetailMock).not.toHaveBeenCalled();
@@ -195,6 +209,7 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ fixture: 'mono-standard' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('Deck Build');
@@ -225,6 +240,7 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ fixture: 'not-real' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('Route state: Invalid Fixture');
@@ -277,6 +293,7 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({}),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
@@ -284,7 +301,8 @@ describe('DesignWorkbenchPage', () => {
     expect(markup).toContain('Back to Project');
     expect(markup).toContain('href="/staff/projects/proj_1"');
     expect(markup).toContain('data-project-id="proj_1"');
-    expect(markup).toContain('data-workbench-context="ready"');
+    expect(await pageRead(ui)).toMatchObject({ kind: 'context', context: { kind: 'ready' } });
+    expect(markup).toContain('data-workbench-context="pending"');
     expect(markup).not.toContain('Route state: Ready');
     expect(markup).not.toContain('Estimate selection: Active draft default');
     expect(loadProjectEstimateDetailMock).toHaveBeenCalledWith('proj_1', 'est_22222222-2222-4222-8222-222222222222');
@@ -327,6 +345,7 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({}),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
@@ -369,6 +388,7 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ estimateId: 'est_44444444-4444-4444-8444-444444444444' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
@@ -413,6 +433,7 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ requestId: 'dpr_55555555-5555-4555-8555-555555555555' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
@@ -435,11 +456,12 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({}),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('Design Workbench');
-    expect(markup).toContain('No usable estimate exists for this project yet.');
-    expect(markup).toContain('data-workbench-context="no_estimate"');
+    expect(await pageRead(ui)).toMatchObject({ kind: 'context', context: { kind: 'no_estimate' } });
+    expect(markup).toContain('data-workbench-context="pending"');
     expect(loadProjectEstimateDetailMock).not.toHaveBeenCalled();
   });
 
@@ -460,11 +482,14 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({}),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Project unavailable');
-    expect(markup).toContain('We could not load the selected estimate for this project.');
-    expect(markup).not.toContain('Drawing Workbench');
+    expect(markup).toContain('Reading project');
+    expect(ui.type).toBe(PortalGuardedPage);
+    const read = ((ui.props as { children: ReactElement }).children.props as { initialRead: WorkbenchPageRead }).initialRead;
+    expect(await read.estimate).toEqual({ kind: 'estimate', estimate: null });
+    expect(markup).toContain('Drawing workbench');
   });
 
   it('stays ready when the project has no active request linked to the selected estimate', async () => {
@@ -494,10 +519,12 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({}),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
-    expect(markup).toContain('data-workbench-context="ready"');
+    expect(await pageRead(ui)).toMatchObject({ kind: 'context', context: { kind: 'ready' } });
+    expect(markup).toContain('data-workbench-context="pending"');
     expect(markup).not.toContain('Design request context: none linked to the selected estimate');
   });
 
@@ -543,10 +570,12 @@ describe('DesignWorkbenchPage', () => {
         requestId: 'dpr_88888888-8888-4888-8888-888888888888',
       }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
-    expect(markup).toContain('data-workbench-context="ready"');
+    expect(await pageRead(ui)).toMatchObject({ kind: 'context', context: { kind: 'ready' } });
+    expect(markup).toContain('data-workbench-context="pending"');
     expect(markup).not.toContain('The supplied requestId (dpr_88888888-8888-4888-8888-888888888888)');
   });
 
@@ -567,10 +596,12 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ estimateId: 'not-an-estimate' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
-    expect(markup).toContain('data-workbench-context="ready"');
+    expect(await pageRead(ui)).toMatchObject({ kind: 'context', context: { kind: 'ready' } });
+    expect(markup).toContain('data-workbench-context="pending"');
     expect(markup).not.toContain('The supplied estimateId (not-an-estimate)');
   });
 
@@ -591,10 +622,23 @@ describe('DesignWorkbenchPage', () => {
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ requestId: 'not-a-request' }),
     })) as ReactElement;
+    await pageRead(ui);
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
-    expect(markup).toContain('data-workbench-context="ready"');
+    expect(await pageRead(ui)).toMatchObject({ kind: 'context', context: { kind: 'ready' } });
+    expect(markup).toContain('data-workbench-context="pending"');
     expect(markup).not.toContain('The supplied requestId (not-a-request)');
   });
+  it('returns the actual frame after shared authority while the context promise remains unsettled', async () => {
+    getProjectPageSnapshotMock.mockReturnValue(new Promise(() => undefined));
+    const ui = await DesignWorkbenchPage({ params: Promise.resolve({ projectId: 'proj_1' }) });
+    const markup = renderToStaticMarkup(ui);
+    expect(staffGate).toHaveBeenCalledWith('/staff/projects/proj_1/design-workbench');
+    expect(markup).toContain('Plan Editor');
+    expect(markup).toContain('Save workbench draft');
+    expect(markup).toContain('data-workbench-context="pending"');
+    expect(loadProjectEstimateDetailMock).not.toHaveBeenCalled();
+  });
+
 });

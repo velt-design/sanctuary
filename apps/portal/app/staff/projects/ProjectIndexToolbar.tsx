@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Input, Select } from '@/components/ui/foundation';
+import { Button, Input, Select } from '@/components/ui/foundation/FoundationControls';
 import { Drawer } from '@/components/ui/drawer/Drawer';
 import { PROJECTS_INDEX_OWNER_OPTIONS } from '@/lib/projects/projectsIndexContract';
 import { PROJECT_JOURNEY_FILTER_OPTIONS, PROJECT_STAGE_FILTER_OPTIONS, PROJECT_STATE_FILTER_OPTIONS } from './projectIndexFilters';

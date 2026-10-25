@@ -1,4 +1,4 @@
-import { act } from 'react';
+import { act, useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { useProjectIndexView } from './useProjectIndexView';
@@ -84,4 +84,13 @@ describe('project index leave and return', () => {
     expect(parseProjectIndexView(new URLSearchParams('page=-2&pageSize=999&sort=invalid'))).toMatchObject({ page: 1, pageSize: 50, sort: 'newest' });
     expect(parseProjectIndexView(new URLSearchParams('page=1.5'))).toMatchObject({ page: 1 });
   });
+});
+
+it('does not re-arm a saved anchor from private URL adoption after an explicit public filter',()=>{
+ const view=parseProjectIndexView(new URLSearchParams('q=Fixture'));const href=projectIndexViewHref(view);rememberProjectIndexPosition(href,840);
+ const scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ function Controlled({ready}:{ready:boolean}){const index=useProjectIndexView(undefined,undefined,{view,changed:true,update:()=>{},reset:()=>{}});useEffect(()=>{if(ready)index.restoreScroll(true);},[ready]);return null;}
+ const rendered=renderIntoDocument(<Controlled ready={false}/>);
+ act(()=>{window.history.replaceState(window.history.state,'',href);rendered.rerender(<Controlled ready/>);});
+ expect(scroll).not.toHaveBeenCalled();rendered.unmount();scroll.mockRestore();
 });

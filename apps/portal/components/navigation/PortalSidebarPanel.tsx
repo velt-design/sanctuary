@@ -14,11 +14,9 @@ import {
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
-import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
-import { todayYmd } from '@/lib/scheduling/date';
-import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import {
   openPortalIndexInstantly,
+  openPortalActualFrameInstantly,
   portalIndexTarget,
   preloadPortalIndex,
 } from '@/lib/queries/portalIndexNavigation';
@@ -113,8 +111,6 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
 
   const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
   const visibleItems = visibleNavItems(role, financeAccess, email);
-  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const today = useMemo(() => todayYmd(), []);
   const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';
   const routeKey = useMemo(
     () => `${pathname}?${searchParams.toString()}#${hashValue}`,
@@ -156,10 +152,11 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
       if (!shouldStartRouteTransitionForHref(href)) return;
       const indexTarget = portalIndexTarget(href);
       if (indexTarget) {
-        beginInstantRoute(indexTarget.route);
+        beginInstantRoute(indexTarget.route, { href });
         if (openPortalIndexInstantly(event, router, href)) return;
       }
       beginRouteTransition({ href, label, source: 'sidebar-panel', control: event.currentTarget });
+      openPortalActualFrameInstantly(event, router, href);
     },
     [beginInstantRoute, beginRouteTransition, router],
   );
@@ -180,7 +177,8 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
   );
 
   const prefetchFor = useCallback(
-    (key: string, href: string) => {
+    (_key: string, href: string) => {
+
       if (portalIndexTarget(href)) {
         preloadPortalIndex(queryClient, router, href);
         return;
@@ -190,13 +188,9 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
         prefetchedRef.current.add(routeToken);
         router.prefetch(href);
       }
-      if (key !== 'schedule') return;
-      const token = `${key}:${hostKey}:${today}`;
-      if (prefetchedRef.current.has(token)) return;
-      prefetchedRef.current.add(token);
-      void queryClient.prefetchQuery(scheduleV2SnapshotQueryOptions(hostKey, today));
+      // Schedule data belongs to the guarded selected read owner.
     },
-    [hostKey, queryClient, router, today],
+    [queryClient, router],
   );
 
   const handleIconLinkClick = useCallback(
@@ -205,10 +199,11 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
       if (!shouldStartRouteTransitionForHref(href)) return;
       const indexTarget = portalIndexTarget(href);
       if (indexTarget) {
-        beginInstantRoute(indexTarget.route);
+        beginInstantRoute(indexTarget.route, { href });
         if (openPortalIndexInstantly(event, router, href)) return;
       }
       beginRouteTransition({ href, label, source: 'sidebar-rail', control: event.currentTarget });
+      openPortalActualFrameInstantly(event, router, href);
     },
     [beginInstantRoute, beginRouteTransition, router],
   );
