@@ -85,6 +85,18 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
   const [initialized, setInitialized] = useState(false);
   const explicitChoiceMadeRef = useRef(false);
 
+  const publishWithdrawal = useCallback((next: ConsentPreferences) => {
+    if (next.marketing) return;
+    // Pending enquiry responses can settle before React commits the new choice.
+    // Revoke the pixel's live permission through the existing consent event now.
+    dispatchConsentEvent({
+      consent: next,
+      hasStoredChoice: true,
+      trackingBasis: 'user_choice',
+      trackingRegionPolicy,
+    });
+  }, [trackingRegionPolicy]);
+
   useEffect(() => {
     const defaultConsent = createDefaultConsent();
     applyConsentModeDefault(defaultConsent);
@@ -186,6 +198,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
       if (event.key !== CONSENT_STORAGE_KEY) return;
       const next = parseStoredConsent(event.newValue);
       if (!next) return;
+      publishWithdrawal(next);
       setConsentState(next);
       setHasStoredChoice(true);
       setTrackingBasis('user_choice');
@@ -195,11 +208,12 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  }, [publishWithdrawal]);
 
   const setConsent = useCallback((update: ConsentUpdate) => {
     explicitChoiceMadeRef.current = true;
     const next = createStoredConsent(update);
+    publishWithdrawal(next);
     setConsentState(next);
     setHasStoredChoice(true);
     setTrackingBasis('user_choice');
@@ -210,7 +224,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore storage failures; consent still applies in-memory for this session.
     }
-  }, []);
+  }, [publishWithdrawal]);
 
   const openBanner = useCallback(() => setBannerOpen(true), []);
   const closeBanner = useCallback(() => setBannerOpen(false), []);

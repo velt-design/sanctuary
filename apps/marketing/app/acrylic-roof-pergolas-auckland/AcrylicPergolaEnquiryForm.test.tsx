@@ -4,6 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
 import AcrylicPergolaEnquiryForm from './AcrylicPergolaEnquiryForm';
 import { webcrypto } from 'node:crypto';
+import { setMetaLeadPermission } from '../../lib/metaLead';
 
 let root: Root | null = null;
 let analyticsEnabled = false;
@@ -48,11 +49,13 @@ beforeAll(() => {
 
 beforeEach(() => {
   analyticsEnabled = false; marketingEnabled = false;
+  setMetaLeadPermission(false);
   localStorage.clear();
   window.history.replaceState({}, '', '/simple-pergolas-auckland');
 });
 
 afterEach(async () => {
+  setMetaLeadPermission(false);
   if (root) {
     await act(async () => root?.unmount());
     root = null;
@@ -90,6 +93,8 @@ type SubmittedPayload = {
 };
 
 async function renderForm(estimate: SimpleCoverHandoff) {
+  // This isolated form fixture supplies the pixel layout's consent lifecycle.
+  setMetaLeadPermission(marketingEnabled);
   const container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
