@@ -36,8 +36,13 @@ and the full text label, rather than changing the work position or discarding it
 Commercial hold/readiness notices have one persistent local slot, with an explicit
 issue title and review action; their full context stays available in Details.
 Estimates reserves its actual responsive two-action layout before authority arrives.
-Commercial accepted work remains reachable from its named control. Real payment
-schedule, Finance summary and Dashboard card regions retain bounded reading
+Project read progress and Retry remain visible in their existing status slot on
+Commercial as well as other tabs; full read explanations use one Details layer.
+Commercial accepted agreement facts and direct record actions remain visible in a
+permanent focusable reading region, using the same native Card before and after
+data arrives, including base and add-on agreements. Unknown,
+failed and verified-empty states are distinct; long facts remain fully scrollable.
+Real payment schedule, Finance summary and Dashboard card regions retain bounded reading
 areas, with overflow available rather than discarded content. Dashboard visits has an
 explicit track in each responsive layout, so its read cannot resize other rows. Access, Pricebook,
 contact/project forms and Files use the same local status ownership. Validation

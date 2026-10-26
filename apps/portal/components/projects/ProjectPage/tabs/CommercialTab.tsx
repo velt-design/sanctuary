@@ -43,7 +43,6 @@ export default function CommercialTab({
   optimisticView,
   onViewSelect,
   calculatorWorkspace = false,
-  statusPanel,
   estimatesList,
   quotesList,
   invoicesList,
@@ -140,7 +139,7 @@ export default function CommercialTab({
   </>;
   const detailPrompt = !projectReady ? <p role={projectState === "pending" || projectState === "summary" ? "status" : undefined}>{projectState === "pending" || projectState === "summary" ? "Reading project details…" : "Project details unavailable. Retry the project read above."}</p> : null;
   const notice = <ProjectCommercialScope value={commercial}><CommercialProjectNotice projectId={projectId} view={activeView} compact
-    unavailable={!projectReady && projectState !== 'pending' && projectState !== 'summary'} details={statusPanel || detailPrompt ? <>{statusPanel}{detailPrompt}</> : undefined} /></ProjectCommercialScope>;
+    unavailable={!projectReady && projectState !== 'pending' && projectState !== 'summary'} details={detailPrompt} /></ProjectCommercialScope>;
   const chrome: CommercialTabChrome = { view: activeView, onSelect: setView, onIntent: preload,
     notice, quoteViews, quoteDetail: Boolean(selectedQuoteId), inert: readOnly && projectReady };
   useLayoutEffect(() => { publishCommercial?.(chrome); }, [publishCommercial, chrome]);

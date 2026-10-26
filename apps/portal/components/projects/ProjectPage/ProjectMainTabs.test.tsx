@@ -3,6 +3,7 @@ import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectMainTabs from './ProjectMainTabs';
 import ProjectMainTabsSurface from './ProjectMainTabsSurface';
 import { act } from 'react';
+import ProjectSnapshotNotice from './ProjectSnapshotNotice';
 
 const replaceMock = vi.fn();
 let mockSearchParams = 'tab=estimates';
@@ -38,6 +39,28 @@ const snapshot = {
 } as any;
 
 describe('ProjectMainTabs', () => {
+  it('keeps the original project read and Retry visible in the existing Commercial status slot with one-level full details', () => {
+    mockSearchParams = 'tab=estimates'; const retry = vi.fn();
+    const tree = (state: 'summary' | 'refresh-failed' | 'fresh') => <ProjectMainTabsSurface snapshot={snapshot} host="host" tab="estimates"
+      snapshotState={state} statusPanel={<ProjectSnapshotNotice state={state} onRetry={retry} />} body={<input aria-label="Current commercial draft" />} />;
+    const view = renderIntoDocument(tree('summary')), body = view.container.querySelector('[data-project-tab-body]');
+    expect(view.container.textContent).toContain('Updating project');
+    const details = [...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Details')!;
+    act(() => { details.focus(); details.click(); });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Loading the latest Project Work, commercial state, notes and events.');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(document.activeElement).toBe(details);
+    view.rerender(tree('refresh-failed'));
+    expect(view.container.querySelector('[data-project-tab-body]')).toBe(body);
+    expect(view.container.textContent).toContain('Showing saved project details');
+    const visibleRetry = [...view.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!;
+    act(() => visibleRetry.click()); expect(retry).toHaveBeenCalledOnce();
+    act(() => [...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Your last known details remain available.');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    view.rerender(tree('fresh')); expect(view.container.textContent).toContain('Project current');
+    expect(view.container.textContent).not.toContain('Showing saved project details'); view.unmount();
+  });
   it('retires generic reading after access ends but retains explicit current-access recovery', () => {
     const retry = vi.fn();
     const render = (snapshotState: 'pending' | 'unavailable', statusPanel?: React.ReactNode) => <ProjectMainTabsSurface projectId="proj_1" host="host" snapshot={null}

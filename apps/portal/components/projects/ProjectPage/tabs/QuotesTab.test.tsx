@@ -190,12 +190,12 @@ const quoteDetail = {
 let activeQuoteDetail: any = quoteDetail;
 
 let oldQuotePublish:((value:QuotesListEvidence|null)=>void)|undefined;
-function ManagedQuotes({allowed,owner,pending,empty=false}:{allowed:boolean;owner:object;pending:boolean;empty?:boolean}) {
+function ManagedQuotes({allowed,owner,pending,empty=false,accepted=false}:{allowed:boolean;owner:object;pending:boolean;empty?:boolean;accepted?:boolean}) {
  const controls=useQuotesListControls('proj_1'),published=useOwnedPortalPublication<QuotesListEvidence>(allowed?owner:null);
  const binding=useMemo(()=>({controls,publish:published.publish}),[controls,published.publish]);
  if(allowed)oldQuotePublish=published.publish;
- const producer=useMemo(()=>allowed?<QuotesListView {...({projectId:'proj_1',quotes:pending||empty?[]:[quoteDetail],quotesLoading:pending,quotesError:null,retryQuotes:vi.fn(),
-  openCreate:vi.fn(),selectQuote:vi.fn(),prefetchQuoteDetail:vi.fn(),createOpen:false,closeCreate:vi.fn(),createEstimateId:'',setCreateEstimateId:vi.fn(),createInternalName:'',setCreateInternalName:vi.fn(),estimatesLoading:false,estimates:[],createQuote:vi.fn(),createMode:'estimate',setCreateMode:vi.fn(),manualDescription:'',setManualDescription:vi.fn(),manualQty:'1',setManualQty:vi.fn(),manualPrice:'',setManualPrice:vi.fn(),createBusy:false,isAdmin:false,deleteQuote:vi.fn(),supersedeQuote:vi.fn(),supersedePendingId:null,renameTarget:null,renamePending:false,renameQuote:vi.fn(),closeRename:vi.fn(),saveRename:vi.fn()} as any)} listSurface={binding}/>:null,[allowed,pending,empty,binding]);
+ const producer=useMemo(()=>allowed?<QuotesListView {...({projectId:'proj_1',quotes:pending||empty?[]:[accepted?{...quoteDetail,status:'ACCEPTED',acceptedAt:'2026-08-01'}:quoteDetail],quotesLoading:pending,quotesError:null,retryQuotes:vi.fn(),
+  openCreate:vi.fn(),selectQuote:vi.fn(),prefetchQuoteDetail:vi.fn(),createOpen:false,closeCreate:vi.fn(),createEstimateId:'',setCreateEstimateId:vi.fn(),createInternalName:'',setCreateInternalName:vi.fn(),estimatesLoading:false,estimates:[],createQuote:vi.fn(),createMode:'estimate',setCreateMode:vi.fn(),manualDescription:'',setManualDescription:vi.fn(),manualQty:'1',setManualQty:vi.fn(),manualPrice:'',setManualPrice:vi.fn(),createBusy:false,isAdmin:false,deleteQuote:vi.fn(),supersedeQuote:vi.fn(),supersedePendingId:null,renameTarget:null,renamePending:false,renameQuote:vi.fn(),closeRename:vi.fn(),saveRename:vi.fn()} as any)} listSurface={binding}/>:null,[allowed,pending,empty,accepted,binding]);
  return <><QuotesListSurface query={controls.query} onQueryChange={controls.setQuery} showHistory={controls.showHistory} onHistoryChange={controls.setShowHistory}
   onInteraction={controls.markInteracted} evidence={published.value} unavailable={!allowed}/>{producer}</>;
 }
@@ -212,6 +212,33 @@ it('preserves actual quote Find/history/table/focus across held authority and pe
  expect(input.value).toBe('Q-1001');expect(document.activeElement).toBe(input);expect(table?.textContent).toContain('Q-1001');
  view.rerender(tree(false,a,false));expect(table?.textContent).not.toContain('Q-1001');expect(view.container.querySelector('#quote-search')).toBe(input);
  view.rerender(tree(true,b,false));act(()=>old(null));expect(table?.textContent).toContain('Q-1001');expect(input.value).toBe('Q-1001');view.unmount();
+});
+
+it('adopts real accepted facts into the same native Card, heading and reading region shown during the guarded read', () => {
+  const owner = {}, view = renderIntoDocument(<ManagedQuotes allowed owner={owner} pending accepted />);
+  const region = view.container.querySelector('[aria-label="Accepted work"]')!, card = region.querySelector('section'), heading = region.querySelector('h4'), table = view.container.querySelector('table');
+  expect(card).not.toBeNull(); expect(region.textContent).toContain('Reading accepted work');
+  view.rerender(<ManagedQuotes allowed owner={owner} pending={false} accepted />);
+  expect(region.querySelector('section')).toBe(card); expect(region.querySelector('h4')).toBe(heading);
+  expect(region.textContent).toContain('Current accepted work'); expect(region.textContent).toContain('Q-1001 v1');
+  view.rerender(<ManagedQuotes allowed={false} owner={owner} pending={false} accepted />);
+  expect(region.querySelector('section')).toBe(card); expect(region.querySelector('h4')).toBe(heading);
+  expect(region.textContent).toContain('Accepted work unavailable'); expect(region.textContent).not.toContain('Q-1001');
+  expect(view.container.querySelector('table')).toBe(table); view.unmount();
+});
+
+it('keeps the same accepted reading region and table through unknown, failed, verified-empty and retired evidence', () => {
+  const render = (evidence: QuotesListEvidence | null, unavailable = false) => <QuotesListSurface query="" onQueryChange={vi.fn()} showHistory={false} onHistoryChange={vi.fn()} evidence={evidence} unavailable={unavailable} />;
+  const view = renderIntoDocument(render(null)), region = view.container.querySelector<HTMLElement>('[aria-label="Accepted work"]')!, table = view.container.querySelector('table');
+  expect(region.textContent).toContain('Reading accepted work'); expect(region.textContent).not.toContain('No accepted work');
+  act(() => region.focus());
+  const empty = { pending: false, closed: false, headerActions: null, accepted: null, hasAccepted: false, status: null, historicalLabel: 0, dialogs: null, render: () => ({ noMatches: null, rows: null }) } as QuotesListEvidence;
+  view.rerender(render({ ...empty, statusTitle: 'Could not load quote versions' }));
+  expect(region.textContent).toContain('Accepted work unavailable'); expect(region.textContent).not.toContain('No accepted work');
+  view.rerender(render(empty)); expect(region.textContent).toContain('No accepted work recorded.');
+  view.rerender(render(null, true)); expect(region.textContent).toContain('Accepted work unavailable');
+  expect(view.container.querySelector('[aria-label="Accepted work"]')).toBe(region); expect(view.container.querySelector('table')).toBe(table);
+  expect(document.activeElement).toBe(region); view.unmount();
 });
 
 it('uses the genuine empty quote state in the real table and never inserts an empty fragment row on normal adoption',()=>{
@@ -401,6 +428,22 @@ describe('QuotesTab draft ownership UI', () => {
     rendered.unmount();
   });
 
+  it('shows genuine current base and add-on accepted facts without a disclosure before opening their records', () => {
+    searchParamsValue = '';
+    activeQuoteList = [
+      { ...quoteDetail, id: 'qv_base', quoteId: 'qt_base', status: 'ACCEPTED', acceptedAt: '2026-08-01', internalName: 'Current base agreement', totals: { totalIncGstCents: 2665687 } },
+      { ...quoteDetail, id: 'qv_addon', quoteId: 'qt_addon', commercialScopeId: 'scope_addon', commercialScopeKind: 'add_on', status: 'ACCEPTED', acceptedAt: '2026-08-02', internalName: 'Long additional work agreement with its complete saved customer scope', totals: { totalIncGstCents: 10000 } },
+    ];
+    const view = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId={null} />);
+    const region = view.container.querySelector('[role="region"][aria-label="Accepted work"]');
+    expect(region).not.toBeNull(); expect(region?.getAttribute('tabindex')).toBe('0');
+    expect(region?.textContent).toContain('Current accepted work');
+    expect(region?.textContent).toContain('Current base agreement'); expect(region?.textContent).toContain('$26,656.87');
+    expect(region?.textContent).toContain('Long additional work agreement with its complete saved customer scope');
+    expect(region?.querySelectorAll('button')).toHaveLength(2);
+    expect(region!.compareDocumentPosition(view.container.querySelector('#quote-search')!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(document.querySelector('[role="dialog"]')).toBeNull(); view.unmount();
+  });
   it('keeps historical acceptance discoverable without competing with the current agreement', () => {
     searchParamsValue = '';
     activeQuoteList = [

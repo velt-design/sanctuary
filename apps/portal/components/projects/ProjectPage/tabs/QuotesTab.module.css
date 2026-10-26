@@ -1458,3 +1458,8 @@
 .wrapper[data-quotes-view="list"] .header { min-height: 88px; }
 .listHeaderActionSlot { min-height: 44px; min-width: 130px; }
 @media (max-width: 720px) { .wrapper[data-quotes-view="list"] .header { display: grid; } }
+
+/* Agreement facts stay visible in their own stable, fully scrollable reading area. */
+.acceptedWork { block-size: 184px; min-width: 0; overflow: auto; scrollbar-gutter: stable; }
+.acceptedWork > p { margin: 0; color: var(--ui-text-muted); }
+.acceptedWork:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }

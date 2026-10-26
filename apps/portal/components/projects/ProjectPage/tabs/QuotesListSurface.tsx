@@ -5,7 +5,7 @@ import { useCommercialListControls } from './CommercialTabSurface';
 import type { EstimatesListBinding } from './EstimatesListSurface';
 import styles from './QuotesTab.module.css';
 import ReadStatus from '@/components/page-state/ReadStatus';
-import { PortalPopover } from '@/components/ui/PortalFloatingPanel';
+import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 export function useQuotesListControls(projectId: string) {
   const query = useCommercialListControls(projectId);
   const current = useRef(projectId); current.current = projectId;
@@ -35,8 +35,11 @@ export default function QuotesListSurface({ query, onQueryChange, showHistory, o
       <div className={styles.listHeaderActionSlot}>{evidence?.headerActions}</div></div>
     <ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Quotes unavailable' : evidence?.pending || !evidence ? 'Reading quotes…' : 'Quotes current')}
       tone={unavailable ? 'error' : evidence?.statusTitle ? 'warning' : 'neutral'}
-      action={<>{evidence?.statusAction}{evidence?.hasAccepted ? <PortalPopover label="Accepted work" trigger="Accepted work">{evidence.accepted}</PortalPopover> : null}</>}
+      action={evidence?.statusAction}
       details={evidence?.status} />
+    <div className={styles.acceptedWork} role="region" aria-label="Accepted work" tabIndex={0}>
+      {evidence?.hasAccepted && !unavailable ? evidence.accepted : <><Card title="Accepted work" padding="compact" headingLevel={4}><p role={!unavailable && (!evidence || evidence.pending) ? 'status' : undefined}>{unavailable || evidence?.statusTitle ? 'Accepted work unavailable. Retry the quote read.' : !evidence || evidence.pending ? 'Reading accepted work…' : 'No accepted work recorded.'}</p></Card></>}
+    </div>
     <SearchFilterBar query={query} onQueryChange={onQueryChange} queryPlaceholder="Search quote names or references"
       searchId="quote-search" filters={[]} onClearAll={() => onQueryChange('')} />
     <label className={styles.historyToggle}><input type="checkbox" checked={showHistory} onChange={event => onHistoryChange(event.target.checked)} /> Show historical versions ({evidence?.historicalLabel ?? (unavailable ? 'Unavailable' : 'Reading…')}){query.trim() ? <span>Search includes history</span> : null}</label>
