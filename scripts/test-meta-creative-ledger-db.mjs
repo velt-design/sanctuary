@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
+import {createHash} from 'node:crypto';
 import { mkdtempSync,readFileSync,rmSync,writeFileSync,mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -147,8 +148,17 @@ try{
   'tables',(select jsonb_object_agg(c.relname,jsonb_build_object('rls',c.relrowsecurity,'acl',c.relacl::text,'columns',(select jsonb_agg(a.attname order by a.attnum)from pg_attribute a where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped)))from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public'and c.relkind='r'))`).trim());
  const beforeOwner=ownerCatalog();
  sql(readFileSync('supabase/migrations/20261026000001_creative_owner_reviewed_bundle.sql','utf8'));
+ const capacityCatalog=()=>({catalog:ownerCatalog(),constraints:JSON.parse(sql(`select jsonb_object_agg(c.conrelid::regclass::text||'.'||c.conname,pg_get_constraintdef(c.oid))from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='public'`).trim())});
+ const capacityBefore=capacityCatalog(),capacityMigration=readFileSync('supabase/migrations/20261026000002_creative_owner_payload_bounds.sql','utf8');
+ sql(`begin;${capacityMigration.replace(/^begin;/m,'').replace(/^commit;/m,'')}rollback;`);
+ if(JSON.stringify(capacityCatalog())!==JSON.stringify(capacityBefore))throw Error('Capacity rollback changed catalogue');
+ sql(capacityMigration);const capacityAfter=capacityCatalog();
+ const capacityFunctions=Object.keys(capacityBefore.catalog.functions).filter(k=>JSON.stringify(capacityBefore.catalog.functions[k])!==JSON.stringify(capacityAfter.catalog.functions[k]));
+ const capacityConstraints=Object.keys(capacityBefore.constraints).filter(k=>capacityBefore.constraints[k]!==capacityAfter.constraints[k]);
+ if(JSON.stringify(capacityFunctions.sort())!==JSON.stringify(['meta_creative_executor_without_formal_cohort(text,uuid,uuid,text,jsonb)','meta_creative_winning_control(jsonb,text)','meta_creative_executor_without_ambiguity(text,uuid,uuid,text,jsonb)','meta_creative_executor_without_retention(text,uuid,uuid,text,jsonb)'].sort())||capacityConstraints.length!==3||JSON.stringify(capacityAfter.catalog.tables)!==JSON.stringify(capacityBefore.catalog.tables))throw Error('Capacity owned delta differs');
+ writeFileSync('.local-evidence/owner-capacity-native-delta.private.json',JSON.stringify({before:capacityBefore,after:capacityAfter,changedFunctions:capacityFunctions,changedConstraints:capacityConstraints,rollbackIdentical:true,migrationSha256:createHash('sha256').update(capacityMigration).digest('hex')}));
  const afterOwner=ownerCatalog(),changed=Object.keys(beforeOwner.functions).filter(k=>JSON.stringify(beforeOwner.functions[k])!==JSON.stringify(afterOwner.functions[k])),added=Object.keys(afterOwner.functions).filter(k=>!beforeOwner.functions[k]);
- const expectedChanged=['meta_creative_generation()','meta_creative_without_activation(text,uuid,uuid,text,jsonb)','meta_creative_executor_without_formal_cohort(text,uuid,uuid,text,jsonb)','meta_creative_executor_command(text,uuid,uuid,text,jsonb)','meta_creative_winning_control(jsonb,text)'];
+ const expectedChanged=['meta_creative_generation()','meta_creative_without_activation(text,uuid,uuid,text,jsonb)','meta_creative_executor_without_formal_cohort(text,uuid,uuid,text,jsonb)','meta_creative_executor_command(text,uuid,uuid,text,jsonb)','meta_creative_winning_control(jsonb,text)','meta_creative_executor_without_ambiguity(text,uuid,uuid,text,jsonb)','meta_creative_executor_without_retention(text,uuid,uuid,text,jsonb)'];
  if(JSON.stringify(changed.sort())!==JSON.stringify(expectedChanged.sort())||added.length!==1||!added[0].startsWith('meta_creative_loss_cohort('))throw new Error('Owner migration function delta differs');
  for(const key of Object.keys(beforeOwner.tables)){const prior=beforeOwner.tables[key],next=afterOwner.tables[key];if(key==='meta_creative_control'){if(JSON.stringify(next)!==JSON.stringify({...prior,columns:[...prior.columns,'owner_proposal']}))throw new Error('Owner column delta differs');}else if(JSON.stringify(prior)!==JSON.stringify(next))throw new Error('Unowned table metadata changed');}
  for(const key of changed)if(JSON.stringify({...beforeOwner.functions[key],md5:null})!==JSON.stringify({...afterOwner.functions[key],md5:null}))throw new Error('Existing function ACL/security changed');

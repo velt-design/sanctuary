@@ -1,3 +1,4 @@
+import {sizedThumbnailFixture} from './donor-thumbnail.fixture';
 import {createHmac,randomUUID} from 'node:crypto';
 import {afterEach,expect,it,vi} from 'vitest';
 vi.mock('server-only',()=>({}));
@@ -73,4 +74,24 @@ it('never converts native references to formal approval even when preparation an
  const plan=nativePlan();expect(executionPlanSchema.safeParse({...plan,purpose:'formal_experiment',generator:'resp_author',reviewer:'resp_reviewer',challengerPrimary:'Different'}).success).toBe(false);
  expect(executionPlanSchema.safeParse({...plan,control:{...plan.control,sourceAd:'99'}}).success).toBe(false);
  const signed=request(plan);expect(verifyCreativeCommand(signed.raw,signed.signature).stage).toBe('prepare');
+});
+
+it('validates the complete larger owner plan and intent while denying generic, tampered and stopped equivalents',()=>{
+ vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','true');const f=sizedThumbnailFixture(),signed=request(f.plan);
+ expect(verifyCreativeCommand(signed.raw,signed.signature).stage).toBe('prepare');
+ const state:ExecutorState={template:f.plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan:f.plan,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};
+ const intent=serializeEffect(f.plan,state,'create_creative');expect(intent.body.media_sourcing_spec).toBeDefined();
+ expect(validateCreativeIntent({generation:1,cleanup:false,intent},state,state.template!)).toMatchObject({intent});
+ expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent:{...intent,body:{...intent.body,name:'Changed'}}},state,state.template!)).toThrow();
+ expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent},{...state,stopped:true},state.template!)).toThrow();
+ expect(()=>validateCreativeIntent({generation:1,cleanup:false,intent},{...state,plan:planFixture()},state.template!)).toThrow();
+ const overflow={...signed.raw,payload:{...signed.raw.payload,plan:{...f.plan,synthetic_overflow:'x'.repeat(24000)}}};
+ const key=process.env.SANCTUARY_LANDING_EXPERIMENT_KEY!;const sig=createHmac('sha256',key).update('creative-command\n'+JSON.stringify(overflow)).digest('base64url');expect(()=>verifyCreativeCommand(overflow,sig)).toThrow();
+});
+it('requires exact current root owner equality when generic preparation remains off',()=>{
+ vi.stubEnv('SANCTUARY_META_CREATIVE_PREPARATION_ENABLED','false');const f=sizedThumbnailFixture();
+ const state:ExecutorState={template:f.plan.landingTemplate,enabled:true,cleanupEnabled:true,stopped:false,generation:1,plan:f.plan,ownerProposal:f.envelope,objects:[],effects:[],state:'prepared',measurementReady:false,activationReady:false};
+ const intent=serializeEffect(f.plan,state,'create_creative'),payload={generation:1,cleanup:false,intent};
+ expect(validateCreativeIntent(payload,state,state.template!).intent).toEqual(intent);
+ for(const envelope of [null,{...f.envelope,planHash:'0'.repeat(64)},{...f.envelope,expiresAt:new Date(Date.now()-1).toISOString()}])expect(()=>validateCreativeIntent(payload,{...state,ownerProposal:envelope},state.template!)).toThrow();
 });
