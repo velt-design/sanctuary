@@ -179,3 +179,9 @@ describe('PageHeader', () => {
     rendered.unmount();
   });
 });
+
+it('opts only the project title into keyboard-readable full heading text',()=>{
+ const title='A complete long project name with customer and location';const view=renderIntoDocument(<PageHeader variant="detail" title={title} headingProps={{tabIndex:0,title}}/>);
+ const heading=view.container.querySelector('h1')!;expect(heading.textContent).toBe(title);expect(heading.getAttribute('title')).toBe(title);expect(heading.tabIndex).toBe(0);
+ view.rerender(<PageHeader title="Ordinary header"/>);expect(view.container.querySelector('h1')?.hasAttribute('tabindex')).toBe(false);view.unmount();
+});

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { createElement, type ReactNode } from 'react';
+import { createElement, type ReactNode, type HTMLAttributes } from 'react';
 import MoreMenu, { type MoreMenuItem } from '@/components/portal/MoreMenu';
 import { Button, ButtonLink, type ButtonVariant } from '@/components/ui/foundation/FoundationControls';
 import surface from '@/components/ui/surface/PortalSurface.module.css';
@@ -36,6 +36,7 @@ export type PageHeaderProps = {
   className?: string;
   variant?: PageHeaderVariant;
   headingLevel?: 1 | 2 | 3;
+  headingProps?: Pick<HTMLAttributes<HTMLHeadingElement>, 'tabIndex' | 'title'>;
 };
 
 function cx(...values: Array<string | false | null | undefined>): string {
@@ -72,6 +73,7 @@ export default function PageHeader({
   className,
   variant = 'default',
   headingLevel = 1,
+  headingProps,
 }: PageHeaderProps) {
   const usesFoundation = variant !== 'default';
   const variantClass = styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
@@ -159,7 +161,7 @@ export default function PageHeader({
         <div className={styles.identity} data-page-header-identity="true">
           {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
           <div className={styles.titleLine} data-page-header-title-line="true">
-            {createElement(`h${headingLevel}`, { className: styles.title }, title)}
+            {createElement(`h${headingLevel}`, { className: styles.title, ...headingProps }, title)}
             {titleAccessory ? <span className={styles.titleAccessory}>{titleAccessory}</span> : null}
             {count ? <span className={styles.count}>{count}</span> : null}
           </div>

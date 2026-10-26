@@ -88,6 +88,9 @@
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.2;
+  block-size: 2lh;
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .mastheadHeader :global([data-page-header-title-line="true"]) {
@@ -253,7 +256,7 @@
   }
 
   .mastheadHeader :global([data-page-header-identity="true"] h1) {
-    overflow: visible;
+    overflow: auto;
     white-space: normal;
     overflow-wrap: anywhere;
   }
@@ -266,3 +269,7 @@
 }
 .readStatusSlot { min-height:44px; }
 .readStatusSlot > p { margin:0; display:flex; align-items:center; min-height:44px; color:var(--ui-text-muted); font-size:var(--ui-font-size-small); }
+
+/* Availability changes cannot introduce a horizontal scrollbar below the tabs. */
+.masthead :global(nav[aria-label="Project sections"]) { overflow-x: scroll; }
+.mastheadHeader :global(h1:focus-visible) { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }

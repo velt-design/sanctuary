@@ -146,3 +146,9 @@ it('keeps Overview reading tracks and the first narrow-container composition ind
  const layout=postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout.module.css'));let container=false;layout.walkAtRules('container',rule=>{if(rule.params==='(max-width: 800px)'){container=true;expect(rule.toString()).toContain('grid-template-columns: minmax(0, 1fr)');}});expect(container).toBe(true);
  const site=read('apps/portal/components/site-visits/siteVisits.module.css');expect(site).toContain('.calendarStatus{height:44px;min-width:0}');expect(site).not.toContain('.calendarContext:empty{display:none}');
 });
+
+it('allocates the unknown and genuine project title plus tab scrollbar before publication',()=>{
+ const sheet=postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));const title=new Map<string,string>();let tabs=false;
+ sheet.walkRules(rule=>{if(rule.selector.includes('[data-page-header-identity="true"] h1'))rule.walkDecls(decl=>{title.set(decl.prop,decl.value);});if(rule.selector.includes('nav[aria-label="Project sections"]')){expect(rule.toString()).toContain('overflow-x: scroll');tabs=true;}});
+ expect(title.get('block-size')).toBe('2lh');expect(title.get('overflow')).toBe('auto');expect(title.get('scrollbar-gutter')).toBe('stable');expect(tabs).toBe(true);
+});

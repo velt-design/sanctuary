@@ -59,6 +59,7 @@ export default function ProjectHeaderSurface({
           search={search ?? <GlobalPortalSearchSurface registration={searchReader ?? null} />}
           className={styles.mastheadHeader}
           variant="detail"
+          headingProps={{tabIndex:0,title:project?.name ?? (metadataPending ? "Reading project" : "Project unavailable")}}
           title={project?.name ?? (metadataPending ? "Reading project" : "Project unavailable")}
           subtitle={<span className={styles.mastheadSubtitle} role="region" aria-label="Project customer and location" tabIndex={0} title={subtitle}>{subtitle}</span>}
           titleAccessory={
