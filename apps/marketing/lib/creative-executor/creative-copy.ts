@@ -1,9 +1,11 @@
+import {applyReviewedMedia,type ReviewedMedia} from './owner-review';
 import {creativeSchema,type Creative} from './contract';
 
 /** Exact reviewed copy substitution. Media and delivery settings remain byte-
  * equivalent; source-media copy mapping is separately required before formal use. */
-export function creativeWithPrimary(input:Creative,creativeId:string,primary:string):Creative{
+export function creativeWithPrimary(input:Creative,creativeId:string,primary:string,edit?:ReviewedMedia):Creative{
  if(input.format==='native_reference')throw new Error('Reference-only creative cannot be edited');
+ if(edit){if(input.format!=='video_story')throw new Error('Reviewed media requires story video');return creativeSchema.parse({...applyReviewedMedia(input,primary,edit),id:creativeId});}
  const copy=structuredClone(input);copy.id=creativeId;copy.primary=primary;
  if(copy.format==='video_assets'){
   const feed=copy.payload.asset_feed_spec as {bodies?:{text?:string}[]};

@@ -106,7 +106,7 @@ export function requireRetentionProof(plan:ExecutionPlan,state:RetentionState,va
  if(age<0||age>60000||proof.planHash!==state.planHash||proof.planHash!==canonicalHash(plan)||proof.analysisCommand!==state.analysisCommand||
   proof.study!==state.study||proof.studyEnd!==plan.end||proof.studyObservationEnd!==plan.end||proof.studyEnd*1000>now||
   proof.acceptance!==acceptance||proof.originalsHash!==originals||proof.budgetHash!==budget||proof.settingsHash!==plan.preStateHash||
-  proof.creativeHash!==canonicalHash(creativeWithPrimary(plan.control,state.creative,plan.challengerPrimary))||
+  proof.creativeHash!==canonicalHash(creativeWithPrimary(plan.control,state.creative,plan.challengerPrimary,plan.ownerReview?.edit))||
   (proof.candidate?.ad??null)!==state.ad||(proof.previous?.ad??null)!==(state.previous?.ad??null))throw new Error('Retention proof differs');
  const previousPaused=state.effects.some(e=>e.kind==='pause_previous'&&e.state==='confirmed')&&!state.effects.some(e=>e.kind==='restore_previous'&&e.state==='confirmed');
  if(!state.testCleanupComplete||new Set(proof.testAds.map(a=>a.arm)).size!==2||proof.testAds.some(a=>!state.testAds.some(t=>t.arm===a.arm&&t.ad===a.ad)||a.creative!==(a.arm==='control'?plan.control.id:state.creative))||

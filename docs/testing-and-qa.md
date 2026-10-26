@@ -1,5 +1,35 @@
 # Testing And QA
 
+Owner-reviewed creative continuation: run paired creative-executor/owner-review
+and authority tests, then `scripts/test-meta-creative-ledger-db.mjs` with the
+existing disposable PostgreSQL binary. The actual SQL covers pending read,
+root generation CAS, exact full-plan prepare/reserve/replay, tampering and
+revocation, retained media projection, cutoff versus frozen history, unknown/late
+attribution and row-limit denial. Old model, ledger, dispatch/cleanup/concurrency
+and formal-cohort fixtures remain. Check complete same-window genuine zero
+coverage separately from missing/unknown; synthetic provider/approval fixtures
+are never actual account permission or a live test. Velt consumer/code and the
+additive receipt validator precede Source producer/admission. Nullable Source
+control installation grants no publication or provider effect.
+The final plan hash is immutable across root proposal CAS and prepare's control
+hash update; each authority check uses the resulting actual generation. Preserve
+delivery-enabled revocation. On disposal, revoke proposal/publication first and
+retain compatible reconciliation/cleanup consumers and effect history; installation
+and rollback never erase old slots or advertising objects. Changes to the ordinary
+genuine-cohort query must also review the private cutoff copy and parity fixtures.
+
+Inherited website compatibility preserves the actual `UNDEFINED` literal in a
+typed binding to the current adset, matching pixel/LEAD, conversion goal/billing
+and approved acrylic story-video URL. Run paired website-destination and runtime
+tests for wrong scope/pixel/URL/goal, destination drift, unchanged full fingerprints,
+owned cleanup and strict non-owner formal denial. An export does not establish
+the later SDK response. No ad-set setting is rewritten to WEBSITE.
+
+The finite official ConversionActionQuery dotted fields are permitted only in
+direct clauses of the root tracking array. Tracking tests cover each literal,
+case/location/unknown rejection, all old bounds and exact bytes. Reporting projector
+parity uses those same current rules; saved historical flags are not recomputed.
+
 Consent-delayed Lead checks: run components/MetaPixel.lead.test.tsx and
 lib/metaLead.test.ts with trackingConsent and configuredFormRecovery. The connected
 fixture mounts the actual form, delayed MetaPixel and first-party runtime, fences
