@@ -8,6 +8,7 @@ import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCo
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
 
 let admin = false;
+let draftAccess = false;
 const schedule: ProjectInvoiceSchedule = {
   acceptedQuoteVersionId: 'qv-current', acceptedQuoteRef: 'Q-100', acceptedQuoteVersionNumber: 2,
   acceptedQuoteTotalIncGstCents: 100000, invoicedIncGstCents: 0, paidIncGstCents: 20000,
@@ -22,7 +23,7 @@ vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: any) => readPhase==='denied'?{data:options?.queryKey?.[2]==='scheduleByProject'?activeSchedule:[],isPending:false,isError:true,error:new ApiError('Access ended',{status:403,body:null}),refetch:vi.fn()}:readPhase!=='ready'?{data:undefined,isPending:readPhase==='pending',isError:readPhase==='error',error:readPhase==='error'?new Error('Read failed'):null,refetch:vi.fn()}:options?.queryKey?.[2] === 'scheduleByProject'
     ? { data: activeSchedule, isPending: false, isError: false, error: null, refetch: vi.fn() }
-    : { data: [], isPending: false, isError: false, error: null, refetch: vi.fn() },
+    : { data: options?.queryKey?.[0] === 'invoiceDrafts' ? { enabled: draftAccess, drafts: [] } : [], isPending: false, isError: false, error: null, refetch: vi.fn() },
   useQueryClient: () => ({ invalidateQueries: vi.fn().mockResolvedValue(undefined) }),
 }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ isAdmin: admin }) }));
@@ -35,9 +36,43 @@ vi.mock('@/lib/repo/invoicesRepo', () => ({
   updatePaymentAllocations: vi.fn(), voidProjectInvoice: vi.fn(),
 }));
 
-afterEach(() => { document.body.innerHTML = ''; admin = false; activeSchedule = schedule;readPhase='ready'; });
+afterEach(() => { document.body.innerHTML = ''; admin = false; draftAccess = false; activeSchedule = schedule;readPhase='ready'; });
 
 describe('InvoicesTab reconciliation visibility', () => {
+  it('retains four essential owners and direct actions while complete schedule records use an explicit disclosure', () => {
+    admin = true; draftAccess = true; readPhase = 'pending';
+    const rendered = renderIntoDocument(<InvoicesTab projectId="proj-1" />);
+    const table = rendered.container.querySelector('table');
+    const metrics = rendered.container.querySelector('[aria-label="Accepted project quote payment totals"]')!;
+    const cells = Array.from(metrics.children);
+    const details = rendered.container.querySelector<HTMLDetailsElement>('details:has(> summary)')!;
+    expect(cells).toHaveLength(4);
+    expect(metrics.textContent).toContain('Accepted quote value');
+    expect(metrics.textContent).toContain('Other invoiced work');
+    expect(metrics.textContent).not.toContain('$0.00');
+    expect(details.open).toBe(false);
+    readPhase = 'ready'; activeSchedule = { ...schedule, billableTotalIncGstCents: 120000, standaloneTotalIncGstCents: 20000 };
+    rendered.rerender(<InvoicesTab projectId="proj-1" />);
+    expect(Array.from(metrics.children)).toEqual(cells);
+    expect(metrics.textContent).toContain('$1,200.00');
+    expect(metrics.textContent).toContain('$1,000.00');
+    expect(metrics.textContent).toContain('$200.00');
+    for (const label of ['New standalone invoice', 'Record payment', 'Add adjustment']) {
+      const button = Array.from(rendered.container.querySelectorAll('button')).find(node => node.textContent === label)!;
+      expect(button).toBeDefined(); expect(button.disabled).toBe(false); expect(button.closest('details')).toBeNull();
+    }
+    expect(details.textContent).toContain('Final payment');
+    expect(details.textContent).toContain('BANK-1');
+    act(() => { details.open = true; });
+    expect(details.open).toBe(true);
+    expect(rendered.container.querySelector('table')).toBe(table);
+    readPhase = 'denied'; rendered.rerender(<InvoicesTab projectId="proj-1" />);
+    expect(Array.from(metrics.children)).toEqual(cells);
+    expect(metrics.textContent).toContain('Unavailable'); expect(metrics.textContent).not.toContain('$1,200.00');
+    expect(details.textContent).not.toContain('BANK-1');
+    expect(Array.from(rendered.container.querySelectorAll('button')).some(node => node.textContent === 'Record payment')).toBe(false);
+    rendered.unmount();
+  });
   it('keeps a closed accepted agreement and payment ledger visible while making billing a deliberate review', () => {
     admin = true;
     const before = JSON.stringify(activeSchedule);

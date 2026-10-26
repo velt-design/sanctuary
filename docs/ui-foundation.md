@@ -1108,3 +1108,5 @@ Project title native overflow takes precedence over the generic pinned-header cl
 Sidebar panel and rail share the existing navigation-intent owner for guarded click handoff and code-only prefetch, while retaining their own controls and prefetch-set lifetimes. Managed Overview code arrival uses the actual public reading surface already mounted; standalone tabs retain their original loading presentation.
 
 Contacts row Open links load their detail route on user navigation rather than automatically prefetching every visible contact. Their href, keyboard and click navigation remain unchanged; the shared ButtonLink default is unchanged.
+
+User-opened Recent notes and portal history follows natural document flow instead of adding a nested scroll owner. Invoice schedule keeps four stable essential total positions, the accepted/separate-work breakdown and permitted primary actions directly visible; full payment terms and history remain in the native disclosure. Unknown, unavailable and verified values retain their distinct meanings while the same controls and reading positions remain mounted.

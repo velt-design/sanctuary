@@ -406,9 +406,15 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
     closed: commercial.closed, schedule, schedulePending,
     scheduleEyebrow: !schedule ? schedulePending ? 'Reading payment position…' : 'Payment position unavailable' : (schedule.acceptedQuotes?.length ?? 0) > 1
       ? `${schedule.acceptedQuotes?.length} accepted quote scopes` : schedule.acceptedQuoteVersionId ? `Quote ${schedule.acceptedQuoteRef} v${schedule.acceptedQuoteVersionNumber}` : 'Standalone project billing',
-    noticeTitle: accessEnded ? 'Invoice access unavailable' : recoveryNotice ? 'Action completed; refresh required' : scheduleQuery.isError&&!schedulePending ? 'Could not load the job payment schedule' : invoicesQuery.isError&&!invoicePending ? 'Could not load invoices' : undefined,
+    noticeTitle: accessEnded ? 'Invoice access unavailable' : recoveryNotice ? 'Action completed; refresh required' : scheduleQuery.isError&&!schedulePending ? 'Could not load the job payment schedule' : invoicesQuery.isError&&!invoicePending ? 'Could not load invoices' : schedule && schedule.overCommittedIncGstCents > 0 ? `Commercial total needs reconciliation · ${formatMoneyFromCents(schedule.overCommittedIncGstCents)} excess` : schedule && !schedule.acceptedQuoteVersionId && !schedule.standaloneTotalIncGstCents && (schedule.paidIncGstCents !== 0 || schedule.outstandingIncGstCents !== 0) ? 'Historical commercial record · No current accepted commercial scope' : undefined,
     noticeAction: recoveryNotice ? <Button size="small" variant="secondary" loading={recoveryRefreshPending} onClick={() => void retryRecoveryRefresh()}>Refresh invoice data</Button> : accessEnded || scheduleQuery.isError || invoicesQuery.isError ? <Button size="small" variant="secondary" onClick={() => { for (const query of [invoicesQuery, scheduleQuery, draftsQuery]) if (query.isError && !query.isFetching) void query.refetch(); }}>Retry</Button> : undefined,
-    beforeSchedule: <>
+    paymentActions: <>
+      {isAdmin && draftsEnabled && commercial.actionsAvailable ? <Button onClick={newStandaloneDraft} disabled={financialActionsLocked}>New standalone invoice</Button> : null}
+      {isAdmin && schedule?.paymentEntries && commercial.actionsAvailable ? <>
+        <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('PAYMENT')}>Record payment</Button>
+        <Button type="button" size="small" variant="secondary" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('ADJUSTMENT')}>Add adjustment</Button>
+      </> : null}
+    </>, beforeSchedule: <>
       {accessEnded&&<DataStatePanel state="unavailable" title="Invoice access unavailable" description="The current invoice read authority ended. Retry before reviewing records or making a change." onRetry={()=>{for(const query of [invoicesQuery,scheduleQuery,draftsQuery])if(query.isError&&!query.isFetching)void query.refetch();}}/>}
       {recoveryNotice ? (
         <AlertBanner
@@ -496,7 +502,6 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
       ) : null}
 
       {isAdmin && draftsEnabled && commercial.actionsAvailable ? <Card title="Invoice drafts"><p>Editable drafts have no balance impact until issued.</p>
-        <Button onClick={newStandaloneDraft} disabled={financialActionsLocked}>New standalone invoice</Button>
         {(draftsQuery.data?.drafts ?? []).map((draft) => <Button key={draft.id} variant="secondary" disabled={financialActionsLocked||draftsQuery.isPending||draftsQuery.isError||draftsQuery.isFetching} onClick={() => {if(financialReadsReady&&!draftsQuery.isError&&!draftsQuery.isFetching)setEditingDraft(draft);}}>
           Edit draft — {draft.options.label} · {draft.quoteVersionId ? 'Quote-linked' : 'Standalone'}
         </Button>)}
@@ -506,10 +511,6 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
         <Card title="Payments & credits" eyebrow={`${schedule.paymentEntries.length} ledger ${schedule.paymentEntries.length === 1 ? 'entry' : 'entries'}`} padding="none" headingLevel={4} aria-label="Payments and credits">
           <div className={styles.paymentToolbar}>
             <p>{commercial.closed ? 'Payment entries and reversals are retained below. Review any unresolved balance against the closure agreement.' : 'Record money received, then allocate it to the payment schedule.'}</p>
-            {commercial.actionsAvailable && <div className={styles.actions}>
-              <Button type="button" size="small" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('PAYMENT')}>Record payment</Button>
-              <Button type="button" size="small" variant="secondary" disabled={financialActionsLocked} onClick={() => setPaymentEntryMode('ADJUSTMENT')}>Add adjustment</Button>
-            </div>}
           </div>
           {schedule.paymentEntries.length ? (
             <div className={styles.paymentRows}>

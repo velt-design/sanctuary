@@ -9,7 +9,7 @@
 .reading[data-overview-reading="visits"] { height: 288px; }
 .reading[data-overview-reading="emails"] { height: 440px; }
 .workStatus { height: 44px; min-width: 0; }
-.history { height: 480px; overflow: auto; scrollbar-gutter: stable; }
+.history { min-width: 0; overflow: visible; }
 @media (max-width: 720px) {
  .reading[data-overview-reading="commercial"] { height: 544px; }
  .reading[data-overview-reading="orientation"] { height: 440px; }

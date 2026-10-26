@@ -3,12 +3,29 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../../test/reactHarness";
 import ProjectOverviewLayout from "./ProjectOverviewLayout";
 import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
+import { ProjectRecentNotesSurface } from "../ProjectOverviewSurface";
 
 vi.mock("./ProjectSharePointFilesPanel", () => ({
   default: () => <button type="button">Selected file preview</button>,
 }));
 
 describe("ProjectOverviewLayout", () => {
+  it("keeps the user's disclosed history and draft while complete events arrive", () => {
+    const history = (count: number) => <ProjectRecentNotesSurface notes={<textarea aria-label="Team note draft" defaultValue="" />} events={Array.from({ length: count }, (_, index) => <p key={index}>Complete event {index + 1}</p>)} />;
+    const view = renderIntoDocument(history(1));
+    const disclosure = view.container.querySelector('details')!;
+    const card = view.container.querySelector('[data-recent-notes-events]');
+    const draft = view.container.querySelector<HTMLTextAreaElement>('textarea')!;
+    act(() => { disclosure.open = true; });
+    draft.value = 'Unsaved note'; draft.focus();
+    view.rerender(history(25));
+    expect(disclosure.open).toBe(true);
+    expect(view.container.querySelector('[data-recent-notes-events]')).toBe(card);
+    expect(view.container.querySelector('textarea')).toBe(draft);
+    expect(draft.value).toBe('Unsaved note'); expect(document.activeElement).toBe(draft);
+    expect(view.container.textContent).toContain('Complete event 25');
+    view.unmount();
+  });
   afterEach(() => {
     document.body.innerHTML = "";
   });
