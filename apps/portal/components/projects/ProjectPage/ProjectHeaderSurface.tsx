@@ -46,6 +46,7 @@ export default function ProjectHeaderSurface({
   ownerControl?: ReactNode; privateActions?: ReactNode; onTabIntent?: (tab: import("@/lib/projects/projectTabs").ProjectNavigationTabKey) => void;
 }) {
   const metadataPending = snapshotState === "pending" || snapshotState === "summary";
+  const subtitle = project ? `${project.contactName || 'Customer not recorded'} · ${projectLocation(project)}` : metadataPending ? 'Reading project details' : 'Project details unavailable';
   return (
     <Card
       className={styles.masthead}
@@ -59,7 +60,7 @@ export default function ProjectHeaderSurface({
           className={styles.mastheadHeader}
           variant="detail"
           title={project?.name ?? (metadataPending ? "Reading project" : "Project unavailable")}
-          subtitle={project ? <>{project.contactName || 'Customer not recorded'} · {projectLocation(project)}</> : metadataPending ? 'Reading project details' : 'Project details unavailable'}
+          subtitle={<span className={styles.mastheadSubtitle} role="region" aria-label="Project customer and location" tabIndex={0} title={subtitle}>{subtitle}</span>}
           titleAccessory={
             <ProjectCurrentStatusBadge
               stage={project?.stage}

@@ -96,6 +96,20 @@
   grid-template-rows: auto 24px;
 }
 
+.mastheadSubtitle {
+  display: block;
+  block-size: 3em;
+  line-height: 1.5;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  scrollbar-gutter: stable;
+}
+
+.mastheadSubtitle:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
 .mastheadHeader :global([data-page-header-utility="true"]) {
   justify-self: stretch;
   width: 100%;

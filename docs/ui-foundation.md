@@ -30,6 +30,9 @@ Retired project access removes generic reading content; explicit current-access
 recovery remains available without reviving private consumers.
 The project masthead gives its title and current-status badge separate tracks at
 every width, so a longer verified name cannot add a new badge line below it.
+Its customer/location subtitle uses a fixed two-line, focusable reading region;
+longer saved text remains fully available through native keyboard/touch scrolling
+and the full text label, rather than changing the work position or discarding it.
 Commercial hold/readiness notices have one persistent local slot, with an explicit
 issue title and review action; their full context stays available in Details.
 Estimates reserves its actual responsive two-action layout before authority arrives.
