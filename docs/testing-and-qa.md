@@ -2310,6 +2310,8 @@ npm run portal:bundle-budget
 npm run schedule:bundle-budget
 ```
 
+The 26 October owner decision makes retired Design Workbench size informational in `portal:bundle-budget`. The CLI still analyzes and prints its initial/lazy metrics and every exceeded recorded limit, while enforcing the unchanged limits for Schedule, Projects, Contacts, Project Detail and Calculator. Missing build artifacts and analyzer errors remain fatal. The core helper retains all six numeric route budgets and its default strict six-route assertion. Security, active-page speed checks and Calculator's zero-lazy requirement are unchanged.
+
 `npm run packages:guard` checks that app imports of local `@sp/*` workspace packages are declared in the app manifest and listed in Next `transpilePackages`. It also blocks package-to-app imports and protects `@sp/configurator/core` from React, Next, Supabase, geometry, costing and browser-global dependencies. `npm run lint` includes this guard after `docs:guard`.
 
 Configurator contract changes should run `npm run test:configurator`, `npm run packages:guard` and `npm run typecheck`. The focused package suite covers the strict parser table, exact V1 invariants, canonical default and serialization, normalization, typed patches/seeds, customer-safe summary, migration/corrupt-data handling, unknown future-version preservation, the geometry adapter and one-solve artifact contract, customer-safe geometry failures, and Node/jsdom imports through both `@sp/configurator/core` and `@sp/configurator/geometry`.
