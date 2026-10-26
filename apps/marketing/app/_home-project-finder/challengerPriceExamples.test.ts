@@ -26,8 +26,8 @@ describe('challenger representative examples', () => {
 });
 
 describe('example commercial states', () => {
-  const markup = (value: ReturnType<typeof useProductExampleEstimate>) => {
-    vi.mocked(useProductExampleEstimate).mockReturnValue(value);
+  const markup = (value: Pick<ReturnType<typeof useProductExampleEstimate>, 'estimate' | 'complete' | 'retry'>) => {
+    vi.mocked(useProductExampleEstimate).mockReturnValue({ ...productSelectionDraft(CHALLENGER_EXAMPLE_SELECTIONS[0], 'pitched'), ...value });
     return renderToStaticMarkup(React.createElement(ChallengerPriceExamples, { type: 'pitched' }));
   };
   it('keeps a complete development-only price visibly labelled as draft', () => {
@@ -36,7 +36,7 @@ describe('example commercial states', () => {
     expect(html.match(/Approximately /g)).toHaveLength(3);
   });
   it.each(PRODUCT_FORM_CHOICES)('links every $type example to its existing product without a design override', ({ type, title }) => {
-    vi.mocked(useProductExampleEstimate).mockReturnValue({ estimate: { amount: 10000, draft: false, excluded: [], breakdown: [] }, complete: true, retry: vi.fn() });
+    vi.mocked(useProductExampleEstimate).mockReturnValue({ ...productSelectionDraft(CHALLENGER_EXAMPLE_SELECTIONS[0], type), estimate: { amount: 10000, draft: false, excluded: [], breakdown: [] }, complete: true, retry: vi.fn() });
     const host = document.createElement('div');
     host.innerHTML = renderToStaticMarkup(React.createElement(ChallengerPriceExamples, { type }));
     expect(host.textContent).toContain('Explore this roofline, then choose your size.');
