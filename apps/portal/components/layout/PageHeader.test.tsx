@@ -1,6 +1,8 @@
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PageHeader from './PageHeader';
+import ProjectCurrentStatusBadge from '@/components/projects/ProjectCurrentStatusBadge';
+import projectStyles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 vi.mock('next/link', () => ({
@@ -12,6 +14,22 @@ vi.mock('next/link', () => ({
 }));
 
 describe('PageHeader', () => {
+  it('preserves the project heading and actual status owner as a long verified name replaces Reading', () => {
+    const render = (title: string, pending: boolean) => <PageHeader variant="detail" className={projectStyles.mastheadHeader} title={title}
+      titleAccessory={<ProjectCurrentStatusBadge stage="new" pending={pending} />} />;
+    const view = renderIntoDocument(render('Reading project', true));
+    const line = view.container.querySelector('[data-page-header-title-line]')!;
+    const heading = view.container.querySelector('h1');
+    const accessory = line.children[1];
+    const badge = accessory.querySelector('[data-project-current-status]');
+    const name = 'A long verified project name that fills the entire project identity column';
+    view.rerender(render(name, false));
+    expect(view.container.querySelector('h1')).toBe(heading);
+    expect(heading?.textContent).toBe(name);
+    expect(line.children[1]).toBe(accessory);
+    expect(accessory.querySelector('[data-project-current-status]')).toBe(badge);
+    view.unmount();
+  });
   it('allocates a primary-action place without inventing an unknown permission or replacing the actual control', () => {
     const view = renderIntoDocument(<PageHeader variant="index" title="Projects" reservePrimaryAction />);
     const actions = view.container.querySelector('[data-page-header-actions]')!;

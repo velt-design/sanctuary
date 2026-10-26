@@ -91,7 +91,9 @@
 }
 
 .mastheadHeader :global([data-page-header-title-line="true"]) {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 24px;
 }
 
 .mastheadHeader :global([data-page-header-utility="true"]) {

@@ -29,7 +29,7 @@ describe('current-state commercial presentation', () => {
     result.rerender(root(true));
     expect(input.previousElementSibling).toBe(notice);
     expect(result.container.querySelector('input')).toBe(input);
-    expect(result.container.querySelector('[role="status"]')?.textContent).toBeTruthy();
+    expect(result.container.querySelector('[aria-live="polite"]')?.textContent).toBeTruthy();
     const review = [...result.container.querySelectorAll('button')].find(button => button.textContent === 'Review commercial actions')!;
     expect([...result.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Send agreement')?.disabled).toBe(true);
     act(() => review.click());

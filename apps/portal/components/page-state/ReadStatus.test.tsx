@@ -5,6 +5,17 @@ import ReadStatus from './ReadStatus';
 
 afterEach(() => { document.body.innerHTML = ''; });
 
+it('keeps routine read labels separate from immediate mutation feedback and announces failures appropriately', () => {
+  const view = renderIntoDocument(<div><ReadStatus title="Contact current" /><ReadStatus title="Contact details" /><p role="status">Save needs attention</p></div>);
+  expect(view.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+  expect(view.container.querySelector('[role="status"]')?.textContent).toBe('Save needs attention');
+  view.rerender(<ReadStatus title="Showing saved contact" tone="warning" />);
+  expect(view.container.querySelector('[aria-live="polite"]')?.textContent).toBe('Showing saved contact');
+  view.rerender(<ReadStatus title="Contact unavailable" tone="error" />);
+  expect(view.container.querySelector('[role="alert"]')?.textContent).toBe('Contact unavailable');
+  view.unmount();
+});
+
 it('keeps one local status owner while error details open outside the work flow and Retry stays immediately available', () => {
   const retry = vi.fn();
   const view = renderIntoDocument(<ReadStatus title="Reading projects…" />);

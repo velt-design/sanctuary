@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectMainTabs from './ProjectMainTabs';
+import ProjectMainTabsSurface from './ProjectMainTabsSurface';
+import { act } from 'react';
 
 const replaceMock = vi.fn();
 let mockSearchParams = 'tab=estimates';
@@ -36,6 +38,23 @@ const snapshot = {
 } as any;
 
 describe('ProjectMainTabs', () => {
+  it('retires generic reading after access ends but retains explicit current-access recovery', () => {
+    const retry = vi.fn();
+    const render = (snapshotState: 'pending' | 'unavailable', statusPanel?: React.ReactNode) => <ProjectMainTabsSurface projectId="proj_1" host="host" snapshot={null}
+      snapshotState={snapshotState} privateContentReady={false} tab="files" statusPanel={statusPanel} body={<button>Retired record command</button>} />;
+    const view = renderIntoDocument(render('pending'));
+    const surface = view.container.querySelector('section');
+    expect(view.container.textContent).toContain('Reading project');
+    view.rerender(render('unavailable'));
+    expect(view.container.querySelector('[data-project-tab-body]')?.children).toHaveLength(0);
+    expect(view.container.querySelector('section')).toBe(surface);
+    view.rerender(render('unavailable', <button onClick={retry}>Retry current access</button>));
+    expect(view.container.textContent).not.toContain('Reading project');
+    expect(view.container.textContent).not.toContain('Retired record command');
+    act(() => view.container.querySelector('button')!.click());
+    expect(retry).toHaveBeenCalledOnce();
+    view.unmount();
+  });
   it('mounts the actual Files owner by protected route identity before nullable project metadata', () => {
     mockSearchParams = 'tab=files';
     const rendered = renderIntoDocument(<ProjectMainTabs host="host" projectId="proj_1" snapshot={null} snapshotContentReady={false} snapshotState="pending" tab="files" />);

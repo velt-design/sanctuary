@@ -10,7 +10,7 @@ export default function ReadStatus({ title, tone = 'neutral', action, details, o
   title: string; tone?: 'neutral' | 'warning' | 'error'; action?: ReactNode; details?: ReactNode; onRetry?: () => unknown;
 }) {
   return <div className={styles.root} data-tone={tone}>
-    <span className={styles.title} role={tone === 'error' ? 'alert' : 'status'} title={title}>{title}</span>
+    <span className={styles.title} role={tone === 'error' ? 'alert' : undefined} aria-live={tone === 'warning' ? 'polite' : undefined} title={title}>{title}</span>
     <div className={styles.actions}>{action}{onRetry ? <Button variant="tertiary" size="small" onClick={() => void onRetry()}>Retry</Button> : null}{details ? <PortalPopover label={`${title} details`} trigger="Details" triggerClassName={styles.trigger}>
       <div className={styles.details}>{details}</div>
     </PortalPopover> : null}</div>

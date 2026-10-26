@@ -12,6 +12,22 @@ function read(relativePath: string): string {
 }
 
 describe('foundation style guardrails', () => {
+  it('keeps the project title and status on independent tracks at narrow and desktop widths', () => {
+    const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));
+    const declarations = new Map<string, string>();
+    sheet.walkRules(rule => {
+      if (rule.selector !== '.mastheadHeader :global([data-page-header-title-line="true"])' || rule.parent?.type !== 'root') return;
+      rule.walkDecls(decl => { declarations.set(decl.prop, decl.value); });
+    });
+    const badgeSheet = postcss.parse(read('apps/portal/components/ui/foundation/SanctuaryStatus.module.css'));
+    let badgeHeight = 0;
+    badgeSheet.walkRules(rule => {
+      if (rule.selector === '.stageBadge') rule.walkDecls('min-height', decl => { badgeHeight = Number.parseFloat(decl.value); });
+    });
+    expect(declarations.get('display')).toBe('grid');
+    expect(declarations.get('grid-template-rows')).toBe(`auto ${badgeHeight}px`);
+    expect(declarations.get('grid-template-columns')).toBe('minmax(0, 1fr)');
+  });
   it('allocates the compact column pager summary and touch controls within its reading header', () => {
     const sheet = postcss.parse(read('apps/portal/components/ui/foundation/FoundationSurfaces.module.css'));
     const mobile = new Map<string, Map<string, string>>();

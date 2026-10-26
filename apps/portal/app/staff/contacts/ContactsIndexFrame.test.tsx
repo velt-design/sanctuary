@@ -56,7 +56,7 @@ describe('Contacts actual frame', () => {
     const columns = Array.from(table!.querySelectorAll('thead th'));
     expect(columns).toHaveLength(5);
     const viewport = table!.parentElement;
-    const status = view.container.querySelector('[role="status"]');
+    const status = view.container.querySelector('span[title="Reading…"]');
     const heading = view.container.querySelector('h1');
     const previous = view.container.querySelector<HTMLButtonElement>('[aria-label="Previous page"]')!;
     const next = view.container.querySelector<HTMLButtonElement>('[aria-label="Next page"]')!;

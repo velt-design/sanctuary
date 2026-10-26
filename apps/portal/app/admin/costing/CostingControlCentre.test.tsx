@@ -562,9 +562,11 @@ describe('CostingControlCentre', () => {
 it('keeps actual workflow/status/history owners before verified overview, withholds draft creation, and never reapplies an initial seed after opening a version',async()=>{
  let resolve!:(value:ReturnType<typeof overview>|null)=>void;const initialOverviewRead=new Promise<ReturnType<typeof overview>|null>(yes=>{resolve=yes;});const fetcher=vi.fn().mockResolvedValue(Response.json(editorPayload('draft')));vi.stubGlobal('fetch',fetcher);
  const rendered=renderIntoDocument(<CostingControlCentre initialOverviewRead={initialOverviewRead}/>);const table=rendered.container.querySelector('table')!,workflow=rendered.container.querySelector('[aria-label="Costing workflow"]');
+ expect(rendered.container.textContent).not.toContain('Pricing current');
  expect(table.textContent).toContain('Name and purpose');expect(table.textContent).toContain('Reading pricing versions');expect(rendered.container.textContent).not.toContain('Legacy calculator settings');expect(rendered.container.textContent).not.toContain('No draft in progress');expect(fetcher).not.toHaveBeenCalled();
  expect([...rendered.container.querySelectorAll<HTMLButtonElement>('button')].filter(button=>button.textContent?.includes('Reading overview')).every(button=>button.disabled)).toBe(true);
  await act(async()=>resolve(overview('draft')));expect(rendered.container.querySelector('table')).toBe(table);expect(rendered.container.querySelector('[aria-label="Costing workflow"]')).toBe(workflow);
+ expect(rendered.container.textContent).toContain('Pricing current');
  await act(async()=>buttonByText(rendered.container,'Continue draft v1').click());expect(fetcher).toHaveBeenCalledOnce();expect(rendered.container.textContent).toContain('August supplier update');expect(rendered.container.textContent).not.toContain('Reading pricing versions');rendered.unmount();
 });
 

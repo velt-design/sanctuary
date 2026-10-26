@@ -24,6 +24,12 @@ no unauthorized control is rendered or activated.
 `ReadStatus` is a compact, persistent local presentation slot. Failures name the
 issue and keep Retry visible where supported; existing full explanations and
 review actions use the existing floating-panel owner without resizing the work.
+Routine read labels are ordinary text, leaving immediate mutation feedback its
+own status region. Changed warnings announce politely and errors remain alerts.
+Retired project access removes generic reading content; explicit current-access
+recovery remains available without reviving private consumers.
+The project masthead gives its title and current-status badge separate tracks at
+every width, so a longer verified name cannot add a new badge line below it.
 Commercial hold/readiness notices have one persistent local slot, with an explicit
 issue title and review action; their full context stays available in Details.
 Estimates reserves its actual responsive two-action layout before authority arrives.
