@@ -46,20 +46,27 @@ First-visible readiness, opacity, geometry and exact position remain checked.
 Cache-disabled fixtures exposed a real blank paint under forced reconstruction;
 those failures are retained and do not establish a cold-cache instant guarantee.
 
-The owner also requested native top-edge bounce on iPhone Safari and reported
-"Bounce still stops" on the first root-clip preview. That hardware acceptance
-failed. [Root `overflow: clip` propagates to the viewport as `hidden`](https://drafts.csswg.org/css-overflow-3/#overflow-propagation), so a computed
-vertical `visible` value was insufficient evidence of unrestricted native edges.
-Ordinary mobile documents now leave both HTML and BODY axes visible and their
-heights automatic. The existing `.page-viewport` descendant contains horizontal
-painting; homepage, product, contact and funnel root overrides retain their
-previous desktop behavior only. The existing editorial wrapper also marks ordinary
-documents separately from visual styling, including the Design enquiry. The old
-Simple calculator URL redirects to the full-viewport Contact designer. Explicit menu/project-sheet classes, inline native
-dialog locks, Portal and the full-viewport contact designer retain their owners.
-The fixed-height root release is secondary to removing viewport overflow clipping;
-the exact physical Safari mechanism and corrected result still need phone testing.
-No synthetic bounce, gesture cancellation or user-agent branch was added.
+Jordan clarified the top-edge requirement on 27 October: "What I want and have
+wanted this whole time was for it not to bounce when it reaches the top". The
+earlier agent interpretation pursued native bounce and labelled the owner's
+"Bounce still stops" report as failed acceptance against that mistaken goal.
+That interpretation was wrong; those historical checks do not establish the
+required clean stop. Persistence has positive phone feedback and remains part
+of acceptance alongside free scrolling, exact Back position and warm imagery.
+
+Ordinary mobile documents keep both HTML and BODY overflow axes visible and their
+heights automatic. The existing root policy adds `overscroll-behavior-y: none`
+to request a native vertical clean stop, with horizontal behavior left `auto` for
+history gestures. [The native CSS policy](https://www.w3.org/TR/css-overscroll-1/)
+suppresses vertical boundary effects at both ends and requests suppression of
+vertical pull-to-refresh; it cannot target only the top edge. The existing
+`.page-viewport` descendant contains horizontal painting. Homepage, product,
+contact and funnel root overrides retain their previous desktop behavior only.
+The existing wrapper marks ordinary documents separately from editorial styling,
+including Design enquiry. Simple calculator redirects to the fullscreen Contact
+designer. Menu/project-sheet classes, inline native dialog locks, Portal and that
+fullscreen designer keep their existing owners. No root-clipping/BODY-scroller
+workaround, synthetic bounce, gesture cancellation or user-agent branch was added.
 History and project context save nonnegative logical coordinates during Safari
 elastic overscroll without writing into the active gesture. Existing saved
 BODY/window coordinates restore through the current scroll owner, including
@@ -68,8 +75,11 @@ Browser regression coverage checks root axes, content height, horizontal
 containment, native touch, menu/gallery/dialog recovery and the fullscreen
 exception. The short two-column Design enquiry checks its document gutter and
 natural scroll range; its pre-existing WebGL touch-owning ancestor is separate,
-so this does not prove scrolling begun over that viewer. Physical iPhone top bounce and left-edge swipe acceptance remain open;
-previous desktop-port and emulated checks do not establish those outcomes.
+so this does not prove scrolling begun over that viewer. Native touch regression
+checks also cover pulling past the top and immediate continued scrolling, while
+computed policy and emulated geometry cannot establish physical iPhone bounce
+suppression. The corrected clean stop and left-edge return require the exact
+phone preview; earlier desktop-port and emulated checks are separate evidence.
 
 Header links fully prefetch public destinations; closed mobile-menu links do not
 prefetch. No HTML, service worker, token-route or private-data cache was added.

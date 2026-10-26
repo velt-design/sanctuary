@@ -160,6 +160,7 @@ test('ordinary mobile pages use the viewport scroller and retain menu locking', 
       range: document.scrollingElement!.scrollHeight - document.scrollingElement!.clientHeight,
       roots: [document.documentElement, document.body].map(root => ({
         x: getComputedStyle(root).overflowX, y: getComputedStyle(root).overflowY, height: root.getBoundingClientRect().height,
+        boundaryX: getComputedStyle(root).overscrollBehaviorX, boundaryY: getComputedStyle(root).overscrollBehaviorY,
       })), wrapperX: getComputedStyle(document.querySelector('.page-viewport')!).overflowX,
       overscroll: getComputedStyle(document.documentElement).overscrollBehaviorY }));
     await writeFile(testInfo.outputPath(`native-viewport-${width}-${path.replace(/\W/g, '_')}.json`), JSON.stringify({ path, down, ...state }, null, 2));
@@ -169,7 +170,8 @@ test('ordinary mobile pages use the viewport scroller and retain menu locking', 
       expect(state.windowY).toBeCloseTo(state.range, 0);
     } else expect(state.windowY).toBeGreaterThan(200);
     expect(state.width).toBeLessThanOrEqual(state.viewport);
-    expect(state.overscroll).toBe('auto');
+    expect(state.overscroll).toBe('none');
+    expect(state.roots.every(root => root.boundaryX === 'auto' && root.boundaryY === 'none')).toBe(true);
     // Root clip propagates as viewport hidden, despite computed overflow-y:visible.
     expect(state.roots.every(root => root.x === 'visible' && root.y === 'visible' && root.height > 844)).toBe(true);
     expect(state.wrapperX).toBe('clip');
@@ -181,12 +183,56 @@ test('ordinary mobile pages use the viewport scroller and retain menu locking', 
       expect(await page.locator('body').evaluate(body => body.style.top)).toBe(pinnedTop);
       await page.getByRole('button', { name: 'Close menu', exact: true }).last().click();
       await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(down, 0);
+      await expect(page.locator('html')).toHaveCSS('overscroll-behavior-y', 'none');
     }
     const up = await touchScroll(page, cdp, true, x);
     if (shortDesign) expect(up).toBe(0); else expect(up).toBeLessThan(down - 200);
     pages.push({ path, viewportWidth: width, down, up, ...state });
   }
   await writeFile(testInfo.outputPath('native-viewport-ownership.json'), JSON.stringify(pages, null, 2));
+});
+
+test('native top-boundary input keeps the document steady and immediately permits continued scrolling', async ({ page, context, browserName, baseURL }, testInfo) => {
+  test.skip(browserName !== 'chromium', 'Emulated geometry/input check; actual Safari rubber-band suppression needs the phone preview.');
+  await page.addInitScript(() => {
+    localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, version: 1, updatedAt: new Date().toISOString() }));
+    const inputs: { type: string; trusted: boolean; prevented: boolean }[] = [];
+    Object.assign(window, { boundaryInputs: inputs });
+    for (const type of ['touchstart', 'touchmove', 'touchend']) window.addEventListener(type, event => {
+      queueMicrotask(() => inputs.push({ type, trusted: event.isTrusted, prevented: event.defaultPrevented }));
+    }, { passive: true });
+  });
+  const cdp = await nativePageTransport(page, context, baseURL!);
+  await page.goto('/projects');
+  const collection = page.locator('[data-project-collection=true]');
+  await expect(collection).toBeVisible();
+  for (const root of [page.locator('html'), page.locator('body')]) {
+    await expect(root).toHaveCSS('overscroll-behavior-y', 'none');
+    await expect(root).toHaveCSS('overscroll-behavior-x', 'auto');
+    await expect(root).toHaveCSS('overflow', 'visible');
+  }
+  const position = () => collection.evaluate(el => ({ windowY: scrollY, bodyY: document.body.scrollTop, top: el.getBoundingClientRect().top }));
+  const before = await position();
+  expect(before.windowY).toBe(0); expect(before.bodyY).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath('clean-stop-before.png') });
+  const samples = [before];
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 200, id: 1 }] });
+  for (let n = 1; n <= 12; n++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: Math.round(200 + 450 * n / 12), id: 1 }] });
+    await page.waitForTimeout(16);
+    samples.push(await position());
+  }
+  await page.screenshot({ path: testInfo.outputPath('clean-stop-held.png') });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  samples.push(await position());
+  const continued = await touchScroll(page, cdp, false);
+  const returned = await touchScroll(page, cdp, true);
+  const inputs = await page.evaluate(() => (window as unknown as { boundaryInputs: { trusted: boolean; prevented: boolean }[] }).boundaryInputs);
+  await writeFile(testInfo.outputPath('clean-stop-boundary.json'), JSON.stringify({ before, samples, continued, returned, inputs }, null, 2));
+  expect(samples.every(sample => sample.windowY === 0 && sample.bodyY === 0 && Math.abs(sample.top - before.top) < 1)).toBe(true);
+  expect(continued).toBeGreaterThan(200); expect(returned).toBe(0);
+  expect(inputs.length).toBeGreaterThan(10);
+  expect(inputs.every(input => input.trusted && !input.prevented)).toBe(true);
 });
 
 test('descendant containment preserves gallery, native dialog locking and the fullscreen designer', async ({ page, context, browserName, baseURL }) => {
@@ -207,7 +253,11 @@ test('descendant containment preserves gallery, native dialog locking and the fu
   await touchScroll(page, cdp, false);
   expect(await page.locator('body').evaluate(body => body.style.top)).toBe(pinnedTop);
   await page.getByRole('button', { name: 'Close fullscreen 3D' }).click();
-  for (const root of [page.locator('html'), page.locator('body')]) await expect(root).toHaveCSS('overflow', 'visible');
+  for (const root of [page.locator('html'), page.locator('body')]) {
+    await expect(root).toHaveCSS('overflow', 'visible');
+    await expect(root).toHaveCSS('overscroll-behavior-y', 'none');
+    await expect(root).toHaveCSS('overscroll-behavior-x', 'auto');
+  }
   const before = await page.evaluate(() => scrollY);
   expect(await touchScroll(page, cdp, false)).toBeGreaterThan(before + 200);
   await page.goto('/contact?configurator=preview');

@@ -212,7 +212,7 @@ html.foundation-menu-open, body.foundation-menu-open { height:100% !important; o
 }
 
 /* Root overflow propagates to the viewport, where even clip means hidden.
-   Keep ordinary mobile documents unconstrained; contain horizontal painting on
+   Keep ordinary mobile documents on the viewport; contain horizontal painting on
    the existing content wrapper instead. Explicit modal/fullscreen owners retain
    their locks, including inline !important overflow from lockPageScroll. */
 @media (max-width: 960px){
@@ -220,6 +220,7 @@ html.foundation-menu-open, body.foundation-menu-open { height:100% !important; o
   :is(html, body):has([data-marketing-document]):not(.portal-mode):not(.scroll-locked):not(.foundation-menu-open):not(.projects-navigator-open):not(.no-scroll):not(:has(body.no-scroll)):not(:has(main[data-contact-page][data-project-preview])) {
     height:auto !important;
     overflow:visible !important;
+    overscroll-behavior-y:none;
   }
   .page-viewport:has(> [data-marketing-document]):not(:has(main[data-contact-page][data-project-preview])) {
     max-width:100%;
