@@ -71,6 +71,7 @@ export default function PrivacyPage(){
 
             <section>
               <Heading as="h2" variant="card">How we store it</Heading>
+              <Text>To help you finish an enquiry, you can recover unsent details and selected photos or plans on this browser for up to 24 hours. They are sent to Sanctuary only when you submit the enquiry. Use Clear draft on the form to remove this browser copy, especially on a shared device. Expired copies are removed when you next open an enquiry form. Browser storage limits can prevent attachment recovery; the form will ask you to add those files again.</Text>
               <Text>Enquiries and successfully submitted project files may be stored in our private internal systems for follow-up. Access is limited to staff and service providers needed to operate the enquiry process. Abandoned uploads are scheduled for deletion after their short-lived submission binding expires.</Text>
             </section>
 

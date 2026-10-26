@@ -81,6 +81,26 @@ fresh proof gate the locally connected ACTIVE effects.
 
 # Security, Privacy, And Quality
 
+## Browser-local enquiry recovery (26 October 2026)
+
+The owner approved the reviewed unfinished enquiry recovery for production once
+final release checks pass; deployment remains pending. `useEnquiryDraft` admits
+only visible customer brief/contact fields
+and bounded pathway/audience metadata. Browser-local recovery expires after 24
+hours; expired text and expired/orphaned attachment revisions are removed on
+enquiry access. Text is limited to 10 form contexts and 32K per context; private
+File blobs use IndexedDB, existing 20 MB submission limits and a 60 MB browser
+total. No server upload occurs until submit. Discard and fresh successful receipt
+remove local copies; replay keeps unsent later edits under the existing warning.
+Browser quota/denial/eviction cannot silently claim recovered files. Pricing,
+upload/submission tokens, attribution and experiment receipts are excluded from
+draft storage; form masking and consent-governed tracking remain unchanged.
+The privacy page describes the local recovery period and next-access cleanup.
+`MARKETING_PREVIEW_READ_ONLY=true` denies all enquiry/contact intake, fallback,
+attachment signing and cleanup before backend/provider calls. This is an explicit
+server preview environment boundary, defaulting off outside explicitly configured
+previews. Production submission behavior remains with the existing intake owners.
+
 The unpublished formal preparation continuation adds a separate default-off
 `SANCTUARY_META_CREATIVE_PREPARATION_ENABLED` flag. It admits only signed, fresh,
 independently reviewed future plans and the existing PAUSED creative/ad/study

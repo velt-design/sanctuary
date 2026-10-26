@@ -71,6 +71,8 @@ export type SimpleCoverCalculatorProps = {
   placement?: SimpleCoverPlacement;
   onContinue?: (handoff: SimpleCoverHandoff) => void;
   continuationHref?: string;
+  initialInput?: SimpleCoverInput;
+  onRecoveredEstimate?: (handoff: SimpleCoverHandoff) => void;
 };
 
 const DEFAULT_CONTINUATION_HREF = '/simple-pergolas-auckland#initial-estimate';
@@ -532,6 +534,8 @@ export default function SimpleCoverCalculator({
   placement = 'standalone',
   onContinue,
   continuationHref = DEFAULT_CONTINUATION_HREF,
+  initialInput,
+  onRecoveredEstimate,
 }: SimpleCoverCalculatorProps) {
   const { consent } = useConsent();
   const [input, setInput] = useState<SimpleCoverInput>({
@@ -544,6 +548,7 @@ export default function SimpleCoverCalculator({
   const [pending, setPending] = useState(true);
   const [inputReady, setInputReady] = useState(placement === 'standalone');
   const requestSequence = useRef(0);
+  const recovered = useRef(false);
   const trackedViewRef = useRef(false);
   const firstInteractionRef = useRef(false);
   const lastTrackedResultStatusRef = useRef<SimpleCoverResultStatus | null>(null);
@@ -577,6 +582,7 @@ export default function SimpleCoverCalculator({
   }, [trackEvent]);
 
   useEffect(() => {
+    if (initialInput) { setInput(initialInput); setInputReady(true); return; }
     if (placement === 'standalone') {
       setInputReady(true);
       return;
@@ -590,7 +596,17 @@ export default function SimpleCoverCalculator({
       if (storedHandoff) setInput(storedHandoff.input);
     }
     setInputReady(true);
-  }, [placement]);
+  }, [placement, initialInput]);
+
+  useEffect(() => {
+    if (!initialInput || recovered.current || pending || !result || !onRecoveredEstimate || result.status === 'invalid') return;
+    if (JSON.stringify(input) !== JSON.stringify(initialInput)) return;
+    if (result.status !== 'unavailable' && !currentResultMatches(result, input)) return;
+    recovered.current = true;
+    const priced = result.status === 'priced' && result.calculationRef ? result : null;
+    onRecoveredEstimate({ schemaVersion: 'simple-cover-handoff.v1', status: priced ? 'priced' : result.status === 'custom' ? 'custom' : 'unavailable',
+      input, calculationRef: priced?.calculationRef ?? null, displayedPriceIncGst: priced?.price.fromIncGst ?? null, configurationVersion: priced?.configuration.versionNumber ?? null });
+  }, [initialInput, input, onRecoveredEstimate, pending, result]);
 
   useEffect(() => {
     if (!consent.analytics || trackedViewRef.current) return;

@@ -1,4 +1,5 @@
 import 'server-only';
+import { marketingPreviewReadOnly } from '../../../../../lib/marketingPreviewReadOnly';
 
 import { createHash, randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
@@ -46,6 +47,8 @@ function sha256(value: string): string {
 }
 
 export async function POST(req: Request) {
+  const preview = marketingPreviewReadOnly();
+  if (preview) return preview;
   if (!isAllowedMarketingOrigin(req)) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }

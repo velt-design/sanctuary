@@ -689,7 +689,7 @@
   background: var(--color-surface-elevated);
 }
 
-.estimate :global(.acrylic-form__submit button) {
+.estimate :global(.acrylic-form__submit button[type="submit"]) {
   min-width: 15rem;
 }
 
@@ -1039,7 +1039,7 @@
     grid-column: 1;
   }
 
-  .estimate :global(.acrylic-form__submit button) {
+  .estimate :global(.acrylic-form__submit button[type="submit"]) {
     min-width: 0;
   }
 }

@@ -69,7 +69,7 @@ export function shouldPreserveProjectDetailScroll(
 export function captureProjectSwitchAnchor(
   root: HTMLElement,
 ): ProjectSwitchAnchor | null {
-  const intro = root.querySelector<HTMLElement>('.project-case-study__intro');
+  const intro = root.querySelector<HTMLElement>('.project-case-study__intro, .project-case-study > header');
   if (!intro) return null;
   const headerBottom = Math.max(0, document.querySelector<HTMLElement>('header.site')?.getBoundingClientRect().bottom ?? 0);
   return { mode: 'align', viewportTop: headerBottom + 24 };
@@ -79,7 +79,7 @@ export function restoreProjectSwitchAnchor(
   root: HTMLElement,
   anchor: ProjectSwitchAnchor,
 ): number {
-  const hero = root.querySelector<HTMLElement>('.project-case-study__intro');
+  const hero = root.querySelector<HTMLElement>('.project-case-study__intro, .project-case-study > header');
   if (!hero) return 0;
 
   const delta = hero.getBoundingClientRect().top - anchor.viewportTop;

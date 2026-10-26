@@ -1,13 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildProjectDetailHistoryState,
   getProjectDetailSlug,
   getProjectHeroPreloadUrl,
   shouldUseInPlaceProjectNavigation,
   shouldPreserveProjectDetailScroll,
+  captureProjectSwitchAnchor,
+  restoreProjectSwitchAnchor,
 } from './projectDetailNavigation';
 
 describe('desktop project detail navigation', () => {
+  it('captures and aligns the current photographic opening as well as the legacy intro', () => {
+    const root = document.createElement('main');
+    root.innerHTML = '<article class="project-case-study"><header><h1>Photographic project</h1></header></article>';
+    expect(captureProjectSwitchAnchor(root)).toEqual({ mode: 'align', viewportTop: 24 });
+    const header = root.querySelector('header')!;
+    vi.spyOn(header, 'getBoundingClientRect').mockReturnValue({ top: 224 } as DOMRect);
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    expect(restoreProjectSwitchAnchor(root, { mode: 'align', viewportTop: 24 })).toBe(200);
+    expect(scroll).toHaveBeenCalled(); scroll.mockRestore();
+  });
   it('recognizes canonical project detail paths only', () => {
     expect(getProjectDetailSlug('/projects/dairy-flat-estate')).toBe('dairy-flat-estate');
     expect(getProjectDetailSlug('/projects/dairy-flat-estate/')).toBe('dairy-flat-estate');
