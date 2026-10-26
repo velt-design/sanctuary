@@ -152,3 +152,27 @@ it('allocates the unknown and genuine project title plus tab scrollbar before pu
  sheet.walkRules(rule=>{if(rule.selector.includes('[data-page-header-identity="true"] h1'))rule.walkDecls(decl=>{title.set(decl.prop,decl.value);});if(rule.selector.includes('nav[aria-label="Project sections"]')){expect(rule.toString()).toContain('overflow-x: scroll');tabs=true;}});
  expect(title.get('block-size')).toBe('2lh');expect(title.get('overflow')).toBe('auto');expect(title.get('scrollbar-gutter')).toBe('stable');expect(tabs).toBe(true);
 });
+
+  it('keeps project native title scrolling above the pinned header clamp', () => {
+    const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));
+    const pinned = postcss.parse(read('apps/portal/components/layout/PageHeader.module.css'));
+    const selector = '.masthead .mastheadHeader :global([data-page-header-identity="true"] h1)';
+    const title = new Map<string, string>();
+    let pinnedClamp = false;
+    sheet.walkRules(rule => {
+      if (rule.selector === selector && rule.parent?.type === 'root') rule.walkDecls(decl => { title.set(decl.prop, decl.value); });
+    });
+    pinned.walkRules(rule => {
+      if (rule.selector === ":global([data-portal-sidebar-mode='pinned']) .variantDetail .title") {
+        rule.walkDecls('-webkit-line-clamp', decl => { pinnedClamp = decl.value === '2'; });
+      }
+    });
+    // Three class/attribute selectors plus h1 beats the pinned rule's three.
+    expect(pinnedClamp).toBe(true);
+    expect(title.get('display')).toBe('block');
+    expect(title.get('-webkit-line-clamp')).toBe('unset');
+    expect(title.get('-webkit-box-orient')).toBe('initial');
+    expect(title.get('min-height')).toBe('2lh');
+    expect(title.get('max-height')).toBe('2lh');
+    expect(title.get('overflow')).toBe('auto');
+  });

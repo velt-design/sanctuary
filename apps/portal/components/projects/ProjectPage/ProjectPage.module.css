@@ -84,11 +84,16 @@
   grid-column: 1 / -1;
 }
 
-.mastheadHeader :global([data-page-header-identity="true"] h1) {
+.masthead .mastheadHeader :global([data-page-header-identity="true"] h1) {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: initial;
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.2;
   block-size: 2lh;
+  min-height: 2lh;
+  max-height: 2lh;
   overflow: auto;
   scrollbar-gutter: stable;
 }

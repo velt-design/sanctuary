@@ -1,9 +1,7 @@
 'use client';
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -13,6 +11,8 @@ import {
 import { usePathname, useSearchParams, useSelectedLayoutSegments } from 'next/navigation';
 import { PortalPageSourceProvider, usePortalPageSourceController } from './PortalPageSource';
 import PortalActualFrames from './PortalActualFrames';
+import { PortalRouteTransitionContext, type PortalRouteTransitionInput } from './PortalRouteTransitionContext';
+export { usePortalRouteTransition } from './PortalRouteTransitionContext';
 import PortalNavigationProgress from './PortalNavigationProgress';
 import { retainPortalHistory } from './portalHistoryGuard';
 import {
@@ -27,24 +27,6 @@ const MAX_TRANSITION_MS = 8000;
 const DEFAULT_MESSAGE = 'Preparing workspace...';
 const MAX_INSTANT_ROUTE_MS = 8000;
 
-type PortalRouteTransitionInput = {
-  href: string;
-  label?: string;
-  source?: string;
-  control?: HTMLElement | null;
-};
-
-type PortalRouteTransitionContextValue = {
-  beginRouteTransition: (input: PortalRouteTransitionInput) => void;
-  beginInstantRoute: (route: PortalInstantRoute, options?: { label?: string | null; href?: string }) => void;
-  finishInstantRoute: (route: PortalInstantRoute) => void;
-  instantRoute: PortalInstantRoute | null;
-  instantRouteLabel: string | null;
-  pendingHref: string | null;
-  pathname: string | null;
-  routeKey: string;
-};
-
 type RouteTransitionClickEvent = {
   defaultPrevented: boolean;
   button: number;
@@ -54,17 +36,6 @@ type RouteTransitionClickEvent = {
   shiftKey: boolean;
   currentTarget?: EventTarget | null;
 };
-
-const PortalRouteTransitionContext = createContext<PortalRouteTransitionContextValue>({
-  beginRouteTransition: () => {},
-  beginInstantRoute: () => {},
-  finishInstantRoute: () => {},
-  instantRoute: null,
-  instantRouteLabel: null,
-  pendingHref: null,
-  pathname: null,
-  routeKey: '',
-});
 
 function routeKeyFor(pathname: string | null, searchParams: { toString(): string }): string {
   return `${pathname ?? ''}?${searchParams.toString()}`;
@@ -108,10 +79,6 @@ export function shouldHandleRouteTransitionClick(
   const linkTarget = target?.getAttribute('target');
 
   return !linkTarget || linkTarget === '_self';
-}
-
-export function usePortalRouteTransition(): PortalRouteTransitionContextValue {
-  return useContext(PortalRouteTransitionContext);
 }
 
 export function PortalRouteTransitionProvider({ children }: { children: ReactNode }) {

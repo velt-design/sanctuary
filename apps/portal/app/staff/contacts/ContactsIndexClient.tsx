@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import HeaderActions from '@/components/layout/HeaderActions';
-import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransitionContext';
 import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import ContactsImportAction from './ContactsImportAction';

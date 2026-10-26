@@ -24,7 +24,7 @@ vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseHostFromUrl: () => 'host',
   supabaseRuntimeUrl: () => 'https://host.supabase.co',
 }));
-vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+vi.mock('@/components/page-state/PortalRouteTransitionContext', () => ({
   usePortalRouteTransition: () => ({ finishInstantRoute }),
 }));
 vi.mock('./ContactsImportAction', () => ({
