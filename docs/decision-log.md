@@ -1,5 +1,13 @@
 # Decision Log
 
+## 2026-10-26: Await each independent preparation outcome
+
+The Portal preparation recovery test assumed entry into the preview-code import
+confirmed the separate metadata request had completed. A held metadata import
+reproduces the CI assertion failure. Await the actual metadata cache and preview
+outcomes, retaining the four-minute renewal boundary and all failure assertions.
+This corrects test synchronization without changing runtime scheduling or limits.
+
 ## 2026-10-26: Exact independently reviewed owner creative bundle
 
 Keep the model proposal path and its quotas intact. A closed owner-review branch
