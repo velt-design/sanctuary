@@ -1,0 +1,6 @@
+.notice { font-size: .8125rem; line-height: 1.5; color: inherit; }
+.notice p { margin: .5rem 0; font-size: inherit; }
+.notice small { font-size: inherit; }
+.notice button { appearance: none; border: 0; padding: .5rem .25rem; margin: -.5rem 0; background: none; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: .2em; cursor: pointer; min-height: 44px; }
+.notice button:disabled { opacity: .5; cursor: default; }
+.notice button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

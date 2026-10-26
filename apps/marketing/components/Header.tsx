@@ -412,7 +412,7 @@ export default function Header() {
         data-hero-navigation={isHeroOverlayRoute ? (heroHeaderScrolled ? 'solid' : 'overlay') : undefined}
       >
         <div className="container navbar">
-          <Link href="/" className="site-brand" aria-label="Sanctuary Pergolas home">
+          <Link href="/" prefetch={true} className="site-brand" aria-label="Sanctuary Pergolas home">
             {currentPath.startsWith('/configurator') || currentPath.startsWith('/simple-cover-calculator') ? <>SANCTUARY&nbsp;PERGOLAS</> : <>SANCTUARY<small>PERGOLAS</small></>}
           </Link>
           <nav aria-label="Primary" className="desktop-nav desktop-nav--center">
@@ -427,6 +427,7 @@ export default function Header() {
                       <Link
                         className={`navlink-btn ${item.current ? 'active' : ''}`}
                         href={item.href}
+                        prefetch={true}
                         aria-current={item.current ? 'page' : undefined}
                       >
                         {isPublicHeader && item.id === 'products' ? 'Pergolas' : item.label}
@@ -444,6 +445,7 @@ export default function Header() {
                         id={item.id === 'products' ? 'nav-products' : undefined}
                         className={`navlink-btn ${item.current ? 'active' : ''}`}
                         href={item.href}
+                        prefetch={true}
                         aria-label={item.desktopLabel}
                         aria-current={item.current ? 'page' : undefined}
                       >
@@ -459,6 +461,7 @@ export default function Header() {
             {showDesktopCta ? (
               <Link
                 href={headerEnquiryHref}
+                prefetch={true}
                 className="nav-cta"
                 data-homepage-event="header_estimate_click"
                 data-enquiry-type={headerEnquiryType}
@@ -521,6 +524,7 @@ export default function Header() {
                     <Link
                       ref={index === 0 ? firstMobileLinkRef : undefined}
                       href={item.href}
+                      prefetch={mobileMenuOpen ? true : false}
                       className="mobile-menu__link"
                       aria-current={item.current ? 'page' : undefined}
                       onClick={handleMobileNavigation}
@@ -535,6 +539,7 @@ export default function Header() {
                 <li>
                   <Link
                     href={headerEnquiryHref}
+                    prefetch={mobileMenuOpen ? true : false}
                     className="mobile-menu__link mobile-menu__link--estimate"
                     data-homepage-event="header_estimate_click"
                     data-enquiry-type={headerEnquiryType}

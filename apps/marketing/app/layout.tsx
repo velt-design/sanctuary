@@ -143,7 +143,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <PortalMode />
           <WebVitals />
           <FooterHeaderSync />
-          <ScrollReset />
+          <Suspense fallback={null}><ScrollReset /></Suspense>
           <Suspense fallback={null}>
             <RouteProgress />
           </Suspense>

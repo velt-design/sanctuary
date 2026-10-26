@@ -1,4 +1,5 @@
 import { parsePreviewDraft } from '../../../components/configurator-prototype/previewDraft';
+import { marketingPreviewReadOnly } from '../../../lib/marketingPreviewReadOnly';
 import { readAssignment } from '../../../lib/landingExperiment.server';
 import { allowsOptionalEnquiryPhone } from '../../../lib/enquiryContactValidation';
 import { prepareEnquiryEmail } from '../../../lib/enquiryEmailPreparation';
@@ -145,6 +146,8 @@ async function readBody(req: Request): Promise<Record<string, unknown> | null> {
 }
 
 export async function POST(req: Request) {
+  const preview = marketingPreviewReadOnly();
+  if (preview) return preview;
   if (!isAllowedMarketingOrigin(req)) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }

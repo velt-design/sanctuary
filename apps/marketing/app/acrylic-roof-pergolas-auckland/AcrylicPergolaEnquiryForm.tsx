@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Eyebrow, Heading } from '@/components/marketing-foundation';
 import { useConsent } from '@/components/ConsentProvider';
 import { sendGoogleAnalyticsEvent } from '../../lib/googleAnalyticsEvent';
@@ -27,6 +28,8 @@ import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
 import { buildSimpleCoverEnquiryPayload } from '@/lib/simpleCoverEnquiryPayload';
 import type { EnquiryBriefField } from '@/components/seo-landing/types';
 import SimpleCoverEnquirySummary from './SimpleCoverEnquirySummary';
+import { CONTACT_DRAFT_FIELDS, useEnquiryDraft } from '../../components/enquiry/useEnquiryDraft';
+import EnquiryDraftNotice from '../../components/enquiry/EnquiryDraftNotice';
 
 type AcrylicPergolaEnquiryFormProps = {
   eyebrow?: string;
@@ -188,6 +191,7 @@ export default function AcrylicPergolaEnquiryForm({
   simpleCoverEstimate = null,
 }: AcrylicPergolaEnquiryFormProps = {}) {
   const isSimpleCover = variant === 'simple-cover';
+  const formPath = usePathname();
   const {
     consent,
     hasTrackingDecision,
@@ -203,12 +207,19 @@ export default function AcrylicPergolaEnquiryForm({
   const [errors, setErrors] = useState<EnquiryFormFieldErrors>({});
   const [submitState, setSubmitState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [receivedEarlier, setReceivedEarlier] = useState(false);
   const submissionIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
   const attachmentErrorRef = useRef<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
   const shouldFocusErrorSummaryRef = useRef(false);
   const resultRef = useRef<HTMLDivElement | null>(null);
+  const draft = useEnquiryDraft({
+    scope: JSON.stringify(['embedded', formPath ?? '/acrylic-roof-pergolas-auckland', sourceContext.sourcePath, sourceContext.sourceProject, sourceContext.sourceProduct, variant, initialEnquiryType, sourceContext.enquiryType, briefFields.map(field => field.name)]),
+    fields: [...CONTACT_DRAFT_FIELDS, 'attachment', 'roofPreference', 'priorities', 'accessories', 'consentStatus', 'timeframe', ...briefFields.map(field => field.name)],
+    meta: { enquiryType: enquiryType ?? '' }, onRestoreFiles: setFiles,
+    onRestoreMeta: meta => setEnquiryType(isSimpleCover ? 'residential' : ['residential', 'commercial', 'professional'].includes(meta.enquiryType) ? meta.enquiryType as EnquiryAudience : initialEnquiryType ?? sourceContext.enquiryType ?? null),
+  });
 
   useEffect(() => {
     setIsEnhanced(true);
@@ -254,12 +265,15 @@ export default function AcrylicPergolaEnquiryForm({
     }
     attachmentErrorRef.current = null;
     setFiles(nextFiles);
+    draft.saveFiles(nextFiles);
     clearFieldError('files');
   };
 
   const removeFile = (index: number) => {
     attachmentErrorRef.current = null;
-    setFiles((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    const nextFiles = files.filter((_, currentIndex) => currentIndex !== index);
+    setFiles(nextFiles);
+    draft.saveFiles(nextFiles);
     clearFieldError('files');
   };
 
@@ -268,6 +282,7 @@ export default function AcrylicPergolaEnquiryForm({
     if (submittingRef.current || submitState === 'success') return;
 
     const form = event.currentTarget;
+    draft.save();
     const nextErrors = validateEnquiryForm(new FormData(form), files);
     if (attachmentErrorRef.current) {
       nextErrors.files = attachmentErrorRef.current;
@@ -367,6 +382,8 @@ export default function AcrylicPergolaEnquiryForm({
       }
 
       submissionIdRef.current = null;
+      setReceivedEarlier(responsePayload.idempotentReplay === true);
+      if (responsePayload.idempotentReplay !== true) draft.clear();
       setSubmitState('success');
       await trackLeadSubmitted(currentEnquiryContext, submissionId, window.location.pathname, {
         analytics: consent.analytics,
@@ -387,6 +404,8 @@ export default function AcrylicPergolaEnquiryForm({
 
   return (
     <form
+      data-clarity-mask="true"
+      ref={draft.formRef}
       className={`acrylic-form${isSimpleCover ? ' acrylic-form--simple-cover' : ''}`}
       method="post"
       action="/api/enquiry/fallback"
@@ -447,6 +466,7 @@ export default function AcrylicPergolaEnquiryForm({
             aria-describedby={errors.enquiryType ? fieldErrorId('enquiryType') : undefined}
             onChange={(event) => {
               setEnquiryType(event.currentTarget.value as EnquiryAudience);
+              draft.save({ enquiryType: event.currentTarget.value });
               clearFieldError('enquiryType');
             }}
           >
@@ -736,9 +756,10 @@ export default function AcrylicPergolaEnquiryForm({
       </div>
 
       <div className="acrylic-form__submit">
-        <AdvertisingMeasurementNotice/>
+        <div><EnquiryDraftNotice hasDraft={draft.hasDraft} warning={draft.warning} onDiscard={draft.discard}/>
+        <AdvertisingMeasurementNotice/></div>
         <button type="submit" disabled={submitState === 'sending' || submitState === 'success'}>
-          {submitState === 'sending' ? 'Sending brief' : submitState === 'success' ? 'Project brief sent' : submitLabel}
+          {submitState === 'sending' ? 'Sending brief' : submitState === 'success' ? receivedEarlier ? 'Earlier enquiry received' : 'Project brief sent' : submitLabel}
         </button>
       </div>
 
@@ -751,8 +772,8 @@ export default function AcrylicPergolaEnquiryForm({
       >
         {submitState === 'success' ? (
           <div className="acrylic-form__status-message acrylic-form__status-message--success" role="status">
-            <h3>{successHeading}</h3>
-            <p>{successMessage}</p>
+            <h3>{receivedEarlier ? 'Your earlier enquiry was received.' : successHeading}</h3>
+            <p>{receivedEarlier ? 'Changes made after your first send attempt are not included in that enquiry. Your later edits are saved in this browser draft.' : successMessage}</p>
           </div>
         ) : null}
         {submitState === 'error' ? (

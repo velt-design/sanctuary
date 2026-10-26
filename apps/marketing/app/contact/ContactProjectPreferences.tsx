@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
-export default function ContactProjectPreferences({ showBudget }: { showBudget: boolean }) {
+export default function ContactProjectPreferences({ showBudget, initialBudgetPreference }: { showBudget: boolean; initialBudgetPreference?: string }) {
   const [hasBudget, setHasBudget] = useState(false);
+  useLayoutEffect(() => { if (initialBudgetPreference !== undefined) setHasBudget(initialBudgetPreference === 'provided'); }, [initialBudgetPreference]);
   return <>
     <div className="contact-form__field contact-form__field--wide">
       <label htmlFor="contact-timing">Preferred timing <span>Optional</span></label>
@@ -14,10 +15,10 @@ export default function ContactProjectPreferences({ showBudget }: { showBudget: 
         <option value="not-sure">Not sure yet</option>
         <option value="provided">I have a budget in mind</option>
       </select>
-      {hasBudget && <>
+      <div hidden={!hasBudget}>
         <label htmlFor="contact-budget">Your approximate budget <span>Optional</span></label>
-        <input id="contact-budget" name="budgetHint" maxLength={160} placeholder="Amount or range in NZD, including GST" />
-      </>}
+        <input id="contact-budget" name="budgetHint" disabled={!hasBudget} maxLength={160} placeholder="Amount or range in NZD, including GST" />
+      </div>
     </div>}
   </>;
 }
