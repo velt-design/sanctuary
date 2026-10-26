@@ -6,12 +6,10 @@ import Link from 'next/link';
 import { buildAssistedEnquiryHref } from '@/lib/configuratorEntry';
 import type { ProductRecord } from '@/data/products';
 import ProductChoices from './ProductChoices';
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button, Container, Eyebrow, Heading, Text } from '../marketing-foundation/Primitives';
-import { useConfiguratorPrice } from '../configurator-prototype/useConfiguratorPrice';
-import { useReviewPrice } from '../configurator-prototype/useReviewPrice';
-import { enquiryEstimate } from '@/app/design-enquiry/enquiryEstimate';
-import { type ProductSelection, designEntryHref, PRODUCT_MATERIALS, PRODUCT_SIDES, productSelectionDraft } from './productSelection';
+import { useProductExampleEstimate } from './useProductExampleEstimate';
+import { type ProductSelection, designEntryHref, PRODUCT_MATERIALS, PRODUCT_SIDES } from './productSelection';
 import { useProductSelection } from './useProductSelection';
 import { PRODUCT_DESIGNS, productSelectionAnchor, type ProductDesignType } from './productDesigns';
 import styles from './product-selection.module.css';
@@ -22,8 +20,7 @@ export default function ProductSelector({ product, type }: { product: ProductRec
   const design = PRODUCT_DESIGNS[type];
   const context = { sourcePath: product.route, sourceComponent: 'product_cta' as const, sourceProduct: product.slug };
   const { selection, update, ready, storageAvailable, adjustment, projectionMax } = useProductSelection(type);
-  const { draft, issue } = useMemo(() => productSelectionDraft(selection, type), [selection, type]);
-  const [attempt, setAttempt] = useState(0);
+  const { draft, issue, estimate, retry } = useProductExampleEstimate(type, selection, ready);
   const [fullscreen, setFullscreen] = useState(false);
   const [mode, setMode] = useState<'Photos' | 'Design' | 'Plan'>('Photos');
   const priceRegion = useRef<HTMLDivElement>(null);
@@ -40,9 +37,6 @@ export default function ProductSelector({ product, type }: { product: ProductRec
   };
   const [resizing, setResizing] = useState(false);
   const [section, setSection] = useState<'Size' | 'Roof' | 'Sides'>('Size');
-  const { price, retry } = useConfiguratorPrice(draft, ready && !issue);
-  const review = useReviewPrice(draft.input, draft.roof, ready && !issue, attempt);
-  const estimate = enquiryEstimate(price, review, process.env.NODE_ENV === 'development');
   const partial = 'excluded' in estimate && Boolean(estimate.excluded?.length);
   const shared = !issue && !partial && 'amount' in estimate && estimate.amount !== undefined
     ? { basis: estimate.draft ? 'draft' as const : 'published' as const, amountIncGst: estimate.amount } : null;
@@ -72,7 +66,7 @@ export default function ProductSelector({ product, type }: { product: ProductRec
             <p className={styles.amount} data-priced={Boolean(shared)}>{issue ? 'Check side configuration' : partial ? 'Your design needs a tailored quote.' : shared ? money(shared.amountIncGst) : estimate.message}</p>
             <p className={styles.priceNote}>{shared ? 'NZD · Including GST · Subject to site confirmation' : 'We’ll confirm the cost for your site.'}</p>
             <p className={styles.priceStatus}>{shared?.basis === 'draft' ? 'Review pricing only — not a published customer offer.' : ' '}
-              {'retry' in estimate && estimate.retry && !issue && <button className={styles.retry} onClick={() => { retry(); setAttempt(n => n + 1); }}>Retry estimate</button>}</p>
+              {'retry' in estimate && estimate.retry && !issue && <button className={styles.retry} onClick={retry}>Retry estimate</button>}</p>
           </div>
           <p className={styles.selectionSummary}>{material.label} <span aria-hidden="true">·</span> {sides.label} <span aria-hidden="true">·</span> House-attached</p>
           <div className={styles.actions}>

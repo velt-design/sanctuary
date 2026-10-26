@@ -11,6 +11,18 @@ shared behavior to the ordinary staff owner so specialist Workbench behavior is
 unchanged. Verify real geometry and return/recovery in the app, separately from
 DOM tests and unchanged performance/bundle gates. Owner: `ui-foundation.md`.
 
+## 2026-10-26: Check visible dependent content on cached page returns
+
+The released scroll owner restored the homepage correctly, but its nine example
+estimates still remounted an unleased canonical request hook and displayed
+Updating until nine new replies arrived. Position and route-cache checks alone
+missed that reconstruction. Compatible public examples now share the existing
+server-authorized basic price table generated from the identical product draft.
+Never give ordinary unleased replies an invented client expiry. Preserve
+canonical fallback, revocation and exact selection boundaries; test all visible
+example amounts in the first return frames as well as scroll and route requests.
+Owner: `marketing-ui-foundation.md`.
+
 ## 2026-10-26: Restore marketing history entries without recording overlay locks
 
 The global next-frame scroll reset overrode native Back restoration. Per-entry
