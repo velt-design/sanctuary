@@ -5,7 +5,7 @@ import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
 import type { ContactsIndexPageSize, ContactsIndexSort } from '@/lib/contacts/contactsIndexContract';
 import ContactsIndexFrame, { type ContactsIndexFrameRead } from './ContactsIndexFrame';
 
-type PublishedRead = { owner: object; selection: string; read: ContactsIndexFrameRead; actions: ReactNode; rows:ReactNode; countNotice:ReactNode; pagination:ReactNode };
+type PublishedRead = { owner: object; selection: string; read: ContactsIndexFrameRead; actions: ReactNode; rows:ReactNode; countNotice:ReactNode; pagination:import('@/components/ui/foundation/PaginationSurface').PaginationEvidence };
 
 function useContactsController(initialQuery: string, owner: object | null, entryIdentity: object | string) {
   const [entry, setEntry] = useState(entryIdentity);

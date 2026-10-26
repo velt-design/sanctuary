@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { shouldHandleRouteTransitionClick, shouldStartRouteTransitionForHref } from '@/components/page-state/PortalRouteTransition';
+import { shouldHandleRouteTransitionClick, shouldStartRouteTransitionForHref, type PortalRouteTransitionContextValue } from '@/components/page-state/PortalRouteTransitionContext';
 import type { PortalInstantRoute } from '@/components/page-state/PortalRouteTransition';
 import type { ProjectsIndexArchiveFilter } from './projectsIndex';
 import { resolveProjectIndexReturnHref } from '@/lib/projects/projectIndexSession';
@@ -103,4 +103,42 @@ export function openPortalActualFrameInstantly(
   window.history.pushState(null, '', `${target.pathname}${target.search}${target.hash}`);
   router.replace(href, { scroll: false });
   return true;
+}
+
+/** Shared sidebar intent; each visible navigation owner retains its own controls. */
+export function handlePortalNavigationClick(
+  event: PortalIndexClickEvent,
+  router: Pick<PortalIndexRouter, 'replace'>,
+  href: string,
+  { beginInstantRoute, beginRouteTransition }: Pick<PortalRouteTransitionContextValue, 'beginInstantRoute' | 'beginRouteTransition'>,
+  { label, source, control }: { label: string; source: 'sidebar-panel' | 'sidebar-rail'; control: HTMLElement },
+): void {
+  if (!shouldHandleRouteTransitionClick(event)) return;
+  if (!shouldStartRouteTransitionForHref(href)) return;
+  const indexTarget = portalIndexTarget(href);
+  if (indexTarget) {
+    beginInstantRoute(indexTarget.route, { href });
+    if (openPortalIndexInstantly(event, router, href)) return;
+  }
+  beginRouteTransition({ href, label, source, control });
+  openPortalActualFrameInstantly(event, router, href);
+}
+
+/** Code preparation only; the caller owns the lifetime of its deduplication set. */
+export function preloadPortalNavigation(
+  queryClient: QueryClient,
+  router: Pick<PortalIndexRouter, 'prefetch'>,
+  href: string,
+  prefetched: Set<string>,
+): void {
+  if (portalIndexTarget(href)) {
+    preloadPortalIndex(queryClient, router, href);
+    return;
+  }
+  const routeToken = `route:${href}`;
+  if (!prefetched.has(routeToken)) {
+    prefetched.add(routeToken);
+    router.prefetch(href);
+  }
+  // Schedule data belongs to the guarded selected read owner.
 }

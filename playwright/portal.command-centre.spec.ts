@@ -36,13 +36,94 @@ function fixtureUrl({
   return `${FIXTURE_PATH}?scenario=${scenario}&work=${work}&state=${state}`;
 }
 
-async function expectNoDocumentOverflow(page: Page) {
-  const overflow = await page.evaluate(() => ({
+async function expectNoDocumentOverflow(page: Page, allowLongWork = false) {
+  const projectTitle = page.locator('[data-project-masthead-slot] [data-page-header-identity="true"] h1');
+  let verifiedTitle: Awaited<ReturnType<typeof projectTitle.elementHandle>> = null;
+  if (await projectTitle.count() === 1 && await projectTitle.evaluate(element => element.scrollHeight > element.clientHeight + 1)) {
+    const previousFocus = await page.evaluateHandle(() => document.activeElement);
+    const previousScroll = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
+    const before = await projectTitle.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height, top: element.scrollTop };
+    });
+    try {
+      await expect(projectTitle).toHaveAttribute('tabindex', '0');
+      await expect(projectTitle).toHaveAttribute('title', (await projectTitle.textContent())!.trim());
+      await projectTitle.evaluate(element => { element.scrollTop = 0; element.focus({ preventScroll: true }); });
+      await projectTitle.press('End');
+      await expect.poll(() => projectTitle.evaluate(element => element.scrollTop + element.clientHeight >= element.scrollHeight - 1)).toBe(true);
+      const after = await projectTitle.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
+      });
+      for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
+      verifiedTitle = await projectTitle.elementHandle();
+    } finally {
+      await projectTitle.evaluate((element, top) => { element.scrollTop = top; }, before.top);
+      await previousFocus.evaluate(element => {
+        if (element instanceof HTMLElement && element !== document.body) element.focus({ preventScroll: true });
+        else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      });
+      await page.evaluate(position => scrollTo(position.x, position.y), previousScroll);
+      await previousFocus.dispose();
+    }
+  }
+  let verifiedWork: Awaited<ReturnType<typeof projectTitle.elementHandle>> = null;
+  if (allowLongWork) {
+    const work = page.locator('[data-overview-reading="work"][aria-label="Project Work reading area"]');
+    if (await work.count() === 1 && await work.evaluate(element => element.scrollHeight > element.clientHeight + 1)) {
+      const previousFocus = await page.evaluateHandle(() => document.activeElement);
+      const previousScroll = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
+      const before = await work.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height, top: element.scrollTop };
+      });
+      try {
+        await expect(work).toHaveAttribute('tabindex', '0');
+        await work.evaluate(element => { element.scrollTop = 0; element.focus({ preventScroll: true }); });
+        const complete = work.getByRole('button', { name: 'Mark complete', exact: true });
+        await expect(complete).toBeVisible();
+        expect(await complete.evaluate(element => {
+          const box = element.getBoundingClientRect(), owner = element.closest('[data-overview-reading="work"]')!.getBoundingClientRect();
+          return box.top >= owner.top - 1 && box.bottom <= owner.bottom + 1 && box.left >= owner.left - 1 && box.right <= owner.right + 1;
+        })).toBe(true);
+        await work.press('End');
+        await expect.poll(() => work.evaluate(element => element.scrollTop + element.clientHeight >= element.scrollHeight - 1)).toBe(true);
+        const manage = work.getByRole('button', { name: 'Manage project work', exact: true });
+        await expect(manage).toBeVisible();
+        await expect.poll(() => manage.evaluate(element => {
+          const box = element.getBoundingClientRect(), owner = element.closest('[data-overview-reading="work"]')!.getBoundingClientRect();
+          return {
+            topFits: box.top >= owner.top - 1,
+            bottomFits: box.bottom <= owner.bottom + 1,
+            leftFits: box.left >= owner.left - 1,
+            rightFits: box.right <= owner.right + 1,
+          };
+        })).toEqual({ topFits: true, bottomFits: true, leftFits: true, rightFits: true });
+        const after = await work.evaluate(element => {
+          const box = element.getBoundingClientRect();
+          return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
+        });
+        for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
+        verifiedWork = await work.elementHandle();
+      } finally {
+        await work.evaluate((element, top) => { element.scrollTop = top; }, before.top);
+        await previousFocus.evaluate(element => {
+          if (element instanceof HTMLElement && element !== document.body) element.focus({ preventScroll: true });
+          else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        });
+        await page.evaluate(position => scrollTo(position.x, position.y), previousScroll);
+        await previousFocus.dispose();
+      }
+    }
+  }
+  const overflow = await page.evaluate(({ acceptedProjectTitle, acceptedWork }) => ({
     horizontal: document.documentElement.scrollWidth > window.innerWidth + 1,
     nestedVerticalScrollers: Array.from(
       document.querySelectorAll<HTMLElement>("body *"),
     )
       .filter((element) => {
+        if (element === acceptedProjectTitle || element === acceptedWork) return false;
         if (element.closest('[role="dialog"]')) return false;
         const style = getComputedStyle(element);
         return (
@@ -56,7 +137,9 @@ async function expectNoDocumentOverflow(page: Page) {
           element.getAttribute("aria-label") ??
           element.tagName,
       ),
-  }));
+  }), { acceptedProjectTitle: verifiedTitle, acceptedWork: verifiedWork });
+  await verifiedTitle?.dispose();
+  await verifiedWork?.dispose();
   expect(overflow.horizontal).toBe(false);
   expect(overflow.nestedVerticalScrollers).toEqual([]);
 }
@@ -101,6 +184,35 @@ async function expectNoCroppedOverviewControls(page: Page) {
       }),
     );
   expect(cropped).toEqual([]);
+}
+
+async function expectInvoiceEssentialsFit(page: Page) {
+  const schedule = page.getByRole('region', { name: 'Invoice schedule', exact: true });
+  const totals = schedule.locator('dl[aria-label="Accepted project quote payment totals"]');
+  await expect(totals.locator(':scope > div')).toHaveCount(4);
+  const problems = await schedule.evaluate(element => {
+    const failures: string[] = [];
+    const card = element.getBoundingClientRect();
+    const slots = Array.from(element.querySelectorAll<HTMLElement>('dl[aria-label="Accepted project quote payment totals"] > div'));
+    for (const [index, slot] of slots.entries()) {
+      const bounds = slot.getBoundingClientRect();
+      for (const value of slot.querySelectorAll<HTMLElement>('dt, dd, strong')) {
+        const box = value.getBoundingClientRect();
+        if (box.left < bounds.left - 1 || box.right > bounds.right + 1 || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1 || value.scrollWidth > value.clientWidth + 1) failures.push(`essential-slot-${index}`);
+      }
+    }
+    const actions = Array.from(element.querySelectorAll<HTMLButtonElement>('button')).filter(button => !button.closest('details'));
+    for (const [index, button] of actions.entries()) {
+      const box = button.getBoundingClientRect();
+      if (box.left < card.left - 1 || box.right > card.right + 1 || box.top < card.top - 1 || box.bottom > card.bottom + 1 || button.scrollWidth > button.clientWidth + 1) failures.push(`primary-action-${index}`);
+      if (actions.slice(index + 1).some(other => {
+        const next = other.getBoundingClientRect();
+        return Math.min(box.right, next.right) - Math.max(box.left, next.left) > 1 && Math.min(box.bottom, next.bottom) - Math.max(box.top, next.top) > 1;
+      })) failures.push(`overlapping-action-${index}`);
+    }
+    return failures;
+  });
+  expect(problems).toEqual([]);
 }
 
 const COMMERCIAL_SCENARIO_EXPECTATIONS = {
@@ -526,7 +638,7 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
     await expect(layout).toContainText(
       "Confirm the revised multi-zone outdoor living design, final customer selections, and installation constraints",
     );
-    await expectNoDocumentOverflow(page);
+    await expectNoDocumentOverflow(page, true);
     await expectNoCroppedOverviewControls(page);
   });
 }
@@ -560,11 +672,14 @@ test("recomposes from available Overview width instead of viewport width", async
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto(fixtureUrl({ work: "v2-blocked" }));
   const layout = page.locator('[data-project-overview-layout="true"]');
-  await expect(layout).toHaveAttribute("data-overview-composition", "wide");
+  const columnCount = () => layout.evaluate((element) =>
+    getComputedStyle(element.firstElementChild!).gridTemplateColumns.trim().split(/\s+/).length,
+  );
+  await expect.poll(columnCount).toBe(2);
   await layout.evaluate((element) => {
     (element as HTMLElement).style.width = "760px";
   });
-  await expect(layout).toHaveAttribute("data-overview-composition", "stacked");
+  await expect.poll(columnCount).toBe(1);
   const regionOrder = await layout
     .locator("[data-project-overview-region]")
     .evaluateAll((regions) =>
@@ -982,7 +1097,8 @@ test("routes deterministic V2 command data through the real project shell and Ov
   await expect(layout).toContainText(
     "Project owner:",
   );
-  await layout.locator('summary', { hasText: 'Quote & design details' }).click();
+  await expect(layout.getByRole('region', { name: 'Current design and commercial summary', exact: true })).toBeVisible();
+  await expect(layout.getByText('$1,234.56 inc GST', { exact: true })).toBeVisible();
   await expect(layout.locator("[data-command-centre-source]")).toBeVisible();
   await layout.locator("summary", { hasText: "Team notes & portal history" }).click();
   await expect(
@@ -1143,7 +1259,57 @@ for (const width of [1440, 768, 390]) {
     const invoices = page.getByRole('table', { name: 'Invoices', exact: true });
     await expect(invoices.getByText('INV-CLARITY', { exact: true })).toBeVisible();
     await expect(invoices.getByText('$13328.44', { exact: true })).toBeVisible();
+    await expectInvoiceEssentialsFit(page);
+    const paymentDetails = page.getByRole('region', { name: 'Invoice schedule', exact: true }).locator('details');
+    await paymentDetails.locator('summary', { hasText: 'Full payment schedule and history' }).click();
+    await expect(paymentDetails).toContainText('Q-CLARITY v3');
     await expectNoDocumentOverflow(page);
+  });
+}
+
+for (const width of [390, 768]) {
+  test(`keeps invoice essentials and reading positions through failed-read Retry at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=invoices&commercial=1&progressive=1&readFailure=1`);
+    await expect(page.getByText('Could not load the job payment schedule', { exact: true })).toBeVisible();
+    const schedule = page.getByRole('region', { name: 'Invoice schedule', exact: true });
+    const totals = schedule.locator('dl[aria-label="Accepted project quote payment totals"]');
+    const find = page.locator('#invoice-search');
+    const table = page.getByRole('table', { name: 'Invoices', exact: true });
+    await find.fill('INV');
+    const tableNode = await table.elementHandle();
+    const owners = [schedule, totals, find, table.locator('xpath=..')];
+    const nodes = await Promise.all(owners.map(owner => owner.elementHandle()));
+    const boxes = await Promise.all(owners.map(owner => owner.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
+    })));
+    await expectInvoiceEssentialsFit(page);
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await find.focus();
+    await expect(totals.locator(':scope > div > dd')).toHaveText(['$26,656.87', '$13,328.44', '$0.00', '$13,328.43']);
+    await expect(table).toContainText('INV-CLARITY');
+    await expect(find).toHaveValue('INV');
+    await expect(find).toBeFocused();
+    expect(await tableNode!.evaluate(element => element.isConnected)).toBe(true);
+    for (const [index, owner] of owners.entries()) {
+      expect(await nodes[index]!.evaluate(element => element.isConnected)).toBe(true);
+      const after = await owner.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
+      });
+      const dimensions = index === owners.length - 1 ? ['x', 'y', 'width'] as const : ['x', 'y', 'width', 'height'] as const;
+      for (const key of dimensions) expect(Math.abs(after[key] - boxes[index][key])).toBeLessThanOrEqual(1);
+    }
+    const rowReachable = await table.locator('tbody tr').evaluateAll(rows => rows.every(row => {
+      const box = row.getBoundingClientRect(), viewport = row.closest('table')!.parentElement!.getBoundingClientRect();
+      return box.top >= viewport.top - 1 && box.bottom <= viewport.bottom + 1;
+    }));
+    expect(rowReachable).toBe(true);
+    await expectInvoiceEssentialsFit(page);
+    await expectNoDocumentOverflow(page);
+    for (const node of nodes) await node?.dispose();
+    await tableNode?.dispose();
   });
 }
 

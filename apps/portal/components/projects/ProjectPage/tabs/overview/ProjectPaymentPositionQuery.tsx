@@ -6,10 +6,11 @@ import { useActiveProjectOverviewReads } from "../../ProjectOverviewReads";
 import { ApiError } from "@/lib/repo/apiClient";
 import ProjectPaymentPosition from "./ProjectPaymentPosition";
 
-export default function ProjectPaymentPositionQuery({ projectId, host, onAccessEnding, readOnly = false }: {
+export default function ProjectPaymentPositionQuery({ projectId, host, onAccessEnding, readOnly = false, embedded = false }: {
   projectId: string;
   host: string;
   readOnly?: boolean;
+  embedded?: boolean;
   onAccessEnding?: (status: number) => void;
 }) {
   const { paymentQuery: query } = useActiveProjectOverviewReads(host, projectId);
@@ -19,7 +20,7 @@ export default function ProjectPaymentPositionQuery({ projectId, host, onAccessE
 
   // Never show cached financial data after the staff access boundary ends.
   if (denied !== null) return <DataStatePanel state="unavailable" title="Payment access unavailable" description="Your project access changed." />;
-  return <ProjectPaymentPosition previewOnly={readOnly} projectId={projectId} schedule={query.data ?? null} pending={query.isPending}
+  return <ProjectPaymentPosition embedded={embedded} previewOnly={readOnly} projectId={projectId} schedule={query.data ?? null} pending={query.isPending}
     saved={Boolean(query.data) && query.isError}
     loadedAt={query.dataUpdatedAt ? new Date(query.dataUpdatedAt).toISOString() : undefined}
     statusPanel={!query.data && !query.isPending ? <DataStatePanel state="error" title="Payments unavailable"

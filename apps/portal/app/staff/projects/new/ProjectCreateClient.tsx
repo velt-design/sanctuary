@@ -1,5 +1,7 @@
 'use client';
 
+import ReadStatus from '@/components/page-state/ReadStatus';
+
 import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -265,7 +267,9 @@ export default function ProjectCreateClient() {
             <Input id="region" label="Region" value={draft.region} disabled={busy} onChange={(event) => setField('region', event.target.value)} />
             <Input id="siteAddress" label="Site address" fieldClassName={styles.fullWidth} value={draft.siteAddress} disabled={busy} onChange={(event) => setField('siteAddress', event.target.value)} />
 
-            {duplicateCandidates.length ? (
+            <div className={styles.status}><ReadStatus title={duplicateCandidates.length ? 'Possible existing contact: review matches' : submitError ? submitError.retrySafe ? 'Project could not be created' : 'Do not retry. Administrator review required.' : busy ? 'Creating project…' : 'Project details'} tone={duplicateCandidates.length ? 'warning' : submitError ? 'error' : 'neutral'}
+              details={duplicateCandidates.length || submitError ? <>
+{duplicateCandidates.length ? (
               <div className={styles.status}>
                 <AlertBanner tone="warning" title="Possible existing contact">
                   <p>Choose an existing match, or explicitly create a separate contact and project.</p>
@@ -306,6 +310,7 @@ export default function ProjectCreateClient() {
                 </AlertBanner>
               </div>
             ) : null}
+              </> : undefined} /></div>
           </div>
 
           <div className={styles.formActions}>

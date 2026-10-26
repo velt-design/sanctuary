@@ -343,6 +343,7 @@
 }
 
 .tableScroller {
+  scrollbar-gutter: stable;
   --sheet-scale: 1;
   --sheet-row-number-width: 58px;
   --sheet-letter-band-height: 28px;

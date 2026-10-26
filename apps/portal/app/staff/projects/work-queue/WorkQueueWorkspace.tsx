@@ -22,7 +22,7 @@ export function WorkQueueWorkspace({owner,visible,entryIdentity,unavailable=fals
   const setFilter=<K extends keyof WorkQueueFilters>(key:K,value:WorkQueueFilters[K])=>{setFilters(current=>({...current,[key]:value}));setPage(1);};
   const clearFilters=()=>{setFilters(DEFAULT_WORK_QUEUE_FILTERS);setPage(1);};
   return <Context.Provider value={visible?controller:null}>
-    {visible?<WorkQueueFrame state={state} count={read.value?.count} admin={read.value?.admin} notices={read.value?.notices}>
+    {visible?<WorkQueueFrame state={state} count={read.value?.count} admin={read.value?.admin} notices={read.value?.notices} noticeTitle={read.value?.noticeTitle} retry={read.value?.retry}>
       <WorkQueueSurface {...(list.value??{filters,setFilter,clearFilters,ownerOptions,stageOptions,
         content:unavailable?<DataStatePanel state="unavailable" onRetry={onRetry}/>:<p role="status">Reading the complete work queue…</p>})}/>
     </WorkQueueFrame>:null}{children}

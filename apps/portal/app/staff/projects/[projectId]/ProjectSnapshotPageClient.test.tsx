@@ -174,9 +174,14 @@ describe("ProjectSnapshotPageClient", () => {
     expect(rendered.container.textContent).toContain("Cached Project");
     expect(rendered.container.textContent).toContain("Updating project");
     expect(rendered.container.querySelector('[data-testid="project-frame"]')?.textContent).toContain("Updating project");
-    expect(rendered.container.textContent).toContain(
+    const details = [...rendered.container.querySelectorAll('button')].find(button => button.textContent === 'Details')!;
+    act(() => { details.focus(); details.click(); });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
       "Loading the latest Project Work, commercial state, notes and events.",
     );
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(details);
     expect(rendered.container.textContent).not.toContain(
       "Loading the complete project",
     );
@@ -317,7 +322,14 @@ describe("ProjectSnapshotPageClient", () => {
       ),
     ).not.toBeNull();
     expect(rendered.container.textContent).toContain("Cached Project");
-    expect(rendered.container.textContent).toContain("last known details");
+    const details = [...rendered.container.querySelectorAll('button')].find(button => button.textContent === 'Details')!;
+    act(() => { details.focus(); details.click(); });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("last known details");
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(details);
+    act(() => [...rendered.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!.click());
+    expect(refetchMock).toHaveBeenCalledTimes(1);
 
     rendered.unmount();
   });

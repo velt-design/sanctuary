@@ -4,6 +4,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
 import { projectOperationalStatusLabel } from '@/lib/projects/projectCurrentStatus';
 import { AlertBanner, Button, ButtonLink } from '@/components/ui/foundation';
+import ReadStatus from '@/components/page-state/ReadStatus';
 
 type CommercialContext = {
   closed: boolean;
@@ -39,8 +40,12 @@ export function ProjectCommercialProvider({ projectId, work, ready, children }: 
 }
 
 /** Presentation acknowledgement only. Existing command permissions and safeguards still apply. */
-export function CommercialProjectNotice({ projectId, view }: { projectId: string; view: string }) {
+export function CommercialProjectNotice({ projectId, view, compact = false, details, unavailable = false }: { projectId: string; view: string; compact?: boolean; details?: ReactNode; unavailable?: boolean }) {
   const context = useProjectCommercialContext();
+  if (compact) return <ReadStatus title={unavailable ? 'Project details unavailable' : !context.ready ? 'Commercial actions paused' : context.paused ? context.status ?? 'Project on hold' : ''}
+    tone={unavailable ? 'error' : context.paused || !context.ready ? 'warning' : 'neutral'}
+    action={context.ready && context.paused && !context.actionsAvailable ? <Button variant="quiet" size="small" onClick={context.reviewActions}>Review commercial actions</Button> : undefined}
+    details={details || !context.ready || context.paused ? <>{details}<CommercialProjectNotice projectId={projectId} view={view} /></> : undefined} />;
   if (!context.ready) return <AlertBanner tone="info" title="Commercial actions paused">Record actions require a verified current project state. Retry any failed project reads above.</AlertBanner>;
   if (!context.paused) return null;
   return <AlertBanner tone="info" title={context.status ?? 'Project on hold'}>

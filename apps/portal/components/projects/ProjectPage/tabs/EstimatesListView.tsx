@@ -82,6 +82,8 @@ export default function EstimatesListView({
       <Button variant="secondary" onClick={onCreateAddOn}>Create add-on estimate</Button>
       <Button onClick={onCreate}>Create estimate</Button>
     </div> : null,
+    statusTitle: error ? (estimates.length ? 'Showing saved estimates' : 'Could not load estimates') : undefined,
+    statusAction: error ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined,
     status: error ? <DataStatePanel state={estimates.length ? 'stale' : 'error'}
       title={estimates.length ? 'Showing saved estimates' : 'Could not load estimates'}
       description={error} onRetry={onRetry} /> : null,

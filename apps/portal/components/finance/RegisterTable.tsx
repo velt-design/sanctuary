@@ -14,7 +14,9 @@ export default function RegisterTable({ rows, tab, selected, disabled, select, p
 }) {
   const invoice = tab === 'invoices';
   const today = checkedAt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(checkedAt)) : '';
-  return <Table className={styles.table} role="table"><TableHeader role="rowgroup"><TableRow role="row">
+  return <Table className={styles.table} role="table" viewportClassName={styles.tableViewport}>
+    <colgroup>{(invoice ? [14, 26, 14, 12, 12, 11, 11] : [16, 34, 18, 16, 16]).map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}</colgroup>
+    <TableHeader role="rowgroup"><TableRow role="row">
     <TableHead>{invoice ? 'Invoice' : 'Quote'}</TableHead><TableHead>Customer / job</TableHead><TableHead>Sent</TableHead><TableHead>{invoice ? 'Due' : 'Expires'}</TableHead>
     <TableHead className={styles.number}>Total</TableHead>{invoice && <><TableHead className={styles.number}>Paid / credits</TableHead><TableHead className={`${styles.number} ${styles.owingColumn}`}>Owing</TableHead></>}
   </TableRow></TableHeader><TableBody role="rowgroup">

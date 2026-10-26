@@ -1,0 +1,29 @@
+.page { display: grid; align-content: start; gap: var(--ui-density-section-gap); }.actionSlot { min-inline-size:124px; min-block-size:44px; display:flex; align-items:center; }.stack { display: grid; gap: var(--ui-density-section-gap); min-width: 0; }
+.listControls { display: grid; grid-template-columns: minmax(240px, 2fr) minmax(160px, 1fr) minmax(130px, 0.6fr); gap: var(--ui-space-3); align-items: end; }
+.responsiveTable { min-width: 100%; table-layout: fixed; }
+.responsiveTable th:nth-child(1) { width:28%; }
+.responsiveTable th:nth-child(2) { width:26%; }
+.responsiveTable th:nth-child(3) { width:16%; }
+.responsiveTable th:nth-child(4) { width:18%; }
+.responsiveTable th:nth-child(5) { width:12%; }
+.responsiveTable td { overflow-wrap:anywhere; }
+.listViewport { min-height:320px; }
+.listCard > header { min-height:72px; align-items:center; }
+.listCard > header > :last-child { min-width:0; flex:1 1 270px; max-width:680px; }
+@media(max-width:767px) {
+ .listCard > header { display:grid; gap:0; } .listCard > header > :last-child { width:100%; max-width:none; }
+ .responsiveTable th:nth-child(1) { width:76%; } .responsiveTable th:nth-child(5) { width:24%; }
+}
+
+@media (max-width: 767px) {
+  .listControls { grid-template-columns: 1fr; }
+  .mobileOptional { display: none; }
+}
+
+@media (max-width: 767px) { .responsiveTable col:first-child { width: 76% !important; } .responsiveTable col:last-child { width: 24% !important; } }
+
+.listHeaderActions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-2); }
+@media (max-width: 767px) {
+  .listHeaderActions { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px 64px; }
+  .listHeaderActions > :last-child { justify-self: end; }
+}

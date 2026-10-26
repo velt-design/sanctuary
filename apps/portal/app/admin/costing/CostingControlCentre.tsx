@@ -1,5 +1,7 @@
 'use client';
 
+import ReadStatus from '@/components/page-state/ReadStatus';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {useCostingOverview} from './useCostingOverview';
 import AccessoryRatesEditor from './AccessoryRatesEditor';
@@ -518,7 +520,11 @@ export default function CostingControlCentre({ initialOverview,initialOverviewRe
         dirty={dirty}
       />
 
-      {overviewError&&<div className={styles.error} role="alert">{overviewError} <button type="button" disabled={overviewPending} onClick={()=>{setOverviewPending(true);setOverviewError('');void refreshOverview().catch(()=>setOverviewError('Pricing configuration overview could not be loaded. Retry.')).finally(()=>setOverviewPending(false));}}>Retry overview</button></div>}
+      <ReadStatus title={overviewError ? 'Pricing overview unavailable' : error ? 'Pricing change could not be completed' : issues.length ? `${issues.length} pricing values need review` : message || (overview ? 'Pricing current' : overviewPending ? 'Reading pricing overview…' : 'Pricing overview unavailable')}
+        tone={overviewError || error || issues.length || !overview && !overviewPending ? 'error' : 'neutral'}
+        action={overviewError ? <button type="button" disabled={overviewPending} onClick={()=>{setOverviewPending(true);setOverviewError('');void refreshOverview().catch(()=>setOverviewError('Pricing configuration overview could not be loaded. Retry.')).finally(()=>setOverviewPending(false));}}>Retry overview</button> : undefined}
+        details={overviewError || error || message || issues.length ? <>
+{overviewError&&<div className={styles.error} role="alert">{overviewError} <button type="button" disabled={overviewPending} onClick={()=>{setOverviewPending(true);setOverviewError('');void refreshOverview().catch(()=>setOverviewError('Pricing configuration overview could not be loaded. Retry.')).finally(()=>setOverviewPending(false));}}>Retry overview</button></div>}
       {error ? <div className={styles.error} role="alert">{error}</div> : null}
       {message ? <div className={styles.success} role="status">{message}</div> : null}
       {issues.length ? (
@@ -546,6 +552,7 @@ export default function CostingControlCentre({ initialOverview,initialOverviewRe
           </ul>
         </div>
       ) : null}
+        </> : undefined} />
 
       {draftDialog ? (
         <CostingDraftDialog

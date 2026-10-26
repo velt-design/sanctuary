@@ -53,7 +53,14 @@ describe('Contacts actual frame', () => {
     const view = renderIntoDocument(<Frame />);
     const input = view.container.querySelector<HTMLInputElement>('#contactSearch')!;
     const table = view.container.querySelector('table');
+    const columns = Array.from(table!.querySelectorAll('thead th'));
+    expect(columns).toHaveLength(5);
+    const viewport = table!.parentElement;
+    const status = view.container.querySelector('span[title="Reading…"]');
     const heading = view.container.querySelector('h1');
+    const previous = view.container.querySelector<HTMLButtonElement>('[aria-label="Previous page"]')!;
+    const next = view.container.querySelector<HTMLButtonElement>('[aria-label="Next page"]')!;
+    expect(previous.disabled).toBe(true); expect(next.disabled).toBe(true);
     act(() => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Fictional');
       input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -61,7 +68,12 @@ describe('Contacts actual frame', () => {
     view.rerender(<Frame read={fresh} />);
     expect(view.container.textContent).toContain('Fictional Contact');
     expect(view.container.querySelector('table')).toBe(table);
+    expect(table?.parentElement).toBe(viewport);
+    expect(Array.from(table!.querySelectorAll('thead th'))).toEqual(columns);
+    expect(status?.isConnected).toBe(true);
     expect(view.container.querySelector('h1')).toBe(heading);
+    expect(view.container.querySelector('[aria-label="Previous page"]')).toBe(previous);
+    expect(view.container.querySelector('[aria-label="Next page"]')).toBe(next);
     expect(view.container.querySelector('#contactSearch')).toBe(input);
     expect(input.value).toBe('Fictional');
     view.rerender(<Frame read={{ ...pending, state: 'unavailable' }} />);

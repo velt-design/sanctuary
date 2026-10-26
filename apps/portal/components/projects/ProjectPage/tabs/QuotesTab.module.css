@@ -1448,3 +1448,19 @@
 .historyToggle input { accent-color: var(--ui-action); }
 .historyToggle span { margin-left: auto; }
 .rowClickable[data-historical='true'] { background: var(--ui-surface-secondary); }
+
+.wrapper[data-quotes-view="list"] .tableWrap { min-height: 320px; }
+@media (min-width: 721px) {
+  .wrapper[data-quotes-view="list"] .listTable { table-layout: fixed; width: 100%; }
+  .wrapper[data-quotes-view="list"] .listTable td { overflow-wrap: anywhere; }
+}
+
+.wrapper[data-quotes-view="list"] .header { min-height: 88px; }
+.listHeaderActionSlot { min-height: 44px; min-width: 130px; }
+@media (max-width: 720px) { .wrapper[data-quotes-view="list"] .header { display: grid; } }
+
+/* Agreement facts stay visible in their own stable, fully scrollable reading area. */
+.acceptedWork { block-size: 184px; min-width: 0; overflow: auto; scrollbar-gutter: stable; }
+.acceptedWork > p { margin: 0; color: var(--ui-text-muted); }
+.acceptedWork:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }
+@media (max-width: 720px) { .acceptedWork { block-size: 248px; } }

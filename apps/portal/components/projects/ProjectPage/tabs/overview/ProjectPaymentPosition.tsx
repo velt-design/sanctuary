@@ -16,6 +16,7 @@ export default function ProjectPaymentPosition({
   saved = false,
   loadedAt,
   previewOnly = false,
+  embedded = false,
 }: {
   projectId: string;
   schedule: ProjectInvoiceSchedule | null;
@@ -24,11 +25,11 @@ export default function ProjectPaymentPosition({
   saved?: boolean;
   loadedAt?: string;
   previewOnly?: boolean;
+  embedded?: boolean;
 }) {
   const { closed } = useProjectCommercialContext();
   const hasAgreement = Boolean(schedule?.acceptedQuoteVersionId || schedule?.acceptedQuotes?.length);
-  return (
-    <Card title="Payment position" padding="compact" aria-label="Payment position">
+  const body = (
       <div className={styles.stack}>
         {statusPanel}
         {saved ? <AlertBanner tone="warning" title="Saved payment position">The latest payment refresh failed. Check Invoices before acting.</AlertBanner> : null}
@@ -50,6 +51,6 @@ export default function ProjectPaymentPosition({
         </details>
         <ButtonLink disabled={previewOnly} variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}>Open invoices</ButtonLink>
       </div>
-    </Card>
   );
+  return embedded ? body : <Card title="Payment position" padding="compact" aria-label="Payment position">{body}</Card>;
 }

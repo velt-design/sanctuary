@@ -1,5 +1,38 @@
 import { PORTAL_LOCALE, PORTAL_TIME_ZONE } from './portalDateConstants';
 
+const YMD_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: PORTAL_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(PORTAL_LOCALE, {
+  timeZone: PORTAL_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: 'numeric',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+});
+
+const DATE_FORMATTER = new Intl.DateTimeFormat(PORTAL_LOCALE, {
+  timeZone: PORTAL_TIME_ZONE,
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+
+const TIME_FORMATTER = new Intl.DateTimeFormat(PORTAL_LOCALE, {
+  timeZone: PORTAL_TIME_ZONE,
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+});
+
+
 type PortalFormatOptions = {
   fallback?: string;
 };
@@ -14,12 +47,7 @@ function coerceDate(value: Date | string | number | null | undefined): Date | nu
 }
 
 function buildYmd(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: PORTAL_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
+  const parts = YMD_FORMATTER.formatToParts(date);
 
   const year = parts.find((part) => part.type === 'year')?.value ?? '0000';
   const month = parts.find((part) => part.type === 'month')?.value ?? '01';
@@ -37,16 +65,7 @@ export function formatPortalDateTime(value: Date | string | number | null | unde
   if (value == null || value === '') return fallback;
   const date = coerceDate(value);
   if (!date) return typeof value === 'string' ? value : fallback;
-  return new Intl.DateTimeFormat(PORTAL_LOCALE, {
-    timeZone: PORTAL_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  }).format(date);
+  return DATE_TIME_FORMATTER.format(date);
 }
 
 export function formatPortalDate(value: Date | string | number | null | undefined, options: PortalFormatOptions = {}): string {
@@ -54,12 +73,7 @@ export function formatPortalDate(value: Date | string | number | null | undefine
   if (value == null || value === '') return fallback;
   const date = coerceDate(value);
   if (!date) return typeof value === 'string' ? value : fallback;
-  return new Intl.DateTimeFormat(PORTAL_LOCALE, {
-    timeZone: PORTAL_TIME_ZONE,
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
+  return DATE_FORMATTER.format(date);
 }
 
 export function formatPortalTime(value: Date | string | number | null | undefined, options: PortalFormatOptions = {}): string {
@@ -67,12 +81,7 @@ export function formatPortalTime(value: Date | string | number | null | undefine
   if (value == null || value === '') return fallback;
   const date = coerceDate(value);
   if (!date) return typeof value === 'string' ? value : fallback;
-  return new Intl.DateTimeFormat(PORTAL_LOCALE, {
-    timeZone: PORTAL_TIME_ZONE,
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).format(date);
+  return TIME_FORMATTER.format(date);
 }
 
 export { PORTAL_LOCALE, PORTAL_TIME_ZONE };

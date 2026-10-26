@@ -6,25 +6,27 @@ import { MetricGrid } from '@/components/ui/foundation/FoundationOperational';
 import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
 import type { EstimatesListBinding } from './EstimatesListSurface';
 import styles from './InvoicesTab.module.css';
+import ReadStatus from '@/components/page-state/ReadStatus';
 export type InvoicesListEvidence = {
   pending?:boolean; closed: boolean; schedule: ProjectInvoiceSchedule | null; schedulePending: boolean; scheduleEyebrow: ReactNode;
-  beforeSchedule: ReactNode; scheduleDetails: ReactNode; beforeHistory: ReactNode; historyEyebrow: ReactNode;
-  dialogs: ReactNode; render: (query: string) => { noMatches: ReactNode; rows: ReactNode };
+  beforeSchedule: ReactNode; scheduleDetails: ReactNode; beforeHistory: ReactNode; historyEyebrow: ReactNode; noticeTitle?: string; noticeAction?: ReactNode;
+  paymentActions?: ReactNode; dialogs: ReactNode; render: (query: string) => { noMatches: ReactNode; rows: ReactNode };
 };
 export type InvoicesListBinding = Omit<EstimatesListBinding, 'publish'> & { publish: (value: InvoicesListEvidence | null) => void };
 function formatMoneyFromCents(value: number): string {
   return Number.isFinite(value) ? new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(value / 100) : '-';
 }
 
-export function InvoiceScheduleTotalsSurface({ schedule, pending = false, closed = false }: { schedule: ProjectInvoiceSchedule | null; pending?: boolean; closed?: boolean }) {
+export function InvoiceScheduleTotalsSurface({ schedule, pending = false, closed = false, essential = false }: { schedule: ProjectInvoiceSchedule | null; pending?: boolean; closed?: boolean; essential?: boolean }) {
   const unknown=pending?'Reading…':'Unavailable';
   return (
 <MetricGrid
+            className={essential ? styles.scheduleTotals : undefined}
             ariaLabel="Accepted project quote payment totals"
             columns={4}
             items={[
-              { label: closed ? 'Recorded contract value' : 'Job total', value: schedule?formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents):unknown, detail: 'Accepted quotes and separate invoiced work' },
-              ...((schedule?.standaloneTotalIncGstCents ?? 0) > 0 ? [
+              { label: closed ? 'Recorded contract value' : 'Job total', value: schedule?formatMoneyFromCents(schedule.billableTotalIncGstCents ?? schedule.acceptedQuoteTotalIncGstCents):unknown, detail: essential ? <span className={styles.totalBreakdown}><span><span>Accepted quote value</span><strong>{schedule ? formatMoneyFromCents(schedule.acceptedQuoteTotalIncGstCents) : unknown}</strong></span><span><span>Other invoiced work</span><strong>{schedule ? formatMoneyFromCents(schedule.standaloneTotalIncGstCents ?? 0) : unknown}</strong></span></span> : 'Accepted quotes and separate invoiced work' },
+              ...(!essential && (schedule?.standaloneTotalIncGstCents ?? 0) > 0 ? [
                 { label: 'Accepted quote value', value: formatMoneyFromCents(schedule!.acceptedQuoteTotalIncGstCents), detail: 'Base contract and accepted add-ons' },
                 { label: 'Other invoiced work', value: formatMoneyFromCents(schedule!.standaloneTotalIncGstCents ?? 0), detail: 'Separate charges outside current quotes' },
               ] : []),
@@ -44,20 +46,26 @@ export default function InvoicesListSurface({ query, onQueryChange, evidence, un
   return <div className={styles.wrapper}>
     <div className={styles.header}><h3 className={styles.title}>Invoices</h3>
       <p className={styles.subtitle}>NZD inc GST · payment schedule, money received and invoice history.</p></div>
-    {evidence?.beforeSchedule}
-    <Card title={evidence?.closed ? 'Recorded payment schedule' : 'Job payment schedule'}
+    <ReadStatus title={evidence?.noticeTitle ?? (unavailable ? 'Invoices unavailable' : !evidence || evidence.pending ? 'Reading invoices…' : 'Invoices current')}
+      tone={unavailable ? 'error' : evidence?.noticeTitle ? 'warning' : 'neutral'} action={evidence?.noticeAction} details={evidence?.beforeSchedule} />
+    <Card className={styles.paymentSchedule} title={evidence?.closed ? 'Recorded payment schedule' : 'Job payment schedule'}
       eyebrow={evidence?.scheduleEyebrow ?? (unavailable ? 'Payment position unavailable' : 'Reading payment position…')}
       padding="none" headingLevel={4} aria-label="Invoice schedule">
-      <InvoiceScheduleTotalsSurface schedule={evidence?.schedule ?? null} pending={evidence ? evidence.schedulePending : !unavailable} closed={evidence?.closed} />
-      {evidence?.scheduleDetails}
+      <InvoiceScheduleTotalsSurface essential schedule={evidence?.schedule ?? null} pending={evidence ? evidence.schedulePending : !unavailable} closed={evidence?.closed} />
+      <div className={styles.scheduleActions}>{evidence?.paymentActions}</div>
+      <details className={styles.scheduleDisclosure}>
+        <summary>Full payment schedule and history</summary>
+        {evidence?.scheduleDetails}
+        {evidence?.beforeHistory}
+      </details>
     </Card>
-    {evidence?.beforeHistory}
     <Card title="Invoice history" eyebrow={evidence?.historyEyebrow ?? (unavailable ? 'Invoice count unavailable' : 'Reading invoices…')} padding="none" headingLevel={4}>
       <SearchFilterBar query={query} onQueryChange={onQueryChange} queryPlaceholder="Search invoice, quote or status" searchId="invoice-search" filters={[]} onClearAll={() => onQueryChange('')} />
-      {content?.noMatches}
-      <Table aria-label="Invoices" className={styles.invoiceTable}><TableHeader><TableRow>
+      <Table aria-label="Invoices" className={styles.invoiceTable} viewportClassName={styles.listViewport}>
+        <colgroup>{[20, 18, 18, 14, 16, 14].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}</colgroup>
+        <TableHeader><TableRow>
         <TableHead>Invoice</TableHead><TableHead>Quote</TableHead><TableHead>Amount inc GST</TableHead><TableHead>Due</TableHead><TableHead>Delivery</TableHead><TableHead>Actions</TableHead>
-      </TableRow></TableHeader><TableBody>{content ? content.rows : <TableRow><TableCell colSpan={6}><span role={unavailable ? undefined : 'status'}>{unavailable ? 'Invoices unavailable. Retry the read.' : 'Reading invoices…'}</span></TableCell></TableRow>}</TableBody></Table>
+      </TableRow></TableHeader><TableBody>{content?.noMatches ? <TableRow><TableCell colSpan={6}>{content.noMatches}</TableCell></TableRow> : null}{content ? content.rows : <TableRow><TableCell colSpan={6}><span role={unavailable ? undefined : 'status'}>{unavailable ? 'Invoices unavailable. Retry the read.' : 'Reading invoices…'}</span></TableCell></TableRow>}</TableBody></Table>
     </Card>
     {evidence?.dialogs}
   </div>;

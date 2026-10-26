@@ -259,9 +259,10 @@ describe('ProjectCreateClient', () => {
     });
 
     expect(rendered.container.textContent).toContain('Possible existing contact');
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find(button => button.textContent === 'Details')!.click());
     expect(apiJsonMock).toHaveBeenCalledTimes(1);
 
-    const override = Array.from(rendered.container.querySelectorAll('button')).find((button) =>
+    const override = Array.from(document.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Create separate contact and project'));
     await act(async () => {
       override?.click();

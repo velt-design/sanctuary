@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import HeaderActions from '@/components/layout/HeaderActions';
-import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransitionContext';
 import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import ContactsImportAction from './ContactsImportAction';
@@ -34,7 +34,9 @@ function ContactsIndexPrivateRead({ workspace, readLoader, readOnly }: {
   const alive=useRef(true);useLayoutEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   const setPage=workspace.setPage;
   const onPageChange=useCallback((page:number)=>{if(alive.current&&current.current.owner===owner&&current.current.selection===selection)setPage(page);},[owner,selection,setPage]);
-  const slots=useMemo(()=>contactsRecordSlots(read,params.page,params.pageSize,onPageChange),[read,params.page,params.pageSize,onPageChange]);
+  const setQuery=workspace.setQuery;
+  const onClear=useCallback(()=>{if(alive.current&&current.current.owner===owner&&current.current.selection===selection)setQuery('');},[owner,selection,setQuery]);
+  const slots=useMemo(()=>contactsRecordSlots(read,params.page,params.pageSize,onPageChange,onClear),[read,params.page,params.pageSize,onPageChange,onClear]);
   const actions = useMemo(() => readOnly || read.state === 'unavailable' ? null : <HeaderActions>
     <ContactsImportAction contacts={read.data?.contacts.rows ?? []} host={host} />
     <ButtonLink href="/staff/contacts/new">New Contact</ButtonLink>
@@ -95,7 +97,7 @@ function StandaloneContactsIndexClient({ initialQuery = '' }: { initialQuery?: s
     setPage={setPage}
     setPageSize={setPageSize}
     setSort={setSort}
-    {...contactsRecordSlots(contactsIndex,page,pageSize,setPage)}
+    {...contactsRecordSlots(contactsIndex,page,pageSize,setPage,()=>setQuery(''))}
     contactsIndex={contactsIndex}
     actions={<HeaderActions>
       <ContactsImportAction contacts={contacts} host={host} />

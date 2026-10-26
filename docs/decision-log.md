@@ -1,5 +1,16 @@
 # Decision Log
 
+## 2026-10-26: Keep the actual Portal work in place while records change
+
+A populated-to-empty Projects filter changed both the document gutter and the
+auto-sized table columns. Keep ordinary staff gutters and intentional table
+columns stable, and give local read status and guarded actions their own compact
+space. Preserve truthful counts, visible recovery and complete details; moving a
+banner into a toast or reserving a large blank banner is not the remedy. Scope
+shared behavior to the ordinary staff owner so specialist Workbench behavior is
+unchanged. Verify real geometry and return/recovery in the app, separately from
+DOM tests and unchanged performance/bundle gates. Owner: `ui-foundation.md`.
+
 ## 2026-10-26: Await each independent preparation outcome
 
 The Portal preparation recovery test assumed entry into the preview-code import
@@ -25,6 +36,7 @@ loss-stop evidence. All actual media/WEBSITE/native allocation and budget proof,
 one global test, original controls, publication switches, Stop and effect-ledger
 authority remain required. This implementation is not a claim of live delivery
 or of the full automatic page-and-creative improvement outcome.
+
 ## 2026-10-26: Check visible dependent content on cached page returns
 
 The released scroll owner restored the homepage correctly, but its nine example

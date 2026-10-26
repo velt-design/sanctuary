@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { DashboardParts } from '@/lib/dashboard/dashboardParts';
 import type { DashboardData } from '@/lib/dashboard/types';
-import stateStyles from '@/components/page-state/PageState.module.css';
+import stateStyles from '@/components/page-state/PageMessagePanel.module.css';
+import ReadStatus from '@/components/page-state/ReadStatus';
 import PipelineCountsSurface,{type JourneyCounts} from './_components/PipelineCountsSurface';
 
 import dash from './dashboard.module.css';
@@ -34,17 +35,9 @@ export default function DashboardFrame({
       <DashboardHero updatedAtIso={parts.snapshot?.updatedAtIso??data?.updatedAtIso??new Date().toISOString()} />
 
       <div className={dash.content}>
-        {state === 'cached' ? (
-          <div className={dash.refreshStatus} role="status">Updating...</div>
-        ) : null}
-        {state === 'refresh-failed' ? (
-          <div className={`${stateStyles.inlineNotice} ${dash.refreshNotice}`} role="status">
-            <span>{Object.keys(parts).length?'Some Dashboard sections could not load. Complete sections remain available.':data?'Could not refresh the dashboard. Showing the last saved information.':'Could not load the dashboard. Retry to read the current information.'}</span>
-            {onRetry ? (
-              <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>Retry</button>
-            ) : null}
-          </div>
-        ) : null}
+        <ReadStatus title={state === 'cached' ? 'Updating...' : state === 'refresh-failed' ? Object.keys(parts).length ? 'Some Dashboard sections could not load. Complete sections remain available.' : data ? 'Could not refresh the dashboard. Showing the last saved information.' : 'Could not load the dashboard. Retry to read the current information.' : state === 'unavailable' ? 'Dashboard unavailable' : state === 'pending' ? 'Reading Dashboard…' : 'Dashboard current'}
+          tone={state === 'unavailable' ? 'error' : state === 'refresh-failed' ? 'warning' : 'neutral'}
+          action={state === 'refresh-failed' && onRetry ? <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>Retry</button> : undefined} />
 
         <div className={dash.layout}>
           <PipelineCountsSurface

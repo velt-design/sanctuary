@@ -5,7 +5,7 @@
 .tabs > a[aria-current='page'] { border-bottom-color: var(--ui-action); color: var(--ui-text); }
 .tabs > a.xeroLink { margin-left: auto; font-size: 13px; font-weight: 400; gap: 6px; }
 .tabs a:focus-visible, .clearFilters:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: 3px; }
-.summary { min-height: 108px; display: flex; align-items: center; flex-wrap: wrap; column-gap: 36px; row-gap: 16px; padding: 22px 0; border-bottom: 1px solid var(--ui-border); }
+.summary { height: 152px; box-sizing: border-box; overflow: auto; scrollbar-gutter: stable; display: flex; align-items: center; flex-wrap: wrap; column-gap: 36px; row-gap: 16px; padding: 22px 0; border-bottom: 1px solid var(--ui-border); }
 .currencySummary { display: flex; align-items: baseline; gap: 36px; }
 .currencySummary > div, .summaryCount { display: flex; flex-direction: column; gap: 5px; }
 .summaryCount { order: 2; margin-left: auto; }
@@ -37,9 +37,10 @@
 .status { min-height: 34px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 8px; color: var(--ui-text-muted); font-size: 12px; }
 .clearFilters { color: var(--ui-text); white-space: nowrap; }
 .note { color: var(--ui-text-muted); font-size: 13px; margin: 0 0 12px; }
-.table { width: 100%; table-layout: auto; font-size: 14px; }
+.tableViewport { min-height: 320px; }
+.table { width: 100%; table-layout: fixed; font-size: 14px; }
 .table th { padding: 12px 10px; white-space: nowrap; font-size: 12px; font-weight: 500; color: var(--ui-text-muted); text-transform: none; letter-spacing: 0; }
-.table td { padding: 16px 10px; vertical-align: top; line-height: 1.4; }
+.table td { padding: 16px 10px; vertical-align: top; line-height: 1.4; overflow-wrap: anywhere; }
 .table td:first-child { width: 125px; }
 .table td:nth-child(2) { min-width: 175px; max-width: 260px; }
 .table td:nth-child(2) strong { font-weight: 550; }
@@ -98,3 +99,7 @@
   .detail { padding: 4px; }.detail dl { grid-template-columns: 1fr; gap: 4px; }.detail dd { margin-bottom: 8px; }
   .status { flex-wrap: wrap; }
 }
+
+.noteSlot { min-height: 40px; }
+.paginationSlot { min-height: 64px; display: grid; align-items: center; }
+.paginationSlot .pagination { margin-block: 0; }

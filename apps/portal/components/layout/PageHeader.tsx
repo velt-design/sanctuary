@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { createElement, type ReactNode } from 'react';
+import { createElement, type ReactNode, type HTMLAttributes } from 'react';
 import MoreMenu, { type MoreMenuItem } from '@/components/portal/MoreMenu';
 import { Button, ButtonLink, type ButtonVariant } from '@/components/ui/foundation/FoundationControls';
 import surface from '@/components/ui/surface/PortalSurface.module.css';
@@ -31,10 +31,12 @@ export type PageHeaderProps = {
   utility?: ReactNode;
   back?: { label: string; href: string } | null;
   primaryAction?: HeaderPrimaryAction | null;
+  reservePrimaryAction?: boolean;
   secondaryActions?: MoreMenuItem[] | null;
   className?: string;
   variant?: PageHeaderVariant;
   headingLevel?: 1 | 2 | 3;
+  headingProps?: Pick<HTMLAttributes<HTMLHeadingElement>, 'tabIndex' | 'title'>;
 };
 
 function cx(...values: Array<string | false | null | undefined>): string {
@@ -66,28 +68,20 @@ export default function PageHeader({
   utility,
   back,
   primaryAction,
+  reservePrimaryAction = false,
   secondaryActions,
   className,
   variant = 'default',
   headingLevel = 1,
+  headingProps,
 }: PageHeaderProps) {
   const usesFoundation = variant !== 'default';
   const variantClass = styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
   const rootClassName = cx(styles.root, usesFoundation && styles.foundation, variantClass, className);
   const primaryLabel = primaryAction?.loading ? 'Working…' : primaryAction?.label;
-  const hasActions = Boolean(back || primaryAction || (secondaryActions && secondaryActions.length) || right || meta);
+  const hasActions = Boolean(reservePrimaryAction || back || primaryAction || (secondaryActions && secondaryActions.length) || right || meta);
 
-  const actions = hasActions ? (
-    <div className={styles.right} data-page-header-actions="true">
-      {meta ? <div className={styles.meta}>{meta}</div> : null}
-      {back ? (
-        usesFoundation ? (
-          <ButtonLink href={back.href} variant="secondary">{back.label}</ButtonLink>
-        ) : (
-          <Link className={surface.buttonSecondary} href={back.href}>{back.label}</Link>
-        )
-      ) : null}
-      {primaryAction ? (
+  const primaryContent = primaryAction ? (
         primaryAction.href ? (
           usesFoundation ? (
             <ButtonLink
@@ -130,7 +124,19 @@ export default function PageHeader({
             </button>
           )
         )
+      ) : null;
+
+  const actions = hasActions ? (
+    <div className={styles.right} data-page-header-actions="true">
+      {meta ? <div className={styles.meta}>{meta}</div> : null}
+      {back ? (
+        usesFoundation ? (
+          <ButtonLink href={back.href} variant="secondary">{back.label}</ButtonLink>
+        ) : (
+          <Link className={surface.buttonSecondary} href={back.href}>{back.label}</Link>
+        )
       ) : null}
+      {reservePrimaryAction ? <div className={styles.primarySlot}>{primaryContent}</div> : primaryContent}
       {secondaryActions && secondaryActions.length ? (
         <MoreMenu items={secondaryActions} disabled={Boolean(primaryAction?.loading)} />
       ) : null}
@@ -155,7 +161,7 @@ export default function PageHeader({
         <div className={styles.identity} data-page-header-identity="true">
           {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
           <div className={styles.titleLine} data-page-header-title-line="true">
-            {createElement(`h${headingLevel}`, { className: styles.title }, title)}
+            {createElement(`h${headingLevel}`, { className: styles.title, ...headingProps }, title)}
             {titleAccessory ? <span className={styles.titleAccessory}>{titleAccessory}</span> : null}
             {count ? <span className={styles.count}>{count}</span> : null}
           </div>

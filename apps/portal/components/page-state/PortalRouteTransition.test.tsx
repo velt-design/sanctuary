@@ -8,6 +8,7 @@ import {
   usePortalRouteTransition,
 } from './PortalRouteTransition';
 import { renderIntoDocument } from '../../../../test/reactHarness';
+import { usePortalRouteTransition as useLeanPortalRouteTransition } from './PortalRouteTransitionContext';
 
 let client:QueryClient;
 function PortalRouteTransitionProvider({children}:{children:ReactNode}){return <QueryClientProvider client={client}><ActualPortalRouteTransitionProvider>{children}</ActualPortalRouteTransitionProvider></QueryClientProvider>;}
@@ -48,7 +49,7 @@ function InstantRouteTrigger() {
 }
 
 function ContactsInstantRouteTrigger() {
-  const { beginInstantRoute, finishInstantRoute } = usePortalRouteTransition();
+  const { beginInstantRoute, finishInstantRoute } = useLeanPortalRouteTransition();
   return (
     <div>
       <button type="button" onClick={() => beginInstantRoute('contacts-index')}>Open contacts</button>
@@ -71,6 +72,9 @@ function CompetingInstantRouteTrigger() {
 }
 
 describe('PortalRouteTransitionProvider', () => {
+  it('exports the same hook as the lean Contacts consumer', () => {
+    expect(usePortalRouteTransition).toBe(useLeanPortalRouteTransition);
+  });
   beforeEach(() => {
     client=new QueryClient();
     vi.useFakeTimers();

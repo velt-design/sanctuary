@@ -14,13 +14,16 @@ export function lockDocumentScroll(): void {
     })));
     const gap = Math.max(0, window.innerWidth - html.clientWidth);
     const padding = parseFloat(getComputedStyle(body).paddingRight) || 0;
+    const retainedGutter = Boolean(document.querySelector('[data-portal-sidebar-mode="pinned"]'))
+      && getComputedStyle(html).scrollbarGutter?.includes('stable');
+    const lockedWidth = retainedGutter ? body.getBoundingClientRect().width : null;
     // Keep the visible document in place instead of clamping its scrollable height.
     for (const element of [html, body]) element.style.setProperty('height', 'auto', 'important');
     body.style.setProperty('position', 'fixed', 'important');
     body.style.setProperty('top', `${-y}px`, 'important');
     body.style.setProperty('left', `${-x}px`, 'important');
-    body.style.setProperty('width', '100%', 'important');
-    if (gap) body.style.setProperty('padding-right', `${padding + gap}px`, 'important');
+    body.style.setProperty('width', lockedWidth && lockedWidth > 0 ? `${lockedWidth}px` : '100%', 'important');
+    if (gap && !retainedGutter) body.style.setProperty('padding-right', `${padding + gap}px`, 'important');
     restoreScroll = () => {
       [html, body].forEach((element, index) => saved[index].forEach(({name, value, priority}) => {
         if (value) element.style.setProperty(name, value, priority); else element.style.removeProperty(name);

@@ -5,7 +5,7 @@ import path from 'node:path';
 
 export const NATIVE_BEGIN = 'PORTAL_NATIVE_CAUSAL_BEGIN';
 export const NATIVE_END = 'PORTAL_NATIVE_CAUSAL_END';
-const NATIVE_JOURNEYS = ['dashboard-cold','contacts-warm','detail-warm','running-warm','schedule-toggle'] as const;
+const NATIVE_JOURNEYS = ['dashboard-cold','contacts-warm','detail-warm','projects-back','dashboard-warm','running-warm','schedule-toggle'] as const;
 const NATIVE_EVENTS = ['RunTask','Layout','UpdateLayoutTree','EvaluateScript','FunctionCall','EventDispatch','ParseHTML','Paint','CompositeLayers'] as const;
 export type NativeJourney = typeof NATIVE_JOURNEYS[number];
 export const NATIVE_LIMITS = { rows: 2_048, bytes: 524_288, rawBytes: 67_108_864, events: 50_000, traceSpans: 128, cpuLocations: 128, batchMs: 160_000, gets: 400 } as const;
@@ -142,7 +142,7 @@ export async function collectNativeCapture(page:Page,journey:NativeJourney,origi
     cdp.on('Tracing.dataCollected',onData);
     await cdp.send('Profiler.enable');await cdp.send('Profiler.setSamplingInterval',{interval:1_000});await cdp.send('Profiler.start');
     await cdp.send('Tracing.start',{categories:'devtools.timeline,toplevel,v8',transferMode:'ReportEvents'});
-    status='failed';await action();await page.waitForTimeout(750);status='complete';
+    status='failed';await action();await page.waitForTimeout(journey==='detail-warm'||journey==='projects-back'||journey==='dashboard-warm'?3_000:750);status='complete';
   } catch { /* No exception, URL or application output is reported. */ }
   finally {
     if(cdp){
