@@ -1,3 +1,4 @@
+import {creativeWithPrimary} from './creative-copy';
 import {requireNativeAcceptance} from './native-acceptance';
 import { canonicalHash, type EffectKind, type ExecutionPlan, type ExecutorState } from './contract';
 export class ExecutorFailure extends Error {
@@ -23,13 +24,9 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
     if (object(state, 'creative')) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/adcreatives`;
     if (plan.control.format === 'video_assets'||plan.control.format==='video_story') {
-      const payload = structuredClone(plan.control.payload);
-      const feed = ('asset_feed_spec' in payload?payload.asset_feed_spec:null) as { bodies?: { text?: string }[] }|null;
-      const story = payload.object_story_spec as { video_data?: { message?: string } };
-      if ((plan.control.format==='video_assets'&&(feed?.bodies?.length !== 1 || feed.bodies[0]!.text !== plan.control.primary))
-        || (story.video_data?.message !== undefined && story.video_data.message !== plan.control.primary)) throw new ExecutorFailure('scope');
-      if(feed?.bodies)feed.bodies[0]!.text = plan.challengerPrimary;
-      if (story.video_data?.message !== undefined) story.video_data.message = plan.challengerPrimary;
+      const updated=creativeWithPrimary(plan.control,plan.control.id,plan.challengerPrimary,plan.ownerReview?.edit);
+      if(updated.format!=='video_assets'&&updated.format!=='video_story')throw new ExecutorFailure('scope');
+      const payload=updated.payload;
       body = { name, ...Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, typeof value === 'string' ? value : JSON.stringify(value)])), url_tags: plan.control.urlTags };
     } else {
       body = { name, object_story_spec: JSON.stringify({ page_id: plan.scope.page, link_data: {

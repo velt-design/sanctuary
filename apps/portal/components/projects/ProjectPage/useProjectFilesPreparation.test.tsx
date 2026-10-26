@@ -292,9 +292,14 @@ it('rejects retired held A while current B and return A work through available c
 });
 it('keeps metadata after code-load failure and requests code again only on the existing scheduled pass', async () => {
   vi.useFakeTimers(); const started = Date.now();
-  const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
+  const source = await holdMetadataCode(), code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0);
   await vi.waitFor(() => expect(code.entered).toHaveBeenCalledTimes(1));
+  await vi.waitFor(() => expect(source.entered).toHaveBeenCalledTimes(1));
+  // These imports are independent: preview-code entry does not confirm metadata.
+  expect(metadata).toEqual([]);
+  await act(async () => source.release()); await tick(0);
+  await vi.waitFor(() => expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].state).toBe('ready'));
   expect(metadata).toEqual(['project-a']);
   expect(code.entered).toHaveBeenCalledTimes(1);
   await act(async () => code.reject(new Error('Fictional module unavailable'))); await vi.dynamicImportSettled();
@@ -304,6 +309,7 @@ it('keeps metadata after code-load failure and requests code again only on the e
   await tick(started + 4 * 60_000 - 1 - Date.now()); expect(recovery.entered).not.toHaveBeenCalled();
   await tick(1); await vi.waitFor(() => expect(recovery.entered).toHaveBeenCalledTimes(1)); expect(previews).toEqual([]);
   await act(async () => recovery.release()); await tick(0);
+  await vi.waitFor(() => expect(previews).toEqual(['project-a']));
   expect(metadata).toEqual(['project-a','project-a']); expect(previews).toEqual(['project-a']); expect(recovery.prepare).toHaveBeenCalledTimes(1);
 });
 
@@ -380,6 +386,7 @@ it('recovers a metadata-code load on the existing four-minute pass without coupl
   await tick(started + 4 * 60_000 - 1 - Date.now()); expect(recovery.entered).not.toHaveBeenCalled();
   await tick(1); await vi.waitFor(() => expect(recovery.entered).toHaveBeenCalledTimes(1)); expect(metadata).toEqual([]);
   await act(async () => recovery.release()); await tick(0);
+  await vi.waitFor(() => expect(previews).toEqual(['project-a']));
   expect(recovery.prepare).toHaveBeenCalledTimes(1); expect(recovery.prepare.mock.calls[0][8]).toBe(true);
   expect(metadata).toEqual(['project-a']); expect(previews).toEqual(['project-a']);
 });

@@ -12,7 +12,7 @@ const payloads = {
   retention_admit:retentionAdmitSchema,retention_check:z.object({requestHash:hash}).strict(),retention_finish:retentionFinishSchema,
   retention_confirm:z.object({requestHash:hash,objectId:z.string().regex(/^[1-9]\d{0,19}$/),evidenceHash:hash}).strict(),retention_no_effect:z.object({requestHash:hash,evidenceHash:hash,reason:z.literal('dispatch_not_started')}).strict(),
   history:creativeHistoryRequestSchema,
-  analysis_ack:z.object({analysisCommand:z.uuid()}).strict(), begin_analysis:z.object({planHash:hash}).strict(), delivery_health:z.object({planHash:hash,evidenceHash:hash,observedAt:z.iso.datetime()}).strict(), analysis: z.object({analysis:nativeAnalysisSchema}).strict(), read: z.object({}).strict(), cohort: z.object({freeze:z.boolean()}).strict(), authority: z.object({ generation: z.number().int().positive() }).strict(),
+  analysis_ack:z.object({analysisCommand:z.uuid()}).strict(), begin_analysis:z.object({planHash:hash}).strict(), delivery_health:z.object({planHash:hash,evidenceHash:hash,observedAt:z.iso.datetime()}).strict(), analysis: z.object({analysis:nativeAnalysisSchema}).strict(), read: z.object({}).strict(), cohort: z.object({freeze:z.boolean(),through:z.iso.datetime({offset:true}).optional()}).strict().refine(v=>!v.through||!v.freeze), authority: z.object({ generation: z.number().int().positive() }).strict(),
   prepare: z.object({ plan: executionPlanSchema, planHash: hash }).strict(),
   admit: z.object({ generation: z.number().int().positive(), intent: wireSchema, cleanup: z.boolean(), activationProof:activationProofSchema.optional() }).strict(),
   check: z.object({ requestHash: hash }).strict(),

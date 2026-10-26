@@ -1,3 +1,40 @@
+## Exact owner-reviewed creative bundle
+
+The existing creative control may hold one root-managed pending or exact approved
+plan envelope. Application roles cannot update it. Pending permits only the
+existing read-only context slot, preserving unresolved provider references as
+null. A separately root-bound exact plan/hash is required by Source prepare and
+reserve; changes participate in generation revocation. Non-model instruction,
+independent-review and media evidence hashes remain distinct from provider model
+operation IDs. Old model proposals keep their existing provenance and quota rules.
+
+The formal story-video branch accepts only two registered replacements, reviewed
+primary/headline and an explicit thumbnail. Unknown references to old videos
+abstain. All other settings, CTA, tags, original creative/control, scope, WEBSITE,
+pixel/LEAD and native acceptance guards remain. No upload or authentication path,
+endpoint, new table or activation permission is added. Actual provider references,
+source mapping, raw WEBSITE compatibility and native study isolation/budget units
+remain external acceptance evidence; fixtures do not establish them.
+
+The separately reviewed inherited-website case retains literal UNDEFINED only
+after current SDK settings match the fixed original adset, OFFSITE_CONVERSIONS,
+IMPRESSIONS, native pixel/LEAD and approved acrylic story URL. It remains bound
+into the full raw settings fingerprint and exact root-reviewed plan. The selected
+configuration export is its business evidence, not a substitute for that SDK read.
+Unknown destinations abstain. Tracking's finite nine official dotted literals
+apply only to direct root-array object clauses. Generic creative JSON and every
+value/secret/size bound remain unchanged. Reporting flags follow the then-current
+tracking rule; neither those flags nor a local fixture prove publishing permission.
+
+An optional cutoff on the existing cohort command uses a private copy of the
+current genuine-source query at completed Auckland midnights at least 72 hours
+old, with the same row bounds/exclusions. It cannot read or change a frozen cohort.
+Only complete same-window zero matched enquiries and zero unresolved attribution
+or join exceptions, plus actual registered-ad NZD spend of at least 300, support
+the existing owned-challenger pause. A finite Velt receipt retains its measured
+reason and hashes, never raw customer or provider bodies. Early cleanup prevents
+a claim of complete experimental delivery or a commercial winner.
+
 ## Consent-delayed Meta Lead queue
 
 The existing enquiry success event and submission UUID may wait in memory for
