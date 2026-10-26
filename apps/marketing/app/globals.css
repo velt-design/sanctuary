@@ -211,9 +211,10 @@ html.foundation-menu-open, body.foundation-menu-open { height:100% !important; o
   html:focus-within { scroll-behavior:auto; }
 }
 
-/* iOS/mobile overflow fix: prevent horizontal crop */
+/* Contain horizontal overflow without creating a separate BODY scroller.
+   Ordinary pages keep native viewport scrolling and Safari edge elasticity. */
 @media (max-width: 960px){
-  html, body { width:100% !important; max-width:100% !important; overflow-x:hidden !important; }
+  html, body { width:100% !important; max-width:100% !important; overflow-x:clip !important; }
 }
 
 /* (optional) Tailwind preflight uses img{display:block;max-width:100%} which is fine */

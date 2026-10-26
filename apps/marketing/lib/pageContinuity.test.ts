@@ -11,7 +11,7 @@ beforeEach(() => {
   vi.spyOn(window, 'scrollTo').mockImplementation((options: unknown) => { y = typeof options === 'object' ? (options as ScrollToOptions).top ?? y : 0; });
   y = 0; owner = createPageContinuity(); owner.commit();
 });
-afterEach(() => { owner?.dispose(); document.body.innerHTML = ''; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { owner?.dispose(); document.body.innerHTML = ''; document.body.removeAttribute('style'); document.body.scrollTop = 0; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function capture(top: number, nested = 0) {
   y = top; document.querySelector<HTMLElement>('.two-col-page')!.scrollTop = nested;
   document.dispatchEvent(new Event('scroll'));
@@ -41,6 +41,46 @@ it('restores a reload from bounded tab coordinates without storing URLs or perso
   capture(1250, 90); owner!.dispose(); owner = createPageContinuity(); y = 0; owner.commit();
   expect(y).toBe(1250);
   expect(sessionStorage.getItem('sanctuary.page-positions.v1')).not.toContain('/');
+});
+
+it('saves the logical top during native elastic overscroll without cancelling the gesture', () => {
+  const scroll = vi.mocked(window.scrollTo); scroll.mockClear();
+  capture(-28, -12); document.body.scrollTop = -18;
+  document.dispatchEvent(new Event('scroll'));
+  expect(y).toBe(-28);
+  expect(document.body.scrollTop).toBe(-18);
+  expect(scroll).not.toHaveBeenCalled();
+  owner!.dispose(); owner = undefined;
+  const stored = JSON.parse(sessionStorage.getItem('sanctuary.page-positions.v1')!);
+  expect(stored.at(-1)[1].position).toEqual({ x: 0, y: 0, body: 0, containers: [0] });
+  y = 420; document.body.scrollTop = 0;
+  owner = createPageContinuity(); owner.commit();
+  expect(y).toBe(0); // The snapshot remains valid for reload/Back, rather than being rejected.
+});
+
+it('restores a persisted BODY coordinate into the viewport after the page scroll owner changes', () => {
+  document.body.style.overflowY = 'auto';
+  vi.spyOn(document.body, 'clientHeight', 'get').mockReturnValue(844);
+  vi.spyOn(document.body, 'scrollHeight', 'get').mockReturnValue(3000);
+  capture(0, 140); document.body.scrollTop = 1266; document.dispatchEvent(new Event('scroll'));
+  owner!.dispose(); owner = undefined;
+  expect(JSON.parse(sessionStorage.getItem('sanctuary.page-positions.v1')!).at(-1)[1].position).toEqual({ x: 0, y: 0, body: 1266, containers: [140] });
+  document.body.style.overflowY = 'clip'; document.body.scrollTop = 0;
+  document.querySelector<HTMLElement>('.two-col-page')!.scrollTop = 0;
+  owner = createPageContinuity(); owner.commit();
+  expect(y).toBe(1266); expect(document.body.scrollTop).toBe(0);
+  expect(document.querySelector<HTMLElement>('.two-col-page')!.scrollTop).toBe(140);
+});
+
+it('restores a persisted viewport coordinate into BODY without adding nested pane offsets', () => {
+  capture(1266, 140); owner!.dispose(); owner = undefined;
+  y = 0; document.body.style.overflowY = 'auto';
+  vi.spyOn(document.body, 'clientHeight', 'get').mockReturnValue(844);
+  vi.spyOn(document.body, 'scrollHeight', 'get').mockReturnValue(3000);
+  document.querySelector<HTMLElement>('.two-col-page')!.scrollTop = 0;
+  owner = createPageContinuity(); owner.commit();
+  expect(y).toBe(0); expect(document.body.scrollTop).toBe(1266);
+  expect(document.querySelector<HTMLElement>('.two-col-page')!.scrollTop).toBe(140);
 });
 
 it('new fragment navigation targets its anchor and is not an old pathname position', () => {

@@ -10,6 +10,11 @@ const initialRoute = `/projects/${initialProject.slug}`;
 const targetRoute = `/projects/${targetProject.slug}`;
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 
+test.beforeEach(async ({ page, baseURL }) => {
+  const origin = new URL(baseURL!).origin;
+  await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+});
+
 async function dismissConsent(page: Page) {
   const essentialOnly = page.getByRole('button', { name: 'Essential only' });
   if (await essentialOnly.count() && await essentialOnly.isVisible()) {

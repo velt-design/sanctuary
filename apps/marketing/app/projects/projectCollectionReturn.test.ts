@@ -60,6 +60,16 @@ describe('collection scroll return', () => {
     expect(scroll).not.toHaveBeenCalled();
   });
 
+  it('retains valid collection context at an elastic viewport top without scrolling it', () => {
+    window.history.replaceState({}, '', '/projects?audience=residential');
+    vi.stubGlobal('scrollY', -24);
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    clickProject();
+    expect(readCollectionReturn()).toEqual({ href: '/projects?audience=residential', scrollY: 0 });
+    expect(window.scrollY).toBe(-24);
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
   it('reserves collection fallback for an explicit link, not a revisited entry', () => {
     window.history.replaceState({}, '', '/projects?audience=residential');
     vi.stubGlobal('scrollY', 750);

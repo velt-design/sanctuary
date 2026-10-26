@@ -78,7 +78,7 @@ export function saveCollectionReturn(event: MouseEvent<HTMLElement>) {
   const target = new URL(anchor.href, window.location.origin);
   if (target.origin !== window.location.origin || !/^\/projects(?:\/[^/]+)?$/.test(target.pathname)) return;
   const collection = window.location.pathname === '/projects'
-    ? { href: currentPath(), scrollY: collectionScrollElement()?.scrollTop ?? window.scrollY }
+    ? { href: currentPath(), scrollY: Math.max(0, collectionScrollElement()?.scrollTop ?? window.scrollY) }
     : entryReturn();
   pendingReturn = null;
   if (!collection) return;

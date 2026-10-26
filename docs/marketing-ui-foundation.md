@@ -37,6 +37,30 @@ browser storage. Desktop-port WebKit and Chromium touch controls do not reproduc
 a persistent lock; physical
 iPhone Safari verification remains pending and is distinct from these checks.
 
+Warm image-return checks keep native browser caching enabled. Their transport
+uses public Chromium Fetch interception to allow only application-origin GET/HEAD
+requests and fail writes/external requests closed; ordinary mocked functional
+specs remain separate. A browser may reuse a larger already-loaded responsive
+candidate of the same underlying photo, so optimizer width is not image identity.
+First-visible readiness, opacity, geometry and exact position remain checked.
+Cache-disabled fixtures exposed a real blank paint under forced reconstruction;
+those failures are retained and do not establish a cold-cache instant guarantee.
+
+The owner also requested native top-edge bounce on iPhone Safari. Mobile global
+horizontal containment now uses `overflow-x: clip` rather than `hidden`: the
+latter made fixed-height BODY a second vertical scroll container on ordinary
+pages. Existing homepage/product/contact overrides already use document scrolling.
+The shared rule retains horizontal clipping and scoped menu/gallery/configurator
+locks, while ordinary pages use the native viewport scroll owner. No synthetic
+bounce, gesture cancellation or user-agent branch was added. History and project
+context save nonnegative logical coordinates during Safari elastic overscroll
+without writing into the active gesture. Existing saved BODY/window coordinates
+are restored through the current scroll owner, including reload after this CSS
+change or a responsive owner change; nested pane offsets remain independent.
+Native touch checks cover viewport
+ownership, horizontal containment and menu return; actual iPhone rubber-band and
+left-edge swipe behavior remain separate hardware acceptance.
+
 Header links fully prefetch public destinations; closed mobile-menu links do not
 prefetch. No HTML, service worker, token-route or private-data cache was added.
 `landingPriceTableStore` retains its one memory-only table during same-document

@@ -1,5 +1,5 @@
 {
-  "hash": "b14ec9e4e47e8dbb33ed97601179c16f7606a4921fee6a8d3ac9b737236c2d0c",
+  "hash": "d8b6cb3432b4c50e38881e67c0f00815cce2f1cc40972f18cc05de3b2b4e15b9",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -103,7 +103,7 @@
     ],
     [
       "apps/marketing/app/globals.css",
-      "b4c98421e71c0f0225d6e5d8a0db99c2697eb543ab8a1b26e992819f11e919d3"
+      "fedcb5864288efb74ffc754f92a90b1331cad1bdac1c91f77650b6008c20abe2"
     ],
     [
       "apps/marketing/app/layout.tsx",
@@ -1111,7 +1111,7 @@
     ],
     [
       "apps/marketing/lib/pageContinuity.ts",
-      "ffcb97759a9c41aadcf03d1fc26561a72afe8abc6d144f10a3dc3c6ebcb44987"
+      "61ce2c53e824d6ed7995bb5d11bfe8fd779c815bb6b76955af5aca6c5a10a43f"
     ],
     [
       "apps/marketing/lib/projectDetailNavigation.ts",
