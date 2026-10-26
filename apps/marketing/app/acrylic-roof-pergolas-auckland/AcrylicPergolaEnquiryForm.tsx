@@ -10,6 +10,7 @@ import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
 import { emitSubmittedLead } from '../../lib/googleEnhancedLead';
+import { emitMetaLead } from '../../lib/metaLead';
 import AdvertisingMeasurementNotice from '../../components/enquiry/AdvertisingMeasurementNotice';
 import { createEnquirySubmissionId, ENQUIRY_ATTACHMENT_ACCEPT, uploadEnquiryAttachments, validateEnquiryAttachments } from '@/lib/enquiryAttachments';
 import {
@@ -107,12 +108,6 @@ async function trackLeadSubmitted(
   },
   contact: { email: string; phone: string } | undefined,
 ): Promise<void> {
-  type TrackingWindow = typeof window & {
-    dataLayer?: Array<Record<string, unknown>>;
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  };
-  const trackingWindow = window as TrackingWindow;
   const contextProperties = getEnquiryContextProperties(context);
   const eventData = getEnquiryAnalyticsProperties(context, {
     event_category: 'contact',
@@ -127,7 +122,7 @@ async function trackLeadSubmitted(
       sendGoogleAnalyticsEvent('contact_success', eventData, true);
     }
     if (trackingConsent.marketing) {
-      trackingWindow.fbq?.('track', 'Lead', eventData, { eventID: eventId });
+      emitMetaLead(eventData, eventId, true);
     }
     if (trackingConsent.analytics || trackingConsent.marketing) {
       await emitSubmittedLead({

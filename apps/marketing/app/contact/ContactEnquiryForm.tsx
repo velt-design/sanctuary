@@ -21,6 +21,7 @@ import SimpleCoverCalculator from '@/components/simple-cover-calculator/SimpleCo
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { ADVERTISING_DISCLOSURE_VERSION } from '../../lib/advertisingDisclosure';
 import { emitSubmittedLead } from '../../lib/googleEnhancedLead';
+import { emitMetaLead } from '../../lib/metaLead';
 import AdvertisingMeasurementNotice from '../../components/enquiry/AdvertisingMeasurementNotice';
 import {
   createEnquirySubmissionId,
@@ -82,12 +83,6 @@ export type ContactEnquiryFormProps = {
 
 type BusinessAudience = Exclude<EnquiryAudience, 'residential'>;
 type SubmitState = 'idle' | 'sending' | 'success' | 'error';
-type TrackingWindow = typeof window & {
-  dataLayer?: Array<Record<string, unknown>>;
-  gtag?: (...args: unknown[]) => void;
-  fbq?: (...args: unknown[]) => void;
-};
-
 const contactFieldOrder: readonly ContactField[] = ENQUIRY_FORM_FIELD_ORDER;
 
 function errorId(field: ContactField): string {
@@ -264,7 +259,6 @@ export default function ContactEnquiryForm({
     eventId?: string,
     contact?: { email: string; phone: string },
   ) => {
-    const trackingWindow = window as TrackingWindow;
     const canonicalAudience = contextProperties.enquiry_type ?? 'unknown';
     const base = getEnquiryAnalyticsProperties(currentContext, {
       event_category: 'contact',
@@ -279,8 +273,8 @@ export default function ContactEnquiryForm({
 
     try {
       sendGoogleAnalyticsEvent(`contact_${phase}`, base, hasTrackingDecision && consent.analytics);
-      if (phase === 'success' && hasTrackingDecision && consent.marketing && typeof trackingWindow.fbq === 'function') {
-        trackingWindow.fbq('track', 'Lead', base, eventId ? { eventID: eventId } : undefined);
+      if (phase === 'success' && hasTrackingDecision && consent.marketing && eventId) {
+        emitMetaLead(base, eventId, true);
       }
       if (phase === 'success' && hasTrackingDecision && (consent.analytics || consent.marketing)) {
         await emitSubmittedLead({

@@ -1,5 +1,5 @@
 {
-  "hash": "552bde91b3752e6f3fa80f273b86da65e182603d93691cfbca43d86955915084",
+  "hash": "3fa04517c4025db686255e4819e15ccefe1287c3b0ac86dfc9884028176dec90",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -67,7 +67,7 @@
     ],
     [
       "apps/marketing/app/contact/ContactEnquiryForm.tsx",
-      "d8deb9e08f00be05d6119848499034074f1c7ea9661ac931590ab9d962d1e30b"
+      "da2f1669ceadc64aeca622946b9d603c07bf6ec5166baa6a187c4f9ddf662e24"
     ],
     [
       "apps/marketing/app/contact/ContactFormIntro.tsx",
@@ -771,7 +771,7 @@
     ],
     [
       "apps/marketing/components/ConsentProvider.tsx",
-      "1906dcd11363d4a3f04a9708cd8d8909e976646692201d9db722564d4c56f350"
+      "45b8120db1bdbf6a6e88fa065cfa877d2596c26e19810c9c75a540d3c6dfd194"
     ],
     [
       "apps/marketing/components/enquiry/AdvertisingMeasurementNotice.tsx",
@@ -907,7 +907,7 @@
     ],
     [
       "apps/marketing/components/MetaPixel.tsx",
-      "d29f17adacdf85ec035c0933f61c31dd68482a552df2ea7275a3f22533c7e355"
+      "8d6fb03787b3e173ba60aa4b202f322c878e1bcc454cee3fdbf9a5288d377df3"
     ],
     [
       "apps/marketing/components/PortalMode.tsx",
@@ -1104,6 +1104,10 @@
     [
       "apps/marketing/lib/landingPriceTableStore.ts",
       "ada4ea657d0b8645abdc7dab6b135974e0058b369b70c045afdb6b68f5113c7b"
+    ],
+    [
+      "apps/marketing/lib/metaLead.ts",
+      "f75fd0df63c7f2f686199d918755d7f3891c08705152fea87fc07e9b95edc9cc"
     ],
     [
       "apps/marketing/lib/pageContinuity.ts",

@@ -15,6 +15,16 @@ clear cannot leave a cancelled asynchronous delete as permanent retained data.
 Keep existing user-input cancellation, native form fallback, pricing expiry and
 consent boundaries. Owners: `marketing-ui-foundation.md`, `security-privacy-quality.md`.
 
+## 2026-10-24: Scope a documented tracking key to its protocol location
+
+Meta ConversionActionQuery documents literal action.type. Permit it only in
+direct clauses of root adTracking arrays and preserve its original value; generic
+creative JSON and all existing bounds remain strict. Health diagnostic flags
+must mirror that actual tracking predicate, while old saved flags remain history.
+Do not generalize dotted-key permission, infer unseen response contents or replace
+exact donor/copy comparison with successful parsing. Owners: creative contracts,
+`marketing-performance.md`, `testing-and-qa.md`.
+
 ## 2026-10-24: Patch the shared Zod validator without changing application contracts
 
 The production dependency audit identified GHSA-mrhx-c7xc-m3w5 in Zod versions

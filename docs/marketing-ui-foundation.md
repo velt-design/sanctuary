@@ -1,9 +1,10 @@
 # Marketing UI Foundation
 
-## Marketing browsing and enquiry continuity (26 October 2026 candidate)
+## Marketing browsing and enquiry continuity (26 October 2026)
 
-Jordan authorised exact mobile Back position, fast return navigation and unfinished
-enquiry recovery for preview before production. `ScrollReset` delegates to
+Jordan approved the reviewed exact mobile Back position, fast return navigation
+and unfinished enquiry recovery for production once final release checks pass.
+Production release remains pending. `ScrollReset` delegates to
 `lib/pageContinuity`: bounded tab-local coordinates belong to history-entry IDs,
 including BODY and existing route containers. The shared owner temporarily uses
 native `history.scrollRestoration='manual'` and restores its previous mode on
@@ -45,8 +46,10 @@ validation, API submission and attachment pipeline remain their owners.
 `MARKETING_PREVIEW_READ_ONLY=true` fails intake, legacy contact, native fallback,
 attachment signing and cleanup closed before any backend/provider work, allowing
 safe preview review with truthful errors. Production defaults remain unchanged.
-Local integration, compiled-browser and independent-review evidence are recorded
-in the owning task record; this candidate section is not a release claim.
+Local integration, compiled-browser, independent review and owner acceptance are
+recorded in the owning task record. The final candidate preserves the consented
+Meta Lead queue and literal tracking-clause rules from current main; publication
+and deployment verification remain separate from these implementation checks.
 
 ## Enquiry privacy-link continuity (22 October 2026)
 

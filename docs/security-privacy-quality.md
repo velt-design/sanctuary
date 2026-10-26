@@ -1,3 +1,20 @@
+## Consent-delayed Meta Lead queue
+
+The existing enquiry success event and submission UUID may wait in memory for
+the existing Meta runtime's Script readiness callback. No new pixel, loader,
+provider request, contact field or offline conversion is added. The queue holds
+at most eight events for sixty seconds, clears on withdrawal/unmount, and checks
+the pixel layout's current in-memory permission again before every dispatch.
+ConsentProvider emits the existing typed consent event synchronously when an
+explicit choice or valid storage event withdraws marketing permission, before
+React commits or storage is attempted. Its normal committed notification remains
+unchanged. This also covers a submitted request resolving while storage fails.
+The stored deadline also applies when browser timers are delayed. Its bounded consent-scoped recent-UUID
+set prevents repeat dispatch, including after an uncertain queue throw; Meta's original eventID
+remains the provider deduplication identity. A blocked runtime may still leave
+delivery unconfirmed. Local fake-timer tests establish timing and serialization,
+not a genuine provider Lead receipt or a measured production loss.
+
 ## Authored landing copy boundary, local continuation
 
 New plain text is limited by shared approved vocabulary, slot and length checks
@@ -27,10 +44,11 @@ fresh proof gate the locally connected ACTIVE effects.
 
 # Security, Privacy, And Quality
 
-## Browser-local enquiry recovery (26 October 2026 candidate)
+## Browser-local enquiry recovery (26 October 2026)
 
-The owner explicitly authorised unfinished enquiry recovery for a preview before
-production. `useEnquiryDraft` admits only visible customer brief/contact fields
+The owner approved the reviewed unfinished enquiry recovery for production once
+final release checks pass; deployment remains pending. `useEnquiryDraft` admits
+only visible customer brief/contact fields
 and bounded pathway/audience metadata. Browser-local recovery expires after 24
 hours; expired text and expired/orphaned attachment revisions are removed on
 enquiry access. Text is limited to 10 form contexts and 32K per context; private
@@ -43,7 +61,8 @@ draft storage; form masking and consent-governed tracking remain unchanged.
 The privacy page describes the local recovery period and next-access cleanup.
 `MARKETING_PREVIEW_READ_ONLY=true` denies all enquiry/contact intake, fallback,
 attachment signing and cleanup before backend/provider calls. This is an explicit
-server preview environment boundary, not production submission behavior.
+server preview environment boundary, defaulting off outside explicitly configured
+previews. Production submission behavior remains with the existing intake owners.
 
 The unpublished formal preparation continuation adds a separate default-off
 `SANCTUARY_META_CREATIVE_PREPARATION_ENABLED` flag. It admits only signed, fresh,
