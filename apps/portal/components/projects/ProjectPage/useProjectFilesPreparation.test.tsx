@@ -228,8 +228,12 @@ it('publishes metadata independently of held private code, then prepares the sam
 });
 it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not revive a held private owner after %s', async retirement => {
   const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledTimes(1);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  // Both independent imports must have started before retiring the held owner.
+  // A fixed sleep does not establish metadata readiness under a cold module transform.
+  await vi.waitFor(() => {
+    expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledTimes(1);
+  });
   const scope = { owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root', itemId: 'file' };
   retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"v1"', name: 'Plan.pdf', mime: 'application/pdf' });
   const changed = vi.fn(), unsubscribe = subscribePreview(client, scope, changed);

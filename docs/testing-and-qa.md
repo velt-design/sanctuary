@@ -3439,6 +3439,11 @@ A second in-memory schema filter covers runner failures
 before the safe reporter loads; shell pipefail retains failure status. No new
 artifact upload, credential setup, provider command or business POST is added.
 
+Detail navigation, native Back to Projects and warm Dashboard navigation retain a
+three-second post-action observation for late route adoption; other captures retain
+their 750 ms observation. These are separate attribution windows, not original
+journey measurements or proof all background work finished.
+
 Raw CDP data stays bounded in memory and is discarded. Fixed JSONL markers carry
 only allowlisted event spans, finite numbers, and validated emitted public static
 chunk basenames/positions. Longest trace spans are selected across the full action;
