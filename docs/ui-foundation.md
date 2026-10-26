@@ -1106,3 +1106,5 @@ Project mastheads allocate two native reading lines for both unknown and verifie
 Project title native overflow takes precedence over the generic pinned-header clamp without changing other header variants. Contacts and both the public and guarded Search owners import the existing navigation context through its lean contract owner, including the unchanged click and same-origin navigation predicates; the full transition provider retains the single context and all route lifecycle logic.
 
 Sidebar panel and rail share the existing navigation-intent owner for guarded click handoff and code-only prefetch, while retaining their own controls and prefetch-set lifetimes. Managed Overview code arrival uses the actual public reading surface already mounted; standalone tabs retain their original loading presentation.
+
+Managed Overview composes the existing private Work Card class through its public stylesheet, retaining the original card and descendant rules without importing the entire private class map into public JavaScript. The composition adds one unstyled marker; default Work Card callers and their optional classes remain unchanged.

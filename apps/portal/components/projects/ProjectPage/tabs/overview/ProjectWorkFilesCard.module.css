@@ -1,3 +1,7 @@
+.workCard {
+  composes: card from "./ProjectWorkSection.module.css";
+}
+
 .card > header {
   flex-wrap: wrap;
 }
