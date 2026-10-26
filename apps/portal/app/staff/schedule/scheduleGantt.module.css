@@ -131,6 +131,7 @@
 .ganttCompactHeader,
 .ganttCompactControls,
 .ganttCompactList {
+  scrollbar-gutter: stable;
   border: var(--ui-border-width) solid var(--ui-border);
   border-radius: var(--ui-radius-panel);
   background: var(--ui-surface-elevated);
@@ -611,6 +612,7 @@
 }
 
 .ganttScroll {
+  scrollbar-gutter: stable;
   position: relative;
   flex: 1;
   min-height: 0;

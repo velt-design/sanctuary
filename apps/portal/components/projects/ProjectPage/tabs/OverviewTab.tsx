@@ -22,7 +22,6 @@ import { ApiError } from "@/lib/repo/apiClient";
 import {
   AlertBanner,
   Button,
-  Card,
   DataStatePanel,
   LoadingSkeleton,
 } from "@/components/ui/foundation";
@@ -137,7 +136,6 @@ export default function OverviewTab({
 }) {
   const queryClient = useQueryClient();
   const commercial=useProjectCommercialContext();
-  const {closed}=commercial;
   const correspondenceWarm=useProjectCorrespondenceWarmRead();
   const emailReading=useProjectEmailReadingContext();
   const panel=useProjectWorkPanel(projectId,host,surface?.controls);
@@ -226,19 +224,19 @@ export default function OverviewTab({
     statusPanel:!snapshotContentReady ? <AlertBanner tone={snapshotState === 'refresh-failed' ? 'warning' : 'info'} title={snapshotState === 'refresh-failed' ? 'Saved history is not complete' : 'Updating recent history'}>
     {snapshotState === 'refresh-failed' ? 'The latest refresh failed. No partial history is presented as complete.' : 'Recent notes and server events appear after the complete snapshot loads.'}</AlertBanner> : null });
 
-  const evidence = useMemo<ProjectOverviewEvidence>(()=>({ state:commandCentreState, orientation:snapshot ?
+  const evidence = useMemo<ProjectOverviewEvidence>(()=>({ state:commandCentreState, retry: commandQuery.isError && commandQuery.data ? ()=>void commandQuery.refetch() : undefined, orientation:snapshot ?
           <Suspense
             fallback={
-              <Card padding="compact">
+              <>
                 <LoadingSkeleton
                   rows={2}
                   columns={4}
                   label="Loading project orientation"
                 />
-              </Card>
+              </>
             }
           >
-            <div inert={readOnly}><ProjectOrientationBand
+            <div inert={readOnly}><ProjectOrientationBand embedded
               project={snapshot.project}
               host={host}
               operationalState={orientationProjection?.effectiveState}
@@ -252,26 +250,26 @@ export default function OverviewTab({
     work:commandQuery.data && snapshot && commandQuery.data.workModel === 'v2' && !workModelMismatch ? projectWork : (
             <section data-project-work-section="true" data-project-work-model={workModelMismatch ? 'mismatch' : commandQuery.isPending || !snapshot ? 'pending' : 'failed'}>{projectWork}</section>
           ), enquiry:panel.selectedPanel==='enquiry'?<ProjectEnquiryReceiptPanel projectId={projectId} host={host}/>:null,
-    positionLabel:snapshot && commandQuery.data && commandQuery.data.workModel === "v2" ? projectPositionLabel(snapshot.project.stage, (orientationProjection ?? commandQuery.data.projectWork).effectiveState, commandQuery.data.currentDesign, (orientationProjection ?? commandQuery.data.projectWork).closedOutcome) : undefined, workNotice:accessEndingStatus===null?<ProjectCommercialScope value={commercial}><CommercialProjectNotice projectId={projectId} view="activity"/></ProjectCommercialScope>:null,
-    commercial:{ data:accessEndingStatus===null?commandQuery.data?.currentDesign??null:null,pending:commandQuery.isPending,closed,
+    positionLabel:snapshot && commandQuery.data && commandQuery.data.workModel === "v2" ? projectPositionLabel(snapshot.project.stage, (orientationProjection ?? commandQuery.data.projectWork).effectiveState, commandQuery.data.currentDesign, (orientationProjection ?? commandQuery.data.projectWork).closedOutcome) : undefined, workNotice:accessEndingStatus===null?<ProjectCommercialScope value={commercial}><CommercialProjectNotice compact projectId={projectId} view="activity"/></ProjectCommercialScope>:null,
+    commercial:{
       content:accessEndingStatus===null?<ProjectCommercialScope value={commercial}>        {commandQuery.data ? (
           <Suspense fallback={<p role="status">Reading commercial details…</p>}>
-            <ProjectCurrentDesignCommercialCard previewOnly={readOnly} data={commandQuery.data.currentDesign} projectId={projectId} />
+            <ProjectCurrentDesignCommercialCard embedded previewOnly={readOnly} data={commandQuery.data.currentDesign} projectId={projectId} />
           </Suspense>
         ) : commandQuery.isPending ? <p role="status">Reading current design and commercial state…</p> : (
           <DataStatePanel state="error" title="Commercial state unavailable"
             description="The current design and price could not be loaded. Use the Project Overview retry." />
         )}</ProjectCommercialScope>:null,
-      after:accessEndingStatus===null?<ProjectCommercialScope value={commercial}>      <Suspense fallback={<p role="status">Reading payment interface…</p>}>
-        <ProjectPaymentPositionQuery readOnly={readOnly} projectId={projectId} host={host} onAccessEnding={onAccessEnding} />
-      </Suspense><ProjectNextVisit projectId={projectId} host={host} onAccessEnding={onAccessEnding}/></ProjectCommercialScope>:null },
+      payment:accessEndingStatus===null?<ProjectCommercialScope value={commercial}>      <Suspense fallback={<p role="status">Reading payment interface…</p>}>
+        <ProjectPaymentPositionQuery embedded readOnly={readOnly} projectId={projectId} host={host} onAccessEnding={onAccessEnding} />
+      </Suspense></ProjectCommercialScope>:null, visits:accessEndingStatus===null?<ProjectNextVisit embedded projectId={projectId} host={host} onAccessEnding={onAccessEnding}/>:null },
     recent:{...history,before:accessEndingStatus === null && (
-              <ProjectCorrespondenceWarmScope value={correspondenceWarm}><ProjectEmailReadingScope value={emailReading}><Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} label="Loading customer emails" /></Card>}>
-                <ProjectCorrespondenceQuery projectId={projectId} onAccessEnding={onAccessEnding}
+              <ProjectCorrespondenceWarmScope value={correspondenceWarm}><ProjectEmailReadingScope value={emailReading}><Suspense fallback={<LoadingSkeleton rows={4} label="Loading customer emails" />}>
+                <ProjectCorrespondenceQuery embedded projectId={projectId} onAccessEnding={onAccessEnding}
                   project={{ customerEmail: snapshot?.project.contactEmail, quoteRef: commandQuery.data?.currentDesign.quote?.quoteRef }} />
               </Suspense></ProjectEmailReadingScope></ProjectCorrespondenceWarmScope>
             )}
-  }),[commandCentreState,snapshot,commandQuery,exception,projectWork,panel.selectedPanel,projectId,host,orientationProjection,accessEndingStatus,workModelMismatch,closed,history,readOnly,onAccessEnding,commercial,correspondenceWarm,emailReading]);
+  }),[commandCentreState,snapshot,commandQuery,exception,projectWork,panel.selectedPanel,projectId,host,orientationProjection,accessEndingStatus,workModelMismatch,history,readOnly,onAccessEnding,commercial,correspondenceWarm,emailReading]);
   useLayoutEffect(()=>{surface?.publish(evidence);},[surface?.publish,evidence]);
   useLayoutEffect(()=>()=>surface?.publish(null),[surface?.publish]);
   return surface ? null : <ProjectOverviewSurface evidence={evidence} controls={{projectId,panel:panel.selectedPanel,edited:false,setPanel:panel.selectPanel,adoptPanel:panel.selectPanel}} onFiles={()=>selectProjectView('files')}/>;

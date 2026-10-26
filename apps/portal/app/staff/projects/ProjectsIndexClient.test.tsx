@@ -12,7 +12,7 @@ import { PROJECTS_INDEX_QUERY_SCOPE } from '@/lib/queries/projectsIndex';
 let publishedPager:((page:number)=>void)|undefined;
 vi.mock('@/components/ui/foundation/FoundationPagination',async original=>{
  const actual=await original<typeof import('@/components/ui/foundation/FoundationPagination')>();
- return {...actual,Pagination:(props:Parameters<typeof actual.Pagination>[0])=>{publishedPager=props.onPageChange;return <actual.Pagination {...props}/>;}};
+ return {...actual,paginationEvidence:(...args:Parameters<typeof actual.paginationEvidence>)=>{publishedPager=args[2];return actual.paginationEvidence(...args);}};
 });
 const replace = vi.fn();
 const prefetch = vi.fn();
@@ -205,10 +205,11 @@ describe('ProjectsIndexClient', () => {
     let pending=true;useQueryMock.mockImplementation(options=>({data:pending?undefined:matchingIndexData(options),error:null,isFetching:pending,isPlaceholderData:false,refetch:vi.fn()}));
     const view=renderIntoDocument(<ProjectsIndexClient/>),table=view.container.querySelector('table'),header=view.container.querySelector('thead'),search=view.container.querySelector<HTMLInputElement>('#projectSearch')!;
     expect(header?.textContent).toContain('Next action');expect(view.container.textContent).toContain('Reading projects');expect(search.disabled).toBe(false);
+    const previous=view.container.querySelector<HTMLButtonElement>('[aria-label="Previous page"]')!,next=view.container.querySelector<HTMLButtonElement>('[aria-label="Next page"]')!;expect(previous.disabled).toBe(true);expect(next.disabled).toBe(true);
     const filters=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.startsWith('Filters'))!;expect(filters.disabled).toBe(false);
     act(()=>filters.click());expect(document.querySelector('[role="dialog"]')).not.toBeNull();
     act(()=>[...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button=>button.textContent==='Cancel')!.click());
-    pending=false;view.rerender(<ProjectsIndexClient/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('thead')).toBe(header);expect(view.container.querySelector('#projectSearch')).toBe(search);expect(view.container.textContent).toContain('Deck Build');view.unmount();
+    pending=false;view.rerender(<ProjectsIndexClient/>);expect(view.container.querySelector('[aria-label="Previous page"]')).toBe(previous);expect(view.container.querySelector('[aria-label="Next page"]')).toBe(next);expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('thead')).toBe(header);expect(view.container.querySelector('#projectSearch')).toBe(search);expect(view.container.textContent).toContain('Deck Build');view.unmount();
   });
 
   it('renders fresh index data through the combined authenticated query', () => {

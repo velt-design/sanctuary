@@ -11,14 +11,34 @@ const session = vi.hoisted(() => ({ user: { id: 'staff-a' }, role: 'staff', stat
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => session }));
 // Isolate the unrendered UI preload; its own imports must not bypass held code mocks.
 vi.mock('./tabs/FilesTab', () => ({ default: () => null }));
-vi.mock('./tabs/QuotePdfInlinePreview', () => ({ preloadQuotePdfPreview: async () => undefined }));
+const pdfCode = vi.hoisted(() => ({ imports: vi.fn(), preload: vi.fn(async () => undefined) }));
+vi.mock('./tabs/QuotePdfInlinePreview', () => { pdfCode.imports(); return { preloadQuotePdfPreview: pdfCode.preload }; });
+vi.mock('./tabs/overview/ProjectSharePointFilesPanel', () => ({ default: () => <p>Actual Files panel owner</p> }));
+vi.mock('./tabs/overview/ProjectEnquiryFilesPanel', () => ({ default: () => null }));
 const clients: QueryClient[] = [];
 let mounted: ReturnType<typeof renderIntoDocument> | undefined;
 const releaseCode: (() => void)[] = [];
-afterEach(async () => { mounted?.unmount(); mounted = undefined; releaseCode.splice(0).forEach(release => release()); await vi.dynamicImportSettled(); clients.forEach(client => client.clear()); clients.length = 0; vi.doUnmock('./tabs/overview/projectFilePreviewPreparation'); vi.doUnmock('@/lib/projects/sharePointFiles/query'); vi.useRealTimers(); vi.unstubAllGlobals(); session.user = { id: 'staff-a' }; session.role = 'staff'; session.status = 'authenticated'; sessionStorage.clear(); });
+afterEach(async () => { pdfCode.preload.mockClear(); mounted?.unmount(); mounted = undefined; releaseCode.splice(0).forEach(release => release()); await vi.dynamicImportSettled(); clients.forEach(client => client.clear()); clients.length = 0; vi.doUnmock('./tabs/overview/projectFilePreviewPreparation'); vi.doUnmock('@/lib/projects/sharePointFiles/query'); vi.useRealTimers(); vi.unstubAllGlobals(); session.user = { id: 'staff-a' }; session.role = 'staff'; session.status = 'authenticated'; sessionStorage.clear(); });
 const rootId = '11111111-1111-4111-8111-111111111111';
 function Owner({ project = 'project-a', enabled = true }: { project?: string; enabled?: boolean }) { useProjectFilesPreparation(project, 'host', enabled); return <p>Snapshot still loading</p>; }
 async function flush() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); }); }
+it('prepares current file metadata without importing or evaluating an unrelated PDF viewer', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
+  const fetcher = vi.fn(async () => Response.json({ state: 'unlinked', roots: [], rootId: null, folderId: null, items: [], cursor: null }));
+  vi.stubGlobal('fetch', fetcher);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await vi.dynamicImportSettled();
+  await vi.waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+  expect(pdfCode.imports).not.toHaveBeenCalled(); expect(pdfCode.preload).not.toHaveBeenCalled();
+  expect(mounted.container.textContent).toBe('Snapshot still loading');
+});
+it('keeps PDF code preparation with the actual Files owner when that view mounts', async () => {
+  const { default: FilesTab } = await vi.importActual<typeof import('./tabs/FilesTab')>('./tabs/FilesTab');
+  mounted = renderIntoDocument(<FilesTab projectId="project-a" host="host" />);
+  await vi.dynamicImportSettled();
+  expect(mounted.container.textContent).toBe('Actual Files panel owner');
+  expect(pdfCode.preload).toHaveBeenCalledOnce();
+});
 it('prepares alongside snapshot loading, shares exact owner keys, and bounds first-page preparation to two child folders', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
   const fetcher = vi.fn(async (url: string) => {
@@ -228,8 +248,12 @@ it('publishes metadata independently of held private code, then prepares the sam
 });
 it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not revive a held private owner after %s', async retirement => {
   const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledTimes(1);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  // Both independent imports must have started before retiring the held owner.
+  // A fixed sleep does not establish metadata readiness under a cold module transform.
+  await vi.waitFor(() => {
+    expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledTimes(1);
+  });
   const scope = { owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root', itemId: 'file' };
   retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"v1"', name: 'Plan.pdf', mime: 'application/pdf' });
   const changed = vi.fn(), unsubscribe = subscribePreview(client, scope, changed);
@@ -246,16 +270,20 @@ it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not revive a held p
 });
 it('rejects retired held A while current B and return A work through available code without a late cancellation', async () => {
   const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await vi.waitFor(() => {
+    expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledOnce();
+    expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].folderId).toBe('root');
+  });
   expect(code.prepare).not.toHaveBeenCalled(); expect(previews).toEqual([]);
   session.user = { id: 'staff-b' };
   mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>); await flush();
   // Vitest bypasses an in-progress manual factory on a second import of its URL.
   // B therefore uses the actual available module while the first A remains held.
-  expect(code.prepare).not.toHaveBeenCalled(); expect(previews).toEqual(['project-b']);
+  expect(code.prepare).not.toHaveBeenCalled(); await vi.waitFor(() => expect(previews).toEqual(['project-b']));
   session.user = { id: 'staff-a' };
   mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(code.prepare).not.toHaveBeenCalled(); expect(previews).toEqual(['project-b','project-a']);
+  expect(code.prepare).not.toHaveBeenCalled(); await vi.waitFor(() => expect(previews).toEqual(['project-b','project-a']));
   expect(metadata).toEqual(['project-a','project-b']);
   await act(async () => code.release()); await flush();
   expect(previews).toEqual(['project-b','project-a']); expect(code.prepare).not.toHaveBeenCalled(); expect(code.cancel).not.toHaveBeenCalled();

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import styles from './PageState.module.css';
+import styles from './PageMessagePanel.module.css';
 
 export default function PageMessagePanel({
   title,

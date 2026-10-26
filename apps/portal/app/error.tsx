@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';
-import styles from '@/components/page-state/PageState.module.css';
+import styles from '@/components/page-state/PageMessagePanel.module.css';
 import { logPortalClientError } from '@/lib/logging/clientLogger';
 
 export default function GlobalError({

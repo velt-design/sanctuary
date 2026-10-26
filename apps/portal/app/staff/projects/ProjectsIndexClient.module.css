@@ -80,6 +80,25 @@
 .projectIdentity { display: grid; justify-items: start; gap: var(--ui-space-1); }
 .projectIdentity small { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); padding-left: var(--ui-space-1); }
 
-.projectIdentity { width: 220px; }
+.projectIdentity { width: 100%; min-width:0; }
+.indexTable { table-layout:fixed; min-width:900px; }
+.indexTable td { overflow-wrap:anywhere; }
+.listViewport { min-height:320px; }
+.listCard > header { min-height:72px; align-items:center; }
+.listCard > header > :last-child { min-width:0; flex:1 1 270px; max-width:680px; }
+@media(max-width:767px) { .listCard > header { display:grid; gap:0; } .listCard > header > :last-child { width:100%; max-width:none; } }
 .projectIdentity a { white-space: normal; text-align: left; overflow-wrap: anywhere; justify-content: flex-start; }
 .projectIdentity .projectLocation { color: var(--ui-text); overflow-wrap: anywhere; }
+
+.indexTable th:nth-child(1) { width: 27%; }
+.indexTable th:nth-child(2) { width: 12%; }
+.indexTable th:nth-child(3) { width: 15%; }
+.indexTable th:nth-child(4) { width: 29%; }
+.indexTable th:nth-child(5) { width: 10%; }
+.indexTable th:nth-child(6) { width: 7%; }
+
+.listHeaderActions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-2); }
+@media (max-width: 767px) {
+  .listHeaderActions { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px 64px; }
+  .listHeaderActions > :last-child { justify-self: end; }
+}

@@ -43,7 +43,6 @@ export default function ProjectMainTabsSurface({
   // Summary metadata cannot prove a specialist is absent. Match route/navigation
   // intent until the full snapshot resolves availability, including on failure.
   const activeTab = coerceProjectTab(requestedTab, !snapshotContentReady || Boolean(snapshot?.project.hasJobPacks));
-  const commercial = activeTab === 'estimates' || activeTab === 'quotes' || activeTab === 'invoices';
 
   return (
     <section
@@ -57,7 +56,7 @@ export default function ProjectMainTabsSurface({
         className={`${layout.projectTabBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
       >
-        {!privateContentReady || !commercial ? statusPanel : null}
+        {snapshotState !== 'unavailable' || statusPanel ? <div className={layout.readStatusSlot}>{statusPanel ?? (!privateContentReady ? <p role="status">Reading project…</p> : null)}</div> : null}
         {publicBody ?? (privateContentReady ? body : null)}
       </div>
     </section>

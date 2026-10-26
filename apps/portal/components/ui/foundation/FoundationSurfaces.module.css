@@ -76,7 +76,8 @@
 .pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-4); color: var(--ui-text-muted); font-family: var(--ui-font-body); font-size: var(--ui-font-size-small); }
 .paginationControls { display: flex; align-items: center; }
 .paginationControls button,
-.paginationControls > span {
+.paginationControls > span,
+.paginationNumbers > span {
   display: inline-grid;
   place-items: center;
   min-width: var(--ui-control-sm);
@@ -120,7 +121,8 @@
 @media (max-width: 767px) {
   .pageLayout { padding: var(--ui-space-3); }
   .paginationControls button,
-  .paginationControls > span { min-width: 44px; height: 44px; }
+  .paginationControls > span,
+  .paginationNumbers > span { min-width: 44px; height: 44px; }
   .pagination { align-items: flex-start; flex-direction: column; }
   .paginationControls { max-width: 100%; overflow-x: auto; }
   .stickyBar { align-items: stretch; flex-direction: column; padding-bottom: max(var(--ui-space-3), env(safe-area-inset-bottom)); }
@@ -131,4 +133,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skeletonRow span { animation: none; }
+}
+
+.pagination[data-compact] { min-width: 0; gap: var(--ui-space-2); }
+.pagination[data-compact] .paginationSummary { width: 17ch; flex: 0 0 17ch; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pagination[data-compact] .paginationControls { display: grid; grid-template-columns: var(--ui-control-sm) 196px var(--ui-control-sm); overflow: visible; }
+.paginationNumbers { display: flex; overflow-x: auto; min-width: 0; scrollbar-width: thin; }
+@media (max-width: 767px) {
+  .pagination[data-compact] { flex-direction: column; align-items: flex-end; gap: 0; height: 64px; }
+  .pagination[data-compact] .paginationSummary { flex: 0 0 20px; min-height: 0; line-height: 20px; }
+  .pagination[data-compact] .paginationControls { grid-template-columns: 44px 88px 44px; }
 }

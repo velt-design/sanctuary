@@ -9,17 +9,8 @@ import { visibleNavItems } from './navItems';
 import UserMenu from './UserMenu';
 import styles from './SidebarRail.module.css';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  shouldHandleRouteTransitionClick,
-  shouldStartRouteTransitionForHref,
-  usePortalRouteTransition,
-} from '@/components/page-state/PortalRouteTransition';
-import {
-  openPortalIndexInstantly,
-  openPortalActualFrameInstantly,
-  portalIndexTarget,
-  preloadPortalIndex,
-} from '@/lib/queries/portalIndexNavigation';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransitionContext';
+import { handlePortalNavigationClick, preloadPortalNavigation } from '@/lib/queries/portalIndexNavigation';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -48,39 +39,15 @@ export default function SidebarRail({
   const prefetchedRef = useRef(new Set<string>());
 
   const prefetchFor = useCallback(
-    (_key: string, href: string) => {
-
-      if (portalIndexTarget(href)) {
-        preloadPortalIndex(queryClient, router, href);
-        return;
-      }
-      const routeToken = `route:${href}`;
-      if (!prefetchedRef.current.has(routeToken)) {
-        prefetchedRef.current.add(routeToken);
-        router.prefetch(href);
-      }
-      // Schedule data belongs to the guarded selected read owner.
-    },
+    (_key: string, href: string) => preloadPortalNavigation(queryClient, router, href, prefetchedRef.current),
     [queryClient, router],
   );
 
   const handleNavClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
-      if (!shouldHandleRouteTransitionClick(event)) return;
-      if (!shouldStartRouteTransitionForHref(href)) return;
-      const indexTarget = portalIndexTarget(href);
-      if (indexTarget) {
-        beginInstantRoute(indexTarget.route, { href });
-        if (openPortalIndexInstantly(event, router, href)) return;
-      }
-
-      beginRouteTransition({
-        href,
-        label,
-        source: 'sidebar-rail',
-        control: event.currentTarget,
+      handlePortalNavigationClick(event, router, href, { beginInstantRoute, beginRouteTransition }, {
+        label, source: 'sidebar-rail', control: event.currentTarget,
       });
-      openPortalActualFrameInstantly(event, router, href);
     },
     [beginInstantRoute, beginRouteTransition, router],
   );

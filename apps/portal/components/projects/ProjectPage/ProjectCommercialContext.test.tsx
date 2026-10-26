@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
 import { CommercialProjectNotice, ProjectCommercialProvider, useProjectCommercialContext } from './ProjectCommercialContext';
+import CommercialTabSurface from './tabs/CommercialTabSurface';
 
 function Action() {
   const { actionsAvailable } = useProjectCommercialContext();
@@ -17,6 +18,30 @@ function view(state: ProjectWorkProjection['effectiveState'], ready = true, vers
   </ProjectCommercialProvider>;
 }
 describe('current-state commercial presentation', () => {
+  it('retains one allocated notice owner and visible review action while full details stay local', () => {
+    const root = (ready: boolean) => <CommercialTabSurface view="quotes" onSelect={() => undefined}
+      notice={ready ? <ProjectCommercialProvider projectId="current-project" work={work('WAITING')} ready>
+        <CommercialProjectNotice compact projectId="current-project" view="quotes" /><Action />
+      </ProjectCommercialProvider> : null}><input aria-label="Find quotes" /></CommercialTabSurface>;
+    const result = renderIntoDocument(root(false));
+    const input = result.container.querySelector('input')!;
+    const notice = input.previousElementSibling;
+    result.rerender(root(true));
+    expect(input.previousElementSibling).toBe(notice);
+    expect(result.container.querySelector('input')).toBe(input);
+    expect(result.container.querySelector('[aria-live="polite"]')?.textContent).toBeTruthy();
+    const review = [...result.container.querySelectorAll('button')].find(button => button.textContent === 'Review commercial actions')!;
+    expect([...result.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Send agreement')?.disabled).toBe(true);
+    act(() => review.click());
+    expect([...result.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Send agreement')?.disabled).toBe(false);
+    act(() => [...result.container.querySelectorAll('button')].find(button => button.textContent === 'Details')!.click());
+    expect(document.body.textContent).toContain('Project work is on hold. Check the reason and agreed next step');
+    expect(document.body.querySelector('[href="/staff/projects/current-project?tab=invoices"]')).not.toBeNull();
+    result.rerender(root(false));
+    expect(result.container.querySelector('input')).toBe(input);
+    expect(document.body.textContent).not.toContain('Project work is on hold');
+    result.unmount();
+  });
   it.each(['CLOSED', 'ARCHIVED', 'WAITING'] as const)('makes %s actions deliberate without changing record facts', (state) => {
     const result = renderIntoDocument(view(state));
     const action = () => [...result.container.querySelectorAll('button')].find((node) => node.textContent === 'Send agreement')!;

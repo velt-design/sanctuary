@@ -74,10 +74,12 @@ it('publishes the actual closed-project notice with its ORIGINAL guarded review 
  expect(view.container.textContent).not.toContain('Review commercial actions');
  state.path=state.canonical=`/staff/projects/${projectId}`;view.rerender(tree());await settle();
  const review=()=>[...view!.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Review commercial actions');
- expect(review()).toBeDefined();expect(view.container.textContent).toContain('Closing the project does not cancel an invoice');
- act(()=>review()!.click());await settle();expect(view.container.textContent).toContain('Commercial actions are available for this review');expect(review()).toBeUndefined();
+ expect(review()).toBeDefined();
+ act(()=>[...view!.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!.click());
+ expect(document.body.textContent).toContain('Closing the project does not cancel an invoice');
+ act(()=>review()!.click());await settle();expect(document.body.textContent).toContain('Commercial actions are available for this review');expect(review()).toBeUndefined();
  expect(view.container.querySelector('#quote-search')).toBe(input);expect(view.container.querySelector('table')).toBe(table);
- act(()=>view!.container.querySelector<HTMLButtonElement>('[data-deny]')!.click());expect(view.container.textContent).not.toContain('Commercial actions are available for this review');
+ act(()=>view!.container.querySelector<HTMLButtonElement>('[data-deny]')!.click());expect(document.body.textContent).not.toContain('Commercial actions are available for this review');
  state.completion={};view.rerender(tree());await settle();expect(review()).toBeDefined();expect(view.container.textContent).not.toContain('Commercial actions are available for this review');
  expect(view.container.querySelector('#quote-search')).toBe(input);expect(view.container.querySelector('table')).toBe(table);
 });

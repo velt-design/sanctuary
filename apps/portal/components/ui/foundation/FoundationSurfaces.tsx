@@ -87,12 +87,12 @@ export const Card = forwardRef<HTMLElement, CardProps>(function Card(
   );
 });
 
-export const Table = forwardRef<HTMLTableElement, TableHTMLAttributes<HTMLTableElement>>(function Table(
-  { className, ...props },
+export const Table = forwardRef<HTMLTableElement, TableHTMLAttributes<HTMLTableElement> & { viewportClassName?: string }>(function Table(
+  { className, viewportClassName, ...props },
   ref,
 ) {
   return (
-    <div className={styles.tableScroll}>
+    <div className={cx(styles.tableScroll, viewportClassName)}>
       <table ref={ref} className={cx(styles.table, className)} {...props} />
     </div>
   );

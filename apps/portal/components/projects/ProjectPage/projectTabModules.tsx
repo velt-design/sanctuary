@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ProjectTabKey } from '@/lib/projects/projectTabs';
+import type { ComponentProps } from 'react';
 import styles from './projectTabModules.module.css';
 
 export type ProjectTabModuleKey = ProjectTabKey;
@@ -37,7 +38,12 @@ function loadingState(label: string, key: ProjectTabModuleKey | 'commercial') {
   };
 }
 
-export const OverviewTab = dynamic(loaders.activity, { loading: loadingState('overview', 'activity') });
+const StandaloneOverviewTab = dynamic(loaders.activity, { loading: loadingState('overview', 'activity') });
+const ManagedOverviewTab = dynamic(loaders.activity, { loading: () => null });
+export function OverviewTab(props: ComponentProps<typeof StandaloneOverviewTab>) {
+  const Reader = props.surface ? ManagedOverviewTab : StandaloneOverviewTab;
+  return <Reader {...props} />;
+}
 export const FilesTab = dynamic(loaders.files, { loading: loadingState('files', 'files') });
 export const CommercialTab = dynamic(loaders.quotes, { loading: loadingState('commercial', 'commercial') });
 export const JobPacksTab = dynamic(loaders['job-packs'], { loading: loadingState('job packs', 'job-packs') });

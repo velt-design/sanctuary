@@ -28,7 +28,9 @@ test('supplemental bounded native causal capture',async()=>{
     const destination=new URL(String(await open.getAttribute('href')),origin);
     if(destination.origin!==origin||!/^\/staff\/projects\/(?:proj_)?[0-9a-f-]{36}$/i.test(destination.pathname))throw 0;
     await observe('detail-warm',async()=>{await open.click();await page.waitForURL(url=>url.pathname===destination.pathname);await page.locator('h1').first().waitFor();});
-    await dashboard(page);const expand=page.getByRole('button',{name:'Expand Projects',exact:true}).first();if(await expand.count())await expand.click();
+    await observe('projects-back',async()=>{await page.goBack();await page.getByRole('heading',{name:'Projects',exact:true,level:1}).waitFor();});
+    await observe('dashboard-warm',async()=>{await nativeLink(page,'Dashboard');await page.getByRole('heading',{name:'Dashboard',exact:true,level:1}).waitFor();});
+    const expand=page.getByRole('button',{name:'Expand Projects',exact:true}).first();if(await expand.count())await expand.click();
     await observe('running-warm',async()=>{await nativeLink(page,'Running Jobs');await page.getByRole('heading',{name:'Running Jobs',exact:true,level:1}).waitFor();});
     await page.goto('/staff/schedule');await page.locator('[data-board-lanes="true"][data-visible-crew-count]').waitFor();
     const toggle=page.getByRole('button',{name:/Collapse unscheduled panel|Expand unscheduled panel/});await toggle.waitFor();

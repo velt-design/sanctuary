@@ -30,6 +30,7 @@ export type ProjectOrientationBandProps = {
   project: ProjectPageSnapshot["project"];
   host: string;
   mode?: "overview" | "compatibility";
+  embedded?: boolean;
   operationalState?: ProjectWorkProjection["effectiveState"] | null;
   freshness?: ProjectOrientationFreshness | null;
 };
@@ -38,6 +39,7 @@ export default function ProjectOrientationBand({
   project,
   host,
   mode = "overview",
+  embedded = false,
   operationalState,
   freshness,
 }: ProjectOrientationBandProps) {
@@ -257,16 +259,11 @@ export default function ProjectOrientationBand({
     );
   }
 
-  return (
-    <section
-      className={styles.orientation}
-      aria-label="Project orientation"
-      data-project-orientation="true"
-      data-orientation-mode="overview"
-      data-operational-state={operationalState ?? undefined}
-    >
+  const body = (
+    <>
+
       <header className={styles.orientationHeader}>
-        <h2>Project details</h2>
+        {!embedded ? <h2>Project details</h2> : null}
         <div className={styles.overviewActions}>
           {detailsActions}
           <Suspense
@@ -345,6 +342,7 @@ export default function ProjectOrientationBand({
           </dl>
         </div>
       ) : null}
-    </section>
+    </>
   );
+  return embedded ? <div data-project-orientation="true" data-orientation-mode="overview" data-operational-state={operationalState ?? undefined}>{body}</div> : <section className={styles.orientation} aria-label="Project orientation" data-project-orientation="true" data-orientation-mode="overview" data-operational-state={operationalState ?? undefined}>{body}</section>;
 }

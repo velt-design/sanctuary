@@ -3,6 +3,8 @@
 import type { ReactNode } from 'react';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import { Input, Select } from '@/components/ui/foundation/FoundationControls';
+import ReadStatus from '@/components/page-state/ReadStatus';
+import {PaginationSurface, type PaginationEvidence} from '@/components/ui/foundation/PaginationSurface';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import {
   Card,
@@ -14,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/foundation/FoundationSurfaces';
-import styles from './contacts.module.css';
+import styles from './ContactsIndexFrame.module.css';
 import type {
   ContactsIndexPageSize,
   ContactsIndexSort,
@@ -41,17 +43,13 @@ export type ContactsIndexFrameProps = {
   setSort: (value: ContactsIndexSort) => void;
   contactsIndex: ContactsIndexFrameRead;
   actions?: ReactNode;
-  rows?:ReactNode;countNotice?:ReactNode;pagination?:ReactNode;
+  rows?:ReactNode;countNotice?:ReactNode;pagination?:PaginationEvidence;
 };
 
 export default function ContactsIndexFrame({
-  query, debouncedQuery, page, pageSize, sort,
-  setQuery, setPage, setPageSize, setSort, contactsIndex, actions, rows, countNotice, pagination,
+  query, pageSize, sort,
+  setQuery, setPageSize, setSort, contactsIndex, actions, rows, countNotice, pagination,
 }: ContactsIndexFrameProps) {
-  const contacts = contactsIndex.data?.contacts.rows ?? [];
-  const totalCount = contactsIndex.data?.contacts.totalCount ?? 0;
-  const rangeStart = totalCount ? (page - 1) * pageSize + 1 : 0;
-  const rangeEnd = Math.min(page * pageSize, totalCount);
 
   return (
     <PageLayout
@@ -63,13 +61,12 @@ export default function ContactsIndexFrame({
         variant="index"
         title="Contacts"
         description="Search customer records, review linked projects, or add a new enquiry contact."
-        count={contactsIndex.data?.contacts.totalCount ?? undefined}
+        count={contactsIndex.data?.contacts.totalCount ?? (contactsIndex.state==='unavailable'||contactsIndex.state==='refresh-failed'?'Contacts unavailable':'Reading contacts')}
         right={
-          actions
+          <div className={styles.actionSlot}>{actions}</div>
         }
       />
 
-      {countNotice}
 
       <div className={styles.stack}>
         <Card title="Find contacts" aria-label="Search contacts" padding="compact">
@@ -107,28 +104,27 @@ export default function ContactsIndexFrame({
 
         <Card
           title="All contacts"
+          className={styles.listCard}
           action={(
-            <span className={styles.muted}>
-              {contactsIndex.state === 'pending' || contactsIndex.state === 'cached'
-                ? 'Updating...'
-                : contactsIndex.state === 'refresh-failed'
-                  ? contacts.length ? `Refresh failed · ${rangeStart}–${rangeEnd} of ${totalCount}` : 'Refresh failed'
-                  : contactsIndex.state==='unavailable'?'Access unavailable':`${rangeStart}–${rangeEnd} of ${totalCount}`}
-            </span>
+            <div className={styles.listHeaderActions}><ReadStatus title={contactsIndex.state==='unavailable'?'Access unavailable':contactsIndex.state==='refresh-failed'?'Refresh failed':contactsIndex.state==='cached'?'Updating...':!contactsIndex.data?'Reading…':''}
+              tone={contactsIndex.state==='refresh-failed'?'warning':contactsIndex.state==='unavailable'?'error':'neutral'}
+              action={countNotice}
+              onRetry={contactsIndex.state==='refresh-failed'?contactsIndex.retry:undefined}
+              details={contactsIndex.state==='refresh-failed'?<DataStatePanel state="stale" title="Could not refresh contacts" description={contactsIndex.data?.contacts.rows.length?'Showing the last saved list.':'No saved list is available. Retry the request.'}/>:undefined}/><PaginationSurface compact evidence={pagination}/></div>
+
           )}
           aria-label="Contacts list"
           aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}
           padding="none"
         >
-          {contactsIndex.state==='refresh-failed'?<DataStatePanel state="stale" title="Could not refresh contacts" description={contacts.length?'Showing the last saved list.':'No saved list is available. Retry the request.'} onRetry={()=>void contactsIndex.retry()}/>:null}
-                  <Table className={styles.responsiveTable}>
+                  <Table className={styles.responsiveTable} viewportClassName={styles.listViewport}>
+
                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
                     <TableBody>
                       {rows}
-                      {!contacts.length&&<TableRow><TableCell colSpan={5}>{contactsIndex.state==='pending'||contactsIndex.state==='cached'?<p role="status">Reading contacts…</p>:contactsIndex.state==='unavailable'?<DataStatePanel state="unavailable" title="Contacts unavailable" description="Your current session cannot access the Contacts list." onRetry={()=>void contactsIndex.retry()}/>:contactsIndex.state==='fresh'?<DataStatePanel state={debouncedQuery.trim()?'filtered-empty':'empty'} title={debouncedQuery.trim()?'No contacts match your search.':'No contacts found.'} description={debouncedQuery.trim()?'Clear or adjust the search.':'Create the first contact to begin.'} onClear={debouncedQuery.trim()?()=>setQuery(''):undefined}/>:null}</TableCell></TableRow>}
+                      {!contactsIndex.data&&<TableRow><TableCell colSpan={5}>{contactsIndex.state==='pending'||contactsIndex.state==='cached'?<p role="status">Reading contacts…</p>:contactsIndex.state==='unavailable'?<DataStatePanel state="unavailable" title="Contacts unavailable" description="Your current session cannot access the Contacts list." onRetry={()=>void contactsIndex.retry()}/>:null}</TableCell></TableRow>}
                     </TableBody>
                   </Table>
-          {pagination}
 
         </Card>
       </div>

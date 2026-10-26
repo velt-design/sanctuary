@@ -8,7 +8,7 @@ import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
 import { Button, Input } from '@/components/ui/foundation/FoundationControls';
-import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import ReadStatus from '@/components/page-state/ReadStatus';
 import { Card, PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
 import { invalidateContactsIndexCaches } from '@/lib/queries/contactsIndex';
@@ -114,7 +114,7 @@ export default function ContactCreateClient() {
             />
           </div>
 
-          {error ? <div className={styles.status}><AlertBanner tone="error" title="Contact could not be created">{error}</AlertBanner></div> : null}
+          <ReadStatus title={error ? "Contact could not be created" : busy ? "Creating contact…" : "Contact details"} tone={error ? "error" : "neutral"} details={error ? <p>{error}</p> : undefined} />
 
           <div className={styles.formActions}>
             <Button type="submit" disabled={!canSubmit} loading={busy}>{busy ? 'Creating...' : 'Create Contact'}</Button>

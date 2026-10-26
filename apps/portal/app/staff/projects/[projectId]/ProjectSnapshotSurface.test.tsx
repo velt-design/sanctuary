@@ -117,7 +117,7 @@ describe('one real project frame beside the retained Next outlet', () => {
   });
   it('never publishes departed owner facts or actions into a denied or replacement source', () => {
     view = renderIntoDocument(tree()); click('[data-open]'); adopt(); const old = state.retiredPublish!;
-    click('[data-deny]'); expect(view.container.querySelector('[data-state=unavailable]')).not.toBeNull();
+    click('[data-deny]'); expect(view.container.querySelector('[role=alert]')).not.toBeNull();
     expect([...view.container.querySelectorAll('button')].some(button => button.textContent === 'Retry')).toBe(true);
     expect(state.readers).toBe(0); expect(state.facts).toBe(0); expect(state.owners).toBe(0);
     act(() => old({ snapshotState: 'fresh', snapshot: { project: { name: 'Late forbidden facts' } } }));
@@ -156,7 +156,7 @@ it('restores cached denied detail as unavailable and uses the same frame Retry b
   act(() => { window.history.replaceState(null, '', '/staff/projects/proj_A'); window.dispatchEvent(new PopStateEvent('popstate')); });
   adopt();
   const frame = view.container.querySelector('[data-project-page-frame]'), input = view.container.querySelector<HTMLInputElement>('[role=combobox]')!;
-  expect(frame).not.toBeNull(); expect(view.container.querySelector('[data-state=unavailable]')).not.toBeNull();
+  expect(frame).not.toBeNull(); expect(view.container.querySelector('[role=alert]')).not.toBeNull();
   expect(view.container.querySelector('[data-real-fact]')).toBeNull(); expect(state.readers).toBe(0); expect(state.owners).toBe(0);
   const retry = [...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Retry')!;
   const before = router.refresh.mock.calls.length; act(() => { input.focus(); retry.click(); });
@@ -164,7 +164,7 @@ it('restores cached denied detail as unavailable and uses the same frame Retry b
   expect(view.container.querySelector('[data-project-page-frame]')).toBe(frame);
   completion = recovered; denied = false; view.rerender(tree());
   expect(view.container.querySelector('[data-project-page-frame]')).toBe(frame); expect(view.container.querySelector('[role=combobox]')).toBe(input);
-  expect(view.container.querySelector('[data-state=unavailable]')).toBeNull(); expect(view.container.querySelector('[data-real-fact]')).not.toBeNull();
+  expect(view.container.querySelector('[role=alert]')).toBeNull(); expect(view.container.querySelector('[data-real-fact]')).not.toBeNull();
   expect(state.readers).toBe(1); expect(state.outletRetires).toBe(0);
 });
 

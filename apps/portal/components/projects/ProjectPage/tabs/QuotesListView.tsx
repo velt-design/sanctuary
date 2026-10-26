@@ -148,6 +148,9 @@ export default function QuotesListView({
     pending:quotesLoading,
     closed: commercial.closed,
     headerActions: commercial.actionsAvailable ? <button type="button" className={styles.primaryButton} onClick={openCreate}>Create quote</button> : null,
+    hasAccepted: currentAcceptedIds.size > 0,
+    statusTitle: quotesError ? (quotes.length ? 'Showing saved quote versions' : 'Could not load quote versions') : undefined,
+    statusAction: quotesError ? <Button variant="secondary" onClick={retryQuotes}>Retry</Button> : undefined,
     accepted: <>
       {currentAcceptedIds.size > 0 ? (
         <Card title={commercial.closed ? "Recorded accepted agreement" : quotesError ? "Saved accepted work" : "Current accepted work"} padding="compact" headingLevel={4}>
@@ -179,19 +182,6 @@ export default function QuotesListView({
           description={quotesError}
           onRetry={retryQuotes}
         />
-      ) : null}
-
-      {!quotesLoading && !quotesError && !quotes.length ? (
-        <div className={styles.emptyState}>
-          <p className={styles.emptyTitle}>No quotes yet.</p>
-          {commercial.actionsAvailable && <button
-            type="button"
-            className={styles.primaryButton}
-            onClick={openCreate}
-          >
-            Create quote from design
-          </button>}
-        </div>
       ) : null}
 
       {quotesLoading&&quotes.length>0&&<p role="status">Updating quote versions. Earlier verified versions remain below.</p>}
@@ -312,15 +302,14 @@ export default function QuotesListView({
     ].some((value) => String(value ?? "").toLocaleLowerCase().includes(needle)));
       })();
       const visibleQuotes = query.trim() || showHistory ? matchingQuotes : matchingQuotes.filter((quote) => !isHistorical(quote));
-      return { noMatches: <>
-      {!quotesLoading && quotes.length && !visibleQuotes.length ? (
-        <EmptyState
-          title={query.trim() ? "No matching quotes" : "Only historical versions"}
-          description={query.trim() ? "Try a different internal name, reference, or version." : "Show historical versions to review earlier quotes, or create a new quote."}
-        />
-      ) : null}
-
-      </>, rows: <>
+      return { noMatches: !quotesLoading && !quotesError && !quotes.length ? (
+        <div className={styles.emptyState}><p className={styles.emptyTitle}>No quotes yet.</p>
+          {commercial.actionsAvailable && <button type="button" className={styles.primaryButton} onClick={openCreate}>Create quote from design</button>}
+        </div>
+      ) : !quotesLoading && !quotesError && quotes.length > 0 && !visibleQuotes.length ? (
+        <EmptyState title={query.trim() ? "No matching quotes" : "Only historical versions"}
+          description={query.trim() ? "Try a different internal name, reference, or version." : "Show historical versions to review earlier quotes, or create a new quote."} />
+      ) : null, rows: <>
               {quotesLoading&&!quotes.length&&<tr><td colSpan={5} role="status">Reading quote versions…</td></tr>}
               {quotesError&&!quotes.length&&<tr><td colSpan={5}>Quote versions unavailable. Retry the read.</td></tr>}
               {visibleQuotes.map((quote) => {

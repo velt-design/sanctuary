@@ -12,6 +12,8 @@
   gap: 0;
 }
 
+.noticeSlot { height: 44px; min-width: 0; }
+
 .container:not(.containerCalculatorWorkspace) {
   width: 100%;
   max-width: var(--ui-content-max);

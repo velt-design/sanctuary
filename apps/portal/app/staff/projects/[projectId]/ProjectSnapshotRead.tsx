@@ -12,6 +12,7 @@ import type { ProjectWorkInitialRead, ProjectWorkReadLoaders } from '@/lib/proje
 import PortalDebugExportButton from "@/components/debug/PortalDebugExportButton";
 import dynamic from "next/dynamic";
 import type { SearchReadOwner } from "@/components/layout/GlobalPortalSearchSurface";
+import ReadStatus from '@/components/page-state/ReadStatus';
 import type { QuotesListBinding } from '@/components/projects/ProjectPage/tabs/QuotesListSurface';
 import type { InvoicesListBinding } from '@/components/projects/ProjectPage/tabs/InvoicesListSurface';
 import type { CommercialTabChrome } from '@/components/projects/ProjectPage/tabs/CommercialTabSurface';
@@ -251,7 +252,7 @@ function ProjectSnapshotRead({
         ? "The project may have been removed, or your access may have changed."
         : "Check your connection and try again.";
 
-    return <DataStatePanel state="unavailable" title={title} description={message} />;
+    return <ReadStatus title={title} tone="error" details={<DataStatePanel state="unavailable" title={title} description={message} />}/>;
   })();
   const searchReader = useMemo(() => ({ component: SearchReader as SearchReadOwner }), [publish]);
   const frameProjectId = snapshot?.project.id ?? overviewProjectId(projectId);

@@ -68,7 +68,7 @@ export default function ProjectEnquiryFilesPanel({
 
   const attachments=query.data?.attachments;
   const status=query.isPending?<LoadingSkeleton rows={3} columns={3} label="Loading enquiry files"/>:query.isError?<DataStatePanel state="error" title="Enquiry files could not be loaded" description="No file access was granted. Retry the staff-only request." onRetry={()=>void query.refetch()}/>:!attachments?.length?<DataStatePanel state="empty" title="No website enquiry files" description="Files submitted with the website enquiry will appear here automatically."/>:null;
-  return <EnquiryFilesSurface evidence={{status,rows:attachments?<>{attachments.map((attachment) => (
+  return <EnquiryFilesSurface evidence={{status,pending:query.isPending,statusTitle:query.isError?'Enquiry files could not be loaded':!query.isPending&&!attachments?.length?'No website enquiry files':undefined,retry:query.isError?()=>void query.refetch():undefined,rows:attachments?<>{attachments.map((attachment) => (
             <TableRow key={attachment.id}>
               <TableCell>
                 <strong className={styles.filename}>{attachment.filename}</strong>

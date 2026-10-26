@@ -11,6 +11,7 @@ import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
 import { invoiceViews, quoteViews, parseRegisterQuery, registerHref, registerParams, registerSchema, type RegisterData } from '@/lib/finance/register';
 import RegisterTable from './RegisterTable';
 import RegisterSummary from './RegisterSummary';
+import ReadStatus from '@/components/page-state/ReadStatus';
 import styles from './FinanceRegister.module.css';
 
 type Loaded = { key: string; data: RegisterData };
@@ -68,33 +69,30 @@ export default function FinanceRegister({ basePath = '/staff/payments', apiPath 
       <Button type="button" variant="tertiary" className={styles.refresh} aria-label="Refresh" title="Refresh records" disabled={busy} onClick={() => setRevision(n => n + 1)}><RefreshCw aria-hidden="true" /></Button>
     </form>
     <section aria-label="Register results" aria-busy={busy} className={styles.results}>
-      <div className={styles.status} role="status" aria-live="polite">
-        {error === 'denied' ? 'Finance access is no longer available for this account.'
-          : error ? <span>Finance could not be refreshed.{data ? ' Previously checked records remain below.' : ''} <Button variant="tertiary" size="small" onClick={() => setRevision(n => n + 1)}>Try again</Button></span>
-          : busy ? loaded ? 'Checking the latest records. Previous results remain visible.' : 'Loading finance records…'
-          : data ? `Checked ${new Date(data.checkedAt).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })}` : ''}
-        {(query.search || query.sent !== 'all') && <Link className={styles.clearFilters} href={href({ ...query, search: '', sent: 'all', offset: 0 })}>Clear filters</Link>}
-      </div>
-      {data && <>
-        {resultQuery.tab === 'quotes' && <p className={styles.note}>One relevant version per family. Open a quote for revisions and history.</p>}
-        <RegisterTable rows={data.rows} tab={resultQuery.tab} checkedAt={data.checkedAt}
-          selected={selected} disabled={stale && !current} select={id => {
-            const next = new URLSearchParams(params.toString());
-            if (id === selected) next.delete('selected'); else next.set('selected', id);
-            navigate(`${basePath}?${next}`);
-          }} emptyMessage={<DataStatePanel state={query.search || query.sent !== 'all' ? 'filtered-empty' : 'empty'}
-            title={query.offset > 0 ? 'No more records on this page' : 'No matching records'}
-            description={query.offset > 0 ? 'Return to the first page or adjust the filters.' : 'Try another view or clear the filters.'} />} />
-        {current && <nav className={styles.pagination} aria-label="Register pages">
+      <ReadStatus title={error === 'denied' ? 'Finance access is no longer available for this account.' : error ? `Finance could not be refreshed.${data ? ' Previously checked records remain below.' : ''}` : busy ? 'Checking finance records…' : data ? `Checked ${new Date(data.checkedAt).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })}` : 'Finance unavailable'}
+        tone={error === 'denied' ? 'error' : error ? 'warning' : 'neutral'}
+        action={<>{error === 'unavailable' && <Button variant="tertiary" size="small" onClick={() => setRevision(n => n + 1)}>Try again</Button>}
+          {(query.search || query.sent !== 'all') && <Link className={styles.clearFilters} href={href({ ...query, search: '', sent: 'all', offset: 0 })}>Clear filters</Link>}</>}
+        details={data && (busy || error) ? <p>Previously checked records remain below while the current position is checked.</p> : undefined} />
+      <div className={styles.noteSlot}>{data && resultQuery.tab === 'quotes' && <p className={styles.note}>One relevant version per family. Open a quote for revisions and history.</p>}</div>
+      <div className={styles.paginationSlot}>
+        {data && current && <nav className={styles.pagination} aria-label="Register pages">
           {query.offset > 0 && <ButtonLink variant="secondary" size="small" href={href({ ...query, offset: Math.max(0, query.offset - 50) })}>Previous</ButtonLink>}
           <span>{data.count ? `${Math.min(query.offset + 1, data.count)}–${Math.min(query.offset + 50, data.count)} of ${data.count}` : '0 records'}</span>
           {data.hasMore && <ButtonLink variant="secondary" size="small" href={href({ ...query, offset: query.offset + 50 })}>Next</ButtonLink>}
           {query.offset > 0 && !data.rows.length && <ButtonLink variant="tertiary" href={href({ ...query, offset: 0 })}>First page</ButtonLink>}
         </nav>}
-      </>}
-      {!data && error === 'unavailable' && <DataStatePanel state="error" title="Finance could not be loaded" description="Try again to check the current position. No records have changed." />}
-      {!data && <RegisterTable rows={[]} tab={query.tab} selected={null} disabled select={() => {}} pending={busy}
-        emptyMessage={error === 'denied' ? 'Finance access is not available.' : 'No checked records are available.'} />}
+      </div>
+      <RegisterTable rows={data?.rows ?? []} tab={resultQuery.tab} checkedAt={data?.checkedAt}
+        selected={data ? selected : null} disabled={!data || stale && !current} pending={!data && busy} select={id => {
+          const next = new URLSearchParams(params.toString());
+          if (id === selected) next.delete('selected'); else next.set('selected', id);
+          navigate(`${basePath}?${next}`);
+        }} emptyMessage={data ? <DataStatePanel state={query.search || query.sent !== 'all' ? 'filtered-empty' : 'empty'}
+          title={query.offset > 0 ? 'No more records on this page' : 'No matching records'}
+          description={query.offset > 0 ? 'Return to the first page or adjust the filters.' : 'Try another view or clear the filters.'} />
+          : error === 'unavailable' ? <DataStatePanel state="error" title="Finance could not be loaded" description="Try again to check the current position. No records have changed." />
+          : error === 'denied' ? 'Finance access is not available.' : 'No checked records are available.'} />
     </section>
   </PageLayout>;
 }

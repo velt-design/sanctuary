@@ -9,17 +9,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import { NAV_ITEMS, visibleNavItems } from './navItems';
 import UserMenu from './UserMenu';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import {
-  shouldHandleRouteTransitionClick,
-  shouldStartRouteTransitionForHref,
-  usePortalRouteTransition,
-} from '@/components/page-state/PortalRouteTransition';
-import {
-  openPortalIndexInstantly,
-  openPortalActualFrameInstantly,
-  portalIndexTarget,
-  preloadPortalIndex,
-} from '@/lib/queries/portalIndexNavigation';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransitionContext';
+import { handlePortalNavigationClick, preloadPortalNavigation } from '@/lib/queries/portalIndexNavigation';
 import styles from './PortalSidebarPanel.module.css';
 
 type PinnedOpenParentState = {
@@ -147,16 +138,10 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
   }, [activeParentKey, routeKey]);
 
   const handleNavLinkClick = useCallback(
-    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
-      if (!shouldHandleRouteTransitionClick(event)) return;
-      if (!shouldStartRouteTransitionForHref(href)) return;
-      const indexTarget = portalIndexTarget(href);
-      if (indexTarget) {
-        beginInstantRoute(indexTarget.route, { href });
-        if (openPortalIndexInstantly(event, router, href)) return;
-      }
-      beginRouteTransition({ href, label, source: 'sidebar-panel', control: event.currentTarget });
-      openPortalActualFrameInstantly(event, router, href);
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string, source: 'sidebar-panel' | 'sidebar-rail' = 'sidebar-panel') => {
+      handlePortalNavigationClick(event, router, href, { beginInstantRoute, beginRouteTransition }, {
+        label, source, control: event.currentTarget,
+      });
     },
     [beginInstantRoute, beginRouteTransition, router],
   );
@@ -177,36 +162,10 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
   );
 
   const prefetchFor = useCallback(
-    (_key: string, href: string) => {
-
-      if (portalIndexTarget(href)) {
-        preloadPortalIndex(queryClient, router, href);
-        return;
-      }
-      const routeToken = `route:${href}`;
-      if (!prefetchedRef.current.has(routeToken)) {
-        prefetchedRef.current.add(routeToken);
-        router.prefetch(href);
-      }
-      // Schedule data belongs to the guarded selected read owner.
-    },
+    (_key: string, href: string) => preloadPortalNavigation(queryClient, router, href, prefetchedRef.current),
     [queryClient, router],
   );
 
-  const handleIconLinkClick = useCallback(
-    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
-      if (!shouldHandleRouteTransitionClick(event)) return;
-      if (!shouldStartRouteTransitionForHref(href)) return;
-      const indexTarget = portalIndexTarget(href);
-      if (indexTarget) {
-        beginInstantRoute(indexTarget.route, { href });
-        if (openPortalIndexInstantly(event, router, href)) return;
-      }
-      beginRouteTransition({ href, label, source: 'sidebar-rail', control: event.currentTarget });
-      openPortalActualFrameInstantly(event, router, href);
-    },
-    [beginInstantRoute, beginRouteTransition, router],
-  );
 
   return (
     <div
@@ -235,7 +194,7 @@ export default function PortalSidebarPanel({ mode = 'sidebar', financeAccess = f
                     aria-current={isParentCurrent ? 'page' : undefined}
                     className={styles.parentLink}
                     data-nav-key={item.key}
-                    onClick={(event) => handleIconLinkClick(event, item.href, item.label)}
+                    onClick={(event) => handleNavLinkClick(event, item.href, item.label, 'sidebar-rail')}
                     onMouseEnter={() => prefetchFor(item.key, item.href)}
                     onFocus={() => prefetchFor(item.key, item.href)}
                     onPointerDown={() => prefetchFor(item.key, item.href)}

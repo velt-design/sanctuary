@@ -221,7 +221,9 @@ describe('ContactDetailClient', () => {
       await Promise.resolve();
     });
     expect(rendered.container.textContent).toContain('Taylor');
-    expect(rendered.container.textContent).toContain('Contact details are no longer writable.');
+    click(findButton(rendered.container, 'Details'));
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('Contact details are no longer writable.');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true})));
 
     click(findButton(rendered.container, 'Review changes'));
     expect((rendered.container.querySelector('[aria-label="Contact name"]') as HTMLInputElement | null)?.value).toBe('Rejected Taylor');

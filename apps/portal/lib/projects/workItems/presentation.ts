@@ -8,6 +8,27 @@ import type {
   ProjectWorkResponsibilityArea,
 } from './types';
 
+const DUE_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Pacific/Auckland',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const OVERDUE_FORMATTER = new Intl.DateTimeFormat('en-NZ', {
+  timeZone: 'Pacific/Auckland',
+  day: 'numeric',
+  month: 'short',
+});
+
+const UPCOMING_FORMATTER = new Intl.DateTimeFormat('en-NZ', {
+  timeZone: 'Pacific/Auckland',
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+});
+
+
 const CLOSED_OUTCOME_LABELS: Record<ProjectClosedOutcome, string> = {
   LOST_NO_RESPONSE: 'Lost - No response',
   LOST_BUDGET_PRICE: 'Lost - Budget or price',
@@ -68,26 +89,12 @@ export function projectWorkDueLabel(
 
   const due = new Date(input.dueAt);
   if (!Number.isFinite(due.valueOf())) return 'Due time unavailable';
-  const localDate = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Pacific/Auckland',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  const localDate = DUE_DATE_FORMATTER;
   const dueDate = localDate.format(due);
   const today = localDate.format(now);
   if (dueDate < today) {
-    return `Overdue - ${new Intl.DateTimeFormat('en-NZ', {
-      timeZone: 'Pacific/Auckland',
-      day: 'numeric',
-      month: 'short',
-    }).format(due)}`;
+    return `Overdue - ${OVERDUE_FORMATTER.format(due)}`;
   }
   if (dueDate === today) return 'Due today';
-  return new Intl.DateTimeFormat('en-NZ', {
-    timeZone: 'Pacific/Auckland',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(due);
+  return UPCOMING_FORMATTER.format(due);
 }
