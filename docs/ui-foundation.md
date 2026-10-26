@@ -45,7 +45,10 @@ failed and verified-empty states are distinct; long facts remain fully scrollabl
 Real payment schedule, Finance summary and Dashboard card regions retain bounded reading
 areas, with overflow available rather than discarded content. Dashboard visits has an
 explicit track in each responsive layout, so its read cannot resize other rows. Access, Pricebook,
-contact/project forms and Files use the same local status ownership. Validation
+contact/project forms and Files use the same local status ownership.
+Project background Files preparation retains metadata and preview-byte ownership;
+the actual Files view owns PDF-renderer code preparation, so an ordinary project
+read does not evaluate that unrelated renderer. Validation
 and command controllers remain with their original owners. Imports keeps its file
 picker and summary above explicitly selected file results.
 
