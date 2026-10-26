@@ -50,15 +50,39 @@ function prepareReturn(link: boolean) {
 }
 
 describe('collection restoration ownership', () => {
+  let frames: Map<number, FrameRequestCallback>;
+  beforeEach(() => {
+    frames = new Map();
+    let nextFrame = 0;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  });
+  async function flushFrames() {
+    await act(async () => {
+      // Drain deferred restoration too, so the former animation-frame writer
+      // cannot pass a no-scroll assertion merely because it has not fired yet.
+      for (let count = 0; frames.size && count < 10; count++) {
+        const batch = Array.from(frames.values()); frames.clear();
+        batch.forEach(callback => callback(performance.now()));
+      }
+    });
+    expect(frames.size).toBe(0);
+  }
+
   it('does not replay collection coordinates over browser-entry restoration or early input', async () => {
     const scroll = prepareReturn(false);
     await render();
+    await flushFrames();
     expect(scroll).not.toHaveBeenCalled();
   });
 
   it('restores an explicit filtered All projects link after card readiness', async () => {
     const scroll = prepareReturn(true);
     await render();
+    await flushFrames();
     expect(scroll).toHaveBeenCalledExactlyOnceWith({ top: 1266, behavior: 'instant' });
     expect(window.location.search).toBe('?utm_source=test');
   });
@@ -70,6 +94,7 @@ describe('collection restoration ownership', () => {
       return 'compact';
     });
     await render();
+    await flushFrames();
     expect(scroll).not.toHaveBeenCalled();
   });
 });
