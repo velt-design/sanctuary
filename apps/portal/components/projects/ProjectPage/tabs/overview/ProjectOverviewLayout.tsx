@@ -1,47 +1,7 @@
 "use client";
 
-import {
-  useCallback,
-  useRef,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import type { ReactNode } from "react";
 import styles from "./ProjectOverviewLayout.module.css";
-
-const MOBILE_OVERVIEW_QUERY = "(max-width: 768px)";
-const COMPACT_OVERVIEW_MAX_WIDTH = 800;
-
-function subscribeToOverviewComposition(
-  node: HTMLDivElement | null,
-  callback: () => void,
-) {
-  if (typeof window === "undefined" || !window.matchMedia)
-    return () => undefined;
-  const media = window.matchMedia(MOBILE_OVERVIEW_QUERY);
-  media.addEventListener("change", callback);
-  window.addEventListener("resize", callback);
-  const observer =
-    node && typeof ResizeObserver !== "undefined"
-      ? new ResizeObserver(callback)
-      : null;
-  if (node) observer?.observe(node);
-  return () => {
-    media.removeEventListener("change", callback);
-    window.removeEventListener("resize", callback);
-    observer?.disconnect();
-  };
-}
-
-type OverviewComposition = "wide" | "stacked" | "mobile";
-
-function overviewCompositionSnapshot(
-  node: HTMLDivElement | null,
-): OverviewComposition {
-  if (typeof window === "undefined") return "wide";
-  if (window.matchMedia?.(MOBILE_OVERVIEW_QUERY).matches) return "mobile";
-  const width = node?.getBoundingClientRect().width ?? 0;
-  return width > 0 && width <= COMPACT_OVERVIEW_MAX_WIDTH ? "stacked" : "wide";
-}
 
 type ProjectOverviewLayoutProps = {
   orientation: ReactNode;
@@ -87,17 +47,6 @@ export default function ProjectOverviewLayout({
   admin,
   state,
 }: ProjectOverviewLayoutProps) {
-  const layoutRef = useRef<HTMLDivElement>(null);
-  const subscribe = useCallback(
-    (callback: () => void) =>
-      subscribeToOverviewComposition(layoutRef.current, callback),
-    [],
-  );
-  const composition = useSyncExternalStore(
-    subscribe,
-    () => overviewCompositionSnapshot(layoutRef.current),
-    () => "wide" as const,
-  );
   const orientationRegion = (
     <Region key="orientation" name="orientation" className={styles.orientation}>
       {orientation}
@@ -135,10 +84,8 @@ export default function ProjectOverviewLayout({
 
   return (
     <div
-      ref={layoutRef}
       className={styles.layout}
       data-project-overview-layout="true"
-      data-overview-composition={composition}
       data-command-centre-state={state}
       data-has-exception={
         exception !== null && exception !== undefined ? "true" : undefined
@@ -150,16 +97,18 @@ export default function ProjectOverviewLayout({
         recent !== null && recent !== undefined ? "true" : undefined
       }
     >
-      {exceptionRegion}
-      <div className={styles.primary}>
-        {projectWorkRegion}
-        {commercialRegion}
+      <div className={styles.grid}>
+        {exceptionRegion}
+        <div className={styles.primary}>
+          {projectWorkRegion}
+          {commercialRegion}
+        </div>
+        <div className={styles.context}>
+          {orientationRegion}
+          {recentRegion}
+        </div>
+        {adminRegion}
       </div>
-      <div className={styles.context}>
-        {orientationRegion}
-        {recentRegion}
-      </div>
-      {adminRegion}
     </div>
   );
 }

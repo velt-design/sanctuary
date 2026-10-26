@@ -560,11 +560,14 @@ test("recomposes from available Overview width instead of viewport width", async
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto(fixtureUrl({ work: "v2-blocked" }));
   const layout = page.locator('[data-project-overview-layout="true"]');
-  await expect(layout).toHaveAttribute("data-overview-composition", "wide");
+  const columnCount = () => layout.evaluate((element) =>
+    getComputedStyle(element.firstElementChild!).gridTemplateColumns.trim().split(/\s+/).length,
+  );
+  await expect.poll(columnCount).toBe(2);
   await layout.evaluate((element) => {
     (element as HTMLElement).style.width = "760px";
   });
-  await expect(layout).toHaveAttribute("data-overview-composition", "stacked");
+  await expect.poll(columnCount).toBe(1);
   const regionOrder = await layout
     .locator("[data-project-overview-region]")
     .evaluateAll((regions) =>

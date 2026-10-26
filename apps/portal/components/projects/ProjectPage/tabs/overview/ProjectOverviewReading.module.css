@@ -14,6 +14,6 @@
  .reading[data-overview-reading="commercial"] { height: 544px; }
  .reading[data-overview-reading="orientation"] { height: 440px; }
  .reading[data-overview-reading="payment"] { height: 400px; }
- .reading[data-overview-reading="work"] { height: 464px; }
+ .reading[data-overview-reading="work"] { height: 576px; }
  .reading[data-overview-reading="visits"] { height: 352px; }
 }

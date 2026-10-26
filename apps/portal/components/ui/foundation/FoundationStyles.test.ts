@@ -12,6 +12,32 @@ function read(relativePath: string): string {
 }
 
 describe('foundation style guardrails', () => {
+  it('uses the actual Overview width as the container for its unchanged region grid', () => {
+    const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout.module.css'));
+    const root = new Map<string, Map<string, string>>();
+    sheet.walkRules(rule => {
+      if (rule.parent?.type !== 'root') return;
+      const declarations = new Map<string, string>();
+      rule.walkDecls(decl => { declarations.set(decl.prop, decl.value); });
+      root.set(rule.selector, declarations);
+    });
+    expect(root.get('.layout')?.get('container-type')).toBe('inline-size');
+    expect(root.get('.layout')?.get('width')).toBe('100%');
+    expect(root.get('.layout')?.get('max-width')).toBe('var(--ui-content-max)');
+    expect(root.get('.grid')?.get('grid-template-columns')).toBe('minmax(0, 1.1fr) minmax(320px, 1fr)');
+    expect(root.get('.layout:not([data-has-exception]) > .grid')?.get('grid-template-areas')).toBe('"primary context" "admin admin"');
+    for (const [name, params] of [['container', '(max-width: 800px)'], ['media', '(max-width: 768px)']]) {
+      let matched = false;
+      sheet.walkAtRules(name, rule => {
+        if (rule.params !== params) return;
+        matched = true;
+        expect(rule.toString()).toContain('grid-template-columns: minmax(0, 1fr)');
+        expect(rule.toString()).toContain('"exception" "primary" "context" "admin"');
+        expect(rule.toString()).toContain('"primary" "context" "admin"');
+      });
+      expect(matched).toBe(true);
+    }
+  });
   it('allocates accepted agreements at all widths while keeping full long facts natively readable', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/QuotesTab.module.css'));
     const declarations = new Map<string, string>();

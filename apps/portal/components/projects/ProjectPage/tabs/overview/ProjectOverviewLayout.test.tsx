@@ -13,6 +13,22 @@ describe("ProjectOverviewLayout", () => {
     document.body.innerHTML = "";
   });
 
+  it("lets CSS respond to available width without measuring or subscribing", () => {
+    const geometry = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    const events = vi.spyOn(window, "addEventListener");
+    const rendered = renderIntoDocument(
+      <ProjectOverviewLayout orientation={<div>Orientation</div>} projectWork={<div>Work</div>} commercial={<div>Commercial</div>} />,
+    );
+    try {
+      expect(geometry).not.toHaveBeenCalled();
+      expect(events.mock.calls.filter(([type]) => type === "resize")).toHaveLength(0);
+    } finally {
+      rendered.unmount();
+      geometry.mockRestore();
+      events.mockRestore();
+    }
+  });
+
   it("owns the complete overview region topology and exposes command state", () => {
     const rendered = renderIntoDocument(
       <ProjectOverviewLayout
@@ -102,27 +118,6 @@ describe("ProjectOverviewLayout", () => {
   });
 
   it("preserves interactive owner state when responsive regions reorder", () => {
-    let mobile = false;
-    const listeners = new Set<() => void>();
-    const originalMatchMedia = window.matchMedia;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({
-        matches: mobile,
-        media: "(max-width: 768px)",
-        onchange: null,
-        addEventListener: (_type: string, listener: () => void) => {
-          listeners.add(listener);
-        },
-        removeEventListener: (_type: string, listener: () => void) => {
-          listeners.delete(listener);
-        },
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        dispatchEvent: () => true,
-      }),
-    });
-
     function StatefulOrientation() {
       const [edits, setEdits] = useState(0);
       return (
@@ -144,8 +139,8 @@ describe("ProjectOverviewLayout", () => {
     expect(button.textContent).toBe("Orientation edits 1");
 
     act(() => {
-      mobile = true;
-      listeners.forEach((listener) => listener());
+      (rendered.container.firstElementChild as HTMLElement).style.width = "760px";
+      window.dispatchEvent(new Event("resize"));
     });
 
     const layout = rendered.container.querySelector(
@@ -156,14 +151,9 @@ describe("ProjectOverviewLayout", () => {
         node.getAttribute("data-project-overview-region"),
       ),
     ).toEqual(["project-work", "commercial", "orientation"]);
-    expect(rendered.container.querySelector("button")?.textContent).toBe(
-      "Orientation edits 1",
-    );
+    expect(rendered.container.querySelector("button")).toBe(button);
+    expect(button.textContent).toBe("Orientation edits 1");
 
     rendered.unmount();
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: originalMatchMedia,
-    });
   });
 });
