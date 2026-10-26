@@ -1,3 +1,4 @@
+import {inheritedWebsiteSchema} from './website-destination';
 import {ownerReviewSchema,ownerBundleSchema,applyReviewedMedia} from './owner-review';
 import {nativeAnalysisSchema,nativeDeliverySchema} from './analysis-contract';
 import {nativeAcceptanceSchema} from './native-acceptance';
@@ -19,6 +20,8 @@ const text = z.string().min(1).max(1000);
 // never the general report/model receipt. Preserve unknown nested settings intact;
 // an unsupported top-level shape abstains rather than silently dropping fields.
 export type CreativeJson = string | number | boolean | null | CreativeJson[] | { [key: string]: CreativeJson };
+// Official ConversionActionQuery snapshot SHA256043c4aee5785f8c396cceae8233db6a8d572ab771cb9a48868ba8bed6c3e7532.
+export const trackingDottedKeys=['action.type','event.creator','object.domain','offer.creator','page.parent','post.object','post.object.wall','post.wall','question.creator'] as const;
 const boundedJsonSchema = (tracking = false) => z.custom<CreativeJson>((value) => {
   let nodes = 0;
   const valid = (v: unknown, depth: number): boolean => {
@@ -28,12 +31,12 @@ const boundedJsonSchema = (tracking = false) => z.custom<CreativeJson>((value) =
     if (typeof v === 'string') return v.length <= 2000 && Array.from(v).every(char=>char.charCodeAt(0)>8);
     if (Array.isArray(v)) return v.length <= 30 && v.every(x => valid(x, depth + 1));
     return !!v && typeof v === 'object' && Object.entries(v).length <= 40 && Object.entries(v).every(([key, child]) =>
-      (/^[a-zA-Z0-9_]{1,80}$/.test(key) || tracking && Array.isArray(value) && depth === 1 && key === 'action.type') && !['__proto__','constructor','prototype','access_token','appsecret_proof'].includes(key) && valid(child, depth + 1));
+      (/^[a-zA-Z0-9_]{1,80}$/.test(key) || tracking && Array.isArray(value) && depth === 1 && trackingDottedKeys.includes(key as typeof trackingDottedKeys[number])) && !['__proto__','constructor','prototype','access_token','appsecret_proof'].includes(key) && valid(child, depth + 1));
   };
   return valid(value, 0) && Buffer.byteLength(JSON.stringify(value)) <= 6000;
 });
 const boundedJson = boundedJsonSchema();
-// Meta ConversionActionQuery's literal protocol key is valid only on direct
+// Meta ConversionActionQuery's finite dotted fields are valid only on direct
 // object clauses of the root tracking array. Every generic creative caller stays strict.
 const adTrackingJson = boundedJsonSchema(true);
 export function approvedCreativeTags(value:unknown):'legacy_five'|'approved_six'|'invalid'{
@@ -81,7 +84,7 @@ export function creativeAssetHash(creative: Creative) {
 export const executionPlanSchema = z.object({ version: z.literal(1), landingTemplate: hash, purpose: z.enum(['paused_capability', 'formal_experiment']), capabilityDiagnostics:z.object({pageRead:z.enum(['confirmed','unavailable']),studyInventory:z.enum(['complete','partial','unavailable']),nativeEligibility:z.literal('unverified')}).strict().optional(), experiment: z.uuid(),
   scope: z.object({ app: id, principal: id, business: id, account: id, page: id, campaign: id, adset: id }).strict(),
   originalAds: z.array(id).length(4).refine(v => new Set(v).size === 4), controlAd: id,retainedBaseline:retainedAdSchema.optional(),
-  control: creativeSchema, ownerReview:ownerReviewSchema.optional(), adTracking: adTrackingJson, nativeObjective: z.object({ type: z.literal('CONVERSIONS'), is_primary: z.literal(true), name: z.literal('Website Lead'),
+  control: creativeSchema, inheritedWebsite:inheritedWebsiteSchema.optional(), ownerReview:ownerReviewSchema.optional(), adTracking: adTrackingJson, nativeObjective: z.object({ type: z.literal('CONVERSIONS'), is_primary: z.literal(true), name: z.literal('Website Lead'),
     adspixels: z.array(z.object({ id, event_names: z.tuple([z.literal('Lead')]) }).strict()).length(1) }).strict(), challengerPrimary: text, approvedAssetHash: hash, approvedCopyHash: hash,
   approvalHash: hash, evidenceHash: hash, generator: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/).nullable(),
   reviewer: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/).nullable(), approvedAt: stamp, approvalUntil: stamp,
@@ -92,6 +95,10 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
   evaluation: z.object({ lossLimit:z.object({policy:z.literal('matured_zero_genuine_v1'),spendNzd:z.literal(300),maturationHours:z.literal(72)}).strict().optional(), ambiguity:z.literal('finite_allocation_envelope_v1').optional(), primary: z.literal('genuine_saved_enquiries_per_actual_NZD'), interval: z.literal('exact_conditional_poisson_rate_ratio_95'), providerEvent: z.literal('website_lead'), durationDays: z.literal(14), maturationHours: z.literal(72),
     formalAnalyses: z.literal(1), qualityMinimumEach: z.literal(5), qualityCoverageMinimum: z.literal(0.5), maximumCoverageGap: z.literal(0.2), unknownMeans: z.enum(['inconclusive','finite_pool_sensitivity_else_inconclusive']) }).strict(),
 }).strict().superRefine((p, ctx) => {
+  if(p.inheritedWebsite&&(p.control.format!=='video_story'||p.control.path!=='/acrylic-roof-pergolas-auckland'||
+   p.inheritedWebsite.adset!==p.scope.adset||p.inheritedWebsite.pixel!==p.nativeObjective.adspixels[0]!.id||
+   p.control.payload.object_story_spec.video_data.call_to_action.value.link!==p.inheritedWebsite.url||
+   p.purpose==='formal_experiment'&&!p.ownerReview))ctx.addIssue({code:'custom',message:'Inherited website binding differs'});
   if((p.evaluation.ambiguity==='finite_allocation_envelope_v1')!==(p.evaluation.unknownMeans==='finite_pool_sensitivity_else_inconclusive'))ctx.addIssue({code:'custom',message:'Evaluation policy differs'});
   let ownerValid=false;
   if(p.ownerReview&&p.control.format==='video_story'){

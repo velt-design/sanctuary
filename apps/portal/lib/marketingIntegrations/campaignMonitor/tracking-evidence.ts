@@ -3,6 +3,7 @@ import {trackingEvidenceSchema,trackingRules,type TrackingEvidence} from './cont
 /** Observe the then-current adTracking rules without accepting/editing tracking.
  * Raw provider data stays in this call. Work stops at501values/root-depth9; skipped
  * descendants make the scan incomplete, never evidence that an unseen key is absent. */
+const trackingDottedKeys=['action.type','event.creator','object.domain','offer.creator','page.parent','post.object','post.object.wall','post.wall','question.creator'] as const;
 export function projectTrackingEvidence(value:unknown,present:boolean):TrackingEvidence {
  if(!present)return {version:1,status:'missing'};
  try {
@@ -26,7 +27,7 @@ export function projectTrackingEvidence(value:unknown,present:boolean):TrackingE
    if(entries.length>40){violations.add('object_keys');scanComplete=false;return;}
    for(const [key,child] of entries){
     if(key==='action.type')actionTypeKey=true;
-    if(!/^[a-zA-Z0-9_]{1,80}$/.test(key)&&!(Array.isArray(value)&&level===1&&key==='action.type'))violations.add('key_syntax');
+    if(!/^[a-zA-Z0-9_]{1,80}$/.test(key)&&!(Array.isArray(value)&&level===1&&trackingDottedKeys.includes(key as typeof trackingDottedKeys[number])))violations.add('key_syntax');
     if(['__proto__','constructor','prototype','access_token','appsecret_proof'].includes(key))violations.add('reserved_key');
     visit(child,level+1);
    }

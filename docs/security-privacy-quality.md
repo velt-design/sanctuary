@@ -16,6 +16,16 @@ endpoint, new table or activation permission is added. Actual provider reference
 source mapping, raw WEBSITE compatibility and native study isolation/budget units
 remain external acceptance evidence; fixtures do not establish them.
 
+The separately reviewed inherited-website case retains literal UNDEFINED only
+after current SDK settings match the fixed original adset, OFFSITE_CONVERSIONS,
+IMPRESSIONS, native pixel/LEAD and approved acrylic story URL. It remains bound
+into the full raw settings fingerprint and exact root-reviewed plan. The selected
+configuration export is its business evidence, not a substitute for that SDK read.
+Unknown destinations abstain. Tracking's finite nine official dotted literals
+apply only to direct root-array object clauses. Generic creative JSON and every
+value/secret/size bound remain unchanged. Reporting flags follow the then-current
+tracking rule; neither those flags nor a local fixture prove publishing permission.
+
 An optional cutoff on the existing cohort command uses a private copy of the
 current genuine-source query at completed Auckland midnights at least 72 hours
 old, with the same row bounds/exclusions. It cannot read or change a frozen cohort.

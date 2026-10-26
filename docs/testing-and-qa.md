@@ -18,6 +18,18 @@ retain compatible reconciliation/cleanup consumers and effect history; installat
 and rollback never erase old slots or advertising objects. Changes to the ordinary
 genuine-cohort query must also review the private cutoff copy and parity fixtures.
 
+Inherited website compatibility preserves the actual `UNDEFINED` literal in a
+typed binding to the current adset, matching pixel/LEAD, conversion goal/billing
+and approved acrylic story-video URL. Run paired website-destination and runtime
+tests for wrong scope/pixel/URL/goal, destination drift, unchanged full fingerprints,
+owned cleanup and strict non-owner formal denial. An export does not establish
+the later SDK response. No ad-set setting is rewritten to WEBSITE.
+
+The finite official ConversionActionQuery dotted fields are permitted only in
+direct clauses of the root tracking array. Tracking tests cover each literal,
+case/location/unknown rejection, all old bounds and exact bytes. Reporting projector
+parity uses those same current rules; saved historical flags are not recomputed.
+
 Consent-delayed Lead checks: run components/MetaPixel.lead.test.tsx and
 lib/metaLead.test.ts with trackingConsent and configuredFormRecovery. The connected
 fixture mounts the actual form, delayed MetaPixel and first-party runtime, fences
