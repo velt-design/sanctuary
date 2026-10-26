@@ -23,6 +23,8 @@ prefetch. No HTML, service worker, token-route or private-data cache was added.
 route unmount only while the original server lease is valid. Hidden/focus/pageshow,
 expiry, failed renewal and pricing-mode changes still revoke authorization. It
 does not renew while unmounted or extend a lease with a local timestamp.
+Returning subscribers rearm renewal against that original lease deadline; retaining
+the ready table must not leave an actively viewed page without its next renewal.
 
 `useEnquiryDraft` owns contact, configured/inline and shared SEO enquiry drafts.
 Editable fields and pathway/audience metadata are written synchronously to bounded

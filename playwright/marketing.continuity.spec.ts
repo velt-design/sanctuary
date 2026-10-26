@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
+import { LANDING_PRICE_CELLS } from '../apps/marketing/lib/landingPriceTable';
 
 // Populated tests never reach lead intake, signed upload or external measurement.
 test.beforeEach(async ({ page }) => {
@@ -215,4 +216,44 @@ test('new fragment navigation reaches its responsive section and Back restores t
   await page.goBack(); await expect.poll(() => position(page)).toBeCloseTo(before, 0);
   await page.goForward(); await expect(page).toHaveURL(/#contact-form$/);
   await expect.poll(() => position(page)).toBeCloseTo(fragmentY, 0);
+});
+
+test('a returned page renews its retained price lease and stays priced past the original expiry', async ({ page }) => {
+  const table = { schema: 'landing-price-table.v1', id: 'a'.repeat(64), publicationKey: 'b'.repeat(64),
+    versionId: '11111111-1111-4111-8111-111111111111', versionNumber: 1,
+    currency: 'NZD', includesGst: true, amounts: Array(LANDING_PRICE_CELLS).fill(12345) };
+  const requests: { time: number; body: Record<string, unknown> }[] = [];
+  await page.route('**/api/landing-price-table', async route => {
+    const body = route.request().postDataJSON(); requests.push({ time: Date.now(), body });
+    await route.fulfill({ json: body.knownId ? { status: 'current', id: table.id, leaseMs: 30000 }
+      : { status: 'ready', table, leaseMs: 30000 } });
+  });
+  await page.route('**/api/pergola-selection', route => route.fulfill({ status: 503, json: {} }));
+  await page.route('**/api/configurator-price', route => route.fulfill({ json: { status: 'unavailable' } }));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/pergola-cost-auckland');
+  const estimate = page.locator('#explore-options [data-estimate-state]');
+  await expect(estimate).toHaveAttribute('data-estimate-state', 'priced');
+  await expect(estimate).toContainText('$12,345');
+  await headerNavigate(page, 'Projects', false);
+  await expect(page.locator('[data-project-card]').first()).toBeVisible();
+  await page.waitForTimeout(1000);
+  await page.goBack(); await expect(estimate).toHaveAttribute('data-estimate-state', 'priced');
+  expect(requests).toHaveLength(1);
+  await page.evaluate(() => {
+    const target = document.querySelector('#explore-options [data-estimate-state]')!;
+    const seen = { states: [target.getAttribute('data-estimate-state')] };
+    Object.assign(window, { leaseReturnEvidence: seen });
+    new MutationObserver(() => seen.states.push(target.getAttribute('data-estimate-state')))
+      .observe(target, { subtree: true, attributes: true, childList: true });
+  });
+  await expect.poll(() => requests.length, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
+  expect(requests[1].body).toEqual({ knownId: table.id });
+  expect(requests[1].time - requests[0].time).toBeLessThan(20000);
+  await page.waitForTimeout(Math.max(0, requests[0].time + 31000 - Date.now()));
+  await expect(estimate).toHaveAttribute('data-estimate-state', 'priced');
+  await expect(estimate).toContainText('$12,345');
+  const states = await page.evaluate(() => (window as unknown as { leaseReturnEvidence: { states: string[] } }).leaseReturnEvidence.states);
+  expect(states.length).toBeGreaterThan(0);
+  expect(states.every(state => state === 'priced')).toBe(true);
 });

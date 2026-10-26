@@ -32,6 +32,13 @@ export function createLandingPriceTableStore() {
     emit({ status, table: null, expiresAt: 0, epoch: state.epoch + 1 });
     if (!listeners.size) detachLifecycle();
   };
+  function scheduleRenewal() {
+    clearTimeout(renewal);
+    if (listeners.size && state.status === 'ready') {
+      renewal = setTimeout(() => { if (listeners.size) void load(); },
+        Math.max(authorizationMode ? 1000 : 0, state.expiresAt - Date.now() - LANDING_PRICE_LEASE_MS / 2));
+    }
+  }
 
   function load(): Promise<void> {
     if (pending) return pending;
@@ -58,7 +65,7 @@ export function createLandingPriceTableStore() {
         clearTimers();
         emit({ status: 'ready', table, expiresAt, epoch: state.epoch });
         expiration = setTimeout(() => invalidate('unavailable'), expiresAt - Date.now());
-        renewal = setTimeout(() => { if (listeners.size) void load(); }, Math.max(funnel ? 1000 : 0, expiresAt - Date.now() - LANDING_PRICE_LEASE_MS / 2));
+        scheduleRenewal();
       } catch {
         if (requestGeneration === generation && !signal.aborted) invalidate('unavailable');
       } finally {
@@ -93,6 +100,7 @@ export function createLandingPriceTableStore() {
         if (state.status !== 'ready' || state.expiresAt <= Date.now() || document.visibilityState === 'hidden'
           || authorizationMode !== isInlineFunnelPath(window.location.pathname)) refresh();
         else if (state.expiresAt - Date.now() <= LANDING_PRICE_LEASE_MS / 2) void load();
+        else scheduleRenewal();
       }
       return () => {
         listeners.delete(listener);

@@ -86,6 +86,25 @@ it('reuses only an unexpired same-mode visible-document lease on route return', 
   stops.push(store.subscribe(vi.fn())); await tick(); expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
+it('rearms the original lease renewal after a quick route return and stays ready past its old expiry', async () => {
+  let acceptRenewal!: (value: unknown) => void;
+  const fetcher = vi.fn().mockResolvedValueOnce(reply(ready))
+    .mockImplementationOnce(() => new Promise(resolve => { acceptRenewal = resolve; }))
+    .mockImplementation(() => new Promise(() => {}));
+  vi.stubGlobal('fetch', fetcher);
+  const store = mount(); await tick(); const initial = store.getSnapshot(); stops.pop()!();
+  await tick(1000); stops.push(store.subscribe(vi.fn()));
+  expect(store.getSnapshot()).toBe(initial); expect(fetcher).toHaveBeenCalledTimes(1);
+  await tick(13999); expect(fetcher).toHaveBeenCalledTimes(1);
+  await tick(1); expect(fetcher).toHaveBeenCalledTimes(2);
+  // Starting renewal does not locally extend the existing authorization.
+  expect(store.getSnapshot().expiresAt).toBe(130000);
+  expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({ knownId: table.id });
+  acceptRenewal(reply({ status: 'current', id: table.id, leaseMs: 30000 })); await tick();
+  expect(store.getSnapshot()).toMatchObject({ status: 'ready', expiresAt: 145000 });
+  await tick(15000); expect(store.getSnapshot().status).toBe('ready');
+});
+
 it('revokes an unmounted lease on tab hiding and never makes background price requests', async () => {
   const fetcher = vi.fn().mockResolvedValue(reply(ready)); vi.stubGlobal('fetch', fetcher);
   const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
