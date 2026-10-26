@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const headers = { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' };
   try {
     if (process.env.SANCTUARY_META_CREATIVE_EXECUTOR_ENABLED !== 'true' || request.headers.has('origin') || new URL(request.url).search) throw new Error('Unavailable');
-    const raw = await readBoundedJson(request, 16000);
+    const raw = await readBoundedJson(request, 24000);
     if (!raw) throw new Error('Body unavailable');
     const command = verifyCreativeCommand(raw, request.headers.get('x-creative-signature'));
     if(command.stage==='prepare' && z.object({plan:executionPlanSchema}).parse(command.payload).plan.landingTemplate!==EXPERIMENT_TEMPLATE)throw new Error('Creative template changed');

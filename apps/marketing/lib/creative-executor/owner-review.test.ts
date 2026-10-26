@@ -57,3 +57,17 @@ it('requires exact complete root-envelope equality and retains pending unknown r
  expect(ownerProposalSchema.safeParse(pending).success).toBe(true);
  expect(executionPlanSchema.safeParse({...f.draft,purpose:'formal_experiment',challengerPrimary:'Changed',generator:null,reviewer:null}).success).toBe(false);
 });
+
+it('updates the exact single media body/title mirrors together while preserving descriptions and other metadata',()=>{
+ const f=ownerFixture(),media=f.control.payload.media_sourcing_spec;
+ Object.assign(media,{bodies:[{text:f.control.primary}],titles:[{text:f.control.payload.object_story_spec.video_data.title}],descriptions:[{text:'Preserved description'}]});
+ const before=structuredClone(f.control),changed=applyReviewedMedia(f.control,f.proposal.primary,f.edit);
+ expect(changed.payload.media_sourcing_spec).toMatchObject({bodies:[{text:f.proposal.primary}],titles:[{text:f.edit.headline}],descriptions:[{text:'Preserved description'}]});
+ expect(f.control).toEqual(before);expect(changed.payload.object_story_spec.video_data.message).toBe(f.proposal.primary);
+ expect(changed.payload.object_story_spec.video_data.title).toBe(f.edit.headline);
+});
+it.each(['multiple','mismatch','unknown','null','object'] as const)('abstains on ambiguous or unsupported media copy mirrors: %s',kind=>{
+ for(const key of ['bodies','titles'] as const){const f=ownerFixture(),text=key==='bodies'?f.control.primary:f.control.payload.object_story_spec.video_data.title;
+ const value=kind==='multiple'?[{text},{text}]:kind==='mismatch'?[{text:'Different source'}]:kind==='unknown'?[{text,unclassified:'synthetic'}]:kind==='null'?null:{text};
+ Object.assign(f.control.payload.media_sourcing_spec,{[key]:value});expect(()=>applyReviewedMedia(f.control,f.proposal.primary,f.edit)).toThrow();}
+});

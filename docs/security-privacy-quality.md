@@ -1,5 +1,43 @@
 ## Exact owner-reviewed creative bundle
 
+The donor-thumbnail continuation preserves both a Facebook-hosted HTTPS URL and
+its valid image hash. It makes no assumption about unknown path/query contents;
+the reviewed replacement thumbnail policy stays separate. The media transformer
+also replaces an optional single exact source body/title mirror alongside the
+story copy. Multiple, mismatched or extended mirror entries abstain; descriptions
+and all other metadata remain unchanged.
+
+| Exact root-reviewed owner payload | Maximum |
+| --- | --- |
+| Full plan in PostgreSQL JSONB text | 16,000 bytes |
+| CREATE_CREATIVE intent in PostgreSQL JSONB text | 16,000 bytes |
+| Root owner envelope in PostgreSQL JSONB text | 20,000 bytes |
+| Signed request UTF-8 body | 24,000 bytes |
+
+Generic/model limits remain 8,000/12,000/16,000. Route and authority transport
+acceptance is provisional: native prepare/reserve compares the current exact
+root-owned plan and independently enforces the bounded intent. Forward migration
+26000002 changes three CHECKs, the existing private executor, winning-copy
+projection and two existing outer size predicates (`without_ambiguity` and
+`without_retention`). Their larger prepare/create-creative allowance requires
+the exact current root owner plan/hash, experiment and unexpired authority.
+All learning, retained-baseline, inventory and delegation checks still run;
+generic requests retain the 14,000-byte outer bound. Public-RPC fixtures cover
+a near-bound full plan and quote-rich intent, replay, forgery and overflow;
+the public wrapper, ACLs, tables and history remain. Deploy compatible consumers
+before installing it. The final root CAS binds control_hash to the same reviewed
+plan preStateHash, so Source prepare does not change the admitted generation.
+Unexpected drift denies provider work. Capacity rollback is a transaction rehearsal, not authority
+to shrink production constraints around a saved larger plan.
+
+Velt's separate root-bound finite publication leases use the existing dedicated
+authenticated action and identity. They do not enable generic Source model or
+landing publishing. Root-reviewed exact owner plans can pass the formal env
+guard; native acceptance, delivery control, full settings, scope, effect fences
+and Stop still apply. Provider study/allocation/media acceptance and actual full
+payload fit remain live checks. Fixtures at observed wrapper sizes preserve the
+complete donor but do not reconstruct the private provider response.
+
 The existing creative control may hold one root-managed pending or exact approved
 plan envelope. Application roles cannot update it. Pending permits only the
 existing read-only context slot, preserving unresolved provider references as

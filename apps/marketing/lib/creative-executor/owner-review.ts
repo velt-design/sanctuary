@@ -22,7 +22,7 @@ export const ownerBundleSchema=z.object({version:z.literal(1),instructionHash:ha
 export type OwnerBundle=z.infer<typeof ownerBundleSchema>;
 
 type Story={id:string;primary:string;payload:{object_story_spec:{video_data:{video_id:string;message:string;title:string;image_url?:string;image_hash?:string}};
- media_sourcing_spec:{videos:{video_id:string}[]}}};
+ media_sourcing_spec:{videos:{video_id:string}[];bodies?:unknown;titles?:unknown}}};
 /** Only these reviewed media/title/thumbnail paths change. Unknown references to
  * old video IDs abstain; neither a global string replacement nor omission is safe. */
 export function applyReviewedMedia<T extends Story>(input:T,primary:string,editInput:ReviewedMedia):T{
@@ -30,6 +30,14 @@ export function applyReviewedMedia<T extends Story>(input:T,primary:string,editI
  const videos=copy.payload.media_sourcing_spec.videos,old=videos.map(v=>v.video_id);
  if(old.length!==2||new Set(old).size!==2||edit.media.some(m=>!old.includes(m.sourceVideo))||!old.includes(story.video_id))throw new Error('Reviewed source media differs');
  const replacement=(source:string)=>edit.media.find(m=>m.sourceVideo===source)!.video;
+ const mirror=(key:'bodies'|'titles',original:string,replacement:string)=>{
+  const media=copy.payload.media_sourcing_spec;
+  if(media[key]===undefined)return;
+  const entries=z.array(z.object({text:z.string()}).strict()).length(1).parse(media[key]);
+  if(entries[0]!.text!==original)throw new Error('Reviewed source copy mirror differs');
+  media[key]=[{text:replacement}];
+ };
+ mirror('bodies',story.message,primary);mirror('titles',story.title,edit.headline);
  copy.primary=primary;story.message=primary;story.title=edit.headline;story.video_id=replacement(story.video_id);
  for(const video of videos)video.video_id=replacement(video.video_id);
  delete story.image_url;delete story.image_hash;
