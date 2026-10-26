@@ -33,9 +33,8 @@
 .stateControls { display: inline-flex; gap: 4px; margin-bottom: 16px; padding: 4px; border: 1px solid var(--color-border); }
 .stateControls button { min-height: 44px; padding: 10px 24px; font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
 .stateControls button[aria-pressed="true"] { background: var(--color-accent-olive); color: var(--color-inverse-text); }
-.statePhoto { aspect-ratio: 1800 / 1179; }
-.statePhoto img { display: block; width: 100%; height: auto; }
-.statePhoto img[hidden] { display: none; }
+.statePhoto > div { aspect-ratio: 1800 / 1179; }
+.statePhoto figcaption { display: block; border: 0; letter-spacing: normal; font-weight: inherit; }
 .context { max-width: 1440px; margin-inline: auto; }
 .reference { padding: 20px var(--blinds-gutter); margin: 0; font-size: 14px; }
 .enquiry { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; padding-block: 65px; background: var(--color-surface-warm); }

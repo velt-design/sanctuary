@@ -1,11 +1,54 @@
 # Marketing UI Foundation
 
+## First load and steady option photographs (27 October 2026)
+
+Jordan authorised: "Yes go ahead with the first two. Make the first load faster
+and keep the photos steady when changing options. Get it tested and put it on
+the same preview link so I can check it on my phone before it goes live."
+This milestone is a preview candidate. Earlier release approval does not cover it.
+
+`GoogleRating` uses server Suspense only around the existing review views. The
+root shell, full footer and homepage hero no longer wait for Google; the Simple
+page and alternate homepage use the same boundary for the same dependency.
+Pending views are usable Google-review links within the existing natural review
+footprints, with no invented rating/count, loading banner or blank status lane.
+The existing Google timeout, 24-hour fetch cache, fallback and truthful rating
+rules remain unchanged. SEO content/metadata and consent gates remain server-owned.
+`ProjectFinder` dynamically imports the control-only `HomePergolaSelection` when
+that presentation is actually used; challenger content and price owners are intact.
+Controlled slow-review streaming evidence and ordinary first-visit resource/paint
+measurements are separate from production phone performance.
+
+The compiled provider-free slow-review check streamed the homepage heading and
+hero preload in 239 ms, before the synthetic two-second review dependency finished;
+the previous build took 2,971 ms. Both used one upstream fixture request across
+cold and repeat visits. One separate requested-4G/4x-CPU local browser sample was
+slower for ordinary first-visit paint (4.07 s versus 2.55 s), so ordinary cold-load
+improvement remains unproven. These samples are not physical-phone measurements.
+
+`DecodedFigure` owns an opaque current photo and its matching caption while a
+single selected replacement loads and decodes invisibly. It commits both together,
+ignores obsolete/disconnected image completions, and retains the useful reference
+with a small nearby retry on failure. The shared `Figure` keeps ratios/crops and
+provides its media slot; no image byte cache, guessed readiness timer or synthetic
+transition is added. `RoofApproaches` removes its keyed figure remount/entrance dip;
+`BlindStateGallery` uses the same decoded replacement owner. The configurator's
+existing `MobileRoofImage` and direct-manipulation galleries retain their owners.
+Focused coverage includes delayed/error/retry/rapid selection, both consumers,
+and an SSR stream with unresolved review data. Existing persistence, fresh pricing,
+native clean-stop policy and real form recovery remain required safeguards.
+Compiled mobile checks cover delayed/rapid Gable choices through the actual
+roof-comparison disclosure, failed-photo retry and blind-state replacement. The
+priced homepage Back and project Back/early-touch/image safeguards also pass.
+The same hosted preview and the owner's phone review remain the next checkpoint.
+
 ## Marketing browsing and enquiry continuity (26 October 2026)
 
 Jordan approved the reviewed exact mobile Back position, fast return navigation
 and unfinished enquiry recovery for production once final release checks pass.
 The initial continuity release and the follow-up example-estimate reuse shipped
-on 26 October. The project-return correction below is a local candidate.
+on 26 October. Project-return and native clean-stop corrections shipped on
+27 October after the owner's phone acceptance.
 `ScrollReset` delegates to
 `lib/pageContinuity`: bounded tab-local coordinates belong to history-entry IDs,
 including BODY and existing route containers. The shared owner temporarily uses

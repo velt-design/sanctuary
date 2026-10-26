@@ -95,11 +95,14 @@ export function Figure({
   className,
   objectPosition,
   mobileObjectPosition,
+  media,
+  id,
+  captionLive,
 }: {
   image: string;
   alt: string;
   caption?: string;
-  detail?: string;
+  detail?: ReactNode;
   ratio?: MediaRatio;
   mobileRatio?: MediaRatio;
   priority?: boolean;
@@ -107,6 +110,9 @@ export function Figure({
   className?: string;
   objectPosition?: string;
   mobileObjectPosition?: string;
+  media?: ReactNode;
+  id?: string;
+  captionLive?: 'polite';
 }) {
   const imageProps: Pick<ImageProps, 'quality' | 'sizes'> = { quality: 75, sizes: sizes ?? '(max-width: 700px) 100vw, 66vw' };
   const mediaStyle = {
@@ -116,6 +122,7 @@ export function Figure({
 
   return (
     <figure
+      id={id}
       className={cn(styles.figure, className)}
       data-responsive-media
       data-mobile-ratio={mobileRatio}
@@ -128,9 +135,9 @@ export function Figure({
         )}
         style={mediaStyle}
       >
-        <Image src={image} alt={alt} fill priority={priority} {...imageProps} />
+        {media ?? <Image src={image} alt={alt} fill priority={priority} {...imageProps} />}
       </div>
-      {(caption || detail) && <figcaption className={styles.caption}><span>{caption}</span><span>{detail}</span></figcaption>}
+      {(caption || detail) && <figcaption className={styles.caption} aria-live={captionLive}><span>{caption}</span><span>{detail}</span></figcaption>}
     </figure>
   );
 }
