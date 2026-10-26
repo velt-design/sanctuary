@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { readCollectionReturn, restoreCollectionScroll, saveCollectionReturn } from './projectCollectionReturn';
+import { isCollectionReturnImageWarm, readCollectionLinkReturn, restoreCollectionScroll, saveCollectionReturn } from './projectCollectionReturn';
 import {
   usePathname,
   useSearchParams,
 } from 'next/navigation';
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -79,6 +80,7 @@ export default function ProjectNavigator({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const returnInterrupted = useRef(false);
 
   const activeIndex = projects.findIndex((project) => project.slug === activeProject.slug);
   const formOptions = useMemo(() => getProjectFormOptions(projects), [projects]);
@@ -172,12 +174,23 @@ export default function ProjectNavigator({
     };
   }, [collectionMode, isCompact, isOpen]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!collectionMode) return;
+    returnInterrupted.current = false;
+    const interrupt = () => { returnInterrupted.current = true; };
+    const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+    inputs.forEach(type => window.addEventListener(type, interrupt, { passive: true }));
+    return () => inputs.forEach(type => window.removeEventListener(type, interrupt));
+  }, [collectionMode]);
+
+  useLayoutEffect(() => {
     if (!collectionMode || !isCardSizeReady) return;
-    const saved = readCollectionReturn();
+    const saved = readCollectionLinkReturn();
     if (!saved || saved.href !== window.location.pathname + window.location.search) return;
-    const frame = requestAnimationFrame(() => restoreCollectionScroll(saved.scrollY));
-    return () => cancelAnimationFrame(frame);
+    // Browser Back belongs to pageContinuity. Only a new All projects link uses
+    // this fallback, after its card size is ready and before paint. Input wins
+    // even if it arrived before storage/card readiness completed.
+    if (!returnInterrupted.current) restoreCollectionScroll(saved.scrollY);
   }, [collectionMode, isCardSizeReady]);
 
   const updateFilters = (patch: Partial<ProjectFilters>) => {
@@ -430,7 +443,8 @@ export default function ProjectNavigator({
                         ratio: 'landscape',
                         mobileRatio: 'portrait',
                         priority: filteredIndex === 0
-                          || (isCompact === false && filteredIndex === 1),
+                          || (isCompact === false && filteredIndex === 1)
+                          || isCollectionReturnImageWarm(project.slug),
                         sizes: getProjectCardImageSizes(cardSize),
                         objectPosition: project.heroImage.objectPosition ?? 'center',
                         mobileObjectPosition: project.heroImage.objectPosition ?? 'center',

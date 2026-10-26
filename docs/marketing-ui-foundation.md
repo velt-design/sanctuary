@@ -4,9 +4,9 @@
 
 Jordan approved the reviewed exact mobile Back position, fast return navigation
 and unfinished enquiry recovery for production once final release checks pass.
-The initial continuity release shipped on 26 October. A follow-up candidate below
-corrects reconstruction of the homepage's visible example estimates; that
-correction has not yet shipped. `ScrollReset` delegates to
+The initial continuity release and the follow-up example-estimate reuse shipped
+on 26 October. The project-return correction below is a local candidate.
+`ScrollReset` delegates to
 `lib/pageContinuity`: bounded tab-local coordinates belong to history-entry IDs,
 including BODY and existing route containers. The shared owner temporarily uses
 native `history.scrollRestoration='manual'` and restores its previous mode on
@@ -18,6 +18,24 @@ only retries a temporarily short layout for at most one second.
 Marked desktop project switches retain their anchor owner before generic entry
 restoration. `projectDetailNavigation` supports both the photographic template's
 direct header and the older intro wrapper when aligning and focusing a case study.
+
+Browser Back to the project collection uses only that history-entry owner.
+`projectCollectionReturn` carries the filtered collection context along detail
+links; `ProjectNavigator` consumes its scroll fallback only for a new All projects
+link. It applies after stored card-size readiness in the layout phase, skips an
+already-correct coordinate, and yields to input from the beginning of collection
+activation. The former independent animation-frame writer could replay the old
+position over an early touch gesture around half a second after return. A
+controlled delayed-ready browser trace reproduced that race. Regression coverage
+checks native touch before and after return, early-input precedence, image source,
+opacity and geometry, and explicit filtered All projects recovery. Chromium touch
+checks also exposed a separate first-frame empty lazy-image source. Only the
+loaded card thumbnails visible on departure are remembered (at most 12 public
+slugs in module memory) and reuse the existing image-priority prop on return.
+Offscreen thumbnails keep ordinary lazy loading; no image bytes or URLs enter
+browser storage. Desktop-port WebKit and Chromium touch controls do not reproduce
+a persistent lock; physical
+iPhone Safari verification remains pending and is distinct from these checks.
 
 Header links fully prefetch public destinations; closed mobile-menu links do not
 prefetch. No HTML, service worker, token-route or private-data cache was added.

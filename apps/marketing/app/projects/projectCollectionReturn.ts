@@ -4,7 +4,23 @@ const key = '__sanctuaryProjectCollectionReturn';
 type CollectionReturn = { href: string; scrollY: number };
 type EntryReturn = { path: string; collection: CollectionReturn };
 let pendingReturn: EntryReturn | null = null;
+const warmReturnCards = new Set<string>();
 const currentPath = () => window.location.pathname + window.location.search;
+
+export function isCollectionReturnImageWarm(slug: string) { return warmReturnCards.has(slug); }
+
+function rememberVisibleImages() {
+  warmReturnCards.clear();
+  for (const card of document.querySelectorAll<HTMLElement>('[data-project-card]')) {
+    const image = card.querySelector('img');
+    const rect = image?.getBoundingClientRect();
+    if (image?.complete && image.naturalWidth > 0 && rect && rect.bottom > 0 && rect.top < window.innerHeight
+      && rect.right > 0 && rect.left < window.innerWidth) {
+      warmReturnCards.add(card.dataset.projectCard!);
+      if (warmReturnCards.size === 12) break;
+    }
+  }
+}
 
 function collectionScrollElement(): HTMLElement | null {
   const body = document.body;
@@ -18,6 +34,7 @@ function collectionScrollElement(): HTMLElement | null {
 
 export function restoreCollectionScroll(top: number) {
   const scroller = collectionScrollElement();
+  if (Math.abs((scroller?.scrollTop ?? window.scrollY) - top) < 1) return;
   if (scroller) scroller.scrollTo({ top, behavior: 'instant' });
   else window.scrollTo({ top, behavior: 'instant' });
 }
@@ -46,6 +63,13 @@ export function readCollectionReturn(): CollectionReturn | null {
   return entryReturn();
 }
 
+/** A new All projects entry needs its journey context; Back already has an entry owner. */
+export function readCollectionLinkReturn(): CollectionReturn | null {
+  const isLinkReturn = pendingReturn?.path === currentPath();
+  const collection = readCollectionReturn();
+  return isLinkReturn ? collection : null;
+}
+
 /** Carry return context only along unmodified links activated in this journey. */
 export function saveCollectionReturn(event: MouseEvent<HTMLElement>) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -58,6 +82,7 @@ export function saveCollectionReturn(event: MouseEvent<HTMLElement>) {
     : entryReturn();
   pendingReturn = null;
   if (!collection) return;
+  if (window.location.pathname === '/projects') rememberVisibleImages();
   markEntry(collection);
   pendingReturn = { path: target.pathname + target.search, collection };
 }
