@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/foundation/FoundationSurfaces';
-import styles from './contacts.module.css';
+import styles from './ContactsIndexFrame.module.css';
 import type {
   ContactsIndexPageSize,
   ContactsIndexSort,

@@ -39,6 +39,9 @@ Message/error page and action CSS belongs to `PageMessagePanel`; legacy public
 auth styles compose those same declarations. Public retry/message consumers do
 not import the retired page/skeleton style namespace. Default noncompact
 pagination and excluded specialised surface behavior remain unchanged.
+Contacts index styling likewise owns its public frame, controls and table rules;
+legacy form, import-dialog and contact-detail consumers compose those same rules
+without making their private style namespace a dependency of the public index.
 
 Geometry acceptance requires actual pending, ready, empty, failure/retry and
 return journeys, plus narrow/mobile layouts and overlay lock/unlock. DOM tests
