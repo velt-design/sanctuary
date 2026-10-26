@@ -1,4 +1,5 @@
 import 'server-only';
+import { marketingPreviewReadOnly } from '../../../../../lib/marketingPreviewReadOnly';
 
 import { NextResponse } from 'next/server';
 import { secureTokenMatches } from '@/lib/marketingPublicRequest';
@@ -26,6 +27,8 @@ function expectedPaths(value: unknown, submissionId: string): string[] {
 }
 
 export async function GET(req: Request) {
+  const preview = marketingPreviewReadOnly();
+  if (preview) return preview;
   const cronSecret = process.env.CRON_SECRET?.trim() || '';
   const provided = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() || '';
   if (!cronSecret || !provided || !secureTokenMatches(provided, cronSecret)) {

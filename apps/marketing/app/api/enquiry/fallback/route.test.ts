@@ -27,6 +27,16 @@ describe('POST /api/enquiry/fallback', () => {
     submitEnquiryMock.mockReset();
   });
 
+  it('read-only preview preserves a truthful native failure without forwarding intake', async () => {
+    vi.stubEnv('MARKETING_PREVIEW_READ_ONLY', 'true');
+    try {
+      const response = await POST(formRequest(new URLSearchParams()));
+      expect(response.status).toBe(503);
+      expect(await response.text()).toContain('Preview: enquiries are disabled.');
+      expect(submitEnquiryMock).not.toHaveBeenCalled();
+    } finally { vi.unstubAllEnvs(); }
+  });
+
   it('converts a native form post to the governed API payload and redirects on success', async () => {
     submitEnquiryMock.mockImplementation(async (request: Request) => {
       const payload = await request.json();

@@ -47,6 +47,16 @@ describe('POST /api/enquiry/attachments/sign', () => {
     });
   });
 
+  it('read-only preview refuses to mint upload authorization before backend access', async () => {
+    vi.stubEnv('MARKETING_PREVIEW_READ_ONLY', 'true');
+    try {
+      const response = await post({ submissionId: SUBMISSION_ID, files: [{ name: 'site.png', size: 100, type: 'image/png' }] });
+      expect(response.status).toBe(503);
+      expect(h.getServiceSupabase).not.toHaveBeenCalled();
+      expect(h.createSignedUploadUrl).not.toHaveBeenCalled();
+    } finally { vi.unstubAllEnvs(); }
+  });
+
   it('mints submission-bound signed URLs and a short-lived session token', async () => {
     const res = await post({
       submissionId: SUBMISSION_ID,

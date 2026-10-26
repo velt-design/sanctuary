@@ -1,4 +1,5 @@
 import 'server-only';
+import { marketingPreviewReadOnly } from '../../../../lib/marketingPreviewReadOnly';
 
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
@@ -40,12 +41,12 @@ async function readBoundedBody(req: Request): Promise<ArrayBuffer | null> {
   return body.buffer;
 }
 
-function failureDocument(status: number): string {
+function failureDocument(status: number, preview = false): string {
   const isRateLimited = status === 429;
-  const heading = isRateLimited
+  const heading = preview ? 'Preview: enquiries are disabled.' : isRateLimited
     ? 'Please wait before trying again.'
     : 'Your enquiry was not sent.';
-  const detail = isRateLimited
+  const detail = preview ? 'This preview cannot send enquiries or upload files. Use your browser’s Back button to return to your draft.' : isRateLimited
     ? 'We received several recent attempts. Please wait a few minutes, then return to the form.'
     : 'Use your browser’s Back button to return to the form. Most browsers will keep what you entered.';
 
@@ -77,8 +78,8 @@ function failureDocument(status: number): string {
 </html>`;
 }
 
-function htmlFailure(status: number): Response {
-  return new Response(failureDocument(status), {
+function htmlFailure(status: number, preview = false): Response {
+  return new Response(failureDocument(status, preview), {
     status,
     headers: {
       'Cache-Control': 'no-store',
@@ -106,6 +107,7 @@ function forwardedHeaders(req: Request): Headers {
 }
 
 export async function POST(req: Request) {
+  if (marketingPreviewReadOnly()) return htmlFailure(503, true);
   if (!isAllowedMarketingOrigin(req)) return htmlFailure(403);
 
   const contentLength = Number(req.headers.get('content-length') || 0);

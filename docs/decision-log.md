@@ -11,6 +11,21 @@ shared behavior to the ordinary staff owner so specialist Workbench behavior is
 unchanged. Verify real geometry and return/recovery in the app, separately from
 DOM tests and unchanged performance/bundle gates. Owner: `ui-foundation.md`.
 
+## 2026-10-26: Restore marketing history entries without recording overlay locks
+
+The global next-frame scroll reset overrode native Back restoration. Per-entry
+coordinates now distinguish repeated URLs and nested/BODY scrolling. A compiled
+mobile journey also found that the header's fixed-BODY menu generated a zero
+viewport that overwrote the real source position; locked overlays are excluded
+from capture. Classify returns by a known saved entry ID, not by popstate timing:
+the framework may commit before event bookkeeping. New pushes and URL replacements
+get fresh identities, preserving normal new-page and fragment behavior.
+Browser-local enquiry text is the authority for file revisions:
+prune expired and orphaned blobs on enquiry access so immediate reload after a
+clear cannot leave a cancelled asynchronous delete as permanent retained data.
+Keep existing user-input cancellation, native form fallback, pricing expiry and
+consent boundaries. Owners: `marketing-ui-foundation.md`, `security-privacy-quality.md`.
+
 ## 2026-10-24: Scope a documented tracking key to its protocol location
 
 Meta ConversionActionQuery documents literal action.type. Permit it only in

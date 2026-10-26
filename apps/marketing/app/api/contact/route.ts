@@ -1,4 +1,5 @@
 // app/api/contact/route.ts
+import { marketingPreviewReadOnly } from '../../../lib/marketingPreviewReadOnly';
 import { NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'node:crypto';
 import { getEmailDeliveryFailureSummary, sendEmail } from '@/lib/email/sendEmail';
@@ -133,6 +134,8 @@ async function sendMetaLeadEvent(params: {
 }
 
 export async function POST(req: Request) {
+  const preview = marketingPreviewReadOnly();
+  if (preview) return preview;
   if (!isAllowedMarketingOrigin(req)) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }

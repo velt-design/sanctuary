@@ -126,7 +126,7 @@ it('identifies an earlier receipt after a lost response and edited retry without
   expect(host.textContent).toContain('Changes made after your first send attempt are not included');
   expect(host.textContent).not.toContain('Your design is shown here for reference.');
   expect(host.querySelector('[role=status]')).toBe(document.activeElement);
-  expect(sessionStorage.getItem('sanctuary-enquiry-contact-v1')).toContain('Fixture Customer');
+  expect(localStorage.getItem('sanctuary.enquiry-drafts.v1')).toContain('Fixture Customer');
   expect(identityReads).toEqual([undefined]);expect(JSON.stringify(layer)).not.toContain('changed@example');
   (layer[0].eventCallback as ()=>void)();
 });

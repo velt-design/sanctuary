@@ -3,6 +3,8 @@ import ContactProjectPreferences from './ContactProjectPreferences';
 import {ExperimentReceiptField} from '../../components/landing-experiment/ExperimentReceiptField';
 import ContactAttachmentFields from './ContactAttachmentFields';
 import ConfiguredEnquiryFields from './ConfiguredEnquiryFields';
+import { CONTACT_DRAFT_FIELDS, useEnquiryDraft } from '../../components/enquiry/useEnquiryDraft';
+import EnquiryDraftNotice from '../../components/enquiry/EnquiryDraftNotice';
 
 import {
   useEffect,
@@ -42,6 +44,7 @@ import {
 } from '@/lib/simpleCoverAnalytics';
 import { buildSimpleCoverEnquiryPayload } from '@/lib/simpleCoverEnquiryPayload';
 import type { SimpleCoverHandoff } from '@/lib/simpleCoverHandoff';
+import { parseSimpleCoverInput, type SimpleCoverInput } from '../../lib/simpleCoverCalculator';
 import SimpleCoverEnquirySummary from '../acrylic-roof-pergolas-auckland/SimpleCoverEnquirySummary';
 import ContactCommercialFields from './ContactCommercialFields';
 import ContactPathwaySelector from './ContactPathwaySelector';
@@ -155,6 +158,25 @@ export default function ContactEnquiryForm({
   const projectSectionRef = useRef<HTMLElement | null>(null);
   const simpleCalculatorRef = useRef<HTMLDivElement | null>(null);
   const simpleFormStartRef = useRef(false);
+  const [restoredBudget, setRestoredBudget] = useState<string | undefined>(undefined);
+  const [recoveredInput, setRecoveredInput] = useState<SimpleCoverInput | null>(null);
+  const draft = useEnquiryDraft({
+    scope: JSON.stringify(['contact', pagePath ?? initialContext.sourcePath ?? '/contact', initialContext.sourceProject, initialContext.sourceProduct, initialIntent, initialEnquiryType, funnel ? 'funnel' : compactConfigured ? 'configured' : 'standard']),
+    fields: CONTACT_DRAFT_FIELDS,
+    legacySessionKey: funnel || compactConfigured ? 'sanctuary-enquiry-contact-v1' : undefined,
+    meta: { pathway: selectedPathway ?? '', businessAudience: businessAudience ?? '', simpleInput: selectedEstimate ? JSON.stringify(selectedEstimate.input) : '' },
+    onRestoreFiles: setFiles,
+    onRestoreMeta: (meta, fields) => {
+      const choices: ContactPathway[] = ['simple', 'configured', 'help', 'custom', 'commercial-professional'];
+      setPathway(choices.includes(meta.pathway as ContactPathway) ? meta.pathway as ContactPathway : getInitialContactPathway(initialEnquiryType, initialContext, initialIntent));
+      setBusinessAudience(meta.businessAudience === 'commercial' || meta.businessAudience === 'professional' ? meta.businessAudience : getInitialBusinessAudience(initialEnquiryType, initialContext));
+      setRestoredBudget(fields.budgetPreference?.[0] ?? 'not-sure');
+      let input: SimpleCoverInput | null = null;
+      try { input = parseSimpleCoverInput(JSON.parse(meta.simpleInput ?? 'null')); } catch { /* Invalid selections are ignored. */ }
+      setRecoveredInput(input);
+      setSimpleCoverEstimate(input ? { schemaVersion: 'simple-cover-handoff.v1', status: 'unavailable', input, calculationRef: null, displayedPriceIncGst: null, configurationVersion: null } : null);
+    },
+  });
 
   const pathway = resolveContactPathway(selectedPathway, Boolean(configuredDesign));
   const simpleCoverEstimate = configuredDesign ? configuredDesign.estimate : selectedEstimate;
@@ -267,6 +289,7 @@ export default function ContactEnquiryForm({
 
   const handlePathway = (nextPathway: ContactPathway) => {
     setPathway(nextPathway);
+    draft.save({ pathway: nextPathway });
     if (nextPathway !== 'commercial-professional' || businessAudience) {
       clearFieldError('enquiryType');
     }
@@ -275,12 +298,14 @@ export default function ContactEnquiryForm({
 
   const handleBusinessAudience = (nextAudience: BusinessAudience) => {
     setBusinessAudience(nextAudience);
+    draft.save({ businessAudience: nextAudience });
     clearFieldError('enquiryType');
     resetSubmissionMessage();
   };
 
   const handleCalculatorContinue = (handoff: SimpleCoverHandoff) => {
     setSimpleCoverEstimate(handoff);
+    draft.save({ simpleInput: JSON.stringify(handoff.input) });
     resetSubmissionMessage();
     window.requestAnimationFrame(() => {
       projectSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -303,12 +328,15 @@ export default function ContactEnquiryForm({
 
     attachmentErrorRef.current = null;
     setFiles(nextFiles);
+    draft.saveFiles(nextFiles);
     clearFieldError('files');
   };
 
   const removeFile = (index: number) => {
     attachmentErrorRef.current = null;
-    setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+    const nextFiles = files.filter((_, fileIndex) => fileIndex !== index);
+    setFiles(nextFiles);
+    draft.saveFiles(nextFiles);
     clearFieldError('files');
   };
 
@@ -348,6 +376,7 @@ export default function ContactEnquiryForm({
     if (submittingRef.current) return;
 
     const form = event.currentTarget;
+    draft.save();
     const formData = new FormData(form);
     const nextErrors = validateContactForm(formData, files, compactConfigured && !!configuredDesign);
     if (nextErrors.enquiryType) {
@@ -476,6 +505,7 @@ export default function ContactEnquiryForm({
       submissionIdRef.current = null;
       sentDesignRef.current = JSON.stringify(configuredDesign?.snapshot);
       setReceivedEarlier(responsePayload.idempotentReplay === true);
+      if (responsePayload.idempotentReplay !== true) draft.clear();
       setSubmitState('success');
       await trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId,
         responsePayload.idempotentReplay === true ? undefined : { email: String(formData.get('email') ?? ''), phone: String(formData.get('phone') ?? '') });
@@ -493,7 +523,8 @@ export default function ContactEnquiryForm({
 
   const attachmentFields = <ContactAttachmentFields files={files} error={fieldErrors.files} enhanced={isEnhanced} onChange={handleFiles} onRemove={removeFile}/>;
 
-  if(funnel || (compactConfigured && configuredDesign))return <ConfiguredEnquiryFields attachments={compactAttachments ? attachmentFields : undefined} sourcePath={pagePath ?? initialContext.sourcePath} sourceContext={JSON.stringify(contextProperties)} funnel={funnel} hasDesign={!!configuredDesign} mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
+  const draftNotice = <EnquiryDraftNotice hasDraft={draft.hasDraft} warning={draft.warning} onDiscard={draft.discard}/>;
+  if(funnel || (compactConfigured && configuredDesign))return <ConfiguredEnquiryFields draftNotice={draftNotice} formRef={draft.formRef} attachments={compactAttachments ? attachmentFields : undefined} sourcePath={pagePath ?? initialContext.sourcePath} sourceContext={JSON.stringify(contextProperties)} funnel={funnel} hasDesign={!!configuredDesign} mobileFinish={mobileFinish} onInteraction={trackFirstInteraction} onSubmit={handleSubmit} errors={fieldErrors} state={submitState} error={submitError} receivedEarlier={receivedEarlier}/>;
 
   const messageLabel = pathway === 'commercial-professional'
     ? 'Project scope'
@@ -508,6 +539,7 @@ export default function ContactEnquiryForm({
 
   return (
     <form
+      ref={draft.formRef}
       data-clarity-mask="true"
       className="contact-form"
       id="contact-form"
@@ -565,6 +597,8 @@ export default function ContactEnquiryForm({
           ref={simpleCalculatorRef}
         >
           <SimpleCoverCalculator
+            initialInput={recoveredInput ?? undefined}
+            onRecoveredEstimate={setSimpleCoverEstimate}
             placement="contact"
             continuationHref="#contact-project-details"
             onContinue={handleCalculatorContinue}
@@ -624,7 +658,7 @@ export default function ContactEnquiryForm({
                 <textarea id="contact-message" name="message" rows={6} placeholder={messagePlaceholder} />
               </div>
 
-              <ContactProjectPreferences showBudget={pathway === 'help' || pathway === 'custom'} />
+              <ContactProjectPreferences key={draft.resetVersion} initialBudgetPreference={restoredBudget} showBudget={pathway === 'help' || pathway === 'custom'} />
 
               {attachmentFields}
             </div>
@@ -703,6 +737,7 @@ export default function ContactEnquiryForm({
 
           <div className="contact-form__submit">
             <div>
+              {draftNotice}
               <AdvertisingMeasurementNotice/>
               <div className="contact-form__live" aria-live="polite" aria-atomic="true">
                 {submitState === 'sending'
