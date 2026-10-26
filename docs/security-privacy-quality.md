@@ -83,8 +83,8 @@ fresh proof gate the locally connected ACTIVE effects.
 
 ## Browser-local enquiry recovery (26 October 2026)
 
-The owner approved the reviewed unfinished enquiry recovery for production once
-final release checks pass; deployment remains pending. `useEnquiryDraft` admits
+The owner approved the reviewed unfinished enquiry recovery, released on
+26 October 2026. `useEnquiryDraft` admits
 only visible customer brief/contact fields
 and bounded pathway/audience metadata. Browser-local recovery expires after 24
 hours; expired text and expired/orphaned attachment revisions are removed on

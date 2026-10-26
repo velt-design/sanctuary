@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const reply = vi.hoisted(() => ({ price: null as unknown, review: null as unknown }));
 vi.mock('../configurator-prototype/useConfiguratorPrice', () => ({ useConfiguratorPrice: () => ({ price: reply.price, retry: vi.fn() }) }));
 vi.mock('../configurator-prototype/useReviewPrice', () => ({ useReviewPrice: () => reply.review }));
+// These display-policy cases cover the existing missing-table canonical fallback.
+vi.mock('../../lib/landingPriceTableStore', () => {
+  const snapshot = { status: 'disabled', table: null, expiresAt: 0, epoch: 0 };
+  return { landingPriceTableStore: { getSnapshot: () => snapshot, getServerSnapshot: () => snapshot,
+    subscribe: () => () => {}, retry: vi.fn() } };
+});
 import ProductExamplePrice from './ProductExamplePrice';
 
 afterEach(() => { vi.unstubAllEnvs(); reply.price = null; reply.review = null; });
