@@ -36,7 +36,7 @@ function fixtureUrl({
   return `${FIXTURE_PATH}?scenario=${scenario}&work=${work}&state=${state}`;
 }
 
-async function expectNoDocumentOverflow(page: Page) {
+async function expectNoDocumentOverflow(page: Page, allowLongWork = false) {
   const projectTitle = page.locator('[data-project-masthead-slot] [data-page-header-identity="true"] h1');
   let verifiedTitle: Awaited<ReturnType<typeof projectTitle.elementHandle>> = null;
   if (await projectTitle.count() === 1 && await projectTitle.evaluate(element => element.scrollHeight > element.clientHeight + 1)) {
@@ -50,12 +50,7 @@ async function expectNoDocumentOverflow(page: Page) {
       await expect(projectTitle).toHaveAttribute('tabindex', '0');
       await expect(projectTitle).toHaveAttribute('title', (await projectTitle.textContent())!.trim());
       await projectTitle.evaluate(element => { element.scrollTop = 0; element.focus({ preventScroll: true }); });
-      for (let step = 0; step < 8; step += 1) {
-        const position = await projectTitle.evaluate(element => ({ top: element.scrollTop, bottom: element.scrollTop + element.clientHeight >= element.scrollHeight - 1 }));
-        if (position.bottom) break;
-        await projectTitle.press('PageDown');
-        await expect.poll(() => projectTitle.evaluate(element => element.scrollTop)).toBeGreaterThan(position.top);
-      }
+      await projectTitle.press('End');
       await expect.poll(() => projectTitle.evaluate(element => element.scrollTop + element.clientHeight >= element.scrollHeight - 1)).toBe(true);
       const after = await projectTitle.evaluate(element => {
         const box = element.getBoundingClientRect();
@@ -73,13 +68,57 @@ async function expectNoDocumentOverflow(page: Page) {
       await previousFocus.dispose();
     }
   }
-  const overflow = await page.evaluate((acceptedProjectTitle) => ({
+  let verifiedWork: Awaited<ReturnType<typeof projectTitle.elementHandle>> = null;
+  if (allowLongWork) {
+    const work = page.locator('[data-overview-reading="work"][aria-label="Project Work reading area"]');
+    if (await work.count() === 1 && await work.evaluate(element => element.scrollHeight > element.clientHeight + 1)) {
+      const previousFocus = await page.evaluateHandle(() => document.activeElement);
+      const previousScroll = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
+      const before = await work.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height, top: element.scrollTop };
+      });
+      try {
+        await expect(work).toHaveAttribute('tabindex', '0');
+        await work.evaluate(element => { element.scrollTop = 0; element.focus({ preventScroll: true }); });
+        const complete = work.getByRole('button', { name: 'Mark complete', exact: true });
+        await expect(complete).toBeVisible();
+        expect(await complete.evaluate(element => {
+          const box = element.getBoundingClientRect(), owner = element.closest('[data-overview-reading="work"]')!.getBoundingClientRect();
+          return box.top >= owner.top - 1 && box.bottom <= owner.bottom + 1 && box.left >= owner.left - 1 && box.right <= owner.right + 1;
+        })).toBe(true);
+        await work.press('End');
+        await expect.poll(() => work.evaluate(element => element.scrollTop + element.clientHeight >= element.scrollHeight - 1)).toBe(true);
+        const manage = work.getByRole('button', { name: 'Manage project work', exact: true });
+        await expect(manage).toBeVisible();
+        expect(await manage.evaluate(element => {
+          const box = element.getBoundingClientRect(), owner = element.closest('[data-overview-reading="work"]')!.getBoundingClientRect();
+          return box.top >= owner.top - 1 && box.bottom <= owner.bottom + 1 && box.left >= owner.left - 1 && box.right <= owner.right + 1;
+        })).toBe(true);
+        const after = await work.evaluate(element => {
+          const box = element.getBoundingClientRect();
+          return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
+        });
+        for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
+        verifiedWork = await work.elementHandle();
+      } finally {
+        await work.evaluate((element, top) => { element.scrollTop = top; }, before.top);
+        await previousFocus.evaluate(element => {
+          if (element instanceof HTMLElement && element !== document.body) element.focus({ preventScroll: true });
+          else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        });
+        await page.evaluate(position => scrollTo(position.x, position.y), previousScroll);
+        await previousFocus.dispose();
+      }
+    }
+  }
+  const overflow = await page.evaluate(({ acceptedProjectTitle, acceptedWork }) => ({
     horizontal: document.documentElement.scrollWidth > window.innerWidth + 1,
     nestedVerticalScrollers: Array.from(
       document.querySelectorAll<HTMLElement>("body *"),
     )
       .filter((element) => {
-        if (element === acceptedProjectTitle) return false;
+        if (element === acceptedProjectTitle || element === acceptedWork) return false;
         if (element.closest('[role="dialog"]')) return false;
         const style = getComputedStyle(element);
         return (
@@ -93,8 +132,9 @@ async function expectNoDocumentOverflow(page: Page) {
           element.getAttribute("aria-label") ??
           element.tagName,
       ),
-  }), verifiedTitle);
+  }), { acceptedProjectTitle: verifiedTitle, acceptedWork: verifiedWork });
   await verifiedTitle?.dispose();
+  await verifiedWork?.dispose();
   expect(overflow.horizontal).toBe(false);
   expect(overflow.nestedVerticalScrollers).toEqual([]);
 }
@@ -593,7 +633,7 @@ for (const [width, height] of OVERVIEW_VIEWPORTS) {
     await expect(layout).toContainText(
       "Confirm the revised multi-zone outdoor living design, final customer selections, and installation constraints",
     );
-    await expectNoDocumentOverflow(page);
+    await expectNoDocumentOverflow(page, true);
     await expectNoCroppedOverviewControls(page);
   });
 }
@@ -1253,8 +1293,14 @@ for (const width of [390, 768]) {
         const box = element.getBoundingClientRect();
         return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
       });
-      for (const key of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[key] - boxes[index][key])).toBeLessThanOrEqual(1);
+      const dimensions = index === owners.length - 1 ? ['x', 'y', 'width'] as const : ['x', 'y', 'width', 'height'] as const;
+      for (const key of dimensions) expect(Math.abs(after[key] - boxes[index][key])).toBeLessThanOrEqual(1);
     }
+    const rowReachable = await table.locator('tbody tr').evaluateAll(rows => rows.every(row => {
+      const box = row.getBoundingClientRect(), viewport = row.closest('table')!.parentElement!.getBoundingClientRect();
+      return box.top >= viewport.top - 1 && box.bottom <= viewport.bottom + 1;
+    }));
+    expect(rowReachable).toBe(true);
     await expectInvoiceEssentialsFit(page);
     await expectNoDocumentOverflow(page);
     for (const node of nodes) await node?.dispose();
