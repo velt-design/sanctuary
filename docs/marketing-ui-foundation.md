@@ -4,7 +4,9 @@
 
 Jordan approved the reviewed exact mobile Back position, fast return navigation
 and unfinished enquiry recovery for production once final release checks pass.
-Production release remains pending. `ScrollReset` delegates to
+The initial continuity release shipped on 26 October. A follow-up candidate below
+corrects reconstruction of the homepage's visible example estimates; that
+correction has not yet shipped. `ScrollReset` delegates to
 `lib/pageContinuity`: bounded tab-local coordinates belong to history-entry IDs,
 including BODY and existing route containers. The shared owner temporarily uses
 native `history.scrollRestoration='manual'` and restores its previous mode on
@@ -25,6 +27,17 @@ expiry, failed renewal and pricing-mode changes still revoke authorization. It
 does not renew while unmounted or extend a lease with a local timestamp.
 Returning subscribers rearm renewal against that original lease deadline; retaining
 the ready table must not leave an actively viewed page without its next renewal.
+
+`useProductExampleEstimate` uses that same authorized table for the nine homepage
+examples, the alternate homepage examples and compatible basic product-selector
+choices. Cells come from the identical `productSelectionDraft` and canonical
+server calculator, including type-specific attachments and finishes. While a
+compatible table loads or remains valid, examples do not issue individual price
+requests. Missing/disabled tables, issue cells and incompatible choices retain fresh canonical
+fallback; a request epoch prevents earlier unleased replies resurfacing after
+table revocation. No new lease is inferred from ordinary canonical responses.
+Focus, hidden-tab, expiry and publication checks stay with the existing store.
+The comparison hub's separate server-supplied table remains its existing owner.
 
 `useEnquiryDraft` owns contact, configured/inline and shared SEO enquiry drafts.
 Editable fields and pathway/audience metadata are written synchronously to bounded

@@ -27,15 +27,47 @@ async function headerNavigate(page: Page, name: string, mobile: boolean) {
     await page.getByRole('navigation', { name: 'Mobile primary', exact: true }).getByRole('link', { name, exact: true }).click();
   } else await page.getByRole('navigation', { name: 'Primary', exact: true }).getByRole('link', { name, exact: true }).click();
 }
+async function publicExamplePrices(page: Page) {
+  await page.addInitScript(() => {
+    const events: { type: string; at: number }[] = [];
+    const requests: { path: string; at: number }[] = [];
+    Object.assign(window, { publicPriceLifecycle: events, publicPriceRequests: requests });
+    for (const type of ['focus', 'pageshow', 'visibilitychange']) window.addEventListener(type, () => events.push({ type, at: Date.now() }), true);
+    const originalFetch = window.fetch;
+    window.fetch = (input, options) => {
+      const path = typeof input === 'string' ? input : input instanceof Request ? input.url : input.href;
+      if (/\/api\/(landing-price-table|configurator-price)$/.test(path)) requests.push({ path, at: Date.now() });
+      return originalFetch.call(window, input, options);
+    };
+  });
+  const table = { schema: 'landing-price-table.v1', id: 'a'.repeat(64), publicationKey: 'b'.repeat(64),
+    versionId: '11111111-1111-4111-8111-111111111111', versionNumber: 1,
+    currency: 'NZD', includesGst: true, amounts: Array(LANDING_PRICE_CELLS).fill(12345) };
+  const calls = { table: 0, canonical: 0 };
+  await page.route('**/api/landing-price-table', route => {
+    calls.table++;
+    return route.fulfill({ json: route.request().postDataJSON().knownId
+      ? { status: 'current', id: table.id, leaseMs: 30000 } : { status: 'ready', table, leaseMs: 30000 } });
+  });
+  await page.route('**/api/configurator-price', route => {
+    calls.canonical++;
+    return route.fulfill({ json: { status: 'priced', amountIncGst: 12345, breakdown: [] } });
+  });
+  return calls;
+}
 
 for (const width of [390, 1440]) test(`Back and Forward restore separate entries without a top flash at ${width}px`, async ({ page }, testInfo) => {
+  const priceCalls = await publicExamplePrices(page);
   await page.setViewportSize({ width, height: 844 });
   await page.goto('/'); await expect(page.locator('[data-homepage-composition]').first()).toBeVisible();
+  await expect(page.locator('[data-price-example] [data-priced=true]')).toHaveCount(9);
+  expect(priceCalls.table).toBeGreaterThan(0); expect(priceCalls.canonical).toBe(0);
   await scrollPage(page, 1440); const homeY = await position(page); expect(homeY).toBeGreaterThan(500);
   const sourceEntry = await page.evaluate(() => history.state?.__sanctuaryPageEntry as string);
   await headerNavigate(page, 'Projects', width < 900);
   await expect(page.locator('[data-project-card]').first()).toBeVisible();
   await scrollPage(page, 850); const projectsY = await position(page);
+  const callsBeforeReturn = { ...priceCalls };
   const backFlights: string[] = [];
   const requestObserver = (request: import('@playwright/test').Request) => {
     if (new URL(request.url()).searchParams.has('_rsc')) backFlights.push(new URL(request.url()).pathname);
@@ -57,12 +89,13 @@ for (const width of [390, 1440]) test(`Back and Forward restore separate entries
       const before = scrollY; Reflect.apply(nativeScroll, window, args);
       scrollCalls.push({ ms: performance.now() - start, before, after: scrollY, args, entry: history.state?.__sanctuaryPageEntry, bodyPosition: document.body.style.position, bodyTop: document.body.style.top });
     }) as typeof window.scrollTo;
-    const samples: {ms:number;path:string;y:number;home:boolean;homeVisible:boolean;homeHeight:number;bodyPosition:string;bodyTop:string;height:number;bodyHeight:number;windowY:number;bodyY:number}[] = [];
+    const samples: {ms:number;path:string;y:number;home:boolean;homeVisible:boolean;homeHeight:number;bodyPosition:string;bodyTop:string;height:number;bodyHeight:number;windowY:number;bodyY:number;prices: {priced: boolean;text:string}[]}[] = [];
     history.back();
     await new Promise<void>(resolve => {
       const sample = () => {
         const home = document.querySelector<HTMLElement>('[data-homepage-composition]');
-        samples.push({ ms: performance.now() - start, path: location.pathname, y: document.body.scrollTop || scrollY, home: !!home, homeVisible: home?.checkVisibility() ?? false, homeHeight: home?.getBoundingClientRect().height ?? 0, bodyPosition: getComputedStyle(document.body).position, bodyTop: document.body.style.top, height: document.documentElement.scrollHeight, bodyHeight: document.body.scrollHeight, windowY: scrollY, bodyY: document.body.scrollTop });
+        samples.push({ ms: performance.now() - start, path: location.pathname, y: document.body.scrollTop || scrollY, home: !!home, homeVisible: home?.checkVisibility() ?? false, homeHeight: home?.getBoundingClientRect().height ?? 0, bodyPosition: getComputedStyle(document.body).position, bodyTop: document.body.style.top, height: document.documentElement.scrollHeight, bodyHeight: document.body.scrollHeight, windowY: scrollY, bodyY: document.body.scrollTop,
+          prices: Array.from(home?.querySelectorAll('[data-price-example] dd') ?? []).map(row => ({ priced: row.querySelector('[data-priced=true]') !== null, text: row.textContent ?? '' })) });
         if (samples.at(-1)!.home && samples.length > 8 || performance.now() - start > 3000) resolve();
         else requestAnimationFrame(sample);
       }; requestAnimationFrame(sample);
@@ -71,14 +104,19 @@ for (const width of [390, 1440]) test(`Back and Forward restore separate entries
     Object.defineProperty(Element.prototype, 'scrollTop', scrollTopDescriptor);
     return { expected: context.expected, expectedEntry: context.entry, entryBefore, entryAfter: history.state?.__sanctuaryPageEntry, savedBefore, samples, scrollCalls, directScrollCalls };
   }, { expected: homeY, entry: sourceEntry });
+  await page.waitForTimeout(300); // Include the ordinary canonical request debounce in the no-refetch check.
   await testInfo.attach(`return-frames-${width}`, { contentType: 'application/json', body: JSON.stringify(frames) });
-  await writeFile(testInfo.outputPath('return-frames.json'), JSON.stringify({ ...frames, backFlights }, null, 2));
+  const lifecycle = await page.evaluate(() => (window as unknown as { publicPriceLifecycle: unknown[] }).publicPriceLifecycle);
+  const priceRequests = await page.evaluate(() => (window as unknown as { publicPriceRequests: unknown[] }).publicPriceRequests);
+  await writeFile(testInfo.outputPath('return-frames.json'), JSON.stringify({ ...frames, backFlights, priceCalls, callsBeforeReturn, lifecycle, priceRequests }, null, 2));
   const visible = frames.samples.filter(frame => frame.homeVisible && frame.path === '/');
   page.off('request', requestObserver);
   expect(backFlights.filter(path => path === '/')).toEqual([]);
   expect(frames.entryAfter).toBe(sourceEntry);
   expect(visible.length).toBeGreaterThan(0);
   expect(visible.every(frame => Math.abs(frame.y - homeY) <= 2)).toBe(true);
+  expect(visible.every(frame => frame.prices.length === 9 && frame.prices.every(price => price.priced))).toBe(true);
+  expect(priceCalls).toEqual(callsBeforeReturn); expect(priceCalls.canonical).toBe(0);
   expect(visible[0].ms).toBeLessThan(100);
   await expect.poll(() => position(page)).toBeCloseTo(homeY, 0);
   await page.goForward(); await expect(page.locator('[data-project-card]').first()).toBeAttached();
@@ -90,6 +128,63 @@ for (const width of [390, 1440]) test(`Back and Forward restore separate entries
   await page.goBack(); await expect.poll(() => position(page)).toBeCloseTo(projectsY, 0);
   await page.goBack(); await expect.poll(() => position(page)).toBeCloseTo(homeY, 0);
   await page.goForward(); await page.goForward(); await expect.poll(() => position(page)).toBeCloseTo(secondHome, 0);
+});
+
+test('initial native pageshow revalidates an early table response after cold images finish loading', async ({ page }, testInfo) => {
+  const calls = await publicExamplePrices(page);
+  let release!: () => void; const images = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/*', async route => {
+    if (route.request().resourceType() === 'image') { await images; await route.continue(); }
+    else await route.fallback();
+  });
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('[data-price-example] [data-priced=true]')).toHaveCount(9);
+    expect(calls).toEqual({ table: 1, canonical: 0 });
+    release(); await page.waitForLoadState('load');
+    await expect.poll(() => calls.table).toBe(2);
+    const evidence = await page.evaluate(() => ({
+      lifecycle: (window as unknown as { publicPriceLifecycle: { type: string; at: number }[] }).publicPriceLifecycle,
+      requests: (window as unknown as { publicPriceRequests: { path: string; at: number }[] }).publicPriceRequests,
+    }));
+    await writeFile(testInfo.outputPath('cold-pageshow.json'), JSON.stringify({ calls, ...evidence }, null, 2));
+    const shown = evidence.lifecycle.find(event => event.type === 'pageshow')!;
+    expect(shown.at).toBeGreaterThanOrEqual(evidence.requests[0].at);
+    expect(evidence.requests[1].at).toBeGreaterThanOrEqual(shown.at);
+    expect(calls.canonical).toBe(0);
+  } finally { release(); }
+});
+
+test('a product detail returns with its compatible selected price already visible and no canonical refetch', async ({ page }, testInfo) => {
+  const calls = await publicExamplePrices(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/products/pergolas/gable');
+  await expect(page.locator('[data-product-detail] p[data-priced=true]')).toContainText('$12,345');
+  expect(calls.table).toBeGreaterThan(0); expect(calls.canonical).toBe(0);
+  await headerNavigate(page, 'Projects', true); await expect(page.locator('[data-project-card]').first()).toBeVisible();
+  const callsBeforeReturn = { ...calls };
+  const frames = await page.evaluate(async () => {
+    const start = performance.now();
+    const samples: { ms: number; visible: boolean; priced: boolean; text: string }[] = [];
+    history.back();
+    await new Promise<void>(resolve => {
+      const sample = () => {
+        const root = document.querySelector<HTMLElement>('[data-product-detail]');
+        const price = root?.querySelector('p[data-priced]');
+        samples.push({ ms: performance.now() - start, visible: root?.checkVisibility() ?? false,
+          priced: price?.getAttribute('data-priced') === 'true', text: price?.textContent ?? '' });
+        if (samples.length > 8 && root?.checkVisibility() || performance.now() - start > 3000) resolve();
+        else requestAnimationFrame(sample);
+      }; requestAnimationFrame(sample);
+    });
+    return samples;
+  });
+  await page.waitForTimeout(300);
+  await writeFile(testInfo.outputPath('product-return-frames.json'), JSON.stringify({ frames, calls, callsBeforeReturn }, null, 2));
+  const visible = frames.filter(frame => frame.visible);
+  expect(visible.length).toBeGreaterThan(0); expect(visible[0].ms).toBeLessThan(100);
+  expect(visible.every(frame => frame.priced && frame.text.includes('$12,345'))).toBe(true);
+  expect(calls).toEqual(callsBeforeReturn); expect(calls.canonical).toBe(0);
 });
 
 test('mobile contact draft restores its last edit, pathway, optional details and actual file bytes after reload', async ({ page }) => {
