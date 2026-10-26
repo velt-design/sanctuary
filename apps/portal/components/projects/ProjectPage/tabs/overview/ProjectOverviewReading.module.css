@@ -16,4 +16,5 @@
  .reading[data-overview-reading="payment"] { height: 400px; }
  .reading[data-overview-reading="work"] { height: 576px; }
  .reading[data-overview-reading="visits"] { height: 352px; }
+ .reading[data-overview-reading="emails"] { height: 464px; }
 }
