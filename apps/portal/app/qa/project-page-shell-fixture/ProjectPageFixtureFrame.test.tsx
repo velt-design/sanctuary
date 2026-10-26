@@ -29,3 +29,10 @@ it.each(['summary', 'refresh-failed', 'fresh'] as const)('uses explicit %s geome
   expect(mocks.frame.mock.lastCall?.[0]).toMatchObject({ snapshotState: state, snapshotContentReady: state === 'fresh' });
   expect(mocks.frame.mock.lastCall?.[0].statusPanel.props.state).toBe(state);
 });
+
+it('holds null pending evidence under the stable project identity, then restores the identical summary/fresh snapshot',()=>{
+ mocks.state='pending';const view=renderIntoDocument(<ProjectPageFixtureFrame {...base}/>);
+ expect(mocks.frame.mock.lastCall?.[0]).toMatchObject({projectId:'proj_fixture',snapshot:null,privateContentReady:false,snapshotState:'pending',snapshotContentReady:false});
+ for(const state of ['summary','fresh'] as const){mocks.state=state;view.rerender(<ProjectPageFixtureFrame {...base}/>);const frame=mocks.frame.mock.lastCall?.[0];expect(frame.projectId).toBe('proj_fixture');expect(frame.snapshot).toBe(base.snapshot);expect(frame.snapshotContentReady).toBe(state==='fresh');}
+ mocks.state='pending';view.rerender(<ProjectPageFixtureFrame {...base}/>);expect(mocks.frame.mock.lastCall?.[0].snapshot).toBeNull();view.unmount();
+});

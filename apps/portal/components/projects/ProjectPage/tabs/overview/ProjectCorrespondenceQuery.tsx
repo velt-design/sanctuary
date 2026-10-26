@@ -19,16 +19,16 @@ function oldestObservation(context: ProjectCorrespondenceContext) {
     ...(context.messages ?? []).map(message => Date.parse(message.observedAt)));
 }
 
-export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding, project }: {
-  projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext;
+export default function ProjectCorrespondenceQuery({ projectId, onAccessEnding, project, embedded = false }: {
+  projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext; embedded?: boolean;
 }) {
   const { scope } = useProjectEmailReadingState();
   // Only the email read remounts when customer identity hydrates or changes.
   // Commercial editors elsewhere in the same provider must retain their drafts.
-  return <CorrespondenceRead key={JSON.stringify([projectId, scope])} projectId={projectId} onAccessEnding={onAccessEnding} project={project} />;
+  return <CorrespondenceRead key={JSON.stringify([projectId, scope])} projectId={projectId} onAccessEnding={onAccessEnding} project={project} embedded={embedded} />;
 }
 
-function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext }) {
+function CorrespondenceRead({ projectId, onAccessEnding, project, embedded = false }: { projectId: string; onAccessEnding?: (status: number) => void; project?: EmailProjectContext; embedded?: boolean }) {
   const takeWarmRead = useProjectCorrespondenceWarmRead();
   const [read, setRead] = useState<ReadState>({ state: 'loading' });
   const active = useRef<AbortController | null>(null);
@@ -143,7 +143,7 @@ function CorrespondenceRead({ projectId, onAccessEnding, project }: { projectId:
   }, [read.context, read.state, load]);
 
   return <>
-    <ProjectCorrespondenceCard {...read} project={project} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />
+    <ProjectCorrespondenceCard embedded={embedded} {...read} project={project} onRefresh={read.state === 'not_connected' ? undefined : () => void load(true)} onAnalyze={() => void load(true, true)} />
     {displayTiming && <output hidden data-email-mount-ms={displayTiming.mountMs} data-email-document-ms={displayTiming.documentMs} />}
   </>;
 }

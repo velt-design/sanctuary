@@ -5,12 +5,13 @@ import { SearchFilterBar } from '@/components/ui/foundation/SearchFilterBar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation/FoundationSurfaces';
 import type { CommercialView } from './CommercialTabSurface';
 import styles from './EstimatesListView.module.css';
+import ReadStatus from '@/components/page-state/ReadStatus';
 
 export { useCommercialListControls as useEstimatesListControls } from './CommercialTabSurface';
 import type { useCommercialListControls } from './CommercialTabSurface';
 export type EstimatesListControls = ReturnType<typeof useCommercialListControls>;
 export type EstimatesListEvidence = {
-  pending?:boolean; headerActions: ReactNode; status: ReactNode;
+  pending?:boolean; headerActions: ReactNode; status: ReactNode; statusTitle?:string; statusAction?:ReactNode;
   onSelect?: (view: CommercialView) => void; onIntent?: (view: CommercialView) => void; notice?: ReactNode; inert?: boolean;
   render: (query: string) => { empty: ReactNode; noMatches: ReactNode; rows: ReactNode };
 };
@@ -39,20 +40,20 @@ export default function EstimatesListSurface({ query, onQueryChange, evidence, u
     <div className={styles.header}>
       <div><h3 className={styles.title}>Estimates</h3>
         <p className={styles.subtitle}>Working designs · accepted quotes remain the agreement.</p></div>
-      {evidence?.headerActions}
+      <div className={styles.headerActionSlot}>{evidence?.headerActions}</div>
     </div>
-    {evidence?.status}
-    {content?.empty}
+    <ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Estimates unavailable' : evidence?.pending || !evidence ? 'Reading estimates…' : 'Estimates current')}
+      tone={unavailable ? 'error' : evidence?.status ? 'warning' : 'neutral'} action={evidence?.statusAction} details={evidence?.status} />
     <SearchFilterBar query={query} onQueryChange={changeQuery}
       queryPlaceholder="Search estimate names or versions" searchId="estimate-search"
       filters={[]} onClearAll={() => changeQuery('')} />
-    {content?.noMatches}
-    <Table aria-label="Project estimates" className={styles.table}>
+    <Table aria-label="Project estimates" className={styles.table} viewportClassName={styles.listViewport}>
+      <colgroup>{[34, 17, 16, 19, 14].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}</colgroup>
       <TableHeader><TableRow>
         <TableHead>Estimate</TableHead><TableHead>Created</TableHead><TableHead>Status</TableHead>
         <TableHead>Linked quotes</TableHead><TableHead>Actions</TableHead>
       </TableRow></TableHeader>
-      <TableBody>{content ? content.rows : <TableRow><TableCell colSpan={5}>
+      <TableBody>{content && (content.empty || content.noMatches) ? <TableRow><TableCell colSpan={5}>{content.empty || content.noMatches}</TableCell></TableRow> : null}{content ? content.rows : <TableRow><TableCell colSpan={5}>
         {unavailable ? 'Estimates unavailable. Retry the read.' : <span role="status">Reading estimates…</span>}
       </TableCell></TableRow>}</TableBody>
     </Table>

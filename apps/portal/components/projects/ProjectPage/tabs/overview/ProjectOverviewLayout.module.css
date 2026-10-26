@@ -1,16 +1,20 @@
 .layout {
-  display: grid;
   width: 100%;
   max-width: var(--ui-content-max);
   margin-inline: auto;
+  min-width: 0;
+  container-type: inline-size;
+}
+.grid {
+  display: grid;
   grid-template-areas: "exception exception" "primary context" "admin admin";
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 1fr);
   align-items: start;
   gap: var(--ui-grid-gutter);
   min-width: 0;
 }
-.layout:not([data-has-exception]) { grid-template-areas: "primary context" "admin admin"; }
-.layout > *, .primary > *, .context > * { min-width: 0; }
+.layout:not([data-has-exception]) > .grid { grid-template-areas: "primary context" "admin admin"; }
+.grid > *, .primary > *, .context > * { min-width: 0; }
 /* Independent columns keep long correspondence from spacing out work. */
 .primary, .context { display: grid; gap: var(--ui-grid-gutter); min-width: 0; }
 .primary { grid-area: primary; }
@@ -21,16 +25,12 @@
 .commercial { display: grid; gap: var(--ui-grid-gutter); }
 .recent { display: grid; gap: var(--ui-grid-gutter); }
 .admin { grid-area: admin; }
-.layout[data-overview-composition="stacked"],
-.layout[data-overview-composition="mobile"] {
-  grid-template-areas: "exception" "primary" "context" "admin";
-  grid-template-columns: minmax(0, 1fr);
-}
-.layout[data-overview-composition="stacked"]:not([data-has-exception]),
-.layout[data-overview-composition="mobile"]:not([data-has-exception]) {
-  grid-template-areas: "primary" "context" "admin";
-}
 @media (max-width: 768px) {
-  .layout { grid-template-areas: "exception" "primary" "context" "admin"; grid-template-columns: minmax(0, 1fr); }
-  .layout:not([data-has-exception]) { grid-template-areas: "primary" "context" "admin"; }
+  .grid { grid-template-areas: "exception" "primary" "context" "admin"; grid-template-columns: minmax(0, 1fr); }
+  .layout:not([data-has-exception]) > .grid { grid-template-areas: "primary" "context" "admin"; }
+}
+/* The existing outer layout supplies its actual available width immediately. */
+@container (max-width: 800px) {
+  .grid { grid-template-areas: "exception" "primary" "context" "admin"; grid-template-columns: minmax(0, 1fr); }
+  .layout:not([data-has-exception]) > .grid { grid-template-areas: "primary" "context" "admin"; }
 }

@@ -639,3 +639,21 @@ describe("OverviewTab", () => {
     rendered.unmount();
   });
 });
+
+// These native owners exist before private evidence; adoption only fills their bodies.
+it('retains every Overview reading owner from before publication through current evidence and retirement', async () => {
+  useQueryMock.mockReturnValue(queryState({isPending:true}));
+  function Public({allowed,owner}:{allowed:boolean;owner:object}) { return <ManagedOverview allowed={allowed} owner={owner}/>; }
+  const owner={};
+  const rendered=renderIntoDocument(<Public allowed={false} owner={owner}/>);
+  const labels=['Project Work','Project orientation','Payment position','Site visits','Customer conversations'];
+  const nodes=labels.map(label=>{const node=rendered.container.querySelector(`[aria-label="${label}"]`);expect(node,label).not.toBeNull();return node;});
+  useQueryMock.mockReturnValue(queryState({data:{workModel:'v2',projectWork:v2Projection,owner:{owner:null},currentDesign:{source:'none',price:{totalIncGstCents:null},warnings:[]}}}));
+  rendered.rerender(<Public allowed owner={owner}/>);
+  await settleLazyComponents();
+  labels.forEach((label,index)=>expect(rendered.container.querySelector(`[aria-label="${label}"]`)).toBe(nodes[index]));
+  rendered.rerender(<Public allowed={false} owner={owner}/>);
+  labels.forEach((label,index)=>expect(rendered.container.querySelector(`[aria-label="${label}"]`)).toBe(nodes[index]));
+  expect(rendered.container.querySelector('[data-testid="mock-payment-position"]')).toBeNull();
+  rendered.unmount();
+});

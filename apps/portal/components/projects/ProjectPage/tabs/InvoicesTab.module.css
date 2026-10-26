@@ -176,3 +176,31 @@
 @media (max-width: 720px) {
   .wrapper .invoiceTable { min-width: 0; max-width: 100%; width: 100%; }
 }
+
+.listViewport { min-height: 320px; }
+@media (min-width: 721px) {
+  .invoiceTable { table-layout: fixed; width: 100%; }
+  .invoiceTable td { overflow-wrap: anywhere; }
+}
+
+.paymentSchedule { container-type: inline-size; }
+.paymentSchedule > header { height: 72px; }
+.paymentSchedule .scheduleTotals[data-columns] { height: 288px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.paymentSchedule .scheduleTotals[data-columns] > div { padding: var(--ui-space-3); }
+.totalBreakdown, .totalBreakdown > span { display: grid; min-width: 0; }
+.totalBreakdown { gap: var(--ui-space-1); }
+.totalBreakdown > span { grid-template-columns: minmax(0, 1fr) auto; gap: var(--ui-space-1); }
+.scheduleActions { height: 44px; display: grid; grid-template-columns: repeat(3, max-content); grid-template-rows: 44px; align-items: center; gap: var(--ui-space-2); padding-inline: var(--ui-space-3); }
+.scheduleDisclosure > summary { min-height: 44px; box-sizing: border-box; padding: var(--ui-space-3); cursor: pointer; }
+.scheduleDisclosure > summary:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: -2px; }
+@media (max-width: 720px) {
+  .paymentSchedule .scheduleTotals[data-columns] { height: 320px; }
+  .totalBreakdown > span { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+@container (max-width: 560px) {
+  .scheduleActions { height: 96px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 44px); }
+  .scheduleActions > :first-child { grid-column: 1 / -1; }
+}
+@container (max-width: 350px) {
+  .scheduleActions { height: 148px; grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(3, 44px); }
+}

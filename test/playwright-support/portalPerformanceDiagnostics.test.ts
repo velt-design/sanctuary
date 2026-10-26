@@ -358,8 +358,34 @@ it.each(['complete','action-failed','raw-cap','missing','profiler-failed'] as co
     session.emit('Tracing.dataCollected',{value:mode==='raw-cap'?Array(NATIVE_LIMITS.events+1).fill({}):[{name:'Layout',ph:'X',ts:1000,dur:1200,args:{text:'PRIVATE_VALUE'}}]});
   },rows=>output.push(...rows));
   expect(success).toBe(mode==='complete');expect(output.at(-1)).toMatchObject({kind:'coverage',status:mode==='complete'?'complete':mode==='raw-cap'?'capped':mode==='missing'?'unavailable':'failed'});
+  if(mode!=='action-failed')expect(page.waitForTimeout).toHaveBeenCalledWith(750);
   expect(session.detach).toHaveBeenCalledOnce();expect(session.eventNames()).toEqual([]);
   const prior=JSON.stringify(output);session.emit('Tracing.dataCollected',{value:[{text:'PRIVATE_VALUE'}]});expect(JSON.stringify(output)).toBe(prior);expect(prior).not.toContain('PRIVATE_VALUE');
+});
+
+it.each(['detail-warm','projects-back','dashboard-warm'] as const)('observes late adoption for %s without changing ordinary capture waits or bounds', async journey => {
+  const session=new EventEmitter() as EventEmitter & {send:ReturnType<typeof vi.fn>;detach:ReturnType<typeof vi.fn>};
+  session.detach=vi.fn(async()=>undefined);
+  session.send=vi.fn(async(method:string)=>{
+    if(method==='Tracing.end')session.emit('Tracing.tracingComplete',{});
+    return method==='Profiler.stop'?{profile:{nodes:[{id:1,callFrame:{}}],samples:[1],timeDeltas:[3_000_000]}}:{};
+  });
+  const wait=vi.fn(async(milliseconds:number)=>{
+    expect(milliseconds).toBe(3_000);
+    session.emit('Tracing.dataCollected',{value:[{name:'RunTask',ph:'X',ts:2_001_000,dur:67_000}]});
+  });
+  const page={context:()=>({newCDPSession:async()=>session}),waitForTimeout:wait} as unknown as Page;
+  const rows:object[]=[];
+  expect(await collectNativeCapture(page,journey,'http://127.0.0.1:3011',new Set(),async()=>{
+    session.emit('Tracing.dataCollected',{value:[{name:'Layout',ph:'X',ts:1_000,dur:1_200}]});
+  },values=>rows.push(...values))).toBe(true);
+  expect(wait).toHaveBeenCalledOnce();
+  expect(rows).toContainEqual(expect.objectContaining({kind:'span',journey,event:'RunTask',startMs:2_000,durationMs:67}));
+  expect(rows.at(-1)).toMatchObject({kind:'coverage',status:'complete'});
+  expect(rows.every(row=>safeNativeRow(row))).toBe(true);
+  expect(safeNativeRow({schema:1,kind:'coverage',journey:journey+'?PRIVATE_VALUE',status:'complete',projectionCapped:false,traceEvents:0,cpuSamples:0,dropped:0})).toBeNull();
+  expect(NATIVE_LIMITS).toMatchObject({batchMs:160_000,gets:400,rawBytes:67_108_864,events:50_000});
+  expect(session.detach).toHaveBeenCalledOnce();expect(session.eventNames()).toEqual([]);
 });
 
 it.each([false,true])('reserves profile bytes before the late trace tail, retaining action-failure precedence (%s)', async actionFails => {

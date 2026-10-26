@@ -47,7 +47,7 @@ export default function DashboardTasksSurface({title,setTitle,initialTasks,tasks
             Add
           </Button>
         </form>
-        {error ? <div className={dash.taskError}>{error}</div> : null}
+        <div className={dash.taskError} role={error ? 'alert' : undefined}>{error}</div>
 
         {!initialTasks?<div className={dash.emptyState} role={pending?'status':undefined}>{pending?'Reading personal tasks…':'Personal tasks unavailable.'}</div>:tasks.length ? (
           rows

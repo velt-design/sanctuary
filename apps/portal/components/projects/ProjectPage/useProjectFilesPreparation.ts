@@ -18,7 +18,6 @@ export function useProjectFilesPreparation(projectId: string, host: string, enab
   useEffect(() => {
     if (!enabled || status !== 'authenticated' || !ownerId || (role !== 'staff' && role !== 'admin')) return;
     void import('./tabs/FilesTab').catch(() => undefined);
-    void import('./tabs/QuotePdfInlinePreview').then(module => module.preloadQuotePdfPreview()).catch(() => undefined);
     const controller = new AbortController();
     const owner = JSON.stringify([host, ownerId]);
     let metadata: Promise<typeof import('@/lib/projects/sharePointFiles/query') | undefined> | undefined;

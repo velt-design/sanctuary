@@ -84,14 +84,38 @@
   grid-column: 1 / -1;
 }
 
-.mastheadHeader :global([data-page-header-identity="true"] h1) {
+.masthead .mastheadHeader :global([data-page-header-identity="true"] h1) {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: initial;
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.2;
+  block-size: 2lh;
+  min-height: 2lh;
+  max-height: 2lh;
+  overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .mastheadHeader :global([data-page-header-title-line="true"]) {
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 24px;
+}
+
+.mastheadSubtitle {
+  display: block;
+  block-size: 3em;
+  line-height: 1.5;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  scrollbar-gutter: stable;
+}
+
+.mastheadSubtitle:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
 }
 
 .mastheadHeader :global([data-page-header-utility="true"]) {
@@ -237,7 +261,7 @@
   }
 
   .mastheadHeader :global([data-page-header-identity="true"] h1) {
-    overflow: visible;
+    overflow: auto;
     white-space: normal;
     overflow-wrap: anywhere;
   }
@@ -248,3 +272,9 @@
     justify-content: flex-start;
   }
 }
+.readStatusSlot { min-height:44px; }
+.readStatusSlot > p { margin:0; display:flex; align-items:center; min-height:44px; color:var(--ui-text-muted); font-size:var(--ui-font-size-small); }
+
+/* Availability changes cannot introduce a horizontal scrollbar below the tabs. */
+.masthead :global(nav[aria-label="Project sections"]) { overflow-x: scroll; }
+.mastheadHeader :global(h1:focus-visible) { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }

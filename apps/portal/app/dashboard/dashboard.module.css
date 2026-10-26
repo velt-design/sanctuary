@@ -796,3 +796,20 @@
     transition-duration: 0s !important;
   }
 }
+
+/* Current section content scrolls inside its actual card instead of moving its neighbours. */
+.cardBody { scrollbar-gutter: stable; }
+.taskError { min-height: 44px; box-sizing: border-box; max-height: 44px; overflow: auto; }
+@media (max-width: 1180px) {
+  .workspaceGrid > * { height: 340px; min-height: 0; overflow: hidden; }
+}
+
+.taskError:empty { background: transparent; border-color: transparent; }
+
+/* Visits has its own track; its read can never resize the other card rows. */
+.workspaceGrid { grid-template-areas: 'queue activity tasks' 'estimates activity tasks' 'visits visits visits'; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) 160px; }
+.workspaceGrid > * { height: auto; min-height: 0; overflow: hidden; }
+.workspaceGrid > :first-child { grid-area: visits; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.workspaceGrid > :first-child > :last-child { min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+@media (max-width: 1180px) { .workspaceGrid { grid-template-areas: 'queue activity' 'estimates activity' 'tasks tasks' 'visits visits'; grid-template-rows: 340px 340px 340px 160px; } }
+@media (max-width: 900px) { .workspaceGrid { grid-template-areas: 'queue' 'activity' 'estimates' 'tasks' 'visits'; grid-template-rows: repeat(4, 340px) 160px; } }

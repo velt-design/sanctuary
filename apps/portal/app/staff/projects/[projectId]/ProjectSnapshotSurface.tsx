@@ -14,6 +14,8 @@ import ProjectPageFrameSurface from '@/components/projects/ProjectPage/ProjectPa
 import ProjectHeaderSurface from '@/components/projects/ProjectPage/ProjectHeaderSurface';
 import ProjectPageShellSurface from '@/components/projects/ProjectPage/ProjectPageShellSurface';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
+import { Button } from '@/components/ui/foundation/FoundationControls';
+import ReadStatus from '@/components/page-state/ReadStatus';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { ProjectOverviewReadsProvider, overviewProjectId } from '@/components/projects/ProjectPage/ProjectOverviewReadContext';
 import type { useProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
@@ -77,8 +79,7 @@ export default function ProjectSnapshotSurface({ projectId, tab, evidence, navig
             }} onIntent={(next) => {
               if (evidence?.commercial) evidence.commercial.onIntent(next);
               else onTabIntent?.('estimates');
-            }} quoteViews={navigation.activeTab === 'quotes' ? evidence?.commercial?.quoteViews : null}>
-            {evidence?.commercial?.notice}
+            }} quoteViews={navigation.activeTab === 'quotes' ? evidence?.commercial?.quoteViews : null} notice={evidence?.commercial?.notice}>
             <div inert={evidence?.commercial?.inert} style={{ display: 'contents' }}>
               {navigation.activeTab === 'estimates' && !calculatorWorkspace && estimatesListControls ? <EstimatesListSurface
                 query={estimatesListControls.query} onQueryChange={estimatesListControls.setQuery} onInteraction={estimatesListControls.markInteracted}
@@ -99,8 +100,10 @@ export default function ProjectSnapshotSurface({ projectId, tab, evidence, navig
           <JobPacksListSurface evidence={state==='unavailable'?null:evidence?.jobPacks??null} unavailable={state==='unavailable'}/>
           {evidence&&state!=='unavailable'?evidence.body:null}</>:undefined}
           onProjectAccessEnding={evidence?.onProjectAccessEnding} body={evidence?.body}
-          statusPanel={evidence?.statusPanel ?? (unavailable ? <DataStatePanel state="unavailable" title="Project access unavailable"
-          description="The project may have been removed, or your access may have changed." onRetry={onRetry} /> : null)} />
+          statusPanel={evidence?.statusPanel ?? (unavailable ? <ReadStatus title="Project access unavailable" tone="error"
+            action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+            details={<DataStatePanel state="unavailable" title="Project access unavailable"
+              description="The project may have been removed, or your access may have changed." onRetry={onRetry} />} /> : null)} />
       </ProjectPageFrameSurface>
     </ProjectOverviewReadsProvider>
   </PageLayout>;

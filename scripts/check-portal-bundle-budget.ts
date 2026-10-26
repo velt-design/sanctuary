@@ -1,12 +1,16 @@
 import {
+  analyzePortalBundleRoute,
   assertPortalBundleBudgets,
+  PORTAL_BUNDLE_ROUTES,
   formatBytes,
   PortalBundleBudgetError,
   type PortalBundleBudgetReport,
 } from '../apps/portal/lib/performance/portalBundleBudgets';
 
-function printReport(report: PortalBundleBudgetReport) {
-  console.log(`${report.route} bundle budget passed.`);
+function printReport(report: PortalBundleBudgetReport, diagnostic = false) {
+  console.log(diagnostic
+    ? `${report.route} retired bundle diagnostic (not enforced).`
+    : `${report.route} bundle budget passed.`);
   console.log(`- Initial: ${formatBytes(report.initial.rawBytes)} raw, ${formatBytes(report.initial.gzipBytes)} gzip`);
   console.log(`- Lazy total: ${formatBytes(report.lazy.rawBytes)} raw, ${formatBytes(report.lazy.gzipBytes)} gzip`);
   if (report.lazy.largestEntry) {
@@ -15,7 +19,15 @@ function printReport(report: PortalBundleBudgetReport) {
 }
 
 try {
-  for (const report of assertPortalBundleBudgets()) printReport(report);
+  const retiredConfig = PORTAL_BUNDLE_ROUTES.find((config) => config.id === 'design-workbench');
+  if (!retiredConfig) throw new Error('Missing retired Workbench bundle configuration.');
+  const retired = analyzePortalBundleRoute({ config: retiredConfig });
+  printReport(retired, true);
+  for (const failure of retired.failures) {
+    console.log(`- Diagnostic ${failure.budget}: ${failure.actual} bytes exceeds recorded limit ${failure.limit} bytes`);
+  }
+  const activeConfigs = PORTAL_BUNDLE_ROUTES.filter((config) => config.id !== 'design-workbench');
+  for (const report of assertPortalBundleBudgets({ configs: activeConfigs })) printReport(report);
 } catch (error) {
   if (error instanceof PortalBundleBudgetError) {
     console.error(error.message);

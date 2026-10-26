@@ -13,7 +13,7 @@ const controlled=vi.hoisted(()=>({props:null as SearchReadProps|null,mounts:0}))
 // Isolate code arrival only. The real registration/source/input/evidence owners remain connected.
 vi.mock('next/dynamic',()=>({default:()=>function ControlledReader(props:SearchReadProps){controlled.props=props;controlled.mounts++;return null;}}));
 vi.mock('next/navigation',()=>({useRouter:()=>({refresh:vi.fn()})}));
-vi.mock('@/components/page-state/PortalRouteTransition',()=>({usePortalRouteTransition:()=>({pathname:window.location.pathname,routeKey:window.location.pathname,instantRoute:null})}));
+vi.mock('@/components/page-state/PortalRouteTransitionContext',()=>({usePortalRouteTransition:()=>({pathname:window.location.pathname,routeKey:window.location.pathname,instantRoute:null})}));
 let source:ReturnType<typeof usePortalPageSourceController>;
 function Host({canonical,completion,denied=false}:{canonical:string;completion?:Record<string,never>;denied?:boolean}){
   source=usePortalPageSourceController(window.location.pathname,canonical,'');

@@ -1,6 +1,9 @@
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PageHeader from './PageHeader';
+import ProjectCurrentStatusBadge from '@/components/projects/ProjectCurrentStatusBadge';
+import ProjectHeaderSurface from '@/components/projects/ProjectPage/ProjectHeaderSurface';
+import projectStyles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 vi.mock('next/link', () => ({
@@ -10,8 +13,56 @@ vi.mock('next/link', () => ({
     </a>
   ),
 }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams('tab=activity') }));
 
 describe('PageHeader', () => {
+  it('retains the actual focusable full customer/location subtitle through Reading, long facts and access retirement', () => {
+    const project = { id: 'fixture-project', name: 'Verified project', contactName: 'A long genuine customer display name',
+      siteAddress: 'A saved property address with enough detail to span more than two narrow reading lines' } as any;
+    const render = (current: typeof project | null, state: 'pending' | 'fresh' | 'unavailable') => <ProjectHeaderSurface project={current} projectId="fixture-project" snapshotState={state}
+      host="host" tab="activity" search={<input aria-label="Find" />} actions={<button>Projects</button>} ownerControl={<span>Owner</span>} />;
+    const view = renderIntoDocument(render(null, 'pending'));
+    const subtitle = view.container.querySelector<HTMLElement>('[aria-label="Project customer and location"]')!;
+    expect(subtitle).not.toBeNull();
+    expect(subtitle.tabIndex).toBe(0);
+    subtitle.focus();
+    view.rerender(render(project, 'fresh'));
+    expect(view.container.querySelector('[aria-label="Project customer and location"]')).toBe(subtitle);
+    expect(document.activeElement).toBe(subtitle);
+    expect(subtitle.textContent).toBe(`${project.contactName} · ${project.siteAddress}`);
+    expect(subtitle.title).toBe(subtitle.textContent);
+    view.rerender(render(null, 'unavailable'));
+    expect(subtitle.textContent).toBe('Project details unavailable');
+    expect(subtitle.textContent).not.toContain(project.contactName);
+    view.unmount();
+  });
+  it('preserves the project heading and actual status owner as a long verified name replaces Reading', () => {
+    const render = (title: string, pending: boolean) => <PageHeader variant="detail" className={projectStyles.mastheadHeader} title={title}
+      titleAccessory={<ProjectCurrentStatusBadge stage="new" pending={pending} />} />;
+    const view = renderIntoDocument(render('Reading project', true));
+    const line = view.container.querySelector('[data-page-header-title-line]')!;
+    const heading = view.container.querySelector('h1');
+    const accessory = line.children[1];
+    const badge = accessory.querySelector('[data-project-current-status]');
+    const name = 'A long verified project name that fills the entire project identity column';
+    view.rerender(render(name, false));
+    expect(view.container.querySelector('h1')).toBe(heading);
+    expect(heading?.textContent).toBe(name);
+    expect(line.children[1]).toBe(accessory);
+    expect(accessory.querySelector('[data-project-current-status]')).toBe(badge);
+    view.unmount();
+  });
+  it('allocates a primary-action place without inventing an unknown permission or replacing the actual control', () => {
+    const view = renderIntoDocument(<PageHeader variant="index" title="Projects" reservePrimaryAction />);
+    const actions = view.container.querySelector('[data-page-header-actions]')!;
+    expect(actions).not.toBeNull();
+    expect(actions.querySelector('a,button')).toBeNull();
+    const slot = actions.firstElementChild;
+    view.rerender(<PageHeader variant="index" title="Projects" reservePrimaryAction primaryAction={{label:'New project',href:'/staff/projects/new'}} />);
+    expect(view.container.querySelector('[data-page-header-actions]')?.firstElementChild).toBe(slot);
+    expect(slot?.querySelector('a')?.getAttribute('href')).toBe('/staff/projects/new');
+    view.unmount();
+  });
   afterEach(() => {
     document.body.innerHTML = '';
   });
@@ -127,4 +178,10 @@ describe('PageHeader', () => {
     ]);
     rendered.unmount();
   });
+});
+
+it('opts only the project title into keyboard-readable full heading text',()=>{
+ const title='A complete long project name with customer and location';const view=renderIntoDocument(<PageHeader variant="detail" title={title} headingProps={{tabIndex:0,title}}/>);
+ const heading=view.container.querySelector('h1')!;expect(heading.textContent).toBe(title);expect(heading.getAttribute('title')).toBe(title);expect(heading.tabIndex).toBe(0);
+ view.rerender(<PageHeader title="Ordinary header"/>);expect(view.container.querySelector('h1')?.hasAttribute('tabindex')).toBe(false);view.unmount();
 });

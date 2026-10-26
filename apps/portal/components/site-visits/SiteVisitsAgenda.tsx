@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import ReadStatus from '@/components/page-state/ReadStatus';
 import { useSearchParams } from 'next/navigation';
 import { useRef,useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -45,9 +46,7 @@ export default function SiteVisitsAgenda({initialRead}:{initialRead?:CalendarVis
       <div className={styles.calendarContext} aria-label="Calendar source and scope">
         {visitId&&<p className={styles.projectScope}>Exact visit selected from the report. Use Correct details to record attendance, purpose or date. <Button variant="quiet" onClick={()=>select({visit:'',view:'history'})}>Show visit history</Button></p>}
         {projectId&&<p className={styles.projectScope}>Visits linked to this project. <Link href={allVisitsHref(params)} onClick={event=>{if(!shouldHandleRouteTransitionClick(event))return;event.preventDefault();select({project:''},'push');}}>Show all visits</Link></p>}
-        {data&&<CalendarFreshness data={data} readFailed={query.isError} />}
-        {data&&query.isError&&<Button variant="quiet" onClick={()=>void query.refetch()}>Retry loading saved visits</Button>}
-        {message&&<p className={styles.notice} role="status">{message}</p>}
+        <div className={styles.calendarStatus}>{data?<CalendarFreshness compact data={data} readFailed={query.isError} message={message} action={query.isError?<Button variant="quiet" onClick={()=>void query.refetch()}>Retry loading saved visits</Button>:undefined}/>:<ReadStatus title={query.isPending?'Reading saved calendar visits':'Calendar visit evidence unavailable'} tone={query.isPending?'neutral':'error'} onRetry={query.isPending||query.denied?undefined:()=>void query.refetch()}/>}</div>
       </div>
         <div className={styles.summary}><h2>{view==='today'?visitDate(new Date().toISOString()):view==='review'?'Needs review':view==='history'?'Visit history':view==='changes'?'Calendar changes':view==='week'?'This week':'Upcoming visits'}</h2><p role="status">{!data?query.isPending?'Reading visits…':'Visit evidence unavailable':view==='review'||view==='changes'||view==='history'?`${events.length} ${events.length===1?'entry':'entries'}`:`${scheduledCount} scheduled ${scheduledCount===1?'visit':'visits'}${events.some(v=>v.kind==='provisional')?` · ${events.filter(v=>v.kind==='provisional').length} provisional`:''}`}</p><small>All times New Zealand</small></div>
       {query.denied?<DataStatePanel state="unavailable" title="Site visit access unavailable" description="Your Portal session no longer has access." />:!data?query.isPending?<p role="status">Reading the saved visit agenda…</p>:<DataStatePanel state="error" title="Site visits unavailable" description="The calendar could not be loaded." onRetry={()=>void query.refetch()} />:<>

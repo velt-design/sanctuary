@@ -1,5 +1,7 @@
 'use client';
 
+import {paginationEvidence} from '@/components/ui/foundation/FoundationPagination';
+
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Project } from '@/lib/types/project';
@@ -54,7 +56,6 @@ import {
   DestructiveConfirmation,
   Input,
   PageLayout,
-  Pagination,
   Table,
   TableBody,
   TableCell,
@@ -91,7 +92,7 @@ export default function ProjectsIndexClient({
   const { view, update: updateView, reset: resetView, restoreScroll } = useProjectIndexView(
     initialFilters, projectIndexSessionKey(user?.id ?? null, supabaseRuntimeUrl()), workspace??undefined,
   );
-  const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, page, pageSize } = view;
+  const { query, journeyFilter, stageFilter, stateFilter, ownerFilter, page } = view;
   const selection = JSON.stringify(projectsIndexParamsFromView(view));
   const currentPageOwner = useRef({ publish: workspace?.publish, selection });
   currentPageOwner.current = { publish: workspace?.publish, selection };
@@ -100,6 +101,9 @@ export default function ProjectsIndexClient({
   const publishOwner = workspace?.publish;
   const setPage = (page: number) => {
     if (pageOwnerAlive.current && currentPageOwner.current.publish === publishOwner && currentPageOwner.current.selection === selection) updateView({ page }, false);
+  };
+  const clearFilters = () => {
+    if (pageOwnerAlive.current && currentPageOwner.current.publish === publishOwner && currentPageOwner.current.selection === selection) resetView();
   };
   const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -147,9 +151,6 @@ export default function ProjectsIndexClient({
   }, [contacts]);
 
   const filteredProjects = projects;
-  const totalCount = projectsIndex.data?.projects.totalCount ?? 0;
-  const rangeStart = totalCount ? (page - 1) * pageSize + 1 : 0;
-  const rangeEnd = Math.min(page * pageSize, totalCount);
 
   const prepareProjectOpen = useCallback(
     (projectId: string) => {
@@ -247,9 +248,30 @@ export default function ProjectsIndexClient({
     : '';
 
   const frame={read:projectsIndex,canCreate:!readOnly,
-    countNotice:<ListCountBanner totalCount={projectsIndex.data?.projects.totalCount ?? null} visibleCount={projects.length} entityLabelSingular="project" entityLabelPlural="projects" truncated={projectsIndex.data?.projects.truncated ?? false}/>,
-    pagination:projects.length>0?<Pagination currentPage={page} totalPages={projectsIndex.data?.projects.totalPages ?? 1} itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`} onPageChange={setPage}/>:null,
+    countNotice:<ListCountBanner compact totalCount={projectsIndex.data?.projects.totalCount ?? null} visibleCount={projects.length} entityLabelSingular="project" entityLabelPlural="projects" truncated={projectsIndex.data?.projects.truncated ?? false}/>,
+    pagination:paginationEvidence(page,projectsIndex.data?.projects.totalPages??null,setPage,projectsIndex.data?.projects.totalCount!=null?`${projectsIndex.data.projects.totalCount?(page-1)*view.pageSize+1:0}–${Math.min(page*view.pageSize,projectsIndex.data.projects.totalCount)} of ${projectsIndex.data.projects.totalCount}`:undefined),
     rows:<>
+      {!projects.length && projectsIndex.data && projectsIndex.state === 'cached' ? <TableRow><TableCell colSpan={6}><p role="status">Reading projects…</p></TableCell></TableRow> : null}
+      {!projects.length && projectsIndex.state === 'fresh' ? <TableRow><TableCell colSpan={6}>              <DataStatePanel
+                state={
+                  query
+                  || journeyFilter !== 'all'
+                  || stageFilter !== 'all'
+                  || stateFilter !== 'all'
+                  || ownerFilter !== 'all'
+                    ? 'filtered-empty'
+                    : 'empty'
+                }
+                onClear={
+                  query
+                  || journeyFilter !== 'all'
+                  || stageFilter !== 'all'
+                  || stateFilter !== 'all'
+                  || ownerFilter !== 'all'
+                    ? clearFilters
+                    : undefined
+                }
+              /></TableCell></TableRow> : null}
                     {filteredProjects.map((p) => {
                       const contact = p.contactId ? contactsById.get(p.contactId) : null;
                       const clientLabel = contact?.displayName ?? p.clientName ?? '—';

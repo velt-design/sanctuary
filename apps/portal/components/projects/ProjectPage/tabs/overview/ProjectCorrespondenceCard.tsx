@@ -20,13 +20,14 @@ const safeMailFailures = new Set([
   'Mailbox checks are paused by the connection controls.',
 ]);
 
-export default function ProjectCorrespondenceCard({ context, state = 'not_connected', onRefresh, onAnalyze, sample = false, project }: {
+export default function ProjectCorrespondenceCard({ context, state = 'not_connected', onRefresh, onAnalyze, sample = false, project, embedded = false }: {
   context?: ProjectCorrespondenceContext;
   state?: 'not_connected' | 'available' | 'loading' | 'refreshing' | 'ready' | 'stale' | 'error';
   onRefresh?: () => void;
   onAnalyze?: () => void;
   sample?: boolean;
   project?: EmailProjectContext;
+  embedded?: boolean;
 }) {
   const reading = useProjectEmailReadingState();
   const expanded = new Set([...reading.open].filter(key => key.startsWith('message:')).map(key => key.slice(8)));
@@ -42,8 +43,9 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
   const setEarlierOpen = (open: boolean) => reading.set('earlier', open);
   const sources = new Map(context?.sources.map((source) => [source.id, source]));
   const correspondence = context?.sources.filter((source) => source.association === 'customer_address_only').sort((a, b) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt)) ?? [];
-  return <Card className={styles.card} id="customer-emails" tabIndex={-1} title="Customer emails" padding="compact" aria-label="Customer conversations"
-    action={onRefresh && state !== 'loading' && state !== 'refreshing' ? <Button variant="tertiary" size="small" onClick={onRefresh}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined}>
+  const action = onRefresh && state !== 'loading' && state !== 'refreshing' ? <Button variant="tertiary" size="small" onClick={onRefresh}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined;
+  const body = <>
+    {embedded ? action : null}
     <div className={styles.stack}>
       {state === 'not_connected' ? <p className={styles.explanation}>Customer emails are not connected to staff project pages yet. Team notes and portal events are available below.</p>
         : state === 'available' ? <p className={styles.explanation}>Check linked customer emails for a current, sourced summary. This reads correspondence and does not send a reply or change the project.</p>
@@ -102,5 +104,6 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
           </details>
         </>}
     </div>
-  </Card>;
+  </>;
+  return embedded ? body : <Card className={styles.card} id="customer-emails" tabIndex={-1} title="Customer emails" padding="compact" aria-label="Customer conversations" action={action}>{body}</Card>;
 }

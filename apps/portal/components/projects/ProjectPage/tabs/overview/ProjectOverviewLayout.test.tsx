@@ -3,14 +3,47 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../../test/reactHarness";
 import ProjectOverviewLayout from "./ProjectOverviewLayout";
 import ProjectWorkFilesCard from "./ProjectWorkFilesCard";
+import { ProjectRecentNotesSurface } from "../ProjectOverviewSurface";
 
 vi.mock("./ProjectSharePointFilesPanel", () => ({
   default: () => <button type="button">Selected file preview</button>,
 }));
 
 describe("ProjectOverviewLayout", () => {
+  it("keeps the user's disclosed history and draft while complete events arrive", () => {
+    const history = (count: number) => <ProjectRecentNotesSurface notes={<textarea aria-label="Team note draft" defaultValue="" />} events={Array.from({ length: count }, (_, index) => <p key={index}>Complete event {index + 1}</p>)} />;
+    const view = renderIntoDocument(history(1));
+    const disclosure = view.container.querySelector('details')!;
+    const card = view.container.querySelector('[data-recent-notes-events]');
+    const draft = view.container.querySelector<HTMLTextAreaElement>('textarea')!;
+    act(() => { disclosure.open = true; });
+    draft.value = 'Unsaved note'; draft.focus();
+    view.rerender(history(25));
+    expect(disclosure.open).toBe(true);
+    expect(view.container.querySelector('[data-recent-notes-events]')).toBe(card);
+    expect(view.container.querySelector('textarea')).toBe(draft);
+    expect(draft.value).toBe('Unsaved note'); expect(document.activeElement).toBe(draft);
+    expect(view.container.textContent).toContain('Complete event 25');
+    view.unmount();
+  });
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  it("lets CSS respond to available width without measuring or subscribing", () => {
+    const geometry = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect");
+    const events = vi.spyOn(window, "addEventListener");
+    const rendered = renderIntoDocument(
+      <ProjectOverviewLayout orientation={<div>Orientation</div>} projectWork={<div>Work</div>} commercial={<div>Commercial</div>} />,
+    );
+    try {
+      expect(geometry).not.toHaveBeenCalled();
+      expect(events.mock.calls.filter(([type]) => type === "resize")).toHaveLength(0);
+    } finally {
+      rendered.unmount();
+      geometry.mockRestore();
+      events.mockRestore();
+    }
   });
 
   it("owns the complete overview region topology and exposes command state", () => {
@@ -102,27 +135,6 @@ describe("ProjectOverviewLayout", () => {
   });
 
   it("preserves interactive owner state when responsive regions reorder", () => {
-    let mobile = false;
-    const listeners = new Set<() => void>();
-    const originalMatchMedia = window.matchMedia;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: () => ({
-        matches: mobile,
-        media: "(max-width: 768px)",
-        onchange: null,
-        addEventListener: (_type: string, listener: () => void) => {
-          listeners.add(listener);
-        },
-        removeEventListener: (_type: string, listener: () => void) => {
-          listeners.delete(listener);
-        },
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        dispatchEvent: () => true,
-      }),
-    });
-
     function StatefulOrientation() {
       const [edits, setEdits] = useState(0);
       return (
@@ -144,8 +156,8 @@ describe("ProjectOverviewLayout", () => {
     expect(button.textContent).toBe("Orientation edits 1");
 
     act(() => {
-      mobile = true;
-      listeners.forEach((listener) => listener());
+      (rendered.container.firstElementChild as HTMLElement).style.width = "760px";
+      window.dispatchEvent(new Event("resize"));
     });
 
     const layout = rendered.container.querySelector(
@@ -156,14 +168,9 @@ describe("ProjectOverviewLayout", () => {
         node.getAttribute("data-project-overview-region"),
       ),
     ).toEqual(["project-work", "commercial", "orientation"]);
-    expect(rendered.container.querySelector("button")?.textContent).toBe(
-      "Orientation edits 1",
-    );
+    expect(rendered.container.querySelector("button")).toBe(button);
+    expect(button.textContent).toBe("Orientation edits 1");
 
     rendered.unmount();
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: originalMatchMedia,
-    });
   });
 });

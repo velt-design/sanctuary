@@ -26,9 +26,9 @@ export type CommercialTabChrome = {
   view: CommercialView; onSelect: (view: CommercialView) => void; onIntent: (view: CommercialView) => void;
   notice: ReactNode; quoteViews: ReactNode; quoteDetail: boolean; inert: boolean;
 };
-export default function CommercialTabSurface({ view, calculatorWorkspace, onSelect, onIntent, quoteViews, children }: {
+export default function CommercialTabSurface({ view, calculatorWorkspace, onSelect, onIntent, quoteViews, notice, children }: {
   view: CommercialView; calculatorWorkspace?: boolean; onSelect: (view: CommercialView) => void;
-  onIntent?: (view: CommercialView) => void; quoteViews?: ReactNode; children: ReactNode;
+  onIntent?: (view: CommercialView) => void; quoteViews?: ReactNode; notice?: ReactNode; children: ReactNode;
 }) {
   return <div className={`${styles.container} ${calculatorWorkspace ? styles.containerCalculatorWorkspace : ''}`}
     data-project-commercial-view={view} data-commercial-calculator-workspace={calculatorWorkspace ? 'true' : undefined}>
@@ -37,6 +37,7 @@ export default function CommercialTabSurface({ view, calculatorWorkspace, onSele
         selectedKey={view} onSelect={onSelect} onIntent={onIntent} ariaLabel="Commercial sections" />
       {quoteViews}
     </div> : null}
+    <div className={styles.noticeSlot}>{notice}</div>
     {children}
   </div>;
 }

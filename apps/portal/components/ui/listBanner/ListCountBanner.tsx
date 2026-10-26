@@ -1,5 +1,7 @@
 import { shouldShowListCountWarning } from '@/lib/list/listLimits';
 import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import { PortalPopover } from '@/components/ui/PortalFloatingPanel';
+import styles from './ListCountBanner.module.css';
 
 /**
  * PR-PG1 (2026-06-16): inline banner that surfaces list-fetch scale to
@@ -23,12 +25,14 @@ export default function ListCountBanner({
   entityLabelSingular,
   entityLabelPlural,
   truncated = false,
+  compact = false,
 }: {
   totalCount: number | null;
   visibleCount: number;
   entityLabelSingular: string;
   entityLabelPlural: string;
   truncated?: boolean;
+  compact?: boolean;
 }) {
   if (!shouldShowListCountWarning(visibleCount, totalCount, { truncated })) return null;
 
@@ -47,5 +51,8 @@ export default function ListCountBanner({
       : `Showing ${formattedVisible} ${entityLabel}. The list may be approaching the size where cursor pagination is needed — file a ticket if you notice missing rows.`;
   }
 
-  return <AlertBanner tone="warning" title="Heads up">{message}</AlertBanner>;
+  const warning = <AlertBanner tone="warning" title="Heads up">{message}</AlertBanner>;
+  return compact ? <PortalPopover label="List completeness warning" trigger="List limited" triggerClassName={styles.trigger}>
+    {warning}
+  </PortalPopover> : warning;
 }

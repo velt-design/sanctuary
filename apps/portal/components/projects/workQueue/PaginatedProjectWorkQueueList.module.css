@@ -2,6 +2,7 @@
   min-width: 0;
   display: grid;
   gap: var(--ui-space-4);
+  min-height:320px;
 }
 
 .pagination {

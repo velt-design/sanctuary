@@ -1,3 +1,5 @@
+import {act} from 'react';
+import {renderIntoDocument} from '../../../../test/reactHarness';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach,beforeEach,describe,it,expect,vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -53,4 +55,15 @@ describe('All-day visit presentation',()=>{
    expect(text(renderToStaticMarkup(<ProjectNextVisit projectId="project" host="test"/>))).toContain('10:15 am to 10:45 am');
    expect(text(renderTodayVisits())).toContain('10:15 am');
  });
+});
+
+it('keeps the same actual Site visits card for pending, verified none, failure and Retry',()=>{
+ const retry=vi.fn();h.read.mockReturnValue({data:undefined,isPending:true,isError:false,denied:false,refetch:retry});
+ const view=renderIntoDocument(<ProjectNextVisit projectId="project" host="test"/>);const card=view.container.querySelector('section')!,heading=card.querySelector('h2');
+ expect(card.textContent).toContain('Loading next site visit');
+ h.read.mockReturnValue({data:{enabled:false,lastSuccess:'2026-10-20T00:00:00Z',events:[]},isPending:false,isError:false,denied:false,refetch:retry});view.rerender(<ProjectNextVisit projectId="project" host="test"/>);
+ expect(view.container.querySelector('section')).toBe(card);expect(card.querySelector('h2')).toBe(heading);expect(card.textContent).toContain('No upcoming Outlook visit');
+ h.read.mockReturnValue({data:undefined,isPending:false,isError:true,denied:false,refetch:retry});view.rerender(<ProjectNextVisit projectId="project" host="test"/>);
+ expect(view.container.querySelector('section')).toBe(card);act(()=>[...card.querySelectorAll('button')].find(button=>button.textContent==='Retry')!.click());expect(retry).toHaveBeenCalledOnce();
+ h.read.mockReturnValue({data:undefined,isPending:false,isError:true,denied:true,refetch:retry});view.rerender(<ProjectNextVisit projectId="project" host="test"/>);expect(view.container.textContent).toBe('');view.unmount();
 });

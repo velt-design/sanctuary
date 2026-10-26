@@ -1,5 +1,7 @@
 'use client';
 
+import ReadStatus from '@/components/page-state/ReadStatus';
+
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -452,15 +454,14 @@ export default function AccessClient() {
           </div>
         </form>
 
-        {result ? (
-          <div className={styles.result}>
+        <ReadStatus title={result ? result.existing ? 'Updated existing user' : 'Created new user' : 'User access'} details={result ? (<div className={styles.result}>
             <strong>{result.existing ? 'Updated existing user' : 'Created new user'}</strong>
             <div>
               {result.email} → {result.role}
             </div>
             <div className={styles.code}>user_id: {result.user_id}</div>
           </div>
-        ) : null}
+) : undefined} />
       </div>
 
       <div className={styles.card}>
@@ -527,11 +528,12 @@ export default function AccessClient() {
           </div>
         </form>
 
-        {loadingCrews ? <p className={styles.helper}>Loading crews…</p> : null}
-        {!loadingCrews && crewsError ? <p className={styles.errorText}>{crewsError} <button type="button" onClick={()=>void loadCrews()}>Retry crews</button></p> : null}
+        <ReadStatus title={loadingCrews ? 'Loading crews…' : crewsError ? 'Schedule crews unavailable' : 'Schedule crews current'} tone={crewsError ? 'error' : 'neutral'}
+          action={!loadingCrews && crewsError ? <button type="button" onClick={()=>void loadCrews()}>Retry crews</button> : undefined}
+          details={crewsError ? <p>{crewsError}</p> : undefined} />
 
           <div className={styles.crewTableWrap} role="region" aria-label="Schedule crews table">
-            <table className={styles.crewTable}>
+            <table className={styles.crewTable}><colgroup>{[8, 10, 17, 15, 15, 8, 10, 17].map((width,index)=><col key={index} style={{width:`${width}%`}} />)}</colgroup>
               <thead>
                 <tr>
                   <th>Reorder</th>

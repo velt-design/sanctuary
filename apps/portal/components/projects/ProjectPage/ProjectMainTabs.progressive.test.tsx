@@ -1,7 +1,7 @@
 import { act, Suspense, useMemo } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
-import { renderIntoDocument } from '../../../../../test/reactHarness';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { renderIntoDocument as renderHarness } from '../../../../../test/reactHarness';
 import ProjectMainTabs from './ProjectMainTabs';
 import ProjectMainTabsSurface from './ProjectMainTabsSurface';
 import ProjectTabBody from './ProjectTabBody';
@@ -11,6 +11,24 @@ import { useOwnedPortalPublication } from '@/components/page-state/PortalPageSou
 import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
 import { ProjectCommercialProvider } from './ProjectCommercialContext';
 import JobPacksListSurface,{type JobPacksListEvidence} from './tabs/JobPacksListSurface';
+
+const mountedViews = new Set<ReturnType<typeof renderHarness>>();
+const clients = new Set<QueryClient>();
+function renderIntoDocument(ui: Parameters<typeof renderHarness>[0]) {
+  const view = renderHarness(ui); mountedViews.add(view);
+  return { ...view, unmount: () => { mountedViews.delete(view); view.unmount(); } };
+}
+function createClient() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.add(client); return client;
+}
+afterEach(() => {
+  for (const view of mountedViews) view.unmount(); mountedViews.clear();
+  for (const client of clients) client.clear(); clients.clear();
+  vi.restoreAllMocks(); Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+});
+async function waitForRead(assertion: () => void) {
+  await vi.waitFor(async () => { await act(async () => {}); assertion(); });
+}
 
 let search = 'tab=estimates';
 const { estimates, packs, editorModules } = vi.hoisted(() => ({ estimates: vi.fn(), packs: vi.fn(), editorModules: vi.fn() }));
@@ -44,11 +62,11 @@ function ManagedPacks({allowed,owner}:{allowed:boolean;owner:object}){
 }
 it('keeps the actual Job Packs list header/table/body through held authority, genuine reader arrival and denial',async()=>{
  search='tab=job-packs';packs.mockClear();const read=deferred<any[]>();packs.mockReturnValue(read.promise);
- const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),owner={};const tree=(allowed:boolean)=><QueryClientProvider client={client}><ManagedPacks allowed={allowed} owner={owner}/></QueryClientProvider>;
+ const client=createClient(),owner={};const tree=(allowed:boolean)=><QueryClientProvider client={client}><ManagedPacks allowed={allowed} owner={owner}/></QueryClientProvider>;
  const view=renderIntoDocument(tree(false)),table=view.container.querySelector('table'),head=table?.querySelector('thead'),body=table?.querySelector('tbody'),heading=view.container.querySelector('h3');
  expect(packs).not.toHaveBeenCalled();view.rerender(tree(true));await settleModules();expect(packs).toHaveBeenCalledOnce();expect(view.container.querySelector('table')).toBe(table);
- await act(async()=>{read.resolve([{id:'pack-fixture',estimateId:'est-fixture',estimateVersionLabel:'Verified V2',quoteRef:'Q-FIXTURE',quoteVersionNumber:1,quoteStatus:'ACCEPTED',createdAt:'2026-10-01'}]);await new Promise(resolve=>setTimeout(resolve,5));});
- expect(table?.textContent).toContain('Verified V2');expect(view.container.querySelector('h3')).toBe(heading);expect(table?.querySelector('thead')).toBe(head);expect(table?.querySelector('tbody')).toBe(body);
+ await act(async()=>{read.resolve([{id:'pack-fixture',estimateId:'est-fixture',estimateVersionLabel:'Verified V2',quoteRef:'Q-FIXTURE',quoteVersionNumber:1,quoteStatus:'ACCEPTED',createdAt:'2026-10-01'}]);});
+ await waitForRead(() => expect(table?.textContent).toContain('Verified V2'));expect(view.container.querySelector('h3')).toBe(heading);expect(table?.querySelector('thead')).toBe(head);expect(table?.querySelector('tbody')).toBe(body);
  view.rerender(tree(false));expect(table?.textContent).not.toContain('Verified V2');expect(table?.textContent).toContain('unavailable');expect(view.container.querySelector('table')).toBe(table);view.unmount();client.clear();
 });
 
@@ -56,7 +74,7 @@ describe('actual Project specialist parent during independent reads', () => {
   it('keeps the actual Estimates Find and table before and after both source and metadata settle', async () => {
     search = 'tab=estimates'; editorModules.mockClear();
     const read = deferred<any[]>(); estimates.mockReturnValue(read.promise);
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = createClient();
     const view = renderIntoDocument(tree(client, 'estimates'));
     await settleModules();
     const find = view.container.querySelector('#estimate-search') as HTMLInputElement;
@@ -66,8 +84,8 @@ describe('actual Project specialist parent during independent reads', () => {
     expect(editorModules).not.toHaveBeenCalled();
     expect(view.container.textContent).toContain('Reading estimates');
     expect(view.container.textContent).not.toContain('Create estimate');
-    await act(async () => { read.resolve([{ id: 'est_1', projectId: 'proj_1', versionLabel: 'V2', createdAt: '2026-10-01', status: 'draft', isActiveDraft: true }]); await new Promise((resolve) => setTimeout(resolve, 5)); });
-    expect(table?.textContent).toContain('V2');
+    await act(async () => { read.resolve([{ id: 'est_1', projectId: 'proj_1', versionLabel: 'V2', createdAt: '2026-10-01', status: 'draft', isActiveDraft: true }]); });
+    await waitForRead(() => expect(table?.textContent).toContain('V2'));
     view.rerender(tree(client, 'estimates', true));
     expect(view.container.querySelector('#estimate-search')).toBe(find);
     expect(view.container.querySelector('table')).toBe(table);
@@ -79,13 +97,13 @@ describe('actual Project specialist parent during independent reads', () => {
   it('mounts the actual Job Pack table before availability metadata is known', async () => {
     search = 'tab=job-packs';
     const read = deferred<any[]>(); packs.mockReturnValue(read.promise);
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = createClient();
     const view = renderIntoDocument(tree(client, 'job-packs'));
     await settleModules();
     const table = view.container.querySelector('table');
     expect(table).not.toBeNull(); expect(table?.textContent).toContain('Reading job packs');
-    await act(async () => { read.resolve([]); await new Promise((resolve) => setTimeout(resolve, 5)); });
-    expect(view.container.textContent).toContain('No job packs yet');
+    await act(async () => { read.resolve([]); });
+    await waitForRead(() => expect(view.container.textContent).toContain('No job packs yet'));
     view.rerender(tree(client, 'job-packs', true));
     expect(view.container.querySelector('table')).toBe(table);
     view.unmount(); client.clear();
@@ -121,7 +139,7 @@ function typeListQuery(input: HTMLInputElement, value: string) {
 it('keeps one real safe list before current authority/code and fills the same early-filtered nodes from the actual guarded controller', async () => {
   search = 'tab=estimates'; estimates.mockClear(); editorModules.mockClear();
   const read = deferred<any[]>(); estimates.mockReturnValue(read.promise);
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = createClient();
   client.setQueryData(['commercialListView', 'proj_1', 'estimates'], 'Old saved filter');
   client.setQueryData(['commercialListView', 'proj_1', 'active-section'], 'estimates');
   client.setQueryData(['commercialListView', 'proj_1', 'estimates-scroll'], 900);
@@ -141,16 +159,16 @@ it('keeps one real safe list before current authority/code and fills the same ea
   await act(async () => { read.resolve([
     { id: 'est_a', projectId: 'proj_1', internalName: 'Alpha', versionLabel: 'V1', createdAt: '2026-10-01', status: 'draft' },
     { id: 'est_b', projectId: 'proj_1', internalName: 'Beta', versionLabel: 'V2', createdAt: '2026-10-01', status: 'draft' },
-  ]); await new Promise(resolve => setTimeout(resolve, 10)); });
+  ]); });
   expect(view.container.querySelector('table')).toBe(table); expect(view.container.querySelector('thead')).toBe(head); expect(view.container.querySelector('tbody')).toBe(body);
-  expect(table?.textContent).toContain('Beta'); expect(table?.textContent).not.toContain('Alpha'); expect(scroll).not.toHaveBeenCalled();
+  await waitForRead(() => expect(table?.textContent).toContain('Beta')); expect(table?.textContent).not.toContain('Alpha'); expect(scroll).not.toHaveBeenCalled();
   expect(client.getQueryData(['commercialListView', 'proj_1', 'estimates'])).toBe('Beta'); expect(document.activeElement).toBe(input);
   const old = retiredListPublish!;
   view.rerender(guardedListTree(client, a, false));
   expect(table?.textContent).not.toContain('Beta'); expect(view.container.textContent).not.toContain('Create estimate');
   expect(input.value).toBe('Beta'); expect(view.container.querySelector('#estimate-search')).toBe(input);
   view.rerender(guardedListTree(client, b, true)); await settleModules();
-  expect(table?.textContent).toContain('Beta');
+  await waitForRead(() => expect(table?.textContent).toContain('Beta'));
   act(() => old(null)); expect(table?.textContent).toContain('Beta');
   view.unmount(); act(() => old({ headerActions: <button>Late command</button>, status: null, render: () => ({ empty: null, noMatches: null, rows: <tr><td>Late private row</td></tr> }) }));
   client.clear(); cached.mockRestore(); scroll.mockRestore(); Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
@@ -158,19 +176,19 @@ it('keeps one real safe list before current authority/code and fills the same ea
 
 it('adopts a saved neutral filter only after the guarded list owner arrives when the public Find was untouched', async () => {
   search = 'tab=estimates'; estimates.mockResolvedValue([]);
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = createClient();
   client.setQueryData(['commercialListView', 'proj_1', 'estimates'], 'Saved neutral query');
   const owner = {}, view = renderIntoDocument(guardedListTree(client, owner, false));
   const input = view.container.querySelector<HTMLInputElement>('#estimate-search')!;
   expect(input.value).toBe(''); view.rerender(guardedListTree(client, owner, true)); await settleModules();
-  expect(view.container.querySelector('#estimate-search')).toBe(input); expect(input.value).toBe('Saved neutral query');
-  expect(view.container.textContent).toContain('No estimates yet'); view.unmount(); client.clear();
+  expect(view.container.querySelector('#estimate-search')).toBe(input); await waitForRead(() => expect(input.value).toBe('Saved neutral query'));
+  await waitForRead(() => expect(view.container.textContent).toContain('No estimates yet')); view.unmount(); client.clear();
 });
 
 
 it('consumes only the early scroll veto so a later same-owner editor-to-list return restores the original saved position', async () => {
   search = 'tab=estimates'; estimates.mockResolvedValue([]);
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = createClient();
   client.setQueryData(['commercialListView', 'proj_1', 'active-section'], 'estimates');
   client.setQueryData(['commercialListView', 'proj_1', 'estimates-scroll'], 900);
   const frames: FrameRequestCallback[] = [], raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { frames.push(callback); return frames.length; });
@@ -188,14 +206,13 @@ it('consumes only the early scroll veto so a later same-owner editor-to-list ret
 
 it('keeps the public list through a genuine guarded read failure and uses its original Retry without an empty success', async () => {
   search = 'tab=estimates'; estimates.mockReset().mockRejectedValueOnce(new Error('Fictional estimates unavailable')).mockResolvedValue([]);
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }), owner = {};
+  const client = createClient(), owner = {};
   const view = renderIntoDocument(guardedListTree(client, owner, false)), table = view.container.querySelector('table'), input = view.container.querySelector('#estimate-search');
   view.rerender(guardedListTree(client, owner, true)); await settleModules();
-  await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
-  expect(table?.textContent).toContain('Estimates unavailable'); expect(view.container.textContent).not.toContain('No estimates yet');
+  await waitForRead(() => expect(table?.textContent).toContain('Estimates unavailable')); expect(view.container.textContent).not.toContain('No estimates yet');
   const retry = [...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Retry')!;
-  expect(retry).toBeDefined(); act(() => retry.click()); await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
-  expect(estimates).toHaveBeenCalledTimes(2); expect(view.container.textContent).toContain('No estimates yet');
+  expect(retry).toBeDefined(); act(() => retry.click()); await waitForRead(() => expect(estimates).toHaveBeenCalledTimes(2));
+  expect(estimates).toHaveBeenCalledTimes(2); await waitForRead(() => expect(view.container.textContent).toContain('No estimates yet'));
   expect(view.container.querySelector('#estimate-search')).toBe(input); expect(view.container.querySelector('table')).toBe(table);
   view.unmount(); client.clear();
 });

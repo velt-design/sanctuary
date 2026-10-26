@@ -41,9 +41,9 @@ vi.mock('./UserMenu', () => ({
   default: () => <div data-testid="mock-user-menu">User menu</div>,
 }));
 
-vi.mock('@/components/page-state/PortalRouteTransition', async () => {
-  const actual = await vi.importActual<typeof import('@/components/page-state/PortalRouteTransition')>(
-    '@/components/page-state/PortalRouteTransition',
+vi.mock('@/components/page-state/PortalRouteTransitionContext', async () => {
+  const actual = await vi.importActual<typeof import('@/components/page-state/PortalRouteTransitionContext')>(
+    '@/components/page-state/PortalRouteTransitionContext',
   );
 
   return {

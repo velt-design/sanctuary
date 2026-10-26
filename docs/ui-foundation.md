@@ -1,5 +1,71 @@
 # Staff Portal UI System
 
+## Stable work surfaces (26 October 2026)
+
+Ordinary staff pages reserve the document scrollbar gutter using the existing
+pinned-sidebar surface identity, including collapsed and mobile layouts. The
+rail-only Workbench and authenticated standalone owners retain their existing
+scroll policy. Overlay locking preserves the measured staff document width and
+restores the original styles and reading position; it does not add a second
+gutter allowance. Schedule and operational sheets reserve their own inner gutter.
+
+Projects, Contacts, Commercial lists and Finance own deliberate column widths
+and a truthful minimum reading region. Index pagers stay in the existing list header, including disabled controls while
+their count is unknown; the range has one owner. Fixed-layout columns have one
+CSS owner rather than duplicated JSX declarations. The actual pager shell owns
+fixed arrow, number and range areas; the current guarded list owner supplies
+genuine numbers, ranges and empty/filter facts. On narrow screens the existing
+card header allocates status and pager rows, keeping Retry and completeness
+details from displacing the arrows. Unknown counts remain unknown, and pending, empty and failed
+reads use the same real table. Source authority, saved anchors and commands are
+unchanged. Header action space can be allocated before capability is known, but
+no unauthorized control is rendered or activated.
+
+`ReadStatus` is a compact, persistent local presentation slot. Failures name the
+issue and keep Retry visible where supported; existing full explanations and
+review actions use the existing floating-panel owner without resizing the work.
+Routine read labels are ordinary text, leaving immediate mutation feedback its
+own status region. Changed warnings announce politely and errors remain alerts.
+Retired project access removes generic reading content; explicit current-access
+recovery remains available without reviving private consumers.
+The project masthead gives its title and current-status badge separate tracks at
+every width, so a longer verified name cannot add a new badge line below it.
+Its customer/location subtitle uses a fixed two-line, focusable reading region;
+longer saved text remains fully available through native keyboard/touch scrolling
+and the full text label, rather than changing the work position or discarding it.
+Commercial hold/readiness notices have one persistent local slot, with an explicit
+issue title and review action; their full context stays available in Details.
+Estimates reserves its actual responsive two-action layout before authority arrives.
+Project read progress and Retry remain visible in their existing status slot on
+Commercial as well as other tabs; full read explanations use one Details layer.
+Commercial accepted agreement facts and direct record actions remain visible in a
+permanent focusable reading region, using the same native Card before and after
+data arrives, including base and add-on agreements. Unknown,
+failed and verified-empty states are distinct; long facts remain fully scrollable.
+Real payment schedule, Finance summary and Dashboard card regions retain bounded reading
+areas, with overflow available rather than discarded content. Dashboard visits has an
+explicit track in each responsive layout, so its read cannot resize other rows. Access, Pricebook,
+contact/project forms and Files use the same local status ownership.
+Project background Files preparation retains metadata and preview-byte ownership;
+the actual Files view owns PDF-renderer code preparation, so an ordinary project
+read does not evaluate that unrelated renderer. Validation
+and command controllers remain with their original owners. Imports keeps its file
+picker and summary above explicitly selected file results.
+
+Message/error page and action CSS belongs to `PageMessagePanel`; legacy public
+auth styles compose those same declarations. Public retry/message consumers do
+not import the retired page/skeleton style namespace. Default noncompact
+pagination and excluded specialised surface behavior remain unchanged.
+Contacts index styling likewise owns its public frame, controls and table rules;
+legacy form, import-dialog and contact-detail consumers compose those same rules
+without making their private style namespace a dependency of the public index.
+
+Geometry acceptance requires actual pending, ready, empty, failure/retry and
+return journeys, plus narrow/mobile layouts and overlay lock/unlock. DOM tests
+establish control/source continuity, not measured pixels or production speed.
+Original performance and bundle ceilings remain unchanged.
+
+
 ## Actual progressive Portal interfaces (22 October 2026 candidate)
 
 Earlier active Portal journeys retain their local implementation and verification
@@ -1032,3 +1098,17 @@ new SQL payload to committed LF on Windows while retaining the deliberately CRLF
 old-function scenario. Both SQL suites pass all 11 tests after the owner correction.
 
 The actual `DataStatePanel` and its copy/type now have the focused `FoundationDataState` primitive owner; `FoundationFeedback` reexports that same component for existing consumers. Public Contacts, Projects, Work Queue and Schedule surfaces import the focused primitive, while other financial/permission/task feedback stays with its existing owner. Rendering, styles and retry/clear behavior are unchanged.
+
+Overview keeps its actual Work, price, payment, site-visit, project-detail and customer-email reading owners mounted before private publication. Existing guarded readers fill those native reading regions; their queries, draft state, correspondence handoff and action permissions remain private. Fixed reading tracks use keyboard-accessible native overflow for long records, while Recent notes keeps its explicit user disclosure. Overview and calendar read failures use permanent local status allocations with visible Retry and complete contextual details, rather than inserting banners above work. The existing Overview layout owns its inline-size container and pure inner grid, so CSS applies the same 800px container and 768px viewport composition before hydration and on resize without JavaScript geometry reads or subscriptions.
+
+Project mastheads allocate two native reading lines for both unknown and verified names, with keyboard access to full long text. Their project-section scroller reserves its horizontal track before optional specialist tabs arrive. The older compact commercial disclosure is owned only by its private compatibility presenter; the public Overview retains its full current-price reading Card. The opt-in controlled Overview fixture reuses the real frame, header, shell and Overview primitives with the same private producer, but does not substitute for verification of the complete production SnapshotSurface assembly.
+
+Project title native overflow takes precedence over the generic pinned-header clamp without changing other header variants. Contacts and both the public and guarded Search owners import the existing navigation context through its lean contract owner, including the unchanged click and same-origin navigation predicates; the full transition provider retains the single context and all route lifecycle logic.
+
+Sidebar panel and rail share the existing navigation-intent owner for guarded click handoff and code-only prefetch, while retaining their own controls and prefetch-set lifetimes. Managed Overview code arrival uses the actual public reading surface already mounted; standalone tabs retain their original loading presentation.
+
+Contacts row Open links load their detail route on user navigation rather than automatically prefetching every visible contact. Their href, keyboard and click navigation remain unchanged; the shared ButtonLink default is unchanged.
+
+User-opened Recent notes and portal history follows natural document flow instead of adding a nested scroll owner. Invoice schedule keeps four stable essential total positions, the accepted/separate-work breakdown and permitted primary actions directly visible; full payment terms and history remain in the native disclosure. Unknown, unavailable and verified values retain their distinct meanings while the same controls and reading positions remain mounted.
+
+Portal date and work-due presenters reuse their fixed locale/time-zone formatters while deriving every date and current-day result afresh. Verified empty invoice history belongs in its actual table reading region, outside the optional full payment-history disclosure; pending, failed and denied reads retain their distinct states and existing Retry.

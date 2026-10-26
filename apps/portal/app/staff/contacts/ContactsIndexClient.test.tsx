@@ -24,7 +24,7 @@ vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseHostFromUrl: () => 'host',
   supabaseRuntimeUrl: () => 'https://host.supabase.co',
 }));
-vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+vi.mock('@/components/page-state/PortalRouteTransitionContext', () => ({
   usePortalRouteTransition: () => ({ finishInstantRoute }),
 }));
 vi.mock('./ContactsImportAction', () => ({
@@ -88,8 +88,8 @@ describe('ContactsIndexClient', () => {
         results.set(key,result);
       }return results.get(key);
     });
-    let pager:((page:number)=>void)|undefined;
-    function Observe(){const workspace=useContactsIndexWorkspace();pager=(workspace?.evidence?.pagination as any)?.props.onPageChange;return null;}
+    let pager:(()=>void)|undefined;
+    function Observe(){const workspace=useContactsIndexWorkspace();pager=workspace?.evidence?.pagination.onNext;return null;}
     const root=(owner:object|null,denied=false)=><ContactsIndexWorkspace owner={owner} entryIdentity="same-entry" unavailable={denied}><GuardedContactsIndexClient readOnly/><Observe/></ContactsIndexWorkspace>;
     const view=renderIntoDocument(root(ownerA));const table=view.container.querySelector('table'),body=view.container.querySelector('tbody'),head=view.container.querySelector('thead'),input=view.container.querySelector<HTMLInputElement>('#contactSearch')!;
     expect(useContactsIndexData).not.toHaveBeenCalled();expect(view.container.textContent).toContain('Reading contacts');
@@ -97,12 +97,12 @@ describe('ContactsIndexClient', () => {
     await act(async()=>{await new Promise(resolve=>setTimeout(resolve,230));});
     expect(view.container.textContent).toContain('Verified Beta');expect(document.activeElement).toBe(input);
     expect(view.container.querySelector('table')).toBe(table);expect(view.container.querySelector('thead')).toBe(head);expect(view.container.querySelector('tbody')).toBe(body);
-    const firstPager=pager!;expect(firstPager).toBeTypeOf('function');act(()=>firstPager(2));await act(async()=>{await Promise.resolve();});
+    const firstPager=pager!;expect(firstPager).toBeTypeOf('function');act(()=>firstPager());await act(async()=>{await Promise.resolve();});
     expect(useContactsIndexData.mock.calls.at(-1)![0].page).toBe(2);
     view.rerender(root(null,true));const reads=useContactsIndexData.mock.calls.length;
-    act(()=>firstPager(1));expect(useContactsIndexData).toHaveBeenCalledTimes(reads);expect(view.container.textContent).not.toContain('Verified Beta');
+    act(()=>firstPager());expect(useContactsIndexData).toHaveBeenCalledTimes(reads);expect(view.container.textContent).not.toContain('Verified Beta');
     view.rerender(root(ownerB));await act(async()=>{await Promise.resolve();});
-    const secondPager=pager;act(()=>firstPager(1));await act(async()=>{await Promise.resolve();});
+    const secondPager=pager;act(()=>firstPager());await act(async()=>{await Promise.resolve();});
     expect(useContactsIndexData.mock.calls.at(-1)![0].page).toBe(2);expect(pager).toBe(secondPager);expect(input.value).toBe('Beta');
     expect(view.container.querySelector('tbody')).toBe(body);expect(view.container.textContent).toContain('Verified Beta');view.unmount();
   });
@@ -135,7 +135,9 @@ describe('ContactsIndexClient', () => {
     useContactsIndexData.mockReturnValue(indexResult('refresh-failed'));
     const rendered = renderIntoDocument(<ContactsIndexClient />);
     expect(rendered.container.textContent).toContain('Alex Mason');
-    expect(rendered.container.textContent).toContain('Could not refresh contacts');
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('Could not refresh contacts');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true})));
     const retryButton = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Retry');
     act(() => retryButton?.click());
     expect(retry).toHaveBeenCalled();
@@ -160,7 +162,9 @@ describe('ContactsIndexClient', () => {
   it('does not claim to show or update a saved list when the first refresh fails', () => {
     useContactsIndexData.mockReturnValue(indexResult('refresh-failed', []));
     const rendered = renderIntoDocument(<ContactsIndexClient />);
-    expect(rendered.container.textContent).toContain('No saved list is available. Retry the request.');
+    act(() => Array.from(rendered.container.querySelectorAll('button')).find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role=dialog]')?.textContent).toContain('No saved list is available. Retry the request.');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true})));
     expect(rendered.container.textContent).not.toContain('Showing the last saved list.');
     expect(rendered.container.textContent).not.toContain('Updating contacts...');
     rendered.unmount();
