@@ -1,12 +1,12 @@
 import {expect,it} from 'vitest';
-import {executionPlanSchema} from '../../../../marketing/lib/creative-executor/contract';
+import {executionPlanSchema,trackingDottedKeys} from '../../../../marketing/lib/creative-executor/contract';
 import {trackingEvidenceSchema} from './contract';
 import {projectTrackingEvidence} from './tracking-evidence';
 const depth=(n:number)=>{let value:unknown=null;for(let i=0;i<n;i++)value={a:value};return value;};
 const nodes=(last:number)=>[...Array.from({length:16},()=>Array.from({length:30},()=>null)),Array.from({length:last},()=>null)];
 const keys=(n:number)=>Object.fromEntries(Array.from({length:n},(_,i)=>['k'+i,null]));
 const byteBoundary=['a'.repeat(1998),'b'.repeat(1996),'c'.repeat(1996)];
-const vectors:unknown[]=[null,true,false,0,12,'',[],{},[{fb_pixel:['123456'],action_type:['offsite_conversion']}],
+const vectors:unknown[]=[...trackingDottedKeys.flatMap(key=>[[{[key]:['synthetic']}],{[key]:['synthetic']},[{nested:{[key]:['synthetic']}}],[{[key.toUpperCase()]:['synthetic']}]]),null,true,false,0,12,'',[],{},[{fb_pixel:['123456'],action_type:['offsite_conversion']}],
  depth(8),depth(9),nodes(2),nodes(3),keys(40),keys(41),Array(30).fill(null),Array(31).fill(null),
  'a'.repeat(2000),'a'.repeat(2001),'😀'.repeat(1000),'😀'.repeat(1001),'µ'.repeat(2000),'字'.repeat(2000),byteBoundary,[...byteBoundary.slice(0,2),byteBoundary[2]+'c'],
  {['k'.repeat(80)]:1},{['k'.repeat(81)]:1},[{['action.type']:['offsite_conversion']}],{'action.type':['offsite_conversion']},[{nested:{'action.type':['offsite_conversion']}}],[[{'action.type':['offsite_conversion']}]],[{'private-secret-key':'private-secret-value'}],JSON.parse('{"__proto__":{"private":"private-secret-value"}}'),{constructor:1},{prototype:1},{access_token:'private-secret-value'},{appsecret_proof:'private-secret-value'},'before\u0000after','allowed\nnewline',undefined,NaN,Infinity];

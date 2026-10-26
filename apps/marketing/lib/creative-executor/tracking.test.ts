@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {canonicalHash,executionPlanSchema,storyVideoCreativeSchema,videoCreativeSchema} from './contract';
+import {canonicalHash,executionPlanSchema,storyVideoCreativeSchema,videoCreativeSchema,trackingDottedKeys} from './contract';
 const tracking=executionPlanSchema.shape.adTracking,generic=videoCreativeSchema.shape.payload.shape.asset_feed_spec;
 const valid=[{'action.type':['SYNTHETIC_ACTION'],fb_pixel:['777']}];
 const depth=(n:number)=>{let v:unknown=null;for(let i=0;i<n;i++)v={safe:v};return v;};
@@ -9,7 +9,7 @@ it('accepts only the literal protocol key on direct object clauses of a root tra
  expect(canonicalHash(parsed)).toBe(canonicalHash(before));expect(canonicalHash(parsed)).not.toBe(canonicalHash([{action_type:['SYNTHETIC_ACTION'],fb_pixel:['777']}]));
  for(const value of [null,[],{},[{action_type:['SYNTHETIC_ACTION']}],depth(8),nodes(2),'😀'.repeat(1000),['a'.repeat(1998),'b'.repeat(1996),'c'.repeat(1996)]])expect(tracking.safeParse(value).success).toBe(generic.safeParse(value).success);
 });
-it.each(['action.other','Action.type','action.Type','action.type.extra',' action.type','action.type ','action.\u200btype','event.creator','page.parent'])('rejects every unapproved dotted/case/modified key %s',key=>{
+it.each(['action.other','Action.type','action.Type','action.type.extra',' action.type','action.type ','action.\u200btype','event.unknown','page.unknown'])('rejects every unapproved dotted/case/modified key %s',key=>{
  expect(tracking.safeParse([{[key]:['SYNTHETIC_ACTION']}]).success).toBe(false);
 });
 it.each([{'action.type':[]},{safe:{'action.type':[]}},[{safe:{'action.type':[]}}],[[{'action.type':[]}]],{'0':{'action.type':[]}}])('does not permit the key outside a direct tracking clause %#',value=>{
@@ -30,4 +30,11 @@ it('keeps every generic creative JSON field strict, including nested source-medi
  const story=storyVideoCreativeSchema.shape.payload.shape,video=story.object_story_spec.shape.video_data.shape;
  for(const field of [video.customization_rules_spec,video.collection_thumbnails,story.creative_sourcing_spec,story.degrees_of_freedom_spec,story.interactive_components_spec,story.platform_customizations,story.contextual_multi_ads])expect(field.safeParse(valid).success).toBe(false);
  for(const key of ['images','bodies','titles','descriptions','destinations','posts','related_media','push_metadata_ids'])expect(story.media_sourcing_spec.safeParse({videos:[{video_id:'901'},{video_id:'902'}],[key]:valid}).success).toBe(false);
+});
+
+it.each(trackingDottedKeys)('preserves only a direct-clause official dotted literal with exact original bytes: %s',key=>{
+ const value=[{[key]:['SYNTHETIC_ACTION'],fb_pixel:['777']}],bytes=JSON.stringify(value),hash=canonicalHash(value);
+ expect(JSON.stringify(tracking.parse(value))).toBe(bytes);expect(canonicalHash(tracking.parse(value))).toBe(hash);expect(JSON.stringify(value)).toBe(bytes);
+ for(const bad of [{[key]:[]},[{nested:{[key]:[]}}],[[{[key]:[]}]],{nested:{[key]:[]}},[{[key.toUpperCase()]:[]}],[{[key+'.extra']:[]}]])expect(tracking.safeParse(bad).success).toBe(false);
+ expect(generic.safeParse(value).success).toBe(false);
 });

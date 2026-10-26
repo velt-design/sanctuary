@@ -1,5 +1,30 @@
 # Decision Log
 
+## 2026-10-26: Await each independent preparation outcome
+
+The Portal preparation recovery test assumed entry into the preview-code import
+confirmed the separate metadata request had completed. A held metadata import
+reproduces the CI assertion failure. Await the actual metadata cache and preview
+outcomes, retaining the four-minute renewal boundary and all failure assertions.
+This corrects test synchronization without changing runtime scheduling or limits.
+
+## 2026-10-26: Exact independently reviewed owner creative bundle
+
+Keep the model proposal path and its quotas intact. A closed owner-review branch
+uses genuine instruction/review/media provenance and one root-only proposal on
+the existing creative control. Pending means one ordinary read-only context;
+only a root-bound exact full plan/hash may prepare/reserve. No synthetic model
+operation ID or client-supplied hash grants approval.
+
+Paired `creative-executor/owner-review.ts` owns the finite two-video/title/thumbnail
+projection and rejects unknown old-video references. Velt `owner-proposal.ts`
+connects saved context and existing delivery; Source's forward migration adds
+one nullable column, updates five existing function bodies and adds one private
+same-window cohort helper. The existing Velt receipt gains only finite measured
+loss-stop evidence. All actual media/WEBSITE/native allocation and budget proof,
+one global test, original controls, publication switches, Stop and effect-ledger
+authority remain required. This implementation is not a claim of live delivery
+or of the full automatic page-and-creative improvement outcome.
 ## 2026-10-26: Check visible dependent content on cached page returns
 
 The released scroll owner restored the homepage correctly, but its nine example
