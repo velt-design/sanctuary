@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
 import {
   SIDEBAR_PINNED_WIDTH_PX,
@@ -11,6 +12,27 @@ function read(relativePath: string): string {
 }
 
 describe('foundation style guardrails', () => {
+  it('allocates the compact column pager summary and touch controls within its reading header', () => {
+    const sheet = postcss.parse(read('apps/portal/components/ui/foundation/FoundationSurfaces.module.css'));
+    const mobile = new Map<string, Map<string, string>>();
+    sheet.walkAtRules('media', media => {
+      if (media.params !== '(max-width: 767px)') return;
+      media.walkRules(rule => {
+        for (const selector of rule.selectors) {
+          const values = mobile.get(selector) ?? new Map<string, string>();
+          rule.walkDecls(decl => { values.set(decl.prop, decl.value); });
+          mobile.set(selector, values);
+        }
+      });
+    });
+    const summary = mobile.get('.pagination[data-compact] .paginationSummary');
+    const allocatedHeight = Number.parseFloat(mobile.get('.pagination[data-compact]')!.get('height')!);
+    const controlHeight = Number.parseFloat(mobile.get('.paginationControls button')!.get('height')!);
+    expect(summary?.get('flex')).toBe(`0 0 ${allocatedHeight - controlHeight}px`);
+    expect(summary?.get('min-height')).toBe('0');
+    expect(Number.parseFloat(summary!.get('line-height')!)).toBeLessThanOrEqual(allocatedHeight - controlHeight);
+    expect(read('apps/portal/components/ui/foundation/FoundationSurfaces.module.css')).toContain('.paginationSummary { width: 17ch;');
+  });
   it('does not hide document overflow to mask layout defects', () => {
     const tokens = read('apps/portal/components/ui/foundation/foundation.tokens.css');
     const catalogue = read('apps/portal/app/staff/ui-foundation/ui-foundation.module.css');
