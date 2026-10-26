@@ -1,5 +1,5 @@
 {
-  "hash": "b14ec9e4e47e8dbb33ed97601179c16f7606a4921fee6a8d3ac9b737236c2d0c",
+  "hash": "1c92989543f1466a3debc01fa4636b074697d11923a00221b26c007d46fde5b2",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -103,7 +103,7 @@
     ],
     [
       "apps/marketing/app/globals.css",
-      "b4c98421e71c0f0225d6e5d8a0db99c2697eb543ab8a1b26e992819f11e919d3"
+      "586badd87967dda7fcc11fdf3dadfe83adb7a0315e68396d11d40ee96331f088"
     ],
     [
       "apps/marketing/app/layout.tsx",
@@ -807,7 +807,7 @@
     ],
     [
       "apps/marketing/components/google-funnel/funnel.module.css",
-      "ae88aa8970bc65aa45a1d9622b13b72cc676357f45c75b81c139fe582cbdcb2a"
+      "f35b5594b971bc1dd06368ca3d3dcdc9b9f2cb7b5155f7790e188ea402f93d7c"
     ],
     [
       "apps/marketing/components/google-funnel/FunnelControls.tsx",
@@ -887,7 +887,7 @@
     ],
     [
       "apps/marketing/components/marketing-foundation/editorial/EditorialWebsite.tsx",
-      "c303b6e73a5f239affc589f0eae98e333ad6d77d68f7e22c1caa4accfe38796f"
+      "66ee2394a5f60877894757d22e1eb906de0b2222423e46d63615c8d7928b3b25"
     ],
     [
       "apps/marketing/components/marketing-foundation/editorial/website.css",
@@ -1111,7 +1111,7 @@
     ],
     [
       "apps/marketing/lib/pageContinuity.ts",
-      "ffcb97759a9c41aadcf03d1fc26561a72afe8abc6d144f10a3dc3c6ebcb44987"
+      "61ce2c53e824d6ed7995bb5d11bfe8fd779c815bb6b76955af5aca6c5a10a43f"
     ],
     [
       "apps/marketing/lib/projectDetailNavigation.ts",

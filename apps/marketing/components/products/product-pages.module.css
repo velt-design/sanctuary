@@ -48,11 +48,13 @@
   background: #e9eae6;
 }
 
+@media (min-width: 961px) {
 :global(html:not(.scroll-locked)):has(.productExperience),
 :global(body:not(.no-scroll):not(.scroll-locked)):has(.productExperience) {
   height: auto !important;
   overflow-x: clip !important;
   overflow-y: visible !important;
+}
 }
 
 .indexHero {

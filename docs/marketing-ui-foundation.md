@@ -4,9 +4,9 @@
 
 Jordan approved the reviewed exact mobile Back position, fast return navigation
 and unfinished enquiry recovery for production once final release checks pass.
-The initial continuity release shipped on 26 October. A follow-up candidate below
-corrects reconstruction of the homepage's visible example estimates; that
-correction has not yet shipped. `ScrollReset` delegates to
+The initial continuity release and the follow-up example-estimate reuse shipped
+on 26 October. The project-return correction below is a local candidate.
+`ScrollReset` delegates to
 `lib/pageContinuity`: bounded tab-local coordinates belong to history-entry IDs,
 including BODY and existing route containers. The shared owner temporarily uses
 native `history.scrollRestoration='manual'` and restores its previous mode on
@@ -18,6 +18,68 @@ only retries a temporarily short layout for at most one second.
 Marked desktop project switches retain their anchor owner before generic entry
 restoration. `projectDetailNavigation` supports both the photographic template's
 direct header and the older intro wrapper when aligning and focusing a case study.
+
+Browser Back to the project collection uses only that history-entry owner.
+`projectCollectionReturn` carries the filtered collection context along detail
+links; `ProjectNavigator` consumes its scroll fallback only for a new All projects
+link. It applies after stored card-size readiness in the layout phase, skips an
+already-correct coordinate, and yields to input from the beginning of collection
+activation. The former independent animation-frame writer could replay the old
+position over an early touch gesture around half a second after return. A
+controlled delayed-ready browser trace reproduced that race. Regression coverage
+checks native touch before and after return, early-input precedence, image source,
+opacity and geometry, and explicit filtered All projects recovery. Chromium touch
+checks also exposed a separate first-frame empty lazy-image source. Only the
+loaded card thumbnails visible on departure are remembered (at most 12 public
+slugs in module memory) and reuse the existing image-priority prop on return.
+Offscreen thumbnails keep ordinary lazy loading; no image bytes or URLs enter
+browser storage. Desktop-port WebKit and Chromium touch controls do not reproduce
+a persistent lock; physical
+iPhone Safari verification remains pending and is distinct from these checks.
+
+Warm image-return checks keep native browser caching enabled. Their transport
+uses public Chromium Fetch interception to allow only application-origin GET/HEAD
+requests and fail writes/external requests closed; ordinary mocked functional
+specs remain separate. A browser may reuse a larger already-loaded responsive
+candidate of the same underlying photo, so optimizer width is not image identity.
+First-visible readiness, opacity, geometry and exact position remain checked.
+Cache-disabled fixtures exposed a real blank paint under forced reconstruction;
+those failures are retained and do not establish a cold-cache instant guarantee.
+
+Jordan clarified the top-edge requirement on 27 October: "What I want and have
+wanted this whole time was for it not to bounce when it reaches the top". The
+earlier agent interpretation pursued native bounce and labelled the owner's
+"Bounce still stops" report as failed acceptance against that mistaken goal.
+That interpretation was wrong; those historical checks do not establish the
+required clean stop. Persistence has positive phone feedback and remains part
+of acceptance alongside free scrolling, exact Back position and warm imagery.
+
+Ordinary mobile documents keep both HTML and BODY overflow axes visible and their
+heights automatic. The existing root policy adds `overscroll-behavior-y: none`
+to request a native vertical clean stop, with horizontal behavior left `auto` for
+history gestures. [The native CSS policy](https://www.w3.org/TR/css-overscroll-1/)
+suppresses vertical boundary effects at both ends and requests suppression of
+vertical pull-to-refresh; it cannot target only the top edge. The existing
+`.page-viewport` descendant contains horizontal painting. Homepage, product,
+contact and funnel root overrides retain their previous desktop behavior only.
+The existing wrapper marks ordinary documents separately from editorial styling,
+including Design enquiry. Simple calculator redirects to the fullscreen Contact
+designer. Menu/project-sheet classes, inline native dialog locks, Portal and that
+fullscreen designer keep their existing owners. No root-clipping/BODY-scroller
+workaround, synthetic bounce, gesture cancellation or user-agent branch was added.
+History and project context save nonnegative logical coordinates during Safari
+elastic overscroll without writing into the active gesture. Existing saved
+BODY/window coordinates restore through the current scroll owner, including
+reload or responsive owner changes; nested pane offsets remain independent.
+Browser regression coverage checks root axes, content height, horizontal
+containment, native touch, menu/gallery/dialog recovery and the fullscreen
+exception. The short two-column Design enquiry checks its document gutter and
+natural scroll range; its pre-existing WebGL touch-owning ancestor is separate,
+so this does not prove scrolling begun over that viewer. Native touch regression
+checks also cover pulling past the top and immediate continued scrolling, while
+computed policy and emulated geometry cannot establish physical iPhone bounce
+suppression. The corrected clean stop and left-edge return require the exact
+phone preview; earlier desktop-port and emulated checks are separate evidence.
 
 Header links fully prefetch public destinations; closed mobile-menu links do not
 prefetch. No HTML, service worker, token-route or private-data cache was added.

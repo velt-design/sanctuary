@@ -16,11 +16,13 @@
   background: var(--color-canvas);
 }
 
+@media (min-width: 961px) {
 :global(html:not(.scroll-locked)):has(.page),
 :global(body:not(.no-scroll):not(.scroll-locked)):has(.page) {
   height: auto !important;
   overflow-x: clip !important;
   overflow-y: visible !important;
+}
 }
 
 .welcome {

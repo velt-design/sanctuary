@@ -3,7 +3,9 @@ import { writeFile } from 'node:fs/promises';
 import { LANDING_PRICE_CELLS } from '../apps/marketing/lib/landingPriceTable';
 
 // Populated tests never reach lead intake, signed upload or external measurement.
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, baseURL }) => {
+  const origin = new URL(baseURL!).origin;
+  await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
   await page.route('**/api/enquiry**', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Synthetic preview retry. No enquiry was sent.' }) }));
   await page.route('**/api/contact', route => route.abort());
   await page.route(/https:\/\/(?!127\.0\.0\.1|localhost).*\/(?:storage\/v1|g\/collect|tr|collect)/, route => route.abort());

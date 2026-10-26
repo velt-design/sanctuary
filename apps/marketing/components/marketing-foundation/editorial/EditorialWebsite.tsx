@@ -6,5 +6,6 @@ const excluded = ['/configurator-preview', '/design-enquiry', '/simple-cover-cal
 export default function EditorialWebsite({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? '/';
   const enabled = !excluded.some(route => pathname === route || pathname.startsWith(route + '/'));
-  return <div data-editorial-website={enabled || undefined}>{children}</div>;
+  const documentPage = enabled || pathname === '/design-enquiry';
+  return <div data-editorial-website={enabled || undefined} data-marketing-document={documentPage || undefined}>{children}</div>;
 }

@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { projects } from '../../data/projects';
 import { getProjectCollectionItems } from './projectCollection';
 import ProjectNavigator from './ProjectNavigator';
+import { readCollectionReturn, saveCollectionReturn } from './projectCollectionReturn';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 // Keep the actual controls/history logic; presentation is covered separately.
 vi.mock('@/components/marketing-foundation', () => ({
@@ -30,7 +32,72 @@ beforeEach(() => {
   localStorage.clear();
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); readCollectionReturn(); });
+
+function prepareReturn(link: boolean) {
+  vi.stubGlobal('scrollY', 1266);
+  const click = (href: string) => {
+    const anchor = document.createElement('a'); anchor.href = href;
+    saveCollectionReturn({ target: anchor, button: 0 } as unknown as ReactMouseEvent<HTMLElement>);
+  };
+  click('/projects/dairy-flat-estate');
+  const originalEntry = window.history.state;
+  window.history.replaceState({}, '', '/projects/dairy-flat-estate'); readCollectionReturn();
+  if (link) click('/projects?utm_source=test');
+  window.history.replaceState(link ? {} : originalEntry, '', '/projects?utm_source=test');
+  vi.stubGlobal('scrollY', 850);
+  return vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+}
+
+describe('collection restoration ownership', () => {
+  let frames: Map<number, FrameRequestCallback>;
+  beforeEach(() => {
+    frames = new Map();
+    let nextFrame = 0;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  });
+  async function flushFrames() {
+    await act(async () => {
+      // Drain deferred restoration too, so the former animation-frame writer
+      // cannot pass a no-scroll assertion merely because it has not fired yet.
+      for (let count = 0; frames.size && count < 10; count++) {
+        const batch = Array.from(frames.values()); frames.clear();
+        batch.forEach(callback => callback(performance.now()));
+      }
+    });
+    expect(frames.size).toBe(0);
+  }
+
+  it('does not replay collection coordinates over browser-entry restoration or early input', async () => {
+    const scroll = prepareReturn(false);
+    await render();
+    await flushFrames();
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it('restores an explicit filtered All projects link after card readiness', async () => {
+    const scroll = prepareReturn(true);
+    await render();
+    await flushFrames();
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ top: 1266, behavior: 'instant' });
+    expect(window.location.search).toBe('?utm_source=test');
+  });
+
+  it.each(['touchstart', 'wheel', 'pointerdown', 'keydown'])('yields to %s before stored card size is ready', async type => {
+    const scroll = prepareReturn(true);
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      window.dispatchEvent(new Event(type));
+      return 'compact';
+    });
+    await render();
+    await flushFrames();
+    expect(scroll).not.toHaveBeenCalled();
+  });
+});
 
 describe('collection filter edits', () => {
   it('composes both edits before any render or server navigation settles', async () => {

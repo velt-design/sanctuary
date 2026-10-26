@@ -14,7 +14,18 @@ function entryId(state: unknown): string | null {
 function newId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`; }
 function containers() { return Array.from(document.querySelectorAll<HTMLElement>(SCROLLERS.join(','))); }
 function readPosition(): Position {
-  return { x: window.scrollX, y: window.scrollY, body: document.body.scrollTop, containers: containers().map(el => el.scrollTop) };
+  // Safari can report negative coordinates during native edge elasticity.
+  // Save the logical page boundary without writing back into that gesture.
+  return { x: Math.max(0, window.scrollX), y: Math.max(0, window.scrollY), body: Math.max(0, document.body.scrollTop), containers: containers().map(el => Math.max(0, el.scrollTop)) };
+}
+function currentOwnerPosition(position: Position): Position {
+  const body = document.body;
+  const bodyScrolls = /^(auto|scroll|overlay)$/.test(getComputedStyle(body).overflowY)
+    && body.scrollHeight > body.clientHeight + 1;
+  // BODY and the viewport are alternative owners of the same page coordinate.
+  // Keep old snapshots usable across responsive/CSS changes; nested panes stay separate.
+  const top = position.y || position.body;
+  return { ...position, y: bodyScrolls ? 0 : top, body: bodyScrolls ? top : 0 };
 }
 function scroll(position: Position) {
   window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
@@ -99,10 +110,11 @@ export function createPageContinuity() {
     stopRestore = finish;
     inputs.forEach(type => window.addEventListener(type, finish, { passive: true, once: true }));
     const apply = () => {
-      scroll(position);
+      const target = currentOwnerPosition(position);
+      scroll(target);
       const actual = readPosition();
-      const reached = Math.abs(actual.y - position.y) < 1 && Math.abs(actual.body - position.body) < 1
-        && position.containers.every((top, index) => Math.abs((actual.containers[index] ?? 0) - top) < 1);
+      const reached = Math.abs(actual.y - target.y) < 1 && Math.abs(actual.body - target.body) < 1
+        && target.containers.every((top, index) => Math.abs((actual.containers[index] ?? 0) - top) < 1);
       // Only retry while content is too short. Never keep dragging a visitor back after input.
       if (!reached && performance.now() - started < 1000) frame = requestAnimationFrame(apply);
       else finish();
