@@ -11,8 +11,8 @@ import {
 import { usePathname, useSearchParams, useSelectedLayoutSegments } from 'next/navigation';
 import { PortalPageSourceProvider, usePortalPageSourceController } from './PortalPageSource';
 import PortalActualFrames from './PortalActualFrames';
-import { PortalRouteTransitionContext, type PortalRouteTransitionInput } from './PortalRouteTransitionContext';
-export { usePortalRouteTransition } from './PortalRouteTransitionContext';
+import { PortalRouteTransitionContext, shouldStartRouteTransitionForHref, type PortalRouteTransitionInput } from './PortalRouteTransitionContext';
+export { shouldHandleRouteTransitionClick, shouldStartRouteTransitionForHref, usePortalRouteTransition } from './PortalRouteTransitionContext';
 import PortalNavigationProgress from './PortalNavigationProgress';
 import { retainPortalHistory } from './portalHistoryGuard';
 import {
@@ -27,58 +27,8 @@ const MAX_TRANSITION_MS = 8000;
 const DEFAULT_MESSAGE = 'Preparing workspace...';
 const MAX_INSTANT_ROUTE_MS = 8000;
 
-type RouteTransitionClickEvent = {
-  defaultPrevented: boolean;
-  button: number;
-  metaKey: boolean;
-  altKey: boolean;
-  ctrlKey: boolean;
-  shiftKey: boolean;
-  currentTarget?: EventTarget | null;
-};
-
 function routeKeyFor(pathname: string | null, searchParams: { toString(): string }): string {
   return `${pathname ?? ''}?${searchParams.toString()}`;
-}
-
-function currentUrlFromLocation(location: Location | URL): URL {
-  return location instanceof URL ? location : new URL(location.href);
-}
-
-export function shouldStartRouteTransitionForHref(
-  href: string,
-  location?: Location | URL,
-): boolean {
-  if (!href || href.startsWith('#')) return false;
-  if (!location && typeof window === 'undefined') return false;
-
-  let nextUrl: URL;
-  let currentUrl: URL;
-
-  try {
-    currentUrl = currentUrlFromLocation(location ?? window.location);
-    nextUrl = new URL(href, currentUrl.href);
-  } catch {
-    return false;
-  }
-
-  if (nextUrl.origin !== currentUrl.origin) return false;
-
-  return nextUrl.pathname !== currentUrl.pathname || nextUrl.search !== currentUrl.search;
-}
-
-export function shouldHandleRouteTransitionClick(
-  event: RouteTransitionClickEvent,
-  anchor?: HTMLAnchorElement | null,
-): boolean {
-  if (event.defaultPrevented || event.button !== 0) return false;
-  if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return false;
-
-  const target =
-    anchor ?? (event.currentTarget instanceof HTMLAnchorElement ? event.currentTarget : null);
-  const linkTarget = target?.getAttribute('target');
-
-  return !linkTarget || linkTarget === '_self';
 }
 
 export function PortalRouteTransitionProvider({ children }: { children: ReactNode }) {

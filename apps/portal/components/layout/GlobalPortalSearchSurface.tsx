@@ -2,7 +2,7 @@
 
 import { LoaderCircle, Search } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent, type RefObject } from 'react';
-import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransitionContext';
 import { normalizePortalSearchQuery, PORTAL_SEARCH_MAX_LENGTH } from '@/lib/search/portalSearchContract';
 import { useOptionalPortalQueryClient } from '@/lib/react-query/PortalQueryClientContext';
 import { useOptionalGlobalPortalSearchState } from './GlobalPortalSearchState';

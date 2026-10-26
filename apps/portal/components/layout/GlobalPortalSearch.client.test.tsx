@@ -24,8 +24,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ prefetch: navigation.prefetch }),
 }));
 
-vi.mock('@/components/page-state/PortalRouteTransition', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/components/page-state/PortalRouteTransition')>();
+vi.mock('@/components/page-state/PortalRouteTransitionContext', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/page-state/PortalRouteTransitionContext')>();
   return {
     ...actual,
     usePortalRouteTransition: () => ({

@@ -26,7 +26,7 @@ import {
   shouldHandleRouteTransitionClick,
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
-} from '@/components/page-state/PortalRouteTransition';
+} from '@/components/page-state/PortalRouteTransitionContext';
 import ProjectCurrentStatusBadge from '@/components/projects/ProjectCurrentStatusBadge';
 import {
   PORTAL_SEARCH_MIN_LENGTH,

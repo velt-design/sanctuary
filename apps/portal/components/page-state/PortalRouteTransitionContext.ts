@@ -35,3 +35,53 @@ export const PortalRouteTransitionContext = createContext<PortalRouteTransitionC
 export function usePortalRouteTransition(): PortalRouteTransitionContextValue {
   return useContext(PortalRouteTransitionContext);
 }
+
+type RouteTransitionClickEvent = {
+  defaultPrevented: boolean;
+  button: number;
+  metaKey: boolean;
+  altKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  currentTarget?: EventTarget | null;
+};
+
+function currentUrlFromLocation(location: Location | URL): URL {
+  return location instanceof URL ? location : new URL(location.href);
+}
+
+export function shouldStartRouteTransitionForHref(
+  href: string,
+  location?: Location | URL,
+): boolean {
+  if (!href || href.startsWith('#')) return false;
+  if (!location && typeof window === 'undefined') return false;
+
+  let nextUrl: URL;
+  let currentUrl: URL;
+
+  try {
+    currentUrl = currentUrlFromLocation(location ?? window.location);
+    nextUrl = new URL(href, currentUrl.href);
+  } catch {
+    return false;
+  }
+
+  if (nextUrl.origin !== currentUrl.origin) return false;
+
+  return nextUrl.pathname !== currentUrl.pathname || nextUrl.search !== currentUrl.search;
+}
+
+export function shouldHandleRouteTransitionClick(
+  event: RouteTransitionClickEvent,
+  anchor?: HTMLAnchorElement | null,
+): boolean {
+  if (event.defaultPrevented || event.button !== 0) return false;
+  if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return false;
+
+  const target =
+    anchor ?? (event.currentTarget instanceof HTMLAnchorElement ? event.currentTarget : null);
+  const linkTarget = target?.getAttribute('target');
+
+  return !linkTarget || linkTarget === '_self';
+}
