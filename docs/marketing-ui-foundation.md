@@ -18,6 +18,13 @@ rules remain unchanged. SEO content/metadata and consent gates remain server-own
 that presentation is actually used; challenger content and price owners are intact.
 Controlled slow-review streaming evidence and ordinary first-visit resource/paint
 measurements are separate from production phone performance.
+The Challenger hero uses eager loading and explicit high fetch priority instead
+of Next's `preload` prop. A warm-server diagnostic found the earlier preload-only
+request began at low priority and was promoted about 886 ms later; the exact
+photo, responsive sizing, crop and quality remain unchanged.
+The final compiled diagnostic confirms one request, initially high priority, for
+the same 87,006-byte hero. Its local paint result (2.74 s versus 2.62 s for the
+preceding warm-server control) does not establish an ordinary paint-speed gain.
 
 The compiled provider-free slow-review check streamed the homepage heading and
 hero preload in 239 ms, before the synthetic two-second review dependency finished;

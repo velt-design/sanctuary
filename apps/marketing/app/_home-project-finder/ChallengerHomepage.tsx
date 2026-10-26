@@ -43,7 +43,7 @@ export default function ChallengerHomepage({ initialState }: { initialState: Pro
         <div className={styles.heroActions}><p>Designed for your home.<br />Built by Sanctuary.</p><Button href="#project-finder" data-project-finder-event="project_finder_start_click" data-source-component="hero" data-step-number="1">Find your pergola <ArrowUpRight /></Button><ChallengerEnquiryLink initialHref={enquiryHref} defaultHref={defaultEnquiryHref} /></div>
       </Container>
       <div className={styles.heroImage}>
-        <Image src={media.hero.src} alt={media.hero.alt} fill sizes="100vw" preload style={{ objectPosition: media.hero.objectPosition }} />
+        <Image src={media.hero.src} alt={media.hero.alt} fill sizes="100vw" loading="eager" fetchPriority="high" style={{ objectPosition: media.hero.objectPosition }} />
         <Link href={`/projects/${project.slug}`} className={styles.projectCaption}><span>Warkworth outdoor room<span>Completed Sanctuary project</span></span><ArrowUpRight /></Link>
       </div>
     </section>
