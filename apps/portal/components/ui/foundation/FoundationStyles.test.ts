@@ -15,12 +15,18 @@ describe('foundation style guardrails', () => {
   it('allocates accepted agreements at all widths while keeping full long facts natively readable', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/QuotesTab.module.css'));
     const declarations = new Map<string, string>();
+    let narrowHeight = 0;
     sheet.walkRules(rule => {
       if (rule.selector !== '.acceptedWork') return;
-      expect(rule.parent?.type).toBe('root');
-      rule.walkDecls(decl => { declarations.set(decl.prop, decl.value); });
+      if (rule.parent?.type === 'atrule' && rule.parent.name === 'media' && rule.parent.params === '(max-width: 720px)') {
+        rule.walkDecls('block-size', decl => { narrowHeight = Number.parseFloat(decl.value); });
+      } else if (rule.parent?.type === 'root') {
+        rule.walkDecls(decl => { declarations.set(decl.prop, decl.value); });
+      }
     });
-    expect(Number.parseFloat(declarations.get('block-size')!)).toBeGreaterThan(0);
+    expect(Number.parseFloat(declarations.get('block-size')!)).toBe(184);
+    // Actual ordinary 390px agreement measured 226px including its direct Open action.
+    expect(narrowHeight).toBeGreaterThanOrEqual(226 + 16);
     expect(declarations.get('overflow')).toBe('auto');
     expect(declarations.get('scrollbar-gutter')).toBe('stable');
     expect(declarations.has('-webkit-line-clamp')).toBe(false);

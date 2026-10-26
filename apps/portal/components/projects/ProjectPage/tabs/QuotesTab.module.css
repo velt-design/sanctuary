@@ -1463,3 +1463,4 @@
 .acceptedWork { block-size: 184px; min-width: 0; overflow: auto; scrollbar-gutter: stable; }
 .acceptedWork > p { margin: 0; color: var(--ui-text-muted); }
 .acceptedWork:focus-visible { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }
+@media (max-width: 720px) { .acceptedWork { block-size: 248px; } }
