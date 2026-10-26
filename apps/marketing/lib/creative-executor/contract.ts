@@ -8,6 +8,15 @@ import { createHash } from 'node:crypto';
 export const id = z.string().regex(/^[1-9]\d{0,19}$/);
 export const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const stamp = z.iso.datetime({ offset: true });
+export const ownerPayloadLimits={planJsonb:16000,intentJsonb:16000,envelopeJsonb:20000,wireUtf8:24000} as const;
+/** Larger transport admission is provisional. Source still compares the exact
+ * signed plan/intent with its current root-owned proposal before any effect. */
+export function creativeWireLimit(stage:string,payload:unknown){
+ const p=payload as {plan?:{purpose?:unknown;ownerReview?:{kind?:unknown}};intent?:{kind?:unknown}}|null;
+ const ownerPrepare=stage==='prepare'&&p?.plan?.purpose==='formal_experiment'&&p.plan.ownerReview?.kind==='owner_directed_independent_review_v1';
+ return ownerPrepare||stage==='admit'&&p?.intent?.kind==='create_creative'?ownerPayloadLimits.wireUtf8:16000;
+}
+
 export const retainedAdSchema=z.object({experiment:z.uuid(),planHash:hash,donor:id,ad:id,creative:id}).strict();
 export const path = z.enum(['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']);
 export const canonicalHash = (value: unknown): string => {
@@ -58,10 +67,21 @@ export const videoCreativeSchema = z.object({ ...common, format: z.literal('vide
 // The video_data representation does not establish the number of UI-selected
 // placements/media. Preserve the complete supported response, never flatten it.
 const videoSources=z.object({videos:z.array(z.object({video_id:id}).passthrough()).length(2),images:boundedJson.optional(),bodies:boundedJson.optional(),titles:boundedJson.optional(),descriptions:boundedJson.optional(),destinations:boundedJson.optional(),posts:boundedJson.optional(),related_media:boundedJson.optional(),push_metadata_ids:boundedJson.optional()}).strict().refine(v=>new Set(v.videos.map(x=>x.video_id)).size===2&&boundedJson.safeParse(v).success);
-const thumbnail=z.string().url().max(2000).refine(value=>{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&(u.hostname==='fbcdn.net'||u.hostname.endsWith('.fbcdn.net'));});
+const thumbnail=z.string().url().max(2000);
+// A provider-read donor may retain its Facebook thumbnail URL beside a valid
+// image hash. Neither field is discarded or rewritten; reviewed replacements
+// still use the separate, stricter owner-review thumbnail contract.
+const donorThumbnail=(video:{image_url?:string;image_hash?:string})=>{
+ if(video.image_url===undefined)return true;
+ let u:URL;try{u=new URL(video.image_url);}catch{return false;}
+ if(u.protocol!=='https:'||u.username||u.password)return false;
+ if(u.hostname==='fbcdn.net'||u.hostname.endsWith('.fbcdn.net'))return true;
+ return(u.hostname==='facebook.com'||u.hostname.endsWith('.facebook.com'))&&!u.port&&!u.hash&&
+  !!video.image_hash&&/^[a-f0-9]{32}$/.test(video.image_hash);
+};
 export const storyVideoCreativeSchema=z.object({...common,format:z.literal('video_story'),payload:z.object({
  object_story_spec:z.object({page_id:id,video_data:z.object({video_id:id,message:text,title:z.string().min(1).max(120),link_description:z.string().max(200).optional(),customization_rules_spec:boundedJson.optional(),collection_thumbnails:boundedJson.optional(),additional_image_index:z.number().int().nonnegative().max(10).optional(),image_url:thumbnail.optional(),image_hash:z.string().regex(/^[a-f0-9]{32}$/).optional(),
- call_to_action:z.object({type:z.enum(['GET_DETAILS','SEE_DETAILS','LEARN_MORE','GET_QUOTE']),value:z.object({link:z.string().url().max(300)}).strict()}).strict()}).strict()}).strict(),
+ call_to_action:z.object({type:z.enum(['GET_DETAILS','SEE_DETAILS','LEARN_MORE','GET_QUOTE']),value:z.object({link:z.string().url().max(300)}).strict()}).strict()}).strict().refine(donorThumbnail,{path:['image_url'],message:'Unsupported donor thumbnail'})}).strict(),
  media_sourcing_spec:videoSources,creative_sourcing_spec:boundedJson.optional(),degrees_of_freedom_spec:boundedJson.optional(),interactive_components_spec:boundedJson.optional(),platform_customizations:boundedJson.optional(),contextual_multi_ads:boundedJson.optional(),instagram_user_id:id.optional(),
 }).strict()}).strict().refine(v=>{const story=v.payload.object_story_spec,video=story.video_data;return v.payload.media_sourcing_spec.videos.some(x=>x.video_id===video.video_id)&&story.page_id===v.page&&video.message===v.primary&&!!(video.image_url||video.image_hash)&&video.call_to_action.value.link===`https://www.sanctuarypergolas.co.nz${v.path}`;});
 // Reference-only proof: unknown provider settings are neither reconstructed nor
@@ -149,5 +169,12 @@ export const stateSchema = z.object({ analysis:nativeAnalysisSchema.nullable().o
   measurementReady: z.boolean(), activationReady: z.literal(false),
 }).strict();
 export type ExecutorState = z.infer<typeof stateSchema>;
+/** Root-controlled full-plan equality, not a caller readiness flag. */
+export function currentOwnerPlan(state:ExecutorState,now=Date.now()){
+ const p=state.plan,e=state.ownerProposal;
+ return !!p?.ownerReview&&p.purpose==='formal_experiment'&&!!e?.plan&&e.planHash===canonicalHash(p)&&
+  canonicalHash(e.plan)===canonicalHash(p)&&Date.parse(e.expiresAt)>now;
+}
+
 export type SourceCommand = (stage: 'read' | 'prepare' | 'authority' | 'admit' | 'check' | 'confirm' | 'no_effect' | 'measurement' | 'canary' | 'cleanup' | 'receipt',
   experiment: string | null, command: string, payload: unknown) => Promise<unknown>;
