@@ -95,7 +95,7 @@ describe("GA4 fixed report consumer", () => {
     const result = parseGa4Report(raw, "123", query, now);
     expect(result.warnings).toHaveLength(1); expect(result.previousSessions).toBeNull(); expect(result.channels[0]?.previous).toBeNull();
   });
-  it.each(["negative", "nan", "infinite", "overflow", "truncated", "headers", "range", "timezone", "date", "duplicate", "partial", "restricted", "query_path"])("fails closed on %s responses", mode => {
+  it.each(["negative", "nan", "infinite", "overflow", "truncated", "headers", "range", "timezone", "date", "duplicate", "partial", "restricted"])("fails closed on %s responses", mode => {
     const raw = fixture(); const r = raw.reports[0]!;
     if (mode === "negative") r.rows[0]!.metricValues[0]!.value = "-1";
     if (mode === "nan") r.rows[0]!.metricValues[0]!.value = "NaN";
@@ -109,7 +109,6 @@ describe("GA4 fixed report consumer", () => {
     if (mode === "duplicate") { r.rows.push(r.rows[0]!); r.rowCount++; }
     if (mode === "partial") raw.reports.pop();
     if (mode === "restricted") Object.assign(r.metadata, { schemaRestrictionResponse: { activeMetricRestrictions: [{}] } });
-    if (mode === "query_path") raw.reports[2]!.rows[0]!.dimensionValues[0]!.value = "/?email=private";
     expect(() => parseGa4Report(raw, "123", query, now)).toThrow();
   });
   it("enforces completed days in the actual property timezone", () => {
@@ -127,7 +126,7 @@ describe("GA4 fixed report consumer", () => {
     await readGa4Report("fixture-secret", "123", query, undefined, fetcher);
     expect(fetcher).toHaveBeenCalledTimes(1);
     const [url, init] = vi.mocked(fetcher).mock.calls[0]! as unknown as [string, RequestInit];
-    expect(url).toBe("https://analyticsdata.googleapis.com/v1beta/properties/123:batchRunReports");
+    expect(url).toBe("https://analyticsdata.googleapis.com/v1beta/properties/123:batchRunReports?prettyPrint=false");
     expect(url).not.toContain("fixture-secret"); expect(init.redirect).toBe("error"); expect(init.cache).toBe("no-store");
     await expect(readGa4Report("secret", "123", query, undefined, vi.fn(async () => new Response("x".repeat(262145))))).rejects.toMatchObject({ diagnostic: { reason: "response_limit" } });
   });

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { boundedGoogleJson, during } from "./transport";
 import { websiteJourney } from "./journey";
 import { periodDays, shiftDate, validateQuery, validDate, type AnalyticsReport, type Measure, type PaneId, type ReportQuery } from "./report";
-import { acquisitionPlan, acquisitionValidationReason, coreDiagnostics, DIAGNOSTIC_VERSION, parseAcquisition } from './diagnostics';
+import { acquisitionPlan, acquisitionStructure, acquisitionValidationReason, coreDiagnostics, DIAGNOSTIC_VERSION, parseAcquisition, safePath, WITHHELD_LABEL, WITHHELD_PATH, PRIVACY_WARNING } from './diagnostics';
 import { Ga4ReportFailure, validationReasons, type ReportFailureContext } from './failure';
 export { Ga4ReportFailure } from './failure';
 
@@ -33,7 +33,7 @@ export function reportPlan(query: ReportQuery) {
 export const reportHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export function reportIntent(property: string, query: ReportQuery, version: ReportVersion = REPORT_VERSION) {
   return { property, queryHash: reportHash({ version, property, plan: reportPlan(query), ...(version === DIAGNOSTIC_VERSION ? {
-    diagnosticsPlan: acquisitionPlan(query), bounds: { deadlineMs: 45000, wireBytes: 262144, normalizedBytes: 245760, envelopeBytes: 262144, profileGroups: 200, expandedRows: 400, cohorts: 200 } } : {}) }),
+    diagnosticsPlan: acquisitionPlan(query), prettyPrint: false, bounds: { deadlineMs: 45000, wireBytes: 262144, normalizedBytes: 245760, envelopeBytes: 262144, profileGroups: 200, expandedRows: 400, cohorts: 200 } } : {}) }),
     startDate: query.period.start, endDate: query.period.end,
     comparisonStart: query.comparison?.start ?? null, comparisonEnd: query.comparison?.end ?? null, reportVersion: version };
 }
@@ -111,6 +111,7 @@ export function parseGa4Report(raw: unknown, property: string, query: ReportQuer
     const rows = new Map<string, Measure>();
     const eventRows = new Map<string, Measure>();
     const seen = new Set<string>();
+    const landingMembers = new Map<string, Set<string>>(), landingObservations = new Map<string, [number, number]>();
     for (const row of report.rows) {
       if (row.metricValues.length !== report.metricHeaders.length) throw new Error("Report metric mismatch.");
       if (row.dimensionValues.length !== expectedHeaders.length) throw new Error("Report dimensions mismatch.");
@@ -132,12 +133,19 @@ export function parseGa4Report(raw: unknown, property: string, query: ReportQuer
         }
         if (range === "prior") label = shiftDate(query.period.start, periodDays({ start: period.start, end: label }) - 1);
       }
-      if (definition.id === "landing" && (label.includes("?") || label.includes("#"))) throw new Error("Landing page contains query data.");
       const identity = `${range}:${label}`;
       if (seen.has(identity)) throw new Error("Duplicate report row.");
       seen.add(identity);
+      if (definition.id === 'landing') {
+        const original = label;
+        if (!safePath(label)) { label = WITHHELD_PATH; warnings.add(PRIVACY_WARNING); }
+        const members = landingMembers.get(label) ?? new Set<string>(); members.add(original); landingMembers.set(label, members);
+        const counts = landingObservations.get(label) ?? [0, 0]; counts[range === 'selected' ? 0 : 1]++; landingObservations.set(label, counts);
+      }
       const measure = rows.get(label) ?? { label, value: null, previous: null };
-      measure[range === "selected" ? "value" : "previous"] = numeric(row.metricValues[0]!.value);
+      const rangeKey = range === 'selected' ? 'value' : 'previous';
+      measure[rangeKey] = (measure[rangeKey] ?? 0) + numeric(row.metricValues[0]!.value);
+      if (measure[rangeKey]! > Number.MAX_SAFE_INTEGER) throw new Error('Invalid report value.');
       if (definition.metric === "sessions" && !Number.isInteger(measure[range === "selected" ? "value" : "previous"])) throw new Error("Sessions must be integers.");
       rows.set(label, measure);
       if (definition.id === "events") {
@@ -147,6 +155,10 @@ export function parseGa4Report(raw: unknown, property: string, query: ReportQuer
         event[range === "selected" ? "value" : "previous"] = occurrence;
         eventRows.set(label, event);
       }
+    }
+    if (definition.id === 'landing') for (const [label, row] of rows) {
+      if (landingObservations.get(label)![0] !== landingMembers.get(label)!.size) row.value = null;
+      if (landingObservations.get(label)![1] !== landingMembers.get(label)!.size) row.previous = null;
     }
     if (definition.id === "total") {
       output.sessions = rows.get("total")?.value ?? null;
@@ -200,7 +212,9 @@ export async function readGa4Report(accessToken: string, property: string, query
     const observedFetch = (owner: ReportFailureContext): typeof fetch => async (url, init) => {
       const response = await fetcher(url, init); owner.status = response.status; return response;
     };
-    const endpoint = `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports`;
+    // Google defaults to pretty-printed JSON. Whitespace consumed the shared
+    // allowance on ordinary comparison reports; compact JSON changes no data.
+    const endpoint = `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports?prettyPrint=false`;
     if (options.version === DIAGNOSTIC_VERSION) {
       const abort = new AbortController(), phase = AbortSignal.any([...(signal ? [signal] : []), abort.signal, AbortSignal.timeout(45000)]), budget = { remaining: 262144 };
       const dispatch = async (plan: unknown, batch: 'core' | 'acquisition') => {
@@ -218,13 +232,19 @@ export async function readGa4Report(accessToken: string, property: string, query
         raw = core.value; context = { ...core.owner, stage: 'core_response' }; phase.throwIfAborted();
         const now = new Date(), report = parseGa4Report(core.value, property, query, now, true);
         raw = acquisition.value; context = { ...acquisition.owner, stage: 'acquisition_response' };
-        try { report.diagnostics!.acquisition = parseAcquisition(acquisition.value, query, report.timezone, now); }
+        try {
+          report.diagnostics!.acquisition = parseAcquisition(acquisition.value, query, report.timezone, now);
+          const result = report.diagnostics!.acquisition;
+          if (result.status === 'unavailable') console.warn('sanctuary_ga4_acquisition_unavailable', { stage: 'acquisition_response', reason: result.reason, status: acquisition.owner.status, structure: acquisitionStructure(acquisition.value) });
+          if (result.status !== 'unavailable' && result.rows.some(row => row.sourceMedium === WITHHELD_LABEL || row.landingPath === WITHHELD_PATH || row.deviceCategory === WITHHELD_LABEL)
+            && !report.warnings.includes(PRIVACY_WARNING)) report.warnings.push(PRIVACY_WARNING);
+        }
         catch (error) {
           const reason = acquisitionValidationReason(error);
           if (!reason) throw error;
           phase.throwIfAborted();
           report.diagnostics!.acquisition = { status: 'unavailable', reason: 'compatibility_unproven' };
-          console.warn('sanctuary_ga4_acquisition_unavailable', { stage: 'acquisition_response', reason, status: acquisition.owner.status });
+          console.warn('sanctuary_ga4_acquisition_unavailable', { stage: 'acquisition_response', reason, status: acquisition.owner.status, structure: acquisitionStructure(acquisition.value) });
         }
         context = { stage: 'normalization' };
         if (Buffer.byteLength(JSON.stringify(report)) > 245760) throw new Error('Report exceeds bound.');

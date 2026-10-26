@@ -79,7 +79,7 @@ function diagnosticDependencies(mode:'available'|'row_limit'|'limited'|'unexpect
 }
 it.each(['available','row_limit','limited'] as const)('actual HTTP/provider parser/completion SQL/read preserve v3 %s semantics',async mode=>{
  await enable();const {deps,calls}=diagnosticDependencies(mode),response=await sanctuaryGa4Response(v3Request(),deps);
- expect(response.status).toBe(200);const body=await response.json();expect(calls.sort()).toEqual([2,5]);
+ expect(response.status).toBe(200);const body=await response.json();expect(calls.sort()).toEqual([4,5]);
  expect(body.report.diagnostics.stages[0].count.value).toBe(37);expect(body.report.diagnostics.stages[0].count.previous).toBeNull();
  expect(body.report.diagnostics.acquisition.status).toBe(mode==='row_limit'?'unavailable':mode);
  if(mode==='row_limit')expect(body.report.diagnostics.acquisition).toEqual({status:'unavailable',reason:'row_limit'});

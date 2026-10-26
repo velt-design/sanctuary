@@ -17,14 +17,14 @@ export function coreFixture(query: ReportQuery) {
 }
 export function acquisitionFixture(query: ReportQuery, cohorts = 3) {
   const ranges = ['selected', ...(query.comparison ? ['prior'] : [])];
-  return { reports: [false, true].map(events => {
-    const rows = Array.from({ length: cohorts }, (_, cohort) => (events ? [...STAGES] : ['sessions']).flatMap((event, stage) => ranges.map(range => ({
+  return { reports: [null, ...STAGES].map((event, index) => {
+    const rows = Array.from({ length: cohorts }, (_, cohort) => ranges.map(range => ({
       dimensionValues: [{ value: cohort % 2 ? 'google / cpc' : 'google / organic' }, { value: `/pergolas-${cohort}` }, { value: cohort % 2 ? 'mobile' : 'desktop' },
-        ...(events ? [{ value: event }] : []), ...(query.comparison ? [{ value: range }] : [])],
-      metricValues: [{ value: String(events ? [7, 4, 2][stage] : cohort === 0 ? 0 : 20 + cohort) }],
-    })))).flat();
-    return { dimensionHeaders: ['sessionSourceMedium', 'landingPage', 'deviceCategory', ...(events ? ['eventName'] : []), ...(query.comparison ? ['dateRange'] : [])].map(name => ({ name })),
-      metricHeaders: [{ name: events ? 'eventCount' : 'sessions', type: 'TYPE_INTEGER' }], rows, rowCount: cohorts * (events ? 3 : 1),
+        ...(query.comparison ? [{ value: range }] : [])],
+      metricValues: [{ value: String(event ? [7, 4, 2][index - 1] : cohort === 0 ? 0 : 20 + cohort) }],
+    }))).flat();
+    return { dimensionHeaders: ['sessionSourceMedium', 'landingPage', 'deviceCategory', ...(query.comparison ? ['dateRange'] : [])].map(name => ({ name })),
+      metricHeaders: [{ name: event ? 'eventCount' : 'sessions', type: 'TYPE_INTEGER' }], rows, rowCount: cohorts,
       metadata: { timeZone: 'Pacific/Auckland', subjectToThresholding: false, dataLossFromOtherRow: false } };
   }) };
 }
