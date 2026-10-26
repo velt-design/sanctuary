@@ -34,3 +34,9 @@
   .layout { grid-template-areas: "exception" "primary" "context" "admin"; grid-template-columns: minmax(0, 1fr); }
   .layout:not([data-has-exception]) { grid-template-areas: "primary" "context" "admin"; }
 }
+
+/* Apply the same narrow-container composition before ResizeObserver hydration. */
+@container (max-width: 800px) {
+ .layout { grid-template-areas: "exception" "primary" "context" "admin"; grid-template-columns: minmax(0, 1fr); }
+ .layout:not([data-has-exception]) { grid-template-areas: "primary" "context" "admin"; }
+}

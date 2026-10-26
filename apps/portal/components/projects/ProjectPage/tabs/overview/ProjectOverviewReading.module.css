@@ -1,0 +1,19 @@
+.surface { container-type: inline-size; }
+.card { min-width: 0; container-type: inline-size; }
+.card > header { height: 64px; box-sizing: border-box; }
+.reading { height: 360px; overflow: auto; scrollbar-gutter: stable; overflow-wrap: anywhere; min-width: 0; }
+.reading:focus-visible, .history:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: -2px; }
+.reading[data-overview-reading="commercial"] { height: 464px; }
+.reading[data-overview-reading="work"] { height: 400px; }
+.reading[data-overview-reading="payment"] { height: 352px; }
+.reading[data-overview-reading="visits"] { height: 288px; }
+.reading[data-overview-reading="emails"] { height: 440px; }
+.workStatus { height: 44px; min-width: 0; }
+.history { height: 480px; overflow: auto; scrollbar-gutter: stable; }
+@media (max-width: 720px) {
+ .reading[data-overview-reading="commercial"] { height: 544px; }
+ .reading[data-overview-reading="orientation"] { height: 440px; }
+ .reading[data-overview-reading="payment"] { height: 400px; }
+ .reading[data-overview-reading="work"] { height: 464px; }
+ .reading[data-overview-reading="visits"] { height: 352px; }
+}

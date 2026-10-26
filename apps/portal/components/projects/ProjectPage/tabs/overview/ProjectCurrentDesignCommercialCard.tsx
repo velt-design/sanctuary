@@ -76,25 +76,17 @@ export default function ProjectCurrentDesignCommercialCard({
   data,
   projectId,
   previewOnly = false,
+  embedded = false,
 }: {
   data: ProjectCommandCentreCurrentDesign;
   projectId?: string;
   previewOnly?: boolean;
+  embedded?: boolean;
 }) {
   const { closed } = useProjectCommercialContext();
-  return (
-    <Card
-      className={styles.card}
-      aria-label="Current design and commercial summary"
-      title={closed ? "Recorded design & price" : data.source === "accepted_quote" ? "Agreed design & price" : "Current design & price"}
-      eyebrow="Commercial position"
-      padding="compact"
-      action={
-        <Badge tone={badgeTone(data.statusTone)}>{data.statusLabel}</Badge>
-      }
-      data-command-centre-source={data.source}
-      data-current-design-state={data.designState}
-    >
+  const title=closed ? "Recorded design & price" : data.source === "accepted_quote" ? "Agreed design & price" : "Current design & price";
+  const badge=<Badge tone={badgeTone(data.statusTone)}>{data.statusLabel}</Badge>;
+  const body=(<> {embedded?<header><h3>{title}</h3>{badge}</header>:null}
       <div className={styles.stack}>
         <div className={styles.notices}>
           {data.latestDeclinedQuote ? (
@@ -264,6 +256,7 @@ export default function ProjectCurrentDesignCommercialCard({
           ) : null}
         </div>
       </div>
-    </Card>
+    </>
   );
+  return embedded ? <div data-command-centre-source={data.source} data-current-design-state={data.designState}>{body}</div> : <Card className={styles.card} aria-label="Current design and commercial summary" title={title} eyebrow="Commercial position" padding="compact" action={badge} data-command-centre-source={data.source} data-current-design-state={data.designState}>{body}</Card>;
 }

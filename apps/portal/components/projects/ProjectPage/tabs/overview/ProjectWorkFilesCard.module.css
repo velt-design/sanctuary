@@ -12,3 +12,9 @@
 }
 
 .actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--ui-space-2); }
+
+/* The static actions already wrap before authority; title facts get two lines. */
+.card > header > div:first-child h2 { min-height: 2lh; max-height: 2lh; overflow: auto; }
+
+.card > header { display: grid; grid-template-columns: minmax(0, 1fr); }
+.card > header > div:last-child { width: 100%; }

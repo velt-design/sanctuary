@@ -137,3 +137,12 @@ describe('foundation style guardrails', () => {
     expect(`${shell}\n${rail}\n${panel}`).toMatch(/prefers-reduced-motion:\s*reduce/);
   });
 });
+
+it('keeps Overview reading tracks and the first narrow-container composition independent of publication',()=>{
+ const reading=postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewReading.module.css'));
+ const rules=new Map<string,Map<string,string>>();reading.walkRules(rule=>{const values=new Map<string,string>();rule.walkDecls(decl=>{values.set(decl.prop,decl.value);});rules.set(rule.selector,values);});
+ expect(rules.get('.surface')?.get('container-type')).toBe('inline-size');expect(rules.get('.reading')?.get('overflow')).toBe('auto');expect(rules.get('.reading')?.get('height')).toBe('360px');
+ expect(rules.get('.reading[data-overview-reading="payment"]')?.get('height')).toBe('400px');expect(rules.get('.history')?.get('overflow')).toBe('auto');
+ const layout=postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout.module.css'));let container=false;layout.walkAtRules('container',rule=>{if(rule.params==='(max-width: 800px)'){container=true;expect(rule.toString()).toContain('grid-template-columns: minmax(0, 1fr)');}});expect(container).toBe(true);
+ const site=read('apps/portal/components/site-visits/siteVisits.module.css');expect(site).toContain('.calendarStatus{height:44px;min-width:0}');expect(site).not.toContain('.calendarContext:empty{display:none}');
+});

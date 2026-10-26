@@ -1,5 +1,7 @@
 'use client';
 import {useCallback,useMemo,useRef,useState,type ReactNode} from 'react';
+import ReadStatus from '@/components/page-state/ReadStatus';
+import readingStyles from './overview/ProjectOverviewReading.module.css';
 import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 import { TabNavigation } from '@/components/ui/foundation/FoundationOperational';
@@ -18,22 +20,35 @@ export function useOverviewControls(projectId:string) {
  return useMemo(()=>({...selected,setPanel,adoptPanel}),[selected.projectId,selected.panel,selected.edited,setPanel,adoptPanel]);
 }
 export type OverviewControls=ReturnType<typeof useOverviewControls>;
-export type ProjectOverviewEvidence={state:string;orientation:ReactNode;exception:ReactNode;work:ReactNode;enquiry:ReactNode;positionLabel?:string;workNotice:ReactNode;
- commercial:{data:ProjectCommandCentreCurrentDesign|null;pending:boolean;closed:boolean;content:ReactNode;after:ReactNode};recent:{notes:ReactNode;events:ReactNode;statusPanel?:ReactNode;before:ReactNode}};
+export type ProjectOverviewEvidence={state:string;retry?:()=>unknown;orientation:ReactNode;exception:ReactNode;work:ReactNode;enquiry:ReactNode;positionLabel?:string;workNotice:ReactNode;
+ commercial:{content:ReactNode;payment:ReactNode;visits:ReactNode};recent:{notes:ReactNode;events:ReactNode;statusPanel?:ReactNode;before:ReactNode}};
 export type OverviewBinding={controls:OverviewControls;publish:(value:ProjectOverviewEvidence|null)=>void};
 export default function ProjectOverviewSurface({evidence,controls,onFiles,unavailable=false}:{evidence:ProjectOverviewEvidence|null;controls:OverviewControls;onFiles:()=>void;unavailable?:boolean}) {
-return <div data-project-overview="true"><ProjectOverviewLayout state={evidence?.state??(unavailable?'unavailable':'pending')}
- orientation={evidence?.orientation} exception={evidence?.exception}
- projectWork={<><ProjectWorkFilesSurface className={workStyles.card} selectedPanel={controls.panel} selectPanel={controls.setPanel} onFiles={onFiles} positionLabel={evidence?.positionLabel}
- enquiry={evidence?.enquiry??<p role="status">{unavailable?'Original enquiry unavailable':'Reading original enquiry…'}</p>}>
- {evidence?.work??<section data-project-work-section="true" data-project-work-model="pending"><p role="status">{unavailable?'Project work unavailable':'Reading project work…'}</p></section>}</ProjectWorkFilesSurface>{evidence?.workNotice}</>}
- commercial={<><ProjectCommercialDetailsSurface data={evidence?.commercial.data??null} pending={evidence?.commercial.pending??!unavailable} closed={evidence?.commercial.closed}>
- {evidence?.commercial.content??<p role="status">{unavailable?'Commercial state unavailable':'Reading current design and commercial state…'}</p>}</ProjectCommercialDetailsSurface>{evidence?.commercial.after}</>}
- recent={<>{evidence?.recent.before}<ProjectRecentNotesSurface notes={evidence?.recent.notes??<p role="status">{unavailable?'Complete notes unavailable':'Reading complete notes…'}</p>}
- events={evidence?.recent.events??<p role="status">{unavailable?'Complete events unavailable':'Reading complete events…'}</p>} statusPanel={evidence?.recent.statusPanel}/></>}/></div>;
+const pending = (label:string) => <p role="status">{unavailable ? `${label} unavailable` : `Reading ${label.toLowerCase()}…`}</p>;
+return <div className={readingStyles.surface} data-project-overview="true"><ProjectOverviewLayout state={evidence?.state??(unavailable?'unavailable':'pending')}
+ exception={<ReadStatus title={unavailable ? 'Project Overview unavailable' : !evidence || evidence.state === 'pending' ? 'Reading Project Overview' : evidence.state === 'stale' ? 'Saved Overview · latest refresh failed' : evidence.state === 'refreshing' ? 'Refreshing Project Overview' : evidence.state === 'ready' ? 'Project Overview current' : 'Project Overview needs attention'}
+ tone={unavailable || evidence?.state === 'failed' ? 'error' : evidence?.state === 'stale' || evidence?.state === 'model-mismatch' ? 'warning' : 'neutral'} details={evidence?.exception} onRetry={evidence?.retry}/>}
+ orientation={<OverviewReadingCard title="Project details" label="Project orientation" kind="orientation">{evidence?.orientation??pending('Project details')}</OverviewReadingCard>}
+ projectWork={<ProjectWorkFilesSurface className={workStyles.card} selectedPanel={controls.panel} selectPanel={controls.setPanel} onFiles={onFiles} positionLabel={evidence?.positionLabel}
+ notice={evidence?.workNotice??<ReadStatus title={unavailable?'Project work unavailable':'Reading project work state'}/>}
+ enquiry={evidence?.enquiry??pending('Original enquiry')}>
+ {evidence?.work??<section data-project-work-section="true" data-project-work-model="pending">{pending('Project work')}</section>}</ProjectWorkFilesSurface>}
+ commercial={<><OverviewReadingCard title="Current price" label="Current design and commercial summary" kind="commercial">{evidence?.commercial.content??pending('Commercial state')}</OverviewReadingCard>
+ <OverviewReadingCard title="Payment position" label="Payment position" kind="payment">{evidence?.commercial.payment??pending('Payments and invoice balance')}</OverviewReadingCard>
+ <OverviewReadingCard title="Site visits" label="Site visits" kind="visits">{evidence?.commercial.visits??pending('Site visits')}</OverviewReadingCard></>}
+ recent={<><OverviewReadingCard title="Customer emails" label="Customer conversations" kind="emails" id="customer-emails">{evidence?.recent.before??pending('Customer conversations')}</OverviewReadingCard>
+ <ProjectRecentNotesSurface notes={evidence?.recent.notes??pending('Complete notes')}
+ events={evidence?.recent.events??pending('Complete events')} statusPanel={evidence?.recent.statusPanel}/></>}/></div>;
 }
-export function ProjectWorkFilesSurface({ children, enquiry, className, positionLabel, selectedPanel, selectPanel, onFiles }: {
-  children: ReactNode; enquiry: ReactNode; className?: string; positionLabel?: string;
+
+/** Chrome is public; only this current owner's original guarded body is published. */
+function OverviewReadingCard({title,label,kind,children,id}:{title:string;label:string;kind:string;children:ReactNode;id?:string}) {
+ return <Card title={title} padding="compact" aria-label={label} id={id} className={readingStyles.card}>
+ <div className={readingStyles.reading} data-overview-reading={kind} tabIndex={0} aria-label={`${title} reading area`}>{children}</div></Card>;
+}
+
+export function ProjectWorkFilesSurface({ children, enquiry, className, positionLabel, selectedPanel, selectPanel, onFiles, notice }: {
+  children: ReactNode; enquiry: ReactNode; className?: string; positionLabel?: string; notice?:ReactNode;
   selectedPanel: 'work' | 'enquiry'; selectPanel: (panel: 'work' | 'enquiry') => void; onFiles: () => void;
 }) {
   return (
@@ -60,6 +75,8 @@ export function ProjectWorkFilesSurface({ children, enquiry, className, position
       }
       padding="compact"
     >
+      <div className={readingStyles.workStatus}>{notice}</div>
+      <div className={readingStyles.reading} data-overview-reading="work" tabIndex={0} aria-label="Project Work reading area">
       {selectedPanel === "enquiry" ? (
         <div id="project-enquiry-panel" role="tabpanel" aria-label="Original enquiry">
           {enquiry}
@@ -69,6 +86,7 @@ export function ProjectWorkFilesSurface({ children, enquiry, className, position
           {children}
         </div>
       )}
+      </div>
     </Card>
   );
 }
@@ -99,6 +117,7 @@ export function ProjectRecentNotesSurface({notes,events,statusPanel}: {notes:Rea
       aria-label="Recent notes and events"
       data-recent-notes-events="true"
     >
+      <div className={readingStyles.history} tabIndex={0} aria-label="Recent notes and events reading area">
       {statusPanel}
       <div className={recentStyles.layout}>
         <section
@@ -116,6 +135,7 @@ export function ProjectRecentNotesSurface({notes,events,statusPanel}: {notes:Rea
           <p>Portal activity only. Customer conversations are not included here.</p>
           {events}
         </section>
+      </div>
       </div>
     </Card>
     </details>
