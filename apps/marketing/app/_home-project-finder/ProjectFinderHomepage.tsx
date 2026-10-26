@@ -6,7 +6,7 @@ import {
 import { GOOGLE_PLACE } from '../../data/reviews';
 import { projects } from '../../data/projects';
 import { buildEnquiryHref } from '../../lib/enquiryContext';
-import { getGoogleRating } from '../../lib/googleReviews';
+import GoogleRating from '../../components/reviews/GoogleRating';
 import { absoluteUrl } from '../../lib/seo';
 import {
   PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE,
@@ -29,10 +29,9 @@ type ProjectFinderHomepageProps = {
   initialState: ProjectFinderState;
 };
 
-export default async function ProjectFinderHomepage({
+export default function ProjectFinderHomepage({
   initialState,
 }: ProjectFinderHomepageProps) {
-  const [review] = await Promise.all([getGoogleRating()]);
   const media = buildProjectFinderHomepageMedia(projects);
   const heroEnquiryHref = buildEnquiryHref({
     enquiryType: 'residential',
@@ -74,10 +73,10 @@ export default async function ProjectFinderHomepage({
 
       <aside className={styles.proofRail} aria-label="Why Sanctuary">
         <Container className={styles.proofItems} width="wide">
-          <a className={styles.proofItem} href={GOOGLE_PLACE.reviewsUrl}>
+          <GoogleRating fallback={<a className={styles.proofItem} href={GOOGLE_PLACE.reviewsUrl}><strong>Google reviews</strong><span>Read our customer reviews</span></a>}>{review => <a className={styles.proofItem} href={GOOGLE_PLACE.reviewsUrl}>
             <strong>{review.rating.toFixed(1)}</strong>
             <span>{review.count} Google reviews</span>
-          </a>
+          </a>}</GoogleRating>
           <p className={styles.proofItem}>
             <strong>Design and build</strong>
             <span>One accountable team through installation</span>

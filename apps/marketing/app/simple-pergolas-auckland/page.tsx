@@ -22,7 +22,7 @@ import {
   type GuidedJourneySearchParams,
 } from '@/lib/guidedJourneyContext';
 import { resolveProjectFinderJourneyContext } from '@/lib/projectFinderContinuation';
-import { getGoogleRating } from '@/lib/googleReviews';
+import GoogleRating from '@/components/reviews/GoogleRating';
 import {
   simpleCoverBoundary,
   simpleCoverInclusions,
@@ -99,7 +99,6 @@ export default async function SimplePergolasPage({
       sourcePath: route,
       sourceComponent: 'embedded_form',
     };
-  const googleReview = await getGoogleRating();
   const designHref = buildConfiguratorEnquiryHref(enquiryContext);
   const mobileHero = getImageProps({
     alt: 'Pitched acrylic pergola preserving daylight over an outdoor living space',
@@ -280,7 +279,7 @@ export default async function SimplePergolasPage({
                 Thoughtful work, clearly delivered.
               </Heading>
             </div>
-            <a
+            <GoogleRating fallback={<a className={styles.googleTrust} href={GOOGLE_PLACE.reviewsUrl} target="_blank" rel="noopener noreferrer"><GoogleReviewMark className={styles.googleMark} /><span><strong>Reviews</strong></span><span>Read on Google</span></a>}>{googleReview => <a
               className={styles.googleTrust}
               href={GOOGLE_PLACE.reviewsUrl}
               target="_blank"
@@ -293,7 +292,7 @@ export default async function SimplePergolasPage({
                 <span className={styles.reviewStars} aria-hidden="true">★★★★★</span>
               </span>
               <span>{googleReview.count} Google reviews</span>
-            </a>
+            </a>}</GoogleRating>
           </header>
           <div className={styles.reviewGrid}>
             {simpleCoverReviews.map((review) => (
