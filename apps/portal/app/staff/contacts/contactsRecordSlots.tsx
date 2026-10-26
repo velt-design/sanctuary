@@ -17,7 +17,7 @@ export function contactsRecordSlots(read:ContactsIndexFrameRead,page:number,page
                           <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.email || '\u2014'}</TableCell>
                           <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.phone || '\u2014'}</TableCell>
                           <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{formatPortalDateTime(contact.createdAt)}</TableCell>
-                          <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
+                          <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" prefetch={false} href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
                         </TableRow>
                       ))}</>,countNotice:<ListCountBanner compact totalCount={read.data?.contacts.totalCount??null} visibleCount={contacts.length} entityLabelSingular="contact" entityLabelPlural="contacts" truncated={read.data?.contacts.truncated??false}/>,
  pagination:paginationEvidence(page,read.data?.contacts.totalPages??null,onPageChange,read.data?`${read.data.contacts.totalCount?(page-1)*pageSize+1:0}–${Math.min(page*pageSize,read.data.contacts.totalCount)} of ${read.data.contacts.totalCount}`:undefined)};

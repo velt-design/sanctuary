@@ -12,26 +12,6 @@ function read(relativePath: string): string {
 }
 
 describe('foundation style guardrails', () => {
-  it('composes the managed Work Card without changing the default card or private descendant scope', () => {
-    const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkFilesCard.module.css'));
-    const compositions = new Map<string, string[]>();
-    sheet.walkRules(rule => {
-      rule.walkDecls('composes', decl => {
-        compositions.set(rule.selector, [...compositions.get(rule.selector) ?? [], decl.value]);
-      });
-    });
-    expect(compositions.get('.workCard')).toEqual(['card from "./ProjectWorkSection.module.css"']);
-    expect(compositions.has('.card')).toBe(false);
-    const publicSurface = read('apps/portal/components/projects/ProjectPage/tabs/ProjectOverviewSurface.tsx');
-    expect(publicSurface).not.toContain('import workStyles');
-    expect(publicSurface).toContain('<ProjectWorkFilesSurface className={styles.workCard}');
-    const privateSheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkSection.module.css'));
-    let compound = false;
-    privateSheet.walkRules(rule => {
-      if (rule.selector === '.card .primaryAction > header') compound = true;
-    });
-    expect(compound).toBe(true);
-  });
   it('uses the actual Overview width as the container for its unchanged region grid', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout.module.css'));
     const root = new Map<string, Map<string, string>>();

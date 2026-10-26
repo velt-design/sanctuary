@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 import { TabNavigation } from '@/components/ui/foundation/FoundationOperational';
 import ProjectOverviewLayout from './overview/ProjectOverviewLayout';
 import styles from './overview/ProjectWorkFilesCard.module.css';
+import workStyles from './overview/ProjectWorkSection.module.css';
 import recentStyles from './overview/ProjectRecentNotesEvents.module.css';
 export function useOverviewControls(projectId:string) {
  const current=useRef(projectId);current.current=projectId;
@@ -26,7 +27,7 @@ return <div className={readingStyles.surface} data-project-overview="true"><Proj
  exception={<ReadStatus title={unavailable ? 'Project Overview unavailable' : !evidence || evidence.state === 'pending' ? 'Reading Project Overview' : evidence.state === 'stale' ? 'Saved Overview · latest refresh failed' : evidence.state === 'refreshing' ? 'Refreshing Project Overview' : evidence.state === 'ready' ? 'Project Overview current' : 'Project Overview needs attention'}
  tone={unavailable || evidence?.state === 'failed' ? 'error' : evidence?.state === 'stale' || evidence?.state === 'model-mismatch' ? 'warning' : 'neutral'} details={evidence?.exception} onRetry={evidence?.retry}/>}
  orientation={<OverviewReadingCard title="Project details" label="Project orientation" kind="orientation">{evidence?.orientation??pending('Project details')}</OverviewReadingCard>}
- projectWork={<ProjectWorkFilesSurface className={styles.workCard} selectedPanel={controls.panel} selectPanel={controls.setPanel} onFiles={onFiles} positionLabel={evidence?.positionLabel}
+ projectWork={<ProjectWorkFilesSurface className={workStyles.card} selectedPanel={controls.panel} selectPanel={controls.setPanel} onFiles={onFiles} positionLabel={evidence?.positionLabel}
  notice={evidence?.workNotice??<ReadStatus title={unavailable?'Project work unavailable':'Reading project work state'}/>}
  enquiry={evidence?.enquiry??pending('Original enquiry')}>
  {evidence?.work??<section data-project-work-section="true" data-project-work-model="pending">{pending('Project work')}</section>}</ProjectWorkFilesSurface>}

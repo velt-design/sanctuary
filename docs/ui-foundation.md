@@ -1107,4 +1107,4 @@ Project title native overflow takes precedence over the generic pinned-header cl
 
 Sidebar panel and rail share the existing navigation-intent owner for guarded click handoff and code-only prefetch, while retaining their own controls and prefetch-set lifetimes. Managed Overview code arrival uses the actual public reading surface already mounted; standalone tabs retain their original loading presentation.
 
-Managed Overview composes the existing private Work Card class through its public stylesheet, retaining the original card and descendant rules without importing the entire private class map into public JavaScript. The composition adds one unstyled marker; default Work Card callers and their optional classes remain unchanged.
+Contacts row Open links load their detail route on user navigation rather than automatically prefetching every visible contact. Their href, keyboard and click navigation remain unchanged; the shared ButtonLink default is unchanged.
