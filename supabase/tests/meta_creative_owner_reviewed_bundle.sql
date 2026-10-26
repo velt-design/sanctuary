@@ -82,6 +82,44 @@ begin
  update public.meta_creative_control set owner_proposal=null;
  perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''admit'',%L::jsonb)',e,jsonb_build_object('generation',(select generation from public.meta_creative_control),'cleanup',false,'intent',f->'intent')));
 end$thumbnail_capacity$;
+-- Public RPC must carry the complete near-bound plan through every existing
+-- learning/retained/inventory wrapper, not just the private executor body.
+delete from public.acquisition_experiment_reservation;
+truncate public.meta_creative_plans cascade;
+do $public_owner_capacity$
+declare f jsonb:=(select value->'upperBoundOwner'from owner_fixture);p jsonb:=f->'plan';envelope jsonb:=f->'envelope';e uuid:=(p->>'experiment')::uuid;
+ payload jsonb:=jsonb_build_object('plan',p,'planHash',envelope->'planHash');intent_payload jsonb;cmd uuid:=gen_random_uuid();intent_cmd uuid:=gen_random_uuid();g bigint;
+begin
+ perform pg_temp.owner_assert(octet_length(p::text)>14000 and octet_length(p::text)<=16000);
+ perform pg_temp.owner_assert(octet_length(payload::text)>14000 and octet_length(payload::text)<=20000);
+ perform pg_temp.owner_assert(octet_length((f->'intent')::text)>14000 and octet_length((f->'intent')::text)<=16000);
+ update public.meta_creative_control set owner_proposal=null;
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''prepare'',%L::jsonb)',e,payload));
+ update public.meta_creative_control set owner_proposal=envelope,control_hash=p->>'preStateHash';
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''prepare'',%L::jsonb)',e,jsonb_set(payload,'{planHash}',to_jsonb(repeat('0',64)))));
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''prepare'',%L::jsonb)',e,jsonb_set(payload,'{plan,challengerPrimary}','"Changed synthetic copy"')));
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),gen_random_uuid(),''prepare'',%L::jsonb)',payload));
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''prepare'',%L::jsonb)',e,payload||jsonb_build_object('synthetic_overflow',repeat('x',20000))));
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''confirm'',%L::jsonb)',e,payload));
+ update public.meta_creative_control set owner_proposal=jsonb_set(envelope,'{expiresAt}','"2020-01-01T00:00:00.000Z"');
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''prepare'',%L::jsonb)',e,payload));
+ update public.meta_creative_control set owner_proposal=envelope;
+ select generation into g from public.meta_creative_control;
+ perform public.meta_creative_executor_command(repeat('b',64),cmd,e,'prepare',payload);
+ perform public.meta_creative_executor_command(repeat('b',64),cmd,e,'prepare',payload);
+ perform pg_temp.owner_assert((select generation=g from public.meta_creative_control));
+ perform pg_temp.owner_assert((select plan=p and plan_hash=envelope->>'planHash'from public.meta_creative_execution where experiment=e));
+ perform pg_temp.owner_assert((select count(*)=1 from public.acquisition_experiment_reservation where experiment=e));
+ intent_payload:=jsonb_build_object('generation',g,'cleanup',false,'intent',f->'intent');
+ perform public.meta_creative_executor_command(repeat('b',64),intent_cmd,e,'admit',intent_payload);
+ perform public.meta_creative_executor_command(repeat('b',64),intent_cmd,e,'admit',intent_payload);
+ perform pg_temp.owner_assert((select count(*)=1 and bool_and(intent=f->'intent')from public.meta_creative_execution_intents where experiment=e));
+ update public.meta_creative_control set owner_proposal=jsonb_set(envelope,'{planHash}',to_jsonb(repeat('0',64)));
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''admit'',%L::jsonb)',e,intent_payload));
+ update public.meta_creative_control set owner_proposal=null;
+ perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''admit'',%L::jsonb)',e,intent_payload));
+ perform pg_temp.owner_assert((select count(*)=1 from public.meta_creative_execution_intents where experiment=e));
+end$public_owner_capacity$;
 -- Disposable historical delivery fixture. It is not a real provider activation
 -- or a claim that the HTTP broker would prepare a study after its start.
 delete from public.acquisition_experiment_reservation;
@@ -119,5 +157,6 @@ begin
  insert into public.enquiry_requests(id,enquiry_type,created_at)select gen_random_uuid(),'residential',through-interval'1 day'from generate_series(1,2001);
  perform pg_temp.owner_denied(format('select public.meta_creative_executor_command(repeat(''b'',64),gen_random_uuid(),%L,''cohort'',%L::jsonb)',e,jsonb_build_object('freeze',false,'through',through)));
 end$cutoff_fixture$;
-select jsonb_build_object('checks',count(*),'assertions',count(*)filter(where kind='assert'),'denials',count(*)filter(where kind='denial'),'pendingFinalAndCutoff',true)from owner_checks;
+select jsonb_build_object('checks',count(*),'assertions',count(*)filter(where kind='assert'),'denials',count(*)filter(where kind='denial'),'pendingFinalAndCutoff',true,
+ 'publicUpperBound',(select jsonb_build_object('planBytes',octet_length((value#>'{upperBoundOwner,plan}')::text),'prepareBytes',octet_length(jsonb_build_object('plan',value#>'{upperBoundOwner,plan}','planHash',value#>>'{upperBoundOwner,envelope,planHash}')::text),'intentBytes',octet_length((value#>'{upperBoundOwner,intent}')::text),'envelopeBytes',octet_length((value#>'{upperBoundOwner,envelope}')::text))from owner_fixture))from owner_checks;
 rollback;

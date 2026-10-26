@@ -31,6 +31,27 @@ begin
  d:=replace(d,old_text,new_text);
  execute d;
 end$owner_bounds$;
+-- These are the current names of the learning and retained-baseline wrappers.
+-- Preserve their checks/delegation; exempt only the size predicate for the
+-- current exact root owner plan, never a caller-supplied ownerReview marker.
+do $owner_outer_bounds$
+declare d text;signature text;prior text;old_text text:='octet_length(p_payload::text)>14000';new_text text;
+begin
+ new_text:=$patch$octet_length(p_payload::text)>(case when c.owner_proposal#>>'{plan,ownerReview,kind}'='owner_directed_independent_review_v1'
+  and c.owner_proposal#>>'{plan,purpose}'='formal_experiment'and c.owner_proposal#>>'{plan,experiment}'=p_experiment::text
+  and(c.owner_proposal->>'expiresAt')::timestamptz>clock_timestamp()
+  and((p_stage='prepare'and c.owner_proposal->'plan'=p_payload->'plan'and c.owner_proposal->>'planHash'=p_payload->>'planHash')
+   or(p_stage='admit'and p_payload#>>'{intent,kind}'='create_creative'and exists(select 1 from public.meta_creative_execution owner_capacity_execution where owner_capacity_execution.experiment=p_experiment and owner_capacity_execution.plan=c.owner_proposal->'plan'and owner_capacity_execution.plan_hash=c.owner_proposal->>'planHash')))
+  then 20000 else 14000 end)$patch$;
+ for signature,prior in select * from(values
+  ('public.meta_creative_executor_without_ambiguity(text,uuid,uuid,text,jsonb)','9364d536b3b6a2c2a19c1ad1d7a889e4'),
+  ('public.meta_creative_executor_without_retention(text,uuid,uuid,text,jsonb)','a690a5eecbdde434de3dd639903e0221'))v(signature,prior)loop
+  d:=pg_get_functiondef(signature::regprocedure);
+  if md5(d)<>prior then raise exception 'Owner outer capacity predecessor differs';end if;
+  if(length(d)-length(replace(d,old_text,'')))/length(old_text)<>1 then raise exception 'Owner outer capacity patch differs';end if;
+  execute replace(d,old_text,new_text);
+ end loop;
+end$owner_outer_bounds$;
 -- Same complete owner-copy projection in application and native retention.
 do $owner_mirrors$
 declare d text;old_text text;new_text text;

@@ -17,8 +17,13 @@ and all other metadata remain unchanged.
 Generic/model limits remain 8,000/12,000/16,000. Route and authority transport
 acceptance is provisional: native prepare/reserve compares the current exact
 root-owned plan and independently enforces the bounded intent. Forward migration
-26000002 changes three CHECKs, the existing private executor and winning-copy
-projection;
+26000002 changes three CHECKs, the existing private executor, winning-copy
+projection and two existing outer size predicates (`without_ambiguity` and
+`without_retention`). Their larger prepare/create-creative allowance requires
+the exact current root owner plan/hash, experiment and unexpired authority.
+All learning, retained-baseline, inventory and delegation checks still run;
+generic requests retain the 14,000-byte outer bound. Public-RPC fixtures cover
+a near-bound full plan and quote-rich intent, replay, forgery and overflow;
 the public wrapper, ACLs, tables and history remain. Deploy compatible consumers
 before installing it. The final root CAS binds control_hash to the same reviewed
 plan preStateHash, so Source prepare does not change the admitted generation.
