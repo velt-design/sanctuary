@@ -1,6 +1,6 @@
 import { describe,it,expect } from 'vitest';
 import { designerFixture } from '@/app/qa/marketing-performance-fixture/designerFixtures';
-import { designerPerformance,afterVisit,median } from './designer';
+import { designerPerformance,afterVisit,median,siteVisitResults } from './designer';
 import { designerReportSchema } from './designerContract';
 describe('designer attribution and coverage',()=>{
   it('counts stable explicit attendance with questions while retaining review and stricter acquisition checks',()=>{
@@ -14,13 +14,32 @@ describe('designer attribution and coverage',()=>{
       expect(designerPerformance(r).total.attended.map(v=>v.id)).not.toContain(r.visits[0].id);
     }
   });
-  it('selects assigned sales independently from actual attendee workload without fabricating missing attribution',()=>{
+  it('credits the original visitor independently of sales assignment and keeps team totals distinct',()=>{
     const r=designerFixture();r.visits[0].staff=['joe'];
-    const jordan=designerPerformance(r,null,'jordan');expect(jordan.total.outcomes).toHaveLength(1);expect(jordan.total.outcomes[0].visit.staff).toEqual(['joe']);
+    const jordan=designerPerformance(r,null,'jordan');expect(jordan.total.outcomes).toHaveLength(0);
     expect(jordan.total.attended.map(v=>v.id)).not.toContain(r.visits[0].id);
-    const joe=designerPerformance(r,null,'joe');expect(joe.total.attended.map(v=>v.id)).toContain(r.visits[0].id);expect(joe.total.outcomes).toEqual([]);
+    const joe=designerPerformance(r,null,'joe');expect(joe.total.attended.map(v=>v.id)).toContain(r.visits[0].id);expect(joe.total.outcomes).toHaveLength(1);
     r.assignments=[];const unassigned=designerPerformance(r);expect(unassigned.total.outcomes).toHaveLength(2);
-    expect(unassigned.rows.find(row=>row.staffId==='unassigned')!.outcomes).toHaveLength(2);expect(unassigned.rows.find(row=>row.staffId==='joe')!.outcomes).toEqual([]);
+    expect(unassigned.rows.find(row=>row.staffId==='joe')!.outcomes).toHaveLength(1);
+    expect(unassigned.coverage.some(c=>c.reasons.includes('assignment'))).toBe(false);
+  });
+  it('calculates accepted-job value and rates with joint credit, repeat workload and no add-on inflation',()=>{
+    const m=designerPerformance(designerFixture());
+    expect(siteVisitResults(m.total)).toMatchObject({won:1,eligible:2,averageOrderValueCents:1850000,closeRate:50});
+    const jordan=m.rows.find(row=>row.staffId==='jordan')!,jp=m.rows.find(row=>row.staffId==='jp')!;
+    expect(jordan.attended).toHaveLength(2);expect(siteVisitResults(jordan)).toMatchObject({won:1,eligible:1,closeRate:100});
+    expect(siteVisitResults(jp)).toMatchObject({won:1,eligible:2,closeRate:50});
+    const noCohort=m.rows.find(row=>row.staffId==='joe')!;expect(siteVisitResults(noCohort)).toMatchObject({won:0,eligible:0,averageOrderValueCents:null,closeRate:null});
+    const r=designerFixture();r.scopes[0].paidAt=null;r.scopes[0].paymentEvidence=false;
+    expect(siteVisitResults(designerPerformance(r).total)).toMatchObject({won:1,averageOrderValueCents:1850000,closeRate:50});
+  });
+  it('never invents order value or a complete rate from incomplete acceptance evidence',()=>{
+    const r=designerFixture();r.scopes[0].valueCents=null;
+    expect(siteVisitResults(designerPerformance(r).total)).toMatchObject({won:1,valueIncomplete:true,averageOrderValueCents:null,closeRate:50});
+    r.scopes[1].accepted=true;r.scopes[1].acceptedAt=null;
+    expect(siteVisitResults(designerPerformance(r).total)).toMatchObject({won:1,dateIncomplete:true,averageOrderValueCents:null,closeRate:null});
+    r.salesOutcomes=[{projectId:r.scopes[1].projectId,outcome:'refunded',revision:1,updatedAt:r.asOf,basis:'Owner confirmed refund'}];
+    expect(siteVisitResults(designerPerformance(r).total)).toMatchObject({won:1,dateIncomplete:false,closeRate:50});
   });
   it('retains an assigned undated project in designer details, excluding service history and unproven attendance from conversion',()=>{
     const r=designerFixture();const v=r.visits[5];r.assignments.push({projectId:v.projectId!,designerKey:'jordan',revision:1,updatedAt:r.asOf,basis:'Synthetic confirmation'});
@@ -33,7 +52,7 @@ describe('designer attribution and coverage',()=>{
     expect(m.total.outcomes).toHaveLength(2);expect(m.total.attended).toHaveLength(4);
     expect(m.total.outcomes.flatMap(o=>o.paid)).toHaveLength(1);
     expect(m.rows.find(x=>x.staffId==='jordan')!.outcomes).toHaveLength(1);
-    expect(m.rows.find(x=>x.staffId==='jp')!.outcomes).toHaveLength(1);
+    expect(m.rows.find(x=>x.staffId==='jp')!.outcomes).toHaveLength(2);
     expect(m.rows.find(x=>x.staffId==='joe')!.outcomes).toHaveLength(0);
     expect(m.coverage.some(c=>c.reasons.includes('date'))).toBe(true);
   });
@@ -61,7 +80,7 @@ describe('designer attribution and coverage',()=>{
   });
   it('uses designer selection independently of project filters and rejects duplicate DTOs',()=>{
     const r=designerFixture();expect(designerPerformance(r,null,'joe').total.outcomes).toEqual([]);
-    expect(designerPerformance(r,new Set([r.visits[0].projectId!]),'jp').total.outcomes).toHaveLength(0);
+    expect(designerPerformance(r,new Set([r.visits[0].projectId!]),'jp').total.outcomes).toHaveLength(1);
     expect(designerReportSchema.safeParse({...r,visits:[r.visits[0],r.visits[0]]}).success).toBe(false);
   });
   it('omits unknown first-send timing rather than synthesizing days from a later revision',()=>{

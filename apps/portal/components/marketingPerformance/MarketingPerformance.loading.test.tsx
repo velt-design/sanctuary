@@ -46,9 +46,10 @@ it('keeps assignment edits and personal attendance separate with hoisted Designe
   await vi.waitFor(async()=>{await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10));});expect(view.container.textContent).toContain('No dated personal visit workload is recorded for Ellen');},{timeout:3000});
   expect(designer).toHaveBeenCalledTimes(1);
   const row=[...view.container.querySelectorAll('table[aria-label="Recorded visit conversion"] tbody tr')].find(r=>r.querySelector('th')?.textContent==='Ellen')!;
-  expect(row.textContent).toContain('100%');expect(row.querySelectorAll('td')[0].textContent).toBe('0');
+  expect(row.textContent).not.toContain('100%');expect(row.querySelectorAll('td')[0].textContent).toBe('0');
   act(()=>row.querySelectorAll('td')[4].querySelector('button')!.click());
   const dialog=view.container.querySelector('[role=dialog]')!;
+  act(()=>[...dialog.querySelectorAll('button')].find(b=>b.textContent?.startsWith('Designer projects'))!.click());
   act(()=>[...dialog.querySelectorAll('button')].find(b=>b.textContent==='Assign sales designer')!.click());
   act(()=>{
     const select=dialog.querySelector('select')!;select.value='';select.dispatchEvent(new Event('change',{bubbles:true}));

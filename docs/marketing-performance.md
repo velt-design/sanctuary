@@ -399,14 +399,30 @@ actual authenticated save/readback and live data coverage remain release checks.
 
 ## Designer visits and conversion candidate (21 October 2026)
 
-Business Overview shows sales-design responsibility and actual attendance after the
-commercial overview. The selected Auckland dates apply to visits; quote and
-payment outcomes run to the read timestamp. The current project-owner filter
-narrows projects and never supplies sales attribution. The Designer selection,
-retained in the URL, shows that person's assigned sales and their actual attended
-workload independently. These can involve different projects. Staff appear from
-recorded attendance or explicit assignments; the selected designer remains visible
-after their last assignment is cleared and after refresh. This is not a ranking.
+Current candidate, 27 October: attendee-based Site visit results followed by
+separate assigned sales. The rules below replace the original assigned-designer
+visit-conversion attribution; accepted-sales attribution remains unchanged.
+
+Business Overview leads this section with Site visit results: Person, Visits
+completed, Jobs won, Avg order value and Close rate, with the same four figures
+on narrow screens. The selected Auckland dates apply to visits; subsequent
+outcomes run to the read timestamp. Jobs won means currently accepted initial
+jobs, not only paid jobs. Average order value sums their accepted initial scope
+values including GST and divides by jobs won. Add-ons are excluded. Close rate
+is jobs won divided by eligible original-visit projects, with the fraction beside
+the percentage; repeat visits add workload, never opportunities. No eligible
+cohort produces an unavailable rate, and no won jobs produces an unavailable
+average. Unknown acceptance dates make the rate and average unavailable; unknown
+accepted value makes the average unavailable. Known counts remain qualified.
+
+Jordan approved actual original-visit attendee credit on 27 October: "Use the
+actual visitor, as recommended", including credit for each joint attendee and
+one team job. Assigned sales remains a separate section below, using its existing
+sales-designer attribution. The Designer selection retained in the URL selects
+that person's actual visits here and assigned sales below. These may involve
+different projects. Assigned-only people without visits do not fill the visitor
+table, while an explicitly selected person remains visible with zero workload.
+The current project-owner filter narrows projects, never supplies attribution.
 
 Explicit attendance counts workload across original, measurement, follow-up and
 unconfirmed purposes. Stable explicit attendance still counts when generic review
@@ -428,9 +444,9 @@ Conversion uses the first recorded qualifying `initial` attended visit per
 project. Generic `site_visit` is not inferred to be original. Unverified people,
 unresolved review/source changes, conflicting originals, unknown dates and
 pre-visit or ambiguous payment chronology prevent attribution. Each verified
-joint attendee receives workload credit; sales conversion belongs to one explicit
-project sales designer. Missing assignments remain in the Unassigned row and team
-cohort, never fall back to a project owner or attendee. Team totals deduplicate
+joint attendee receives workload and conversion credit. Sales-designer assignment
+does not supply or prevent visit conversion. Missing attendee identity prevents
+conversion and remains in the review inventory. Team totals deduplicate
 projects and visits. Repeat measurements do not create additional sales credit. A dated
 original with no sale remains in the denominator, while an empty eligible cohort
 has an unavailable rate, never zero percent.
@@ -449,7 +465,10 @@ arrival or visit duration.
 Incremental map: `marketingPerformance/designerContract` validates the skinny
 DTO; `designer` owns attribution and contribution sets; `useDesigner` fences
 requests and refreshes. `DesignerPerformance` and `DesignerRecords` own the
-comparison and exact record inspection. `/api/staff/v1/marketing-performance/designers`
+comparison and exact record inspection. `siteVisitResults` in the same domain
+owner calculates accepted-job averages and close rates from those contribution
+sets. Jobs won and average drawers expose accepted initial scope values even
+without a deposit; the close-rate drawer includes the complete eligible cohort. `/api/staff/v1/marketing-performance/designers`
 uses the existing confirmed developer boundary and auth-bound RPC, with private
 no-store responses. Migration `20261021030001_designer_performance.sql` projects
 the existing correction/identity and accounting functions, with hard inventory
