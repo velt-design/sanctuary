@@ -3,8 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import ReviewBadge from '@/components/reviews/ReviewBadge';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   buildEnquiryHref,
   getCanonicalMarketingPathname,
@@ -18,11 +17,10 @@ import { PROJECT_FINDER_STATE_EVENT } from '@/lib/projectFinderContract';
 import styles from './SiteFooter.module.css';
 
 type SiteFooterProps = {
-  reviewRating: number;
-  reviewCount: number;
+  reviewBadge: ReactNode;
 };
 
-export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProps) {
+export default function SiteFooter({ reviewBadge }: SiteFooterProps) {
   const pathname = getCanonicalMarketingPathname(usePathname());
   const [projectFinderContext, setProjectFinderContext] =
     useState<EnquiryContext | null>(null);
@@ -104,12 +102,7 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
               Pergola Guides
             </Link>
           </nav>
-          <ReviewBadge
-            className={`min-h-11 ${styles.reviewAction}`}
-            rating={reviewRating}
-            count={reviewCount}
-            variant="onDark"
-          />
+          {reviewBadge}
         </section>
 
         <section aria-labelledby="footer-details-heading" className="grid content-start gap-3 text-sm leading-relaxed md:gap-5">

@@ -15,7 +15,7 @@
 .roofOptions label:has(input:focus-visible) { outline: var(--focus-ring); outline-offset: 4px; z-index: 1; }
 .roofCopy { padding-block: 1.5rem; min-height: 175px; }
 .roofCopy > p:first-child { margin: 0 0 .75rem; font: 500 1.4rem/1.3 var(--font-display); }
-.roofImage { grid-column: 2; grid-row: 1 / 4; animation: approach-in var(--study-panel-enter, var(--editorial-reveal, 220ms)) var(--study-ease, var(--editorial-ease, ease-out)); }
+.roofImage { grid-column: 2; grid-row: 1 / 4; }
 .roofImage figure > div { aspect-ratio: 1; }
 .imageNote { margin: .75rem 0 0; font-size: .7rem; color: var(--color-text-secondary); }
 @media (hover: hover) and (pointer: fine) { .roofOptions label:not(:has(input:checked)):hover { background: var(--color-surface-neutral); } }
@@ -32,5 +32,4 @@
   .roofOptions .optionNumber, .roofOptions small { display: none; }
   .roofImage figure > div { aspect-ratio: 4 / 3; }
 }
-@keyframes approach-in { from { transform:translateY(6px); opacity:.8; } to { transform:none; opacity:1; } }
-@media(prefers-reduced-motion:reduce) { .roofImage { animation:none; } .roofOptions label { transition:none; } }
+@media(prefers-reduced-motion:reduce) { .roofOptions label { transition:none; } }

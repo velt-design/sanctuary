@@ -1,5 +1,5 @@
 'use client';
-import HomePergolaSelection from './HomePergolaSelection';
+import dynamic from 'next/dynamic';
 import ChallengerRooflines from './ChallengerRooflines';
 
 import {
@@ -52,6 +52,8 @@ import {
 import ProjectFinderResult from './ProjectFinderResult';
 import { pushProjectFinderEvent } from './ProjectFinderTracker';
 import styles from './projectFinderHomepage.module.css';
+
+const HomePergolaSelection = dynamic(() => import('./HomePergolaSelection'));
 
 type ProjectFinderProps = {
   initialState: ProjectFinderState;

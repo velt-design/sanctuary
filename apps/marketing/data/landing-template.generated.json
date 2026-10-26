@@ -1,5 +1,5 @@
 {
-  "hash": "1c92989543f1466a3debc01fa4636b074697d11923a00221b26c007d46fde5b2",
+  "hash": "a933b70c6b317aa08d38af6553939d43fa0e5f7fd19245cd0dc77534ca1472a3",
   "files": [
     [
       "apps/marketing/app/acrylic-roof-pergolas-auckland/acrylic-editorial.module.css",
@@ -107,7 +107,7 @@
     ],
     [
       "apps/marketing/app/layout.tsx",
-      "8d6fd27f1e86a5ec5e6624ed450c45b85e64832ee1ea6f709720d7a210673e56"
+      "30380ee1cde441ad17b8e730775efe5376656d1a08fbbfe2d95293ff00bb3de8"
     ],
     [
       "apps/marketing/app/pergolas-auckland/content.ts",
@@ -930,6 +930,10 @@
       "2cf6b3df4f1f71f4515ef019a3acb2be4c31f28bee113cecabf8057ea957e2ea"
     ],
     [
+      "apps/marketing/components/reviews/GoogleRating.tsx",
+      "d73f0a138eb245dce6ab1264233aa60efc35c1d1c8230f0201533e49e4fb0207"
+    ],
+    [
       "apps/marketing/components/reviews/ReviewBadge.tsx",
       "e2ef475101a6010f72626139c96d9b2b9dfe35ebf0abf882df9532db06f8d53f"
     ],
@@ -955,7 +959,7 @@
     ],
     [
       "apps/marketing/components/SiteFooter.tsx",
-      "dc4fac96ed957a22739af47f75a13d22d7374ab4916f7ba19ed05a977a45ee73"
+      "6a39cea604f3a26bca3b0a39d2b5a0a5c1c062343d668afaab8e0d701f881be9"
     ],
     [
       "apps/marketing/components/WebVitals.tsx",
