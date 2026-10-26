@@ -271,15 +271,12 @@
 .privacy button{
   font:inherit;color:inherit;border:0;background:transparent;text-decoration:underline;text-underline-offset:3px;padding:12px 0;cursor:pointer;
 }
+@media (min-width: 961px) {
 :global(html):has(.page), :global(body):has(.page){
   height:auto;min-height:100%;overflow-x:clip;overflow-y:visible;
 }
-/* The global mobile overflow-x:hidden rule would create a body scroll container
-   that never scrolls, trapping sticky children. Clip keeps document scrolling. */
-:global(html):has(.page):not(:global(.scroll-locked)):not(:global(.foundation-menu-open)),
-:global(body):has(.page):not(:global(.scroll-locked)):not(:global(.foundation-menu-open)):not(:global(.no-scroll)) {
-  overflow-x:clip!important;
 }
+
 .designer{
   max-width:1600px;padding-block:48px 58px;
 }

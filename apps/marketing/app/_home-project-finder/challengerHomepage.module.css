@@ -1,5 +1,7 @@
 .page {padding-top:var(--header-height)!important;overflow:clip}
+@media (min-width: 961px) {
 :global(html:not(.scroll-locked):not(.foundation-menu-open)):has(.page),:global(body:not(.no-scroll):not(.scroll-locked):not(.foundation-menu-open)):has(.page) {height:auto!important;overflow-x:clip!important;overflow-y:visible!important}
+}
 :global(body):has(.page) :global(header.site.site--hero-overlay:not(.site--hero-scrolled)) {background:#e9eae6;color:#111210;border-bottom-color:#c7cac3;backdrop-filter:none}
 :global(body):has(.page) :global(header.site.site--hero-overlay:not(.site--hero-scrolled)) :global(.site-brand),:global(body):has(.page) :global(header.site.site--hero-overlay:not(.site--hero-scrolled)) :global(.navlink-btn),:global(body):has(.page) :global(header.site.site--hero-overlay:not(.site--hero-scrolled)) :global(.mobile-toggle) {color:#111210}
 :global(body):has(.page):not(:has([data-project-preview])) :global(header.site.site--hero-overlay:not(.site--hero-scrolled) .header-actions a.nav-cta) {color:#4f5748!important}

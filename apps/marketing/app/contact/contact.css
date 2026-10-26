@@ -32,11 +32,13 @@ body:has([data-contact-page]) {
   background: #e9eae6;
 }
 
+@media (min-width: 961px) {
 html:has([data-contact-page]):not(:has([data-project-preview])):not(.scroll-locked),
 body:has([data-contact-page]):not(:has([data-project-preview])):not(.no-scroll):not(.scroll-locked) {
   height: auto !important;
   overflow-x: clip !important;
   overflow-y: visible !important;
+}
 }
 
 .contact-page,

@@ -46,20 +46,30 @@ First-visible readiness, opacity, geometry and exact position remain checked.
 Cache-disabled fixtures exposed a real blank paint under forced reconstruction;
 those failures are retained and do not establish a cold-cache instant guarantee.
 
-The owner also requested native top-edge bounce on iPhone Safari. Mobile global
-horizontal containment now uses `overflow-x: clip` rather than `hidden`: the
-latter made fixed-height BODY a second vertical scroll container on ordinary
-pages. Existing homepage/product/contact overrides already use document scrolling.
-The shared rule retains horizontal clipping and scoped menu/gallery/configurator
-locks, while ordinary pages use the native viewport scroll owner. No synthetic
-bounce, gesture cancellation or user-agent branch was added. History and project
-context save nonnegative logical coordinates during Safari elastic overscroll
-without writing into the active gesture. Existing saved BODY/window coordinates
-are restored through the current scroll owner, including reload after this CSS
-change or a responsive owner change; nested pane offsets remain independent.
-Native touch checks cover viewport
-ownership, horizontal containment and menu return; actual iPhone rubber-band and
-left-edge swipe behavior remain separate hardware acceptance.
+The owner also requested native top-edge bounce on iPhone Safari and reported
+"Bounce still stops" on the first root-clip preview. That hardware acceptance
+failed. [Root `overflow: clip` propagates to the viewport as `hidden`](https://drafts.csswg.org/css-overflow-3/#overflow-propagation), so a computed
+vertical `visible` value was insufficient evidence of unrestricted native edges.
+Ordinary mobile documents now leave both HTML and BODY axes visible and their
+heights automatic. The existing `.page-viewport` descendant contains horizontal
+painting; homepage, product, contact and funnel root overrides retain their
+previous desktop behavior only. The existing editorial wrapper also marks ordinary
+documents separately from visual styling, including the Design enquiry. The old
+Simple calculator URL redirects to the full-viewport Contact designer. Explicit menu/project-sheet classes, inline native
+dialog locks, Portal and the full-viewport contact designer retain their owners.
+The fixed-height root release is secondary to removing viewport overflow clipping;
+the exact physical Safari mechanism and corrected result still need phone testing.
+No synthetic bounce, gesture cancellation or user-agent branch was added.
+History and project context save nonnegative logical coordinates during Safari
+elastic overscroll without writing into the active gesture. Existing saved
+BODY/window coordinates restore through the current scroll owner, including
+reload or responsive owner changes; nested pane offsets remain independent.
+Browser regression coverage checks root axes, content height, horizontal
+containment, native touch, menu/gallery/dialog recovery and the fullscreen
+exception. The short two-column Design enquiry checks its document gutter and
+natural scroll range; its pre-existing WebGL touch-owning ancestor is separate,
+so this does not prove scrolling begun over that viewer. Physical iPhone top bounce and left-edge swipe acceptance remain open;
+previous desktop-port and emulated checks do not establish those outcomes.
 
 Header links fully prefetch public destinations; closed mobile-menu links do not
 prefetch. No HTML, service worker, token-route or private-data cache was added.

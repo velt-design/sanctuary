@@ -31,11 +31,11 @@ function photoIdentity(source: string, origin: string) {
   return new URL(optimized.pathname === '/_next/image' ? optimized.searchParams.get('url') ?? optimized.href : optimized.href, optimized.origin).href;
 }
 
-async function touchScroll(page: Page, cdp: CDPSession, up: boolean) {
+async function touchScroll(page: Page, cdp: CDPSession, up: boolean, x = 195) {
   const start = up ? 200 : 650, end = up ? 650 : 200;
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: start, id: 1 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: start, id: 1 }] });
   for (let n = 1; n <= 12; n++) {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 195, y: Math.round(start + (end - start) * n / 12), id: 1 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: Math.round(start + (end - start) * n / 12), id: 1 }] });
     await page.waitForTimeout(16);
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -136,16 +136,43 @@ test('ordinary mobile pages use the viewport scroller and retain menu locking', 
   await page.addInitScript(() => localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, version: 1, updatedAt: new Date().toISOString() })));
   const cdp = await nativePageTransport(page, context, baseURL!);
   const pages = [];
-  for (const width of [390, 920]) for (const path of ['/projects', '/', '/products/pergolas/pitched', '/contact']) {
+  for (const width of [390, 920]) for (const path of ['/projects', '/', '/products/pergolas/pitched', '/contact', '/pergolas-auckland', '/ads/acrylic-pergolas', '/design-enquiry']) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto(path);
-    const down = await touchScroll(page, cdp, false);
+    if (path === '/design-enquiry') await expect(page.getByRole('heading', { name: 'Your pergola.', exact: true })).toBeVisible();
+    const shortDesign = path === '/design-enquiry' && width === 920;
+    // The existing WebGL ancestor owns touch input. Check the ordinary document
+    // gutter here, without claiming that a gesture begun over its viewer scrolls.
+    const x = shortDesign ? 16 : 195;
+    if (shortDesign) {
+      const hits = await page.evaluate(x => [200, 650].map(y => {
+        const hit = document.elementFromPoint(x, y);
+        const touches = [];
+        for (let el = hit; el; el = el.parentElement) touches.push(getComputedStyle(el).touchAction);
+        return { tag: hit?.tagName, touches };
+      }), x);
+      await writeFile(testInfo.outputPath('design-920-document-gutter.json'), JSON.stringify({ x, hits }, null, 2));
+      expect(hits.every(hit => hit.tag === 'MAIN' && hit.touches.every(touch => touch === 'auto'))).toBe(true);
+    }
+    const down = await touchScroll(page, cdp, false, x);
     const state = await page.evaluate(() => ({ windowY: scrollY, bodyY: document.body.scrollTop,
       owner: document.scrollingElement?.tagName, width: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth,
+      range: document.scrollingElement!.scrollHeight - document.scrollingElement!.clientHeight,
+      roots: [document.documentElement, document.body].map(root => ({
+        x: getComputedStyle(root).overflowX, y: getComputedStyle(root).overflowY, height: root.getBoundingClientRect().height,
+      })), wrapperX: getComputedStyle(document.querySelector('.page-viewport')!).overflowX,
       overscroll: getComputedStyle(document.documentElement).overscrollBehaviorY }));
+    await writeFile(testInfo.outputPath(`native-viewport-${width}-${path.replace(/\W/g, '_')}.json`), JSON.stringify({ path, down, ...state }, null, 2));
     expect(state.owner).toBe('HTML'); expect(state.bodyY).toBe(0);
-    expect(state.windowY).toBeGreaterThan(200); expect(state.width).toBeLessThanOrEqual(state.viewport);
-    expect(state.overscroll).toBe('auto'); // Native viewport edge behavior remains available.
+    if (shortDesign) {
+      expect(state.range).toBeGreaterThan(0); expect(state.range).toBeLessThan(200);
+      expect(state.windowY).toBeCloseTo(state.range, 0);
+    } else expect(state.windowY).toBeGreaterThan(200);
+    expect(state.width).toBeLessThanOrEqual(state.viewport);
+    expect(state.overscroll).toBe('auto');
+    // Root clip propagates as viewport hidden, despite computed overflow-y:visible.
+    expect(state.roots.every(root => root.x === 'visible' && root.y === 'visible' && root.height > 844)).toBe(true);
+    expect(state.wrapperX).toBe('clip');
     if (path === '/projects' && width === 390) {
       await page.getByRole('button', { name: 'Open menu', exact: true }).click();
       await expect(page.locator('body')).toHaveCSS('position', 'fixed');
@@ -155,11 +182,42 @@ test('ordinary mobile pages use the viewport scroller and retain menu locking', 
       await page.getByRole('button', { name: 'Close menu', exact: true }).last().click();
       await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(down, 0);
     }
-    const up = await touchScroll(page, cdp, true);
-    expect(up).toBeLessThan(down - 200);
+    const up = await touchScroll(page, cdp, true, x);
+    if (shortDesign) expect(up).toBe(0); else expect(up).toBeLessThan(down - 200);
     pages.push({ path, viewportWidth: width, down, up, ...state });
   }
   await writeFile(testInfo.outputPath('native-viewport-ownership.json'), JSON.stringify(pages, null, 2));
+});
+
+test('descendant containment preserves gallery, native dialog locking and the fullscreen designer', async ({ page, context, browserName, baseURL }) => {
+  test.skip(browserName !== 'chromium', 'Native touch protocol verifies recovery; physical Safari remains separate.');
+  await page.addInitScript(() => localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, version: 1, updatedAt: new Date().toISOString() })));
+  const cdp = await nativePageTransport(page, context, baseURL!);
+  await page.goto('/products/pergolas/pitched');
+  const gallery = page.locator('[data-product-gallery="primary"] [data-responsive-gallery]');
+  await gallery.scrollIntoViewIfNeeded();
+  await gallery.focus(); await gallery.press('ArrowRight');
+  await expect(gallery).toHaveAttribute('data-gallery-position', /^2\//);
+  await expect(gallery.locator('[data-gallery-frame-active] img')).toBeVisible();
+  await page.getByRole('group', { name: 'Model view' }).getByRole('button', { name: 'Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Open fullscreen 3D', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Explore your pergola' })).toBeVisible();
+  for (const root of [page.locator('html'), page.locator('body')]) await expect(root).toHaveCSS('overflow-y', 'hidden');
+  const pinnedTop = await page.locator('body').evaluate(body => body.style.top);
+  await touchScroll(page, cdp, false);
+  expect(await page.locator('body').evaluate(body => body.style.top)).toBe(pinnedTop);
+  await page.getByRole('button', { name: 'Close fullscreen 3D' }).click();
+  for (const root of [page.locator('html'), page.locator('body')]) await expect(root).toHaveCSS('overflow', 'visible');
+  const before = await page.evaluate(() => scrollY);
+  expect(await touchScroll(page, cdp, false)).toBeGreaterThan(before + 200);
+  await page.goto('/contact?configurator=preview');
+  await expect(page.locator('main[data-contact-page][data-project-preview]')).toBeVisible();
+  for (const root of [page.locator('html'), page.locator('body')]) await expect(root).toHaveCSS('overflow', 'clip');
+  expect(await page.locator('body').evaluate(body => body.getBoundingClientRect().height)).toBe(844);
+  await page.goto('/simple-cover-calculator');
+  await expect(page).toHaveURL(/\/contact\?.*configurator=preview/);
+  await expect(page.locator('main[data-contact-page][data-project-preview]')).toBeVisible();
+  for (const root of [page.locator('html'), page.locator('body')]) await expect(root).toHaveCSS('overflow', 'clip');
 });
 
 test('a stored BODY position reloads into the native viewport without losing collection context', async ({ page, context, browserName, baseURL }) => {
