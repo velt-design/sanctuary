@@ -543,9 +543,7 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
         </Card>
       ) : null}
 
-      {!accessEnded&&!invoicesQuery.isPending&&!invoicesQuery.isError&&!invoices.length ? (
-        <DataStatePanel state="empty" title={commercial.closed ? "No invoices recorded" : "No invoices yet"} description={commercial.closed ? "This closed project has no recorded invoices. Review the closure agreement before creating any further billing." : "The first invoice is created when a quote is accepted. Admins can create later scheduled, custom, remaining-balance, or split invoices here."} />
-      ) : null}
+
 
     </>, historyEyebrow: invoicePending&&!invoices.length?'Reading invoices…':invoicesQuery.isError&&!invoices.length?'Invoice count unavailable':`${invoices.length} ${invoices.length === 1 ? 'invoice' : 'invoices'}`,
     dialogs: <>
@@ -605,6 +603,9 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
     </>, render: (invoiceSearch) => {
   const visibleInvoices=invoices.filter(invoice=>[invoice.invoiceRef,invoice.quoteRef,invoice.reference,invoice.status,invoice.paymentTermLabel].some(value=>String(value??'').toLocaleLowerCase().includes(invoiceSearch.trim().toLocaleLowerCase())));
       return { noMatches: !invoicesQuery.isPending&&!invoicesQuery.isError&&invoices.length>0&&!visibleInvoices.length ? <DataStatePanel state="empty" title="No matching invoices" description="Try another reference or clear the search." /> : null, rows: <>
+      {!accessEnded&&!invoicesQuery.isPending&&!invoicesQuery.isError&&!invoices.length ? (
+        <TableRow><TableCell colSpan={6}><DataStatePanel state="empty" title={commercial.closed ? "No invoices recorded" : "No invoices yet"} description={commercial.closed ? "This closed project has no recorded invoices. Review the closure agreement before creating any further billing." : "The first invoice is created when a quote is accepted. Admins can create later scheduled, custom, remaining-balance, or split invoices here."} /></TableCell></TableRow>
+      ) : null}
           {!invoices.length&&(accessEnded||invoicePending||invoicesQuery.isError)&&<TableRow><TableCell colSpan={6}><span role={invoicePending?'status':undefined}>{invoicePending?'Reading invoices…':'Invoices unavailable. Retry the read.'}</span></TableCell></TableRow>}
           {visibleInvoices.map((invoice) => {
             const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT' && !invoice.finalFailure;

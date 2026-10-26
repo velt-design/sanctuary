@@ -147,3 +147,26 @@ it('keeps actual invoice schedule metrics, search and history headers pending an
 });
 
 it('clears cached payment evidence when its read authority ends while keeping the real table and metric labels',()=>{const view=renderIntoDocument(<InvoicesTab projectId="proj-1"/>),table=view.container.querySelector('table');expect(view.container.textContent).toContain('$200.00');readPhase='denied';view.rerender(<InvoicesTab projectId="proj-1"/>);expect(view.container.querySelector('table')).toBe(table);expect(view.container.textContent).not.toContain('$200.00');expect(view.container.textContent).toContain('Recorded payments');expect(view.container.textContent).toContain('Unavailable');expect(view.container.textContent).not.toContain('No invoices yet');view.unmount();});
+
+
+it('publishes verified invoice emptiness in the actual history table, never only inside closed payment details', () => {
+  readPhase='pending'; const rendered=renderIntoDocument(<InvoicesTab projectId="proj-1"/>);
+  try {
+    const table=rendered.container.querySelector('table')!;
+    const details=rendered.container.querySelector('details')!;
+    expect(details.open).toBe(false);
+    expect(table.textContent).not.toContain('No invoices yet');
+    readPhase='error'; rendered.rerender(<InvoicesTab projectId="proj-1"/>);
+    expect(table.textContent).toContain('Invoices unavailable');
+    expect(table.textContent).not.toContain('No invoices yet');
+    readPhase='ready'; rendered.rerender(<InvoicesTab projectId="proj-1"/>);
+    expect(rendered.container.querySelector('table')).toBe(table);
+    expect(details.open).toBe(false);
+    expect(table.textContent).toContain('No invoices yet');
+    expect(table.textContent).toContain('The first invoice is created when a quote is accepted.');
+    expect(details.textContent).not.toContain('No invoices yet');
+    readPhase='denied'; rendered.rerender(<InvoicesTab projectId="proj-1"/>);
+    expect(table.textContent).not.toContain('No invoices yet');
+    expect(table.textContent).toContain('Invoices unavailable');
+  } finally { rendered.unmount(); }
+});

@@ -1110,3 +1110,5 @@ Sidebar panel and rail share the existing navigation-intent owner for guarded cl
 Contacts row Open links load their detail route on user navigation rather than automatically prefetching every visible contact. Their href, keyboard and click navigation remain unchanged; the shared ButtonLink default is unchanged.
 
 User-opened Recent notes and portal history follows natural document flow instead of adding a nested scroll owner. Invoice schedule keeps four stable essential total positions, the accepted/separate-work breakdown and permitted primary actions directly visible; full payment terms and history remain in the native disclosure. Unknown, unavailable and verified values retain their distinct meanings while the same controls and reading positions remain mounted.
+
+Portal date and work-due presenters reuse their fixed locale/time-zone formatters while deriving every date and current-day result afresh. Verified empty invoice history belongs in its actual table reading region, outside the optional full payment-history disclosure; pending, failed and denied reads retain their distinct states and existing Retry.
