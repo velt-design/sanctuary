@@ -91,10 +91,15 @@ async function expectNoDocumentOverflow(page: Page, allowLongWork = false) {
         await expect.poll(() => work.evaluate(element => element.scrollTop + element.clientHeight >= element.scrollHeight - 1)).toBe(true);
         const manage = work.getByRole('button', { name: 'Manage project work', exact: true });
         await expect(manage).toBeVisible();
-        expect(await manage.evaluate(element => {
+        await expect.poll(() => manage.evaluate(element => {
           const box = element.getBoundingClientRect(), owner = element.closest('[data-overview-reading="work"]')!.getBoundingClientRect();
-          return box.top >= owner.top - 1 && box.bottom <= owner.bottom + 1 && box.left >= owner.left - 1 && box.right <= owner.right + 1;
-        })).toBe(true);
+          return {
+            topFits: box.top >= owner.top - 1,
+            bottomFits: box.bottom <= owner.bottom + 1,
+            leftFits: box.left >= owner.left - 1,
+            rightFits: box.right <= owner.right + 1,
+          };
+        })).toEqual({ topFits: true, bottomFits: true, leftFits: true, rightFits: true });
         const after = await work.evaluate(element => {
           const box = element.getBoundingClientRect();
           return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
