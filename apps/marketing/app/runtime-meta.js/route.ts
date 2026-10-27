@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackingRuntimeGuard } from '../../lib/trackingAudience';
 
 export const runtime = 'nodejs';
 
@@ -7,6 +8,7 @@ export function GET() {
   const js = `
 ;(function () {
   try {
+    ${trackingRuntimeGuard}
     var pixelId = ${JSON.stringify(pixelId)};
     if (!pixelId) return;
 

@@ -5,6 +5,7 @@ import type {
 
 import { CAMPAIGN_CLICK_KEYS as CLICK_ID_KEYS, CAMPAIGN_UTM_KEYS, clearCampaignSession, readCampaignSession } from './campaignSession';
 import { CONSENT_STORAGE_KEY, parseStoredConsent } from './consent';
+import { verificationTraffic } from './trackingAudience';
 import { capturePersistentIdentifiers, clearPersistentIdentifiers, clearMetaCookies } from './campaignPersistence';
 const MAX_ATTRIBUTION_VALUE_LENGTH = 600;
 const GA_CLIENT_ID_PATTERN = /^\d{1,20}\.\d{1,20}$/;
@@ -18,6 +19,7 @@ type MarketingAttributionConsent = {
 };
 
 type MarketingAttributionPayload = {
+  verification?: boolean;
   utm: Record<string, string>;
   clickIds: Partial<Record<(typeof CLICK_ID_KEYS)[number], string>>;
   landingPage?: string;
@@ -137,6 +139,7 @@ export function getBrowserMarketingAttribution(input: {
 
   return {
     utm: consent.marketing ? base.utm : {},
+    ...(verificationTraffic()?{verification:true}:{}),
     clickIds: consent.marketing ? identifiers.google?.ids ?? base.clickIds : {},
     ...(identifiers.google ? { clickCapturedAt: new Date(identifiers.google.capturedAt).toISOString() } : {}),
     ...(identifiers.meta ? { meta: identifiers.meta } : {}),

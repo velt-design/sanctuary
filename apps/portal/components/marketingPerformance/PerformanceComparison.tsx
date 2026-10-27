@@ -2,6 +2,7 @@ import { Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } f
 import { Button, Select } from '@/components/ui/foundation/FoundationControls';
 import { comparisonRows, comparisonSorts, rate, type ComparisonSort, type MarketingRow } from '@/lib/marketingPerformance/contract';
 import styles from './MarketingPerformance.module.css';
+import { money } from '@/lib/marketingPerformance/hub';
 
 export default function PerformanceComparison({ rows, onInspect,pending=false }: { rows: MarketingRow[]|null;pending?:boolean; onInspect: (source: string, campaign: string) => void }) {
   const [sort, setSort] = useState<ComparisonSort>(() => {
@@ -19,11 +20,11 @@ export default function PerformanceComparison({ rows, onInspect,pending=false }:
       </Select></div>
     <div className={`${styles.tableScroll} ${styles.comparisonTable}`} tabIndex={0} role="region" aria-label="Source comparison, scroll horizontally for all stages">
       <Table><caption className={styles.caption}>Observed campaign evidence, separate from Google and Meta attribution claims</caption>
-        <TableHeader><TableRow><TableHead scope="col">Source / campaign</TableHead><TableHead scope="col">Enquiries</TableHead><TableHead scope="col">Qualified</TableHead><TableHead scope="col">Origin projects</TableHead><TableHead scope="col">Visits</TableHead><TableHead scope="col">Quotes sent</TableHead><TableHead scope="col">Accepted</TableHead><TableHead scope="col">Payment verified</TableHead><TableHead scope="col">Evidence</TableHead></TableRow></TableHeader>
-        <TableBody>{!rows&&<TableRow><TableCell colSpan={9} role={pending?'status':undefined}>{pending?'Reading complete source and campaign evidence…':'Source and campaign evidence unavailable.'}</TableCell></TableRow>}{comparisonRows(rows??[], sort).map(group => <TableRow key={JSON.stringify([group.source, group.campaign])}>
+        <TableHeader><TableRow><TableHead scope="col">Source / campaign</TableHead><TableHead scope="col">Enquiries</TableHead><TableHead scope="col">Qualified</TableHead><TableHead scope="col">Origin projects</TableHead><TableHead scope="col">Visits</TableHead><TableHead scope="col">Quotes sent</TableHead><TableHead scope="col">Accepted</TableHead><TableHead scope="col">Payment verified</TableHead><TableHead scope="col">Net recorded cash</TableHead><TableHead scope="col">Evidence</TableHead></TableRow></TableHeader>
+        <TableBody>{!rows&&<TableRow><TableCell colSpan={10} role={pending?'status':undefined}>{pending?'Reading complete source and campaign evidence…':'Source and campaign evidence unavailable.'}</TableCell></TableRow>}{comparisonRows(rows??[], sort).map(group => <TableRow key={JSON.stringify([group.source, group.campaign])}>
           <TableHead scope="row" className={styles.source}><strong>{group.source}</strong><span>{group.campaign}</span></TableHead>
           <TableCell>{group.summary.enquiries}</TableCell><TableCell>{group.summary.eligible === group.summary.unreviewed ? "Unassessed" : group.summary.qualified}<span className={styles.cellDetail}>{group.summary.eligible - group.summary.unreviewed} assessed / {group.summary.eligible} eligible</span></TableCell><TableCell>{group.summary.origins}</TableCell><TableCell>{group.summary.visit}</TableCell><TableCell>{group.summary.quote}</TableCell><TableCell>{group.summary.accepted}</TableCell><TableCell>{group.summary.won}<span className={styles.cellDetail}>{rate(group.summary.won, group.summary.origins)} of origins</span></TableCell>
-          <TableCell><Button variant="quiet" aria-label={`Inspect ${group.source} / ${group.campaign}`} onClick={() => onInspect(group.source, group.campaign)}>Inspect</Button></TableCell>
+          <TableCell>{group.summary.recordedCash===null?"Unavailable":money(group.summary.recordedCash)}<span className={styles.cellDetail}>NZD incl. GST · to date</span></TableCell><TableCell><Button variant="quiet" aria-label={`Inspect ${group.source} / ${group.campaign}`} onClick={() => onInspect(group.source, group.campaign)}>Inspect</Button></TableCell>
         </TableRow>)}</TableBody>
       </Table>
     </div>

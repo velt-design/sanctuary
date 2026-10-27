@@ -1,6 +1,7 @@
 'use client';
 
 import { CONSENT_STORAGE_KEY, parseStoredConsent } from './consent';
+import { trackingAudienceAllowed } from './trackingAudience';
 
 type Lead = { event: Record<string, unknown>; expiresAt: number; timer: ReturnType<typeof setTimeout> };
 type PixelWindow = Window & { fbq?: (...args: unknown[]) => void };
@@ -15,7 +16,7 @@ export function setMetaLeadPermission(allowed: boolean) {
 }
 
 function permitted(allowed: boolean) {
-  if (!allowed || !currentPermission || typeof window === 'undefined') return false;
+  if (!allowed || !currentPermission || !trackingAudienceAllowed()) return false;
   try { return currentPermission && parseStoredConsent(localStorage.getItem(CONSENT_STORAGE_KEY))?.marketing !== false; }
   catch { return currentPermission; }
 }

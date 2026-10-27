@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { trafficFilter } from './trafficScope';
 import { JOURNEY_COMPLETE_FROM } from './journey';
 import { shiftDate, type Measure, type ReportQuery } from './report';
 
@@ -94,7 +95,7 @@ export function acquisitionPlan(query: ReportQuery) {
   return { requests: [null, ...STAGES].map(event => ({ dimensions: dimensions.map(name => ({ name })),
     metrics: [{ name: event ? 'eventCount' : 'sessions' }], dateRanges, keepEmptyRows: true, returnPropertyQuota: true, limit: String(MAX_ACQUISITION_COHORTS * (query.comparison ? 2 : 1) + 1), offset: '0',
     orderBys: dimensions.map(dimensionName => ({ dimension: { dimensionName } })),
-    ...(event ? { dimensionFilter: { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: event, caseSensitive: true } } } } : {}) })) };
+    dimensionFilter: trafficFilter(event) })) };
 }
 const response = z.object({ dimensionHeaders: z.array(z.object({ name: z.string() })).max(5), metricHeaders: z.array(z.object({ name: z.string(), type: z.literal('TYPE_INTEGER') })).length(1),
   rows: z.array(z.object({ dimensionValues: z.array(z.object({ value: z.string().max(512) })).max(5), metricValues: z.array(z.object({ value: z.string().max(32) })).length(1) })).max((MAX_ACQUISITION_COHORTS + 1) * 2).default([]),

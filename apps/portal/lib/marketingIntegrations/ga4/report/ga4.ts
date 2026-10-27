@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { trafficFilter, TRAFFIC_SCOPE, TRAFFIC_SCOPE_WARNING } from './trafficScope';
 import { z } from "zod";
 import { boundedGoogleJson, during } from "./transport";
 import { websiteJourney } from "./journey";
@@ -26,13 +27,13 @@ export function reportPlan(query: ReportQuery) {
     ...(query.comparison ? [{ startDate: query.comparison.start, endDate: query.comparison.end, name: "prior" }] : [])];
   return { requests: DEFINITIONS.map(definition => ({
     dimensions: definition.dimension ? [{ name: definition.dimension }] : [], metrics: [{ name: definition.metric }, ...(definition.id === "events" ? [{ name: "eventCount" }] : [])], dateRanges,
-    limit: "201", keepEmptyRows: true, returnPropertyQuota: true,
+    limit: "201", keepEmptyRows: true, returnPropertyQuota: true, dimensionFilter: trafficFilter(),
     ...(definition.dimension ? { orderBys: [{ dimension: { dimensionName: definition.dimension } }] } : {}),
   })) };
 }
 export const reportHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export function reportIntent(property: string, query: ReportQuery, version: ReportVersion = REPORT_VERSION) {
-  return { property, queryHash: reportHash({ version, property, plan: reportPlan(query), ...(version === DIAGNOSTIC_VERSION ? {
+  return { property, queryHash: reportHash({ version, property, trafficScope: TRAFFIC_SCOPE, plan: reportPlan(query), ...(version === DIAGNOSTIC_VERSION ? {
     diagnosticsPlan: acquisitionPlan(query), prettyPrint: false, bounds: { deadlineMs: 45000, wireBytes: 524288, normalizedBytes: 245760, envelopeBytes: 262144, profileGroups: MAX_ACQUISITION_COHORTS, expandedRows: MAX_ACQUISITION_COHORTS * 2, cohorts: MAX_ACQUISITION_COHORTS } } : {}) }),
     startDate: query.period.start, endDate: query.period.end,
     comparisonStart: query.comparison?.start ?? null, comparisonEnd: query.comparison?.end ?? null, reportVersion: version };
@@ -83,7 +84,7 @@ export function parseGa4Report(raw: unknown, property: string, query: ReportQuer
   // Validate IANA timezone and prohibit current/future incomplete days in it.
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
   if (query.period.end >= today) throw new Error("Choose completed days in the property timezone.");
-  const warnings = new Set<string>();
+  const warnings = new Set<string>([TRAFFIC_SCOPE_WARNING]);
   if (query.period.end >= shiftDate(today, -3)) warnings.add("Recent dates are provisional: GA4 may still revise these figures.");
   const output: AnalyticsReport = { source: "ga4", property, timezone, fetchedAt: now.toISOString(), query,
     traffic: [], channels: [], landing: [], events: [], sessions: null, previousSessions: null, warnings: [] };

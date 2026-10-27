@@ -1,3 +1,4 @@
+// @vitest-environment-options {"url":"https://www.sanctuarypergolas.co.nz/"}
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';

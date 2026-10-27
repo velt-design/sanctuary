@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   prepareGa4MarketingEvent,
   processMarketingConversionDeliveries,
   type MarketingConversionClaim,
 } from './marketingConversionDelivery';
 
+beforeEach(()=>vi.stubEnv('VERCEL_ENV','production'));
+afterEach(()=>vi.unstubAllEnvs());
 const NOW = new Date('2026-07-30T02:00:00.000Z');
 
 function claim(overrides: Partial<MarketingConversionClaim> = {}): MarketingConversionClaim {
@@ -279,4 +281,12 @@ describe('GA4 marketing conversion delivery', () => {
       'marketing_conversion_delivery_complete',
     ]);
   });
+});
+
+it('suppresses explicit verification and queued project tests without dispatching',async()=>{
+ for(const payload of [{verificationTraffic:true},{attribution:{verification:true}},{attribution:{utm:{utm_source:'codex_qa',utm_medium:'qa'}}}])
+  expect(prepareGa4MarketingEvent(claim({payload}),NOW)).toEqual({kind:'skip',errorCode:'VERIFICATION_TRAFFIC'});
+ vi.stubEnv('VERCEL_ENV','preview');const rpc=vi.fn(),fetchImpl=vi.fn();
+ expect(await processMarketingConversionDeliveries({supabase:{rpc},config:{measurementId:'G-SYNTHETIC',apiSecret:'synthetic'},fetchImpl})).toEqual({claimed:0,sent:0,skipped:0,retrying:0,failed:0});
+ expect(rpc).not.toHaveBeenCalled();expect(fetchImpl).not.toHaveBeenCalled();
 });

@@ -46,7 +46,7 @@ export function portfolioStages(projects:HubProject[]) {
 export function sourceOutcomes(rows:MarketingRow[]) {
   const metrics=Object.keys(chartMetrics) as ChartMetric[];
   const columns=metrics.map(metric=>({metric,measures:sourceMeasures(rows,metric,'count')}));
-  return sourceMeasures(rows,'enquiries','count').map(({source})=>({source,cells:columns.map(({metric,measures})=>{
+  return sourceMeasures(rows,'enquiries','count').map(({source})=>({source,summary:summarize(rows.filter(row=>(row.source??UNKNOWN_SOURCE)===source)),cells:columns.map(({metric,measures})=>{
     const measure=measures.find(m=>m.source===source)!;
     return {...measure,metric,width:measure.unavailable||!measure.denominator?0:100*measure.count/measure.denominator};
   })}));

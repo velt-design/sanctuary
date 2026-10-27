@@ -1,3 +1,4 @@
+// @vitest-environment-options {"url":"https://www.sanctuarypergolas.co.nz/"}
 import { beforeEach, expect, it, vi } from 'vitest';
 import { isChannelDesignPath, trackChannelAction } from './channelDesignTracking';
 import { isAdLandingPath, isGoogleFunnelPath, isMetaFunnelPath } from './googleFunnel';

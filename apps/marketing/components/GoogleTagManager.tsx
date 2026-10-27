@@ -1,6 +1,7 @@
 "use client";
 
 import Script from 'next/script';
+import { trackingAudienceAllowed, trackingRuntimeGuard } from '../lib/trackingAudience';
 import { useConsent } from '@/components/ConsentProvider';
 import { toGtagConsentMode, type ConsentPreferences } from '@/lib/consent';
 import type { TrackingBasis } from '@/lib/trackingRegion';
@@ -25,7 +26,7 @@ export function shouldLoadGoogleTagManager(
 export default function GoogleTagManager() {
   const containerId = getContainerId();
   const { consent, trackingBasis } = useConsent();
-  if (!containerId || !shouldLoadGoogleTagManager(consent, trackingBasis)) return null;
+  if (!containerId || !trackingAudienceAllowed() || !shouldLoadGoogleTagManager(consent, trackingBasis)) return null;
 
   const consentMode = toGtagConsentMode(consent);
 
@@ -49,7 +50,7 @@ window.gtag('consent', 'update', ${JSON.stringify(consentMode)});
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
-(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+(function(w,d,s,l,i){try { ${trackingRuntimeGuard} } catch { return; } w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);

@@ -1,5 +1,17 @@
 # Automation, Email, And Audit
 
+## Verification measurement suppression (27 October 2026 candidate)
+
+The legacy contact route sends Meta conversion events only from production,
+with existing marketing consent and without an explicit verification flag or
+reserved `codex_qa / qa` attribution. Enquiry saving and its existing email flow
+remain separate from measurement suppression. Durable GA4 delivery applies the
+same test policy, including a current confirmed-project-test check when claiming
+an already queued event. Tests mock email and provider transport; they establish
+suppression and unchanged intake responses, not live delivery. The shared browser
+entry and report exclusions are documented in `security-privacy-quality.md` and
+`marketing-performance.md`.
+
 ## Aluminium enquiry contract (20 October 2026)
 
 The exact aluminium residential discussion path accepts an omitted phone after

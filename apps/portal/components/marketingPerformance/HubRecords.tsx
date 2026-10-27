@@ -13,12 +13,13 @@ export default function HubRecords({hub,filters,synthetic,eventKind,apply,produc
   useEffect(()=>{ const n=Number(new URLSearchParams(window.location.search).get('recordsPage'));setPage(Number.isInteger(n)&&n>0?n:0); },[filters,eventKind]);
   const selected=hub?selectHub(hub,filters):null;
   const date=(value:string)=>new Date(value).toLocaleDateString('en-NZ',{timeZone:'Pacific/Auckland',dateStyle:'medium'});
-  const link=(id:string,enquiry:string|null)=>synthetic ? `/qa/marketing-performance-fixture/project?project=${id}&enquiry=${enquiry??''}&return=${encodeURIComponent(typeof window==='undefined'?'':window.location.search)}` : `${productionSnapshot?'https://portal.sanctuarypergolas.co.nz':''}/staff/projects/proj_${id}?tab=${filters.view==='sales'?'quotes':'activity'}`;
+  const link=(id:string,enquiry:string|null)=>synthetic ? `/qa/marketing-performance-fixture/project?project=${id}&enquiry=${enquiry??''}&return=${encodeURIComponent(typeof window==='undefined'?'':window.location.search)}` : `${productionSnapshot?'https://portal.sanctuarypergolas.co.nz':''}/staff/projects/proj_${id}?tab=${filters.inspect==='cash'||filters.evidence==='cash'?'estimates':filters.view==='sales'?'quotes':'activity'}`;
   const entries=selected?(filters.view==='enquiries' ? selected.enquiries.map(r=>({
     id:r.enquiryId,projectId:r.projectId,enquiry:r.enquiryId,name:r.projectName??'Unlinked enquiry',date:r.receivedAt,source:r.source,campaign:r.campaign,
-    detail:r.origin?'Origin enquiry':r.projectId?'Repeat submission; outcome credited to origin':'No linked project',
+    detail:(r.origin?'Origin enquiry':r.projectId?'Repeat submission; outcome credited to origin':'No linked project')+(r.recordedSource?` · Saved source: ${r.recordedSource}`:''),
     evidence:[r.qualification==='unreviewed'?'Awaiting assessment':r.qualification==='ineligible'?'Outside configured qualification criteria':r.qualification==='unavailable'?'Assessment unavailable':r.qualification.replaceAll('_',' '),
-      r.origin&&r.visit?'Recorded confirmation':null,r.origin&&r.quote?'Sent quote':null,r.origin&&r.accepted?'Current accepted scope':null,r.origin&&r.won?'Payment verified':null].filter(Boolean).join(' · '),
+      r.origin&&r.visit?'Recorded confirmation':null,r.origin&&r.quote?'Sent quote':null,r.origin&&r.accepted?'Current accepted scope':null,r.origin&&r.won?'Payment verified':null,
+      r.origin?`Net recorded cash: ${r.recordedCash?.complete?money(r.recordedCash.amountCents!):'Unavailable'} (${r.recordedCash?.entryCount??'unknown'} payments / reversals)` : null].filter(Boolean).join(' · '),
   })) : filters.view==='portfolio' ? [...selected.projects].sort((a,b)=>filters.age?a.createdAt.localeCompare(b.createdAt):0).map(p=>({
     id:p.id,projectId:p.id,enquiry:p.originId,name:p.name??'Unnamed project',date:p.createdAt,source:p.source,campaign:p.campaign,
     detail:`${p.state.toLowerCase()} · ${p.owner??'unassigned'} · ${p.receiptCount} saved receipt${p.receiptCount===1?'':'s'}`,
@@ -36,7 +37,7 @@ export default function HubRecords({hub,filters,synthetic,eventKind,apply,produc
       {filters.view==='portfolio'&&<option value="paid">Projects marked paid</option>}
     </Select>}
     <p id="hub-record-count" role="status">{hub?entries.length:pending?'Reading…':'Unavailable'} {filters.view==='enquiries'?'submissions':filters.view==='sales'?'recorded events':'projects'} match · {filters.view==='sales'?(eventKind?eventKind==='receipts'?'Payments and reversals':eventLabels[eventKind as HubEvent['kind']]:'All event types'):'Current filters'}</p>
-    <div className={`${styles.tableScroll} ${styles.evidenceTable}`} tabIndex={0} role="region" aria-label="Underlying hub records">
+    <div className={`${styles.tableScroll} ${styles.evidenceTable} ${filters.inspect==='cash'||filters.evidence==='cash'?styles.cashEvidenceTable:''}`} tabIndex={0} role="region" aria-label="Underlying hub records">
       <Table><TableHeader><TableRow><TableHead>Project / record</TableHead><TableHead>{filters.view==='enquiries'?'Received':filters.view==='sales'?'Event date':'Project created'} (NZ)</TableHead><TableHead>Observed source / campaign</TableHead><TableHead>Recorded evidence</TableHead></TableRow></TableHeader>
         <TableBody>{!hub&&<TableRow><TableCell colSpan={4} role={pending?'status':undefined}>{pending?'Reading complete underlying records…':'Underlying records unavailable.'}</TableCell></TableRow>}{entries.slice(current*25,(current+1)*25).map(r=><TableRow key={r.id}>
           <TableHead scope="row" className={styles.source}>{r.projectId?<a href={link(r.projectId,r.enquiry)}>{r.name}</a>:r.name}<span>{r.detail}</span><span className={styles.recordId} title={r.id}>{r.id}</span></TableHead>
@@ -45,7 +46,7 @@ export default function HubRecords({hub,filters,synthetic,eventKind,apply,produc
       {hub&&!entries.length&&<p>No matching records. Clear filters or choose another view. Projects without receipts are available in Project portfolio.</p>}
     </div>
     <div className={styles.pagination}><Button variant="secondary" disabled={!hub||!current} onClick={()=>change(current-1)}>Previous</Button><span>{hub?`Page ${current+1} of ${Math.max(1,Math.ceil(entries.length/25))}`:pending?'Reading pages…':'Pages unavailable'}</span><Button variant="secondary" disabled={!hub||(current+1)*25>=entries.length} onClick={()=>change(current+1)}>Next</Button></div>
-    <ReportDetail title="Inspecting records" label="About these records"><p>Open a project to inspect Original enquiry or Commercial evidence. Browser Back restores this view. Source on Sales and Portfolio comes only from the earliest saved enquiry, never a later repeat submission.</p></ReportDetail>
+    <ReportDetail title="Inspecting records" label="About these records"><p>Open a project to inspect Original enquiry or Commercial evidence. Cash records open Commercial payments. Browser Back restores this view. Source on Sales and Portfolio comes from the earliest nonexcluded saved enquiry. Referral labels identify a saved referring site, not paid or organic advertising. Saved source aliases remain visible beside the enquiry.</p></ReportDetail>
   </Card>;
 }
 function eventDetail(event:HubEvent) {
