@@ -4,7 +4,7 @@ export function registerProjectHeaderStabilityTests(fixturePath: string, expectN
   for (const width of [2560, 1440, 895, 390]) {
     test(`project header targets remain stable through refresh and retry at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(`${fixturePath}?tab=estimates&snapshotState=summary`);
+      await page.goto(`${fixturePath}?tab=estimates&workdesk=1&snapshotState=summary`);
       const masthead = page.locator('[data-project-masthead-slot]');
       const projects = masthead.getByRole('link', { name: 'Projects', exact: true });
       await expect(masthead.getByRole('button', { name: 'Updating project', exact: true })).toBeVisible();
@@ -14,8 +14,9 @@ export function registerProjectHeaderStabilityTests(fixturePath: string, expectN
       for (const control of controls) await expect(control).toBeVisible();
       const before = await Promise.all(controls.map(control => control.boundingBox()));
       expect(before.every(Boolean)).toBe(true);
-      for (const state of ['refresh-failed', 'summary', 'fresh', 'refresh-failed', 'fresh']) {
-        if (state === 'summary') {
+      for (const transition of ['refresh-failed', 'retry', 'summary', 'fresh', 'refresh-failed', 'fresh']) {
+        const state = transition === 'retry' ? 'fresh' : transition;
+        if (transition === 'retry') {
           await masthead.getByRole('button', { name: 'Retry', exact: true }).click();
         } else {
           await page.evaluate((nextState) => {
@@ -36,12 +37,13 @@ export function registerProjectHeaderStabilityTests(fixturePath: string, expectN
             await expect(feedback).toBeFocused();
           }
         }
-        // Force a real scrollbar transition independently of cached fixture lists.
+        // Extend the actual Commercial content owner, so its sticky toolbar has
+        // the same containing block as ordinary long records, not a short sibling.
         await page.evaluate((fresh) => {
           let tail = document.getElementById('geometry-fixture-tail');
-          const work = document.querySelector('[data-project-workspace-scroll="true"]');
-          if (!work) throw new Error('The actual project work scroller is missing.');
-          if (!tail) { tail = document.createElement('div'); tail.id = 'geometry-fixture-tail'; work.append(tail); }
+          const commercial = document.querySelector('[data-project-commercial-view]');
+          if (!commercial) throw new Error('The actual Commercial content owner is missing.');
+          if (!tail) { tail = document.createElement('div'); tail.id = 'geometry-fixture-tail'; commercial.append(tail); }
           tail.style.height = fresh ? '1200px' : '0px';
         }, state === 'fresh');
         const work = page.locator('[data-project-workspace-scroll="true"]');
@@ -51,6 +53,7 @@ export function registerProjectHeaderStabilityTests(fixturePath: string, expectN
           await expect.poll(() => work.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
         }
         expect(await page.evaluate(() => scrollY)).toBe(0);
+        expect(await page.evaluate(() => ({ body: document.body.scrollTop, document: document.documentElement.scrollTop, scrollingElement: document.scrollingElement?.scrollTop ?? 0 }))).toEqual({ body: 0, document: 0, scrollingElement: 0 });
         for (const [index, control] of controls.entries()) {
           const after = await control.boundingBox();
           expect(after).not.toBeNull();
@@ -71,7 +74,7 @@ export function registerProjectHeaderStabilityTests(fixturePath: string, expectN
       await expect(page).toHaveURL(/tab=estimates/);
       // Reintroduce controlled long content after native history adoption. This
       // exercises late restoration without putting filler into the product.
-      await work.evaluate(element => {
+      await page.locator('[data-project-commercial-view]').evaluate(element => {
         const tail = document.createElement('div'); tail.id = 'geometry-fixture-tail'; tail.style.height = '1200px'; element.append(tail);
       });
       await expect.poll(async () => Math.abs(await work.evaluate(element => element.scrollTop) - saved)).toBeLessThanOrEqual(1);

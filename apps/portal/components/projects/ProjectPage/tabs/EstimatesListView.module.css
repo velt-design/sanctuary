@@ -67,6 +67,7 @@
 
 @media (max-width: 720px) {
   .table {
+    position: relative;
     display: block;
     min-width: 0;
   }

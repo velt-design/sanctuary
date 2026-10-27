@@ -121,6 +121,7 @@
 
 @media (max-width: 767px) {
   .invoiceTable {
+    position: relative;
     display: block;
     min-width: 0;
   }

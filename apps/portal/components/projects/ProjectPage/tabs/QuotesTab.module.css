@@ -1250,6 +1250,7 @@
   }
 
   .listTable {
+    position: relative;
     display: block;
     min-width: 0;
   }

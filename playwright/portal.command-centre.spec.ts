@@ -129,7 +129,18 @@ async function expectNoDocumentOverflow(page: Page, allowLongWork = false) {
   if (frameWorkspace) {
     expect(await workspace.evaluate(element => getComputedStyle(element).overflowY)).toBe('auto');
     expect(await workspace.evaluate(element => element.clientHeight)).toBeGreaterThan(0);
-    expect(await page.evaluate(() => ({ y: scrollY, outerOverflow: document.documentElement.scrollHeight > innerHeight + 1 }))).toEqual({ y: 0, outerOverflow: false });
+    const outer = await page.evaluate(() => ({ y: scrollY, bodyY: document.body.scrollTop, documentY: document.documentElement.scrollTop, scrollingElementY: document.scrollingElement?.scrollTop ?? 0, outerOverflow: document.documentElement.scrollHeight > innerHeight + 1 }));
+    if (outer.outerOverflow) {
+      await test.info().attach('project-outer-overflow', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(() => ({
+        viewport: { width: innerWidth, height: innerHeight },
+        documentHeight: document.documentElement.scrollHeight,
+        owners: Array.from(document.querySelectorAll('html, body, main, [data-project-page-frame], [data-project-workspace-scroll], [data-project-commercial-view], [data-project-tab-body]')).map(element => ({
+          tag: element.tagName, className: element.className, rect: element.getBoundingClientRect().toJSON(), height: element.scrollHeight, scrollTop: element.scrollTop,
+          overflow: getComputedStyle(element).overflow, position: getComputedStyle(element).position,
+        })),
+      })), null, 2) });
+    }
+    expect(outer).toEqual({ y: 0, bodyY: 0, documentY: 0, scrollingElementY: 0, outerOverflow: false });
   }
   const overflow = await page.evaluate(({ acceptedProjectTitle, acceptedWork, acceptedWorkspace }) => ({
     horizontal: document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -172,7 +183,12 @@ async function expectNoCroppedOverviewControls(page: Page) {
         const region = control.closest<HTMLElement>(
           "[data-project-overview-region]",
         );
-        const regionBounds = region?.getBoundingClientRect();
+        // A display:contents region owns semantics, but has no physical box.
+        // Its direct child containing the control owns the visible containment.
+        const physicalRegion = region && getComputedStyle(region).display === 'contents'
+          ? Array.from(region.children).find(child => child.contains(control))
+          : region;
+        const regionBounds = physicalRegion?.getBoundingClientRect();
         const style = getComputedStyle(control);
         const visible =
           bounds.width > 0 &&
@@ -1265,7 +1281,7 @@ test("keeps invoice URLs inside the Commercial tab owner", async ({ page }) => {
 for (const width of [1440, 768, 390]) {
   test(`keeps Commercial agreement, sources and payment facts readable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=estimates&commercial=1`);
+    await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=estimates&commercial=1&workdesk=1`);
     const estimates = page.getByRole('region', { name: 'Estimates', exact: true });
     await expect(estimates.getByText('Current accepted agreement')).toBeVisible();
     const names = await estimates.locator('[data-estimate-id]').evaluateAll(rows => rows.map(row => row.getAttribute('aria-label')));
@@ -1303,13 +1319,27 @@ for (const width of [1440, 768, 390]) {
 for (const width of [390, 768]) {
   test(`keeps invoice essentials and reading positions through failed-read Retry at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=invoices&commercial=1&progressive=1&readFailure=1`);
+    await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=invoices&commercial=1&workdesk=1&progressive=1&readFailure=1`);
     await expect(page.getByText('Could not load the job payment schedule', { exact: true })).toBeVisible();
     const schedule = page.getByRole('region', { name: 'Invoice schedule', exact: true });
     const totals = schedule.locator('dl[aria-label="Accepted project quote payment totals"]');
     const find = page.locator('#invoice-search');
     const table = page.getByRole('table', { name: 'Invoices', exact: true });
+    await find.click();
     await find.fill('INV');
+    await expect(find).toBeFocused();
+    expect(await find.evaluate(element => {
+      const box = element.getBoundingClientRect(), work = element.closest('[data-project-workspace-scroll="true"]')!.getBoundingClientRect();
+      return box.top >= work.top && box.bottom <= work.bottom;
+    })).toBe(true);
+    // Measure recovery from the actual visible recovery control. Moving back
+    // to Find is a separate intentional reading action, after data adoption.
+    const retry = page.getByRole('button', { name: 'Retry', exact: true });
+    await retry.scrollIntoViewIfNeeded();
+    await retry.focus();
+    await expect(retry).toBeFocused();
+    const work = page.locator('[data-project-workspace-scroll="true"]');
+    const readingPosition = await work.evaluate(element => element.scrollTop);
     const tableNode = await table.elementHandle();
     const owners = [schedule, totals, find, table.locator('xpath=..')];
     const nodes = await Promise.all(owners.map(owner => owner.elementHandle()));
@@ -1318,12 +1348,17 @@ for (const width of [390, 768]) {
       return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
     })));
     await expectInvoiceEssentialsFit(page);
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
-    await find.focus();
+    await retry.click();
+    const afterRetry = await page.evaluate(() => ({ window: scrollY, body: document.body.scrollTop, work: document.querySelector('[data-project-workspace-scroll="true"]')?.scrollTop, active: document.activeElement?.id }));
     await expect(totals.locator(':scope > div > dd')).toHaveText(['$26,656.87', '$13,328.44', '$0.00', '$13,328.43']);
     await expect(table).toContainText('INV-CLARITY');
     await expect(find).toHaveValue('INV');
-    await expect(find).toBeFocused();
+    await test.info().attach('invoice-retry-geometry', { contentType: 'application/json', body: JSON.stringify({
+      readingPosition, before: boxes, afterRetry,
+      after: await Promise.all(owners.map(owner => owner.evaluate(element => element.getBoundingClientRect().toJSON()))),
+      scrollOrigins: await page.evaluate(() => ({ window: scrollY, body: document.body.scrollTop, document: document.documentElement.scrollTop, scrollingElement: document.scrollingElement?.scrollTop ?? 0, work: document.querySelector('[data-project-workspace-scroll="true"]')?.scrollTop ?? null })),
+    }, null, 2) });
+    expect(await work.evaluate(element => element.scrollTop)).toBe(readingPosition);
     expect(await tableNode!.evaluate(element => element.isConnected)).toBe(true);
     for (const [index, owner] of owners.entries()) {
       expect(await nodes[index]!.evaluate(element => element.isConnected)).toBe(true);
@@ -1332,8 +1367,12 @@ for (const width of [390, 768]) {
         return { x: box.x + scrollX, y: box.y + scrollY, width: box.width, height: box.height };
       });
       const dimensions = index === owners.length - 1 ? ['x', 'y', 'width'] as const : ['x', 'y', 'width', 'height'] as const;
-      for (const key of dimensions) expect(Math.abs(after[key] - boxes[index][key])).toBeLessThanOrEqual(1);
+      const scrollOrigins = await page.evaluate(() => ({ window: scrollY, body: document.body.scrollTop, document: document.documentElement.scrollTop, scrollingElement: document.scrollingElement?.scrollTop ?? 0, work: document.querySelector('[data-project-workspace-scroll="true"]')?.scrollTop ?? null }));
+      for (const key of dimensions) expect(Math.abs(after[key] - boxes[index][key]), JSON.stringify({ owner: ['schedule', 'totals', 'find', 'table viewport'][index], key, before: boxes[index], after, scrollOrigins })).toBeLessThanOrEqual(1);
     }
+    await find.click();
+    await expect(find).toBeFocused();
+    await expect(find).toHaveValue('INV');
     const rowReachable = await table.locator('tbody tr').evaluateAll(rows => rows.every(row => {
       const box = row.getBoundingClientRect(), viewport = row.closest('table')!.parentElement!.getBoundingClientRect();
       return box.top >= viewport.top - 1 && box.bottom <= viewport.bottom + 1;
