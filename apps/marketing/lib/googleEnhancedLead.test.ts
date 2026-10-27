@@ -1,3 +1,4 @@
+// @vitest-environment-options {"url":"https://www.sanctuarypergolas.co.nz/"}
 import { webcrypto, createHash } from 'node:crypto';
 import { afterEach, expect, it, vi } from 'vitest';
 import { emitSubmittedLead, googleLeadHashes, type GoogleEnhancedLead } from './googleEnhancedLead';

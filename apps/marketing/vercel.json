@@ -5,6 +5,7 @@
   "git": {
     "deploymentEnabled": {
       "codex/historical-visitor-steve": false,
+      "codex/marketing-enquiry-sales-20261027": false,
       "codex/meta-standard-enhancements-20261027": false,
       "codex/portal-workdesk-20261027": false,
       "codex/marketing-site-visit-results-20261027": false,

@@ -1,6 +1,6 @@
 import { ageBands, matchesAge } from './overview';
 import { z } from 'zod';
-import { reportSchema, type Filters, type MarketingRow, UNKNOWN_SOURCE, NO_CAMPAIGN, aucklandDay } from './contract';
+import { reportSchema, type Filters, type MarketingRow, UNKNOWN_SOURCE, NO_CAMPAIGN, aucklandDay, observedSource } from './contract';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import { PROJECT_OWNER_OPTIONS } from '@/lib/projects/commandCentre/projectOwners';
 
@@ -10,7 +10,7 @@ export const projectSchema = z.object({
   originId: z.string().uuid().nullable(), originAt: z.string().datetime({ offset: true }).nullable(),
   source: z.string().nullable(), campaign: z.string().nullable(), receiptCount: z.number().int().nonnegative(),
   paymentVerified: z.boolean(), knownTest: z.boolean(), testCandidate: z.boolean(),
-});
+}).transform(project=>({...project,source:observedSource(project.source)}));
 export const eventSchema = z.object({
   id: z.string(), projectId: z.string().uuid(), kind: z.enum(['quote_sent','quote_accepted','payment','reversal','adjustment','invoice_paid']),
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), status: z.string(), amountCents: z.number().int().nullable(),
@@ -37,10 +37,11 @@ export const evidenceOptions = [
   ['payment','Payment-verified projects'], ['no_receipt','Projects without enquiry receipts'],
   ['unlinked','Unlinked enquiries'], ['unknown_source','Unknown source'],
   ['paid_gap','Marked paid, missing payment evidence'], ['test','Possible / known tests'],
+  ['cash','Recorded cash evidence'],
 ] as const;
 export function evidenceForView(view:HubView) {
   return evidenceOptions.filter(([key]) => view==='enquiries' ? key!=='no_receipt'
-    : !['qualified','unreviewed','visit','quote','accepted','unlinked'].includes(key));
+    : !['qualified','unreviewed','visit','quote','accepted','unlinked','cash'].includes(key));
 }
 export type HubFilters = Filters & { view: HubView; owner: string; stage: string; state: string; evidence: string; created: boolean; kind:string; inspect:string; chartMetric:string; chartScale:string; salesBucket: 'week' | 'month'; age:string; designer?:string; acceptedDates?:'selected'|'all' };
 export function hubDefaults(filters: Filters): HubFilters {
@@ -49,6 +50,7 @@ export function hubDefaults(filters: Filters): HubFilters {
 export function parseHubFilters(query: URLSearchParams, fallback: Filters): HubFilters {
   const base = hubDefaults(fallback);
   for (const key of ['start','end','source','campaign','owner','stage','state'] as const) base[key] = query.get(key) ?? base[key];
+  base.source=observedSource(base.source)??'';
   base.stage=base.stage==='__unknown'?'__unknown':normalizePipelineStageKey(base.stage)??'';
   const metric=query.get('chartMetric'); if(metric&&['enquiries','qualified','quote','accepted','won'].includes(metric))base.chartMetric=metric;
   if(query.get('chartScale')==='rate')base.chartScale='rate';
@@ -74,13 +76,14 @@ function matchesProject(p: HubProject | undefined, f: HubFilters) {
     && (!f.state || p?.state === f.state);
 }
 function matchesSource(p: { source: string | null; campaign: string | null }, f: HubFilters) {
-  return (!f.source || (p.source ?? UNKNOWN_SOURCE) === f.source) && (!f.campaign || (p.campaign ?? NO_CAMPAIGN) === f.campaign);
+  return (!f.source || (p.source ?? UNKNOWN_SOURCE) === observedSource(f.source)) && (!f.campaign || (p.campaign ?? NO_CAMPAIGN) === f.campaign);
 }
 function matchesEvidence(p: HubProject | undefined, row: MarketingRow | undefined, f: HubFilters, candidate: boolean) {
   switch (f.evidence) {
     case 'qualified': case 'unreviewed': return row?.qualification === f.evidence;
     case 'visit': case 'quote': case 'accepted': return Boolean(row?.origin && row[f.evidence]);
     case 'payment': return row ? row.origin && row.won : Boolean(p?.paymentVerified);
+    case 'cash': return Boolean(row?.origin && row.recordedCash && (row.recordedCash.entryCount>0 || !row.recordedCash.complete));
     case 'no_receipt': return p?.receiptCount === 0;
     case 'unlinked': return Boolean(row && !row.projectId);
     case 'unknown_source': return (row ?? p)?.source === null;
@@ -100,8 +103,8 @@ export function selectHub(hub: HubReport, f: HubFilters) {
   });
   const origins = new Map(hub.enquiries.rows.filter(r => r.origin).map(r => [r.projectId,r]));
   const projects = hub.projects.filter(p => matchesProject(p,f) && matchesSource(p,f)
-    && matchesEvidence(p, ['qualified','unreviewed','visit','quote','accepted'].includes(f.evidence) ? origins.get(p.id) : undefined,f,false)
-    && matchesEvidence(p, ['qualified','unreviewed','visit','quote','accepted'].includes(f.inspect) ? origins.get(p.id) : undefined,{...f,evidence:f.inspect},false)
+    && matchesEvidence(p, ['qualified','unreviewed','visit','quote','accepted','cash'].includes(f.evidence) ? origins.get(p.id) : undefined,f,false)
+    && matchesEvidence(p, ['qualified','unreviewed','visit','quote','accepted','cash'].includes(f.inspect) ? origins.get(p.id) : undefined,{...f,evidence:f.inspect},false)
     && (f.view !== 'portfolio' || !f.created || (aucklandDay(new Date(p.createdAt)) >= f.start && aucklandDay(new Date(p.createdAt)) <= f.end))
     && (f.view !== 'portfolio' || !f.age || matchesAge(p,hub.asOf,f.age)));
   const ids = new Set(projects.map(p => p.id));

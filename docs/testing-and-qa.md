@@ -9,6 +9,30 @@ rollback verifies unchanged catalog; only the intended plan constraint and
 reviewed function bodies change. Synthetic tests do not establish Meta acceptance.
 # Testing And QA
 
+## Enquiry-to-cash and verification traffic candidate
+
+Run `npx vitest run test/marketing-enquiry-sales.test.ts` for current complete SQL
+owners, explicit-test clearing, earliest real receipt, repeat attribution, consented
+referrer denials, current acceptance versus signed cash, malformed/future ledger,
+restricted roles/catalog preservation, campaign wrapper and Designer review totals.
+`node test/marketing-enquiry-sales-native.mjs` runs that same suite against an
+already-installed disposable local PostgreSQL binary selected by
+`PRAXIS_DISPOSABLE_POSTGRES_BIN`. It never pulls software or uses hosted credentials.
+Local evidence identifies the actual PostgreSQL version; native 17.11 is not a claim
+of the separately pinned 17.6 plus safeupdate CI substrate.
+
+Focused browser/server tests cover trackingAudience, existing analytics/Meta/Clarity
+and conversion delivery/contact owners, GA4 fixed plans and warnings, SourceOutcomes,
+marketingPerformance and Praxis aggregation. Production-event integration fixtures
+declare the canonical production jsdom URL while keeping provider transport mocked.
+The global localhost default and explicit preview/verification denial tests remain.
+Changes to the shared measurement guard also require `npm run test:marketing`,
+including form, delayed-pixel and configurator journeys.
+The existing provider-free
+`/qa/marketing-performance-fixture` exercises cash to underlying receipt to project
+and return. Frozen actual business data and production function definitions belong
+only in the owning private work record, never committed fixtures or screenshots.
+
 ## Active Portal presentation verification
 
 Existing Dashboard, creation, Contact, Costing and Access tests retain their

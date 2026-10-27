@@ -1,3 +1,4 @@
+// @vitest-environment-options {"url":"https://www.sanctuarypergolas.co.nz/"}
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { clearPendingMetaLeads, emitMetaLead, flushPendingMetaLeads, setMetaLeadPermission } from './metaLead';
 import { CONSENT_STORAGE_KEY, createStoredConsent } from './consent';

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
+import { trackingAudienceAllowed } from '../lib/trackingAudience';
 import { useConsent } from '@/components/ConsentProvider';
 
 type GtagFn = (event: 'event', name: string, params: Record<string, unknown>) => void;
@@ -12,6 +13,7 @@ type WebVitalsMetric = {
 };
 
 function sendToGA(metric: WebVitalsMetric) {
+  if (!trackingAudienceAllowed()) return;
   const w = window as typeof window & { gtag?: GtagFn };
   if (typeof w.gtag !== 'function') return;
 

@@ -1,3 +1,4 @@
+// @vitest-environment-options {"url":"https://www.sanctuarypergolas.co.nz/"}
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -55,7 +56,7 @@ it('excludes initial private pages and stops when navigation enters one', async 
 });
 it('sends only approved stage names, and replay failures do not throw', () => {
   target.clarity = vi.fn<(...args: unknown[]) => void>(); target.sanctuaryClarityActive = true;
-  vi.stubGlobal('location', { pathname: '/', search: '' });
+  vi.stubGlobal('location', { hostname: 'www.sanctuarypergolas.co.nz', pathname: '/', search: '' });
   sendClarityJourneyEvent('design_review'); sendClarityJourneyEvent('private-name');
   expect(target.clarity).toHaveBeenCalledExactlyOnceWith('event', 'design_review');
   target.clarity = () => { throw new Error('vendor'); };
@@ -125,9 +126,9 @@ it.each(metaPaths)('does not install the SDK on initially ambiguous campaign IDs
 });
 it.each(metaPaths)('retains closed journey events without ID payloads on %s', path => {
   const sdk = vi.fn(); target.clarity = sdk; target.sanctuaryClarityActive = true;
-  vi.stubGlobal('location', { pathname: path, search: `${campaignQuery}&utm_id=${campaignId}` });
+  vi.stubGlobal('location', { hostname: 'www.sanctuarypergolas.co.nz', pathname: path, search: `${campaignQuery}&utm_id=${campaignId}` });
   sendClarityJourneyEvent('design_review');
   expect(sdk).toHaveBeenCalledExactlyOnceWith('event', 'design_review');
-  vi.stubGlobal('location', { pathname: path, search: `${campaignQuery}&utm_id=${campaignId}&utm_id=99200` });
+  vi.stubGlobal('location', { hostname: 'www.sanctuarypergolas.co.nz', pathname: path, search: `${campaignQuery}&utm_id=${campaignId}&utm_id=99200` });
   sendClarityJourneyEvent('design_review'); expect(sdk).toHaveBeenCalledTimes(1);
 });

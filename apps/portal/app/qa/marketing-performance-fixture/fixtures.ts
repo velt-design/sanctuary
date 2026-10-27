@@ -6,13 +6,13 @@ const row = (n: number, values: Partial<MarketingRow> = {}): MarketingRow => ({
   enquiryId: id(n), receivedAt: `2026-09-${String(1 + n % 20).padStart(2, '0')}T03:00:00Z`,
   projectId: id(n + 100), projectName: `Sample project ${n}`, origin: true,
   source: 'google', campaign: 'Spring pergolas', qualification: 'unreviewed',
-  visit: false, quote: false, accepted: false, won: false, closedOutcome: null, ...values,
+  visit: false, quote: false, accepted: false, won: false, closedOutcome: null, recordedCash:{amountCents:0,entryCount:0,complete:true}, ...values,
 });
 export const fixtureReport: MarketingReport = {
   schemaVersion: 1, asOf: '2026-09-22T03:00:00Z', start: fixtureFilters.start, end: fixtureFilters.end,
   timezone: 'Pacific/Auckland', excludedTests: 1, visitHistoryAvailable: true,
   rows: [
-    row(1, { projectName: 'Sample courtyard', qualification: 'qualified', visit: true, quote: true, accepted: true, won: true }),
+    row(1, { recordedCash:{amountCents:150000,entryCount:1,complete:true}, projectName: 'Sample courtyard', qualification: 'qualified', visit: true, quote: true, accepted: true, won: true }),
     row(2, { projectName: 'Sample terrace', qualification: 'qualified', visit: true, quote: true }),
     row(3, { projectName: 'Sample garden', qualification: 'not_qualified', closedOutcome: 'LOST_NOT_SUITABLE' }),
     row(4, { source: 'meta', campaign: 'Outdoor living', projectName: 'Sample poolside', qualification: 'qualified', visit: true, quote: true, accepted: true }),

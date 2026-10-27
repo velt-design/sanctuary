@@ -15,5 +15,5 @@ export function businessOutcomes(evidence: MarketingEvidence): BusinessOutcomes 
     counts: evidence.counts.map(row => { if (!row.label) throw new Error("Business outcome label unavailable."); return { ...row, label: row.label }; }), excludedTestRecords: evidence.excludedTestRecords,
     warnings: ["Counts describe activity within each period, not the same group of leads progressing through a funnel. Quotes can originate from earlier enquiries.",
       "Each quote is counted once per period for sent or accepted activity, even if multiple versions qualify. Acceptance is recorded activity, not proof of payment or a currently active contract.",
-      "The exact labelled measurement-test enquiry and its project are excluded. Other test records have not been classified; no name-based guessing is applied."] };
+      "Confirmed test projects, the existing exact verification records and explicitly marked QA enquiries are excluded. Ambiguous names and Tag Assistant business enquiries remain; no name-based guessing is applied."] };
 }

@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useConsent } from './ConsentProvider';
+import { trackingAudienceAllowed } from '../lib/trackingAudience';
 import { getMarketingAttributionFromLocation } from '../lib/attribution';
 import { CAMPAIGN_SESSION_MS, captureCampaignSession, clearCampaignSession, hasCampaign, readCampaignSession, type CampaignContext } from '../lib/campaignSession';
 import { capturePersistentIdentifiers, clearPersistentIdentifiers, clearMetaCookies } from '../lib/campaignPersistence';
@@ -14,6 +15,13 @@ export default function CampaignAttribution() {
   const candidate = useRef<{ context: CampaignContext; fbclid: string | null; observedAt: number; newArrival: boolean } | null>(null);
   useEffect(() => {
     const route = `${pathname}?${search}`;
+    let storage: Storage | undefined;
+    let persistent: Storage | undefined;
+    try { storage = window.sessionStorage; } catch { /* Optional storage. */ }
+    try { persistent = window.localStorage; } catch { /* Optional storage. */ }
+    // Withdrawal erases accessible evidence even when measurement is suppressed.
+    if (hasTrackingDecision && !consent.marketing) { clearCampaignSession(storage); clearPersistentIdentifiers(persistent); clearMetaCookies(document,window.location.hostname); candidate.current = null; previousRoute.current = route; return; }
+    if (!trackingAudienceAllowed()) { candidate.current=null; return; }
     if (previousRoute.current !== route) {
       const context = getMarketingAttributionFromLocation({ search, href: window.location.href, referrer: document.referrer });
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
@@ -24,11 +32,6 @@ export default function CampaignAttribution() {
     // Before a decision, only sanitized page context lives in this mounted
     // component's memory. Hard navigation can lose it; no tracking is replayed.
     if (!hasTrackingDecision) return;
-    let storage: Storage | undefined;
-    let persistent: Storage | undefined;
-    try { storage = window.sessionStorage; } catch { /* Optional storage. */ }
-    try { persistent = window.localStorage; } catch { /* Optional storage. */ }
-    if (!consent.marketing) { clearCampaignSession(storage); clearPersistentIdentifiers(persistent); clearMetaCookies(document,window.location.hostname); candidate.current = null; return; }
     readCampaignSession(storage);
     const pending = candidate.current;
     if (pending && Date.now() - pending.observedAt < CAMPAIGN_SESSION_MS) captureCampaignSession(pending.context, storage, pending.newArrival);

@@ -1,3 +1,4 @@
+// @vitest-environment-options {"url":"https://www.sanctuarypergolas.co.nz/"}
 import { afterEach, expect, it, vi } from 'vitest';
 import { sendGoogleAnalyticsEvent } from './googleAnalyticsEvent';
 

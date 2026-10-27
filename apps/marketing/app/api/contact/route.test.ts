@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   getEmailDeliveryFailureSummary: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock('@/lib/supabaseService', () => ({
   getServiceSupabase: h.getServiceSupabase,
 }));
 
-function contactRequest(eventId: string, ip: string): Request {
+function contactRequest(eventId: string, ip: string, extra:Record<string,unknown>={}): Request {
   return new Request('http://localhost/api/contact', {
     method: 'POST',
     headers: {
@@ -29,6 +29,7 @@ function contactRequest(eventId: string, ip: string): Request {
       message: 'Please contact me',
       enquiry_type: 'residential',
       event_id: eventId,
+      ...extra,
     }),
   });
 }
@@ -141,4 +142,17 @@ describe('POST /api/contact email compatibility path', () => {
     expect(await response.json()).toEqual({ ok: false, error: 'Invalid phone' });
     expect(h.getServiceSupabase).not.toHaveBeenCalled();
   });
+  afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
+  it.each([
+    ['production',{},1],['preview',{},0],['production',{verification:true},0],
+    ['production',{attribution:{utm:{utm_source:'codex_qa',utm_medium:'qa'}}},0],
+  ] as const)('preserves intake but scopes legacy CAPI to real production consent (%s)',async(environment,extra,calls)=>{
+    vi.stubEnv('VERCEL_ENV',environment);vi.stubEnv('META_CONVERSIONS_API_TOKEN','synthetic-token');vi.stubEnv('NEXT_PUBLIC_FB_PIXEL_ID','123');
+    const fetcher=vi.fn().mockResolvedValue(new Response('{}',{status:200}));vi.stubGlobal('fetch',fetcher);
+    h.sendEmail.mockResolvedValue({provider:'resend',providerMessageId:'synthetic'});
+    const {POST}=await import('./route');
+    const response=await POST(contactRequest('synthetic-tracking','203.0.113.31',{marketing_consent:'yes',...extra}));
+    expect(response.status).toBe(200);expect(h.sendEmail).toHaveBeenCalledTimes(1);expect(fetcher).toHaveBeenCalledTimes(calls);
+  });
+
 });

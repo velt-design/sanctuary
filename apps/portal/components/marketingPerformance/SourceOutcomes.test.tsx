@@ -4,6 +4,7 @@ import { renderIntoDocument } from '../../../../test/reactHarness';
 import { hubFixture } from '@/app/qa/marketing-performance-fixture/hubFixtures';
 import { fixtureFilters } from '@/app/qa/marketing-performance-fixture/fixtures';
 import { hubDefaults } from '@/lib/marketingPerformance/hub';
+import { rowSchema } from '@/lib/marketingPerformance/contract';
 import SourceOutcomes from './SourceOutcomes';
 
 it('unassessed qualification shows unavailable and pending evidence without a zero rate',()=>{
@@ -24,15 +25,17 @@ it('assessed zero qualification is a recorded zero rate, distinct from unavailab
   expect(cell?.textContent).toContain('0%');expect(cell?.textContent).not.toContain('Unavailable');
   rendered.unmount();
 });
-it('overview source cells open the enquiry records and keep saved source aliases separate',()=>{
-  const rows=['fb','facebook'].map((source,index)=>({...hubFixture.enquiries.rows[0],source,enquiryId:`alias-${index}`}));
+it('normalizes saved aliases and opens the same-cohort cash evidence',()=>{
+  const rows=['fb','facebook'].map((source,index)=>rowSchema.parse({...hubFixture.enquiries.rows[index],source,recordedCash:{amountCents:10000,entryCount:1,complete:true}}));
+  expect(rows.map(row=>row.recordedSource)).toEqual(['fb','facebook']);
   const apply=vi.fn(),filters={...hubDefaults(fixtureFilters),view:'overview' as const};
   const rendered=renderIntoDocument(<SourceOutcomes rows={rows} filters={filters} apply={apply} compact/>);
   const cells=[...rendered.container.querySelectorAll<HTMLButtonElement>('button')];
-  const fb=cells.find(cell=>cell.getAttribute('aria-label')?.startsWith('Inspect Enquiries from fb:'));
-  const facebook=cells.find(cell=>cell.getAttribute('aria-label')?.startsWith('Inspect Enquiries from facebook:'));
-  expect(fb).toBeDefined();expect(facebook).toBeDefined();
-  act(()=>fb!.click());expect(apply.mock.lastCall?.[0]).toMatchObject({view:'enquiries',source:'fb',inspect:'all',start:filters.start,end:filters.end});
-  act(()=>facebook!.click());expect(apply.mock.lastCall?.[0]).toMatchObject({view:'enquiries',source:'facebook',inspect:'all'});
+  const facebook=cells.find(cell=>cell.getAttribute('aria-label')?.startsWith('Inspect Enquiries from Facebook:'));
+  expect(facebook).toBeDefined();
+  act(()=>facebook!.click());expect(apply.mock.lastCall?.[0]).toMatchObject({view:'enquiries',source:'Facebook',inspect:'all'});
+  const cash=cells.find(cell=>cell.getAttribute('aria-label')?.includes('cash from Facebook'));
+  expect(cash?.textContent).toContain('200.00');
+  act(()=>cash!.click());expect(apply.mock.lastCall?.[0]).toMatchObject({view:'enquiries',source:'Facebook',inspect:'cash'});
   rendered.unmount();
 });

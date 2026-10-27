@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { Ga4ReportFailure, parseGa4Report, readGa4Report, reportIntent, reportPlan } from "./ga4";
+import { Ga4ReportFailure, parseGa4Report, readGa4Report, reportIntent, reportPlan, reportHash } from "./ga4";
 import { periodDays, previousPeriod, validateQuery, type ReportQuery } from "./report";
 
+import { acquisitionPlan } from './diagnostics';
+import { trafficFilter,TRAFFIC_SCOPE_WARNING } from './trafficScope';
 const query: ReportQuery = { period: { start: "2026-08-10", end: "2026-08-11" }, comparison: { start: "2026-08-08", end: "2026-08-09" } };
 const now = new Date("2026-09-09T00:00:00Z");
 function fixture(comparison = true) {
@@ -93,7 +95,7 @@ describe("GA4 fixed report consumer", () => {
   it.each(["samplingMetadatas", "subjectToThresholding", "dataLossFromOtherRow"])("retains %s as a visible limitation and withdraws comparisons", key => {
     const raw = fixture(); Object.assign(raw.reports[1]!.metadata, { [key]: key === "samplingMetadatas" ? [{ samplesReadCount: "5", samplingSpaceSize: "10" }] : true });
     const result = parseGa4Report(raw, "123", query, now);
-    expect(result.warnings).toHaveLength(1); expect(result.previousSessions).toBeNull(); expect(result.channels[0]?.previous).toBeNull();
+    expect(result.warnings).toHaveLength(2); expect(result.warnings[0]).toContain("production-browsing-v1"); expect(result.previousSessions).toBeNull(); expect(result.channels[0]?.previous).toBeNull();
   });
   it.each(["negative", "nan", "infinite", "overflow", "truncated", "headers", "range", "timezone", "date", "duplicate", "partial", "restricted"])("fails closed on %s responses", mode => {
     const raw = fixture(); const r = raw.reports[0]!;
@@ -151,4 +153,13 @@ describe("GA4 fixed report consumer", () => {
       catch (error) { expect(error).toBeInstanceOf(Ga4ReportFailure); expect((error as Ga4ReportFailure).diagnostic).toEqual(expected); expect(JSON.stringify(error)).not.toMatch(/PRIVATE_VALUE|PRIVATE_TOKEN/); }
     }
   });
+});
+
+it('uses identical public-website selection on every fixed profile and comparison, with a distinct scoped identity',()=>{
+ const core=reportPlan(query),acquisition=acquisitionPlan(query);
+ for(const profile of [...core.requests,...acquisition.requests])expect(profile.dimensionFilter.andGroup.expressions.slice(0,2)).toEqual(trafficFilter().andGroup.expressions);
+ expect(parseGa4Report(fixture(),'123',query,now).warnings).toContain(TRAFFIC_SCOPE_WARNING);
+ const unfiltered={...core,requests:core.requests.map(({dimensionFilter,...profile})=>profile)};
+ expect(reportIntent('123',query).queryHash).not.toEqual(reportHash({version:'sanctuary-ga4-v2',property:'123',plan:unfiltered}));
+ expect(JSON.stringify(core.requests.map(p=>p.dateRanges))).toContain('prior');
 });
