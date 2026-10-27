@@ -2549,6 +2549,11 @@ npm run test:portal:performance:capture
 npm run test:portal:performance:fixture
 ```
 
+Portal Quality's two Chromium browser jobs use `ubuntu-24.04`, which the pinned
+Playwright 1.58.2 supports. The `ubuntu-latest` move to 26.04 prevented browser
+dependency installation before tests ran. Keep the browser runner compatible with
+the pinned Playwright version; other jobs and all browser assertions are unchanged.
+
 `npm run portal:auth-env` is the cheap fail-fast credential preflight for authenticated portal browser gates. It checks that `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD` are set before Playwright starts, so missing credentials fail loudly instead of producing a skipped or late setup failure.
 
 `npm run portal:auth-runtime` is the authenticated runtime-readiness preflight for smoke and performance gates. It runs after `portal:auth-env`, signs in through the existing Playwright setup flow, verifies the session is not redirected to `/login` or `/access-status`, checks dashboard/projects/contacts/schedule shell access, confirms schedule readiness, and requires at least one project visible to the test account. `npm run test:portal:smoke`, `npm run test:portal:performance`, and broad `npm run portal:doctor` run it before their deeper authenticated assertions.
