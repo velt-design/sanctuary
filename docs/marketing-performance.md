@@ -478,6 +478,20 @@ use the existing correction basis prefix `Assumed original purpose:`. They are
 marked beside close rates and in record details. This does not invent attendance,
 people or dates: an unknown visit date stays outside dated conversion totals.
 
+Owner-approved original-quote dates may be recorded as approximate historical
+visit dates using existing date-only timing, with no invented clock time. The
+standalone basis line `Approximate visit date: YYYY-MM-DD (original quote date; owner-approved).`
+must occur exactly once and match the effective day on a history record. Preserve
+original-purpose provenance and unresolved questions; only the date question
+resolved by the approved estimate is removed. Date edits without matching
+provenance, timed records and Outlook source rows do not activate this rule.
+`siteVisits/visitDateEstimate` owns this shared interpretation. Visit totals,
+close-rate denominators and evidence identify approximate quote dates. Only these
+marked records allow same-day quote, acceptance and deposit attribution; genuine
+earlier outcomes, conflicts, unknown evidence, tests and excluded sales retain
+their guards. Approximate dates never enter elapsed-time medians. No new schema,
+request, source fact or permission is introduced.
+
 Relevant sent-quote and retained visit-linked jobs, including lost jobs, receive
 responsibility in the report. Existing saved sales roles always win, even when
 they differ from the visitor. Missing roles suggest a qualifying original visitor,
@@ -550,7 +564,9 @@ do not count as acquisition. Full NZD scope value includes GST and is separate
 from cash received. Unknown values/dates remain incomplete. Reversed payments
 and changed acceptances can restate outcomes. Open, recorded lost/cancelled and
 accepted-without-deposit states remain distinct. Timing uses ordered known pairs
-with visible denominators; date-only visits require a later Auckland outcome day.
+with visible denominators; ordinary date-only visits require a later Auckland outcome day.
+Explicit quote-date estimates use the count-attribution exception above and are
+excluded from timing medians.
 Exact agreed timestamps permit ordered same-day pairs, without claiming actual
 arrival or visit duration.
 

@@ -250,6 +250,14 @@ Unknown historical dates do not create a review question; a future date-only
 booking still needs its time resolved. Missing address/staff and explicitly
 unanswered questions remain actionable. No blanket review dismissal exists.
 
+An owner-approved original-quote date can supply an approximate date-only history
+entry. The exact standalone basis line
+`Approximate visit date: YYYY-MM-DD (original quote date; owner-approved).` must
+match that history entry's date. The shared `visitDateEstimate` helper labels it
+in existing date displays and the editor. Changing the date or precision without
+matching provenance removes the estimate interpretation. Real dates, remaining
+questions, attendance and source evidence are preserved; no clock time is invented.
+
 Project Overview composes `ProjectNextVisit` and its extracted history/editor;
 Dashboard composes `TodayVisits`. Neither rewrites command-centre domain facts.
 The existing specialist action now opens the project-filtered Outlook agenda.
