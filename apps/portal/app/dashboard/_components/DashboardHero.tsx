@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { CalendarDays, Calculator, FolderPlus } from 'lucide-react';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
@@ -26,7 +27,7 @@ function dateParts(value: string): Record<string, string> {
   );
 }
 
-export default function DashboardHero({ updatedAtIso }: { updatedAtIso: string }) {
+export default function DashboardHero({ updatedAtIso, feedback }: { updatedAtIso: string; feedback?: ReactNode }) {
   const date = dateParts(updatedAtIso);
   return (
     <div className={dash.hero} data-dashboard-hero="true">
@@ -38,7 +39,7 @@ export default function DashboardHero({ updatedAtIso }: { updatedAtIso: string }
         right={(
           <div className={dash.heroTools}>
             <section className={dash.quickActions} aria-label="Quick actions">
-              <div className={dash.quickActionsLabel}>Quick actions</div>
+              {feedback}
               <div className={dash.quickActionGrid}>
                 {QUICK_ACTIONS.map((action) => {
                   const Icon = action.icon;

@@ -1,10 +1,10 @@
 'use client';
-import {useCallback,useLayoutEffect,useMemo,useRef,useState,type ReactNode,type UIEvent} from 'react';
+import {useCallback,useMemo,useRef,useState,type ReactNode,type UIEvent} from 'react';
 import {Button} from '@/components/ui/foundation/FoundationControls';
 import {Input,Select} from '@/components/ui/foundation/FoundationControls';
 import {Table,TableBody,TableCell,TableHead,TableHeader,TableRow} from '@/components/ui/foundation/FoundationSurfaces';
 import styles from './overview/ProjectSharePointFilesPanel.module.css';
-import ReadStatus from '@/components/page-state/ReadStatus';
+import ReadStatus from '../ProjectReadFeedback';
 import enquiryStyles from './overview/ProjectEnquiryFilesPanel.module.css';
 import workspaceStyles from './FilesTab.module.css';
 function neutralFilesState(projectId:string) {
@@ -31,11 +31,11 @@ export function ProjectFilesSurface({controls,evidence,workspace=false,unavailab
  const takeControl=()=>{controls.interact();evidence?.takeControl();};
  return <section ref={controls.panelRef} className={`${styles.panel} ${workspace?styles.workspace:''}`} aria-label="SharePoint project files">
  <header className={styles.header}><div><h3>Files</h3><p className={styles.metadata}>{evidence?.metadata??(unavailable?'Files unavailable':'Reading project files…')}</p></div><div className={styles.headerControls}>
- {evidence?.rootControls??<><Select aria-label="Project folder" value={controls.source==='website'?'website':''} onChange={event=>source(event.target.value==='website'?'website':'sharepoint')}><option value="">Project folder</option><option value="website">Website enquiry files</option></Select><Button variant="quiet" size="small" disabled>Refresh files</Button></>}</div></header>
+ {evidence?.rootControls??<><Select aria-label="Project folder" value={controls.source==='website'?'website':''} onChange={event=>source(event.target.value==='website'?'website':'sharepoint')}><option value="">Project folder</option><option value="website">Website enquiry files</option></Select><Button variant="quiet" size="small" disabled>Refresh files</Button></>}<ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Files unavailable' : evidence && !evidence.pending ? 'Files current' : 'Reading project files…')} tone={unavailable ? 'error' : evidence?.statusTitle ? 'warning' : 'neutral'} action={<>{evidence?.back}{evidence?.retry ? <Button size="small" variant="quiet" onClick={evidence.retry}>Retry</Button> : null}</>} details={evidence?.status}/></div></header>
  <div className={styles.explorer}><nav className={styles.rail} aria-label="Project folders">{evidence?.rail??<><Button variant="quiet" size="small" disabled>Project folder</Button><Button variant="quiet" size="small" aria-current={controls.source==='website'?'page':undefined} onClick={()=>source('website')}>Website enquiry files</Button></>}</nav>
  {controls.source==='website'?<div className={styles.website}>{evidence?.website??<EnquiryFilesSurface evidence={null} unavailable={unavailable}/>}</div>:<>
  <div className={styles.browser}><div className={styles.toolbar}><nav className={styles.breadcrumbs} aria-label="Folder path">{evidence?.breadcrumbs??<Button size="small" variant="quiet" disabled>Project folder</Button>}</nav><Input aria-label="Find in this folder" placeholder="Find in this folder" value={controls.term} maxLength={200} onChange={event=>find(event.target.value)}/></div>
- <ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Files unavailable' : evidence && !evidence.pending ? 'Files current' : 'Reading project files…')} tone={unavailable ? 'error' : evidence?.statusTitle ? 'warning' : 'neutral'} action={<>{evidence?.back}{evidence?.retry ? <Button size="small" variant="quiet" onClick={evidence.retry}>Retry</Button> : null}</>} details={evidence?.status}/><div className={styles.finding} role="status">{evidence?evidence.finding:(unavailable?'Files unavailable':'Reading project files…')}</div>
+<div className={styles.finding} role="status">{evidence?evidence.finding:(unavailable?'Files unavailable':'Reading project files…')}</div>
  <div ref={controls.listRef} className={styles.list} aria-label="Files list" tabIndex={0} onScroll={event=>{controls.interact();evidence?.onScroll(event);}} onWheel={takeControl} onTouchMove={takeControl} onPointerDown={event=>{if(event.target===event.currentTarget)takeControl();}} onKeyDown={event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End'].includes(event.key))takeControl();}}>
  <Table className={styles.filesTable}><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead><span className={styles.srOnly}>Download</span></TableHead></TableRow></TableHeader><TableBody>{evidence?evidence.rows:<TableRow><TableCell colSpan={3}>{unavailable?'Files unavailable.':<span role="status">Reading project files…</span>}</TableCell></TableRow>}</TableBody></Table>{evidence?.empty}{evidence?.paging}</div></div>
  {evidence?.preview??<aside className={styles.inspector}><p className={styles.empty}>{unavailable?'File preview unavailable.':'Select a file to preview or download.'}</p></aside>}</>}
@@ -46,37 +46,5 @@ export function EnquiryFilesSurface({evidence,unavailable=false}:{evidence:{stat
  <Table className={enquiryStyles.table} viewportClassName={enquiryStyles.viewport}><colgroup><col style={{width:'60%'}}/><col style={{width:'18%'}}/><col style={{width:'10%'}}/><col style={{width:'12%'}}/></colgroup><TableHeader><TableRow><TableHead>File</TableHead><TableHead>Submitted</TableHead><TableHead>Size</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{evidence?evidence.rows:<TableRow><TableCell colSpan={4}><span role="status">{unavailable?'Enquiry files unavailable':'Reading enquiry files…'}</span></TableCell></TableRow>}</TableBody></Table></div>;
 }
 export function ProjectFilesWorkspace({projectId,children}:{projectId:string;children:ReactNode}) {
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const workspace = workspaceRef.current;
-    if (!workspace) return;
-    const frame = workspace.closest<HTMLElement>('[data-project-page-frame]');
-    // The Overview may have been scrolled below the fold. Re-enter at its stable
-    // masthead rather than leaving the shorter workspace beneath the old offset.
-    const enterWorkspace = () => {
-      if (frame && frame.getBoundingClientRect().top < 0) {
-        window.scrollTo({ top: window.scrollY + frame.getBoundingClientRect().top, behavior: 'instant' });
-      }
-    };
-    enterWorkspace();
-    const measure = () => {
-      const page = workspace.closest('main');
-      const bottomSpace = page ? parseFloat(window.getComputedStyle(page).paddingBottom) || 0 : 12;
-      // Use document position so a retained Overview offset cannot increase the
-      // new workspace height and create a self-sustaining document scrollbar.
-      const top = workspace.getBoundingClientRect().top + window.scrollY;
-      workspace.style.setProperty('--project-files-height', `${Math.max(280, window.innerHeight - top - bottomSpace)}px`);
-    };
-    measure();
-    // Reconcile after the old Overview's scroll anchor and the new available
-    // height have settled, including a cached lazy module or history return.
-    const entryFrame = requestAnimationFrame(() => { enterWorkspace(); measure(); });
-    const observer = new ResizeObserver(measure);
-    if (frame) observer.observe(frame.querySelector('[data-project-masthead-slot]') ?? frame);
-    // Snapshot notices share the tab body and can appear without changing the masthead.
-    if (workspace.parentElement) observer.observe(workspace.parentElement);
-    window.addEventListener('resize', measure);
-    return () => { cancelAnimationFrame(entryFrame); observer.disconnect(); window.removeEventListener('resize', measure); };
-  }, [projectId]);
-  return <div ref={workspaceRef} className={workspaceStyles.workspace} data-project-files-workspace="true">{children}</div>;
+  return <div className={workspaceStyles.workspace} data-project-files-workspace="true" data-project-files-id={projectId}>{children}</div>;
 }

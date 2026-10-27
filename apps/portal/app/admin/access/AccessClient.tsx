@@ -450,11 +450,7 @@ export default function AccessClient() {
             <button className={styles.buttonPrimary} type="submit" disabled={submitting}>
               {submitting ? 'Saving...' : 'Set temp password'}
             </button>
-            <span className={styles.helper}>Creates the user if missing and assigns portal role.</span>
-          </div>
-        </form>
-
-        <ReadStatus title={result ? result.existing ? 'Updated existing user' : 'Created new user' : 'User access'} details={result ? (<div className={styles.result}>
+            <ReadStatus title={result ? result.existing ? 'Updated existing user' : 'Created new user' : 'User access'} details={result ? (<div className={styles.result}>
             <strong>{result.existing ? 'Updated existing user' : 'Created new user'}</strong>
             <div>
               {result.email} → {result.role}
@@ -462,11 +458,19 @@ export default function AccessClient() {
             <div className={styles.code}>user_id: {result.user_id}</div>
           </div>
 ) : undefined} />
+            <span className={styles.helper}>Creates the user if missing and assigns portal role.</span>
+          </div>
+        </form>
+
+
       </div>
 
       <div className={styles.card}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Schedule crews</h2>
+          <ReadStatus title={loadingCrews ? 'Loading crews…' : crewsError ? 'Schedule crews unavailable' : 'Schedule crews current'} tone={crewsError ? 'error' : 'neutral'}
+          action={!loadingCrews && crewsError ? <button type="button" onClick={()=>void loadCrews()}>Retry crews</button> : undefined}
+          details={crewsError ? <p>{crewsError}</p> : undefined} />
           <p className={styles.sectionHelper}>
             Manage the crews shown in Schedule (Board/Gantt). Deactivation is blocked while a crew has jobs visible on the board.
           </p>
@@ -528,9 +532,7 @@ export default function AccessClient() {
           </div>
         </form>
 
-        <ReadStatus title={loadingCrews ? 'Loading crews…' : crewsError ? 'Schedule crews unavailable' : 'Schedule crews current'} tone={crewsError ? 'error' : 'neutral'}
-          action={!loadingCrews && crewsError ? <button type="button" onClick={()=>void loadCrews()}>Retry crews</button> : undefined}
-          details={crewsError ? <p>{crewsError}</p> : undefined} />
+
 
           <div className={styles.crewTableWrap} role="region" aria-label="Schedule crews table">
             <table className={styles.crewTable}><colgroup>{[8, 10, 17, 15, 15, 8, 10, 17].map((width,index)=><col key={index} style={{width:`${width}%`}} />)}</colgroup>

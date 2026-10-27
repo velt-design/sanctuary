@@ -8,11 +8,11 @@
 .manifest summary, .inventory summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
 .manifest label { display: block; margin-bottom: 8px; }
 .manifest pre { overflow: auto; max-height: 260px; padding: 16px; background: var(--ui-surface-secondary); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
-.feedback { min-height: 72px; padding: 12px 0; line-height: 1.6; overflow-wrap: anywhere; }
-.reviewSlot { height: 560px; overflow: auto; scrollbar-gutter: stable; }
+.feedback { padding: 8px 0; line-height: 1.6; overflow-wrap: anywhere; }
+.reviewSlot { min-width:0; }
 .summary { display: flex; align-items: start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .summary p, .project p { margin: 8px 0; line-height: 1.5; overflow-wrap: anywhere; }
-.reviewList { max-height: 460px; min-height: 220px; overflow: auto; border: 1px solid var(--ui-border); scrollbar-gutter: stable; }
+.reviewList { max-height: 460px; overflow: auto; border: 1px solid var(--ui-border); scrollbar-gutter: stable; }
 .project { padding: 16px; border-bottom: 1px solid var(--ui-border); }
 .project:last-child { border-bottom: 0; }
 .conflict { color: var(--ui-text); border-left: 3px solid var(--ui-border-strong); padding: 8px 12px; background: var(--ui-surface-secondary); font-weight: 600; }

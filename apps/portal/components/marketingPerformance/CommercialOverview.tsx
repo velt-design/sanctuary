@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { Button, Select } from '@/components/ui/foundation/FoundationControls';
+import ReadStatus from '@/components/page-state/ReadStatus';
 
 import { Drawer } from './MarketingDrawer';
 
@@ -106,16 +107,16 @@ export default function CommercialOverview({ hub, filters, apply, loader, synthe
   const detailCoverage = ready && report ? commercialCoverage(report, rows, metric ?? 'quoted', detailStart, detailEnd) : 'unavailable';
   const valueLabel = (key: CommercialMetric, value: number | null) => value === null ? 'Unavailable' : key.endsWith('Days') ? `${value.toFixed(1)} days` : money(value);
 
-  return <section ref={section} tabIndex={-1} className={styles.section} aria-label="Commercial performance" style={{minHeight:waitingHeight}}>
+  return <section ref={section} tabIndex={-1} className={styles.section} aria-label="Commercial performance" style={{minHeight:pending?waitingHeight:undefined}}>
 
     <CommercialMetricStrip controlRef={controlRef} pending={pending} inspect={inspect} values={ready ? Object.fromEntries((['quoted','accepted','average'] as const).map(key => {
       const cover = coverage(key), value = recordedMetricValue(key,current[key],cover);
       return [key,{ value:value===null?'Unavailable':compactMoney(value), unavailable:value===null,
         note:<>{historyLabel(cover,current[key].length)}{cover!=='covered'?' · ':''}{current[key].length} recorded commercial {current[key].length===1?'scope':'scopes'}{key==='average'?' · per accepted scope':''}</> } satisfies CommercialMetricValue];
     })) : undefined}/>
-    <div className={styles.note} aria-live="polite" style={{minHeight:24}}>{pending?<span role="status">{report?'Reading complete project filters…':'Reading quote values and timing…'}</span>:error?<><span role="alert">{error} No partial values are shown.</span> <Button onClick={()=>retryEvidence?retryEvidence():setRetry(n=>n+1)}>Retry commercial report</Button></>:ready&&!hub?<span role="status">Complete quote source read at {new Date(report!.asOf).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'})} NZ. Project context is still reading; these source figures will be checked against the completed project selection.</span>:null}</div>
 
-    <div className={styles.basisRow}><p className={styles.basis}>Quote scope values · NZD including GST · Selected dates, not invoices or cash received</p>{ready&&<details className={styles.comparisons}><summary>Previous period comparison</summary><div>{(['quoted','accepted','average'] as const).map(key=>{const currentCoverage=coverage(key),priorCoverage=coverage(key,true),comparable=currentCoverage==='covered'&&priorCoverage==='covered';return <div key={key}><h3>{labels[key]}</h3><button className={styles.compare} onClick={()=>inspect(key,'',true)}>Previous: {valueLabel(key,recordedMetricValue(key,previous[key],priorCoverage))}{priorCoverage!=='covered'?` · ${historyLabel(priorCoverage,previous[key].length)}`:''}</button><small>{comparable?comparison(recordedMetricValue(key,current[key],currentCoverage),recordedMetricValue(key,previous[key],priorCoverage)):'Comparison unavailable · period history incomplete'}</small></div>;})}</div></details>}</div>
+
+    <div className={styles.basisRow}><ReadStatus title={pending?'Reading quote values and timing…':error?'Commercial report unavailable':ready&&!hub?'Quote source · project filters pending':'Quote source'} tone={error?'error':'neutral'} action={error?<Button onClick={()=>retryEvidence?retryEvidence():setRetry(n=>n+1)}>Retry commercial report</Button>:undefined} details={<>{pending?<p>{report?'Reading complete project filters…':'Reading quote values and timing…'}</p>:error?<p>{error} No partial values are shown.</p>:ready&&!hub?<p>Complete quote source read at {new Date(report!.asOf).toLocaleString('en-NZ',{timeZone:'Pacific/Auckland'})} NZ. Project context is still reading; these source figures will be checked against the completed project selection.</p>:<p>Quote scope values · NZD including GST · Selected dates, not invoices or cash received</p>}</>}/><p className={styles.basis}>Quote scope values · NZD including GST · Selected dates, not invoices or cash received</p>{ready&&<details className={styles.comparisons}><summary>Previous period comparison</summary><div>{(['quoted','accepted','average'] as const).map(key=>{const currentCoverage=coverage(key),priorCoverage=coverage(key,true),comparable=currentCoverage==='covered'&&priorCoverage==='covered';return <div key={key}><h3>{labels[key]}</h3><button className={styles.compare} onClick={()=>inspect(key,'',true)}>Previous: {valueLabel(key,recordedMetricValue(key,previous[key],priorCoverage))}{priorCoverage!=='covered'?` · ${historyLabel(priorCoverage,previous[key].length)}`:''}</button><small>{comparable?comparison(recordedMetricValue(key,current[key],currentCoverage),recordedMetricValue(key,previous[key],priorCoverage)):'Comparison unavailable · period history incomplete'}</small></div>;})}</div></details>}</div>
     {sendNote && <p className={styles.notice}>{sendNote}</p>}
     {undated > 0 && <p className={styles.notice}>{undated} currently accepted scopes across all dates have no acceptance date and cannot be assigned to either period.</p>}
 

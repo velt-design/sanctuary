@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, Input, Select } from '@/components/ui/foundation/FoundationControls';
 import { Drawer } from '@/components/marketingPerformance/MarketingDrawer';
 import { completedMonth, financialsQuery, nzDay, previousQuery, yearToDate, type FinancialDisplayEvidence, type FinancialSelection } from '@/lib/xero/financials/contract';
 import styles from './Financials.module.css';
 
-export default function FinancialToolbar({ selection, apply, report, busy, retry }: { selection: FinancialSelection; apply: (next: FinancialSelection) => void; report: FinancialDisplayEvidence | null; busy: boolean; retry: () => void }) {
+export default function FinancialToolbar({ selection, apply, report, busy, retry, feedback }: { selection: FinancialSelection; apply: (next: FinancialSelection) => void; report: FinancialDisplayEvidence | null; busy: boolean; retry: () => void; feedback?: ReactNode }) {
   const [open,setOpen] = useState(false), [draft,setDraft] = useState(selection), [error,setError] = useState('');
   const month = completedMonth(), previous = previousQuery(month);
   const fy = report?.financialYearEnd ? yearToDate(report.financialYearEnd) : null;
@@ -16,7 +16,7 @@ export default function FinancialToolbar({ selection, apply, report, busy, retry
         <option value="last">Last completed month</option><option value="previous">Previous month</option>{fy && <option value="fy">Financial year to date</option>}<option value="custom">Custom dates</option>
       </Select>
       <Select label="P&L basis" value={selection.basis} onChange={event => apply({...selection,basis:event.target.value as FinancialSelection['basis'],detail:''})}><option value="accrual">Accrual</option><option value="cash">Cash</option></Select>
-      <div className={styles.toolbarActions}><Button variant="quiet" onClick={edit}>{selection.from} – {selection.to}</Button><Button variant="secondary" onClick={retry} disabled={busy}>{busy ? 'Reading Xero…' : 'Refresh Xero'}</Button></div>
+      <div className={styles.toolbarActions}>{feedback}<Button variant="quiet" onClick={edit}>{selection.from} – {selection.to}</Button><Button variant="secondary" onClick={retry} disabled={busy}>{busy ? 'Reading Xero…' : 'Refresh Xero'}</Button></div>
     </div>
     <Drawer title="Financial period" open={open} onClose={() => setOpen(false)}><div className={styles.periodDrawer}>
       <Input type="date" label="From" value={draft.from} max={nzDay()} onChange={event => setDraft({...draft,from:event.target.value})}/><Input type="date" label="To" value={draft.to} max={nzDay()} onChange={event => setDraft({...draft,to:event.target.value})}/>

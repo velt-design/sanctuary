@@ -354,7 +354,7 @@ export default function QuotesListView({
                         <small>{`${quoteRefLabel} · v${quote.versionNumber}`}</small>
                         {quote.commercialScopeKind === "add_on" ? <Badge tone="info">Add-on</Badge> : null}
                       </span>
-                    <span className={styles.documentSource} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                    <span className={styles.documentSource} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}>
                       {quote.sourceEstimateVersionId ? <ButtonLink variant="tertiary" size="small" href={`/staff/projects/${encodeURIComponent(quote.projectId)}?tab=estimates&estimateId=${encodeURIComponent(quote.sourceEstimateVersionId)}`}>
                         {sourceEstimate ? estimateDisplayName(sourceEstimate, estimates) : quote.sourceEstimateVersionLabel}
                       </ButtonLink> : 'No source estimate'}
@@ -396,7 +396,7 @@ export default function QuotesListView({
                     </td>
                     <td
                       onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
                     >
                     <span className={styles.documentSource}>
                       {isLocalQuoteId(quote.id) || quoteSyncPending ? (

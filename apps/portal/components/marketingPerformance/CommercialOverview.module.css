@@ -1,4 +1,4 @@
-.section { min-height:660px; min-width:0; }
+.section { min-width:0; }
 .heading { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; align-items:baseline; }
 .heading h2 { font-family:var(--ui-font-display); font-size:25px; font-weight:500; margin:0; }
 .note { font-size:13px; color:var(--ui-text-muted); line-height:1.5; margin:6px 0 8px; }
@@ -53,7 +53,7 @@
 .timingSection { border-top:1px solid var(--ui-border); padding-top:24px; }
 .timingSection h2 { margin:0; }
 @media(max-width:850px) { .timing { gap:24px; } .metric { padding:0 16px; } .metric strong { font-size:64px; } .trendHeading { gap:12px; } }
-@media(max-width:650px) { .metrics { grid-template-columns:1fr; gap:0; padding-top:0; } .metric { padding:16px 0; border:0; border-bottom:1px solid var(--ui-border); } .metric > button:first-child { display:grid; grid-template-columns:minmax(0,1fr) max-content; align-items:center; gap:8px; }.metric strong { font-size:clamp(44px,15vw,58px); text-align:right; margin:0; white-space:nowrap; overflow-wrap:normal; }.metric span { font-size:14px; }.metric button small { grid-column:1/-1; }.metric strong[data-unavailable] { font-size:32px; }.metric > small { display:block; }.timing { grid-template-columns:1fr; gap:8px; }.section { min-height:1050px; }.legend { order:3; width:100%; margin:0; }.trendHeading > :last-child { width:100px; }.trendHeading h2 { max-width:calc(100% - 116px); font-size:27px; } }
+@media(max-width:650px) { .metrics { grid-template-columns:1fr; gap:0; padding-top:0; } .metric { padding:16px 0; border:0; border-bottom:1px solid var(--ui-border); } .metric > button:first-child { display:grid; grid-template-columns:minmax(0,1fr) max-content; align-items:center; gap:8px; }.metric strong { font-size:clamp(44px,15vw,58px); text-align:right; margin:0; white-space:nowrap; overflow-wrap:normal; }.metric span { font-size:14px; }.metric button small { grid-column:1/-1; }.metric strong[data-unavailable] { font-size:32px; }.metric > small { display:block; }.timing { grid-template-columns:1fr; gap:8px; }.legend { order:3; width:100%; margin:0; }.trendHeading > :last-child { width:100px; }.trendHeading h2 { max-width:calc(100% - 116px); font-size:27px; } }
 @media(max-width:650px) { .chart { height:250px; }.comparisons { margin-left:0; width:100%; }.comparisons > div { grid-template-columns:1fr; gap:12px; }.basisRow { gap:4px; }.section .comparisons > summary,.section .trendFigures > summary { min-height:44px; } }
 
 .records { padding:0; min-width:0; }
@@ -62,3 +62,6 @@
 .valueTable th:first-child { width:65%; overflow-wrap:anywhere; }
 .valueTable td { text-align:right; overflow-wrap:anywhere; }
 @media(max-width:520px) { .records { padding:16px; } .valueTable th:first-child { width:58%; } .valueTable th,.valueTable td { padding:10px 6px; } }
+
+.basisRow > :first-child { min-width:0; max-width:42ch; }
+@media(max-width:650px) { .basisRow > :first-child { flex-basis:100%; max-width:100%; } }

@@ -104,9 +104,6 @@
     color: var(--ui-text-muted);
     font-size: var(--ui-font-size-caption);
   }
-  .secondaryColumn {
-    display: none;
-  }
 
   .actions {
     justify-content: space-between;
@@ -130,8 +127,12 @@
 
 .header { min-height: 88px; }
 .headerActionSlot { min-height: 44px; min-width: 290px; }
+.wrapper .header { min-height:0; }
+.wrapper .headerActionSlot { min-height:0; min-width:0; display:flex; align-items:center; gap:var(--ui-space-2); }
+.wrapper .listViewport { min-height:0; }
 @media (max-width: 720px) {
   .header { display: grid; grid-template-rows: minmax(56px, auto) 96px; }
   .headerActionSlot { min-width: 0; height: 96px; }
   .headerActions { height: 96px; align-content: start; }
 }
+.wrapper .header,.wrapper .headerActionSlot,.wrapper .headerActions { height:auto; grid-template-rows:none; }

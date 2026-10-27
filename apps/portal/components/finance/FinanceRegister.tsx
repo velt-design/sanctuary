@@ -50,7 +50,11 @@ export default function FinanceRegister({ basePath = '/staff/payments', apiPath 
   const navigate = (href: string) => window.history.pushState(null, '', href);
   const selected = params.get('selected');
   return <PageLayout width="full" density="compact" className={styles.page}>
-    <PageHeader variant="index" title="Finance" />
+    <PageHeader variant="index" title="Finance" right={<ReadStatus title={error === 'denied' ? 'Finance access is no longer available for this account.' : error ? `Finance could not be refreshed.${data ? ' Previously checked records remain below.' : ''}` : busy ? 'Checking finance records…' : data ? `Checked ${new Date(data.checkedAt).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })}` : 'Finance unavailable'}
+        tone={error === 'denied' ? 'error' : error ? 'warning' : 'neutral'}
+        action={<>{error === 'unavailable' && <Button variant="tertiary" size="small" onClick={() => setRevision(n => n + 1)}>Try again</Button>}
+          {(query.search || query.sent !== 'all') && <Link className={styles.clearFilters} href={href({ ...query, search: '', sent: 'all', offset: 0 })}>Clear filters</Link>}</>}
+        details={<p>{error === 'denied' ? 'Finance access is no longer available for this account.' : data && (busy || error) ? 'Previously checked records remain below while the current position is checked.' : busy ? 'Reading the full matching finance register. Amounts are not verified until the read completes.' : data ? 'Amounts use the full matching set, not only this page. Checked time and currency are shown with the records.' : 'No checked finance records are available.'}</p>} />} />
     <nav className={styles.tabs} aria-label="Finance sections">
       <Link href={href({ ...query, tab: 'invoices', view: 'outstanding', offset: 0 })} aria-current={query.tab === 'invoices' ? 'page' : undefined}>Invoices</Link>
       <Link href={href({ ...query, tab: 'quotes', view: 'awaiting', offset: 0 })} aria-current={query.tab === 'quotes' ? 'page' : undefined}>Quotes</Link>
@@ -69,19 +73,15 @@ export default function FinanceRegister({ basePath = '/staff/payments', apiPath 
       <Button type="button" variant="tertiary" className={styles.refresh} aria-label="Refresh" title="Refresh records" disabled={busy} onClick={() => setRevision(n => n + 1)}><RefreshCw aria-hidden="true" /></Button>
     </form>
     <section aria-label="Register results" aria-busy={busy} className={styles.results}>
-      <ReadStatus title={error === 'denied' ? 'Finance access is no longer available for this account.' : error ? `Finance could not be refreshed.${data ? ' Previously checked records remain below.' : ''}` : busy ? 'Checking finance records…' : data ? `Checked ${new Date(data.checkedAt).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' })}` : 'Finance unavailable'}
-        tone={error === 'denied' ? 'error' : error ? 'warning' : 'neutral'}
-        action={<>{error === 'unavailable' && <Button variant="tertiary" size="small" onClick={() => setRevision(n => n + 1)}>Try again</Button>}
-          {(query.search || query.sent !== 'all') && <Link className={styles.clearFilters} href={href({ ...query, search: '', sent: 'all', offset: 0 })}>Clear filters</Link>}</>}
-        details={data && (busy || error) ? <p>Previously checked records remain below while the current position is checked.</p> : undefined} />
-      <div className={styles.noteSlot}>{data && resultQuery.tab === 'quotes' && <p className={styles.note}>One relevant version per family. Open a quote for revisions and history.</p>}</div>
-      <div className={styles.paginationSlot}>
-        {data && current && <nav className={styles.pagination} aria-label="Register pages">
-          {query.offset > 0 && <ButtonLink variant="secondary" size="small" href={href({ ...query, offset: Math.max(0, query.offset - 50) })}>Previous</ButtonLink>}
-          <span>{data.count ? `${Math.min(query.offset + 1, data.count)}–${Math.min(query.offset + 50, data.count)} of ${data.count}` : '0 records'}</span>
-          {data.hasMore && <ButtonLink variant="secondary" size="small" href={href({ ...query, offset: query.offset + 50 })}>Next</ButtonLink>}
-          {query.offset > 0 && !data.rows.length && <ButtonLink variant="tertiary" href={href({ ...query, offset: 0 })}>First page</ButtonLink>}
-        </nav>}
+
+      <div className={styles.resultsHeader}>
+        {data && resultQuery.tab === 'quotes' && <p className={styles.note}>One relevant version per family. Open a quote for revisions and history.</p>}
+        <nav className={styles.pagination} aria-label="Register pages">
+          <ButtonLink variant="secondary" size="small" disabled={!data || !current || query.offset === 0} href={href({ ...query, offset: Math.max(0, query.offset - 50) })}>Previous</ButtonLink>
+          <span>{!data ? busy ? 'Checking records' : 'Records unavailable' : data.count ? `${Math.min(query.offset + 1, data.count)}–${Math.min(query.offset + 50, data.count)} of ${data.count}` : '0 records'}</span>
+          <ButtonLink variant="secondary" size="small" disabled={!data || !current || !data.hasMore} href={href({ ...query, offset: query.offset + 50 })}>Next</ButtonLink>
+          {data && query.offset > 0 && !data.rows.length && <ButtonLink variant="tertiary" href={href({ ...query, offset: 0 })}>First page</ButtonLink>}
+        </nav>
       </div>
       <RegisterTable rows={data?.rows ?? []} tab={resultQuery.tab} checkedAt={data?.checkedAt}
         selected={data ? selected : null} disabled={!data || stale && !current} pending={!data && busy} select={id => {

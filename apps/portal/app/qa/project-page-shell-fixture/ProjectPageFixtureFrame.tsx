@@ -20,10 +20,13 @@ import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame
 import ProjectSnapshotNotice from '@/components/projects/ProjectPage/ProjectSnapshotNotice';
 import { useProjectTabSelection } from '@/components/projects/ProjectPage/useProjectTabSelection';
 import { ProjectOverviewReadsProvider, useProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
+import dynamic from 'next/dynamic';
+const ProjectWorkdeskFixtureFrame=dynamic(()=>import('./ProjectWorkdeskFixtureFrame'),{ssr:false});
 
 type FixtureProps=Omit<ComponentProps<typeof ProjectPageFrame>, 'optimisticTab' | 'onTabSelect'>;
 export default function ProjectPageFixtureFrame(props:FixtureProps){
  const params=useSearchParams();const overview=params.get('overview')==='1'&&(params.get('tab')??props.tab)==='activity';
+ if(params.get('workdesk')==='1')return <ProjectWorkdeskFixtureFrame {...props}/>;
  return overview?<OverviewFixtureFrame {...props}/>:<LegacyFixtureFrame {...props}/>;
 }
 
@@ -65,11 +68,12 @@ function OverviewFixtureFrame(props:FixtureProps){
  const evidence=publication.value?{...publication.value,overview:overview.value}:null;
  return <><PageLayout width="full" className={projectStyles.page} data-project-snapshot-state={denied?'unavailable':state}>
  <ProjectOverviewReadsProvider value={evidence?.overviewReads??null}>
- <ProjectPageFrameSurface header={<ProjectHeaderSurface projectId={projectId} project={evidence?.snapshot?.project??null} host={props.host} tab={props.tab} snapshotState={denied?'unavailable':state}
+ <ProjectPageFrameSurface projectId={projectId} selectedTab={navigation.activeTab} header={<ProjectHeaderSurface projectId={projectId} project={evidence?.snapshot?.project??null} host={props.host} tab={props.tab} snapshotState={denied?'unavailable':state}
+ statusPanel={evidence?.statusPanel}
  readOnly={evidence?.readOnly??true} workModel={evidence?.snapshot?.workModel} projectWork={evidence?.projectWork} ownerControlsPaused={state!=='fresh'} tabAvailabilityReady={evidence?.snapshotContentReady??false}
  optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab} privateContentReady={Boolean(evidence)&&!denied} searchReader={null}/> }>
- <ProjectPageShellSurface projectId={projectId} snapshot={evidence?.snapshot??null} host={props.host} tab={props.tab} snapshotState={denied?'unavailable':state} snapshotContentReady={state==='fresh'}
- optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab} privateContentReady={Boolean(evidence)&&!denied} statusPanel={evidence?.statusPanel}
+ <ProjectPageShellSurface snapshot={evidence?.snapshot??null} tab={props.tab} snapshotState={denied?'unavailable':state} snapshotContentReady={state==='fresh'}
+ optimisticTab={navigation.optimisticTab} privateContentReady={Boolean(evidence)&&!denied} statusPanel={evidence?.statusPanel}
  publicBody={<><ProjectOverviewSurface controls={controls} evidence={denied?null:overview.value} unavailable={denied} onFiles={()=>{if(selectProjectView('files'))navigation.selectTab('files');}}/>{evidence&&!denied?evidence.body:null}</>}/>
  </ProjectPageFrameSurface></ProjectOverviewReadsProvider></PageLayout>
  {owner?<OverviewFixtureRead projectId={projectId} snapshot={props.snapshot} state={state} host={props.host} readOnly={props.readOnly??false} tab={navigation.activeTab} binding={binding} select={select} onAccessEnding={accessEnding} onRetry={retry} publish={publication.publish}/>:null}</>;

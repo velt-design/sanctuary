@@ -77,15 +77,19 @@ export function ContactDetailsView({
     updateDraftField,
   } = useContactDetailsDraft(contact, hostKey);
 
+  const heading = contact ? displayed.displayName || contact.displayName : pending ? 'Reading contact' : missing ? 'Contact not found' : 'Contact unavailable';
   return (
     <PageLayout className={styles.page}>
       <StaffPageHeader
         variant="detail"
-        title={contact ? displayed.displayName || contact.displayName : pending ? "Reading contact" : missing ? "Contact not found" : "Contact unavailable"}
+        className={styles.detailHeader}
+        headingProps={{ tabIndex: 0, title: heading }}
+        title={heading}
         description="Customer details and linked project history."
         breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: contact ? displayed.displayName || contact.displayName : 'Contact' }]}
         right={
-          <HeaderActions>
+          <HeaderActions className={styles.routeActions}>
+            <ReadStatus title={loadError ? contact ? 'Latest contact refresh failed' : 'Contact unavailable' : pending ? 'Reading contact…' : 'Contact current'} tone={loadError ? 'warning' : 'neutral'} action={loadError && onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined} details={loadError ? <p>{loadError}</p> : undefined} />
             <PortalIndexLink variant="secondary" href="/staff/contacts">Contacts</PortalIndexLink>
             <ButtonLink disabled={!contact} href={`/staff/projects/new?contactId=${encodeURIComponent(contactId)}`}>Create Project</ButtonLink>
           </HeaderActions>
@@ -93,14 +97,14 @@ export function ContactDetailsView({
       />
       <p className={styles.detailMeta}>Contact ID: {contactId}</p>
 
-      <ReadStatus title={loadError ? contact ? 'Latest contact refresh failed' : 'Contact unavailable' : pending ? 'Reading contact…' : 'Contact current'} tone={loadError ? 'warning' : 'neutral'} action={loadError && onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined} details={loadError ? <p>{loadError}</p> : undefined} />
+
 
       <Card
+        className={styles.contactInfo}
         title="Contact info"
         aria-label="Contact info"
         action={
-          <div className={styles.detailActions}>
-            <div className={styles.detailFeedback}>{statusText ? <TaskScheduleFeedback state={error ? 'retry' : isSaving ? 'saving' : 'saved'}>{statusText}</TaskScheduleFeedback> : null}</div>
+          <div className={styles.detailActions} tabIndex={0} role="group" aria-label="Contact editing and recovery">
             {isEditing ? (
               <>
                 <Button disabled={!canSave} onClick={finishEditing}>Done</Button>
@@ -109,12 +113,14 @@ export function ContactDetailsView({
             ) : (
               <Button variant="secondary" disabled={!contact} onClick={() => setIsEditing(true)}>Edit</Button>
             )}
+            <div className={styles.detailFeedback}>{statusText ? <TaskScheduleFeedback state={error ? 'retry' : isSaving ? 'saving' : 'saved'}>{statusText}</TaskScheduleFeedback> : null}</div>
+            <ReadStatus title={error ? 'Contact changes need attention' : 'Contact details'} tone={error ? 'error' : 'neutral'}
+          action={error && canRetry ? <div className={styles.detailActions}><Button variant="secondary" onClick={() => void retry()}>Retry now</Button><Button variant="tertiary" onClick={reviewLocalDraft}>Review changes</Button></div> : undefined}
+          details={error ? <p>{error}</p> : undefined} />
           </div>
         }
       >
-        <ReadStatus title={error ? 'Contact changes need attention' : 'Contact details'} tone={error ? 'error' : 'neutral'}
-          action={error && canRetry ? <div className={styles.detailActions}><Button variant="secondary" onClick={() => void retry()}>Retry now</Button><Button variant="tertiary" onClick={reviewLocalDraft}>Review changes</Button></div> : undefined}
-          details={error ? <p>{error}</p> : undefined} />
+
 
         <Table className={styles.detailTable}><colgroup><col style={{width:'27%'}}/><col style={{width:'73%'}}/></colgroup>
           <TableBody>

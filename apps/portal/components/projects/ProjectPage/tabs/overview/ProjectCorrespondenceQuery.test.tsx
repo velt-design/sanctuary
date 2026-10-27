@@ -13,6 +13,47 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); 
 const flush = async () => { await act(async () => { await Promise.resolve(); }); };
 
 describe('private correspondence lifecycle', () => {
+  it('keeps an eligible snapshot and the same focused recheck control through a held POST, recovery and repeated activation', async () => {
+    const context = { ...correspondenceFixture, snapshot: { checkedAt: correspondenceFixture.observedAt,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(), state: 'recent', nextAttemptAt: null },
+      messages: [{ id: 'stable-message', subject: 'Installation question', from: 'customer@example.test',
+        sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt,
+        observedAt: correspondenceFixture.observedAt, url: 'https://outlook.office.com/mail/id/stable-message',
+        bodyText: 'Could you confirm the installation week? '.repeat(12), truncated: false, association: 'customer_address_only' }] };
+    let finish: (reply: unknown) => void = () => undefined;
+    mocks.api.mockResolvedValueOnce({ state: 'ready', context }).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const view = renderIntoDocument(<ProjectCorrespondenceQuery projectId="proj_1" />);
+    await flush();
+    const article = view.container.querySelector('article'), message = view.container.querySelector<HTMLDetailsElement>('article details')!;
+    act(() => { message.open = true; message.dispatchEvent(new Event('toggle')); });
+    const refresh = Array.from(view.container.querySelectorAll('button')).find(button => button.textContent?.includes('Check again'))!;
+    act(() => { refresh.focus(); refresh.click(); });
+    expect(refresh.isConnected).toBe(true);
+    expect(document.activeElement).toBe(refresh);
+    expect(refresh.getAttribute('aria-busy')).toBe('true');
+    expect(view.container.querySelector('article')).toBe(article);
+    expect(view.container.querySelector('article details')).toBe(message);
+    expect(message.open).toBe(true);
+    expect(view.container.textContent).not.toContain('Checking for newer emails');
+    act(() => refresh.click());
+    expect(mocks.api.mock.calls.map(call => call[1].method)).toEqual(['GET', 'POST']);
+    await act(async () => finish({ state: 'ready', context }));
+    expect(view.container.querySelector('article')).toBe(article);
+    expect(view.container.querySelector('article details')).toBe(message);
+    expect(refresh.getAttribute('aria-busy')).toBeNull();
+    expect(document.activeElement).toBe(refresh);
+    mocks.api.mockRejectedValueOnce(new Error('Read failed'));
+    await act(async () => refresh.click());
+    expect(refresh.isConnected).toBe(true);
+    expect(document.activeElement).toBe(refresh);
+    expect(view.container.querySelector('article')).toBeNull();
+    expect(view.container.textContent).toContain('Conversations unavailable');
+    mocks.api.mockResolvedValueOnce({ state: 'ready', context });
+    await act(async () => refresh.click());
+    expect(view.container.querySelector('article')).not.toBeNull();
+    expect(document.activeElement).toBe(refresh);
+    view.unmount();
+  });
   it('restores an opened message on tab return only after a fresh access check, and clears it after denial', async () => {
     const context = { ...correspondenceFixture, messages: [{ id: 'reading-one', subject: 'Installation question',
       from: 'customer@example.test', sentAt: correspondenceFixture.observedAt, receivedAt: correspondenceFixture.observedAt,

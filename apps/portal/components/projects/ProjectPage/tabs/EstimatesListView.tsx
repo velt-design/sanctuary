@@ -131,7 +131,7 @@ export default function EstimatesListView({
                   </TableCell>
                   <TableCell data-label="Created">{formatPortalDateTime(estimate.createdAt, { fallback: '-' })}</TableCell>
                   <TableCell data-label="Status"><Badge tone={status.tone}>{status.label}</Badge></TableCell>
-                  <TableCell data-label="Linked quotes" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                  <TableCell data-label="Linked quotes" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}>
                     <div className={styles.estimateIdentity}>
                       {quoteReadState !== 'ready' ? <span>{quoteReadState === 'loading' ? 'Loading quote links…' : 'Quote links unavailable'}</span> : linkedQuotes.length ? linkedQuotes.map((quote) => (
                         <div key={quote.id}>
@@ -145,7 +145,7 @@ export default function EstimatesListView({
                   </TableCell>
                   <TableCell
                     onClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
                   >
                     <div className={styles.actions}>
                       <Button size="small" variant="secondary" onClick={open}>{openLabel}</Button>

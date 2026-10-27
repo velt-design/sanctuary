@@ -1,5 +1,51 @@
 # Testing And QA
 
+## Active Portal presentation verification
+
+Existing Dashboard, creation, Contact, Costing and Access tests retain their
+ordinary action, read and permission contracts. Finance covers full-set amounts,
+version/delivery history, obsolete-read rejection, denied-record withdrawal and
+header/Details/pager identity through first read. CalendarFreshness checks
+unknown, saved, failed and recovered disclosure/focus continuity, while agenda
+scope/filter/count/history assertions remain. Schedule covers initial Board/Gantt
+read failures, direct Retry, complete trust warnings, persistent header/search
+controls and panel-choice continuity through record adoption.
+
+Native acceptance covers readable Dashboard work at short/wide/narrow sizes;
+Schedule pending/error/Retry/settled control anchors and unsaved/conflict recovery;
+Finance current/retained/empty/error/denied records, complete numbers and return;
+Site Visits scope/freshness; and create/edit/Access/Costing recovery. UI QA does
+not execute business commands. Controlled fixtures do not establish connected
+provider completion. Use exact compiled builds, original caps and representative
+native journeys alongside source tests.
+
+
+## Active Portal core layout checks, 27 October 2026
+
+The core batch replaces oversized status/list/header allocations at their
+presentation owners. Existing Dashboard, Projects, Contacts, Work Queue and
+payout tests retain data/request/permission/mutation assertions. Dashboard's
+former single-row DOM-order assertion now follows its independent work+estimates,
+activity and tasks+visits groups. The shared pinned-detail 2.2em clamp assertion
+is replaced by natural title sizing and complete focusable Contact-name access;
+Project's independent full-title and single-work-scroller contracts remain.
+Focused DOM regressions keep Dashboard header, Details, task draft and real
+links mounted through pending/fresh/cached/failure/recovery, and Contact's same
+heading/focus across name adoption. CSS guards prohibit core fixed status lanes,
+index floors and competing Dashboard viewport tracks. They do not establish pixels.
+
+Compiled/native acceptance includes 390px, actual 1280x625 short desktop and useful
+2560px width: ordinary search/filter/page selection, personal tasks, queue/detail
+return, pending/fresh/empty/failure/Retry and Details Escape/focus return. Check
+control anchors and reading positions; do not accept blank minimum floors as
+stability. Dashboard uses document flow on short screens; only long card bodies
+may use their existing overflow on wide tall screens. Index pager controls persist
+and local recovery/completeness actions remain reachable on narrow screens.
+Payout stays top-aligned and readable, with financial and print behavior intact.
+Run original active Portal/Schedule caps and Calculator lazy-zero checks, without
+threshold changes. Workbench optional verification remains excluded.
+
+
 Owner-reviewed creative continuation: run paired creative-executor/owner-review
 and authority tests, then `scripts/test-meta-creative-ledger-db.mjs` with the
 existing disposable PostgreSQL binary. The actual SQL covers pending read,
@@ -2538,9 +2584,9 @@ npm run test:portal:performance:fixture
 
 `playwright/portal.costing-control-smoke.spec.ts` is an opt-in, read-only admin smoke for the Pricebook costing-control entrypoint. Set `PORTAL_TEST_ROLE=admin`, authenticate with an admin test account, and run it with the `portal-chromium` project. It proves `/pricebook` redirects without a browser runtime error, the version/status UI loads, and the configuration-history and estimate-preview APIs return `private, no-store`. It never creates, saves, publishes, or rolls back a costing version.
 
-`npm run test:portal:browser` includes the gated, customer-data-free Project Command Centre fixture at `/qa/project-command-centre-fixture?scenario=...&work=...&state=...`. The fixture composes the production `ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectCurrentDesignCommercialCard`, and `ProjectRecentNotesEvents` owners with synthetic data; its shell variant additionally sends a deterministic command-centre response through the production query and `OverviewTab`. It performs no authenticated data reads. Its Overview work card retains Work and Original enquiry plus an Open project files shortcut; it no longer embeds a Files tab or attachment fixture. Dedicated Files coverage uses the source-owned project-tab/route tests and explorer component tests described above. The separate local verification harness mounts the actual project frame, Files workspace and outer sizing CSS with synthetic file/source boundaries; that private harness and its media are not checked-in fixture routes or live Storage evidence. Its catalogue supplies current first-email/follow-up/close-review and stage-review work, stage-aware Contacted/Site Visit/visit-complete/Quoting specialist cases, normal through blocked due states, long customer/project/site/action content, no owner/action, Waiting/Closed/Archived/correction review, strict commercial-source cases, and pending/summary/refreshing/stale/mismatch/error/retry/access-ending states.
+`npm run test:portal:browser` includes the gated, customer-data-free Project Command Centre fixture at `/qa/project-command-centre-fixture?scenario=...&work=...&state=...`. The fixture composes the production `ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectCurrentDesignCommercialCard`, and `ProjectRecentNotesEvents` owners with synthetic data; its shell variant additionally sends a deterministic command-centre response through the production query and `OverviewTab`. It performs no authenticated data reads. Its Overview work card retains Work and Original enquiry plus an Open project files shortcut; it no longer embeds a Files tab or attachment fixture. Dedicated Files coverage uses the source-owned project-tab/route tests and explorer component tests described above. The checked-in full Work desk route `/qa/project-page-shell-fixture?workdesk=1&commercial=1&tab=activity` mounts the actual persistent production frame and Overview, Files and Commercial controllers with finite synthetic sources. Its Files originals are served only by the flag-gated, finite GET route `/qa/project-page-shell-fixture/files/{fileId}`; unknown IDs and a disabled fixture flag return 404. Empty correspondence POST rechecks are local fictional reads, with response-time observations and unchanged original message dates. All other server commands and unlisted requests remain denied. This controlled fixture does not establish live Storage/provider access or production first-UI timing. Its catalogue supplies current first-email/follow-up/close-review and stage-review work, stage-aware Contacted/Site Visit/visit-complete/Quoting specialist cases, normal through blocked due states, long customer/project/site/action content, no owner/action, Waiting/Closed/Archived/correction review, strict commercial-source cases, and pending/summary/refreshing/stale/mismatch/error/retry/access-ending states.
 
-The current fixture Playwright specs directly assert the read-only commercial, Project Work, read-state, semantic email-command, project-shell, and stage-aware journey-action contracts. They check the standard composition at 1600x1000, 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 with attached rendered evidence; long-content resilience at each width; the shared 1440px content ceiling; one-column mobile-priority order at 768px and below; one visually dominant primary action and explicit outcome-recording controls; Contacted/Site Visit/Quoting labels and canonical destinations at every standard viewport plus 640 CSS-pixel effective zoom; commercial exception-before-metrics order; one Retry for a failed command-centre read; no document horizontal overflow, nested vertical scroll owner, or cropped control; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle/commercial controls; and 44px coarse-pointer controls. The same synthetic Overview fixture opens the dedicated Close Project dialog at every required viewport and records screenshots while asserting unselected Lost/Cancelled/Complete paths, Lost optional-note behavior, exact final CTA, consequence copy, and containment without submitting a command. Access-ending fixture states remove the complete protected Overview, while page-level component coverage proves 401/403/404 cache clearing and unavailable presentation. Catalogue entries and acceptance properties not named by those assertions remain required verification rather than completed evidence. The route requires `ENABLE_PORTAL_QA_FIXTURES=1`; the standard fixture harness supplies that flag.
+The current fixture Playwright specs directly assert the read-only commercial, Project Work, read-state, semantic email-command, project-shell, and stage-aware journey-action contracts. The acceptance source checks the standard composition at 2560x1320, 1600x1000, 1440x1000, 1280x800, 1024x900, 768x1024 and 390x844, plus the tall 895x1244 project frame; long-content resilience; useful available-parent width and meaningful wide columns rather than a 1440px project ceiling; one-column mobile-priority order at 768px and below; one visually dominant primary action and explicit outcome-recording controls; Contacted/Site Visit/Quoting labels and canonical destinations at every standard viewport plus 640 CSS-pixel effective zoom; commercial exception-before-metrics order; one Retry for a failed command-centre read; no document horizontal overflow or cropped control; no nested vertical scroll owner in the standalone document-flow Overview fixture, while the actual project frame keeps one designated work scroller with windowY 0 and stationary natural-height masthead/navigation; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle/commercial controls; and 44px coarse-pointer controls. The same synthetic Overview fixture opens the dedicated Close Project dialog at every required viewport and records screenshots while asserting unselected Lost/Cancelled/Complete paths, Lost optional-note behavior, exact final CTA, consequence copy, and containment without submitting a command. Access-ending fixture states remove the complete protected Overview, while page-level component coverage proves 401/403/404 cache clearing and unavailable presentation. Visible status triggers, full recovery details and Retry, focused title disclosure, actual work-area scrollbar transitions and native view/Back/Forward reading returns remain required. Cold invoice preview activation must keep the public frame/controller mounted, expose loading/cancel feedback and suppress late previews after cancel or access withdrawal. Source assertions do not establish browser behavior; exercise the compiled native journey and independent delivery review. Catalogue entries and acceptance properties not named by those assertions remain required verification rather than completed evidence. The route requires `ENABLE_PORTAL_QA_FIXTURES=1`; the standard fixture harness supplies that flag.
 
 The current portal UI system has a data-free visual mirror at `/qa/ui-foundation-fixture`, gated by the same `ENABLE_PORTAL_QA_FIXTURES=1` flag. Use it for desktop, tablet, and mobile screenshots when staff credentials are unavailable. `/staff/ui-foundation` remains the protected shared-component catalogue and stays in authenticated agent-access smoke. Both routes provide regression evidence; neither is a target mockup that authorizes restyling production routes.
 
@@ -3494,3 +3540,6 @@ main-thread long task. Sampled self-times cannot be added to trace durations.
 This provides causal evidence only;
 it does not change original clocks, five samples, 16 rules, 100/500/50 targets,
 Calculator exception or legacy useful-marker limitations recorded above.
+
+
+Report and Schedule acceptance: Schedule has one live/read feedback owner and complete original diagnostics in Details, not duplicate Gantt labels. At 390/1280/2560, compare pending/error/Retry header, search and real view-button coordinates; no error-only horizontal scrollbar or blank height reserve is permitted. Staff report tests inspect full diagnostics through the actual Details trigger and retain original source/member intersections, financial amounts/dates, access withdrawal and exact request counts. Report return-position/verified pending geometry tests remain; settled results must release remembered minimum height. Connection settings empty review is naturally sized, while populated review and all approval safeguards remain unchanged. CSS/source checks supplement, and do not replace, compiled native geometry/recovery evidence and all original bundle caps.

@@ -29,3 +29,13 @@ it('keeps one compact status through the existing freshness timer and exposes fu
  view.rerender(<CalendarFreshness compact data={data} readFailed message="Outlook calendar updated."/>);expect(view.container.firstElementChild).toBe(status);expect(status?.textContent).toContain('Latest Portal read failed');
  act(()=>details.click());expect(document.body.textContent).toContain('Outlook calendar updated.');expect(document.body.textContent).toContain('Latest Portal read failed. Showing saved data.');view.unmount();
 });
+
+
+it('keeps the same freshness root, disclosure and focus from an unresolved read through adoption and failure',()=>{
+ const view=renderIntoDocument(<CalendarFreshness compact/>),root=view.container.firstElementChild;
+ const details=view.container.querySelector<HTMLButtonElement>('button')!;act(()=>details.focus());
+ view.rerender(<CalendarFreshness compact data={data}/>);expect(view.container.firstElementChild).toBe(root);expect(view.container.querySelector('button')).toBe(details);expect(document.activeElement).toBe(details);
+ view.rerender(<CalendarFreshness compact data={data} readFailed/>);expect(view.container.querySelector('button')).toBe(details);expect(document.activeElement).toBe(details);
+ act(()=>details.click());expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Showing saved data');
+ act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));expect(document.activeElement).toBe(details);view.unmount();
+});

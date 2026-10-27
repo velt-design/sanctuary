@@ -8,7 +8,10 @@ export default function RegisterSummary({ data, query, stale, pending }: { data?
   const paid = !quotes && query.view === 'paid';
   return <section className={styles.summary} aria-label={stale ? 'Previous results summary' : 'Matching records summary'} data-stale={stale || undefined}>
     <div className={styles.summaryCount}><strong>{data ? data.count : pending ? 'Checking…' : 'Unavailable'}</strong><span>{quotes ? 'quote families' : 'invoices'}{stale ? ' · previous results' : ' in this view'}</span></div>
-    {!data && <p className={styles.summaryLoading}>{pending ? 'Loading recorded totals…' : 'No checked totals available.'}</p>}
+    {!data?.totals.length && <div className={styles.currencySummary}>
+      <div className={styles.owingMetric}><span>{quotes ? 'Quote value' : draft ? 'Draft value' : paid ? 'Recorded paid' : 'Recorded owing'}</span><strong>{data ? 'No matching totals' : pending ? 'Checking...' : 'Unavailable'}</strong></div>
+      {!quotes && !draft && <div className={styles.secondaryMetric}><span>{paid ? 'Recorded owing' : 'Recorded paid'}</span><strong>{data ? 'No matching totals' : pending ? 'Checking...' : 'Unavailable'}</strong></div>}
+    </div>}
     {data?.totals.map(total => <div className={styles.currencySummary} key={total.currency}>
       <div className={styles.owingMetric}><span>{quotes ? 'Quote value' : draft ? 'Draft value' : paid ? 'Recorded paid' : 'Recorded owing'}</span>
         <strong>{money(quotes || draft ? total.totalCents : paid ? total.paidCents : total.balanceCents, total.currency)}</strong>

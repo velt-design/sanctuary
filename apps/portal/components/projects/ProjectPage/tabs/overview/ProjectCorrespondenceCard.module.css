@@ -79,6 +79,10 @@ details[open] > .heading::before { content: '−'; }
 .sources a { color: var(--ui-text-strong); text-decoration: underline; }
 
 .card { scroll-margin-block-start: 80px; }
+.refresh::before { content: '↻'; display: inline-block; }
+.refresh[aria-busy='true']::before { animation: conversation-check 1s linear infinite; }
+@keyframes conversation-check { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .refresh[aria-busy='true']::before { animation: none; } }
 .emailReader { display: grid; gap: var(--ui-space-3); }
 .readerLabel { font-size: var(--ui-font-size-caption); font-weight: 650; color: var(--ui-text-muted); }
 .readingPane { max-height: min(55vh, 480px); overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--ui-space-2); }

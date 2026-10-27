@@ -18,6 +18,10 @@ function view(state: ProjectWorkProjection['effectiveState'], ready = true, vers
   </ProjectCommercialProvider>;
 }
 describe('current-state commercial presentation', () => {
+  it('has no unlabeled routine feedback when verified active commercial work is available',()=>{
+    const result=renderIntoDocument(<ProjectCommercialProvider projectId="active-project" work={work('ACTIVE')} ready><CommercialProjectNotice compact projectId="active-project" view="invoices"/></ProjectCommercialProvider>);
+    expect(result.container.querySelector('[data-project-read-feedback]')).toBeNull();result.unmount();
+  });
   it('retains one allocated notice owner and visible review action while full details stay local', () => {
     const root = (ready: boolean) => <CommercialTabSurface view="quotes" onSelect={() => undefined}
       notice={ready ? <ProjectCommercialProvider projectId="current-project" work={work('WAITING')} ready>
@@ -34,7 +38,7 @@ describe('current-state commercial presentation', () => {
     expect([...result.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Send agreement')?.disabled).toBe(true);
     act(() => review.click());
     expect([...result.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Send agreement')?.disabled).toBe(false);
-    act(() => [...result.container.querySelectorAll('button')].find(button => button.textContent === 'Details')!.click());
+    act(() => result.container.querySelector<HTMLButtonElement>('[data-project-read-feedback] button[aria-haspopup="dialog"]')!.click());
     expect(document.body.textContent).toContain('Project work is on hold. Check the reason and agreed next step');
     expect(document.body.querySelector('[href="/staff/projects/current-project?tab=invoices"]')).not.toBeNull();
     result.rerender(root(false));

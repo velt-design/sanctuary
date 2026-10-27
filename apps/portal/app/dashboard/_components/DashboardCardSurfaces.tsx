@@ -50,7 +50,7 @@ export function RecentActivitySurface({rows,hasItems=false,known=false,pending=f
 
 export function RecentEstimatesSurface({rows,hasItems=false,known=false,available=false,pending=false}:{rows?:ReactNode;hasItems?:boolean;known?:boolean;available?:boolean;pending?:boolean}) {
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.estimatesCard}`} aria-label="Recent Estimates">
+    <section className={`${styles.section} ${dash.card}`} aria-label="Recent Estimates">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Recent Estimates</h2>

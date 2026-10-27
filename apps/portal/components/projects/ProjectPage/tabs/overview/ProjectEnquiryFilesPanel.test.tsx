@@ -109,8 +109,14 @@ describe("ProjectEnquiryFilesPanel", () => {
     expect(container.textContent).toContain("9.0 MB");
     expect(mocks.fetchProjectEnquiryAttachments).not.toHaveBeenCalled();
     expect(container.querySelectorAll("a")).toHaveLength(0);
-    const buttons = Array.from(container.querySelectorAll("button"));
-    expect(buttons).toHaveLength(2);
-    expect(buttons.every((button) => button.disabled)).toBe(true);
+    const actions = Array.from(container.querySelectorAll("button")).filter(button => ['View', 'Download'].includes(button.textContent ?? ''));
+    expect(actions.map(button => button.textContent)).toEqual(['View', 'Download']);
+    expect(actions.every((button) => button.disabled)).toBe(true);
+    const info = Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Details')!;
+    expect(info.disabled).toBe(false);
+    act(() => info.click());
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Enquiry files current');
+    expect(mocks.fetchProjectEnquiryAttachments).not.toHaveBeenCalled();
+    expect(document.querySelectorAll('a')).toHaveLength(0);
   });
 });

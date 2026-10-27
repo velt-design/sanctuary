@@ -39,13 +39,13 @@ const snapshot = {
 } as any;
 
 describe('ProjectMainTabs', () => {
-  it('keeps the original project read and Retry visible in the existing Commercial status slot with one-level full details', () => {
+  it('keeps headerless Calculator body recovery and exposes one-level full details', () => {
     mockSearchParams = 'tab=estimates'; const retry = vi.fn();
-    const tree = (state: 'summary' | 'refresh-failed' | 'fresh') => <ProjectMainTabsSurface snapshot={snapshot} host="host" tab="estimates"
+    const tree = (state: 'summary' | 'refresh-failed' | 'fresh') => <ProjectMainTabsSurface snapshot={snapshot} tab="estimates" calculatorWorkspace
       snapshotState={state} statusPanel={<ProjectSnapshotNotice state={state} onRetry={retry} />} body={<input aria-label="Current commercial draft" />} />;
     const view = renderIntoDocument(tree('summary')), body = view.container.querySelector('[data-project-tab-body]');
     expect(view.container.textContent).toContain('Updating project');
-    const details = [...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Details')!;
+    const details = view.container.querySelector<HTMLButtonElement>('[data-project-read-feedback] button[aria-haspopup="dialog"]')!;
     act(() => { details.focus(); details.click(); });
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Loading the latest Project Work, commercial state, notes and events.');
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
@@ -55,15 +55,15 @@ describe('ProjectMainTabs', () => {
     expect(view.container.textContent).toContain('Showing saved project details');
     const visibleRetry = [...view.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!;
     act(() => visibleRetry.click()); expect(retry).toHaveBeenCalledOnce();
-    act(() => [...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Details')!.click());
+    act(() => view.container.querySelector<HTMLButtonElement>('[data-project-read-feedback] button[aria-haspopup="dialog"]')!.click());
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Your last known details remain available.');
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     view.rerender(tree('fresh')); expect(view.container.textContent).toContain('Project current');
     expect(view.container.textContent).not.toContain('Showing saved project details'); view.unmount();
   });
-  it('retires generic reading after access ends but retains explicit current-access recovery', () => {
+  it('retires Calculator body reading after access ends but retains explicit current-access recovery', () => {
     const retry = vi.fn();
-    const render = (snapshotState: 'pending' | 'unavailable', statusPanel?: React.ReactNode) => <ProjectMainTabsSurface projectId="proj_1" host="host" snapshot={null}
+    const render = (snapshotState: 'pending' | 'unavailable', statusPanel?: React.ReactNode) => <ProjectMainTabsSurface snapshot={null} calculatorWorkspace
       snapshotState={snapshotState} privateContentReady={false} tab="files" statusPanel={statusPanel} body={<button>Retired record command</button>} />;
     const view = renderIntoDocument(render('pending'));
     const surface = view.container.querySelector('section');
@@ -123,7 +123,7 @@ describe('ProjectMainTabs', () => {
 
     expect(rendered.container.querySelector('[data-testid="commercial-tab"]')?.getAttribute('data-view')).toBe('estimates');
     expect(rendered.container.querySelector('[role="tablist"]')).toBeNull();
-    expect(rendered.container.textContent).not.toContain('Details');
+    expect(rendered.container.querySelector('[data-project-read-feedback]')).toBeNull();
     expect(rendered.container.querySelector('[data-project-tab-body="estimates"]')).not.toBeNull();
 
     rendered.unmount();
@@ -137,6 +137,9 @@ describe('ProjectMainTabs', () => {
 
     expect(commercial?.getAttribute('data-project-name')).toBe('Deck Build');
     expect(commercial?.getAttribute('data-calculator-workspace')).toBe('true');
+    const feedback=rendered.container.querySelector('[data-project-read-feedback]');
+    expect(feedback?.querySelector('button')?.getAttribute('aria-label')).toBe('Project current');
+    expect(feedback?.querySelector('button[aria-haspopup="dialog"]')?.textContent).toBe('Details');
     rendered.unmount();
   });
 

@@ -12,6 +12,7 @@
 .header {
   gap: var(--ui-space-1);
 }
+.titleRow { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--ui-space-2); }
 
 .title {
   margin: 0;
@@ -203,4 +204,16 @@
 }
 @container (max-width: 350px) {
   .scheduleActions { height: 148px; grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(3, 44px); }
+}
+.wrapper .listViewport { min-height:0; }
+.paymentSchedule > header { height:auto; }
+.paymentSchedule .scheduleTotals[data-columns] { height:auto; grid-template-columns:repeat(4,minmax(0,1fr)); grid-template-rows:auto; }
+.scheduleActions { height:auto; display:flex; flex-wrap:wrap; padding-block:var(--ui-space-2); }
+@container(max-width:720px) { .paymentSchedule .scheduleTotals[data-columns] { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@container(min-width:1600px) {
+ .wrapper { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(360px,.8fr); gap:var(--ui-space-4) var(--ui-space-6); align-items:start; }
+ .header { grid-column:1/-1; }
+ .paymentSchedule { grid-column:2; grid-row:2; }
+ .paymentSchedule .scheduleTotals[data-columns] { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .wrapper > :not(.header):not(.paymentSchedule) { grid-column:1; }
 }

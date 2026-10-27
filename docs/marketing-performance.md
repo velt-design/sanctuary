@@ -1037,3 +1037,9 @@ evidence while updating; a completed unavailable read remains unavailable, and
 fatal authority/tenant/scope failures clear all retained figures. The same ownership
 covers AR/AP in both directions, basis and custom date changes. The connected React
 commit probe checks these transitions rather than only their eventual state.
+
+### Local report feedback and natural settled results (27 October 2026)
+
+Hub read/access failures and Retry belong beside Filters/Saved views in the existing toolbar. Full error and no-partial-total explanations remain in Details; access denial still withdraws every private report consumer. Commercial source status/recovery belongs beside the quote-basis controls, with visible project-filter-pending qualification and the unchanged complete independent-read explanation in Details. Financial feedback is in its period/basis toolbar, preserving checked time, earlier-evidence dates, mismatch/GST/source qualifications and existing Retry.
+
+The existing report return hook and commercial geometry capture remain the sole return owners. Only pending results use their remembered footprint; successful/empty results flow naturally. Dates, membership, attribution, history coverage, financial totals, private withdrawal and requests are unchanged. Designer CSS removes obsolete empty-height allocations only; site-visit attribution and history coverage retain their domain owners.

@@ -4,7 +4,6 @@
   align-content: start;
   gap: var(--ui-space-4);
   width: 100%;
-  min-height: calc(100dvh - var(--portal-header-height, var(--appHeaderHeight, 72px)));
   padding: var(--ui-space-4) var(--ui-space-5) var(--ui-space-6);
   overflow-x: clip;
   background: var(--ui-canvas);
@@ -42,7 +41,7 @@
 }
 
 .hero :global([data-page-header-variant='dashboard']) h1 {
-  font-size: clamp(76px, 7.5vw, 108px);
+  font-size: clamp(42px, 4vw, 54px);
 }
 
 .heroTagline {
@@ -66,7 +65,7 @@
 .heroTools {
   container-type: inline-size;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(88px, 8vw, 116px);
+  grid-template-columns: minmax(0, 1fr) 86px;
   width: 100%;
   min-width: 0;
   border: var(--ui-border-width) solid var(--ui-border-strong);
@@ -80,13 +79,6 @@
   padding: var(--ui-space-3);
 }
 
-.quickActionsLabel {
-  color: var(--ui-text-muted);
-  font-size: var(--ui-font-size-caption);
-  font-weight: 700;
-  letter-spacing: var(--ui-letter-spacing-label);
-  text-transform: uppercase;
-}
 
 .quickActionGrid {
   display: grid;
@@ -99,7 +91,7 @@
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
   gap: var(--ui-space-2);
-  min-height: 54px;
+  min-height: 36px;
   border: var(--ui-border-width) solid var(--ui-surface-inverse);
   background: var(--ui-surface-inverse);
   padding: var(--ui-space-2) var(--ui-space-3);
@@ -163,7 +155,7 @@
   z-index: 1;
   align-self: center;
   font-family: var(--ui-font-display);
-  font-size: 52px;
+  font-size: 32px;
   font-weight: 700;
   line-height: 0.85;
 }
@@ -186,69 +178,8 @@
   .quickAction span { white-space: nowrap; }
 }
 
-.content,
-.layout,
-.pendingLayout {
-  display: grid;
-  min-width: 0;
-}
-
-.content,
-.layout {
-  gap: var(--ui-space-3);
-}
-
-.pendingLayout { align-content: start; }
-
-.pendingCard {
-  display: grid;
-  justify-items: start;
-  gap: var(--ui-space-2);
-  width: min(720px, 100%);
-  border: var(--ui-border-width) solid var(--ui-border-strong);
-  border-left: var(--ui-status-edge) solid var(--ui-action);
-  background: var(--ui-surface-primary);
-  padding: var(--ui-space-5);
-}
-
-.pendingTitle,
-.pendingDescription { margin: 0; }
-.pendingTitle {
-  color: var(--ui-text-strong);
-  font-family: var(--ui-font-display);
-  font-size: var(--ui-font-size-section);
-  line-height: var(--ui-line-height-heading);
-  text-transform: uppercase;
-}
-.pendingDescription,
-.refreshStatus { color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
-.refreshStatus {
-  justify-self: end;
-  border-left: var(--ui-status-edge) solid var(--ui-status-info-border);
-  background: var(--ui-status-info-bg);
-  padding: var(--ui-space-2) var(--ui-space-3);
-}
-.refreshNotice {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ui-space-3);
-  border-left: var(--ui-status-edge) solid var(--ui-status-warning-border) !important;
-  background: var(--ui-status-warning-bg) !important;
-}
-
-.workspaceGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(250px, 0.7fr);
-  grid-template-areas:
-    'queue activity tasks'
-    'estimates activity tasks';
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: var(--ui-space-3);
-  min-width: 0;
-  min-height: 0;
-  align-items: stretch;
-}
+.workspaceGrid { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(260px,.85fr); gap:var(--ui-space-3); align-items:start; min-width:0; }
+.workspaceGrid > div { display:grid; align-content:start; gap:var(--ui-space-3); min-width:0; }
 
 .card {
   display: flex;
@@ -260,10 +191,9 @@
   box-shadow: none !important;
 }
 
-.estimatesCard { grid-area: estimates; }
-.queueCard { grid-area: queue; container: dashboard-queue / inline-size; }
-.activityCard { grid-area: activity; container: dashboard-activity / inline-size; }
-.tasksCard { grid-area: tasks; container: dashboard-tasks / inline-size; }
+.queueCard { container: dashboard-queue / inline-size; }
+.activityCard { container: dashboard-activity / inline-size; }
+.tasksCard { container: dashboard-tasks / inline-size; }
 
 .cardHeader {
   display: flex !important;
@@ -358,9 +288,7 @@
 .queueRow:focus-visible,
 .activityItem:focus-visible,
 .quickAction:focus-visible,
-.queueFilters a:focus-visible,
-.queueOpenLink:focus-visible,
-.cardFooter a:focus-visible {
+.queueOpenLink:focus-visible {
   position: relative;
   z-index: 1;
   outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
@@ -483,19 +411,6 @@
 }
 .estimateMeta { justify-items: end; text-align: right; }
 .estimateMeta strong { font-variant-numeric: tabular-nums; }
-.cardFooter {
-  flex: 0 0 auto;
-  border-top: var(--ui-border-width) solid var(--ui-border);
-  padding: var(--ui-space-2) var(--ui-space-3);
-}
-.cardFooter a {
-  color: var(--ui-action-text);
-  font-size: var(--ui-font-size-caption);
-  font-weight: 800;
-  letter-spacing: var(--ui-letter-spacing-label);
-  text-decoration: none;
-  text-transform: uppercase;
-}
 
 .queueHeader { flex-wrap: wrap; }
 .queueOpenLink {
@@ -505,23 +420,6 @@
   letter-spacing: var(--ui-letter-spacing-label);
   text-decoration: none;
   text-transform: uppercase;
-}
-.queueFilters { display: flex; align-items: center; gap: var(--ui-space-1); }
-.queueFilters a {
-  border: var(--ui-border-width) solid var(--ui-border-strong);
-  background: var(--ui-surface-primary);
-  padding: 5px 8px;
-  color: var(--ui-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: var(--ui-letter-spacing-label);
-  text-decoration: none;
-  text-transform: uppercase;
-}
-.queueFilters a[aria-current='page'] {
-  border-color: var(--ui-action);
-  background: var(--ui-action);
-  color: var(--ui-action-contrast, #111);
 }
 .queueRow {
   display: grid;
@@ -600,7 +498,6 @@
 }
 
 .emptyState {
-  min-height: 82px;
   border-left: var(--ui-status-edge) solid var(--ui-status-neutral-border);
   background: var(--ui-status-neutral-bg);
   padding: var(--ui-space-3);
@@ -639,8 +536,6 @@
 
 @container dashboard-queue (max-width: 540px) {
   .queueHeader { align-items: flex-start !important; }
-  .queueFilters { width: 100%; }
-  .queueFilters a { flex: 1 1 0; text-align: center; }
 }
 
 @container dashboard-tasks (max-width: 250px) {
@@ -648,83 +543,15 @@
   .taskAddButton { width: 100%; }
 }
 
-@media (min-width: 1181px) {
-  .page {
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: var(--ui-space-3);
-    height: 100dvh;
-    min-height: 0;
-    padding: var(--ui-space-3) var(--ui-space-5);
-    overflow: hidden;
-  }
-
-  .hero { padding-bottom: var(--ui-space-2); }
-  .hero :global([data-page-header-variant='dashboard']) h1 {
-    font-size: clamp(76px, 5vw, 92px);
-  }
-
-  .quickActions,
-  .dateTile { padding: var(--ui-space-2); }
-  .quickAction { min-height: 46px; }
-  .dateTile strong { font-size: 44px; }
-
-  .content {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-  .layout {
-    flex: 1 1 auto;
-    grid-template-rows: auto minmax(0, 1fr);
-    min-height: 0;
-  }
-  .content,
-  .layout,
-  .workspaceGrid { gap: 10px; }
-
-  .pipelineCard .cardHeader { min-height: 42px; }
-  .pipelineCell { min-height: 50px; padding-block: 6px; }
-
-  .operationalRow { min-height: 49px; }
-  .queueRow { min-height: 52px; }
-  .activityItem { min-height: 88px; }
+@media (max-width: 1500px) {
+  .workspaceGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .workspaceGrid > :last-child { grid-column:1 / -1; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
 }
-
-@media (max-width: 1180px) {
-  .heroTools { grid-template-columns: minmax(260px, 1fr) 104px; min-width: min(410px, 100%); }
-  .quickAction { grid-template-columns: 20px minmax(0, 1fr); padding-inline: var(--ui-space-2); }
-  .quickAction svg { width: 19px; height: 19px; }
-  .workspaceGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-      'queue activity'
-      'estimates activity'
-      'tasks tasks';
-    grid-template-rows: auto;
-  }
-  .activityCard,
-  .tasksCard { height: min(380px, 48dvh); }
-}
-
 @media (max-width: 900px) {
-  .hero :global([data-page-header-variant='dashboard']) h1 { font-size: 68px; }
-  .heroTools { width: 100%; min-width: 0; }
-  .workspaceGrid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      'queue'
-      'activity'
-      'estimates'
-      'tasks';
-  }
-  .queueCard {
-    height: auto;
-    max-height: 520px;
-  }
-  .activityCard,
-  .tasksCard { height: auto; }
-  .queueRow { grid-template-columns: minmax(100px, 0.6fr) minmax(160px, 1fr) minmax(100px, auto); }
-  .queueRow > :nth-child(3) { display: none; }
+  .heroTools { width:100%; min-width:0; }
+  .workspaceGrid,.workspaceGrid > :last-child { grid-template-columns:minmax(0,1fr); }
+  .queueRow { grid-template-columns:minmax(100px,.6fr) minmax(160px,1fr) minmax(100px,auto); }
+  .queueRow > :nth-child(3) { display:none; }
 }
 
 @media (max-width: 767px) {
@@ -733,32 +560,27 @@
   .projectStateCell:nth-child(n + 3) { border-top: var(--ui-border-width) solid var(--ui-border); }
   .page {
     gap: var(--ui-space-3);
-    min-height: calc(100dvh - var(--ui-mobile-bar));
     padding: var(--ui-space-3);
   }
   .hero { padding-bottom: var(--ui-space-2); }
-  .hero :global([data-page-header-variant='dashboard']) h1 { font-size: 54px; }
+  .hero :global([data-page-header-variant='dashboard']) h1 { font-size: 40px; }
   .heroTools { grid-template-columns: minmax(0, 1fr) 96px; }
   .quickActions { padding: var(--ui-space-2); }
   .quickActionGrid { gap: var(--ui-space-1); }
   .quickAction {
     grid-template-columns: 1fr;
     justify-items: center;
-    min-height: 64px;
+    min-height: 44px;
     padding: var(--ui-space-2);
     text-align: center;
   }
   .dateTile { padding: var(--ui-space-2); }
-  .dateTile strong { font-size: 44px; }
-  .content,
-  .layout,
+  .dateTile strong { font-size: 32px; }
   .workspaceGrid { gap: var(--ui-space-3); }
   .pipelineGrid { min-width: 738px; }
   .pipelineCell { min-height: 58px; padding-inline: var(--ui-space-2); }
   .pipelineCount { font-size: 25px; }
   .queueHeader { align-items: flex-start !important; }
-  .queueFilters { width: 100%; }
-  .queueFilters a { flex: 1 1 0; text-align: center; }
   .queueRow { grid-template-columns: minmax(88px, 0.6fr) minmax(130px, 1fr) auto; gap: var(--ui-space-2); }
   .activityList { grid-template-columns: minmax(0, 1fr); }
   .activityList li:nth-child(odd) { border-right: 0; }
@@ -771,12 +593,12 @@
     grid-template-rows: 1fr;
     align-items: center;
     gap: var(--ui-space-2);
-    min-height: 56px;
+
     border-top: var(--ui-border-width) solid var(--ui-border-strong);
     border-left: 0;
   }
   .dateTile span { grid-column: auto; }
-  .dateTile strong { font-size: 36px; }
+  .dateTile strong { font-size: 28px; }
   .dateTile b { writing-mode: initial; transform: none; }
   .dateTile small { grid-column: auto; }
   .taskComposer { grid-template-columns: minmax(0, 1fr); }
@@ -797,19 +619,8 @@
   }
 }
 
-/* Current section content scrolls inside its actual card instead of moving its neighbours. */
-.cardBody { scrollbar-gutter: stable; }
-.taskError { min-height: 44px; box-sizing: border-box; max-height: 44px; overflow: auto; }
-@media (max-width: 1180px) {
-  .workspaceGrid > * { height: 340px; min-height: 0; overflow: hidden; }
+/* Long work lists may scroll on spacious screens; short screens use document flow. Empty cards stay natural. */
+@media (min-width:1181px) and (min-height:900px) {
+  .cardBody { max-block-size:60dvh; scrollbar-gutter:stable; }
 }
-
-.taskError:empty { background: transparent; border-color: transparent; }
-
-/* Visits has its own track; its read can never resize the other card rows. */
-.workspaceGrid { grid-template-areas: 'queue activity tasks' 'estimates activity tasks' 'visits visits visits'; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) 160px; }
-.workspaceGrid > * { height: auto; min-height: 0; overflow: hidden; }
-.workspaceGrid > :first-child { grid-area: visits; display: grid; grid-template-rows: auto minmax(0, 1fr); }
-.workspaceGrid > :first-child > :last-child { min-height: 0; overflow: auto; scrollbar-gutter: stable; }
-@media (max-width: 1180px) { .workspaceGrid { grid-template-areas: 'queue activity' 'estimates activity' 'tasks tasks' 'visits visits'; grid-template-rows: 340px 340px 340px 160px; } }
-@media (max-width: 900px) { .workspaceGrid { grid-template-areas: 'queue' 'activity' 'estimates' 'tasks' 'visits'; grid-template-rows: repeat(4, 340px) 160px; } }
+.taskError:empty { display:none; }

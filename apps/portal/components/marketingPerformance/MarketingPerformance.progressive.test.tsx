@@ -19,6 +19,11 @@ import type { FinancialPanelQuery, FinancialEvidence } from '@/lib/xero/financia
 vi.mock('@/components/ui/drawer/Drawer',()=>({Drawer:({open,children,title}:{open:boolean;children:ReactNode;title:string})=>open?<div role="dialog" aria-label={title}>{children}</div>:null}));
 vi.mock('recharts',()=>({Bar:()=>null,BarChart:()=>null,Line:()=>null,LineChart:()=>null,Cell:()=>null,CartesianGrid:()=>null,ReferenceLine:()=>null,ResponsiveContainer:()=>null,Tooltip:()=>null,XAxis:()=>null,YAxis:()=>null}));
 function deferred<T>() {let resolve!:(value:T)=>void,reject!:(error:Error)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no;});return{promise,resolve,reject};}
+function quoteSourceDetails(container:HTMLElement) {
+ const owner=container.querySelector('[aria-label="Commercial performance"]')!,trigger=[...owner.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!;
+ act(()=>trigger.click());const text=document.querySelector('[role="dialog"]')?.textContent;
+ act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));expect(document.activeElement).toBe(trigger);return text;
+}
 afterEach(()=>{window.history.replaceState(null,'','/');sessionStorage.clear();});
 it.each([hubFixture,representativeFixture])('keeps actual controls while complete quote-source values arrive, then applies exact Hub membership to all reports',async(selectedHub)=>{
   const hub=deferred<HubReport>(),commercial=deferred<CommercialReport>(),designer=deferred<DesignerReport>();
@@ -38,7 +43,8 @@ it.each([hubFixture,representativeFixture])('keeps actual controls while complet
   await act(async()=>designer.resolve(designerReport));
   expect(view.container.querySelector('[aria-label="Accepted jobs by designer"]')).not.toBeNull();
   expect(designerTable?.textContent).toContain('Reading');
-  expect(view.container.textContent).toContain('Complete quote source read at');
+  expect(view.container.textContent).toContain('Quote source · project filters pending');
+  expect(quoteSourceDetails(view.container)).toContain('Complete quote source read at');
   await act(async()=>hub.resolve(selectedHub));
   const attended=view.container.querySelector('table[aria-label="Recorded visit conversion"] tbody tr td button');
   expect(attended?.textContent).toBe(String(designerPerformance(designerReport,new Set(selectedHub.projects.map(p=>p.id))).total.attended.length));
@@ -55,11 +61,13 @@ it('labels an independent source read and applies the exact completed intersecti
   const ids=new Set(selectedHub.projects.map(p=>p.id));
   const view=renderIntoDocument(<MarketingPerformance synthetic initialFilters={fixtureFilters} initialQuery={query} loader={()=>hub.promise} priorLoader={async()=>fixtureReport} commercialLoader={async()=>commercial} designerLoader={async()=>designer}/>);
   await act(async()=>{});
-  expect(view.container.textContent).toContain('these source figures will be checked against the completed project selection');
+  expect(view.container.textContent).toContain('Quote source · project filters pending');
+  expect(quoteSourceDetails(view.container)).toContain('these source figures will be checked against the completed project selection');
   expect(view.container.querySelector('table[aria-label="Recorded visit conversion"] tbody')?.textContent).toContain('Reading');
   const early=view.container.querySelector('[aria-label="Inspect Quoted value"] strong')?.textContent;
   await act(async()=>hub.resolve(selectedHub));
-  expect(view.container.textContent).not.toContain('these source figures will be checked');
+  expect(view.container.textContent).not.toContain('Quote source · project filters pending');
+  expect(quoteSourceDetails(view.container)).not.toContain('these source figures will be checked');
   expect(view.container.querySelector('[aria-label="Inspect Quoted value"] strong')?.textContent).toBe('$12k');
   expect(early).not.toBe('$12k');
   expect(view.container.querySelector('table[aria-label="Recorded visit conversion"] tbody tr td button')?.textContent).toBe(String(designerPerformance(designer,ids).total.attended.length));

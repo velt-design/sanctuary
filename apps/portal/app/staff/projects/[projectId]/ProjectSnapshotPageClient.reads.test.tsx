@@ -1,14 +1,12 @@
-// Private read tests observe the same snapshot props at the extracted public shell boundary.
+// Header read/navigation probes leave the real Shell and guarded Body composed.
 import { act } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import { qk } from '@/lib/queries/keys';
 import { useOptionalProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
-import ProjectMainTabs from '@/components/projects/ProjectPage/ProjectMainTabs';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import type { ProjectWorkInitialRead } from '@/lib/projects/projectWorkInitialRead';
-vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', () => ({ default: () => null }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const state = vi.hoisted(() => ({ search: '', preload: vi.fn().mockResolvedValue(undefined) }));
@@ -23,21 +21,19 @@ vi.mock('@/components/projects/ProjectPage/projectTabModules', () => ({
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'host', supabaseRuntimeUrl: () => 'https://host.supabase.co' }));
 vi.mock('@/components/debug/PortalDebugExportButton', () => ({ default: () => null }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
-vi.mock('@/components/projects/ProjectPage/ProjectPageShellSurface', () => ({
-  default: ({ snapshot, projectId, host, optimisticTab, onTabSelect, snapshotState, snapshotContentReady, tab, statusPanel, privateContentReady }: any) => {
+vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', () => ({
+  default: ({ project, projectId, host, optimisticTab, onTabSelect, snapshotState, statusPanel }: any) => {
     const reads = useOptionalProjectOverviewReads(host, projectId);
     const commandQuery = reads?.commandQuery, paymentQuery = reads?.paymentQuery;
-    return <div data-frame={snapshot?.project.id} data-snapshot={snapshotState} data-actual-frame>
-      <span>{snapshot?.project.name ?? 'Reading project…'}</span>
+    return <header data-frame={project?.id} data-snapshot={snapshotState} data-actual-frame>
+      <span>{project?.name ?? 'Reading project…'}</span>
       {statusPanel}
       <span data-command={commandQuery?.data?.projectId}>{commandQuery?.data?.projectId}</span>
       <span data-payment={paymentQuery?.data?.paidIncGstCents} />
       <span data-command-fetching={String(commandQuery?.isFetching)} data-tab={optimisticTab} />
       <button onClick={() => onTabSelect('estimates')}>Commercial</button>
       <button onClick={() => onTabSelect('activity')}>Overview</button>
-      <ProjectMainTabs snapshot={snapshot} projectId={projectId} host={host} optimisticTab={optimisticTab}
-        snapshotState={snapshotState} snapshotContentReady={snapshotContentReady} tab={tab} privateContentReady={privateContentReady} />
-    </div>;
+    </header>;
   },
 }));
 
@@ -240,14 +236,20 @@ describe('active Overview reads across the route and lazy-consumer boundary', ()
     expect(view.container.querySelector('[data-project-snapshot-state="refresh-failed"]')).not.toBeNull();
   });
 
-  it.each([401, 403, 404])('removes the pending Job Packs body when snapshot access ends with %s', async (status) => {
+  it.each([401, 403, 404])('withdraws private Job Packs and retains only the unavailable public surface after %s', async (status) => {
     state.search = 'tab=job-packs';
     view = renderIntoDocument(element('proj_1', 'job-packs'));
     await answer('summary');
     expect(view.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
+    const privateOwner=view.container.querySelector('[data-testid="job-packs-tab"]')!;
     await answer('snapshot', status);
     expect(view.container.querySelector('[data-project-snapshot-state="unavailable"]')).not.toBeNull();
-    expect(view.container.querySelector('[data-project-tab-body]')?.children).toHaveLength(0);
+    expect(privateOwner.isConnected).toBe(false);
+    const publicTable=view.container.querySelector('[data-project-tab-body] [aria-label="Job packs"]')!;
+    expect(publicTable).not.toBeNull();
+    expect(publicTable.querySelector('tbody')?.children).toHaveLength(1);
+    expect(publicTable.querySelector('tbody')?.textContent).toBe('Job packs unavailable.');
+    expect(publicTable.querySelectorAll('a,button,input,select,[role="button"]')).toHaveLength(0);
     expect(view.container.querySelector('[data-testid="job-packs-tab"]')).toBeNull();
     expect(view.container.textContent).not.toContain('Private proj_1');
     expect(view.container.textContent).not.toContain('Retry');
