@@ -1,10 +1,10 @@
-import { PROJECT_OWNER_OPTIONS } from '@/lib/projects/commandCentre/projectOwners';
+import { SALES_DESIGNER_OPTIONS } from '@/lib/marketingPerformance/salesDesigner';
 import type { CalendarVisit } from '@/lib/siteVisits/contract';
 import type { VisitDetails,VisitPerson,VisitTiming } from '@/lib/siteVisits/correctionContract';
 import { personKey } from '@/lib/siteVisits/reviewedVisit';
 
 export function visitPeople(visit?:CalendarVisit){
-  const people:VisitPerson[]=PROJECT_OWNER_OPTIONS.map(owner=>({name:owner.displayName,email:'',staffId:owner.key}));
+  const people:VisitPerson[]=SALES_DESIGNER_OPTIONS.map(owner=>({name:owner.displayName,email:'',staffId:owner.key}));
   for(const person of [...(visit?.staff??[]),...(visit?.source?.staff??[])])if(!people.some(p=>personKey(p)===personKey(person)))people.push(person);
   return people;
 }

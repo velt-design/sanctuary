@@ -3,7 +3,7 @@ import { requireStaffContext } from '@/lib/api/staffApi';
 import { correctionCommand,historyCommand } from './correctionContract';
 import { calendarJson,calendarSameOrigin } from './http';
 import { reviewedVisit } from './reviewedVisit';
-import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
+import { salesDesignerOption } from '@/lib/marketingPerformance/salesDesigner';
 import type { CalendarVisit } from './contract';
 
 export async function saveVisitDetails(request:Request,history=false){
@@ -14,7 +14,7 @@ export async function saveVisitDetails(request:Request,history=false){
   const parsed=(history?historyCommand:correctionCommand).safeParse(body);
   if(!parsed.success)return calendarJson({error:parsed.error.issues[0]?.message??'Check the visit details.'},400);
   const staff=parsed.data.details.staff??[];
-  if(staff.some(person=>!person.email&&(!person.staffId||projectOwnerOption(person.staffId)?.displayName!==person.name)))return calendarJson({error:'Choose a known staff member.'},400);
+  if(staff.some(person=>!person.email&&(!person.staffId||salesDesignerOption(person.staffId)?.displayName!==person.name)))return calendarJson({error:'Choose a known staff member.'},400);
   const imported=staff.filter(person=>Boolean(person.email));
   if(imported.length){
     // Read the immutable source projection, never local correction details as identity authority.

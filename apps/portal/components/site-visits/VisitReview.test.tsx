@@ -5,6 +5,8 @@ import { renderIntoDocument } from '../../../../test/reactHarness';
 import type { CalendarVisit } from '@/lib/siteVisits/contract';
 import VisitReview from './VisitReview';
 import { visitEditorDraft,visitEditorDetails,visitPeople } from './visitEditorModel';
+import { PROJECT_OWNER_OPTIONS } from '@/lib/projects/commandCentre/projectOwners';
+import { personLabel } from '@/lib/siteVisits/reviewedVisit';
 const h=vi.hoisted(()=>({api:vi.fn()}));vi.mock('@/lib/repo/apiClient',()=>({apiJson:h.api}));
 const project='00000000-0000-4000-8000-000000000002';
 const visit:CalendarVisit={id:'00000000-0000-4000-8000-000000000001',revision:1,sourceKey:'synthetic',subject:'Site visit - Synthetic',startsAt:'2026-10-20T00:00:00Z',endsAt:'2026-10-20T00:30:00Z',isAllDay:false,allDayStartDate:null,allDayEndDate:null,sourceUrl:null,address:'12 Example Road',staff:[],assignmentHint:null,kind:'review',sourceKind:'review',cancelled:false,removed:false,duplicate:false,reviewReasons:[],projectId:null,projectName:null,contactName:null,phone:null,linkMode:'manual',kindOverride:null};
@@ -18,6 +20,19 @@ const button=(container:HTMLElement,text:string)=>Array.from(container.querySele
 beforeEach(()=>{h.api.mockReset();client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});h.api.mockImplementation((path,options)=>Promise.resolve(options?.method==='POST'?{visit:{...visit,revision:2}}:path.includes('/projects?')?{projects:[{id:project,name:'Synthetic project',address:'12 Example Road'}],truncated:false}:{events:[{...visit,revision:2}]}));});
 afterEach(()=>{mounted?.unmount();client.clear();vi.useRealTimers();});
 describe('Visit review recovery',()=>{
+ it('offers Steve as a historical visitor, preserves his saved identity and leaves current project ownership unchanged',()=>{
+  const person={name:'Steve',email:'',staffId:'steve'};
+  expect(visitPeople().filter(p=>p.staffId==='steve')).toEqual([person]);
+  expect(visitPeople({...visit,staff:[{...person,name:'Imported Steve'}]}).filter(p=>p.staffId==='steve')).toEqual([person]);
+  expect(personLabel({...person,name:'Imported Steve'})).toBe('Steve');
+  expect(PROJECT_OWNER_OPTIONS.some(p=>String(p.key)==='steve')).toBe(false);
+ });
+ it('submits the selected historical visitor from the actual correction editor',async()=>{
+  const {container}=render();
+  const checkbox=Array.from(container.querySelectorAll('label')).find(label=>label.textContent==='Steve')!.querySelector<HTMLInputElement>('input')!;
+  act(()=>checkbox.click());evidence(container);act(()=>button(container,'Save details').click());await settle();
+  expect(JSON.parse(h.api.mock.calls.find(call=>call[1]?.method==='POST')![1].body).details.staff).toEqual([{name:'Steve',email:'',staffId:'steve'}]);
+ });
  it('offers one canonical roster choice for a mapped source full name without guessing other identities',()=>{
   const mapped={name:'Jordan Synthetic Fullname',email:'original-rep@example.test',staffId:'jordan'};
   const choices=visitPeople({...visit,staff:[mapped,{name:'Unmapped visitor',email:'another@example.test'}]});
