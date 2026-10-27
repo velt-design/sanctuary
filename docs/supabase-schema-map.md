@@ -1,3 +1,13 @@
+## Standard-enhancements normalization continuation
+
+Forward migration `20261027040000_creative_capability_baseline.sql` keeps the
+existing 16k plan/intent, 20k root envelope and 24k signed-wire maxima. Only an
+exact current root-pending review permits the larger unchanged paused story;
+withdrawal/expiry denies new admission and dispatch while registered cleanup
+remains available. A formal capability baseline must join the confirmed creative
+reference, registered ad and its exact creative-ID intent, pause, canary and
+cleanup receipts, same original scope/native binding and preserved ad settings.
+It creates no fake creative object or new provider effect and preserves history.
 # Supabase Schema Map
 
 ## Paused native-copy proof (24 October 2026, uninstalled local candidate)

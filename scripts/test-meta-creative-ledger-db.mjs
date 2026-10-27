@@ -166,7 +166,23 @@ try{
  const ownerFixture=spawnSync(process.execPath,['--require','tsx/cjs','scripts/meta-creative-owner-fixtures.ts'],{encoding:'utf8',windowsHide:true,maxBuffer:2e6});
  if(ownerFixture.status!==0)throw new Error(ownerFixture.stderr);
  const ownerNative=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_owner_reviewed_bundle.sql','utf8').replace('__OWNER_FIXTURE__',ownerFixture.stdout.replaceAll("'","''"))).trim().split('\n').at(-1));
- process.stdout.write(JSON.stringify({ownerReviewedBundle:ownerNative,authoredLanding:true,steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
+ const normalizationBefore=capacityCatalog(),normalizationMigration=readFileSync('supabase/migrations/20261027040000_creative_capability_baseline.sql','utf8');
+ sql(`begin;${normalizationMigration.replace(/^begin;/m,'').replace(/^commit;/m,'')}rollback;`);
+ if(JSON.stringify(capacityCatalog())!==JSON.stringify(normalizationBefore))throw Error('Normalization migration rollback changed catalogue');
+ sql(normalizationMigration);const normalizationAfter=capacityCatalog();
+ if(JSON.stringify(normalizationAfter.catalog.tables)!==JSON.stringify(normalizationBefore.catalog.tables))throw Error('Normalization changed table columns/access');
+ const normalizationConstraints=Object.keys(normalizationBefore.constraints).filter(k=>normalizationBefore.constraints[k]!==normalizationAfter.constraints[k]);
+ if(normalizationConstraints.length!==1||!normalizationConstraints[0].startsWith('meta_creative_execution.'))throw Error('Normalization constraint delta differs');
+ writeFileSync('.local-evidence/normalization-native-delta.private.json',JSON.stringify({before:normalizationBefore,after:normalizationAfter,changedConstraints:normalizationConstraints,rollbackIdentical:true}));
+ const normalizationFixture=spawnSync(process.execPath,['--require','tsx/cjs','scripts/meta-creative-normalization-fixtures.ts'],{encoding:'utf8',windowsHide:true,maxBuffer:2e6});
+ if(normalizationFixture.status!==0)throw Error(normalizationFixture.stderr);
+ const normalizationNative=JSON.parse(sql(readFileSync('supabase/tests/meta_creative_normalization.sql','utf8').replace('__NORMALIZATION_FIXTURE__',normalizationFixture.stdout.replaceAll("'","''"))).trim().split('\n').at(-1));
+ const retentionSettingsFixture=readFileSync('supabase/tests/meta_creative_retention.sql','utf8').split('alter table public.meta_creative_native_acceptance disable trigger native_acceptance_guard;')[0]
+  .replace('baseline jsonb default null)returns uuid','baseline jsonb default null,settings jsonb default null)returns uuid')
+  .replace("if baseline is not null then p:=p||jsonb_build_object('retainedBaseline',baseline);end if;","if settings is not null then p:=p||jsonb_build_object('adSettings',settings);end if;if baseline is not null then p:=p||jsonb_build_object('retainedBaseline',baseline);end if;");
+ if(!retentionSettingsFixture.includes('settings jsonb default null')||!retentionSettingsFixture.includes("jsonb_build_object('adSettings',settings)"))throw Error('Retained settings fixture predecessor differs');
+ const retentionSettingsNative=JSON.parse(sql(retentionSettingsFixture+readFileSync('supabase/tests/meta_creative_retention_ad_settings.sql','utf8')).trim().split('\n').at(-1));
+ process.stdout.write(JSON.stringify({normalization:normalizationNative,retentionSettings:retentionSettingsNative,ownerReviewedBundle:ownerNative,authoredLanding:true,steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
 
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);

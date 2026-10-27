@@ -1,3 +1,12 @@
+## Standard-enhancements normalization
+
+Run the creative-executor suites, signed creative-route tests and
+`node scripts/test-meta-creative-ledger-db.mjs` using a disposable local PG17.
+The native normalization fixture connects a full over-8k pending-reviewed paused
+plan to exact creative/ad effects, cleanup and formal baseline. Missing, expired,
+foreign and withdrawn review and forged baseline/settings are denied. Rehearsal
+rollback verifies unchanged catalog; only the intended plan constraint and
+reviewed function bodies change. Synthetic tests do not establish Meta acceptance.
 # Testing And QA
 
 ## Active Portal presentation verification

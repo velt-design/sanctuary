@@ -1,3 +1,12 @@
+## Compatible paused creative normalization
+
+A complete current pending owner review can use the same existing owner-only
+payload maxima for unchanged paused normalization. It does not grant activation.
+Only the retired standard-enhancements bundle is removed; explicit individual
+and unknown settings remain. Source and Velt serializers agree. Source proves
+subsequent normalized control identity from genuine immutable effect/intent and
+owned-ad joins. Original IDs, media, tracking, budget, permissions, old attempts
+and offline-sale switches remain separate and unchanged.
 ## Exact owner-reviewed creative bundle
 
 The donor-thumbnail continuation preserves both a Facebook-hosted HTTPS URL and

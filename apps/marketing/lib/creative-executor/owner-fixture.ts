@@ -11,7 +11,7 @@ export function ownerFixture(startDay?:string){
    object_story_spec:{page_id:scope.page,video_data:{video_id:'91001',message:'Synthetic original copy.',title:'Synthetic original title',image_url:'https://scontent.fbcdn.net/synthetic-old.jpg',
     link_description:'Preserved description',call_to_action:{type:'SEE_DETAILS' as const,value:{link:'https://www.sanctuarypergolas.co.nz/acrylic-roof-pergolas-auckland'}}}},
    media_sourcing_spec:{videos:[{video_id:'91001',adlabels:[{name:'square'}]},{video_id:'91002',adlabels:[{name:'portrait'}]}],related_media:{placements:['feed','story','reels']}},
-   creative_sourcing_spec:{enroll_status:'OPT_IN'},degrees_of_freedom_spec:{creative_features_spec:{standard_enhancements:{enroll_status:'OPT_OUT'}}},contextual_multi_ads:{enroll_status:'OPT_OUT'}}};
+   creative_sourcing_spec:{enroll_status:'OPT_IN'},degrees_of_freedom_spec:{creative_features_spec:{video_auto_crop:{enroll_status:'OPT_OUT'},text_optimizations:{enroll_status:'OPT_OUT'},inline_comment:{enroll_status:'OPT_IN'}}},contextual_multi_ads:{enroll_status:'OPT_OUT'}}};
  const draft=executionPlanSchema.parse({version:1,landingTemplate:'e'.repeat(64),purpose:'paused_capability',experiment:randomUUID(),scope,originalAds,controlAd:'24',control,
   adTracking:[{'action.type':['SYNTHETIC_ACTION'],fb_pixel:['777']}],nativeObjective:{type:'CONVERSIONS',is_primary:true,name:'Website Lead',adspixels:[{id:'777',event_names:['Lead']}]},
   challengerPrimary:control.primary,approvedAssetHash:creativeAssetHash(control),approvedCopyHash:canonicalHash({control:control.primary,challenger:control.primary}),approvalHash:'a'.repeat(64),evidenceHash:'b'.repeat(64),
