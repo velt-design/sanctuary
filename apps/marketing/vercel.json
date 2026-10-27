@@ -4,6 +4,11 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/portal-workdesk-20261027": false,
+      "codex/marketing-site-visit-results-20261027": false,
+      "codex/ga4-attribution-capacity-20261027": false,
+      "codex/ga4-automatic-attribution-20261027": false,
+      "codex/mobile-first-load-20261027": false,
       "codex/project-return-recovery-20261026": false,
       "codex/meta-donor-thumbnail-20261026": false,
       "codex/meta-acrylic-roof-first-20261026": false,

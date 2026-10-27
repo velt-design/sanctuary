@@ -30,7 +30,7 @@ jobs:
 
   portal-quality:
     name: Portal Quality
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       CI: true
@@ -224,7 +224,7 @@ jobs:
 
   portal-performance:
     name: Portal Performance Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       CI: true

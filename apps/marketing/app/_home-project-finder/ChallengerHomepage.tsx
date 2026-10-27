@@ -9,7 +9,8 @@ import ArrowUpRight from '../../components/marketing-foundation/ArrowUpRight';
 import { projects } from '../../data/projects';
 import { GOOGLE_PLACE } from '../../data/reviews';
 import { buildEnquiryHref } from '../../lib/enquiryContext';
-import { getGoogleRating } from '../../lib/googleReviews';
+import GoogleRating from '../../components/reviews/GoogleRating';
+import GoogleReviewMark from '../../components/reviews/GoogleReviewMark';
 import { PROJECT_FINDER_ENQUIRY_SOURCE_EXPERIENCE } from '../../lib/projectFinderContract';
 import { resolveProjectFinderHomeEnquiryContextFromReader } from '../../lib/projectFinderContinuation';
 import ProjectFinder from './ProjectFinder';
@@ -20,11 +21,10 @@ import { buildProjectFinderHref, type ProjectFinderState } from './projectFinder
 import styles from './challengerHomepage.module.css';
 import ChallengerEnquiryLink from './ChallengerEnquiryLink';
 
-export default async function ChallengerHomepage({ initialState }: { initialState: ProjectFinderState }) {
+export default function ChallengerHomepage({ initialState }: { initialState: ProjectFinderState }) {
   const media = buildProjectFinderHomepageMedia(projects);
   const project = projects.find(item => item.slug === 'warkworth-outdoor-room')!;
   const detail = project.gallery[2];
-  const review = await getGoogleRating();
   const restoredContext = resolveProjectFinderHomeEnquiryContextFromReader(
     new URLSearchParams(buildProjectFinderHref(initialState).split('?')[1]),
   );
@@ -43,7 +43,7 @@ export default async function ChallengerHomepage({ initialState }: { initialStat
         <div className={styles.heroActions}><p>Designed for your home.<br />Built by Sanctuary.</p><Button href="#project-finder" data-project-finder-event="project_finder_start_click" data-source-component="hero" data-step-number="1">Find your pergola <ArrowUpRight /></Button><ChallengerEnquiryLink initialHref={enquiryHref} defaultHref={defaultEnquiryHref} /></div>
       </Container>
       <div className={styles.heroImage}>
-        <Image src={media.hero.src} alt={media.hero.alt} fill sizes="100vw" preload style={{ objectPosition: media.hero.objectPosition }} />
+        <Image src={media.hero.src} alt={media.hero.alt} fill sizes="100vw" loading="eager" fetchPriority="high" style={{ objectPosition: media.hero.objectPosition }} />
         <Link href={`/projects/${project.slug}`} className={styles.projectCaption}><span>Warkworth outdoor room<span>Completed Sanctuary project</span></span><ArrowUpRight /></Link>
       </div>
     </section>
@@ -61,7 +61,7 @@ export default async function ChallengerHomepage({ initialState }: { initialStat
     <section className={styles.close} aria-labelledby="challenger-close-heading">
       <Container width="wide" className={styles.closeLayout}>
         <div><p className={styles.kicker}>Design <ArrowIcon direction="right" /> Build <ArrowIcon direction="right" /> Install</p><h2 id="challenger-close-heading">Your space.<br />Let’s start there.</h2><Button href={closingEnquiryHref} data-project-finder-event="project_finder_direct_enquiry_click" data-source-component="final_cta" data-enquiry-type="residential">Discuss your project <ArrowUpRight /></Button></div>
-        <div className={styles.closeProof}><p>One team, from design to installation.</p><a href={GOOGLE_PLACE.reviewsUrl}><strong>{review.rating.toFixed(1)}<span>/ 5</span></strong><span>{review.count} Google reviews <ArrowUpRight /></span></a><Link href="/pergolas-auckland">Our design &amp; build service <ArrowUpRight /></Link></div>
+        <div className={styles.closeProof}><p>One team, from design to installation.</p><GoogleRating fallback={<a href={GOOGLE_PLACE.reviewsUrl}><strong><GoogleReviewMark className={styles.reviewIdentity} /></strong><span>Google reviews <ArrowUpRight /></span></a>}>{review => <a href={GOOGLE_PLACE.reviewsUrl}><strong>{review.rating.toFixed(1)}<span>/ 5</span></strong><span>{review.count} Google reviews <ArrowUpRight /></span></a>}</GoogleRating><Link href="/pergolas-auckland">Our design &amp; build service <ArrowUpRight /></Link></div>
       </Container>
     </section>
     </>} />

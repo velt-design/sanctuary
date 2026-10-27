@@ -27,7 +27,10 @@ import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
 import ConsentBanner from '@/components/ConsentBanner';
 import RouteProgress from '@/components/RouteProgress';
 import { ConsentProvider } from '@/components/ConsentProvider';
-import { getGoogleRating } from '@/lib/googleReviews';
+import GoogleRating from '@/components/reviews/GoogleRating';
+import ReviewBadge from '@/components/reviews/ReviewBadge';
+import { GOOGLE_PLACE } from '@/data/reviews';
+import footerStyles from '@/components/SiteFooter.module.css';
 import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
 
 export const metadata: Metadata = {
@@ -73,9 +76,7 @@ const socialProfileUrls = [
   'https://www.facebook.com/SanctuaryPergolas',
 ];
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const review = await getGoogleRating();
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" style={brandCssVars}>
       <head>
@@ -158,7 +159,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <EditorialWebsite><div className="page-layer">{children}</div></EditorialWebsite>
           </div>
           <FooterVisibilityGate>
-            <SiteFooter reviewRating={review.rating} reviewCount={review.count} />
+            <SiteFooter reviewBadge={<GoogleRating fallback={<a className={`inline-flex min-h-11 items-center text-sm ${footerStyles.reviewAction}`} href={GOOGLE_PLACE.reviewsUrl} target="_blank" rel="noopener noreferrer">Google reviews</a>}>
+              {review => <ReviewBadge className={`min-h-11 ${footerStyles.reviewAction}`} rating={review.rating} count={review.count} variant="onDark" />}
+            </GoogleRating>} />
           </FooterVisibilityGate>
           <MetaPixel />
           <SiteConfigurator />

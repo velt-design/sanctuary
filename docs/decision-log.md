@@ -25,6 +25,44 @@ browser and independent delivery review remain separate from component checks.
 Owners: `ui-foundation.md`, `project-command-centre-architecture.md`.
 
 
+## 2026-10-27: Exercise the database boundary at the claimed report capacity
+
+Status: Implemented candidate. Area: GA4 persistence verification.
+
+Application validators accepted larger reports, but the existing private SQL
+validator still capped attribution at 200. Small HTTP-to-SQL fixtures did not
+prove the larger parser/JSON fixtures could persist. The capacity change now
+includes a guarded forward migration and actual 200/501/750 RPC completion/read
+checks, 751/byte-bound rejection with prior snapshot preservation, and native
+catalog identity checks. Treat whole-path capacity as unverified until all
+participating persistence validators have been exercised at representative size.
+
+## 2026-10-27: Size GA4 capacity against actual daily cardinality
+
+Status: Implemented candidate. Area: GA4 detailed attribution.
+
+An ordinary daily report exceeded the old 200-group ceiling, which honestly
+withheld details. Set a paired 750-cohort ceiling,
+512-KiB shared provider stream, and retain the 240-KiB normalized/256-KiB source
+envelope, two requests and deadline. Deploy the backward-compatible Velt consumer
+first. Synthetic representative full reports fit both independent limits; future
+extreme responses remain unavailable, never top-N or silently truncated. See the
+source owner doc and `report/capacity.test.ts` for measured bytes and bounds.
+
+## 2026-10-27: Keep automatic attribution compact and privacy-safe
+
+Status: Implemented candidate. Area: Sanctuary-owned GA4 reporting.
+
+Default pretty JSON exhausted the report byte allowance, while legitimate
+private landing paths rejected otherwise usable attribution. Request compact
+JSON and keep three filtered event profiles separate from sessions, so each
+profile's bound counts cohorts. Validate raw identities and complete ranges
+before grouping unsafe labels under an explicit withheld category; incomplete
+aggregate observations stay unknown. Preserve fixed calls, shared deadline,
+byte caps and saved-report semantics. Synthetic fixtures are not production
+scheduler evidence. Owner: `environment-auth-supabase.md`; regressions:
+`report/automatic-attribution.test.ts` and HTTP-to-SQL report tests.
+
 ## 2026-10-26: Keep the actual Portal work in place while records change
 
 A populated-to-empty Projects filter changed both the document gutter and the

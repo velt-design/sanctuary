@@ -8,6 +8,7 @@ const designerVisitSchema=z.object({
   status:z.enum(['booked','provisional','cancelled','attended','not_attended']).nullable(),kind:z.enum(['visit','provisional','review','excluded']),
   staff:z.array(z.string().min(1).max(50)).max(20),unmappedStaff:z.number().int().nonnegative(),
   removed:z.boolean(),withdrawn:z.boolean(),cancelled:z.boolean(),duplicate:z.boolean(),changed:z.boolean(),questions:z.number().int().nonnegative(),
+  basis:z.string().max(2000).nullable().optional(),
 });
 const designerScopeSchema=z.object({id:z.string().uuid(),projectId:z.string().uuid(),reference:z.string(),addOn:z.boolean(),
   firstSentAt:stamp,undatedSend:z.boolean(),accepted:z.boolean(),acceptedAt:stamp,valueCents:z.number().int().nonnegative().nullable(),paymentEvidence:z.boolean(),paidAt:stamp,

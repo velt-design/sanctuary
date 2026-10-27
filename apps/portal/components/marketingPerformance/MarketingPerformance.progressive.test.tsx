@@ -36,7 +36,7 @@ it.each([hubFixture,representativeFixture])('keeps actual controls while complet
   await act(async()=>commercial.resolve(commercialFixture(selectedHub,fixtureFilters)));
   expect(view.container.querySelector('[aria-label="Inspect Quoted value"]')).toBe(metric);expect(metric.disabled).toBe(false);
   const sourceTable=view.container.querySelector('[aria-label="Source and outcome comparison"] table'),designerTable=view.container.querySelector('[aria-label="Recorded visit conversion"]');
-  expect(sourceTable?.textContent).toContain('Observed source');expect(sourceTable?.textContent).not.toContain('0 enquiries');expect(designerTable?.textContent).toContain('Designer');
+  expect(sourceTable?.textContent).toContain('Observed source');expect(sourceTable?.textContent).not.toContain('0 enquiries');expect(designerTable?.textContent).toContain('Person');
   const before=metric.textContent;expect(before).toContain('$');expect(view.container.querySelector('[data-hub-pending]')).not.toBeNull();
   expect(metric.closest('[aria-busy="true"]')).toBeNull();
   const designerReport={...designerFixture('accepted',selectedHub),start:fixtureFilters.start,end:fixtureFilters.end};

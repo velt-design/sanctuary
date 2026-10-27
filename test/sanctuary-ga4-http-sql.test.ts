@@ -20,6 +20,7 @@ beforeEach(async()=>{
  await db.exec(await readFile('supabase/migrations/20261021082853_ga4_v3_diagnostics.sql','utf8'));
  await db.exec(await readFile('supabase/migrations/20261022013028_ga4_pre_token_settlement.sql','utf8'));
  await db.exec(await readFile('supabase/migrations/20261022030852_ga4_vercel_credentials.sql','utf8'));
+ await db.exec(await readFile('supabase/migrations/20261027011337_ga4_diagnostic_capacity_750.sql','utf8'));
  await db.exec(`insert into private.sanctuary_ga4_control(actor_id,property_id,binding_hash,vault_id,item_id,expires_at,source_key,connection_id,environment)
  values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 day','synthetic','${connection}','test');`);
 },30000);
@@ -70,7 +71,7 @@ it('source bearer change during Google effect withholds report and preserves qua
 function v3Request() { const original=request();const url=new URL(original.url);url.searchParams.set('reportVersion','sanctuary-ga4-v3');return new Request(url,original); }
 function diagnosticDependencies(mode:'available'|'row_limit'|'limited'|'unexpected'='available') {
  const raw=acquisitionFixture(query);
- if(mode==='row_limit')raw.reports[0].rowCount=201;
+ if(mode==='row_limit')raw.reports[0].rowCount=751;
  if(mode==='limited')raw.reports[1].metadata.subjectToThresholding=true;
  if(mode==='unexpected')raw.reports[0].dimensionHeaders[0].name='unexpected';
  const calls:number[]=[];
@@ -79,7 +80,7 @@ function diagnosticDependencies(mode:'available'|'row_limit'|'limited'|'unexpect
 }
 it.each(['available','row_limit','limited'] as const)('actual HTTP/provider parser/completion SQL/read preserve v3 %s semantics',async mode=>{
  await enable();const {deps,calls}=diagnosticDependencies(mode),response=await sanctuaryGa4Response(v3Request(),deps);
- expect(response.status).toBe(200);const body=await response.json();expect(calls.sort()).toEqual([2,5]);
+ expect(response.status).toBe(200);const body=await response.json();expect(calls.sort()).toEqual([4,5]);
  expect(body.report.diagnostics.stages[0].count.value).toBe(37);expect(body.report.diagnostics.stages[0].count.previous).toBeNull();
  expect(body.report.diagnostics.acquisition.status).toBe(mode==='row_limit'?'unavailable':mode);
  if(mode==='row_limit')expect(body.report.diagnostics.acquisition).toEqual({status:'unavailable',reason:'row_limit'});
@@ -89,6 +90,47 @@ it.each(['available','row_limit','limited'] as const)('actual HTTP/provider pars
  expect(operation.requested_report_version).toBe('sanctuary-ga4-v3');expect(operation.report_intent.reportVersion).toBe('sanctuary-ga4-v3');
  expect(operation.report_result.rowCount).toBe(body.report.traffic.length+body.report.channels.length+body.report.landing.length+body.report.events.length+3+(mode==='row_limit'?0:body.report.diagnostics.acquisition.rows.length));
 });
+it.each([200,501,750])('actual HTTP completion and retained SQL read preserve every one of %i cohorts',async count=>{
+ await enable();const raw=acquisitionFixture(query,count);
+ [59,45,45].forEach((groups,index)=>{raw.reports[index+1].rows=raw.reports[index+1].rows.slice(0,groups*2);raw.reports[index+1].rowCount=groups;});
+ const calls:number[]=[],deps={...dependencies(),read:readGa4Report,fetcher:async(_url:RequestInfo|URL,init?:RequestInit)=>{
+  const size=JSON.parse(String(init?.body)).requests.length;calls.push(size);return Response.json(size===5?coreFixture(query):raw);
+ }};
+ const response=await sanctuaryGa4Response(v3Request(),deps);expect(response.status).toBe(200);const fresh=await response.json();
+ expect(fresh.report.diagnostics.acquisition.status).toBe('available');expect(fresh.report.diagnostics.acquisition.rows).toHaveLength(count);
+ const saved=await(await sanctuaryGa4Response(request('read'),deps)).json();expect(saved.report).toEqual(fresh.report);expect(saved.resultHash).toBe(fresh.resultHash);
+ expect(calls.sort()).toEqual([4,5]);
+ await db.exec('reset role');
+ const stored=(await db.query<{count:number,bytes:number,status:string}>(`select jsonb_array_length(s.payload::jsonb->'diagnostics'->'acquisition'->'rows') as count,octet_length(s.payload) as bytes,o.status from private.sanctuary_ga4_snapshot s join private.sanctuary_ga4_operations o on o.id=s.operation_id`)).rows[0];
+ expect(stored.count).toBe(count);expect(stored.bytes).toBeLessThanOrEqual(245760);expect(stored.status).toBe('completed');
+});
+
+it.each(['cohorts','bytes'] as const)('actual SQL rejects excessive %s and preserves the prior complete saved report',async mode=>{
+ await enable();const {deps}=diagnosticDependencies();const original=await(await sanctuaryGa4Response(v3Request(),deps)).json();
+ let completeAttempts=0,sqlFailure='';
+ deps.store=()=>async(action,op,_signal,input={})=>{
+  if(action!=='complete')return command(action,op,input);
+  completeAttempts++;
+  const payload=JSON.parse((input as {payload:string}).payload),acquisition=payload.diagnostics.acquisition;
+  const originalRow=acquisition.rows[0];
+  let pathLength=10;
+  do {
+   acquisition.rows=Array.from({length:mode==='cohorts'?751:750},(_,index)=>({...originalRow,landingPath:`/${'a'.repeat(pathLength)}-${index}`}));
+   pathLength++;
+  } while(mode==='bytes'&&Buffer.byteLength(JSON.stringify(payload))<=245760);
+  expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThanOrEqual(262144);
+  try{return await command(action,op,{...input,payload:JSON.stringify(payload)});}catch(error){sqlFailure=(error as Error).message;throw error;}
+ };
+ expect((await sanctuaryGa4Response(v3Request(),deps)).status).toBe(503);
+ expect(completeAttempts).toBe(1);expect(sqlFailure).toContain('diagnostic version or shape');
+ // HTTP preserves its existing uncertainty fence after a rejected completion.
+ // Inspect storage directly instead of weakening that fence to force delivery.
+ expect((await sanctuaryGa4Response(request('read'),deps)).status).toBe(503);
+ await db.exec('reset role');
+ const saved=(await db.query<{operation_id:string,result_hash:string,payload:string}>('select operation_id,result_hash,payload from private.sanctuary_ga4_snapshot')).rows[0];
+ expect(saved.operation_id).toBe(original.operation);expect(saved.result_hash).toBe(original.resultHash);expect(JSON.parse(saved.payload)).toEqual(original.report);
+});
+
 it('invalid acquisition retains fresh validated core through completion and saved SQL read',async()=>{
  await enable();const original=await(await sanctuaryGa4Response(request(),dependencies())).json();
  const {deps}=diagnosticDependencies('unexpected');const response=await sanctuaryGa4Response(v3Request(),deps);expect(response.status).toBe(200);const fresh=await response.json();

@@ -8,7 +8,7 @@ export async function during<T>(work: Promise<T>, signal: AbortSignal): Promise<
     work.then(resolve, reject).finally(() => signal.removeEventListener('abort', cancelled));
   });
 }
-export async function boundedGoogleJson(fetcher: typeof fetch, url: string, init: RequestInit, byteLimit: 65536 | 262144 = 65536, timeoutMs: 15000 | 45000 = 15000, budget?: { remaining: number }): Promise<unknown> {
+export async function boundedGoogleJson(fetcher: typeof fetch, url: string, init: RequestInit, byteLimit: 65536 | 262144 | 524288 = 65536, timeoutMs: 15000 | 45000 = 15000, budget?: { remaining: number }): Promise<unknown> {
   const timeout = AbortSignal.timeout(timeoutMs);
   const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
   const response = await during(fetcher(url, { ...init, cache: "no-store", redirect: "error", signal }), signal);

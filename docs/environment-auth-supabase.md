@@ -103,23 +103,45 @@ The previously unreleased GA4 migration was renamed without changing SQL bytes;
 20261021040001 now belongs to the installed sales-designer migration and must
 never be replayed or replaced as GA4.
 
-V3 executes the existing five core profiles and two fixed session-source/medium,
-landing-path without query and device profiles in separate batches. The added
-event profile allows only contact_form_interaction, contact_start and
-contact_success. It derives all three stages from eventCount, independent of
-keyEvents. Only contact_success is the completion count. The new profiles share
-45 seconds and 262144 streamed bytes, with at most two posts concurrently. V3
-normalized payloads are at most 245760 bytes; source envelopes remain262144.
-Ceilings of 200 profile groups, 400 range-expanded rows and 200 union groups are
-unproven live fit. EventName consumes groups too. There is no pagination or
-arbitrary query, alpha API, browser tracker or direct compatibility fallback.
+V3 executes the existing five core profiles and four fixed acquisition profiles
+in two concurrent batches. Acquisition uses session source/medium, landing path
+and device: one sessions profile and three eventCount profiles, separately
+filtered to contact_form_interaction, contact_start and contact_success. This
+keeps the 750-group limit on cohorts rather than multiplying it by eventName.
+Only contact_success is the completion count; keyEvents does not supply stages.
+Both batches request Google's compact JSON (`prettyPrint=false`) and share the
+45 seconds and 524288 streamed provider bytes. Normalized payloads remain at
+most 245760 bytes and source envelopes 262144. Each profile is limited to 750
+complete groups/1500 range-expanded rows; requests allow 751 rows without a
+comparison and 1501 with one, including an overflow sentinel. The parser accepts
+at most 1502 rows per profile; the cohort union is also limited to 750. Canonical row counts allow complete sparse ranges; the
+historical group-count form requires the complete range product.
+There is no pagination, arbitrary query, extra request or automatic retry.
+An ordinary daily report exceeded the old 200-group ceiling. Synthetic
+501-cohort/59-first-edit/45-attempt/45-success profiles use 210904 wire bytes and
+146692 normalized bytes; 750 cohorts at the same event density use 290579 and
+218277 bytes respectively. Each byte bound remains independent: unusually long
+labels or dense event groups may still fail rather than return partial data.
+Before deploying this producer, the matching Velt consumer must accept 750 rows
+and forward migration `20261027011337_ga4_diagnostic_capacity_750.sql` must be
+installed. The existing database validator also participates in completion and
+retained read; parser/JSON round trips alone do not verify persistence capacity.
+The migration changes only its reviewed 200-to-750 cardinality literal, preserving
+all other body bytes and function identity/owner/ACL/security metadata. Existing
+byte limits, control state, operations, snapshots and audit rows are unchanged.
+Prefer application recovery with the compatible 750 validator retained. Narrowing
+the validator while a larger snapshot or active operation exists is unsafe.
 
-A validated row limit permits fresh validated core/stages and strict acquisition
-unavailable with no metric cells. A successfully received acquisition JSON batch
-that fails its schema, profile, privacy or completeness validation also leaves
-only validated core/stages, with `compatibility_unproven` and no acquisition rows.
-This is a partial report, not proof of complete acquisition coverage. The parser
-still rejects all unsafe values; none are returned, persisted or logged.
+Original provider identities and complete range pairs are checked before
+privacy grouping. Private/unsafe labels become explicit withheld categories,
+with a visible report warning, including private paths in core landing data.
+Counts in a merged privacy category are added only when every constituent
+cohort supplied that observation. Otherwise the merged cell remains null.
+Original labels never enter returned/persisted reports or logs. Strict output
+schemas and completeness, integer overflow, row/union and wire bounds remain.
+A validated overflow leaves fresh core/stages with acquisition row_limit and no
+metric cells; other typed acquisition validation failures retain only validated
+core/stages with compatibility_unproven. Neither is complete attribution.
 Auth/provider HTTP/body decoding/transport/deadline/authority/effect failures,
 core validation and final normalization failures preserve the old
 snapshot and existing effect/quarantine semantics. Sampling, thresholding and
@@ -139,7 +161,9 @@ refresh, retry, privacy exception or additional provider request.
 
 An acquisition-only validation limitation emits
 `sanctuary_ga4_acquisition_unavailable` with fixed stage, validation category and
-HTTP status. It never logs provider values or detailed schema issues. The catch
+HTTP status and, when structurally valid, fixed profile indexes, reported/returned
+row counts, group/range counts and a duplicate flag. It never logs provider values
+or detailed schema issues. The catch
 surrounds only synchronous acquisition parsing after both bounded requests and
 validated core, with cancellation checked before retaining core and returning.
 Unknown exceptions remain fatal. The historical response-schema failure cannot

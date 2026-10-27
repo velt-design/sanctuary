@@ -34,3 +34,12 @@ it('offers historical Steve attribution without adding a current project-owner r
  const view=renderIntoDocument(<Harness client={client}/>);edit(view.container);act(()=>{const select=view.container.querySelector('select')!;select.value='steve';select.dispatchEvent(new Event('change',{bubbles:true}));});click(view.container,'Save assignment');await flush();
  expect(client.assign.mock.calls[0][1]).toMatchObject({designerKey:'steve'});expect(view.container.textContent).toContain('Sales designer: Steve');expect(projectOwnerOption('steve')).toBeNull();view.unmount();
 });
+
+it('keeps suggested responsibility unsaved until explicit action and preserves the reviewed basis',async()=>{
+ const suggestion={designerKey:'joe' as const,basis:'Provisional reporting assignment: linked booking only; review later.'};
+ const assigned={...saved,...suggestion};const client={assign:vi.fn().mockResolvedValue(assigned),read:vi.fn().mockResolvedValue(assigned)};
+ const view=renderIntoDocument(<SalesDesignerAssignment value={empty} suggestion={suggestion} onChange={vi.fn()} client={client}/>);
+ expect(view.container.textContent).toContain('provisional, not saved');expect(client.assign).not.toHaveBeenCalled();
+ click(view.container,'Assign sales designer');expect(view.container.querySelector('select')!.value).toBe('joe');expect(view.container.querySelector('textarea')!.value).toBe(suggestion.basis);
+ click(view.container,'Save assignment');await flush();expect(client.assign.mock.calls[0][1]).toMatchObject({...suggestion,expectedRevision:0});expect(client.read).toHaveBeenCalledWith(projectId);view.unmount();
+});
