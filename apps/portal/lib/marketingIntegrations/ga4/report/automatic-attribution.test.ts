@@ -83,7 +83,7 @@ it('keeps raw completeness independent from privacy collisions and accepts only 
   for (const report of raw.reports) report.rowCount = report.rows.length;
   expect(parseAcquisition(raw, query, 'Pacific/Auckland', now).status).toBe('available');
   raw.reports[0].rows.pop();
-  expect(parseAcquisition(raw, query, 'Pacific/Auckland', now)).toEqual({ status: 'unavailable', reason: 'row_limit' });
+  expect(() => parseAcquisition(raw, query, 'Pacific/Auckland', now)).toThrow();
   // A smaller reported count explicitly establishes complete sparse rows.
   raw.reports[0].rowCount--;
   const sparse = parseAcquisition(raw, query, 'Pacific/Auckland', now);

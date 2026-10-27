@@ -11,6 +11,7 @@ on:
       - 'supabase/migrations/20261021082853_ga4_v3_diagnostics.sql'
       - 'supabase/migrations/20261022013028_ga4_pre_token_settlement.sql'
       - 'supabase/migrations/20261022030852_ga4_vercel_credentials.sql'
+      - 'supabase/migrations/20261027011337_ga4_diagnostic_capacity_750.sql'
   push:
     branches: [main]
     paths:
@@ -21,6 +22,7 @@ on:
       - 'supabase/migrations/20261021082853_ga4_v3_diagnostics.sql'
       - 'supabase/migrations/20261022013028_ga4_pre_token_settlement.sql'
       - 'supabase/migrations/20261022030852_ga4_vercel_credentials.sql'
+      - 'supabase/migrations/20261027011337_ga4_diagnostic_capacity_750.sql'
   workflow_dispatch:
 
 permissions:
