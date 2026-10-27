@@ -43,7 +43,10 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
   const setEarlierOpen = (open: boolean) => reading.set('earlier', open);
   const sources = new Map(context?.sources.map((source) => [source.id, source]));
   const correspondence = context?.sources.filter((source) => source.association === 'customer_address_only').sort((a, b) => Date.parse(b.recordedAt) - Date.parse(a.recordedAt)) ?? [];
-  const action = onRefresh && state !== 'loading' && state !== 'refreshing' ? <Button variant="tertiary" size="small" onClick={onRefresh}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined;
+  const checking = state === 'loading' || state === 'refreshing';
+  const action = onRefresh ? <Button variant="tertiary" size="small" className={styles.refresh} aria-busy={checking || undefined}
+    aria-disabled={checking || undefined} aria-label={checking ? 'Checking customer conversations' : state === 'available' ? 'Check conversations' : 'Check again'}
+    onClick={() => { if (!checking) onRefresh(); }}>{state === 'available' ? 'Check conversations' : 'Check again'}</Button> : undefined;
   const body = <>
     {embedded ? action : null}
     <div className={styles.stack}>
@@ -55,7 +58,7 @@ export default function ProjectCorrespondenceCard({ context, state = 'not_connec
         : <>
           {context.snapshot ? <p className={styles.explanation} role="status">
             Emails checked {formatPortalDateTime(context.snapshot.checkedAt)}.
-            {state === 'loading' ? ' Checking for newer emails…' : context.snapshot.state === 'saved' ? ' Showing saved emails; newer messages may be missing.' : ''}
+            {context.snapshot.state === 'saved' ? ' Showing saved emails; newer messages may be missing.' : ''}
           </p> : state === 'stale' ? <AlertBanner tone="warning" title="Earlier conversation summary">This summary is no longer current. Check again for new correspondence before changing the job.</AlertBanner> : null}
           {sample ? <p className={styles.explanation}>Sample email excerpts. Your real Outlook emails are not connected to this preview.</p> : null}
           {context.messages ? <ProjectEmailMessages messages={context.messages} sample={sample} project={project} expanded={expanded} onExpand={onExpand} earlierOpen={earlierOpen} onEarlierOpen={setEarlierOpen} /> : <div className={styles.messages} aria-label="Email excerpts">

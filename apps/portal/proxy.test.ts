@@ -205,6 +205,23 @@ describe('portal proxy', () => {
     expect(createServerClientMock).not.toHaveBeenCalled();
   });
 
+  it.each(['quote-document', 'roof-question', 'enquiry-receipt', 'unknown-file'])('keeps the exact synthetic original route for %s under its own finite GET handler', async id => {
+    const response = await proxy(new NextRequest(`https://example.com/qa/project-page-shell-fixture/files/${id}?download=1`));
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('x-middleware-rewrite')).toBeNull();
+    expect(createServerClientMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['/files', '/files/roof-question/other', '/files-other/roof-question'])('does not make an arbitrary shell fixture child public: %s', async suffix => {
+    setUnauthenticated();
+    const pathname = `/qa/project-page-shell-fixture${suffix}`;
+    const response = await proxy(new NextRequest(`https://example.com${pathname}`));
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/login');
+    expect(new URL(response.headers.get('location')!).searchParams.get('callbackUrl')).toBe(pathname);
+    expect(createServerClientMock).toHaveBeenCalledOnce();
+  });
+
   it('allows the UI foundation fixture to enforce its own server flag without auth', async () => {
     process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
 

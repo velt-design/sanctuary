@@ -1,5 +1,22 @@
 # Quotes, Invoices, And Job Packs
 
+## Project Work desk presentation (27 October 2026 candidate)
+
+Project Commercial keeps the existing Estimates/Quotes/Invoices controllers,
+source versions, stored totals, acceptance/payment facts, locks and side effects.
+Its selected frame now scrolls the work area while retaining the compact project
+masthead/navigation. Natural accepted-work/table/payment regions replace the old
+oversized fixed-height reading areas. Wide Quotes places authoritative accepted
+work beside records; Invoices places its existing payment summary beside history.
+No financial field or full schedule/history disclosure is removed.
+
+`useProjectWorkspace` owns project-frame return positions. The existing
+`useCommercialListScroll` retains document restoration for standalone consumers
+and delegates when that explicit frame owner is present, avoiding competing late
+scroll resets. Full production PDF/email/payment and permission owners remain.
+Controlled fixture success is not business-write or provider/persistence proof.
+
+
 ## Commercial surface and code ownership
 
 The actual Commercial toolbar persists across Estimates, Quotes and Invoices before the current guarded source arrives. `EstimatesListSurface`, `QuotesListSurface` and `InvoicesListSurface` own their same real Find controls, headers and tables; neutral query/history/scroll intent survives adoption. The existing source-owned `ProjectSnapshotEvidence` receives genuine rows, read status and actions. Pending is Reading with nullable facts, not fabricated empty records, counts or money. Only the guarded controllers read saved preferences, queries, working copies and financial state; early public interaction wins their first adoption. Standalone Commercial composes these same surfaces once, and selected quote details or calculator workspaces retain their guarded editor owners.

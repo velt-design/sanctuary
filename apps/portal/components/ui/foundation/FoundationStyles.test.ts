@@ -12,7 +12,7 @@ function read(relativePath: string): string {
 }
 
 describe('foundation style guardrails', () => {
-  it('uses the actual Overview width as the container for its unchanged region grid', () => {
+  it('uses available Overview width, independent natural columns, and the full wide Work desk arrangement', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout.module.css'));
     const root = new Map<string, Map<string, string>>();
     sheet.walkRules(rule => {
@@ -23,7 +23,8 @@ describe('foundation style guardrails', () => {
     });
     expect(root.get('.layout')?.get('container-type')).toBe('inline-size');
     expect(root.get('.layout')?.get('width')).toBe('100%');
-    expect(root.get('.layout')?.get('max-width')).toBe('var(--ui-content-max)');
+    expect(root.get('.layout')?.get('max-width')).toBe('none');
+    expect(root.get('.grid')?.get('align-items')).toBe('start');
     expect(root.get('.grid')?.get('grid-template-columns')).toBe('minmax(0, 1.1fr) minmax(320px, 1fr)');
     expect(root.get('.layout:not([data-has-exception]) > .grid')?.get('grid-template-areas')).toBe('"primary context" "admin admin"');
     for (const [name, params] of [['container', '(max-width: 800px)'], ['media', '(max-width: 768px)']]) {
@@ -37,40 +38,40 @@ describe('foundation style guardrails', () => {
       });
       expect(matched).toBe(true);
     }
+    let wide=false;
+    sheet.walkAtRules('container',rule=>{if(rule.params==='(min-width:1600px)'){
+      wide=true;expect(rule.toString()).toContain('grid-template-columns:repeat(3,minmax(0,1fr))');
+      for(const region of ['.projectWork','.commercial','.orientation','.recent'])expect(rule.toString()).toContain(region);
+    }});expect(wide).toBe(true);
   });
   it('allocates accepted agreements at all widths while keeping full long facts natively readable', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/QuotesTab.module.css'));
     const declarations = new Map<string, string>();
-    let narrowHeight = 0;
     sheet.walkRules(rule => {
       if (rule.selector !== '.acceptedWork') return;
-      if (rule.parent?.type === 'atrule' && rule.parent.name === 'media' && rule.parent.params === '(max-width: 720px)') {
-        rule.walkDecls('block-size', decl => { narrowHeight = Number.parseFloat(decl.value); });
-      } else if (rule.parent?.type === 'root') {
+      if (rule.parent?.type === 'root') {
         rule.walkDecls(decl => { declarations.set(decl.prop, decl.value); });
       }
     });
-    expect(Number.parseFloat(declarations.get('block-size')!)).toBe(184);
-    // Actual ordinary 390px agreement measured 226px including its direct Open action.
-    expect(narrowHeight).toBeGreaterThanOrEqual(226 + 16);
-    expect(declarations.get('overflow')).toBe('auto');
-    expect(declarations.get('scrollbar-gutter')).toBe('stable');
+    expect(declarations.has('block-size')).toBe(false);
+    expect(declarations.get('overflow')).toBe('visible');
     expect(declarations.has('-webkit-line-clamp')).toBe(false);
   });
 
-  it('keeps the full project subtitle in two stable reading lines without clipping long facts', () => {
+  it('keeps the complete project subtitle focusable and natively readable without a reserved line box', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));
     const declarations = new Map<string, string>();
     sheet.walkRules(rule => {
       if (rule.selector !== '.mastheadSubtitle') return;
       rule.walkDecls(decl => { declarations.set(decl.prop, decl.value); });
     });
-    expect(Number.parseFloat(declarations.get('block-size')!)).toBe(2 * Number.parseFloat(declarations.get('line-height')!));
+    expect(declarations.get('block-size')).toBe('auto');
+    expect(declarations.get('white-space')).toBe('nowrap');
     expect(declarations.get('overflow')).toBe('auto');
-    expect(declarations.get('scrollbar-gutter')).toBe('stable');
+    expect(declarations.get('scrollbar-gutter')).toBe('auto');
     expect(declarations.has('-webkit-line-clamp')).toBe(false);
   });
-  it('keeps the project title and status on independent tracks at narrow and desktop widths', () => {
+  it('keeps the natural project title and independent status control on a compact shared line', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));
     const declarations = new Map<string, string>();
     sheet.walkRules(rule => {
@@ -82,9 +83,10 @@ describe('foundation style guardrails', () => {
     badgeSheet.walkRules(rule => {
       if (rule.selector === '.stageBadge') rule.walkDecls('min-height', decl => { badgeHeight = Number.parseFloat(decl.value); });
     });
-    expect(declarations.get('display')).toBe('grid');
-    expect(declarations.get('grid-template-rows')).toBe(`auto ${badgeHeight}px`);
-    expect(declarations.get('grid-template-columns')).toBe('minmax(0, 1fr)');
+    expect(declarations.get('display')).toBe('flex');
+    expect(declarations.get('align-items')).toBe('center');
+    expect(declarations.get('grid-template-rows')).toBe('none');
+    expect(badgeHeight).toBeGreaterThan(0);
   });
   it('allocates the compact column pager summary and touch controls within its reading header', () => {
     const sheet = postcss.parse(read('apps/portal/components/ui/foundation/FoundationSurfaces.module.css'));
@@ -150,7 +152,8 @@ describe('foundation style guardrails', () => {
     expect(projectPage).toMatch(
       /--project-page-sticky-masthead-height:\s*var\(\s*--project-page-masthead-height,\s*0px\s*\)/,
     );
-    expect(projectPage).toMatch(/\.pageFrameMastheadSlotSticky\s*\{[\s\S]*?top:\s*var\(--portal-sticky-content-top,\s*0px\)/);
+    expect(projectPage).toContain('height:calc(100dvh - var(--portal-sticky-content-top,0px))');
+    expect(projectPage).toContain('.pageFrame:not(.pageFrameCalculatorWorkspace) .pageFrameMastheadSlot { position:static; flex:none; }');
     expect(projectPage).toMatch(/max-width:\s*767px[\s\S]*?--project-page-sticky-masthead-height:\s*0px/);
     expect(calculatorGrid).toContain('--calculator-sticky-top: 0px');
     expect(calculatorGrid).toMatch(
@@ -164,22 +167,23 @@ describe('foundation style guardrails', () => {
   });
 });
 
-it('keeps Overview reading tracks and the first narrow-container composition independent of publication',()=>{
+it('keeps full Overview facts in natural flow and the narrow composition independent of publication',()=>{
  const reading=postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewReading.module.css'));
  const rules=new Map<string,Map<string,string>>();reading.walkRules(rule=>{const values=new Map<string,string>();rule.walkDecls(decl=>{values.set(decl.prop,decl.value);});rules.set(rule.selector,values);});
- expect(rules.get('.surface')?.get('container-type')).toBe('inline-size');expect(rules.get('.reading')?.get('overflow')).toBe('auto');expect(rules.get('.reading')?.get('height')).toBe('360px');
- expect(rules.get('.reading[data-overview-reading="payment"]')?.get('height')).toBe('400px');expect(rules.get('.history')?.get('overflow')).toBe('visible');expect(rules.get('.history')?.has('height')).toBe(false);
+ expect(rules.get('.surface')?.get('container-type')).toBe('inline-size');expect(rules.get('.reading')?.get('overflow')).toBe('visible');expect(rules.get('.reading')?.get('height')).toBe('auto');
+ expect(rules.has('.reading[data-overview-reading="payment"]')).toBe(false);expect(rules.get('.history')?.get('overflow')).toBe('visible');expect(rules.get('.history')?.has('height')).toBe(false);
  const layout=postcss.parse(read('apps/portal/components/projects/ProjectPage/tabs/overview/ProjectOverviewLayout.module.css'));let container=false;layout.walkAtRules('container',rule=>{if(rule.params==='(max-width: 800px)'){container=true;expect(rule.toString()).toContain('grid-template-columns: minmax(0, 1fr)');}});expect(container).toBe(true);
- const site=read('apps/portal/components/site-visits/siteVisits.module.css');expect(site).toContain('.calendarStatus{height:44px;min-width:0}');expect(site).not.toContain('.calendarContext:empty{display:none}');
+ const site=read('apps/portal/components/site-visits/siteVisits.module.css');expect(site).not.toContain('.calendarStatus{height:44px');expect(site).toContain('.calendarContext:empty{display:none}');
 });
 
-it('allocates the unknown and genuine project title plus tab scrollbar before publication',()=>{
- const sheet=postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));const title=new Map<string,string>();let tabs=false;
- sheet.walkRules(rule=>{if(rule.selector.includes('[data-page-header-identity="true"] h1'))rule.walkDecls(decl=>{title.set(decl.prop,decl.value);});if(rule.selector.includes('nav[aria-label="Project sections"]')){expect(rule.toString()).toContain('overflow-x: scroll');tabs=true;}});
- expect(title.get('block-size')).toBe('2lh');expect(title.get('overflow')).toBe('auto');expect(title.get('scrollbar-gutter')).toBe('stable');expect(tabs).toBe(true);
+it('keeps one viewport work scroller below the stationary header, with naturally sized title and tabs',()=>{
+ const sheet=postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));const title=new Map<string,string>(),work=new Map<string,string>();let tabs=false;
+ sheet.walkRules(rule=>{if(rule.selector.includes('[data-page-header-identity="true"] h1'))rule.walkDecls(decl=>{title.set(decl.prop,decl.value);});if(rule.selector==='.masthead .navigationRow :global(nav[aria-label="Project sections"])'){rule.walkDecls('overflow-x',decl=>{expect(decl.value).toBe('auto');tabs=true;});}if(rule.selector==='.pageFrame:not(.pageFrameCalculatorWorkspace) .pageFrameBody')rule.walkDecls(decl=>{work.set(decl.prop,decl.value);});});
+ expect(title.get('block-size')).toBe('auto');expect(title.get('overflow')).toBe('auto');expect(title.get('scrollbar-gutter')).toBe('auto');expect(tabs).toBe(true);
+ expect(work.get('flex')).toBe('1');expect(work.get('min-height')).toBe('0');expect(work.get('overflow')).toBe('auto');expect(work.get('scrollbar-gutter')).toBe('stable');expect(work.get('overflow-anchor')).toBe('none');
 });
 
-  it('keeps project native title scrolling above the pinned header clamp', () => {
+  it('keeps generic titles natural and project full-title disclosure independently owned', () => {
     const sheet = postcss.parse(read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css'));
     const pinned = postcss.parse(read('apps/portal/components/layout/PageHeader.module.css'));
     const selector = '.masthead .mastheadHeader :global([data-page-header-identity="true"] h1)';
@@ -193,12 +197,53 @@ it('allocates the unknown and genuine project title plus tab scrollbar before pu
         rule.walkDecls('-webkit-line-clamp', decl => { pinnedClamp = decl.value === '2'; });
       }
     });
-    // Three class/attribute selectors plus h1 beats the pinned rule's three.
-    expect(pinnedClamp).toBe(true);
+    // A generic title no longer reserves two blank rows or truncates detail names.
+    expect(pinnedClamp).toBe(false);
+    expect(read('apps/portal/components/layout/PageHeader.module.css')).not.toContain('min-height:2.2em');
+    const contact = read('apps/portal/app/staff/contacts/[contactId]/ContactDetailClient.tsx');
+    expect(contact).toContain('headingProps={{ tabIndex: 0, title: heading }}');
     expect(title.get('display')).toBe('block');
     expect(title.get('-webkit-line-clamp')).toBe('unset');
     expect(title.get('-webkit-box-orient')).toBe('initial');
-    expect(title.get('min-height')).toBe('2lh');
-    expect(title.get('max-height')).toBe('2lh');
+    expect(title.get('min-height')).toBe('0');
+    expect(title.get('max-height')).toBe('none');
     expect(title.get('overflow')).toBe('auto');
   });
+
+
+it('uses natural core headers and lists instead of status lanes, empty table floors or competing Dashboard viewport tracks',()=>{
+ const status=postcss.parse(read('apps/portal/components/page-state/ReadStatus.module.css'));
+ status.walkRules(rule=>{if(rule.selector==='.root')rule.walkDecls(decl=>{expect(['height','block-size','min-height','min-block-size']).not.toContain(decl.prop);});});
+ for(const path of ['apps/portal/app/staff/projects/ProjectsIndexClient.module.css','apps/portal/app/staff/contacts/ContactsIndexFrame.module.css']){
+  const sheet=postcss.parse(read(path));sheet.walkRules(rule=>{if(rule.selector==='.listViewport'||rule.selector==='.listHeaderActions'||rule.selector==='.listCard > header')rule.walkDecls(decl=>{expect(['height','min-height','grid-template-rows']).not.toContain(decl.prop);});});
+ }
+ const dashboard=postcss.parse(read('apps/portal/app/dashboard/dashboard.module.css'));
+ dashboard.walkRules(rule=>{if(['.page','.workspaceGrid','.workspaceGrid > div'].includes(rule.selector))rule.walkDecls(decl=>{expect(['height','min-height','grid-template-rows']).not.toContain(decl.prop);});});
+ expect(read('apps/portal/components/installerPayouts/InstallerPayoutPage.module.css')).toContain('margin: 0 auto');
+});
+
+
+it('keeps Dashboard column cards in natural flow without obsolete named-area placement',()=>{
+ const sheet=postcss.parse(read('apps/portal/app/dashboard/dashboard.module.css'));
+ sheet.walkDecls('grid-area',()=>{throw new Error('Independent Dashboard column cards must not create implicit named areas');});
+ expect(read('apps/portal/app/dashboard/DashboardFrame.tsx')).not.toContain('dash.content');
+ expect(read('apps/portal/app/dashboard/DashboardFrame.tsx')).not.toContain('dash.layout');
+ const finance=read('apps/portal/components/finance/FinanceRegister.module.css');
+ expect(finance).not.toContain('min-height: 320px');expect(finance).not.toContain('height: 152px');expect(finance).not.toContain('max-width: 1600px');
+ expect(finance).toContain('@container (max-width: 1120px)');
+});
+
+
+it('keeps Schedule feedback and real view controls in natural rows without an error-only scrollbar or report empty floors',()=>{
+ const schedule=postcss.parse(read('apps/portal/app/staff/schedule/schedule.module.css'));
+ schedule.walkRules(rule=>{if(rule.selector==='.headerActions')rule.walkDecls(decl=>{expect(['height','min-height','overflow-x']).not.toContain(decl.prop);});});
+ expect(schedule.toString()).toContain("grid-template-columns:auto minmax(160px,1fr) auto");
+ expect(schedule.toString()).toContain('.headerActions > :first-child { flex-basis:100%');
+ for(const [path,selector] of [
+  ['apps/portal/components/marketingPerformance/MarketingPerformance.module.css','.results'],
+  ['apps/portal/components/marketingPerformance/CommercialOverview.module.css','.section'],
+  ['apps/portal/components/marketingPerformance/DesignerPerformance.module.css','.section'],
+  ['apps/portal/components/financials/Financials.module.css','.result'],
+  ['apps/portal/app/admin/portal-actions/portalActions.module.css','.reviewSlot'],
+ ] as const){postcss.parse(read(path)).walkRules(rule=>{if(rule.selector===selector)rule.walkDecls(decl=>{expect(['height','min-height']).not.toContain(decl.prop);});});}
+});

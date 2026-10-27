@@ -4,7 +4,7 @@
 .formGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ui-space-4); }
 .formActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-2); margin-top: var(--ui-space-5); }
 .detailMeta { margin: calc(var(--ui-space-3) * -1) 0 0; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
-.detailActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--ui-space-2); }
+.detailActions { display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-start; gap:var(--ui-space-2); overflow-x:auto; max-width:100%; }
 .detailTable { min-width: 0; table-layout: fixed; }
 .detailTable th { width: 180px; color: var(--ui-text-muted); }
 .detailTable td { overflow-wrap: anywhere; }
@@ -37,8 +37,8 @@
 
 .detailTable { table-layout: fixed; width: 100%; }
 .detailTable td { overflow-wrap: anywhere; }
-.detailFeedback { min-width: 140px; min-height: 32px; }
-.formGrid > * { min-height: 108px; }
+.detailFeedback { min-width:0; white-space:nowrap; }
+
 .actionSlot { composes: actionSlot from "./ContactsIndexFrame.module.css"; }
 .listCard { composes: listCard from "./ContactsIndexFrame.module.css"; }
 .listControls { composes: listControls from "./ContactsIndexFrame.module.css"; }
@@ -48,3 +48,19 @@
 .page { composes: page from "./ContactsIndexFrame.module.css"; }
 .responsiveTable { composes: responsiveTable from "./ContactsIndexFrame.module.css"; }
 .stack { composes: stack from "./ContactsIndexFrame.module.css"; }
+
+/* The complete customer name remains focusable and can be scrolled without reserving title rows. */
+.detailHeader :global([data-page-header-identity='true'] h1) { white-space:nowrap; overflow:auto; max-width:100%; }
+.detailHeader :global([data-page-header-identity='true'] h1:focus-visible) { outline:2px solid var(--ui-focus-colour); outline-offset:2px; }
+
+.detailHeader :global(nav[aria-label='Breadcrumb']) { flex-wrap:nowrap; }
+.detailHeader :global(nav[aria-label='Breadcrumb'] > :last-child) { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.detailActions > * { flex-shrink:0; }
+.detailHeader :global([data-page-header-actions='true']) { flex-wrap:nowrap; overflow-x:auto; }
+.formActions > :last-child { min-width:0; flex:1 1 200px; }
+@media(max-width:767px) { .formActions > :last-child { flex-basis:100%; } }
+
+.contactInfo > header > :last-child { flex:1; min-width:0; }
+.detailHeader .routeActions { flex-wrap:nowrap; min-width:0; }
+.detailHeader .routeActions > :first-child { max-width:30ch; min-width:0; }

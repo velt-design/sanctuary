@@ -6,7 +6,7 @@ import { MetricGrid } from '@/components/ui/foundation/FoundationOperational';
 import type { ProjectInvoiceSchedule } from '@/lib/invoices/types';
 import type { EstimatesListBinding } from './EstimatesListSurface';
 import styles from './InvoicesTab.module.css';
-import ReadStatus from '@/components/page-state/ReadStatus';
+import ReadStatus from '../ProjectReadFeedback';
 export type InvoicesListEvidence = {
   pending?:boolean; closed: boolean; schedule: ProjectInvoiceSchedule | null; schedulePending: boolean; scheduleEyebrow: ReactNode;
   beforeSchedule: ReactNode; scheduleDetails: ReactNode; beforeHistory: ReactNode; historyEyebrow: ReactNode; noticeTitle?: string; noticeAction?: ReactNode;
@@ -44,10 +44,10 @@ export default function InvoicesListSurface({ query, onQueryChange, evidence, un
   useEffect(()=>{if(evidence&&!evidence.pending||!onInteraction)return;const start=window.scrollY;const onScroll=()=>{if(window.scrollY!==start)onInteraction();};window.addEventListener('scroll',onScroll,{passive:true});return()=>window.removeEventListener('scroll',onScroll);},[evidence,onInteraction]);
   const content = evidence?.render(query);
   return <div className={styles.wrapper}>
-    <div className={styles.header}><h3 className={styles.title}>Invoices</h3>
+    <div className={styles.header}><div className={styles.titleRow}><h3 className={styles.title}>Invoices</h3><ReadStatus title={evidence?.noticeTitle ?? (unavailable ? 'Invoices unavailable' : !evidence || evidence.pending ? 'Reading invoices…' : 'Invoices current')}
+      tone={unavailable ? 'error' : evidence?.noticeTitle ? 'warning' : 'neutral'} action={evidence?.noticeAction} details={evidence?.beforeSchedule} /></div>
       <p className={styles.subtitle}>NZD inc GST · payment schedule, money received and invoice history.</p></div>
-    <ReadStatus title={evidence?.noticeTitle ?? (unavailable ? 'Invoices unavailable' : !evidence || evidence.pending ? 'Reading invoices…' : 'Invoices current')}
-      tone={unavailable ? 'error' : evidence?.noticeTitle ? 'warning' : 'neutral'} action={evidence?.noticeAction} details={evidence?.beforeSchedule} />
+
     <Card className={styles.paymentSchedule} title={evidence?.closed ? 'Recorded payment schedule' : 'Job payment schedule'}
       eyebrow={evidence?.scheduleEyebrow ?? (unavailable ? 'Payment position unavailable' : 'Reading payment position…')}
       padding="none" headingLevel={4} aria-label="Invoice schedule">

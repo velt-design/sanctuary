@@ -40,6 +40,10 @@
   padding-bottom: var(--ui-space-2);
 }
 
+.container:not(.containerCalculatorWorkspace) { max-width:none; margin:0; min-height:0; gap:var(--ui-space-4); }
+.noticeSlot { display:inline-flex; height:auto; align-items:center; margin-left:auto; }
+.toolbar { top:0; align-items:center; flex-wrap:nowrap; }
+
 @media (max-width: 520px) {
   .toolbar {
     align-items: stretch;
@@ -49,6 +53,10 @@
   .quoteViews {
     width: 100%;
   }
+
+  .toolbar { min-width:0; align-items:center; }
+  .toolbar > :first-child { flex:1; min-width:0; width:auto; }
+  .toolbar > .noticeSlot { flex:none; width:auto; }
 
   .quoteViews > * {
     flex: 1;

@@ -1,6 +1,6 @@
 import { AlertBanner, Button } from '@/components/ui/foundation';
 import type { ProjectSnapshotLoadState } from '@/lib/projects/types';
-import ReadStatus from '@/components/page-state/ReadStatus';
+import ReadStatus from './ProjectReadFeedback';
 
 export default function ProjectSnapshotNotice({ state, onRetry, hasSavedDetails = true }: {
   hasSavedDetails?: boolean;

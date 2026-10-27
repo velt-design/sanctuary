@@ -35,4 +35,5 @@
   .diagnostics { grid-column: auto; }
   .formActions { display: grid; grid-template-columns: 1fr 1fr; }
   .formActions > * { width: 100%; }
+  .formActions > .status { grid-column:1 / -1; }
 }

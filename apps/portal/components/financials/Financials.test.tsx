@@ -34,19 +34,19 @@ it('missing comparison and partial families stay explicit with retry while curre
   const details=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!;act(()=>details.click());
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('does not currently grant');expect(view.container.querySelector('tbody')?.textContent).toContain('Document evidence unavailable');expect(view.container.querySelectorAll('tbody button')).toHaveLength(0);view.unmount();
 });
-it('keeps one status row and dated evidence through a changed selection, failed read and retry',async()=>{
+it('keeps one toolbar feedback owner and dated evidence through a changed selection, failed read and retry',async()=>{
   window.history.replaceState(null,'','/?financeFrom=2026-09-02&financeTo=2026-09-30&financeBasis=accrual');
   const selected={...query,from:'2026-09-02'},pending:Array<{resolve:(value:FinancialsData)=>void;reject:(error:Error)=>void}>=[];
   const loader=vi.fn(()=>new Promise<FinancialsData>((resolve,reject)=>pending.push({resolve,reject})));
   const view=renderIntoDocument(<Financials loader={loader} synthetic/>);await act(async()=>pending[0].resolve(sampleFinancials(selected)));
-  const region=view.container.querySelector('#financial-results')!,children=region.children.length,status=region.firstElementChild;
+  const region=view.container.querySelector('#financial-results')!,children=region.children.length,status=view.container.querySelector('[role="status"]')!;
   const basis=view.container.querySelector<HTMLSelectElement>('select[aria-label="P&L basis"]')??view.container.querySelectorAll<HTMLSelectElement>('select')[1];
   act(()=>{basis.value='cash';basis.dispatchEvent(new Event('change',{bubbles:true}));});
-  expect(region.children.length).toBe(children);expect(region.firstElementChild).toBe(status);expect(region.textContent).toContain('Updating · earlier report shown');
+  expect(region.children.length).toBe(children);expect(view.container.querySelector('[role="status"]')).toBe(status);expect(status.textContent).toContain('Updating · earlier report shown');
   expect(region.textContent).toContain('2026-09-02 to 2026-09-30 · NZD · accrual');expect(region.textContent).toContain('partial calendar month');
   await act(async()=>pending[1].reject(new Error('Source offline')));
-  expect(region.children.length).toBe(children);expect(region.textContent).toContain('Financial reports unavailable');
-  const retry=[...region.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Retry')!;act(()=>retry.click());
+  expect(region.children.length).toBe(children);expect(status.textContent).toContain('Financial reports unavailable');
+  const retry=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Retry')!;act(()=>retry.click());
   await act(async()=>pending[2].resolve(sampleFinancials({...selected,basis:'cash'})));
   expect(region.children.length).toBe(children);expect(region.textContent).toContain('2026-09-02 to 2026-09-30 · NZD · cash');view.unmount();
 });

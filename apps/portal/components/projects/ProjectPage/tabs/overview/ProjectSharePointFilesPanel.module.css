@@ -72,3 +72,12 @@
 .toolbar { height: 100px; box-sizing: border-box; overflow: auto; scrollbar-gutter: stable; }
 .finding { height: 36px; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail, .inspector { scrollbar-gutter: stable; }
+.workspace .metadata { height:auto; }
+.workspace .toolbar { height:auto; overflow:visible; }
+.workspace .finding { height:auto; padding:6px 12px; }
+.workspace .previewNotice,.workspace .empty { padding:16px; }
+@container(max-width:550px) {
+ .workspace .headerControls { display:flex; flex-wrap:wrap; }
+ .workspace .headerControls > :first-child { flex:1 0 100%; width:100%; }
+ .workspace .headerControls > :not(:first-child) { flex:0 1 auto; }
+}

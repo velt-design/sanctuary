@@ -1,5 +1,143 @@
 # Staff Portal UI System
 
+## Active forms, finance and calendar presentation (27 October 2026)
+
+Dashboard's workspace parent owns its direct natural columns. Cards retain their
+real row/controller owners without obsolete named placement or competing grids.
+
+Contact detail docks read feedback with route actions and mutation recovery with
+Edit/Done. The real editing toolbar has native horizontal access on narrow
+screens; full error/retry/review content remains reachable. Contact and Project
+creation feedback follows Submit/Cancel, retaining terminal errors, duplicate
+review and safe retry policy. Contact fields no longer reserve108px each.
+Costing feedback shares its existing version action group; user-access results
+share their submit owner and crew freshness/recovery shares its section header.
+Crew tables use natural height; user forms remain readable while crew records
+can use available width. No command or pricing policy changes.
+
+Finance docks checked/stale/denial/Retry with the page controls, keeps the real
+Previous/Next pager mounted and disabled when unavailable, and removes the
+summary152px, table320px and empty note/pager allocations. Unknown summary
+amounts remain Checking/Unavailable rather than fabricated zero/currency; empty
+matching totals are explicit. Full-set totals, currency, exclusions, dates,
+source/history/PDF access and denied-record withdrawal are unchanged. The existing
+labelled record layout now applies below1120px of actual container width, keeping
+complete monetary values readable beside the real sidebar.
+
+Site Visits keeps one CalendarFreshness/ReadStatus owner through unknown, saved,
+failed and recovered observations, beside Refresh Outlook. The same disclosure
+and focus survive adoption. Calendar scope/source details, disabled connection,
+expiry/cadence and Retry remain truthful; the agenda uses available width and
+natural empty height. Schedule moves routine load/trust feedback into its
+existing header, with direct Retry/Refresh and full original warning/reference
+in Details. Board per-card mutation notices, Gantt trust, pending changes,
+conflicts/issues and diagnostics retain their distinct owners and safety. There
+is no new status floor or controller/data/query change.
+
+## Active Portal core presentation (27 October 2026)
+
+The active Portal presentation uses its existing family owners: DashboardFrame/Hero, ProjectsIndexFrame,
+ContactsIndexFrame, WorkQueueFrame, ContactDetailsView and InstallerPayoutPage.
+ReadStatus has a naturally sized root rather than a shared 44px status lane;
+its alert/live semantics, Details popover and Retry behavior are unchanged.
+Shared PageHeader no longer clamps every pinned detail title into a reserved
+2.2em box. Contact detail supplies its complete name as a focusable, titled,
+natively scrollable heading; its breadcrumb remains a compact navigation hint.
+Primary-action continuity and the global search owner are unchanged.
+
+Dashboard feedback belongs beside its existing quick actions. The same Details
+trigger stays mounted through reads, with complete failure text and direct Retry.
+Work Queue and Recent Estimates share the work column, activity has its own
+column, and personal tasks and visits share the third. At intermediate widths
+the last group follows below; narrow screens use natural document flow. There
+are no competing viewport tracks, fixed 340px cards, 160px visit allocation or
+empty task-error floor. Long lists may use their existing card body overflow on
+wide, tall screens, bounded by a maximum rather than a minimum or fixed height.
+At short desktop heights ordinary document scrolling keeps all work readable.
+
+Projects and Contacts keep their actual table, filters and pager while removing
+the 320px empty table floor and dedicated mobile status rows. Local feedback and
+the persistent pager share the header row; narrow feedback has its own horizontal
+access when simultaneous recovery/completeness controls need it. Contacts uses
+available page width. Work Queue docks its existing feedback in the header.
+Installer payout is top-aligned with a readable 850px maximum and unchanged print,
+agreement and financial controls. No query, authority, mutation or calculation
+owner moves. Correspondence eligibility is unchanged, including
+mandatory private withdrawal when evidence expires or access ends.
+
+Source/DOM tests establish ownership and control continuity. Verify actual
+geometry at 390px, short desktop and wide sizes with the original bundle caps
+and independent delivery review. Workbench, paused Studio and the public
+marketing app are excluded. Forms, Finance, specialist calendar and staff report
+presentation remain with the owners described in this document.
+
+
+## Project Work desk implementation (27 October 2026)
+
+The owner selected Work desk after comparing complete project Overview, Files and
+Commercial directions. This implementation supersedes the earlier fixed
+project-header, reading-box and status-slot geometry below. Other Portal families
+retain their own presentation owners; this is not a production-release claim.
+
+`ProjectPageFrameSurface` keeps the actual masthead/navigation mounted above a
+viewport-owned `data-project-workspace-scroll` region. Its private `useProjectWorkspace`
+uses the shell's existing sticky-content offset with `100dvh`, preserves reading
+positions by explicit project and selected view/detail identity, restores through
+late content/history adoption and yields to real work-area input. Stale query
+bridges and transition scroll clamping cannot overwrite another view's position.
+`ProjectSnapshotSurface` passes its existing project ID and selected tab into
+that boundary. Calculator's separate workspace remains outside this owner.
+The hook is local to its sole frame owner and requires the caller's known project
+identity, including before metadata arrives. React work-area handlers ignore
+synthetic portal events whose native targets are outside that DOM boundary.
+All genuine contained work input owns its position, including typing after
+programmatic focus; it does not depend on a separate keyboard-key policy.
+The masthead is a stationary flex sibling, with no obsolete sticky modifier.
+Project style guards now require natural title/subtitle and complete reading
+content, useful wide columns and one work scroller. The former fixed two-line,
+reserved status and fixed reading-box assertions were superseded by the owner's
+selected Work desk and explicit rejection of wasted space. CSS guards supplement
+actual native geometry and return checks; they do not establish those results.
+
+`ProjectReadFeedback` reuses `ReadStatus` behavior with project-only compact
+presentation, placing state, original Retry/review controls and full detail
+popovers beside existing project controls. It adds no persistent status band.
+The shared owner accepts optional root presentation attributes and a details
+trigger accessible name; the project uses its existing root/title/controls
+directly. Other callers retain their original behavior; the shared status root uses natural height.
+`ProjectOverviewSurface` retains guarded real fact publication; natural Work,
+current commercial, customer/site and correspondence cards recompose into three
+useful columns on wide screens. Commercial lists and payment/accepted-work facts
+retain their original data and command owners without tall empty viewports.
+Existing Files folders/list/preview, sources, attachments and original access
+remain specialist-owned. Project modals are top-aligned without changing the
+shared modal's focus, scroll-lock or security behavior.
+
+Cold invoice preview has its own `InvoicePreviewEntry` Suspense boundary, with
+the existing modal's loading/cancel and focus return. A lazy artifact cannot
+suspend the public list or retire its guarded evidence producer. Cancelling or
+ending access before the module settles never resurrects the dialog. Commercial
+row action cells stop Enter/Space for row protection, allowing focused Escape
+to reach the existing menu close owner. This keeps native menu navigation and
+selection without changing shared floating-panel or financial command policy.
+
+Snapshot feedback has one owner per workspace: the stationary Header owns it
+for ordinary project views; the headerless Calculator retains its body feedback,
+including early pending, explicit Retry and access withdrawal. `ProjectPageShellSurface`
+only presents the tab surface. Domain props and callbacks stay with `ProjectTabBody`
+and its composition wrappers; the public tab surface owns its presentation defaults
+once and does not eagerly construct a second ordinary-project status policy.
+
+The controlled `?workdesk=1&commercial=1` shell fixture uses the SAME production
+`ProjectSnapshotSurface`, guarded tab controllers and publication bindings across
+all tabs. Its synthetic read-only adapters and gated original-file route establish
+local interaction evidence only. The controlled snapshot and delayed command
+read share one deterministic work constructor, so direct Commercial/reload uses
+verified synthetic state without requiring an Overview visit or prewarming reads.
+Native browser/protected-source and independent
+review remain required. Workbench and paused Studio are excluded.
+
+
 ## Stable work surfaces (26 October 2026)
 
 Ordinary staff pages reserve the document scrollbar gutter using the existing
@@ -9,19 +147,18 @@ scroll policy. Overlay locking preserves the measured staff document width and
 restores the original styles and reading position; it does not add a second
 gutter allowance. Schedule and operational sheets reserve their own inner gutter.
 
-Projects, Contacts, Commercial lists and Finance own deliberate column widths
-and a truthful minimum reading region. Index pagers stay in the existing list header, including disabled controls while
+Projects, Contacts, Commercial lists and Finance own deliberate column widths.
+Core indexes now use natural list height; specialist financial layouts retain their own reading owners. Index pagers stay in the existing list header, including disabled controls while
 their count is unknown; the range has one owner. Fixed-layout columns have one
 CSS owner rather than duplicated JSX declarations. The actual pager shell owns
 fixed arrow, number and range areas; the current guarded list owner supplies
 genuine numbers, ranges and empty/filter facts. On narrow screens the existing
-card header allocates status and pager rows, keeping Retry and completeness
-details from displacing the arrows. Unknown counts remain unknown, and pending, empty and failed
+card header keeps local feedback beside the pager, with native horizontal access to exceptional narrow feedback actions. Unknown counts remain unknown, and pending, empty and failed
 reads use the same real table. Source authority, saved anchors and commands are
 unchanged. Header action space can be allocated before capability is known, but
 no unauthorized control is rendered or activated.
 
-`ReadStatus` is a compact, persistent local presentation slot. Failures name the
+`ReadStatus` is compact local feedback with no fixed-height lane. Failures name the
 issue and keep Retry visible where supported; existing full explanations and
 review actions use the existing floating-panel owner without resizing the work.
 Routine read labels are ordinary text, leaving immediate mutation feedback its
@@ -43,8 +180,7 @@ permanent focusable reading region, using the same native Card before and after
 data arrives, including base and add-on agreements. Unknown,
 failed and verified-empty states are distinct; long facts remain fully scrollable.
 Real payment schedule, Finance summary and Dashboard card regions retain bounded reading
-areas, with overflow available rather than discarded content. Dashboard visits has an
-explicit track in each responsive layout, so its read cannot resize other rows. Access, Pricebook,
+areas, with overflow available rather than discarded content. Dashboard now uses natural independent columns and document flow as described above. Access, Pricebook,
 contact/project forms and Files use the same local status ownership.
 Project background Files preparation retains metadata and preview-byte ownership;
 the actual Files view owns PDF-renderer code preparation, so an ordinary project
@@ -1112,3 +1248,11 @@ Contacts row Open links load their detail route on user navigation rather than a
 User-opened Recent notes and portal history follows natural document flow instead of adding a nested scroll owner. Invoice schedule keeps four stable essential total positions, the accepted/separate-work breakdown and permitted primary actions directly visible; full payment terms and history remain in the native disclosure. Unknown, unavailable and verified values retain their distinct meanings while the same controls and reading positions remain mounted.
 
 Portal date and work-due presenters reuse their fixed locale/time-zone formatters while deriving every date and current-day result afresh. Verified empty invoice history belongs in its actual table reading region, outside the optional full payment-history disclosure; pending, failed and denied reads retain their distinct states and existing Retry.
+
+### Active report and Schedule feedback ownership (27 October 2026)
+
+The selected Work desk direction now extends through the active Portal family owners. Schedule has one ReadStatus root for its read/trust state, retaining Gantt live announcements, direct Retry/Refresh, complete original warning/host/reference disclosure and Board per-card mutation ownership. The Schedule header uses intrinsic identity/actions around its flexible search on wide screens. Narrow screens always put the real feedback/disclosure/recovery controls before the real view buttons. Neither arrangement owns a horizontal status scrollbar or an empty reserved lane.
+
+Staff Marketing & Sales and Financials dock source status and recovery beside their existing report controls. Independent commercial values remain visibly qualified while project filters are pending; the original source time, matching-selection explanation and full financial qualifications remain accessible in Details. Settled/empty results use natural height. Existing report return-position and verified commercial geometry owners remain, supplying remembered height during pending recovery rather than permanent empty floors. Meaningful chart dimensions and native table/detail owners stay intact. Designer changes are presentation CSS only; site-visit attribution and history coverage retain their domain owners.
+
+Imports retains its ordinary instruction as plain muted text. Connection approvals retain every existing review/confirmation/expiry/conflict/credential safeguard; empty review and feedback are naturally sized while populated review remains a bounded native scroller. No command, permission, query or provider contract changes accompany these presentation changes.

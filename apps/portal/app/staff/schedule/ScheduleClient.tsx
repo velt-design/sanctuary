@@ -1,5 +1,7 @@
 'use client';
 
+import ReadStatus from '@/components/page-state/ReadStatus';
+
 import { deriveScheduleStatus } from './scheduleItemStatus';
 import { createScheduleInitialSeed } from './scheduleInitialSeed';
 import type { SchedulePageSeed } from '@/lib/scheduling/serverSchedulePageSeed';
@@ -608,7 +610,6 @@ export default function ScheduleClient({
   // This local value remains the standalone fallback; private rows do not need
   // to subscribe to neutral panel state.
   const unscheduledCollapsed = localUnscheduledCollapsed;
-  const setUnscheduledCollapsed = publicWorkspace?.setUnscheduledCollapsed ?? setLocalUnscheduledCollapsed;
   const setUnscheduledCollapsedFromIntent = publicWorkspace?.setUnscheduledCollapsedFromIntent ?? setLocalUnscheduledCollapsed;
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
@@ -1776,17 +1777,6 @@ export default function ScheduleClient({
 
   const schedulable = boardModel.schedulable;
   const unscheduledJobsAll = boardModel.unscheduledJobsAll;
-
-  const unscheduledEmpty = unscheduledJobsAll.length === 0;
-
-  useEffect(() => {
-    if (view !== 'board') return;
-    if (publicWorkspace?.preserveCollapseOnAdoption.current) {
-      if (hydrated) publicWorkspace.preserveCollapseOnAdoption.current = false;
-      return;
-    }
-    setUnscheduledCollapsed(unscheduledEmpty);
-  }, [hydrated, publicWorkspace?.preserveCollapseOnAdoption, setUnscheduledCollapsed, unscheduledEmpty, view]);
 
   const unscheduledJobs = boardModel.unscheduledJobs;
   const ganttLaneItems = useMemo(
@@ -4207,54 +4197,22 @@ export default function ScheduleClient({
     );
   }
 
-  const loadFailure = loadError ? (
-    <AlertBanner tone="error" title="Schedule data could not load">
-      {loadError.message}
-      {supabaseHost ? <><br />Host: <strong>{supabaseHost}</strong></> : null}
-    </AlertBanner>
-  ) : null;
+  const trustNotice = !loadError && (scheduleTrust.status === 'failed' || scheduleTrust.status === 'stale') && (view === 'gantt' || !boardMutationNotice.notice);
+  const feedbackTitle = loadError ? 'Schedule data could not load' : trustNotice ? scheduleTrust.status === 'failed' ? 'Schedule change was not saved' : 'Schedule may be out of date' : view === 'gantt' ? scheduleTrustLabel : 'Schedule records';
 
   return <ScheduleFrameOutput
     view={view}
     tabs={scheduleTabs}
-    saveStatus={<span
-                className={styles.saveStatus}
-                data-state={scheduleTrust.status}
-                role="status"
-                aria-live="polite"
-              >
-                {scheduleTrustLabel}
-              </span>}
-    notices={<>
-        {loadFailure}
-        {loadError ? <button type="button" className={styles.buttonSecondary} onClick={() => refreshSchedule({ authoritative: true })}>Retry</button> : null}
-        {!loadError && (scheduleTrust.status === 'failed' || scheduleTrust.status === 'stale')
-          && (view === 'gantt' || !boardMutationNotice.notice) ? (
-          <AlertBanner
-            tone={scheduleTrust.status === 'failed' ? 'error' : 'warning'}
-            title={scheduleTrust.status === 'failed' ? 'Schedule change was not saved' : 'Schedule may be out of date'}
-            action={
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                disabled={syncing}
-                onClick={() => refreshSchedule({ authoritative: true })}
-              >
-                {syncing ? 'Refreshing…' : 'Refresh schedule'}
-              </button>
-            }
-          >
-            {scheduleTrust.message}
-            {scheduleTrust.requestId ? (
-              <>
-                {' '}
-                Reference: <code>{scheduleTrust.requestId}</code>.
-              </>
-            ) : null}
-          </AlertBanner>
-        ) : null}
+    notices={<ReadStatus title={feedbackTitle} className={view === 'gantt' ? styles.saveStatus : undefined} data-state={view === 'gantt' ? scheduleTrust.status : undefined} role={view === 'gantt' ? 'status' : undefined} aria-live={view === 'gantt' ? 'polite' : undefined}
+      tone={loadError || trustNotice && scheduleTrust.status === 'failed' ? 'error' : trustNotice ? 'warning' : 'neutral'}
+      action={loadError || trustNotice ? <button
+        type="button"
+        className={styles.buttonSecondary}
+        disabled={!loadError && syncing}
+        onClick={() => refreshSchedule({ authoritative: true })}
+      >{loadError ? 'Retry' : syncing ? 'Refreshing…' : 'Refresh schedule'}</button> : undefined}
+      details={<><p>{feedbackTitle}</p>{view === 'gantt' ? <p>{scheduleTrustLabel}</p> : null}{loadError ? <p>{loadError.message}{supabaseHost ? <><br />Host: <strong>{supabaseHost}</strong></> : null}</p> : trustNotice ? <p>{scheduleTrust.message}{scheduleTrust.requestId ? <> Reference: <code>{scheduleTrust.requestId}</code>.</> : null}</p> : null}</>} />}
 
-    </>}
     pendingChanges={<SchedulePendingChanges items={scheduleItems} installers={installers} projectsById={projectsById} onReview={(id, request) => {
           const item = scheduleItems.find((row) => row.id === id);
           if (!item) return;

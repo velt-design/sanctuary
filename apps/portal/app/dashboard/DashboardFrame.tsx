@@ -25,6 +25,7 @@ export default function DashboardFrame({
   const activity=parts.recentActivity??data;
   const estimates=parts.recentEstimates??data;
   const pending=(known:unknown)=>!known&&state!=='refresh-failed'&&state!=='unavailable';
+  const readTitle = state === 'cached' ? 'Updating...' : state === 'refresh-failed' ? Object.keys(parts).length ? 'Some Dashboard sections could not load. Complete sections remain available.' : data ? 'Could not refresh the dashboard. Showing the last saved information.' : 'Could not load the dashboard. Retry to read the current information.' : state === 'unavailable' ? 'Dashboard unavailable' : state === 'pending' ? 'Reading Dashboard…' : 'Dashboard current';
   return (
     <main
       className={dash.page}
@@ -32,31 +33,31 @@ export default function DashboardFrame({
       data-dashboard-state={state}
       data-dashboard-background-ready={state === 'fresh' ? 'true' : 'false'}
     >
-      <DashboardHero updatedAtIso={parts.snapshot?.updatedAtIso??data?.updatedAtIso??new Date().toISOString()} />
-
-      <div className={dash.content}>
-        <ReadStatus title={state === 'cached' ? 'Updating...' : state === 'refresh-failed' ? Object.keys(parts).length ? 'Some Dashboard sections could not load. Complete sections remain available.' : data ? 'Could not refresh the dashboard. Showing the last saved information.' : 'Could not load the dashboard. Retry to read the current information.' : state === 'unavailable' ? 'Dashboard unavailable' : state === 'pending' ? 'Reading Dashboard…' : 'Dashboard current'}
+      <DashboardHero updatedAtIso={parts.snapshot?.updatedAtIso??data?.updatedAtIso??new Date().toISOString()} feedback={<ReadStatus title={readTitle} details={<p>{readTitle}</p>}
           tone={state === 'unavailable' ? 'error' : state === 'refresh-failed' ? 'warning' : 'neutral'}
-          action={state === 'refresh-failed' && onRetry ? <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>Retry</button> : undefined} />
+          action={state === 'refresh-failed' && onRetry ? <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>Retry</button> : undefined} />} />
 
-        <div className={dash.layout}>
-          <PipelineCountsSurface
-            journeyCounts={portfolioCounts} pending={pending(pipeline)} statePending={pending(states)}
-            countsAvailable={(state !== 'refresh-failed' || Boolean(parts.pipelineCounts)) && pipeline?.pipelineCountsScope === 'open_enquiry_proposal_v1' && pipeline?.pipelineCountsAvailable === true}
-            stateCounts={states?.projectStateCounts}
-            stateCountsAvailable={Boolean(states)&&states?.projectStateCountsAvailable !== false}
+      <PipelineCountsSurface
+        journeyCounts={portfolioCounts} pending={pending(pipeline)} statePending={pending(states)}
+        countsAvailable={(state !== 'refresh-failed' || Boolean(parts.pipelineCounts)) && pipeline?.pipelineCountsScope === 'open_enquiry_proposal_v1' && pipeline?.pipelineCountsAvailable === true}
+        stateCounts={states?.projectStateCounts}
+        stateCountsAvailable={Boolean(states)&&states?.projectStateCountsAvailable !== false}
+      />
+
+      <div className={dash.workspaceGrid}>
+        <div>
+          <ProjectWorkQueueSurface rows={cardRows?.work} hasItems={Boolean(work?.projectWorkQueue?.length)}
+            pending={pending(work)}
+            available={Boolean(work)&&work?.projectWorkQueueAvailable !== false}
           />
-
-          <div className={dash.workspaceGrid}>
-            {visits}
-            <ProjectWorkQueueSurface rows={cardRows?.work} hasItems={Boolean(work?.projectWorkQueue?.length)}
-              pending={pending(work)}
-              available={Boolean(work)&&work?.projectWorkQueueAvailable !== false}
-            />
-            <RecentActivitySurface rows={cardRows?.activity} known={activity?.recentActivity!=null} hasItems={Boolean(activity?.recentActivity.length)} pending={pending(activity)} />
-            <RecentEstimatesSurface rows={cardRows?.estimates} known={estimates?.recentEstimates!=null} hasItems={Boolean(estimates?.recentEstimates.length)} pending={pending(estimates)} />
-            {tasksCard}
-          </div>
+          <RecentEstimatesSurface rows={cardRows?.estimates} known={estimates?.recentEstimates!=null} hasItems={Boolean(estimates?.recentEstimates.length)} pending={pending(estimates)} />
+        </div>
+        <div>
+          <RecentActivitySurface rows={cardRows?.activity} known={activity?.recentActivity!=null} hasItems={Boolean(activity?.recentActivity.length)} pending={pending(activity)} />
+        </div>
+        <div>
+          {tasksCard}
+          {visits}
         </div>
       </div>
     </main>

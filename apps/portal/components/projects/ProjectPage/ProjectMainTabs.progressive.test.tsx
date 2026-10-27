@@ -120,7 +120,7 @@ function GuardedListBridge({ owner, allowed, shown = true }: { owner: object; al
   const body = useMemo(() => <ProjectCommercialProvider projectId="proj_1" ready>
     <ProjectTabBody host="host" projectId="proj_1" snapshot={null} tab="estimates" estimatesList={binding} />
   </ProjectCommercialProvider>, [binding]);
-  return <ProjectMainTabsSurface projectId="proj_1" host="host" snapshot={null} tab="estimates"
+  return <ProjectMainTabsSurface snapshot={null} tab="estimates"
     privateContentReady={allowed} body={shown ? body : null} publicBody={shown ? <CommercialTabSurface view="estimates" onSelect={() => undefined}>
       {publication.value?.notice}
       <EstimatesListSurface query={controls.query} onQueryChange={controls.setQuery} onInteraction={controls.markInteracted} evidence={publication.value} unavailable={!allowed} />

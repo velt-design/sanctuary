@@ -1,4 +1,4 @@
-// Private read tests observe the same snapshot props at the extracted public shell boundary.
+// Private read tests observe metadata at the Header and access ending at the private Body.
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../../../test/reactHarness";
@@ -6,7 +6,6 @@ import { ApiError } from "@/lib/repo/apiClient";
 import { selectProjectView } from "@/components/projects/ProjectPage/projectViewNavigation";
 import type { PortalPageDebugExport } from "@/lib/debug/portalPageDebugExport";
 import ProjectSnapshotPageClient from "./ProjectSnapshotPageClient";
-vi.mock('@/components/projects/ProjectPage/ProjectHeaderSurface', () => ({ default: () => null }));
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'staff-a' } }) }));
 
 const useQueryMock = vi.fn();
@@ -43,21 +42,27 @@ vi.mock("@/lib/supabase/browserClient", () => ({
   supabaseRuntimeUrl: () => "https://host.supabase.co",
 }));
 
-vi.mock("@/components/projects/ProjectPage/ProjectPageShellSurface", () => ({
+vi.mock("@/components/projects/ProjectPage/ProjectHeaderSurface", () => ({
   default: ({
-    snapshot,
-    snapshotContentReady,
+    project,
+    tabAvailabilityReady,
     snapshotState,
-    onProjectAccessEnding,
     statusPanel,
   }: any) => (
-    <div
+    <header
       data-testid="project-frame"
-      data-content-ready={String(snapshotContentReady)}
+      data-content-ready={String(tabAvailabilityReady)}
       data-snapshot-state={snapshotState}
     >
-      {snapshot?.project.name ?? "Reading project"}
+      {project?.name ?? "Reading project"}
       {statusPanel}
+    </header>
+  ),
+}));
+
+// The private body owns access-ending callbacks; the public shell only presents it.
+vi.mock("@/components/projects/ProjectPage/ProjectTabBody", () => ({
+  default: ({onProjectAccessEnding}:any) => <>
       {[401, 403, 404].map((status) => (
         <button
           key={status}
@@ -72,8 +77,7 @@ vi.mock("@/components/projects/ProjectPage/ProjectPageShellSurface", () => ({
           End command access {status}
         </button>
       ))}
-    </div>
-  ),
+    </>,
 }));
 
 vi.mock("@/components/debug/PortalDebugExportButton", () => ({
@@ -173,7 +177,7 @@ describe("ProjectSnapshotPageClient", () => {
     ).not.toBeNull();
     expect(rendered.container.textContent).toContain("Cached Project");
     expect(rendered.container.textContent).toContain("Updating project");
-    expect(rendered.container.querySelector('[data-testid="project-frame"]')?.textContent).toContain("Updating project");
+    expect(rendered.container.querySelector('[data-project-masthead-slot]')?.textContent).toContain("Updating project");
     const details = [...rendered.container.querySelectorAll('button')].find(button => button.textContent === 'Details')!;
     act(() => { details.focus(); details.click(); });
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain(

@@ -1,4 +1,4 @@
-.page { max-width: 850px; margin: auto; padding: 24px; }
+.page { box-sizing: border-box; width: 100%; max-width: 850px; margin: 0 auto; padding: 24px; }
 .page section { margin-block: 24px; padding-block: 16px; border-top: 1px solid currentColor; }
 .page fieldset { border: 0; padding: 0; display: grid; gap: 16px; }
 .page p { white-space: pre-wrap; }

@@ -1,3 +1,6 @@
+import { act } from 'react';
+import { renderIntoDocument } from '../../../../test/reactHarness';
+import DashboardFrame from './DashboardFrame';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import DashboardView from './DashboardView';
@@ -157,7 +160,7 @@ describe('DashboardView', () => {
     expect(noteIndex).toBeLessThan(authorIndex);
   });
 
-  it('prioritizes the overview before the ordered operations row', () => {
+  it('prioritizes portfolio and groups work with estimates before activity and personal tasks', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     const portfolioIndex = markup.indexOf('Project portfolio');
@@ -172,9 +175,9 @@ describe('DashboardView', () => {
     expect(activityIndex).toBeGreaterThan(-1);
     expect(tasksIndex).toBeGreaterThan(-1);
     expect(portfolioIndex).toBeLessThan(queueIndex);
-    expect(queueIndex).toBeLessThan(activityIndex);
-    expect(activityIndex).toBeLessThan(estimatesIndex);
-    expect(estimatesIndex).toBeLessThan(tasksIndex);
+    expect(queueIndex).toBeLessThan(estimatesIndex);
+    expect(estimatesIndex).toBeLessThan(activityIndex);
+    expect(activityIndex).toBeLessThan(tasksIndex);
   });
 
   it('does not render retired exceptions, installs, or misleading quote labels', () => {
@@ -208,4 +211,28 @@ describe('DashboardView', () => {
     expect(markup).toContain('Retry');
     expect(markup).toContain('Beach House');
   });
+});
+
+
+it('keeps real Dashboard work, header controls and local recovery mounted across read states',()=>{
+ const retry=vi.fn();
+ const ui=(state:'pending'|'fresh'|'cached'|'refresh-failed')=><DashboardFrame data={state==='pending'?null:data} state={state} onRetry={retry}
+   visits={<section aria-label="Visits"><button>Open visit</button></section>} tasksCard={<section aria-label="Tasks"><input aria-label="Task draft" defaultValue="Retained reminder"/></section>}/>;
+ const view=renderIntoDocument(ui('pending'));
+ const main=view.container.querySelector('main'),header=view.container.querySelector('header'),heading=view.container.querySelector('h1');
+ const draft=view.container.querySelector('input[aria-label="Task draft"]');
+ const details=view.container.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]')!;
+ expect(header?.contains(details)).toBe(true);act(()=>details.focus());
+ for(const state of ['fresh','cached','refresh-failed'] as const){
+  view.rerender(ui(state));expect(view.container.querySelector('main')).toBe(main);expect(view.container.querySelector('header')).toBe(header);
+  expect(view.container.querySelector('h1')).toBe(heading);expect(view.container.querySelector('input[aria-label="Task draft"]')).toBe(draft);
+  expect(view.container.querySelector('button[aria-haspopup="dialog"]')).toBe(details);expect(document.activeElement).toBe(details);
+ }
+ const retryButton=[...header!.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Retry')!;
+ act(()=>retryButton.click());expect(retry).toHaveBeenCalledOnce();
+ act(()=>details.click());expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Could not refresh the dashboard');
+ act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));expect(document.activeElement).toBe(details);
+ view.rerender(ui('fresh'));expect(view.container.querySelector('input[aria-label="Task draft"]')).toBe(draft);
+ expect([...view.container.querySelectorAll('a')].some(link=>link.getAttribute('href')==='/staff/projects/new')).toBe(true);
+ view.unmount();
 });

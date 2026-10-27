@@ -21,7 +21,7 @@ it('retains geometry through parent remount without retaining stale quote values
  const pending=()=>new Promise<CommercialReport>(r=>{resolve=r;});
  const refreshed=renderIntoDocument(<CommercialOverview {...props} loader={pending}/>);
  expect(refreshed.container.querySelector('section')?.style.minHeight).toBe('860px');expect(refreshed.container.querySelector<HTMLButtonElement>('[aria-label="Inspect Quoted value"]')?.disabled).toBe(true);expect(refreshed.container.textContent).toContain('Reading…');
- await act(async()=>resolve(report));expect(refreshed.container.textContent).toContain('Quoted value');refreshed.unmount();bounds.mockRestore();sessionStorage.clear();
+ await act(async()=>resolve(report));expect(refreshed.container.textContent).toContain('Quoted value');expect(refreshed.container.querySelector('section')?.style.minHeight).toBe('');refreshed.unmount();bounds.mockRestore();sessionStorage.clear();
 });
 
 it('keeps incomplete history and exact period visible from headline into the drawer',async()=>{
@@ -84,7 +84,11 @@ it('keeps real source rows inspectable through independent commercial loading, f
  };
  expect(view.container.textContent).toContain('Reading quote values and timing');inspectSource();
  await act(async()=>reads[0].reject(new Error('Synthetic commercial failure')));
- expect(view.container.querySelector('[role="alert"]')?.textContent).toContain('Synthetic commercial failure');
+ expect(view.container.querySelector('[role="alert"]')?.textContent).toContain('Commercial report unavailable');
+ const disclosure=[...view.container.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!;act(()=>disclosure.click());
+ expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Synthetic commercial failure');
+ expect(document.querySelector('[role="dialog"]')?.textContent).toContain('No partial values are shown');
+ act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));expect(document.activeElement).toBe(disclosure);
  expect(view.container.querySelector<HTMLButtonElement>('[aria-label="Inspect Quoted value"]')?.disabled).toBe(true);inspectSource();
  const retry=[...view.container.querySelectorAll('button')].find(button=>button.textContent==='Retry commercial report')!;
  act(()=>retry.click());expect(reads).toHaveLength(2);

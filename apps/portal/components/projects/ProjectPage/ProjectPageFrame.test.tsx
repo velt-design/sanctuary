@@ -55,7 +55,7 @@ vi.mock("./ProjectPageShell", () => ({
       data-optimistic-tab={optimisticTab ?? ""}
       data-calculator-workspace={String(Boolean(calculatorWorkspace))}
     >
-      {statusPanel}Shell
+      {calculatorWorkspace ? statusPanel : null}Shell
     </section>
   ),
 }));
@@ -93,17 +93,20 @@ describe("ProjectPageFrame", () => {
       statusPanel={<ProjectSnapshotNotice state={state} onRetry={retry} />} />;
     const rendered = renderIntoDocument(frame('summary'));
     const masthead = rendered.container.querySelector('[data-project-masthead-slot]')!;
+    expect(masthead.querySelector('span > [data-project-read-feedback]')).toBeNull();
+    expect(masthead.querySelector('[data-project-read-feedback] > span[title]')?.textContent).toBe('Updating project');
     const returnLink = Array.from(masthead.querySelectorAll('a')).find(link => link.textContent === 'Projects')!;
     act(() => returnLink.focus());
     for (const state of ['summary', 'refresh-failed', 'summary', 'fresh'] as const) {
       rendered.rerender(frame(state));
       expect(rendered.container.querySelector('[data-project-page-frame]')?.firstElementChild).toBe(masthead);
+      expect(rendered.container.querySelectorAll('[data-project-read-feedback]')).toHaveLength(1);
       expect(document.activeElement).toBe(returnLink);
       expect(returnLink.getAttribute('href')).toBe('/staff/projects');
       expect(rendered.container.querySelector('[data-owner-paused]')?.getAttribute('data-owner-paused')).toBe(String(state !== 'fresh'));
       if (state === 'refresh-failed') {
         const button = Array.from(rendered.container.querySelectorAll('button')).find(node => node.textContent === 'Retry')!;
-        expect(masthead.contains(button)).toBe(false);
+        expect(masthead.contains(button)).toBe(true);
         act(() => button.click());
         expect(retry).toHaveBeenCalledTimes(1);
       }
@@ -161,7 +164,7 @@ describe("ProjectPageFrame", () => {
     document.body.innerHTML = "";
   });
 
-  it("uses one fixed two-row header with identity, stage, commands, and tab navigation", () => {
+  it("keeps one stationary header sibling with identity, stage, commands, and tab navigation", () => {
     const rendered = renderIntoDocument(
       <ProjectPageFrame snapshot={snapshot} host="host" tab="estimates" />,
     );
@@ -169,11 +172,10 @@ describe("ProjectPageFrame", () => {
     expect(
       rendered.container.querySelector('[data-project-masthead-slot="fixed"]'),
     ).not.toBeNull();
-    expect(
-      rendered.container.querySelector(
-        '[data-project-masthead-slot-sticky="true"]',
-      ),
-    ).not.toBeNull();
+    const frame=rendered.container.querySelector('[data-project-page-frame]')!;
+    const slot=frame.querySelector('[data-project-masthead-slot]')!;
+    expect(frame.firstElementChild).toBe(slot);
+    expect(slot.nextElementSibling?.getAttribute('data-project-workspace-scroll')).toBe('true');
     expect(rendered.container.textContent).toContain("Test project");
     expect(rendered.container.textContent).toContain("New");
     expect(rendered.container.textContent).toContain("Jordan");

@@ -145,3 +145,16 @@ it('keeps the previous invoice summary explicitly labelled while Quotes are load
   expect(mounted.container.querySelector('[aria-label="Previous results summary"]')?.textContent).toContain('invoices · previous results');
   expect(mounted.container.querySelector('table thead')?.textContent).toContain('Invoice');
 });
+
+
+it('keeps local header recovery, genuine pager controls and focus through the first read',async()=>{
+ let resolveRead!:(value:Response)=>void;vi.mocked(fetch).mockReturnValueOnce(new Promise(resolve=>{resolveRead=resolve;}));
+ mounted=renderIntoDocument(<FinanceRegister/>);
+ const header=mounted.container.querySelector('header')!,details=header.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]')!;
+ const pager=mounted.container.querySelector('[aria-label="Register pages"]')!,previous=pager.querySelector('a'),next=pager.querySelector('a:last-child');
+ expect(previous?.getAttribute('aria-disabled')).toBe('true');expect(next?.getAttribute('aria-disabled')).toBe('true');act(()=>details.focus());
+ await act(async()=>resolveRead(response()));await settle();
+ expect(mounted.container.querySelector('header')).toBe(header);expect(header.querySelector('button[aria-haspopup="dialog"]')).toBe(details);expect(document.activeElement).toBe(details);
+ expect(mounted.container.querySelector('[aria-label="Register pages"]')).toBe(pager);expect(pager.querySelector('a')).toBe(previous);expect(pager.querySelector('a:last-child')).toBe(next);
+ expect(mounted.container.querySelector('tbody')?.textContent).toContain('NZD');expect(mounted.container.querySelector('tbody')?.textContent).toContain('Part paid');
+});

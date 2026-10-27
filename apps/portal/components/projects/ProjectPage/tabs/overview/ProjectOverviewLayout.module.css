@@ -1,7 +1,7 @@
 .layout {
   width: 100%;
-  max-width: var(--ui-content-max);
-  margin-inline: auto;
+  max-width: none;
+  margin: 0;
   min-width: 0;
   container-type: inline-size;
 }
@@ -33,4 +33,20 @@
 @container (max-width: 800px) {
   .grid { grid-template-areas: "exception" "primary" "context" "admin"; grid-template-columns: minmax(0, 1fr); }
   .layout:not([data-has-exception]) > .grid { grid-template-areas: "primary" "context" "admin"; }
+}
+
+/* Guarded Work desk facts occupy useful columns, with natural card heights. */
+.layout:not([data-has-exception]) > .grid { grid-template-areas: "primary context" "admin admin"; }
+@container(max-width:800px) { .layout:not([data-has-exception]) > .grid { grid-template-areas:"primary" "context" "admin"; grid-template-columns:minmax(0,1fr); } }
+@container(min-width:1600px) {
+ .layout:not([data-has-exception]) .grid { grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-areas:none; }
+ .layout:not([data-has-exception]) .primary,.layout:not([data-has-exception]) .context,.layout:not([data-has-exception]) .commercial,.layout:not([data-has-exception]) .recent { display:contents; }
+ .layout:not([data-has-exception]) .projectWork { grid-column:1; grid-row:1; }
+ .layout:not([data-has-exception]) .commercial > :first-child { grid-column:2; grid-row:1; }
+ .layout:not([data-has-exception]) .commercial > :nth-child(2) { grid-column:1; grid-row:2; }
+ .layout:not([data-has-exception]) .commercial > :nth-child(3) { grid-column:1; grid-row:3; }
+ .layout:not([data-has-exception]) .orientation { grid-column:3; grid-row:1; }
+ .layout:not([data-has-exception]) .recent > :first-child { grid-column:2; grid-row:2; }
+ .layout:not([data-has-exception]) .recent > :nth-child(2) { grid-column:3; grid-row:2; }
+ .layout:not([data-has-exception]) .admin { grid-column:1/-1; grid-row:auto; }
 }

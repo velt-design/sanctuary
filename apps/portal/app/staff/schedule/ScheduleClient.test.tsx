@@ -127,6 +127,7 @@ vi.mock('next/dynamic', () => ({
             <button
               type="button"
               aria-label={props.unscheduledCollapsed ? 'Expand unscheduled panel' : 'Collapse unscheduled panel'}
+              onClick={props.onToggleUnscheduledCollapsed}
             />
             {props.unscheduledJobs?.map((job: { id: string; projectName: string }) => (
               <div key={job.id}>{job.projectName}</div>
@@ -596,10 +597,17 @@ describe('ScheduleClient', () => {
     await act(async()=>{});
     expect(rendered.container.querySelector('[aria-label="Unscheduled jobs"]')).not.toBeNull();
     expect(dndMocks.latestBoardProps.dataPending).toBe(true);
+    expect(dndMocks.latestBoardProps.unscheduledCollapsed).toBe(true);
     expect(dndMocks.latestBoardProps.interaction.moveDisabled).toBe(true);
     expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
     await act(async()=>resolve({initialScheduleMode:'v2',initialSeedKind:'board',today:'2026-04-07',initialV2Snapshot:initialSnapshot}));
     await vi.waitFor(()=>expect(dndMocks.latestBoardProps.dataPending).toBe(false));
+    expect(dndMocks.latestBoardProps.unscheduledCollapsed).toBe(true);
+    expect(dndMocks.latestBoardProps.unscheduledJobsAll).toHaveLength(1);
+    act(()=>rendered.container.querySelector<HTMLButtonElement>('[aria-label="Expand unscheduled panel"]')!.click());
+    expect(dndMocks.latestBoardProps.unscheduledCollapsed).toBe(false);
+    act(()=>rendered.container.querySelector<HTMLButtonElement>('[aria-label="Collapse unscheduled panel"]')!.click());
+    expect(dndMocks.latestBoardProps.unscheduledCollapsed).toBe(true);
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co','2026-04-07'))).toEqual(initialSnapshot);
     expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
     rendered.unmount();
@@ -610,7 +618,16 @@ describe('ScheduleClient', () => {
     const read=vi.fn().mockRejectedValue(new Error('Synthetic initial read unavailable'));
     const queryClient=new QueryClient({defaultOptions:{queries:{retryDelay:0}}});
     const rendered=renderIntoDocument(<QueryClientProvider client={queryClient}><ScheduleClient snapshotLoaders={{board:read,gantt:read}}/></QueryClientProvider>);
+    const header=rendered.container.querySelector('header')!;
+    const details=[...header.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent==='Details')!;
+    const search=rendered.container.querySelector('input[aria-label="Search unscheduled projects"]');
+    act(()=>details.focus());
     await vi.waitFor(()=>expect(rendered.container.textContent).toContain('Schedule data could not load'));
+    expect(rendered.container.querySelector('header')).toBe(header);expect([...header.querySelectorAll('button')].find(button=>button.textContent==='Details')).toBe(details);expect(document.activeElement).toBe(details);
+    if(view==='board')expect(rendered.container.querySelector('input[aria-label="Search unscheduled projects"]')).toBe(search);
+    act(()=>details.click());expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Schedule data could not load');
+    act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));expect(document.activeElement).toBe(details);
+
     expect(rendered.container.textContent).not.toContain('Schedule change was not saved');
     expect(rendered.container.textContent).not.toContain('Supabase SQL editor');
     expect(rendered.container.textContent).not.toContain('Save failed');
@@ -642,6 +659,7 @@ describe('ScheduleClient', () => {
     });
 
     expect(rendered.container.textContent).toContain('Schedule');
+    expect(dndMocks.latestBoardProps.unscheduledCollapsed).toBe(false);
     expect(rendered.container.textContent).toContain('Unscheduled');
     expect(rendered.container.textContent).not.toContain('Loading schedule data from the portal database…');
     expect(
@@ -1512,8 +1530,10 @@ describe('ScheduleClient', () => {
     expect(renderedItem?.forecastStart).toBe('2026-04-13');
     expect(renderedItem?.forecastEndExclusive).toBe('2026-04-16');
     expect(rendered.container.textContent).toContain('Schedule may be out of date');
-    expect(rendered.container.textContent).toContain('Refresh needed');
-    expect(rendered.container.textContent).toContain('The saved preview remains visible');
+    act(() => [...rendered.container.querySelectorAll<HTMLButtonElement>('header button')].find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Refresh needed');
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('The saved preview remains visible');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     rendered.unmount();
   });
 
@@ -1553,8 +1573,10 @@ describe('ScheduleClient', () => {
     expect(renderedItem?.forecastStart).toBe('2026-04-13');
     expect(renderedItem?.forecastEndExclusive).toBe('2026-04-16');
     expect(rendered.container.textContent).toContain('Schedule may be out of date');
-    expect(rendered.container.textContent).toContain('Refresh needed');
-    expect(rendered.container.textContent).toContain('Your unconfirmed preview remains visible');
+    act(() => [...rendered.container.querySelectorAll<HTMLButtonElement>('header button')].find(button => button.textContent === 'Details')!.click());
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Refresh needed');
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Your unconfirmed preview remains visible');
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     rendered.unmount();
   });
 

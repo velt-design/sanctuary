@@ -53,6 +53,7 @@ export default function ContactsIndexFrame({
 
   return (
     <PageLayout
+      width="full"
       className={styles.page}
       data-contacts-index-state={contactsIndex.state}
       data-contacts-index-background-ready={contactsIndex.backgroundReady ? 'true' : 'false'}

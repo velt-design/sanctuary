@@ -57,10 +57,9 @@ function FinancialsContent({enabled,selection,setSelection,revision,retry,loader
     (error||unavailable)&&family?.status==='available'?`Last successful evidence checked ${currentTimestamp} NZ remains below with its original dates.`:null,
     stale?'This report is more than 30 hours old. Refresh Xero before relying on current balances.':null].filter(Boolean).join(' ');
   return <div className={styles.page}>
-    <FinancialToolbar selection={selection} apply={apply} report={report} busy={busy} retry={retry}/>
+    <FinancialToolbar selection={selection} apply={apply} report={report} busy={busy} retry={retry} feedback={<FinancialStatus summary={statusSummary} message={statusMessage||undefined} retry={error||unavailable||stale?retry:undefined} busy={busy}/>}/>
     <div ref={tabs} style={{minWidth:0}}><TabNavigation items={sections.map(section=>({...section,controls:'financial-results'}))} selectedKey={selection.section} onSelect={section=>apply({...selection,section,detail:''})} ariaLabel="Financial reports"/></div>
     <div className={styles.result} id="financial-results" aria-busy={busy} data-financial-current={family?.status==='available'?(reportIsCurrent?"ready":"retained"):busy&&!reportIsCurrent?"pending":(!busy&&error)||report?"unavailable":"pending"} data-financial-complete={Boolean(report&&!currentOnly&&!busy&&!error)}>
-      <FinancialStatus summary={statusSummary} message={statusMessage||undefined} retry={error||unavailable||stale?retry:undefined} busy={busy}/>
       {selection.section==='profit'&&<ProfitView pending={selectedPending} busy={busy} report={sourceReport} evidence={displayedProfit} selection={selection} apply={apply} onDetail={row=>apply({...selection,detail:row.key})} retry={retry}/>}
       {sourceReport && report && <>
         <p className={`${styles.context} ${styles.reportContext}`}>Showing {sourceReport.from} to {sourceReport.to} · {sourceReport.currency} · {sourceReport.basis==='bank_movements'?'recorded bank movements':`${sourceReport.basis} · excluding GST`}{hasPartialCalendarMonth(sourceReport)?' · partial calendar month':''}{position?.organisation.status==='available'?` · ${position.organisation.data.name}`:''}</p>

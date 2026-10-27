@@ -11,6 +11,30 @@ Designer retains audited test evidence needed for review/clearing. GA4 applies o
 labelled public-website report filter consistently; originals remain in Google.
 No inferred cross-project customer joins, extra tracking retention or new service.
 
+## 2026-10-27: Lazy actions need their own presentation boundary
+
+An invoice preview published outside its controller's Suspense boundary could
+suspend the public project list on its first cold activation and clear the
+producer's layout-effect publication. Scope loading/cancel to the invoice preview
+entry, preserve the actual list/controller and verify a held cold module, late
+cancel and access withdrawal. Do not prewarm the artifact or assume a second
+activation is acceptable. Menu action cells must protect row Enter/Space without
+swallowing Escape intended for the existing portalled menu owner. Owner:
+`ui-foundation.md`; acceptance: `testing-and-qa.md`.
+
+## 2026-10-27: Stable project controls need a persistent work frame
+
+The owner rejected reserved banner space and whole-screen movement, then selected
+Work desk after a complete three-direction comparison. Fixed-height cards and
+status slots hid the cause and wasted wide screens. Keep the actual header and
+navigation outside the selected work scroller, restore by project/view identity,
+and let genuine content determine card heights. Keep recovery beside its owning
+control and preserve all facts and financial/provider boundaries. The full local
+fixture must retain the same production surface/controllers across tabs; changing
+fixture implementations between views cannot establish frame stability. Actual
+browser and independent delivery review remain separate from component checks.
+Owners: `ui-foundation.md`, `project-command-centre-architecture.md`.
+
 
 ## 2026-10-27: Exercise the database boundary at the claimed report capacity
 
@@ -6946,3 +6970,28 @@ rebind old results. Default nonframe behavior remains. The attempted all-five
 server-layout composition added recurring Flight payload without enough JS relief
 and is removed. Source closure tests are not a bundle or latency pass; the unchanged
 compiled limits and connected browser checks remain required.
+
+
+## 2026-10-27: Carry Work desk through the active Portal
+
+Owner: "Get the project page looking right first, then apply it across the Portal.
+Leave Workbench alone." Later: "i like the workdesk". The implementation keeps
+control and reading positions stable, uses wide screens meaningfully, and removes
+routine banners and empty status allocations through the existing family owners.
+
+Dashboard uses natural independent columns and readable short-screen document
+flow. Indexes keep real tables, filters and pagers without empty floors. Contact,
+creation, Costing and Access feedback belongs beside existing actions. Finance
+retains complete financial facts and local recovery; Schedule and Site Visits
+keep their specialist controls, warnings and source ownership. Schedule record
+adoption preserves the existing Unscheduled panel choice. Staff report feedback
+shares its controls, while original report-return and verified pending-geometry
+owners remain. Imports instructions are plain text; connection empty-review
+spacing is natural without changing any approval or credential safeguard.
+
+Permissions, queries, domain calculations, commands, private withdrawal and
+unsaved/conflict warnings remain with their existing owners. Staff report
+attribution and history coverage retain their domain contracts. Workbench,
+paused Studio and public marketing are excluded. Original performance gates,
+compiled native recovery/return checks and independent review remain mandatory;
+this implementation description is not a production-release claim.

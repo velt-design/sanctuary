@@ -6,7 +6,7 @@ import ScheduleGanttSurface from './ScheduleGanttSurface';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import StaffPageHeader from '@/components/layout/StaffPageHeaderSurface';
 import HeaderActions from '@/components/layout/HeaderActions';
-import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
+import ReadStatus from '@/components/page-state/ReadStatus';
 import type { ScheduleBoardViewProps } from './ScheduleBoardView';
 import type { ScheduleGanttViewProps } from './ScheduleGanttView';
 import styles from './schedule.module.css';
@@ -15,7 +15,6 @@ import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
 export type ScheduleFrameProps = {
   view: 'board' | 'gantt' | 'site_visits';
   tabs: ReactNode;
-  saveStatus?: ReactNode;
   notices?: ReactNode;
   pendingChanges?: ReactNode;
   issues?: ReactNode;
@@ -38,19 +37,17 @@ export default function ScheduleFrame(input: ScheduleFrameProps | { pending: Pen
   const supplied = 'pending' in input ? null : input;
   const view = pending?.view ?? supplied!.view;
   const tabs = supplied ? supplied.tabs : <ScheduleViewTabs view={pending!.view} onChange={pending!.selectView} onIntent={() => undefined} />;
-  const saveStatus = supplied ? supplied.saveStatus : <span className={styles.saveStatus} role="status">{pending?.unavailable ? 'Unavailable' : 'Reading schedule…'}</span>;
-  const notices = supplied?.notices ?? (pending?.unavailable ? <DataStatePanel state="unavailable" title="Schedule unavailable" description="Current schedule access could not be verified." onRetry={pending.onRetry} /> : null);
+  const notices = supplied?.notices ?? <ReadStatus role={view === 'gantt' ? 'status' : undefined} aria-live={view === 'gantt' ? 'polite' : undefined} title={pending?.unavailable ? 'Schedule unavailable' : 'Reading schedule...'} tone={pending?.unavailable ? 'error' : 'neutral'} onRetry={pending?.unavailable ? pending.onRetry : undefined} details={<p>{pending?.unavailable ? 'Current schedule access could not be verified.' : 'Reading the current schedule. Calendar controls remain available.'}</p>} />;
   const board = supplied?.board ?? { query: pending!.query, showCompleted: pending!.showCompleted, unscheduledCollapsed: pending!.unscheduledCollapsed, onQueryChange: pending!.setQuery, onShowCompletedChange: pending!.setShowCompleted, onToggleUnscheduledCollapsed: pending!.toggleUnscheduled, dataError: pending!.unavailable };
   const gantt = supplied?.gantt ?? { today: pending!.today, showCompleted: pending!.showCompleted, onShowCompletedChange: pending!.setShowCompleted, onOpenUnscheduled: pending!.openUnscheduled, dataError: pending!.unavailable };
   const { pendingChanges, issues, diagnostics, dialogs } = supplied ?? {};
   return <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule"
     className={`${styles.page} ${styles.pageLocked}`}>
-    <StaffPageHeader title="Schedule" right={<HeaderActions>
-      {view === 'gantt' ? saveStatus : null}
+    <StaffPageHeader title="Schedule" right={<HeaderActions className={styles.headerActions}>
+      {notices}
       {tabs}
     </HeaderActions>} />
     <div className={`${styles.stack} ${styles.stackLocked}`}>
-      {notices}
       {pendingChanges}
       {issues}
       {diagnostics}

@@ -1,12 +1,12 @@
 .page { display:grid; gap:20px; min-width:0; }
 .toolbar { display:flex; align-items:end; gap:12px; flex-wrap:wrap; padding:0 0 16px; border-bottom:1px solid var(--ui-border); }
 .toolbar > label { min-width:150px; }
-.toolbarActions { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.toolbarActions { margin-left:auto; flex:1 1 620px; min-width:0; display:flex; align-items:center; gap:8px; }
 .context { color:var(--ui-text-muted); font-size:13px; line-height:1.6; margin:0; }
-.reportContext { min-height:2lh; }
-.result { display:grid; gap:20px; min-height:700px; align-content:start; min-width:0; }
-.status { height:48px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; }
-.status p { margin:0; font-size:13px; line-height:20px; color:var(--ui-text-muted); }
+.reportContext { max-width:100ch; }
+.result { display:grid; gap:20px; align-content:start; min-width:0; }
+.status { display:flex; flex:1; gap:8px; align-items:center; min-width:0; }
+.status p { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:0; font-size:13px; line-height:20px; color:var(--ui-text-muted); }
 .statusActions { display:flex; align-items:center; gap:4px; }
 .statusActions button { padding-inline:8px; }
 .metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; padding:16px 0 24px; border-bottom:1px solid var(--ui-border); }
@@ -61,5 +61,5 @@
 .detail button { white-space:normal; height:auto; min-height:44px; }
 @media(max-width:650px) { .metrics { gap:16px; grid-template-columns:1fr; padding:4px 0 20px; } .metrics > div { display:grid; grid-template-columns:1fr 1fr; column-gap:12px; } .metrics h3 { align-self:center; } .metricValue { text-align:right; margin:0; font-size:32px; } .metricNote { grid-column:1/-1; text-align:right; } .toolbar { gap:10px; } .toolbar > label { flex:1; min-width:130px; } .toolbarActions { width:100%; margin:0; justify-content:space-between; } .ageing { grid-template-columns:repeat(2,minmax(0,1fr)); } .table th:first-child,.table td:first-child { min-width:160px; } .chart { height:230px; } .heading { align-items:start; } }
 @media(prefers-reduced-motion:reduce) { .page * { scroll-behavior:auto; } }
-@media(max-width:650px) { .reportContext { min-height:3lh; } .table button { min-height:44px; } .toolbar select { min-height:44px; } }
+@media(max-width:650px) { .status { flex-basis:100%; max-width:100%; } .toolbarActions { flex-wrap:wrap; } .table button { min-height:44px; } .toolbar select { min-height:44px; } }
 @media(max-width:650px) { .metrics > div { border-left:0; border-bottom:1px solid var(--ui-border); padding:16px 0; }.metrics > div:last-child { border-bottom:0; }.metrics h3 { font-size:14px; }.metrics .metricValue,.bankMetrics .metricValue { font-size:38px; }.toolbar > div:not(.toolbarActions) { flex:1; min-width:130px; }.heading h2 { font-size:28px; } }
