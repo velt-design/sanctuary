@@ -1,5 +1,19 @@
 # Decision Log
 
+## 2026-10-27: Keep automatic attribution compact and privacy-safe
+
+Status: Implemented candidate. Area: Sanctuary-owned GA4 reporting.
+
+Default pretty JSON exhausted the report byte allowance, while legitimate
+private landing paths rejected otherwise usable attribution. Request compact
+JSON and keep three filtered event profiles separate from sessions, so each
+profile's bound counts cohorts. Validate raw identities and complete ranges
+before grouping unsafe labels under an explicit withheld category; incomplete
+aggregate observations stay unknown. Preserve fixed calls, shared deadline,
+byte caps and saved-report semantics. Synthetic fixtures are not production
+scheduler evidence. Owner: `environment-auth-supabase.md`; regressions:
+`report/automatic-attribution.test.ts` and HTTP-to-SQL report tests.
+
 ## 2026-10-26: Keep the actual Portal work in place while records change
 
 A populated-to-empty Projects filter changed both the document gutter and the

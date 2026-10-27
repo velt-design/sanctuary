@@ -466,14 +466,18 @@ Actual optimized Flight decoding, bundle size and full-document encoded bytes
 remain separate evidence; offline JSON/whole-buffer compression is not a hosted
 speed measurement.
 
-## GA4 acquisition validation recovery (22 October 2026)
+## GA4 automatic reports and attribution (27 October 2026)
 
-`report/acquisition-recovery.test.ts` exercises successful HTTP responses with
-malformed/unsafe acquisition, exact retained core/stages and fixed redacted
-limitation logs. Run alongside diagnostic/failure tests, GA4 HTTP tests and
-`test/sanctuary-ga4-http-sql.test.ts` for persisted partial-report return. Network,
-JSON decoding, abort, authority, core and normalization remain fatal. These are
-synthetic local checks, not proof of the historical field or another live refresh.
+Run `npx vitest run apps/portal/lib/marketingIntegrations/ga4/report
+apps/portal/lib/marketingIntegrations/ga4/http.test.ts
+test/sanctuary-ga4-http-sql.test.ts` for the fixed batch plans, complete range
+pairs, redacted dimension collisions, missing observations, strict limits,
+transport/cancellation/authority failures, and HTTP-to-SQL saved-report return.
+The 28-day synthetic fixture covers 200 cohorts with all three stages: compact
+JSON fits the original shared allowance while pretty JSON exceeds it. This
+proves bounded parsing and persistence contracts, not live cohort coverage or
+scheduled delivery. Production acceptance must exercise the existing daily
+scheduler and reopen a fresh saved report with available detailed attribution.
 
 ## Combined landing and creative contract (22 October 2026)
 
