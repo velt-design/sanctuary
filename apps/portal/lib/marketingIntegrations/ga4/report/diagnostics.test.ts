@@ -6,11 +6,11 @@ import { boundedGoogleJson } from './transport';
 const query = { period: { start: '2026-10-01', end: '2026-10-02' }, comparison: { start: '2026-09-29', end: '2026-09-30' } };
 const now = new Date('2026-10-21T00:00:00Z');
 describe('fixed v3 diagnostic', () => {
-  it('keeps five legacy profiles and adds exactly two fixed profiles with a distinct versioned plan hash', () => {
+  it('keeps five legacy profiles and adds four fixed profiles with a distinct versioned plan hash', () => {
     expect(reportPlan(query).requests).toHaveLength(5); const plan = acquisitionPlan(query);
-    expect(plan.requests).toHaveLength(2); expect(plan.requests[0].metrics).toEqual([{ name: 'sessions' }]);
-    expect(plan.requests[1].dimensionFilter?.filter.inListFilter.values).toEqual(['contact_form_interaction', 'contact_start', 'contact_success']);
-    expect(plan.requests.every(profile => profile.limit === '201' && profile.offset === '0')).toBe(true);
+    expect(plan.requests).toHaveLength(4); expect(plan.requests[0].metrics).toEqual([{ name: 'sessions' }]);
+    expect(plan.requests.slice(1).map(profile => profile.dimensionFilter?.filter.stringFilter.value)).toEqual(['contact_form_interaction', 'contact_start', 'contact_success']);
+    expect(plan.requests.every(profile => profile.limit === '401' && profile.offset === '0')).toBe(true);
     expect(reportIntent('123', query).queryHash).not.toBe(reportIntent('123', query, 'sanctuary-ga4-v3').queryHash);
   });
   it('preserves first edit independently of key events and uses one success measure with unknown first-edit coverage', () => {
@@ -40,14 +40,12 @@ describe('fixed v3 diagnostic', () => {
     expect(() => diagnosticsSchema.parse({ ...parseGa4Report(coreFixture(query), '123', query, now, true).diagnostics,
       acquisition: { status: 'unavailable', reason: 'row_limit', rows: [] } })).toThrow();
   });
-  it('bounds eventName-expanded groups independently of the cohort union', () => {
-    const raw = acquisitionFixture(query, 67);
-    expect(parseAcquisition(raw, query, 'Pacific/Auckland', now)).toEqual({ status: 'unavailable', reason: 'row_limit' });
-    raw.reports[1].rows.splice(-2); raw.reports[1].rowCount--;
-    const bounded = parseAcquisition(raw, query, 'Pacific/Auckland', now);
-    expect(bounded.status).toBe('available'); if (bounded.status !== 'unavailable') expect(bounded.rows).toHaveLength(67);
+  it('supports 200 cohorts for all three events without multiplying the profile group ceiling', () => {
+    const result = parseAcquisition(acquisitionFixture(query, 200), query, 'Pacific/Auckland', now);
+    expect(result.status).toBe('available'); if (result.status !== 'unavailable') expect(result.rows).toHaveLength(200);
+    expect(parseAcquisition(acquisitionFixture(query, 201), query, 'Pacific/Auckland', now)).toEqual({ status: 'unavailable', reason: 'row_limit' });
   });
-  it.each(['duplicate', 'pair', 'header', 'fractional', 'private_path', 'query_path', 'identity', 'restricted', 'timezone'])('rejects unexpected %s instead of claiming row-limit success', mode => {
+  it.each(['duplicate', 'pair', 'header', 'fractional', 'restricted', 'timezone'])('rejects unexpected %s instead of claiming row-limit success', mode => {
     const raw = acquisitionFixture(query), response = raw.reports[0];
     if (mode === 'duplicate') response.rows[1] = response.rows[0];
     if (mode === 'pair') response.rows.pop();

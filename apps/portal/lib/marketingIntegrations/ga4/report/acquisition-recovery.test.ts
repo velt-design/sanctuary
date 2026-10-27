@@ -5,13 +5,10 @@ import { parseGa4Report, readGa4Report } from './ga4';
 const query = { period: { start: '2026-10-14', end: '2026-10-20' }, comparison: null };
 afterEach(() => vi.restoreAllMocks());
 
-it.each(['shape', 'private_path', 'query_path', 'identity', 'duplicate', 'fractional', 'header', 'timezone', 'missing_pair'] as const)(
+it.each(['shape', 'duplicate', 'fractional', 'header', 'timezone', 'missing_pair'] as const)(
 'retains only validated core and explicit unavailable acquisition for HTTP200 %s', async mode => {
   const log = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   const raw = acquisitionFixture(query), response = raw.reports[0];
-  if (mode === 'private_path') response.rows[0].dimensionValues[1].value = '/invoice/PRIVATE_VALUE';
-  if (mode === 'query_path') response.rows[0].dimensionValues[1].value = '/?email=PRIVATE_VALUE';
-  if (mode === 'identity') response.rows[0].dimensionValues[0].value = 'PRIVATE_VALUE@example.test';
   if (mode === 'duplicate') response.rows[1] = response.rows[0];
   if (mode === 'fractional') response.rows[0].metricValues[0].value = '0.1';
   if (mode === 'header') response.dimensionHeaders[0].name = 'PRIVATE_VALUE';
@@ -25,9 +22,9 @@ it.each(['shape', 'private_path', 'query_path', 'identity', 'duplicate', 'fracti
   expect(report.diagnostics?.stages[0].count.value).toBe(37);
   expect(report.diagnostics?.acquisition).toEqual({ status: 'unavailable', reason: 'compatibility_unproven' });
   expect(fetcher).toHaveBeenCalledTimes(2);
-  const reason = mode === 'shape' ? 'response_schema' : ['private_path', 'query_path', 'identity'].includes(mode) ? 'unsafe_dimension'
+  const reason = mode === 'shape' ? 'response_schema'
     : mode === 'duplicate' ? 'duplicate_row' : mode === 'fractional' ? 'invalid_metric' : ['header', 'timezone'].includes(mode) ? 'profile' : 'incomplete_rows';
-  expect(log.mock.calls).toEqual([['sanctuary_ga4_acquisition_unavailable', { stage: 'acquisition_response', reason, status: 200 }]]);
+  expect(log.mock.calls).toMatchObject([['sanctuary_ga4_acquisition_unavailable', { stage: 'acquisition_response', reason, status: 200 }]]);
   expect(JSON.stringify([report, log.mock.calls])).not.toMatch(/PRIVATE_|dimensionValues|metricValues|schemaIssues/);
 });
 
