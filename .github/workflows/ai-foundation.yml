@@ -6,7 +6,9 @@ on:
       - main
     paths:
       - ".github/workflows/ai-foundation.yml"
+      - "evals/ai/**"
       - "packages/ai/**"
+      - "scripts/ai/run-promptfoo-evals.mjs"
       - "scripts/test-ai-task-ledger-db.mjs"
       - "scripts/ci/pull-ai-db-image.mjs"
       - "test/ai-db-image-pull.test.ts"
@@ -28,7 +30,9 @@ on:
       - main
     paths:
       - ".github/workflows/ai-foundation.yml"
+      - "evals/ai/**"
       - "packages/ai/**"
+      - "scripts/ai/run-promptfoo-evals.mjs"
       - "scripts/test-ai-task-ledger-db.mjs"
       - "scripts/ci/pull-ai-db-image.mjs"
       - "test/ai-db-image-pull.test.ts"
@@ -67,6 +71,9 @@ jobs:
 
       - name: AI package and migration contracts
         run: npm run test:ai
+
+      - name: Offline AI evaluation harness
+        run: npm run test:ai:evals
 
       - name: AI package typecheck
         run: npx tsc -p packages/ai/tsconfig.typecheck.json --noEmit --incremental false
