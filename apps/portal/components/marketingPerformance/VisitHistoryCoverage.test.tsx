@@ -9,11 +9,11 @@ import VisitHistoryCoverage from './VisitHistoryCoverage';
 vi.mock('@/components/ui/drawer/Drawer', () => ({ Drawer: ({ open, children, title }: any) => open ? <div role="dialog" aria-label={title}>{children}</div> : null }));
 const report = designerFixture();
 const props = { report, performance: designerPerformance(report), projectIds: null, hub: hubFixture, allDates: false, selectionKey: 'period-one', selectedPerson: true, pending: false, synthetic: true };
-it('identifies estimated quote dates beside the exact retained evidence',()=>{
- const estimated=designerFixture();Object.assign(estimated.visits[0],{origin:'history',at:null,day:'2026-09-07',basis:'Approximate visit date: 2026-09-07 (original quote date; owner-approved).'});
+it.each([['original quote date','quote'],['acceptance date','visit']])('identifies %s estimates beside exact retained evidence',(basisKind,label)=>{
+ const estimated=designerFixture();Object.assign(estimated.visits[0],{origin:'history',at:null,day:'2026-09-07',basis:`Approximate visit date: 2026-09-07 (${basisKind}; owner-approved).`});
  const view=renderIntoDocument(<VisitHistoryCoverage {...props} report={estimated} performance={designerPerformance(estimated)}/>);
  act(()=>[...view.container.querySelectorAll('button')].find(button=>button.textContent==='Inspect all 2 net accepted jobs')!.click());
- expect(view.container.querySelector('[role=dialog]')!.textContent).toContain('2026-09-07 (approx. quote date)');view.unmount();
+ expect(view.container.querySelector('[role=dialog]')!.textContent).toContain(`2026-09-07 (approx. ${label} date)`);view.unmount();
 });
 
 it('keeps incomplete-history qualification visible and exposes exact team job and visit evidence', () => {

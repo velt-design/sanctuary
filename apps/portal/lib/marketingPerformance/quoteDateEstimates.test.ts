@@ -1,9 +1,10 @@
-import { expect,it } from 'vitest';
+import { describe,expect,it } from 'vitest';
 import { designerFixture } from '@/app/qa/marketing-performance-fixture/designerFixtures';
 import { afterVisit,designerPerformance,siteVisitResults } from './designer';
+describe.each(['original quote date','acceptance date'])('%s estimate',basisKind=>{
 function fixture(){
  const report=designerFixture(),visit=report.visits[0];
- Object.assign(visit,{origin:'history',day:'2026-09-07',at:null,basis:'Assumed original purpose: owner-approved.\nApproximate visit date: 2026-09-07 (original quote date; owner-approved).'});
+ Object.assign(visit,{origin:'history',day:'2026-09-07',at:null,basis:`Assumed original purpose: owner-approved.\nApproximate visit date: 2026-09-07 (${basisKind}; owner-approved).`});
  Object.assign(report.scopes[0],{firstSentAt:'2026-09-07T00:00:00Z',acceptedAt:'2026-09-07T01:00:00Z',paidAt:'2026-09-07T02:00:00Z'});
  return report;
 }
@@ -46,4 +47,6 @@ it('keeps undated wins pending while exposing the confirmed minimum for the same
  expect(siteVisitResults(designerPerformance(report).total)).toMatchObject({won:0,pendingAcceptanceDates:2,confirmedCloseRate:0,closeRate:null});
  report.visits=[];
  expect(siteVisitResults(designerPerformance(report).total)).toMatchObject({eligible:0,pendingAcceptanceDates:0,confirmedCloseRate:null,closeRate:null});
+});
+
 });

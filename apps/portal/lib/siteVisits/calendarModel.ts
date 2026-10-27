@@ -1,6 +1,6 @@
 import type { CalendarVisit } from './contract';
 import { personKey,resolveVisitPersonKey } from './reviewedVisit';
-import { isCalendarQuoteDateEstimate } from './visitDateEstimate';
+import { calendarVisitDateEstimate,visitDateEstimateLabel } from './visitDateEstimate';
 const VISIT_TIME_ZONE = 'Pacific/Auckland';
 export const visitDay = (iso: string) => new Intl.DateTimeFormat('en-CA',{timeZone:VISIT_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
 export const visitTime = (iso: string) => new Intl.DateTimeFormat('en-NZ',{timeZone:VISIT_TIME_ZONE,hour:'numeric',minute:'2-digit'}).format(new Date(iso));
@@ -9,7 +9,7 @@ export const visitStamp = (iso: string) => new Intl.DateTimeFormat('en-NZ',{time
 export const visitDateOnly = (date:string) => new Intl.DateTimeFormat('en-NZ',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long'}).format(new Date(`${date}T00:00:00Z`));
 const previousDate=(date:string)=>new Date(Date.parse(`${date}T00:00:00Z`)-86400000).toISOString().slice(0,10);
 export function visitDateRange(v:CalendarVisit) {
-  if(v.timing)return v.timing.date?`${visitDateOnly(v.timing.date)}${isCalendarQuoteDateEstimate(v)?' (approx. quote date)':''}`:'Date not recorded';
+  if(v.timing)return v.timing.date?`${visitDateOnly(v.timing.date)}${visitDateEstimateLabel(calendarVisitDateEstimate(v))}`:'Date not recorded';
   if(!v.isAllDay)return v.startsAt?visitDate(v.startsAt):'Date not recorded';
   const first=v.allDayStartDate!,last=previousDate(v.allDayEndDate!);
   return first===last?visitDateOnly(first):`${visitDateOnly(first)} to ${visitDateOnly(last)}`;
