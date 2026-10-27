@@ -46,6 +46,7 @@ beforeAll(async()=>{
   await db.exec(file('20261021040001_project_sales_designer'));
   await db.exec(file('20261021100001_designer_accepted_sales'));
   await db.exec(file('20261022010001_designer_history_support'));
+  await db.exec(file('20261027010001_designer_visit_basis'));
   await db.exec(`update private.outlook_calendar_control set enabled=true,binding='${binding}',last_success=now(),range_start='2026-10-01',range_end='2026-12-31' where singleton;
     insert into private.site_visit_staff_identities values('${binding}','designer@example.test','jordan');`);
   const payload={subject:'Private title',startsAt:'2026-09-03T00:00:00Z',endsAt:'2026-09-03T01:00:00Z',kind:'visit',staff:[{name:'Private staff alias',email:'designer@example.test'}],customerEmails:['private@example.test'],address:'Private address',cancelled:false,duplicate:false,reviewReasons:[],isAllDay:false};
@@ -55,6 +56,16 @@ beforeAll(async()=>{
     insert into private.site_visit_details(id,project_id,details,basis,created_by,updated_by) values('${id(13)}','${id(1)}','{"purpose":"measurement","status":"attended","timing":{"mode":"unknown","date":null,"time":null,"endTime":null},"staff":[{"name":"Jordan","email":null,"staffId":"jordan"}]}','Synthetic fixture only','${staff}','${staff}');`);
 },30000);
 afterAll(()=>db.close());
+it('projects assumption provenance without changing attendance, timing or source guards',async()=>{
+ await db.exec('begin');try{
+  await db.exec(`update private.site_visit_details set basis='Assumed original purpose: owner approved for report; review later.' where id='${id(11)}'`);
+  const report=await read(),visit=report.visits.find(v=>v.id===id(11))!;
+  expect(visit).toMatchObject({basis:'Assumed original purpose: owner approved for report; review later.',status:'attended',day:'2026-09-03',questions:0});
+  expect(designerPerformance(report).total.outcomes).toHaveLength(1);
+  await db.exec(`update private.site_visit_details set questions='["Unresolved attendee"]' where id='${id(11)}'`);
+  expect(designerPerformance(await read()).total.outcomes).toHaveLength(0);
+ }finally{await db.exec('rollback');}
+});
 it('runs the actual source helpers, retains out-of-window visits and strips private contact/source payloads',async()=>{
  const r=await read();expect(r.visits).toHaveLength(2);expect(r.visits.find(v=>v.id===id(11))).toMatchObject({staff:['jordan'],purpose:'initial',day:'2026-09-03',status:'attended',questions:0});
  expect(r.visits.find(v=>v.id===id(13))!.day).toBeNull();expect(JSON.stringify(r)).not.toMatch(/private@example|Private title|Private address|Private staff|raw_payload|secret|sourceUrl/);
@@ -160,12 +171,12 @@ it('denies direct outcome access and anonymous/non-owner commands, including rev
 it('audits sales attribution separately, replays once and rejects a competing stale revision',async()=>{
  await db.exec('begin');try{
   await db.exec(`update private.site_visit_details set details=details||'{"staff":[{"name":"Joe","email":null,"staffId":"joe"}]}' where id='${id(11)}'`);
-  const before=await read();expect(before.assignments).toEqual([]);expect(designerPerformance(before).rows.find(r=>r.staffId==='unassigned')!.outcomes).toHaveLength(1);
+  const before=await read();expect(before.assignments).toEqual([]);expect(designerPerformance(before).rows.find(r=>r.staffId==='joe')!.outcomes).toHaveLength(1);
   await db.exec('set local role authenticated');const first=await assignment();expect(first).toMatchObject({designerKey:'jordan',revision:1});expect(await assignment()).toEqual(first);
   await denied(()=>assignment(92,0,'joe'),'40001');await denied(()=>assignment(91,0,'joe'),'40001');
   const report=await read(),model=designerPerformance(report);expect(report.visits).toEqual(before.visits);expect(report.scopes).toEqual(before.scopes);
-  expect(model.rows.find(r=>r.staffId==='joe')!.attended).toHaveLength(1);expect(model.rows.find(r=>r.staffId==='joe')!.outcomes).toHaveLength(0);
-  expect(model.rows.find(r=>r.staffId==='jordan')!.outcomes).toHaveLength(1);expect(model.total.outcomes).toHaveLength(1);
+  expect(model.rows.find(r=>r.staffId==='joe')!.attended).toHaveLength(1);expect(model.rows.find(r=>r.staffId==='joe')!.outcomes).toHaveLength(1);
+  expect(designerPerformance(report,null,'jordan').total.outcomes).toHaveLength(0);expect(model.total.outcomes).toHaveLength(1);
   const cleared=await assignment(93,1,null);expect(cleared).toMatchObject({designerKey:null,revision:2});
   expect(await assignment()).toEqual(first); // Original command receipt stays immutable after a later assignment.
   const current=(await db.query<{v:any}>('select public.project_sales_designer_read($1) v',[id(1)])).rows[0].v;expect(current).toEqual(cleared);
@@ -201,7 +212,7 @@ it('supports historical Steve credit and a reversible test exclusion without cha
  await db.exec('begin');try{
   const before=await read(),financial=(await db.query('select * from project_payment_entries')).rows;
   await db.exec('set local role authenticated');const saved=await assignment(120,0,'steve');expect(saved).toMatchObject({designerKey:'steve',revision:1});expect(await assignment(120,0,'steve')).toEqual(saved);
-  let report=await read();expect(designerSales(report,null,'steve').total.jobs).toHaveLength(1);expect(designerPerformance(report,null,'steve').total.outcomes).toHaveLength(1);expect(designerPerformance(report,null,'steve').total.attended).toHaveLength(0);
+  let report=await read();expect(designerSales(report,null,'steve').total.jobs).toHaveLength(1);expect(designerPerformance(report,null,'steve').total.outcomes).toHaveLength(0);expect(designerPerformance(report,null,'steve').total.attended).toHaveLength(0);expect(designerPerformance(report,null,'jordan').total.outcomes).toHaveLength(1);
   const marked=await outcome(121,0,'test');expect(marked).toMatchObject({outcome:'test',revision:1});expect(await outcome(121,0,'test')).toEqual(marked);
   await denied(()=>outcome(122,0,null),'40001');await denied(()=>outcome(121,0,'cancelled'),'40001');await denied(()=>outcome(123,1,'unknown'),'22023');
   report=await read();expect(report.visits).toEqual(before.visits);expect(report.scopes).toEqual(before.scopes);expect(report.salesProjects).toEqual(before.salesProjects);

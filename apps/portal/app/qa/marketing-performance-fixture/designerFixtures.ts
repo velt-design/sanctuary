@@ -17,6 +17,10 @@ export function designerFixture(mode='complete',hub:HubReport=hubFixture):Design
   if(mode==='accepted'){scopes.push(scope(6,{acceptedAt:'2026-09-01T00:00:00Z',lastAcceptedAt:'2026-09-01T00:00:00Z'}),scope(5,{acceptedAt:null,lastAcceptedAt:null}),scope(4,{acceptedAt:'2026-09-25T00:00:00Z',lastAcceptedAt:'2026-09-25T00:00:00Z'}));}
   if(mode==='incomplete'){for(const v of visits)if(v.purpose==='initial'&&v.day)v.purpose='site_visit';}
   if(mode==='conflict')visits.push(visit(10,{projectId:project(1),staff:['joe']}));
+  if(mode==='assumed'){
+    visits[0].basis='Assumed original purpose: synthetic owner-approved reporting assumption; review later.';
+    visits[5].basis='Assumed original purpose: synthetic owner-approved assumption; date remains unknown.';
+  }
   return {schemaVersion:1,asOf:mode==='accepted'?'2026-10-21T08:00:00Z':'2026-09-22T08:00:00Z',start:'2026-09-01',end:'2026-09-22',
     source:{enabled:mode!=='disabled',lastSuccess:mode==='stale'?'2026-09-21T00:00:00Z':'2026-09-22T07:50:00Z',failed:mode==='source-failed',rangeStart:'2026-08-23T00:00:00Z',rangeEnd:'2026-12-21T00:00:00Z',firstImportedAt:'2026-09-21T00:00:00Z'},
     assignments:mode==='unassigned'?[]:[{projectId:project(1),designerKey:'jordan',revision:1,updatedAt:'2026-09-21T00:00:00Z',basis:'Synthetic assignment'},{projectId:project(2),designerKey:'jp',revision:1,updatedAt:'2026-09-21T00:00:00Z',basis:'Synthetic assignment'}],

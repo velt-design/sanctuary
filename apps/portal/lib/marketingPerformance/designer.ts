@@ -6,6 +6,7 @@ import { isTestSalesProject,projectSalesExclusion } from './designerSales';
 export const visitIssueLabels:Record<string,string>={date:'Date not recorded',future:'Attendance dated in the future',identity:'Attendee identity not verified',link:'Project not linked',purpose:'Original purpose not confirmed',source:'Source or review questions unresolved',originals:'Conflicting original visits',originalIncomplete:'Another original record needs verification',chronology:'Sale predates visit or ordering is unknown'};
 const periodVisit=(v:DesignerVisit,r:DesignerReport)=>Boolean(v.day&&v.day>=r.start&&v.day<=r.end);
 const activeVisit=(v:DesignerVisit)=>!v.removed&&!v.withdrawn&&v.kind!=='excluded';
+export const assumedOriginalPurpose=(v:DesignerVisit)=>v.purpose==='initial'&&Boolean(v.basis?.startsWith('Assumed original purpose:'));
 const instantDay=(s:string)=>aucklandDay(new Date(s));
 export function afterVisit(at:string|null,v:DesignerVisit,asOf:string):boolean {
   if(!at||Date.parse(at)>Date.parse(asOf)||!v.day)return false;
@@ -33,6 +34,7 @@ export function siteVisitResults(row:DesignerSummary) {
   return {
     won:won.length,
     eligible:row.outcomes.length,
+    assumedOriginals:row.outcomes.filter(o=>assumedOriginalPurpose(o.visit)).length,
     dateIncomplete,
     valueIncomplete,
     closeRate:row.outcomes.length&&!dateIncomplete?100*won.length/row.outcomes.length:null,
@@ -47,7 +49,7 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
   const issues=new Map<string,string[]>(all.map(v=>[v.id,visitIssues(v,report)]));
   const originals=new Map<string,DesignerVisit[]>();
   for(const v of all)if(v.status==='attended'&&v.purpose==='initial'&&!v.cancelled&&v.projectId)originals.set(v.projectId,[...(originals.get(v.projectId)??[]),v]);
-  const outcomes:DesignerOutcome[]=[];
+  const retainedOriginals:DesignerOutcome[]=[];
   for(const [projectId,visits] of originals){
     if(isTestSalesProject(report,projectId))continue;
     // Withheld Outlook history cannot support first-original attribution, even for manual rows.
@@ -62,15 +64,15 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
     if(conflict){for(const v of visits)issues.set(v.id,[...issues.get(v.id)!,'originals']);continue;}
     const scopes=report.scopes.filter(s=>s.projectId===projectId&&!s.addOn);
     if(scopes.some(s=>(s.paymentEvidence&&!s.paidAt)||(s.paidAt&&!afterVisit(s.paidAt,first,report.asOf)))){for(const v of visits)issues.set(v.id,[...issues.get(v.id)!,'chronology']);continue;}
-    if(!periodVisit(first,report)||!visible(first))continue;
     const quoted=scopes.filter(s=>afterVisit(s.firstSentAt,first,report.asOf));
     const excluded=projectSalesExclusion(report,projectId);
     const accepted=excluded?[]:scopes.filter(s=>s.accepted&&afterVisit(s.acceptedAt,first,report.asOf));
     const paid=excluded?[]:scopes.filter(s=>afterVisit(s.paidAt,first,report.asOf));
     const quoteAt=scopes.some(s=>s.undatedSend)?null:scopes.map(s=>s.firstSentAt).filter((s):s is string=>Boolean(s)).sort()[0]??null;
     const paidAt=paid.map(s=>s.paidAt!).sort()[0]??null;
-    outcomes.push({visit:first,designerKey:assignments.get(projectId)??null,quoted,accepted,paid,undatedQuotes:scopes.filter(s=>s.undatedSend),undatedAcceptances:excluded?[]:scopes.filter(s=>s.accepted&&!s.acceptedAt),quoteDays:days(quoteAt,first,report.asOf),depositDays:days(paidAt,first,report.asOf)});
+    retainedOriginals.push({visit:first,designerKey:assignments.get(projectId)??null,quoted,accepted,paid,undatedQuotes:scopes.filter(s=>s.undatedSend),undatedAcceptances:excluded?[]:scopes.filter(s=>s.accepted&&!s.acceptedAt),quoteDays:days(quoteAt,first,report.asOf),depositDays:days(paidAt,first,report.asOf)});
   }
+  const outcomes=retainedOriginals.filter(o=>periodVisit(o.visit,report)&&visible(o.visit));
   const summarize=(staffId:string,visits:DesignerVisit[],cohort:DesignerOutcome[]):DesignerSummary=>{
     // Generic questions still prevent acquisition qualification above, but do not
     // erase stable explicit attendance. Source conflicts remain workload safeguards.
@@ -85,5 +87,5 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
   if(designer&&!staff.includes(designer))staff.push(designer);
   const rows=staff.filter(s=>(!designer||s===designer)&&(s===designer||period.some(v=>s==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!projectOwnerOption(id)):v.staff.includes(s)))).map(s=>summarize(s,period.filter(v=>s==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!projectOwnerOption(id)):v.staff.includes(s)),outcomes.filter(o=>o.visit.staff.includes(s))));
   const coverage=all.filter(v=>visible(v)||!!v.projectId&&(assignments.get(v.projectId)??'unassigned')===designer).filter(v=>!v.day||periodVisit(v,report)).map(v=>({visit:v,reasons:[...issues.get(v.id)!,...(v.purpose==='initial'||v.purpose==='measurement'||v.purpose==='follow_up'?[]:['purpose']),...(v.day&&v.day<instantDay(report.asOf)&&!v.cancelled&&v.status!=='attended'&&v.status!=='not_attended'?['attendance']:[])]})).filter(v=>v.reasons.length);
-  return {rows,total:summarize('team',period,outcomes),coverage,issues};
+  return {rows,total:summarize('team',period,outcomes),coverage,issues,retainedOriginals};
 }
