@@ -13,13 +13,13 @@ import useDesigner,{type DesignerLoader} from './useDesigner';
 vi.mock('@/components/ui/drawer/Drawer',()=>({Drawer:({open,children,title}:any)=>open?<div role="dialog" aria-label={title}>{children}</div>:null}));
 const filters={...hubDefaults(fixtureFilters),view:'overview' as const};
 const flush=()=>act(async()=>{await Promise.resolve();});
-it('labels quote-date estimates in visible visit metrics and exact records',async()=>{
- const report=designerFixture();Object.assign(report.visits[0],{origin:'history',day:'2026-09-07',at:null,basis:'Assumed original purpose: owner-approved.\nApproximate visit date: 2026-09-07 (original quote date; owner-approved).'});
+it.each([['original quote date','quote'],['acceptance date','visit']])('labels %s estimates accurately in visit metrics and exact records',async(basisKind,label)=>{
+ const report=designerFixture();Object.assign(report.visits[0],{origin:'history',day:'2026-09-07',at:null,basis:`Assumed original purpose: owner-approved.\nApproximate visit date: 2026-09-07 (${basisKind}; owner-approved).`});
  const view=renderIntoDocument(<DesignerPerformance hub={hubFixture} filters={filters} apply={vi.fn()} loader={async()=>report}/>);await flush();
- for(const selector of ['table[aria-label="Recorded visit conversion"]','[aria-label="Site visit results on small screens"]'])expect(view.container.querySelector(selector)!.textContent).toContain('1 approximate quote dates');
+ for(const selector of ['table[aria-label="Recorded visit conversion"]','[aria-label="Site visit results on small screens"]'])expect(view.container.querySelector(selector)!.textContent).toContain('1 approximate visit dates');
  act(()=>view.container.querySelector<HTMLButtonElement>('button[aria-label="Team: Visits completed, 4"]')!.click());
- expect(view.container.querySelector('[role=dialog]')!.textContent).toContain('2026-09-07 (approx. quote date)');
- expect(view.container.querySelector('[role=dialog]')!.textContent).toContain('original quote date; owner-approved');view.unmount();
+ expect(view.container.querySelector('[role=dialog]')!.textContent).toContain(`2026-09-07 (approx. ${label} date)`);
+ expect(view.container.querySelector('[role=dialog]')!.textContent).toContain(`${basisKind}; owner-approved`);view.unmount();
 });
 it('shows incomplete activity, unavailable conversion and the undated inventory without inventing conflict',async()=>{
  const report=designerFixture('incomplete'),loader=vi.fn<DesignerLoader>(async()=>report);

@@ -253,7 +253,11 @@ unanswered questions remain actionable. No blanket review dismissal exists.
 An owner-approved original-quote date can supply an approximate date-only history
 entry. The exact standalone basis line
 `Approximate visit date: YYYY-MM-DD (original quote date; owner-approved).` must
-match that history entry's date. The shared `visitDateEstimate` helper labels it
+match that history entry's date. A separately approved acceptance-derived visit
+date uses `Approximate visit date: YYYY-MM-DD (acceptance date; owner-approved).`
+instead. Only one marker is permitted; stale or conflicting markers invalidate it.
+Quote-derived estimates retain their quote label; acceptance-derived estimates
+say `approx. visit date`, with their acceptance basis beside the editor date. The shared `visitDateEstimate` helper labels it
 in existing date displays and the editor. Changing the date or precision without
 matching provenance removes the estimate interpretation. Real dates, remaining
 questions, attendance and source evidence are preserved; no clock time is invented.

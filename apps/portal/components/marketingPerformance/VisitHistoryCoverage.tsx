@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { isQuoteDateEstimate } from '@/lib/siteVisits/visitDateEstimate';
+import { visitDateEstimate,visitDateEstimateLabel } from '@/lib/siteVisits/visitDateEstimate';
 import { Button } from '@/components/ui/foundation/FoundationControls';
 import { Drawer } from './MarketingDrawer';
 import { assumedOriginalPurpose,designerPerformance } from '@/lib/marketingPerformance/designer';
@@ -67,7 +67,7 @@ export default function VisitHistoryCoverage({ report, performance, projectIds, 
           <ul>{item.job.goingAhead.map(scope => <li key={scope.id}>{scope.reference} · {scope.addOn ? 'Add-on' : 'Initial scope'} · Accepted {stamp(scope.lastAcceptedAt)} · {scope.valueCents === null ? 'Value unavailable' : money(scope.valueCents)} including GST</li>)}</ul>
           <h4>Linked retained visit evidence</h4>
           {!item.visits.length ? <p>No linked record is available. Review the project’s original evidence before recording history.</p> : <ul>{item.visits.map(visit => <li key={visit.id}>
-            <span>{visit.day ?? 'Date not recorded'}{isQuoteDateEstimate(visit)?' (approx. quote date)':''} · {purpose(visit)} · {visit.staff.map(person).join(', ') || 'Attendee not established'} · {visit.status === 'attended' ? 'Attendance recorded' : visit.status ?? 'Attendance not recorded'} · {visit.origin === 'history' ? 'Recorded history' : 'Retained Outlook record'}{visit.removed ? ' · Removed from source' : ''}{visit.withdrawn ? ' · Withdrawn' : ''}{visit.kind === 'excluded' ? ' · Excluded' : ''}{visit.changed ? ' · Source changed' : ''}{visit.questions ? ' · Questions unresolved' : ''}</span>
+            <span>{visit.day ?? 'Date not recorded'}{visitDateEstimateLabel(visitDateEstimate(visit))} · {purpose(visit)} · {visit.staff.map(person).join(', ') || 'Attendee not established'} · {visit.status === 'attended' ? 'Attendance recorded' : visit.status ?? 'Attendance not recorded'} · {visit.origin === 'history' ? 'Recorded history' : 'Retained Outlook record'}{visit.removed ? ' · Removed from source' : ''}{visit.withdrawn ? ' · Withdrawn' : ''}{visit.kind === 'excluded' ? ' · Excluded' : ''}{visit.changed ? ' · Source changed' : ''}{visit.questions ? ' · Questions unresolved' : ''}</span>
             {assumedOriginalPurpose(visit)&&<p>Original purpose assumed with owner approval; review later.</p>}{visit.basis&&<p>Visit basis: {visit.basis}</p>}
             <a href={visitLink(visit)} target="_blank" rel="noreferrer">Review this visit</a>
           </li>)}</ul>}
