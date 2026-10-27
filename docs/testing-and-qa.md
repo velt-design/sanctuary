@@ -473,6 +473,17 @@ apps/portal/lib/marketingIntegrations/ga4/http.test.ts
 test/sanctuary-ga4-http-sql.test.ts` for the fixed batch plans, complete range
 pairs, redacted dimension collisions, missing observations, strict limits,
 transport/cancellation/authority failures, and HTTP-to-SQL saved-report return.
+Database capacity acceptance must apply forward migration
+`20261027011337_ga4_diagnostic_capacity_750.sql` and execute the real completion
+and retained-read RPC with 200/501/750 cohorts. The HTTP-to-SQL cases do this;
+negative 751 and excessive normalized-byte cases inject at SQL completion and
+assert its rejection plus unchanged prior snapshot. The native GA4 harness
+checks the same boundaries and full GA4 function-catalog identity, with the
+normal pinned 17.6 image providing real safeupdate. A different local native
+version without safeupdate is supplementary evidence only. Optional
+`GA4_CAPACITY_RECOVERY_SQL` verifies reviewed local recovery SQL without making
+that operator file part of a public release.
+
 Capacity tests cover 501 representative synthetic groups and 750 groups with 59/45/45
 event cohorts, exact complete rows, unchanged normalized envelope, and 751-group
 denial. The smaller 28-day synthetic fixture covers 200 cohorts with all three stages: compact

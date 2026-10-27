@@ -122,7 +122,15 @@ An ordinary daily report exceeded the old 200-group ceiling. Synthetic
 146692 normalized bytes; 750 cohorts at the same event density use 290579 and
 218277 bytes respectively. Each byte bound remains independent: unusually long
 labels or dense event groups may still fail rather than return partial data.
-The matching Velt consumer must accept 750 rows before this producer is deployed.
+Before deploying this producer, the matching Velt consumer must accept 750 rows
+and forward migration `20261027011337_ga4_diagnostic_capacity_750.sql` must be
+installed. The existing database validator also participates in completion and
+retained read; parser/JSON round trips alone do not verify persistence capacity.
+The migration changes only its reviewed 200-to-750 cardinality literal, preserving
+all other body bytes and function identity/owner/ACL/security metadata. Existing
+byte limits, control state, operations, snapshots and audit rows are unchanged.
+Prefer application recovery with the compatible 750 validator retained. Narrowing
+the validator while a larger snapshot or active operation exists is unsafe.
 
 Original provider identities and complete range pairs are checked before
 privacy grouping. Private/unsafe labels become explicit withheld categories,

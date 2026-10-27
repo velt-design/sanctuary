@@ -27,6 +27,8 @@ const base = readFileSync(new URL('../supabase/migrations/20260923070001_sanctua
 const migration = readFileSync(new URL('../supabase/migrations/20261021082853_ga4_v3_diagnostics.sql', import.meta.url), 'utf8');
 const settlement = readFileSync(new URL('../supabase/migrations/20261022013028_ga4_pre_token_settlement.sql', import.meta.url), 'utf8');
 const credentials = readFileSync(new URL('../supabase/migrations/20261022030852_ga4_vercel_credentials.sql', import.meta.url), 'utf8');
+const capacity = readFileSync(new URL('../supabase/migrations/20261027011337_ga4_diagnostic_capacity_750.sql', import.meta.url), 'utf8');
+const recovery = process.env.GA4_CAPACITY_RECOVERY_SQL ? readFileSync(process.env.GA4_CAPACITY_RECOVERY_SQL, 'utf8') : null;
 const actor = '10000000-0000-4000-8000-000000000001', connection = '20000000-0000-4000-8000-000000000001', binding = 'a'.repeat(64), vaultId = 'a'.repeat(26), itemId = 'b'.repeat(26);
 const query = { period: { start: '2026-10-01', end: '2026-10-02' }, comparison: { start: '2026-09-29', end: '2026-09-30' } };
 const literal = value => value === null ? 'null' : `'${String(typeof value === 'object' ? JSON.stringify(value) : value).replaceAll("'", "''")}'`;
@@ -77,6 +79,11 @@ create table praxis_reporting.source_identity_v1(singleton boolean,source_key te
 insert into auth.users values('${actor}',now(),null,null);insert into public.portal_users values('${actor}','staff');
 insert into praxis_reporting.source_identity_v1 values(true,'synthetic','${connection}','test');`, 'ga4_template');
   sql(base, 'ga4_template'); sql(migration, 'ga4_template'); sql(settlement, 'ga4_template'); sql(credentials, 'ga4_template');
+  const catalog = () => JSON.parse(sql(`select jsonb_agg(to_jsonb(p) order by p.oid) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('private','public') and p.proname like '%ga4%'`, 'ga4_template'));
+  const beforeCapacity = catalog(); sql(capacity, 'ga4_template'); const afterCapacity = catalog();
+  assert.deepEqual(afterCapacity, beforeCapacity.map(value => value.proname === 'sanctuary_ga4_diagnostics_valid'
+    ? { ...value, prosrc: value.prosrc.replace("jsonb_array_length(a->'rows')>200", "jsonb_array_length(a->'rows')>750") } : value));
+  assert.throws(() => sql(capacity, 'ga4_template'), /Unreviewed GA4 diagnostics validator/);
   sql(`insert into private.sanctuary_ga4_control(actor_id,property_id,binding_hash,vault_id,item_id,expires_at,source_key,connection_id,environment)
 values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 day','synthetic','${connection}','test');`, 'ga4_template');
   assert.throws(() => command('ga4_template', 'claim', null, { query }), /authority unavailable/);
@@ -99,6 +106,37 @@ values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 
   });
   command(availableDatabase, 'complete', availableValue.operation, { payload: availableValue.payload });
   assert.deepEqual(JSON.parse(command(availableDatabase, 'read').payload), availableValue.report);
+  for (const count of [200, 501, 750, 751]) {
+    const database = fixture(), old = ready(database); command(database, 'complete', old.operation, { payload: old.payload });
+    const value = ready(database, 'sanctuary-ga4-v3', report => {
+      report.diagnostics.acquisition = { ...availableValue.report.diagnostics.acquisition,
+        rows: Array.from({ length: count }, (_, index) => ({ ...availableValue.report.diagnostics.acquisition.rows[0], landingPath: `/pergolas-${index}` })) };
+      return report;
+    });
+    if (count === 751) {
+      assert.throws(() => command(database, 'complete', value.operation, { payload: value.payload }), /diagnostic version or shape/);
+      assert.equal(command(database, 'read').payload, old.payload);
+    } else {
+      command(database, 'complete', value.operation, { payload: value.payload });
+      const saved = command(database, 'read'); assert.equal(saved.payload, value.payload); assert.equal(saved.resultHash, value.hash);
+      assert.equal(JSON.parse(saved.payload).diagnostics.acquisition.rows.length, count);
+    }
+  }
+  {
+    const database = fixture(), old = ready(database); command(database, 'complete', old.operation, { payload: old.payload });
+    const value = ready(database, 'sanctuary-ga4-v3', report => {
+      let length = 10;
+      do {
+        report.diagnostics.acquisition = { ...availableValue.report.diagnostics.acquisition,
+          rows: Array.from({ length: 750 }, (_, index) => ({ ...availableValue.report.diagnostics.acquisition.rows[0], landingPath: `/${'a'.repeat(length)}-${index}` })) };
+        length++;
+      } while (Buffer.byteLength(JSON.stringify(report)) <= 245760);
+      return report;
+    });
+    assert.ok(Buffer.byteLength(value.payload) <= 262144);
+    assert.throws(() => command(database, 'complete', value.operation, { payload: value.payload }), /diagnostic version or shape/);
+    assert.equal(command(database, 'read').payload, old.payload);
+  }
   for (const mutate of [value => { value.diagnostics.acquisition.rows = []; return value; }, value => { value.diagnostics.stages[0].count.value = -1; return value; },
     value => { value.diagnostics.firstEditCompleteFrom = '2026-09-17'; return value; }, value => { value.diagnostics.orderedFunnel.status = 'available'; return value; }]) {
     const database = fixture(), value = ready(database, 'sanctuary-ga4-v3', mutate); assert.throws(() => command(database, 'complete', value.operation, { payload: value.payload }), /diagnostic version or shape/);
@@ -128,8 +166,21 @@ values('${actor}','123','${binding}','${vaultId}','${itemId}',now()+interval '1 
     }
   }
   const vercelChecks = proveGa4Vercel({ fixture, sql, command, boundary, ready, literal, actor, connection, binding, query });
+  if (recovery) for (const count of [200, 501]) {
+    const database = fixture(), value = ready(database, 'sanctuary-ga4-v3', report => {
+      report.diagnostics.acquisition = { ...availableValue.report.diagnostics.acquisition,
+        rows: Array.from({ length: count }, (_, index) => ({ ...availableValue.report.diagnostics.acquisition.rows[0], landingPath: `/pergolas-${index}` })) };
+      return report;
+    });
+    command(database, 'complete', value.operation, { payload: value.payload });
+    if (count > 200) assert.throws(() => sql(recovery, database), /Keep compatible GA4 capacity/);
+    else { sql(recovery, database); sql(capacity, database); }
+    assert.equal(command(database, 'read').payload, value.payload);
+  }
   console.log(JSON.stringify({ status: 'passed', postgres, imageId, safeupdate: !bin, safeupdateGate: bin ? 'UNVERIFIED: installed native package has no safeupdate extension; no fake substitute used' : 'passed', databases: index, baseSha256: createHash('sha256').update(base).digest('hex'), migrationSha256: createHash('sha256').update(migration).digest('hex'), settlementSha256: createHash('sha256').update(settlement).digest('hex'), credentialsSha256: createHash('sha256').update(credentials).digest('hex'),
-    checks: ['native DDL and v2 compatibility', 'RPC-only roles', ...(!bin ? ['real safeupdate'] : []), 'claim/intent version', 'strict diagnostics and unavailable union', 'payload hash association', 'seven-day retention and expired writer delivery', 'delete and control fencing', 'pre-token terminal fencing and preserved evidence', 'token/write quarantine preserved', ...vercelChecks],
+    capacitySha256: createHash('sha256').update(capacity).digest('hex'),
+    recovery: recovery ? 'safe narrow rollback/reapply and larger-snapshot refusal passed' : 'not requested',
+    checks: ['native DDL and v2 compatibility', 'RPC-only roles', ...(!bin ? ['real safeupdate'] : []), 'only diagnostics capacity changes across complete GA4 function catalog', '200/501/750 completion and byte-identical retained read; 751 denial preserves prior snapshot', 'claim/intent version', 'strict diagnostics and unavailable union', 'payload hash association', 'seven-day retention and expired writer delivery', 'delete and control fencing', 'pre-token terminal fencing and preserved evidence', 'token/write quarantine preserved', ...vercelChecks],
     limits: ['synthetic auth/source prerequisites and cron stub, not full Sanctuary schema', 'no real pg_cron scheduling or HTTP/provider/vault call', 'PGlite HTTP composition is a separate receipt', ...(bin ? ['safeupdate unavailable in this native binary distribution'] : [])], network: bin ? 'disposable loopback only' : 'none', hostMounts: false, publishedPorts: false }));
 } finally {
   if (started) { if (bin) native('pg_ctl', ['-D', data, '-m', 'immediate', '-w', 'stop']); else docker(['rm', '--force', container]); }

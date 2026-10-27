@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-27: Exercise the database boundary at the claimed report capacity
+
+Status: Implemented candidate. Area: GA4 persistence verification.
+
+Application validators accepted larger reports, but the existing private SQL
+validator still capped attribution at 200. Small HTTP-to-SQL fixtures did not
+prove the larger parser/JSON fixtures could persist. The capacity change now
+includes a guarded forward migration and actual 200/501/750 RPC completion/read
+checks, 751/byte-bound rejection with prior snapshot preservation, and native
+catalog identity checks. Treat whole-path capacity as unverified until all
+participating persistence validators have been exercised at representative size.
+
 ## 2026-10-27: Size GA4 capacity against actual daily cardinality
 
 Status: Implemented candidate. Area: GA4 detailed attribution.

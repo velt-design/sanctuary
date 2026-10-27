@@ -1452,6 +1452,17 @@ The install-only 20260914062002 migration adds marketing_enquiry_staff_receipts(
 
 ## Xero private connection storage
 
+### GA4 diagnostic capacity correction
+
+Forward `20261027011337_ga4_diagnostic_capacity_750.sql` changes only the reviewed
+cardinality literal in `private.sanctuary_ga4_diagnostics_valid(jsonb,jsonb)` from
+200 to 750. Both the existing completion and retained-read command call this
+validator. Exact body hashes and complete remaining pg_proc identity/metadata
+must match before and after; no table, grant, owner, control, operation, snapshot,
+audit or byte-limit change is included. Install before the larger Source producer.
+Recover the application while retaining this compatible validator when larger
+reports exist; do not delete saved reports or history to permit a downgrade.
+
 ### Local GA4 v3 forward candidate
 
 Migration 20261021082853_ga4_v3_diagnostics.sql extends only the private GA4
