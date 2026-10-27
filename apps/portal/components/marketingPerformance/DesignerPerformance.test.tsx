@@ -7,7 +7,8 @@ import { hubDefaults,parseHubFilters,hubQuery } from '@/lib/marketingPerformance
 import { fixtureFilters } from '@/app/qa/marketing-performance-fixture/fixtures';
 import type { DesignerReport } from '@/lib/marketingPerformance/designerContract';
 import type { AssignmentClient } from './SalesDesignerAssignment';
-import DesignerPerformance from './DesignerPerformance';
+import DesignerPerformance,{designerMetricValue} from './DesignerPerformance';
+import { designerPerformance } from '@/lib/marketingPerformance/designer';
 import useDesigner,{type DesignerLoader} from './useDesigner';
 vi.mock('@/components/ui/drawer/Drawer',()=>({Drawer:({open,children,title}:any)=>open?<div role="dialog" aria-label={title}>{children}</div>:null}));
 const filters={...hubDefaults(fixtureFilters),view:'overview' as const};
@@ -104,4 +105,26 @@ it('presents attendee results first and opens the accepted values and exact clos
  const mobile=view.container.querySelector('[aria-label="Site visit results on small screens"]')!;
  expect([...mobile.querySelectorAll('dl')][0].querySelectorAll('dt')).toHaveLength(4);
  expect(view.container.textContent).not.toContain('Sales conversion belongs to the explicitly assigned');view.unmount();
+});
+
+it('shows confirmed minimum rates and pending-date counts for Team and Jordan on desktop and mobile',async()=>{
+ const report=designerFixture();report.visits[1].staff=['jordan'];report.scopes[1].accepted=true;
+ const view=renderIntoDocument(<DesignerPerformance hub={hubFixture} filters={filters} apply={vi.fn()} loader={async()=>report} synthetic/>);await flush();
+ const table=view.container.querySelector('table[aria-label="Recorded visit conversion"]')!;
+ for(const name of ['Team','Jordan']){
+  const row=[...table.querySelectorAll('tbody tr')].find(r=>r.querySelector('th')?.textContent?.startsWith(name))!;
+  expect(row.querySelectorAll('td > button')[1].textContent).toBe('1');
+  expect(row.querySelectorAll('td > button')[2].textContent).toBe('—');
+  const rate=row.querySelectorAll<HTMLButtonElement>('td > button')[3];expect(rate.textContent).toBe('At least 50%');expect(rate.getAttribute('aria-label')).toContain('At least 50%');
+  expect(row.textContent).toContain('1 job needs acceptance dates');
+  act(()=>rate.click());expect(view.container.querySelector('[role=dialog]')!.textContent).toContain('Jobs won includes only confirmed dated wins');
+ }
+ expect(view.container.querySelector('[aria-label="Site visit results on small screens"]')!.textContent).toContain('At least 50%');
+ expect(view.container.querySelector('[aria-label="Site visit results on small screens"]')!.textContent).toContain('1 job needs acceptance dates');view.unmount();
+ const summary=designerPerformance(report).total,won=summary.outcomes.find(o=>o.accepted.length)!,pending=summary.outcomes.find(o=>o.undatedAcceptances.length)!;
+ const example={...summary,outcomes:[...Array(50).fill(won),...Array(145).fill(pending)]};
+ expect(designerMetricValue(example,'closeRate')).toBe('At least 25.6%');
+ expect(designerMetricValue({...summary,outcomes:[pending]},'closeRate')).toBe('At least 0%');
+ expect(designerMetricValue({...summary,outcomes:[]},'closeRate')).toBe('Unavailable');
+ expect(designerMetricValue(designerPerformance(designerFixture()).total,'closeRate')).toBe('50%');
 });

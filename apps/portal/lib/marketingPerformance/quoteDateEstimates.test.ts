@@ -37,3 +37,13 @@ it('keeps unresolved evidence, conflicting originals, refunds and tests outside 
  const report=fixture();report.scopes[0].acceptedAt=null;
  expect(siteVisitResults(designerPerformance(report).total)).toMatchObject({dateIncomplete:true,closeRate:null,averageOrderValueCents:null});
 });
+
+it('keeps undated wins pending while exposing the confirmed minimum for the same eligible cohort',()=>{
+ const report=fixture();report.scopes[1].accepted=true;report.scopes[1].acceptedAt=null;
+ report.scopes.push({...report.scopes[1],id:'88888888-8888-4888-8888-888888888888'});
+ expect(siteVisitResults(designerPerformance(report).total)).toMatchObject({won:1,eligible:2,pendingAcceptanceDates:1,dateIncomplete:true,confirmedCloseRate:50,closeRate:null,averageOrderValueCents:null});
+ report.scopes[0].acceptedAt=null;
+ expect(siteVisitResults(designerPerformance(report).total)).toMatchObject({won:0,pendingAcceptanceDates:2,confirmedCloseRate:0,closeRate:null});
+ report.visits=[];
+ expect(siteVisitResults(designerPerformance(report).total)).toMatchObject({eligible:0,pendingAcceptanceDates:0,confirmedCloseRate:null,closeRate:null});
+});

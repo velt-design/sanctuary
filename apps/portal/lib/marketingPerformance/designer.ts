@@ -29,7 +29,8 @@ const days=(at:string|null,v:DesignerVisit,asOf:string)=>!isQuoteDateEstimate(v)
 export function median(values:(number|null)[]){const sorted=values.filter((v):v is number=>v!==null).sort((a,b)=>a-b);return sorted.length?(sorted[Math.floor(sorted.length/2)]+sorted[Math.floor((sorted.length-1)/2)])/2:null;}
 export function siteVisitResults(row:DesignerSummary) {
   const won=row.outcomes.filter(o=>o.accepted.length>0);
-  const dateIncomplete=row.outcomes.some(o=>o.undatedAcceptances.length>0);
+  const pendingAcceptanceDates=row.outcomes.filter(o=>o.undatedAcceptances.length>0).length;
+  const dateIncomplete=pendingAcceptanceDates>0;
   const scopes=won.flatMap(o=>o.accepted);
   const valueIncomplete=scopes.some(s=>s.valueCents===null);
   return {
@@ -39,6 +40,8 @@ export function siteVisitResults(row:DesignerSummary) {
     approximateVisits:row.attended.filter(isQuoteDateEstimate).length,
     approximateOriginals:row.outcomes.filter(o=>isQuoteDateEstimate(o.visit)).length,
     dateIncomplete,
+    pendingAcceptanceDates,
+    confirmedCloseRate:row.outcomes.length?100*won.length/row.outcomes.length:null,
     valueIncomplete,
     closeRate:row.outcomes.length&&!dateIncomplete?100*won.length/row.outcomes.length:null,
     averageOrderValueCents:won.length&&!dateIncomplete&&!valueIncomplete?scopes.reduce((sum,s)=>sum+s.valueCents!,0)/won.length:null,

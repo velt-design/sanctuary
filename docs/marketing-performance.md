@@ -456,7 +456,7 @@ values including GST and divides by jobs won. Add-ons are excluded. Close rate
 is jobs won divided by eligible original-visit projects, with the fraction beside
 the percentage; repeat visits add workload, never opportunities. No eligible
 cohort produces an unavailable rate, and no won jobs produces an unavailable
-average. Unknown acceptance dates make the rate and average unavailable; unknown
+average. Unknown acceptance dates make the complete rate and average unavailable; the rate shows a labelled confirmed minimum as described below; unknown
 accepted value makes the average unavailable. Known counts remain qualified.
 
 Jordan approved actual original-visit attendee credit on 27 October: "Use the
@@ -491,6 +491,14 @@ marked records allow same-day quote, acceptance and deposit attribution; genuine
 earlier outcomes, conflicts, unknown evidence, tests and excluded sales retain
 their guards. Approximate dates never enter elapsed-time medians. No new schema,
 request, source fact or permission is introduced.
+
+When eligible originals have accepted scopes with unknown acceptance dates, the
+complete close rate remains unknown. A separate confirmed minimum uses only
+dated wins over the same eligible cohort, floored to one decimal place and
+labelled `At least`. The adjacent count identifies jobs needing acceptance dates;
+multiple undated scopes for one original count once. Those scopes do not become
+wins, and the average order value remains unavailable. This is a bound for the
+recorded cohort, not a claim of complete period or business-wide performance.
 
 Relevant sent-quote and retained visit-linked jobs, including lost jobs, receive
 responsibility in the report. Existing saved sales roles always win, even when
