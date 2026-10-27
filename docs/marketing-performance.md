@@ -399,14 +399,54 @@ actual authenticated save/readback and live data coverage remain release checks.
 
 ## Designer visits and conversion candidate (21 October 2026)
 
-Business Overview shows sales-design responsibility and actual attendance after the
-commercial overview. The selected Auckland dates apply to visits; quote and
-payment outcomes run to the read timestamp. The current project-owner filter
-narrows projects and never supplies sales attribution. The Designer selection,
-retained in the URL, shows that person's assigned sales and their actual attended
-workload independently. These can involve different projects. Staff appear from
-recorded attendance or explicit assignments; the selected designer remains visible
-after their last assignment is cleared and after refresh. This is not a ranking.
+Current candidate, 27 October: attendee-based Site visit results, explicit retained
+history qualification and team sales reconciliation, followed by separate assigned
+sales with labelled provisional responsibility for missing assignments. The owner
+authorised pragmatic assumptions for review later; history remains partial and
+this candidate still requires independent review and release validation. The rules
+below replace assigned-designer visit-conversion attribution. Accepted-sales money
+and counts stay unchanged; missing people receive reviewable responsibility suggestions.
+
+Business Overview leads this section with Site visit results: Person, Visits
+completed, Jobs won, Avg order value and Close rate, with the same four figures
+on narrow screens. The selected Auckland dates apply to visits; subsequent
+outcomes run to the read timestamp. Jobs won means currently accepted initial
+jobs, not only paid jobs. Average order value sums their accepted initial scope
+values including GST and divides by jobs won. Add-ons are excluded. Close rate
+is jobs won divided by eligible original-visit projects, with the fraction beside
+the percentage; repeat visits add workload, never opportunities. No eligible
+cohort produces an unavailable rate, and no won jobs produces an unavailable
+average. Unknown acceptance dates make the rate and average unavailable; unknown
+accepted value makes the average unavailable. Known counts remain qualified.
+
+Jordan approved actual original-visit attendee credit on 27 October: "Use the
+actual visitor, as recommended", including credit for each joint attendee and
+one team job. Assigned sales remains a separate section below, using its existing
+sales-designer attribution. The Designer selection retained in the URL selects
+that person's actual visits here and assigned sales below. These may involve
+different projects. Assigned-only people without visits do not fill the visitor
+table, while an explicitly selected person remains visible with zero workload.
+The current project-owner filter narrows projects, never supplies visit attribution.
+
+Original-purpose assumptions and provisional responsibility are permitted for
+later review and remain labelled. Approved original-purpose assumptions
+use the existing correction basis prefix `Assumed original purpose:`. They are
+marked beside close rates and in record details. This does not invent attendance,
+people or dates: an unknown visit date stays outside dated conversion totals.
+
+Relevant sent-quote and retained visit-linked jobs, including lost jobs, receive
+responsibility in the report. Existing saved sales roles always win, even when
+they differ from the visitor. Missing roles suggest a qualifying original visitor,
+then a usable linked attendee or calendar candidate, then the current project owner
+as responsibility only, otherwise Jordan as review owner. Cancelled, conflicting,
+unresolved, future or unavailable visit evidence does not supply a person fallback.
+The exact `Provisional reporting assignment:` prefix marks saved and unsaved
+assumptions. Computed suggestions are explicitly unsaved; accepting or correcting
+one uses the existing revision-checked assignment command and basis. No automatic
+write occurs. The compact job-attribution review includes the relevant quoted and
+visit-linked population under project/person filters, independent of acceptance
+dates, and keeps unrelated CRM leads out. Responsibility never creates visits,
+dates, acceptance, money or a close-rate denominator.
 
 Explicit attendance counts workload across original, measurement, follow-up and
 unconfirmed purposes. Stable explicit attendance still counts when generic review
@@ -424,13 +464,37 @@ exactly as in the agenda. Manual history stays available and labelled as such;
 conversion is unavailable because first-original attribution cannot be assessed
 against withheld calendar history.
 
+The visible `Recorded history and approved assumptions` qualification states that these close rates
+describe eligible recorded originals, not whole-period staff performance. Earliest
+dated available history is an observation, never a completeness boundary: neither
+the first import nor the current calendar window proves earlier or unsuccessful
+visits are present. No coverage percentage is fabricated. `Why sales and visit
+totals differ` opens a compact team reconciliation for the selected acceptance
+period and project filters, deliberately independent of the person selector. Every
+net accepted job appears in exactly one bucket: no linked retained record, linked
+records needing verification, add-on-only acceptance, an eligible original outside
+the visit period, or accepted initial work following an eligible in-period original.
+Missing records do not establish that no visit occurred. Removed/withdrawn records
+remain inspectable evidence, not a missing-record classification. Disabled, failed,
+never-read or stale sources withhold these classifications rather than presenting
+an absence count. The team reconciliation does not measure completeness of the
+visit population and must not be used to recover only winning jobs.
+
+The coverage drawer lists exact selected accepted scopes and their dates/values,
+the qualified original visitor separately from assigned sales responsibility, and
+all linked retained visit records with source and current review state. Fifteen
+jobs per page keep inspection bounded. Existing visit/history and quote links open
+a separate tab; filter changes, refresh and source failure invalidate the drawer.
+History corrections retain corroborated facts and separately labelled owner-approved
+assumptions; unknown dates and unresolved evidence remain visible.
+
 Conversion uses the first recorded qualifying `initial` attended visit per
 project. Generic `site_visit` is not inferred to be original. Unverified people,
 unresolved review/source changes, conflicting originals, unknown dates and
 pre-visit or ambiguous payment chronology prevent attribution. Each verified
-joint attendee receives workload credit; sales conversion belongs to one explicit
-project sales designer. Missing assignments remain in the Unassigned row and team
-cohort, never fall back to a project owner or attendee. Team totals deduplicate
+joint attendee receives workload and conversion credit. Sales-designer assignment
+does not supply or prevent visit conversion. Missing attendee identity prevents
+conversion and remains in the review inventory. Team totals deduplicate
 projects and visits. Repeat measurements do not create additional sales credit. A dated
 original with no sale remains in the denominator, while an empty eligible cohort
 has an unavailable rate, never zero percent.
@@ -449,7 +513,16 @@ arrival or visit duration.
 Incremental map: `marketingPerformance/designerContract` validates the skinny
 DTO; `designer` owns attribution and contribution sets; `useDesigner` fences
 requests and refreshes. `DesignerPerformance` and `DesignerRecords` own the
-comparison and exact record inspection. `/api/staff/v1/marketing-performance/designers`
+comparison and exact record inspection. `siteVisitResults` in the same domain
+owner calculates accepted-job averages and close rates from those contribution
+sets. `designer.retainedOriginals` reuses that same qualification across retained
+history before date/person selection; `siteVisitCoverage` owns the exclusive team
+reconciliation and `VisitHistoryCoverage` owns its compact disclosure and evidence
+drawer. `jobAttribution` owns deterministic responsibility suggestions without
+changing the visitor model. `JobAttributionReview` reuses the existing assignment
+editor in a paginated drawer. This adds no request, provider call or fact store.
+Jobs won and average drawers expose accepted initial scope values even
+without a deposit; the close-rate drawer includes the complete eligible cohort. `/api/staff/v1/marketing-performance/designers`
 uses the existing confirmed developer boundary and auth-bound RPC, with private
 no-store responses. Migration `20261021030001_designer_performance.sql` projects
 the existing correction/identity and accounting functions, with hard inventory
@@ -457,6 +530,15 @@ bounds and no new fact store. It also adds the staff-only exact visit read used 
 `?visit=` correction links, including retained records outside the rolling agenda
 window. Hidden or incorrectly linked records remain inaccessible. Corrections
 stay in the existing Site Visits workflow; return to the report and refresh.
+
+Forward migration `20261027010001_designer_visit_basis.sql` only extends the
+existing private visit-fact JSON projection with retained correction `basis`.
+Function access, source filtering and question counts stay unchanged; it creates
+no table, data mutation or public grant. The optional DTO field supports rolling
+deployment. Disposable PGlite checks verify the exact projection and unchanged
+eligibility for unresolved questions. Apply to approved staging first and verify
+the normal developer report RPC returns the labelled basis before production;
+production application and live readback belong to the release owner.
 
 Forward migration `20261021030002_designer_visit_detail_transaction.sql` marks
 the exact visit RPC `VOLATILE`, matching the canonical agenda reader. PostgREST
@@ -486,7 +568,7 @@ Local verification covers actual migration/source helpers in disposable PGlite,
 model attribution, API denial/caps, hook races, drilldown invalidation and exact
 visit navigation. The existing protected fixture accepts `designerScenario`
 values `complete`, `incomplete`, `conflict`, `empty`, `stale`, `disabled`,
-`source-failed`, `failure`, `denied`, `unassigned` and `slow`. Its injected assignment
+`source-failed`, `failure`, `denied`, `unassigned`, `assumed` and `slow`. Its injected assignment
 client is in-memory only and cannot write a database. Every fixture identity is synthetic.
 Local checks and fixtures are not production migration, hosted access or real
 record coverage proof. Both exact task-branch auto-deploy entries are disabled;

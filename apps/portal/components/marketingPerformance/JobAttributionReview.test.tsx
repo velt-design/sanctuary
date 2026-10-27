@@ -1,0 +1,21 @@
+import { act } from 'react';
+import { expect,it,vi } from 'vitest';
+import { renderIntoDocument } from '../../../../test/reactHarness';
+import { designerFixture } from '@/app/qa/marketing-performance-fixture/designerFixtures';
+import { hubFixture } from '@/app/qa/marketing-performance-fixture/hubFixtures';
+import { jobAttributions } from '@/lib/marketingPerformance/jobAttribution';
+import JobAttributionReview from './JobAttributionReview';
+vi.mock('@/components/ui/drawer/Drawer',()=>({Drawer:({open,children,title}:any)=>open?<div role="dialog" aria-label={title}>{children}</div>:null}));
+it('reviews lost quoted jobs, limits the person selection and closes stale evidence after a refresh',()=>{
+ const report=designerFixture(),hub=structuredClone(hubFixture),id=report.scopes[1].projectId;
+ hub.projects.find(project=>project.id===id)!.closedOutcome='LOST_OTHER_SUPPLIER';
+ const attributions=jobAttributions(report,hub),props={report,hub,attributions,designer:'jp',filterKey:'jp',onAssignment:vi.fn(),synthetic:true};
+ const view=renderIntoDocument(<JobAttributionReview {...props}/>);
+ act(()=>[...view.container.querySelectorAll('button')].find(button=>button.textContent?.startsWith('Review '))!.click());
+ const dialog=view.container.querySelector('[role=dialog]')!;
+ expect(dialog.querySelectorAll('ul>li')).toHaveLength([...attributions.values()].filter(value=>value.designerKey==='jp').length);
+ expect(dialog.textContent).toContain('LOST_OTHER_SUPPLIER');
+ expect(dialog.querySelector('a')!.getAttribute('href')).toContain(id);
+ view.rerender(<JobAttributionReview {...props} report={{...report}}/>);
+ expect(view.container.querySelector('[role=dialog]')).toBeNull();view.unmount();
+});

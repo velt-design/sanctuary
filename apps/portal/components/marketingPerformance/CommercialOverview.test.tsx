@@ -80,7 +80,7 @@ it('keeps real source rows inspectable through independent commercial loading, f
   expect(source.closest('[aria-busy="true"]')).toBeNull();
   act(()=>source.click());expect(apply.mock.lastCall?.[0]).toMatchObject({view:'enquiries',source:'google',inspect:'all',start:filters.start,end:filters.end});
   expect(selectHub(hubFixture,apply.mock.lastCall![0]).enquiries).toHaveLength(5);
-  expect(view.container.querySelector('[aria-label="Designer sales and visits"]')).not.toBeNull();
+  expect(view.container.querySelector('[aria-label="Site visits and sales"]')).not.toBeNull();
  };
  expect(view.container.textContent).toContain('Reading quote values and timing');inspectSource();
  await act(async()=>reads[0].reject(new Error('Synthetic commercial failure')));

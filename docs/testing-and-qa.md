@@ -473,7 +473,20 @@ apps/portal/lib/marketingIntegrations/ga4/http.test.ts
 test/sanctuary-ga4-http-sql.test.ts` for the fixed batch plans, complete range
 pairs, redacted dimension collisions, missing observations, strict limits,
 transport/cancellation/authority failures, and HTTP-to-SQL saved-report return.
-The 28-day synthetic fixture covers 200 cohorts with all three stages: compact
+Database capacity acceptance must apply forward migration
+`20261027011337_ga4_diagnostic_capacity_750.sql` and execute the real completion
+and retained-read RPC with 200/501/750 cohorts. The HTTP-to-SQL cases do this;
+negative 751 and excessive normalized-byte cases inject at SQL completion and
+assert its rejection plus unchanged prior snapshot. The native GA4 harness
+checks the same boundaries and full GA4 function-catalog identity, with the
+normal pinned 17.6 image providing real safeupdate. A different local native
+version without safeupdate is supplementary evidence only. Optional
+`GA4_CAPACITY_RECOVERY_SQL` verifies reviewed local recovery SQL without making
+that operator file part of a public release.
+
+Capacity tests cover 501 representative synthetic groups and 750 groups with 59/45/45
+event cohorts, exact complete rows, unchanged normalized envelope, and 751-group
+denial. The smaller 28-day synthetic fixture covers 200 cohorts with all three stages: compact
 JSON fits the original shared allowance while pretty JSON exceeds it. This
 proves bounded parsing and persistence contracts, not live cohort coverage or
 scheduled delivery. Production acceptance must exercise the existing daily
@@ -2535,6 +2548,11 @@ npm run test:portal:search-performance
 npm run test:portal:performance:capture
 npm run test:portal:performance:fixture
 ```
+
+Portal Quality's two Chromium browser jobs use `ubuntu-24.04`, which the pinned
+Playwright 1.58.2 supports. The `ubuntu-latest` move to 26.04 prevented browser
+dependency installation before tests ran. Keep the browser runner compatible with
+the pinned Playwright version; other jobs and all browser assertions are unchanged.
 
 `npm run portal:auth-env` is the cheap fail-fast credential preflight for authenticated portal browser gates. It checks that `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD` are set before Playwright starts, so missing credentials fail loudly instead of producing a skipped or late setup failure.
 
