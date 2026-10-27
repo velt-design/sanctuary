@@ -17,7 +17,12 @@ or nonproduction host. Positively observed verification also stays in document
 memory through client navigation if storage fails; a fresh document without
 working storage needs the explicit URL marker again.
 
-Saved intake carries the explicit verification marker. GA4 server delivery and
+Saved intake carries the explicit verification marker.
+Consent withdrawal clears accessible campaign context, saved ad identifiers and
+Meta cookies before the measurement audience guard. Verification mode or denied
+session storage must not skip cleanup in other accessible stores. Storage the
+browser makes inaccessible cannot be erased until it becomes accessible.
+GA4 server delivery and
 legacy Meta CAPI also require the production execution environment and suppress
 marked/reserved-QA payloads. GA4 claim rechecks current audited project-test status
 without rewriting the audit event, then uses the existing SKIPPED settlement.
