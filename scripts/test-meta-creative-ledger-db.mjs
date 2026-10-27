@@ -182,6 +182,15 @@ try{
   .replace("if baseline is not null then p:=p||jsonb_build_object('retainedBaseline',baseline);end if;","if settings is not null then p:=p||jsonb_build_object('adSettings',settings);end if;if baseline is not null then p:=p||jsonb_build_object('retainedBaseline',baseline);end if;");
  if(!retentionSettingsFixture.includes('settings jsonb default null')||!retentionSettingsFixture.includes("jsonb_build_object('adSettings',settings)"))throw Error('Retained settings fixture predecessor differs');
  const retentionSettingsNative=JSON.parse(sql(retentionSettingsFixture+readFileSync('supabase/tests/meta_creative_retention_ad_settings.sql','utf8')).trim().split('\n').at(-1));
+ // Production already includes the current peer's shared audited/verification
+ // test classifiers. Load their real definitions and its exact campaign rewrite
+ // before checking a later reporting migration; do not restore literal-only policy.
+ const testPolicy=readFileSync('supabase/migrations/20261027024135_marketing_enquiry_sales_evidence.sql','utf8').split('-- The view caller')[0];
+ sql('create table if not exists private.project_sales_outcomes(project_id uuid,outcome text);'+testPolicy);
+ sql(`do $peer$declare definition text;begin definition:=pg_get_functiondef('public.sanctuary_campaign_outcomes_without_intake(uuid,text,text,text,uuid,text,uuid)'::regprocedure);
+ definition:=replace(definition,'e.id not in (''f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70''::uuid,''fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118''::uuid)','not private.marketing_test_enquiry(e.id,e.project_id)');
+ definition:=replace(definition,'e.project_id not in (''10c5db1a-602c-4f0c-8193-855b186215bb''::uuid,''9d98b82b-679a-4ecb-8265-9fa05eaa78ef''::uuid)','not private.marketing_test_project(e.project_id)');
+ definition:=replace(definition,'r.id not in (''f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70''::uuid,''fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118''::uuid)','not private.marketing_test_enquiry(r.id,r.project_id)');execute definition;end$peer$;`);
  const manualReportingBefore=capacityCatalog(),manualReportingMigration=readFileSync('supabase/migrations/20261027072323_native_creative_reporting.sql','utf8');
  sql(`begin;${manualReportingMigration.replace(/^begin;/m,'').replace(/^commit;/m,'')}rollback;`);
  if(JSON.stringify(capacityCatalog())!==JSON.stringify(manualReportingBefore))throw Error('Manual reporting rollback changed public catalogue');

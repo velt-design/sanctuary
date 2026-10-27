@@ -86,8 +86,8 @@ begin
    from public.enquiry_requests e where e.created_at>=launch
    and e.raw_payload#>>'{attribution,consent,marketing}'='true'
    and coalesce(e.raw_payload#>>'{attribution,utm,utm_campaign}',e.utm->>'utm_campaign')=scope->>'campaign'
-   and e.id not in ('f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70'::uuid,'fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118'::uuid)
-   and (e.project_id is null or e.project_id not in ('10c5db1a-602c-4f0c-8193-855b186215bb'::uuid,'9d98b82b-679a-4ecb-8265-9fa05eaa78ef'::uuid))
+   and not private.marketing_test_enquiry(e.id,e.project_id)
+   and (e.project_id is null or not private.marketing_test_project(e.project_id))
  ), ads(id,delivery_kind) as (select value->>'id','original' from jsonb_array_elements(scope->'ads')
    union all select r.ad_id,'native' from public.meta_creative_registered_ads() r join public.meta_creative_execution x on x.experiment=r.experiment
     where r.campaign_id=scope->>'campaign' and r.adset_id=scope->>'adset' and x.plan->>'purpose'='formal_experiment'
@@ -97,7 +97,7 @@ begin
  included as materialized (select e.* from receipts e join ads a on a.id=e.ad where e.adset=scope->>'adset'and(a.delivery_kind<>'steady'or public.meta_creative_steady_enquiry(e.id))),
  facts as materialized (
    select e.*, (select state from private.enquiry_qualification_events where enquiry_id=e.id order by version desc limit 1) qualification,
-     e.id=(select r.id from public.enquiry_requests r where r.project_id=e.project_id and r.id not in ('f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70'::uuid,'fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118'::uuid) order by r.created_at,r.id limit 1) origin,
+     e.id=(select r.id from public.enquiry_requests r where r.project_id=e.project_id and not private.marketing_test_enquiry(r.id,r.project_id) order by r.created_at,r.id limit 1) origin,
      exists(select 1 from public.site_visit_events v where v.project_id=e.project_id and (to_jsonb(v)->>'confirmed_at' is not null or v.status='CONFIRMED')) visited,
      exists(select 1 from public.quotes q join public.quote_versions v on v.quote_id=q.id where q.project_id=e.project_id and (v.sent_at is not null or v.accepted_at is not null or v.status in ('SENT','ACCEPTED'))) quoted,
      exists(select 1 from public.commercial_current_accepted_quote_versions(e.project_id)) accepted,

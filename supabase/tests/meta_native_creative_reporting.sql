@@ -75,6 +75,17 @@ from(values
  ('b4000000-0000-4000-8000-000000000003',null,clock_timestamp(),'99999999',true),
  ('b4000000-0000-4000-8000-000000000004',null,clock_timestamp(),'99900001',false)
 )f(id,project,stamp,ad,consent);
+-- Current peer policy excludes an audited test project, explicit verification
+-- receipt and consented reserved QA source. An earlier verification submission
+-- must not steal genuine origin credit on the same project.
+insert into public.projects(id,contact_id)values('b3000000-0000-4000-8000-000000000002','b2000000-0000-4000-8000-000000000001');
+insert into private.project_sales_outcomes values('b3000000-0000-4000-8000-000000000002','test');
+insert into public.enquiry_requests(id,project_id,enquiry_type,page,created_at,raw_payload)
+select id,project,'residential','/acrylic-roof-pergolas-auckland',stamp,payload from(values
+ ('b4000000-0000-4000-8000-000000000005'::uuid,'b3000000-0000-4000-8000-000000000001'::uuid,clock_timestamp()-interval'6days','{"attribution":{"verification":true,"consent":{"marketing":true},"utm":{"utm_source":"facebook","utm_medium":"paid_social","utm_campaign":"120254691313600745","utm_term":"120254691313610745","utm_content":"99900001"}}}'::jsonb),
+ ('b4000000-0000-4000-8000-000000000006','b3000000-0000-4000-8000-000000000002',clock_timestamp()-interval'2days','{"attribution":{"consent":{"marketing":true},"utm":{"utm_source":"facebook","utm_medium":"paid_social","utm_campaign":"120254691313600745","utm_term":"120254691313610745","utm_content":"99900001"}}}'),
+ ('b4000000-0000-4000-8000-000000000007',null,clock_timestamp(),' {"attribution":{"consent":{"marketing":true},"utm":{"utm_source":"codex_qa","utm_medium":"qa","utm_campaign":"120254691313600745","utm_term":"120254691313610745","utm_content":"99900001"}}}')
+)f(id,project,stamp,payload);
 insert into private.enquiry_qualification_events(enquiry_id,state,version)values('b4000000-0000-4000-8000-000000000001','qualified',1);
 insert into public.site_visit_events values('b3000000-0000-4000-8000-000000000001','CONFIRMED',clock_timestamp());
 insert into public.quotes values('b5000000-0000-4000-8000-000000000001','b3000000-0000-4000-8000-000000000001');
@@ -88,9 +99,14 @@ do $$declare result jsonb;ad jsonb;begin
  perform pg_temp.manual_assert(result#>>'{correspondence,total}'='2'and result#>>'{correspondence,eligible}'='1'and result#>>'{correspondence,contacts,0,intake,provenance}'='meta_form_user_text','same scoped Outlook/intake cohort');
  perform pg_temp.manual_assert(jsonb_array_length(result->'enquiryReferenceHashes')=2 and result->>'unmatchedCampaignEnquiries'='1','unknown ID retained unknown; consent excluded');
  perform pg_temp.manual_assert(jsonb_array_length(result->'ads')=4,'original four outcomes retained');
+ perform pg_temp.manual_assert(not exists(select 1 from jsonb_array_elements_text(result->'enquiryReferenceHashes')v where v in(encode(sha256(convert_to('sp_enq_b4000000-0000-4000-8000-000000000005','UTF8')),'hex'),encode(sha256(convert_to('sp_enq_b4000000-0000-4000-8000-000000000006','UTF8')),'hex'),encode(sha256(convert_to('sp_enq_b4000000-0000-4000-8000-000000000007','UTF8')),'hex'))),'current shared test predicates retained');
  insert into manual_reporting_evidence values('registry',public.meta_creative_reporting_registry()),('outcomes',result);
  perform pg_temp.manual_denied('select public.sanctuary_campaign_outcomes(null,''synthetic'',''binding'',''source'',null,''test'',''a1000000-0000-4000-8000-000000000001'')','source authorization unchanged');
 end$$;
+-- Clearing an audited test classification restores that real receipt through the
+-- same current helper; this migration owns no test/customer record write.
+delete from private.project_sales_outcomes where project_id='b3000000-0000-4000-8000-000000000002';
+do $$declare r jsonb;begin r:=public.sanctuary_campaign_outcomes('a0000000-0000-4000-8000-000000000001','synthetic','binding','source',null,'test','a1000000-0000-4000-8000-000000000001');perform pg_temp.manual_assert((select value->>'enquiries'='2'from jsonb_array_elements(r->'creativeAds')where value->>'id'='99900001'),'cleared audited test returns through existing helper');end$$;
 -- The existing Source registry remains the owner of Source-created ads. Synthetic
 -- root rows below exercise only collisions/capacity after manual registration.
 insert into public.meta_creative_plans(id,plan,plan_hash)values('b0000000-0000-4000-8000-000000000005','{}',repeat('8',64));
