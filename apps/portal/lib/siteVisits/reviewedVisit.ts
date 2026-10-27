@@ -1,9 +1,9 @@
 import type { CalendarVisit } from './contract';
 import type { VisitDetails,VisitPerson } from './correctionContract';
-import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
+import { salesDesignerOption } from '@/lib/marketingPerformance/salesDesigner';
 
 export const personKey=(person:VisitPerson)=>person.staffId?`staff:${person.staffId}`:person.email||`name:${person.name.toLowerCase()}`;
-export const personLabel=(person:VisitPerson)=>projectOwnerOption(person.staffId)?.displayName??person.name;
+export const personLabel=(person:VisitPerson)=>salesDesignerOption(person.staffId)?.displayName??person.name;
 export const visitStaffLabel=(staff:VisitPerson[])=>[...new Map(staff.map(person=>[personKey(person),personLabel(person)])).values()].join(', ');
 export function resolveVisitPersonKey(events:CalendarVisit[],selected:string){
  const known=events.flatMap(v=>[...v.staff,...(v.source?.staff??[])]).find(p=>p.email&&p.email===selected);

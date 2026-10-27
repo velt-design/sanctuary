@@ -1,6 +1,6 @@
 import { aucklandDay } from './contract';
 import type { DesignerReport,DesignerVisit,DesignerScope } from './designerContract';
-import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
+import { salesDesignerOption } from './salesDesigner';
 import { isTestSalesProject,projectSalesExclusion } from './designerSales';
 
 export const visitIssueLabels:Record<string,string>={date:'Date not recorded',future:'Attendance dated in the future',identity:'Attendee identity not verified',link:'Project not linked',purpose:'Original purpose not confirmed',source:'Source or review questions unresolved',originals:'Conflicting original visits',originalIncomplete:'Another original record needs verification',chronology:'Sale predates visit or ordering is unknown'};
@@ -16,7 +16,7 @@ function visitIssues(v:DesignerVisit,r:DesignerReport):string[]{
   const issues:string[]=[];
   if(!v.day)issues.push('date');
   if(v.day&&(v.day>instantDay(r.asOf)||(v.at&&Date.parse(v.at)>Date.parse(r.asOf))))issues.push('future');
-  if(!v.staff.length||v.unmappedStaff||v.staff.some(id=>!projectOwnerOption(id)))issues.push('identity');
+  if(!v.staff.length||v.unmappedStaff||v.staff.some(id=>!salesDesignerOption(id)))issues.push('identity');
   if(!v.projectId)issues.push('link');
   if(v.kind==='review'||v.duplicate||v.changed||v.questions)issues.push('source');
   return issues;
@@ -44,7 +44,7 @@ export function siteVisitResults(row:DesignerSummary) {
 export function designerPerformance(report:DesignerReport,projectIds:Set<string>|null=null,designer='') {
   const assignments=new Map(report.assignments.map(a=>[a.projectId,a.designerKey]));
   const all=report.visits.filter(v=>activeVisit(v)&&(!projectIds||v.projectId&&projectIds.has(v.projectId)));
-  const visible=(v:DesignerVisit)=>!designer||(designer==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!projectOwnerOption(id)):v.staff.includes(designer));
+  const visible=(v:DesignerVisit)=>!designer||(designer==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!salesDesignerOption(id)):v.staff.includes(designer));
   const period=all.filter(v=>periodVisit(v,report)&&visible(v));
   const issues=new Map<string,string[]>(all.map(v=>[v.id,visitIssues(v,report)]));
   const originals=new Map<string,DesignerVisit[]>();
@@ -83,9 +83,9 @@ export function designerPerformance(report:DesignerReport,projectIds:Set<string>
       unrecorded:visits.filter(v=>v.day!<instantDay(report.asOf)&&!v.cancelled&&v.status!=='attended'&&v.status!=='not_attended'),
       projects:unique(attended.map(v=>v.projectId)),customers:unique(attended.map(v=>v.contactId)),outcomes:cohort};
   };
-  const staff=[...new Set([...all.filter(v=>visible(v)&&(!v.day||periodVisit(v,report))).flatMap(v=>[...v.staff.filter(id=>projectOwnerOption(id)),...(!v.staff.length||v.unmappedStaff||v.staff.some(id=>!projectOwnerOption(id))?['unassigned']:[])]),...all.filter(v=>v.projectId&&(!v.day||periodVisit(v,report))).map(v=>assignments.get(v.projectId!)??'unassigned')])].sort();
+  const staff=[...new Set([...all.filter(v=>visible(v)&&(!v.day||periodVisit(v,report))).flatMap(v=>[...v.staff.filter(id=>salesDesignerOption(id)),...(!v.staff.length||v.unmappedStaff||v.staff.some(id=>!salesDesignerOption(id))?['unassigned']:[])]),...all.filter(v=>v.projectId&&(!v.day||periodVisit(v,report))).map(v=>assignments.get(v.projectId!)??'unassigned')])].sort();
   if(designer&&!staff.includes(designer))staff.push(designer);
-  const rows=staff.filter(s=>(!designer||s===designer)&&(s===designer||period.some(v=>s==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!projectOwnerOption(id)):v.staff.includes(s)))).map(s=>summarize(s,period.filter(v=>s==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!projectOwnerOption(id)):v.staff.includes(s)),outcomes.filter(o=>o.visit.staff.includes(s))));
+  const rows=staff.filter(s=>(!designer||s===designer)&&(s===designer||period.some(v=>s==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!salesDesignerOption(id)):v.staff.includes(s)))).map(s=>summarize(s,period.filter(v=>s==='unassigned'?v.unmappedStaff>0||!v.staff.length||v.staff.some(id=>!salesDesignerOption(id)):v.staff.includes(s)),outcomes.filter(o=>o.visit.staff.includes(s))));
   const coverage=all.filter(v=>visible(v)||!!v.projectId&&(assignments.get(v.projectId)??'unassigned')===designer).filter(v=>!v.day||periodVisit(v,report)).map(v=>({visit:v,reasons:[...issues.get(v.id)!,...(v.purpose==='initial'||v.purpose==='measurement'||v.purpose==='follow_up'?[]:['purpose']),...(v.day&&v.day<instantDay(report.asOf)&&!v.cancelled&&v.status!=='attended'&&v.status!=='not_attended'?['attendance']:[])]})).filter(v=>v.reasons.length);
   return {rows,total:summarize('team',period,outcomes),coverage,issues,retainedOriginals};
 }

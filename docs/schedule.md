@@ -236,6 +236,12 @@ display labels. Unmapped addresses remain distinct, and the mapping has no staff
 or service-role write surface. Canonical labels come from the existing roster;
 source comparison preserves Outlook's supplied name.
 
+Manual visitor choices, exact-name validation and canonical labels reuse the
+historical sales-designer catalogue, including Steve. Current project-owner
+choices stay unchanged. This records an attendee identity only: imported email
+identities still require corroboration from the immutable Outlook source, and
+staff authentication, correction permissions and revision checks are unchanged.
+
 `ProjectVisitHistory` keeps past linked bookings and separately recorded historical
 visits accessible, including on closed projects. Recording an original visit does
 not reattribute a later measurement booking. Historical records support edits and

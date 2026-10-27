@@ -3,6 +3,16 @@ import { designerFixture } from '@/app/qa/marketing-performance-fixture/designer
 import { designerPerformance,afterVisit,median,siteVisitResults } from './designer';
 import { designerReportSchema } from './designerContract';
 describe('designer attribution and coverage',()=>{
+  it('credits historical Steve visits without treating him as unmapped or changing sales responsibility',()=>{
+    const report=designerFixture();report.visits[0].staff=['steve'];
+    const result=designerPerformance(report,null,'steve');
+    expect(result.total.attended.map(v=>v.id)).toContain(report.visits[0].id);
+    expect(result.issues.get(report.visits[0].id)).not.toContain('identity');
+    expect(siteVisitResults(result.total)).toMatchObject({won:1,eligible:1,closeRate:100,averageOrderValueCents:1850000});
+    expect(designerPerformance(report,null,'unassigned').total.attended.map(v=>v.id)).not.toContain(report.visits[0].id);
+    expect(report.assignments[0].designerKey).toBe('jordan');
+    report.visits[0].staff=['not-a-person'];expect(designerPerformance(report).issues.get(report.visits[0].id)).toContain('identity');
+  });
   it('counts stable explicit attendance with questions while retaining review and stricter acquisition checks',()=>{
     const report=designerFixture();report.visits[0].questions=1;
     const result=designerPerformance(report);

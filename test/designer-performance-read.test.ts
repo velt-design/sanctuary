@@ -56,6 +56,18 @@ beforeAll(async()=>{
     insert into private.site_visit_details(id,project_id,details,basis,created_by,updated_by) values('${id(13)}','${id(1)}','{"purpose":"measurement","status":"attended","timing":{"mode":"unknown","date":null,"time":null,"endTime":null},"staff":[{"name":"Jordan","email":null,"staffId":"jordan"}]}','Synthetic fixture only','${staff}','${staff}');`);
 },30000);
 afterAll(()=>db.close());
+it('retains explicit historical Steve identities through existing SQL and recognises their visit credit',async()=>{
+ await db.exec('begin');try{
+  const person={name:'Steve',email:'',staffId:'steve'};
+  const command={action:'save',id:id(91),revision:0,projectId:id(1),details:{staff:[person],status:'attended',purpose:'measurement',timing:{mode:'unknown',date:null,time:null,endTime:null}},questions:[],basis:'Synthetic historical attendance confirmation.',referenceUrl:null};
+  await db.query('select public.site_visit_history_save($1::jsonb)',[JSON.stringify(command)]);
+  await db.query(`update private.site_visit_details set details=jsonb_set(details,'{staff}',$1::jsonb) where id=$2`,[JSON.stringify([person]),id(11)]);
+  const report=await read();
+  expect(report.visits.find(visit=>visit.id===id(91))).toMatchObject({staff:['steve'],unmappedStaff:0,day:null});
+  const result=designerPerformance(report,null,'steve');expect(result.total.outcomes).toHaveLength(1);expect(result.total.attended).toHaveLength(1);
+  expect(result.total.outcomes[0].visit.staff).toEqual(['steve']);
+ }finally{await db.exec('rollback');}
+});
 it('projects assumption provenance without changing attendance, timing or source guards',async()=>{
  await db.exec('begin');try{
   await db.exec(`update private.site_visit_details set basis='Assumed original purpose: owner approved for report; review later.' where id='${id(11)}'`);

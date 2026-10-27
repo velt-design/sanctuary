@@ -468,6 +468,10 @@ different projects. Assigned-only people without visits do not fill the visitor
 table, while an explicitly selected person remains visible with zero workload.
 The current project-owner filter narrows projects, never supplies visit attribution.
 
+Visitor identity validation uses the existing historical sales-designer catalogue,
+including Steve, consistently with manual visit recording. This does not add Steve
+to current project-owner choices or transfer an assigned sales role to the visitor.
+
 Original-purpose assumptions and provisional responsibility are permitted for
 later review and remain labelled. Approved original-purpose assumptions
 use the existing correction basis prefix `Assumed original purpose:`. They are

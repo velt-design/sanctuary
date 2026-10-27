@@ -11,6 +11,18 @@ const input={action:'save',id,revision:1,projectId:null,linkMode:'manual',kind:'
 const request=(body:unknown=input,origin='https://portal.example.test')=>new Request('https://portal.example.test/api/staff/v1/outlook-site-visits/corrections',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});
 beforeEach(()=>{h.auth.mockReset();h.rpc.mockReset();h.auth.mockResolvedValue({ok:true,supabase:{rpc:h.rpc}});h.rpc.mockResolvedValue({data:{id,staff:[],reviewReasons:[]},error:null});});
 describe('Staff correction boundary',()=>{
+ it('accepts the historical Steve identity for corrections and history without accepting a forged name or email',async()=>{
+  const person={name:'Steve',email:'',staffId:'steve'};
+  const corrected={...input,details:{staff:[person]}};
+  expect((await POST(request(corrected))).status).toBe(200);
+  const historical={action:'save',id,revision:0,projectId:id,details:{staff:[person],status:'attended',purpose:'initial',timing:{mode:'unknown',date:null,time:null,endTime:null}},questions:[],basis:input.basis,referenceUrl:null};
+  expect((await saveHistory(request(historical))).status).toBe(200);
+  expect(h.rpc.mock.calls.map(call=>call[0])).toEqual(['site_visit_correct','site_visit_history_save']);
+  for(const invalid of [{...person,name:'Someone else'},{...person,email:'invented@example.test'}]){
+   expect((await saveHistory(request({...historical,details:{...historical.details,staff:[invalid]}}))).status).toBe(400);
+  }
+  expect(h.rpc.mock.calls.filter(call=>call[0]==='site_visit_history_save')).toHaveLength(1);
+ });
  it('rejects unknown or forged roster identities before a write',async()=>{
   for(const person of [{name:'Unknown',email:'',staffId:'unknown'},{name:'Someone else',email:'',staffId:'jordan'},{name:'Jordan',email:'invented@example.test',staffId:'jordan'},{name:'Jordan',email:''}]){
    expect((await POST(request({...input,details:{staff:[person]}}))).status).toBe(400);
