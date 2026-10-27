@@ -3,7 +3,7 @@ import 'server-only';
 import {activationProofSchema} from './activation-contract';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
-import { canonicalHash, currentOwnerPlan, creativeWireLimit, executionPlanSchema, hash, stateSchema, wireSchema } from './contract';
+import { canonicalHash, currentOwnerPlan, currentCapabilityReview, creativeWireLimit, executionPlanSchema, hash, stateSchema, wireSchema } from './contract';
 import { serializeEffect } from './intent';
 import {creativeHistoryRequestSchema} from './learning-contract';
 import {retentionAdmitSchema,retentionFinishSchema} from './retention-authority';
@@ -45,10 +45,11 @@ export function validateCreativeIntent(payload: unknown, snapshot: unknown, comp
   if(!intent.cleanup && (state.template!==compiledTemplate || state.plan?.landingTemplate!==compiledTemplate))throw new Error('Creative template changed');
   if(state.plan?.purpose==='formal_experiment'&&!intent.cleanup&&process.env.SANCTUARY_META_CREATIVE_PREPARATION_ENABLED!=='true'&&!currentOwnerPlan(state))throw new Error('Formal creative execution unavailable');
   if (!state.plan || state.generation !== intent.generation || state.stopped || (intent.cleanup ? !state.cleanupEnabled : !state.enabled)) throw new Error('Source authority changed');
-  if(Buffer.byteLength(JSON.stringify(intent.intent))>8000&&(!state.plan.ownerReview||intent.intent.kind!=='create_creative'))throw new Error('Creative intent bound');
+  if(Buffer.byteLength(JSON.stringify(intent.intent))>8000&&(!(state.plan.ownerReview||currentCapabilityReview(state))||intent.intent.kind!=='create_creative'))throw new Error('Creative intent bound');
   if (intent.intent.at > Date.now() + 1000 || Date.now() - intent.intent.at > 90000) throw new Error('Stale intent');
   if(intent.intent.kind.startsWith('activate_')!==!!intent.activationProof)throw new Error('Activation proof purpose differs');
   if(intent.activationProof&&(intent.activationProof.planHash!==canonicalHash(state.plan)||intent.activationProof.acceptance!==state.nativeAcceptance?.id||Date.now()-Date.parse(intent.activationProof.observedAt)>60000||Date.parse(intent.activationProof.observedAt)>Date.now()+1000))throw new Error('Activation proof differs');
+  if(state.plan.capabilityReview&&!intent.cleanup&&!currentCapabilityReview(state))throw new Error('Current pending normalization review differs');
   const expected = serializeEffect(state.plan, state, intent.intent.kind, intent.intent.at);
   if (canonicalHash(expected) !== canonicalHash(intent.intent)) throw new Error('Creative intent differs');
   if (intent.cleanup !== ['pause_control', 'pause_challenger', 'end_study'].includes(intent.intent.kind)) throw new Error('Cleanup purpose mismatch');
@@ -60,6 +61,7 @@ export function validateCreativeDispatch(command:string,requestHash:string,snaps
  if(!effect||effect.state!=='prepared'||!state.plan||state.stopped)throw new Error('Dispatch unavailable');
  const cleanup=['pause_control','pause_challenger','end_study'].includes(effect.kind);
  if(cleanup){if(!state.cleanupEnabled)throw new Error('Cleanup stopped');return;}
+ if(state.plan.capabilityReview&&!currentCapabilityReview(state))throw new Error('Current pending normalization review differs');
  if(!state.enabled||state.template!==compiledTemplate||state.plan.landingTemplate!==compiledTemplate)throw new Error('Dispatch template changed');
  if(state.plan.purpose==='formal_experiment'&&process.env.SANCTUARY_META_CREATIVE_PREPARATION_ENABLED!=='true'&&!currentOwnerPlan(state))throw new Error('Formal preparation stopped');
  if(effect.kind.startsWith('activate_')&&(process.env.SANCTUARY_META_CREATIVE_DELIVERY_ENABLED!=='true'&&!currentOwnerPlan(state)||!state.nativeAcceptance))throw new Error('Delivery stopped');
