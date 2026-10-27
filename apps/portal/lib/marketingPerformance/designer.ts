@@ -1,6 +1,7 @@
 import { aucklandDay } from './contract';
 import type { DesignerReport,DesignerVisit,DesignerScope } from './designerContract';
 import { salesDesignerOption } from './salesDesigner';
+import { isQuoteDateEstimate } from '@/lib/siteVisits/visitDateEstimate';
 import { isTestSalesProject,projectSalesExclusion } from './designerSales';
 
 export const visitIssueLabels:Record<string,string>={date:'Date not recorded',future:'Attendance dated in the future',identity:'Attendee identity not verified',link:'Project not linked',purpose:'Original purpose not confirmed',source:'Source or review questions unresolved',originals:'Conflicting original visits',originalIncomplete:'Another original record needs verification',chronology:'Sale predates visit or ordering is unknown'};
@@ -10,7 +11,7 @@ export const assumedOriginalPurpose=(v:DesignerVisit)=>v.purpose==='initial'&&Bo
 const instantDay=(s:string)=>aucklandDay(new Date(s));
 export function afterVisit(at:string|null,v:DesignerVisit,asOf:string):boolean {
   if(!at||Date.parse(at)>Date.parse(asOf)||!v.day)return false;
-  return v.at?Date.parse(at)>=Date.parse(v.at):instantDay(at)>v.day;
+  return v.at?Date.parse(at)>=Date.parse(v.at):isQuoteDateEstimate(v)?instantDay(at)>=v.day:instantDay(at)>v.day;
 }
 function visitIssues(v:DesignerVisit,r:DesignerReport):string[]{
   const issues:string[]=[];
@@ -24,18 +25,23 @@ function visitIssues(v:DesignerVisit,r:DesignerReport):string[]{
 type DesignerOutcome={visit:DesignerVisit;designerKey:string|null;quoted:DesignerScope[];accepted:DesignerScope[];paid:DesignerScope[];undatedQuotes:DesignerScope[];undatedAcceptances:DesignerScope[];quoteDays:number|null;depositDays:number|null};
 export type DesignerSummary={staffId:string;visits:DesignerVisit[];assignedVisits:DesignerVisit[];attended:DesignerVisit[];booked:DesignerVisit[];provisional:DesignerVisit[];notAttended:DesignerVisit[];unrecorded:DesignerVisit[];projects:number;customers:number;outcomes:DesignerOutcome[]};
 const unique=(values:(string|null)[])=>new Set(values.filter(Boolean)).size;
-const days=(at:string|null,v:DesignerVisit,asOf:string)=>afterVisit(at,v,asOf)?v.at?(Date.parse(at!)-Date.parse(v.at))/86400000:(Date.parse(instantDay(at!)+'T00:00:00Z')-Date.parse(v.day!+'T00:00:00Z'))/86400000:null;
+const days=(at:string|null,v:DesignerVisit,asOf:string)=>!isQuoteDateEstimate(v)&&afterVisit(at,v,asOf)?v.at?(Date.parse(at!)-Date.parse(v.at))/86400000:(Date.parse(instantDay(at!)+'T00:00:00Z')-Date.parse(v.day!+'T00:00:00Z'))/86400000:null;
 export function median(values:(number|null)[]){const sorted=values.filter((v):v is number=>v!==null).sort((a,b)=>a-b);return sorted.length?(sorted[Math.floor(sorted.length/2)]+sorted[Math.floor((sorted.length-1)/2)])/2:null;}
 export function siteVisitResults(row:DesignerSummary) {
   const won=row.outcomes.filter(o=>o.accepted.length>0);
-  const dateIncomplete=row.outcomes.some(o=>o.undatedAcceptances.length>0);
+  const pendingAcceptanceDates=row.outcomes.filter(o=>o.undatedAcceptances.length>0).length;
+  const dateIncomplete=pendingAcceptanceDates>0;
   const scopes=won.flatMap(o=>o.accepted);
   const valueIncomplete=scopes.some(s=>s.valueCents===null);
   return {
     won:won.length,
     eligible:row.outcomes.length,
     assumedOriginals:row.outcomes.filter(o=>assumedOriginalPurpose(o.visit)).length,
+    approximateVisits:row.attended.filter(isQuoteDateEstimate).length,
+    approximateOriginals:row.outcomes.filter(o=>isQuoteDateEstimate(o.visit)).length,
     dateIncomplete,
+    pendingAcceptanceDates,
+    confirmedCloseRate:row.outcomes.length?100*won.length/row.outcomes.length:null,
     valueIncomplete,
     closeRate:row.outcomes.length&&!dateIncomplete?100*won.length/row.outcomes.length:null,
     averageOrderValueCents:won.length&&!dateIncomplete&&!valueIncomplete?scopes.reduce((sum,s)=>sum+s.valueCents!,0)/won.length:null,

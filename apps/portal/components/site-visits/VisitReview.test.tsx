@@ -20,6 +20,14 @@ const button=(container:HTMLElement,text:string)=>Array.from(container.querySele
 beforeEach(()=>{h.api.mockReset();client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:0}}});h.api.mockImplementation((path,options)=>Promise.resolve(options?.method==='POST'?{visit:{...visit,revision:2}}:path.includes('/projects?')?{projects:[{id:project,name:'Synthetic project',address:'12 Example Road'}],truncated:false}:{events:[{...visit,revision:2}]}));});
 afterEach(()=>{mounted?.unmount();client.clear();vi.useRealTimers();});
 describe('Visit review recovery',()=>{
+ it('reopens a quote-date estimate with an explicit hint and keeps its provenance when saved',async()=>{
+  const details={staff:[{name:'Steve',staffId:'steve',email:''}],purpose:'initial' as const,status:'attended' as const,timing:{mode:'date' as const,date:'2026-09-07',time:null,endTime:null}};
+  const basis='Assumed original purpose: owner-approved.\nApproximate visit date: 2026-09-07 (original quote date; owner-approved).';
+  const historical:CalendarVisit={...visit,origin:'history',projectId:project,...details,correction:{details,questions:[],basis,referenceUrl:null,sourceChanged:false,updatedAt:'2026-10-20T00:00:00Z'}};
+  const {container}=render(historical);expect(container.textContent).toContain('Approximate date from the original quote.');
+  act(()=>button(container,'Save historical visit').click());await settle();
+  const sent=JSON.parse(h.api.mock.calls.find(call=>call[1]?.method==='POST')![1].body);expect(sent.basis).toBe(basis);expect(sent.details.timing).toEqual(details.timing);expect(sent.questions).toEqual([]);
+ });
  it('offers Steve as a historical visitor, preserves his saved identity and leaves current project ownership unchanged',()=>{
   const person={name:'Steve',email:'',staffId:'steve'};
   expect(visitPeople().filter(p=>p.staffId==='steve')).toEqual([person]);

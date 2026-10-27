@@ -56,6 +56,16 @@ beforeAll(async()=>{
     insert into private.site_visit_details(id,project_id,details,basis,created_by,updated_by) values('${id(13)}','${id(1)}','{"purpose":"measurement","status":"attended","timing":{"mode":"unknown","date":null,"time":null,"endTime":null},"staff":[{"name":"Jordan","email":null,"staffId":"jordan"}]}','Synthetic fixture only','${staff}','${staff}');`);
 },30000);
 afterAll(()=>db.close());
+it('projects date-only quote estimates without invented instants and keeps unresolved questions out of the cohort',async()=>{
+ await db.exec('begin');try{
+  await db.exec(`update private.outlook_calendar_visits set removed=true where id='${id(11)}'`);
+  const basis='Assumed original purpose: owner-approved.\nApproximate visit date: 2026-09-05 (original quote date; owner-approved).';
+  await db.query(`update private.site_visit_details set details=details||$1::jsonb,basis=$2 where id=$3`,[JSON.stringify({purpose:'initial',timing:{mode:'date',date:'2026-09-05',time:null,endTime:null}}),basis,id(13)]);
+  const report=await read();expect(report.visits.find(visit=>visit.id===id(13))).toMatchObject({day:'2026-09-05',at:null,basis,questions:0});
+  const outcome=designerPerformance(report).total.outcomes[0];expect(outcome.quoted).toHaveLength(1);expect(outcome.accepted).toHaveLength(1);expect(outcome.quoteDays).toBeNull();expect(outcome.depositDays).toBeNull();
+  await db.exec(`update private.site_visit_details set questions='["Attendee still unresolved"]' where id='${id(13)}'`);expect(designerPerformance(await read()).total.outcomes).toHaveLength(0);
+ }finally{await db.exec('rollback');}
+});
 it('retains explicit historical Steve identities through existing SQL and recognises their visit credit',async()=>{
  await db.exec('begin');try{
   const person={name:'Steve',email:'',staffId:'steve'};

@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/quote-date-visit-estimates": false,
       "codex/historical-visitor-steve": false,
       "codex/marketing-enquiry-sales-20261027": false,
       "codex/meta-standard-enhancements-20261027": false,

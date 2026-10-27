@@ -456,7 +456,7 @@ values including GST and divides by jobs won. Add-ons are excluded. Close rate
 is jobs won divided by eligible original-visit projects, with the fraction beside
 the percentage; repeat visits add workload, never opportunities. No eligible
 cohort produces an unavailable rate, and no won jobs produces an unavailable
-average. Unknown acceptance dates make the rate and average unavailable; unknown
+average. Unknown acceptance dates make the complete rate and average unavailable; the rate shows a labelled confirmed minimum as described below; unknown
 accepted value makes the average unavailable. Known counts remain qualified.
 
 Jordan approved actual original-visit attendee credit on 27 October: "Use the
@@ -477,6 +477,28 @@ later review and remain labelled. Approved original-purpose assumptions
 use the existing correction basis prefix `Assumed original purpose:`. They are
 marked beside close rates and in record details. This does not invent attendance,
 people or dates: an unknown visit date stays outside dated conversion totals.
+
+Owner-approved original-quote dates may be recorded as approximate historical
+visit dates using existing date-only timing, with no invented clock time. The
+standalone basis line `Approximate visit date: YYYY-MM-DD (original quote date; owner-approved).`
+must occur exactly once and match the effective day on a history record. Preserve
+original-purpose provenance and unresolved questions; only the date question
+resolved by the approved estimate is removed. Date edits without matching
+provenance, timed records and Outlook source rows do not activate this rule.
+`siteVisits/visitDateEstimate` owns this shared interpretation. Visit totals,
+close-rate denominators and evidence identify approximate quote dates. Only these
+marked records allow same-day quote, acceptance and deposit attribution; genuine
+earlier outcomes, conflicts, unknown evidence, tests and excluded sales retain
+their guards. Approximate dates never enter elapsed-time medians. No new schema,
+request, source fact or permission is introduced.
+
+When eligible originals have accepted scopes with unknown acceptance dates, the
+complete close rate remains unknown. A separate confirmed minimum uses only
+dated wins over the same eligible cohort, floored to one decimal place and
+labelled `At least`. The adjacent count identifies jobs needing acceptance dates;
+multiple undated scopes for one original count once. Those scopes do not become
+wins, and the average order value remains unavailable. This is a bound for the
+recorded cohort, not a claim of complete period or business-wide performance.
 
 Relevant sent-quote and retained visit-linked jobs, including lost jobs, receive
 responsibility in the report. Existing saved sales roles always win, even when
@@ -550,7 +572,9 @@ do not count as acquisition. Full NZD scope value includes GST and is separate
 from cash received. Unknown values/dates remain incomplete. Reversed payments
 and changed acceptances can restate outcomes. Open, recorded lost/cancelled and
 accepted-without-deposit states remain distinct. Timing uses ordered known pairs
-with visible denominators; date-only visits require a later Auckland outcome day.
+with visible denominators; ordinary date-only visits require a later Auckland outcome day.
+Explicit quote-date estimates use the count-attribution exception above and are
+excluded from timing medians.
 Exact agreed timestamps permit ordered same-day pairs, without claiming actual
 arrival or visit duration.
 
