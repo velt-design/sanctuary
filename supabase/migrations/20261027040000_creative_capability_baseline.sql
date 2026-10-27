@@ -47,6 +47,22 @@ begin
   execute replace(d,old_text,new_text);
  end loop;
 end$paused_bounds$;
+-- Retained winners preserve only the immutable plan's observed settings. Their
+-- formal test schedule expires; a retained ad must have no inherited schedule.
+do $retained_settings$
+declare d text;old_text text;new_text text;
+begin
+ d:=pg_get_functiondef('public.meta_creative_executor_without_ambiguity(text,uuid,uuid,text,jsonb)'::regprocedure);
+ old_text:=$old$if (intent->'body')-array['name','adset_id','creative','tracking_specs','status']<>'{}'::jsonb or(select count(*)from jsonb_object_keys(intent->'body'))<>5 or$old$;
+ new_text:=$new$if coalesce(x.plan->'adSettings','{}'::jsonb)-array['conversion_domain','adlabels','bid_amount','creative_asset_groups_spec','creative_audience_pairing_persona','creative_automation_spec','display_sequence','engagement_audience','priority','audience_id','dataset_split_specs','ad_schedule_start_time','ad_schedule_end_time']<>'{}'::jsonb
+    or exists(select 1 from jsonb_each(intent->'body')setting where jsonb_typeof(setting.value)<>'string')
+    or (intent->'body')-array['name','adset_id','creative','tracking_specs','status']-array(select setting.key from jsonb_each(coalesce(x.plan->'adSettings','{}'::jsonb))setting where setting.value<>'null'::jsonb and setting.key not in('ad_schedule_start_time','ad_schedule_end_time'))<>'{}'::jsonb
+    or(select count(*)from jsonb_object_keys(intent->'body'))<>5+(select count(*)from jsonb_each(coalesce(x.plan->'adSettings','{}'::jsonb))setting where setting.value<>'null'::jsonb and setting.key not in('ad_schedule_start_time','ad_schedule_end_time'))
+    or exists(select 1 from jsonb_each(coalesce(x.plan->'adSettings','{}'::jsonb))setting where setting.value<>'null'::jsonb and setting.key not in('ad_schedule_start_time','ad_schedule_end_time')and case when jsonb_typeof(setting.value)='string'then intent->'body'->>setting.key is distinct from setting.value#>>'{}'else(intent->'body'->>setting.key)::jsonb is distinct from setting.value end)
+    or$new$;
+ if(length(d)-length(replace(d,old_text,'')))/length(old_text)<>1 then raise exception 'Retained settings predecessor differs';end if;
+ execute replace(d,old_text,new_text);
+end$retained_settings$;
 -- Reuse genuinely created, registered and cleaned-up PAUSED proof objects.
 -- A capability baseline is neither a retained winner nor a new provider effect.
 alter function public.meta_creative_executor_command(text,uuid,uuid,text,jsonb)
