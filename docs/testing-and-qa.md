@@ -14,7 +14,12 @@ of the separately pinned 17.6 plus safeupdate CI substrate.
 
 Focused browser/server tests cover trackingAudience, existing analytics/Meta/Clarity
 and conversion delivery/contact owners, GA4 fixed plans and warnings, SourceOutcomes,
-marketingPerformance and Praxis aggregation. The existing provider-free
+marketingPerformance and Praxis aggregation. Production-event integration fixtures
+declare the canonical production jsdom URL while keeping provider transport mocked.
+The global localhost default and explicit preview/verification denial tests remain.
+Changes to the shared measurement guard also require `npm run test:marketing`,
+including form, delayed-pixel and configurator journeys.
+The existing provider-free
 `/qa/marketing-performance-fixture` exercises cash to underlying receipt to project
 and return. Frozen actual business data and production function definitions belong
 only in the owning private work record, never committed fixtures or screenshots.
