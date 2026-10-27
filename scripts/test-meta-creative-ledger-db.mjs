@@ -182,7 +182,28 @@ try{
   .replace("if baseline is not null then p:=p||jsonb_build_object('retainedBaseline',baseline);end if;","if settings is not null then p:=p||jsonb_build_object('adSettings',settings);end if;if baseline is not null then p:=p||jsonb_build_object('retainedBaseline',baseline);end if;");
  if(!retentionSettingsFixture.includes('settings jsonb default null')||!retentionSettingsFixture.includes("jsonb_build_object('adSettings',settings)"))throw Error('Retained settings fixture predecessor differs');
  const retentionSettingsNative=JSON.parse(sql(retentionSettingsFixture+readFileSync('supabase/tests/meta_creative_retention_ad_settings.sql','utf8')).trim().split('\n').at(-1));
- process.stdout.write(JSON.stringify({normalization:normalizationNative,retentionSettings:retentionSettingsNative,ownerReviewedBundle:ownerNative,authoredLanding:true,steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
+ // Production already includes the current peer's shared audited/verification
+ // test classifiers. Load their real definitions and its exact campaign rewrite
+ // before checking a later reporting migration; do not restore literal-only policy.
+ const testPolicy=readFileSync('supabase/migrations/20261027024135_marketing_enquiry_sales_evidence.sql','utf8').split('-- The view caller')[0];
+ sql('create table if not exists private.project_sales_outcomes(project_id uuid,outcome text);'+testPolicy);
+ sql(`do $peer$declare definition text;begin definition:=pg_get_functiondef('public.sanctuary_campaign_outcomes_without_intake(uuid,text,text,text,uuid,text,uuid)'::regprocedure);
+ definition:=replace(definition,'e.id not in (''f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70''::uuid,''fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118''::uuid)','not private.marketing_test_enquiry(e.id,e.project_id)');
+ definition:=replace(definition,'e.project_id not in (''10c5db1a-602c-4f0c-8193-855b186215bb''::uuid,''9d98b82b-679a-4ecb-8265-9fa05eaa78ef''::uuid)','not private.marketing_test_project(e.project_id)');
+ definition:=replace(definition,'r.id not in (''f3229ccf-6a1a-4e1a-bcf4-2edf5cc85e70''::uuid,''fdb7aa7a-bb3f-4fb3-89ed-ac3483d21118''::uuid)','not private.marketing_test_enquiry(r.id,r.project_id)');execute definition;end$peer$;`);
+ const manualReportingBefore=capacityCatalog(),manualReportingMigration=readFileSync('supabase/migrations/20261027072323_native_creative_reporting.sql','utf8');
+ sql(`begin;${manualReportingMigration.replace(/^begin;/m,'').replace(/^commit;/m,'')}rollback;`);
+ if(JSON.stringify(capacityCatalog())!==JSON.stringify(manualReportingBefore))throw Error('Manual reporting rollback changed public catalogue');
+ sql(manualReportingMigration);const manualReportingAfter=capacityCatalog();
+ const manualChanged=Object.keys(manualReportingBefore.catalog.functions).filter(k=>JSON.stringify(manualReportingBefore.catalog.functions[k])!==JSON.stringify(manualReportingAfter.catalog.functions[k]));
+ if(JSON.stringify(manualChanged.sort())!==JSON.stringify(['meta_creative_reporting_registry()','sanctuary_campaign_outcomes_without_intake(uuid,text,text,text,uuid,text,uuid)'].sort())||JSON.stringify(manualReportingBefore.catalog.tables)!==JSON.stringify(manualReportingAfter.catalog.tables)||JSON.stringify(manualReportingBefore.constraints)!==JSON.stringify(manualReportingAfter.constraints))throw Error('Manual reporting owned public delta differs');
+ for(const key of manualChanged)if(JSON.stringify({...manualReportingBefore.catalog.functions[key],md5:null})!==JSON.stringify({...manualReportingAfter.catalog.functions[key],md5:null}))throw Error('Manual reporting changed existing function access');
+ writeFileSync('.local-evidence/manual-native-reporting-native-delta.private.json',JSON.stringify({before:manualReportingBefore,after:manualReportingAfter,changedFunctions:manualChanged,rollbackIdentical:true}));
+ const manualRaw=JSON.parse(sql(readFileSync('supabase/tests/meta_native_creative_reporting.sql','utf8')).trim().split('\n').at(-1)),{registry,outcomes,...manualReportingNative}=manualRaw;
+ const manualParser=spawnSync(process.execPath,['--require','tsx/cjs','-e',"const c=require('./apps/portal/lib/marketingIntegrations/campaignMonitor/contract.ts'),r=JSON.parse(require('node:fs').readFileSync(0,'utf8'));r.registry.experimental.forEach(v=>c.registeredCreativeAdSchema.parse(v));c.outcomesSchema.parse(r.outcomes);"],{encoding:'utf8',windowsHide:true,input:JSON.stringify({registry,outcomes}),maxBuffer:2e6});
+ if(manualParser.status!==0)throw Error(manualParser.stderr);
+ manualReportingNative.currentPortalContracts=true;
+ process.stdout.write(JSON.stringify({manualReporting:manualReportingNative,normalization:normalizationNative,retentionSettings:retentionSettingsNative,ownerReviewedBundle:ownerNative,authoredLanding:true,steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
 
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);

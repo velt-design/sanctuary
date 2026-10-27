@@ -1,5 +1,17 @@
 ## Standard-enhancements normalization continuation
 
+## Native Meta UI creative reporting candidate
+
+`20261027072323_native_creative_reporting.sql` owns the singleton private/RLS
+`meta_native_creative_reporting_tests` inventory. No application role can read
+or write it directly; Root supplies actual two-ad manual provenance and immutable
+registration/review/publication receipt hashes. Only the existing reporting
+registry and campaign outcomes CTE consume these IDs. Execution, assignments,
+provider capabilities and publishing authority are unchanged. Combined inventory
+is bounded 40 with duplicate/original/owned ID and execution-UUID denials.
+See `marketing-performance.md` for reporting purpose, delivery/window semantics
+and the local-versus-hosted acceptance boundary.
+
 Forward migration `20261027040000_creative_capability_baseline.sql` keeps the
 existing 16k plan/intent, 20k root envelope and 24k signed-wire maxima. Only an
 exact current root-pending review permits the larger unchanged paused story;

@@ -1,5 +1,44 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Native Meta UI test reporting (27 October 2026 candidate)
+
+Forward migration `20261027072323_native_creative_reporting.sql` adds one
+private, RLS-enabled reporting inventory for one native Meta UI creative test.
+Root records two real draft ad IDs, a local reporting UUID, the original acrylic
+video donor, exact existing account/campaign/adset/Page, unchanged destination,
+actual template hash, fixed maximum 14-day display window and private registration
+and independent-review receipt hashes. The UUID is a reporting association, not
+an invented Meta study or Source experiment. The migration inserts no test row.
+Application roles have no table access or write RPC. The initial association does
+not establish publication: delivery remains false until Root records an actual
+publication time and receipt. Identity/history cannot be rewritten or deleted.
+
+The existing version 2 experimental/steady reporting DTO and current reader are
+reused. The manual pair projects control/challenger with reporting purpose
+formal_experiment; manual provenance stays in private inventory, not in fabricated
+execution objects, plans, native acceptance, landing assignments or publisher
+permissions. Provider statuses and spend remain actual independent reads. The
+combined additional inventory stays bounded 40, and collisions with originals,
+Source/steady IDs or Source experiment UUIDs fail closed before outcome joins.
+
+Campaign source coverage now includes the known manual IDs in the existing
+consented enquiry/project/qualification/confirmed-visit/sent-quote/payment and
+scoped correspondence/intake joins. Genuine known late enquiries remain visible;
+these campaign outcomes do not establish a 14-day randomized cohort or winner.
+Primary matched-period evaluation, 72-hour maturity, native allocation, actual
+budget/finite stop and visual/source coverage need separate actual test evidence.
+The declared display window is retained for reporting/Clarity attribution and
+must match the reviewed native test. No provider/model call, customer record
+change, tracking/frontend alteration, offline upload or Velt release is introduced.
+
+`supabase/tests/meta_native_creative_reporting.sql` runs in the existing
+`scripts/test-meta-creative-ledger-db.mjs` disposable PostgreSQL harness. It checks
+RLS/grants, exact two arms, truthful publication, unchanged execution/assignment
+rows, collisions, combined capacity and the existing business/intake joins,
+including known late receipts and unknown/denied-consent records. Local synthetic
+proof is not installed or live delivery acceptance.
+
+
 ## Enquiry source to recorded cash (27 October 2026 candidate)
 
 The existing Sources & outcomes and source/campaign comparison add net recorded
