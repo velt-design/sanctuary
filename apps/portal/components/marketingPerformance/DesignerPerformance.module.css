@@ -8,6 +8,9 @@
 
 .assignment{margin:16px 0;padding:12px;border:1px solid var(--ui-border);border-radius:6px}.assignment p{margin:0 0 8px}.assignment label{display:flex;flex-direction:column;gap:6px;margin:10px 0}.assignment textarea{font:inherit;color:inherit;max-width:100%;padding:8px;border:1px solid var(--ui-border);background:var(--ui-surface);border-radius:4px}.records li .assignmentActions{flex-direction:row;flex-wrap:wrap;gap:8px}
 
+.section > .note { min-height:0!important; }
+.section > .note:empty { display:none; }
+
 .salesSection{border-top:1px solid var(--ui-border);margin-top:28px;padding-top:20px}.salesSection h3{font-family:var(--ui-font-display);font-size:26px;margin:0}.visitTable th:not(:first-child),.visitTable td{width:18%}.visitTable td:last-child{width:6%}.visitTable td button{font-variant-numeric:tabular-nums}.moreHeading{font-size:0}.section .visitTable td button{font-size:26px}.section .visitTable td:last-child button{font-size:12px}.mobileRows>p{font-size:13px}.mobileRow dd button{overflow-wrap:anywhere;text-align:left}.mobileRow:first-child{background:var(--ui-surface-secondary);padding:16px 12px}.mobileRow small{line-height:1.5}
 
 .section .reviewButton{white-space:normal;overflow-wrap:anywhere;max-width:100%;min-height:44px;height:auto;text-align:left;line-height:1.5}

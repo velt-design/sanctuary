@@ -5,7 +5,7 @@ import { SearchFilterBar } from '@/components/ui/foundation/SearchFilterBar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/foundation/FoundationSurfaces';
 import type { CommercialView } from './CommercialTabSurface';
 import styles from './EstimatesListView.module.css';
-import ReadStatus from '@/components/page-state/ReadStatus';
+import ReadStatus from '../ProjectReadFeedback';
 
 export { useCommercialListControls as useEstimatesListControls } from './CommercialTabSurface';
 import type { useCommercialListControls } from './CommercialTabSurface';
@@ -40,10 +40,10 @@ export default function EstimatesListSurface({ query, onQueryChange, evidence, u
     <div className={styles.header}>
       <div><h3 className={styles.title}>Estimates</h3>
         <p className={styles.subtitle}>Working designs · accepted quotes remain the agreement.</p></div>
-      <div className={styles.headerActionSlot}>{evidence?.headerActions}</div>
+      <div className={styles.headerActionSlot}>{evidence?.headerActions}<ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Estimates unavailable' : evidence?.pending || !evidence ? 'Reading estimates…' : 'Estimates current')}
+      tone={unavailable ? 'error' : evidence?.status ? 'warning' : 'neutral'} action={evidence?.statusAction} details={evidence?.status} /></div>
     </div>
-    <ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Estimates unavailable' : evidence?.pending || !evidence ? 'Reading estimates…' : 'Estimates current')}
-      tone={unavailable ? 'error' : evidence?.status ? 'warning' : 'neutral'} action={evidence?.statusAction} details={evidence?.status} />
+
     <SearchFilterBar query={query} onQueryChange={changeQuery}
       queryPlaceholder="Search estimate names or versions" searchId="estimate-search"
       filters={[]} onClearAll={() => changeQuery('')} />

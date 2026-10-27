@@ -1,5 +1,26 @@
 # Schedule
 
+## Calm feedback presentation (27 October 2026 candidate)
+
+The public Schedule frame places its existing routine read/trust feedback beside
+its header controls. Pending/failure share the same Details owner; Retry or
+Refresh schedule stays directly available, with original error, retained-preview
+qualification and request reference in the disclosure. Board keeps its existing
+per-card mutation presentation rather than gaining a global Saved label. Pending
+changes, unsaved/conflict review, scheduling issues and diagnostics remain with
+their existing owners. This is presentation only; commands, trust eligibility,
+optimistic/cache behavior, source lifetimes and permissions are unchanged.
+
+The saved Site Visits agenda places CalendarFreshness beside Refresh Outlook,
+including unknown evidence through the same root/disclosure before adoption.
+Connection state, checked/source dates, overdue/failed qualifiers, Retry and
+visibility/access withdrawal retain their existing contracts. The agenda uses
+available width and naturally sized empty content. Scope/exact-visit notices
+remain meaningful facts; controls and URL/history behavior are unchanged.
+Focused source tests supplement native pending/failure/Retry, first/repeat and
+return checks; they do not prove pixel positions or live Outlook.
+
+
 ## Progressive real interface candidate (22 October 2026)
 
 For ordinary document entry, the Schedule page starts its request-owned seed
@@ -84,7 +105,7 @@ overwrite a newer click. Back restores the scoped URL; modified clicks retain
 normal link behavior. `navRouteMatch.ts` keeps Schedule active in both sidebar
 sizes, with Site Visits selected only on the agenda route.
 The subsequent first-load candidate keeps these controls above changing scope,
-freshness, retry and refresh-result content. A reserved review-count slot and
+scope content. Freshness/retry now share the header controls as described above. A reserved review-count slot and
 bounded attending-select width prevent data arrival from moving later targets;
 counts above 999 display 999+ with the full count in the button's accessible name.
 Source/scope information stays visible immediately below the controls. This is
@@ -745,3 +766,9 @@ the actual Board. Its real empty pending model has no diagnostic counts; the
 disclosure shows Reading or Unavailable until verified diagnostics exist, then
 retains the original genuine counts. It neither invents zero diagnostics nor
 dereferences missing nested debug fields while the initial read is pending.
+
+
+27 October 2026 presentation correction: one existing ReadStatus root now owns Schedule read/trust feedback. Gantt status/live semantics and every original trust label remain with that root and its Details; read failure retains host/error diagnostics and direct Retry, trust failure/staleness retains direct Refresh and request references. Board per-card mutation notices retain their original suppression policy. The existing header search sits between intrinsic title/actions on wide screens; narrow headers always arrange actual feedback/disclosure/recovery before the real view buttons. No horizontal status scrollbar, duplicated global trust label, empty reserve, command or query change is introduced.
+
+
+27 October 2026 loading continuity: adopting refreshed Schedule records updates the Unscheduled count without automatically changing the existing panel choice. Unknown public entry remains collapsed until explicit user input; an already known standalone initial snapshot keeps its original data-derived initial choice. Explicit expand/collapse/open actions remain authoritative. This corrects the observed224px toolbar movement at successful adoption without reserving panel width or changing query/command/trust policy.

@@ -67,6 +67,21 @@ async function settle() {
 }
 
 
+function expectScheduleReadFailure(container: HTMLElement, message: string) {
+  const header = container.querySelector('[data-ui-foundation-consumer="schedule"] header')!;
+  expect(header.textContent).toContain('Schedule data could not load');
+  expect([...header.querySelectorAll('button')].find(button => button.textContent === 'Retry')).toBeDefined();
+  const details = [...header.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Details')!;
+  act(() => { details.focus(); details.click(); });
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog.textContent).toContain(message);
+  expect(dialog.textContent).toContain('Host: fictional');
+  act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.activeElement).toBe(details);
+}
+
+
 let client: QueryClient;
 beforeEach(() => {
   window.history.replaceState(null, '', '/dashboard');
@@ -535,7 +550,7 @@ it('follows a later same-page search URL after the guarded handoff instead of pi
   view.unmount();
 });
 
-it.each([true, false])('keeps the guarded initial unscheduled collapse default for empty=%s', async empty => {
+it.each([true, false])('keeps the pending frame collapse choice through the first genuine read for empty=%s', async empty => {
   window.history.replaceState(null, '', '/staff/schedule?view=board');
   const snapshot = progressiveScheduleSnapshot();
   const read = vi.fn(async () => ({ ...snapshot, unscheduledJobs: empty ? [] : snapshot.unscheduledJobs }));
@@ -547,8 +562,12 @@ it.each([true, false])('keeps the guarded initial unscheduled collapse default f
   onTestFinished(() => view.unmount());
   await settle(); await settle();
   expect(read).toHaveBeenCalledTimes(1);
-  expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.getAttribute('data-collapsed')).toBe(String(empty));
-  expect(view.container.querySelector('[aria-expanded][aria-label$="unscheduled panel"]')?.getAttribute('aria-expanded')).toBe(String(!empty));
+  const panel = view.container.querySelector('aside[aria-label="Unscheduled jobs"]')!;
+  expect(panel.getAttribute('data-collapsed')).toBe('true');
+  expect(view.container.querySelector('[aria-expanded][aria-label$="unscheduled panel"]')?.getAttribute('aria-expanded')).toBe('false');
+  expect(panel.querySelector('h2')?.parentElement?.querySelector('span')?.textContent).toBe(String(empty ? 0 : snapshot.unscheduledJobs.length));
+  if (empty) expect(panel.textContent).toContain('No unscheduled deposit-stage projects');
+  else expect(panel.querySelector('[data-schedule-card-id]')).not.toBeNull();
 });
 
 it('preserves a collapse choice made after private props publish while the genuine Board read is held', async () => {
@@ -578,14 +597,20 @@ it('preserves a collapse choice made after private props publish while the genui
   expect(view.container.querySelector('[data-schedule-card-id]')).not.toBeNull();
   expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')).toBe(panel);
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
-  // A later ready-source click is not a pending preference: a genuine change
-  // to an empty source must still apply the established collapsed default.
+  // Genuine empty records update the count/content without overwriting the
+  // user's explicit panel choice or moving the workspace controls.
   act(() => toggle.click());
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   read.mockResolvedValueOnce({ ...progressiveScheduleSnapshot(), unscheduledJobs: [] });
   await act(async () => { await client.refetchQueries(); });
   await settle();
   expect(read).toHaveBeenCalledTimes(2);
+  expect(view.container.querySelector('aside[aria-label="Unscheduled jobs"]')).toBe(panel);
+  expect(view.container.querySelector('[aria-expanded][aria-label$="unscheduled panel"]')).toBe(toggle);
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(panel?.querySelector('h2')?.parentElement?.querySelector('span')?.textContent).toBe('0');
+  expect(panel?.textContent).toContain('No unscheduled deposit-stage projects');
+  act(() => toggle.click());
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
 });
 
@@ -603,7 +628,7 @@ it('preserves a choice made after an initial unavailable read through the actual
   await settle(); await settle();
   const retry = [...view.container.querySelectorAll('button')].find(button => button.textContent === 'Retry')!;
   expect(retry).toBeDefined();
-  expect(view.container.textContent).toContain('Fictional initial read unavailable');
+  expectScheduleReadFailure(view.container, 'Fictional initial read unavailable');
   expect(view.container.querySelector('[data-schedule-card-id]')).toBeNull();
   const toggle = view.container.querySelector<HTMLButtonElement>('[aria-expanded][aria-label$="unscheduled panel"]')!;
   const panel = view.container.querySelector('aside[aria-label="Unscheduled jobs"]');
@@ -638,7 +663,7 @@ it.each(['pending', 'first-error'] as const)('keeps Gantt View unscheduled jobs 
       <ScheduleClient initialSeedKind="gantt" snapshotLoaders={{ board, gantt }} />
     </PortalGuardedPage>)));
     await settle(); await settle();
-    expect(view.container.textContent).toContain('Fictional Gantt unavailable');
+    expectScheduleReadFailure(view.container, 'Fictional Gantt unavailable');
   }
   const open = [...view.container.querySelectorAll('button')].find(button => button.textContent === 'View unscheduled jobs')!;
   expect(open.disabled).toBe(false);

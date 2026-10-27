@@ -4,8 +4,9 @@ import { useEffect,useState,type ReactNode } from 'react';
 import { visitStamp } from '@/lib/siteVisits/calendarModel';
 import type { VisitSnapshot } from '@/lib/siteVisits/contract';
 import styles from './siteVisits.module.css';
-export default function CalendarFreshness({data,readFailed=false,compact=false,message,action}:{data:VisitSnapshot;readFailed?:boolean;compact?:boolean;message?:string;action?:ReactNode}){
+export default function CalendarFreshness({data,readFailed=false,compact=false,message,action}:{data?:VisitSnapshot;readFailed?:boolean;compact?:boolean;message?:string;action?:ReactNode}){
   const [now,setNow]=useState(()=>Date.now());useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer);},[]);
+  if(!data)return <ReadStatus title={readFailed?'Calendar visit evidence unavailable':'Reading saved calendar visits'} tone={readFailed?'error':'neutral'} action={action} details={<p>{readFailed?'Saved calendar observations could not be read. Retry the current read if your session still has access.':'Reading saved calendar observations. Outlook freshness will be shown when verified.'}</p>}/>;
   const stale=data.lastSuccess&&now-Date.parse(data.lastSuccess)>30*60000;
   const content=<div className={styles.freshness}>
     <span>{data.lastSuccess?`Outlook updated ${visitStamp(data.lastSuccess)}`:'Outlook has not been synced yet'}. New Zealand time.</span>

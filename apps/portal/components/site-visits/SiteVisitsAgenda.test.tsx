@@ -12,7 +12,7 @@ vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(useSyncE
 ))}));
 vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({invalidateQueries:vi.fn()})}));
 vi.mock('./useCalendarVisits',()=>({calendarVisitKey:['test-visits'],useCalendarVisits:h.read}));
-vi.mock('@/components/layout/StaffPageHeader',()=>({default:({title}:{title:string})=><h1>{title}</h1>}));
+vi.mock('@/components/layout/StaffPageHeader',()=>({default:({title,right}:{title:string;right:ReactNode})=><header><h1>{title}</h1>{right}</header>}));
 vi.mock('@/components/ui/foundation',()=>({
   PageLayout:({children}:{children:ReactNode})=><main>{children}</main>,
   Button:({children,...props}:{children:ReactNode})=><button {...props}>{children}</button>,
@@ -76,8 +76,8 @@ describe('Site visit URL and return state',()=>{
     expect(mounted.container.querySelector('[aria-label="Show visits"]')).toBe(group);
     expect(mounted.container.querySelector('select')).toBe(attending);expect(mounted.container.querySelector('input')).toBe(search);
     expect(review.querySelector('span')).toBe(count);expect(count.hasAttribute('data-pending')).toBe(false);
-    expect(context.textContent).toContain('Latest Portal read failed. Showing saved data.');
-    before(search,button('Retry loading saved visits'));act(()=>button('Retry loading saved visits').click());expect(refetch).toHaveBeenCalledOnce();
+    expect(mounted.container.querySelector('[aria-label="Calendar freshness and refresh"]')?.textContent).toContain('Latest Portal read failed. Showing saved data.');
+    before(button('Retry loading saved visits'),group);act(()=>button('Retry loading saved visits').click());expect(refetch).toHaveBeenCalledOnce();
     expect(review.getAttribute('aria-pressed')).toBe('true');
   });
   it('retains one count slot for zero, larger counts and loading without changing later button identity',()=>{

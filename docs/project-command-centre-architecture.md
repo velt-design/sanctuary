@@ -1,5 +1,39 @@
 # Project Operational Command Centre Architecture
 
+## Selected Work desk presentation (27 October 2026 candidate)
+
+Correspondence keeps its refresh control mounted through a pending check, with
+local busy feedback and duplicate activation prevented without retiring focus.
+Existing Query eligibility is unchanged: a still-valid same-owner snapshot may
+remain during explicit recheck; legacy, expired, hidden, denied or failed evidence
+is withdrawn under the existing privacy rules. Necessary withdrawal may temporarily
+clamp the work scroller and is not masked with private text or reserved height.
+The controlled full-page fixture uses a supported one-hour recent snapshot with
+response-time observation and unchanged original message dates. This models the
+transport contract, not live provider activation or authorization.
+
+The owner selected the complete Work desk direction. Its compact project masthead,
+independently scrolling work area, naturally sized work/current-price/customer and
+correspondence surfaces, and useful wide-screen columns supersede the earlier V2
+layout geometry in this document. Existing V2 ranking, permissions, lifecycle,
+commercial truth, current-design source and all mutation owners remain unchanged.
+
+Implementation map: `ProjectPageFrameSurface` and `useProjectWorkspace` own the
+persistent frame/reading-position boundary; `ProjectHeaderSurface` retains global
+search, owner/actions and main tabs. Frame owners pass original read feedback
+directly into that header; the headerless Calculator retains body feedback.
+`ProjectMainTabsSurface` presents the guarded body without duplicating ordinary
+project feedback or relocating it through a DOM lookup. `ProjectOverviewSurface`, `ProjectOverviewLayout`
+and `ProjectOverviewReading` arrange the SAME guarded evidence with natural card
+heights. Complete notes, messages, enquiry and specialist access remain available.
+No synthetic comparison data or domain policy is copied into production.
+
+The full `workdesk=1` project shell fixture composes the production snapshot surface
+and existing private body through controlled publication bindings. Use native tab,
+subtab, detail/Back, pending/error/Retry and narrow/wide journeys to verify geometry;
+unit passes do not establish actual browser stability or production acceptance.
+
+
 The local private-preview candidate keeps preparation owned by the dedicated
 Files domain and existing authenticated-owner QueryClient. Overview contributes
 only the current-project preparation hook; it acquires no Storage client or

@@ -114,11 +114,12 @@ export default function ContactCreateClient() {
             />
           </div>
 
-          <ReadStatus title={error ? "Contact could not be created" : busy ? "Creating contact…" : "Contact details"} tone={error ? "error" : "neutral"} details={error ? <p>{error}</p> : undefined} />
+
 
           <div className={styles.formActions}>
             <Button type="submit" disabled={!canSubmit} loading={busy}>{busy ? 'Creating...' : 'Create Contact'}</Button>
             <PortalIndexLink variant="secondary" href="/staff/contacts" disabled={busy}>Cancel</PortalIndexLink>
+            <ReadStatus title={error ? "Contact could not be created" : busy ? "Creating contact…" : "Contact details"} tone={error ? "error" : "neutral"} details={error ? <p>{error}</p> : undefined} />
           </div>
         </form>
 

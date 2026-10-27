@@ -1,6 +1,6 @@
 'use client';
 import {useCallback,useMemo,useRef,useState,type ReactNode} from 'react';
-import ReadStatus from '@/components/page-state/ReadStatus';
+import ReadStatus from '../ProjectReadFeedback';
 import readingStyles from './overview/ProjectOverviewReading.module.css';
 import { ButtonLink } from '@/components/ui/foundation/FoundationControls';
 import { Card } from '@/components/ui/foundation/FoundationSurfaces';
@@ -24,11 +24,10 @@ export type OverviewBinding={controls:OverviewControls;publish:(value:ProjectOve
 export default function ProjectOverviewSurface({evidence,controls,onFiles,unavailable=false}:{evidence:ProjectOverviewEvidence|null;controls:OverviewControls;onFiles:()=>void;unavailable?:boolean}) {
 const pending = (label:string) => <p role="status">{unavailable ? `${label} unavailable` : `Reading ${label.toLowerCase()}…`}</p>;
 return <div className={readingStyles.surface} data-project-overview="true"><ProjectOverviewLayout state={evidence?.state??(unavailable?'unavailable':'pending')}
- exception={<ReadStatus title={unavailable ? 'Project Overview unavailable' : !evidence || evidence.state === 'pending' ? 'Reading Project Overview' : evidence.state === 'stale' ? 'Saved Overview · latest refresh failed' : evidence.state === 'refreshing' ? 'Refreshing Project Overview' : evidence.state === 'ready' ? 'Project Overview current' : 'Project Overview needs attention'}
- tone={unavailable || evidence?.state === 'failed' ? 'error' : evidence?.state === 'stale' || evidence?.state === 'model-mismatch' ? 'warning' : 'neutral'} details={evidence?.exception} onRetry={evidence?.retry}/>}
+
  orientation={<OverviewReadingCard title="Project details" label="Project orientation" kind="orientation">{evidence?.orientation??pending('Project details')}</OverviewReadingCard>}
  projectWork={<ProjectWorkFilesSurface className={workStyles.card} selectedPanel={controls.panel} selectPanel={controls.setPanel} onFiles={onFiles} positionLabel={evidence?.positionLabel}
- notice={evidence?.workNotice??<ReadStatus title={unavailable?'Project work unavailable':'Reading project work state'}/>}
+ notice={<><ReadStatus title={unavailable ? 'Project Overview unavailable' : !evidence || evidence.state === 'pending' ? 'Reading Project Overview' : evidence.state === 'stale' ? 'Saved Overview · latest refresh failed' : evidence.state === 'refreshing' ? 'Refreshing Project Overview' : evidence.state === 'ready' ? 'Project Overview current' : 'Project Overview needs attention'} tone={unavailable || evidence?.state === 'failed' ? 'error' : evidence?.state === 'stale' || evidence?.state === 'model-mismatch' ? 'warning' : 'neutral'} details={evidence?.exception} onRetry={evidence?.retry}/>{evidence?.workNotice}</>}
  enquiry={evidence?.enquiry??pending('Original enquiry')}>
  {evidence?.work??<section data-project-work-section="true" data-project-work-model="pending">{pending('Project work')}</section>}</ProjectWorkFilesSurface>}
  commercial={<><OverviewReadingCard title="Current price" label="Current design and commercial summary" kind="commercial">{evidence?.commercial.content??pending('Commercial state')}</OverviewReadingCard>
@@ -58,6 +57,7 @@ export function ProjectWorkFilesSurface({ children, enquiry, className, position
       eyebrow="Project position"
       action={
         <div className={styles.actions}>
+        <div className={readingStyles.workStatus}>{notice}</div>
         <ButtonLink href={`?tab=files`} prefetch={false} variant="quiet" size="small" onClick={(event) => { event.preventDefault(); onFiles(); }}>Open project files</ButtonLink>
         <TabNavigation
           className={styles.tabs}
@@ -73,7 +73,6 @@ export function ProjectWorkFilesSurface({ children, enquiry, className, position
       }
       padding="compact"
     >
-      <div className={readingStyles.workStatus}>{notice}</div>
       <div className={readingStyles.reading} data-overview-reading="work" tabIndex={0} aria-label="Project Work reading area">
       {selectedPanel === "enquiry" ? (
         <div id="project-enquiry-panel" role="tabpanel" aria-label="Original enquiry">

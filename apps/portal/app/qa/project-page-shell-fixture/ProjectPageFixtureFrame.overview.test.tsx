@@ -24,7 +24,10 @@ it('keeps genuine public Overview owners while pending has no private producer, 
  view=renderIntoDocument(tree());const labels=['Project Work','Project orientation','Payment position','Site visits','Customer conversations'];
  const owners=labels.map(label=>view!.container.querySelector(`[aria-label="${label}"]`));expect(owners.every(Boolean)).toBe(true);expect(state.api).not.toHaveBeenCalled();
  const frame=view.container.querySelector('[data-project-page-frame]');
- state.phase='summary';view.rerender(tree());await vi.waitFor(async()=>{await act(async()=>{await vi.dynamicImportSettled();});expect(view!.container.textContent).toContain('Confirm the installation week with Aroha');});
+ state.phase='summary';view.rerender(tree());
+ // Cold real lazy transforms are setup, after pending's zero-read assertion.
+ for(let depth=0;depth<3;depth++)await act(async()=>{await vi.dynamicImportSettled();});
+ await vi.waitFor(async()=>{await act(async()=>{});expect(view!.container.textContent).toContain('Confirm the installation week with Aroha');});
  expect(state.api.mock.calls.some(([path])=>path.includes('command-centre'))).toBe(true);
  for(const phase of ['fresh','refresh-failed','pending']){state.phase=phase;view.rerender(tree());await act(async()=>{});labels.forEach((label,index)=>expect(view!.container.querySelector(`[aria-label="${label}"]`)).toBe(owners[index]));expect(view.container.querySelector('[data-project-page-frame]')).toBe(frame);}
  expect(view.container.textContent).not.toContain('Confirm the installation week with Aroha');expect(view.container.textContent).not.toContain('Recorded payments$');

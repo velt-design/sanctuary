@@ -1,5 +1,22 @@
 # Projects, Contacts, Estimates, And Calculator
 
+## Active index/contact presentation, 27 October 2026
+
+Projects and Contacts keep their existing public tables, filter identity, source
+reads, actions and persistent pager. Their CSS removes the 320px list floor,
+72px header minimum and separate 44px/64px mobile status tracks. Feedback and
+pager share a natural header, with native narrow overflow for exceptional
+recovery/completeness controls. Contacts now uses the existing full-width page
+option. Contact detail keeps the complete current name in its same focusable
+heading with native horizontal access and title disclosure, using existing
+PageHeader props. No draft/local-first, linked-project or permission policy changes.
+Contact detail now docks read and mutation feedback beside route/editing actions.
+Create Contact/Project feedback follows Submit/Cancel; safe retry, terminal review
+and duplicate-contact selection remain unchanged. Form fields use natural height.
+Installer payout uses a top-aligned readable 850px page instead of vertical auto
+margins; financial entry, agreement and print owners are unchanged.
+
+
 
 The seven-route source candidate extracts ProjectsIndexFrame and a public URL view controller. Its same Find/table remains through guarded adoption; first adopted queries use early filters even if Flight restores its original entry URL. Per-user saved anchors remain inside the guarded reader and yield to early explicit filters. Projects API intent prefetch is removed while guarded route preparation remains. Record editors, mutation/cache outcomes, role checks and project-return semantics stay in the existing private owner. Fresh compiled/CI verification remains required.
 Projects row contact/attention drawers and the delivery modal mount only while their existing open state is true. The same trigger and private controller retain current record, draft, command and busy/error state; original shared overlay focus/dismissal behavior remains. This removes closed overlay rendering work, without establishing a measured long-task improvement.

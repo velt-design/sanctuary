@@ -1,5 +1,30 @@
 # Project SharePoint files
 
+## Work desk frame integration (27 October 2026 candidate)
+
+The selected project Work desk frame now owns the available viewport and masthead
+position for every project tab. `ProjectFilesWorkspace` fills that actual work
+surface; it no longer resets document scroll or imposes a minimum-height recovery
+workaround. Files folder/list/preview scroll owners, navigation restoration,
+source/enquiry choice, read leases/preparation, download limits, source-failure
+hiding, grants and provider/auth contracts remain unchanged. Status/recovery sits
+beside existing Files controls rather than reserving a status lane.
+
+The complete `workdesk=1&commercial=1` shell fixture uses real Files controllers
+with finite fictional roots/documents and a fixture-flag-guarded original route.
+The exact one-ID original route passes middleware without a staff rewrite; the
+handler still requires the fixture flag, serves only known fictional records and
+returns 404 for unknown IDs. Sibling/deeper routes and real staff/API access retain
+their original auth ownership. This is local fixture transport evidence, not a
+connected-provider claim.
+Its isolated synthetic staff context permits the actual role-gated explorer to
+run; finite local preview batches use the real decoder and lease owner. This
+context supplies no live credentials and changes no production access decision.
+It covers PDF rendering, folders, finding, empty/error/Retry, source/enquiry access
+and original download using synthetic bytes. This is not new live SharePoint,
+private-cache activation, actual provider transport or production acceptance.
+
+
 Status: Dedicated Files, protected recent-preview verification and the Sydney recovery are live. Recovery observed representative photo/PDF decoded bytes in about 1.98/1.43 seconds; the owner's almost-instant outcome remains open. The current local candidate adds private prepared photo/PDF storage, bounded recipient preloading and active-folder reconciliation, approved on 23 October. It has not activated Storage, schema, configuration or a hosted worker. Native database/Storage and real-source acceptance remain required. Originals, bindings, grants, provisioning and staff changeover retain their existing contracts.
 
 ## Outcome and ownership

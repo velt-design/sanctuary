@@ -4,7 +4,7 @@ import { SearchFilterBar } from '@/components/ui/foundation/SearchFilterBar';
 import { useCommercialListControls } from './CommercialTabSurface';
 import type { EstimatesListBinding } from './EstimatesListSurface';
 import styles from './QuotesTab.module.css';
-import ReadStatus from '@/components/page-state/ReadStatus';
+import ReadStatus from '../ProjectReadFeedback';
 import { Card } from '@/components/ui/foundation/FoundationSurfaces';
 export function useQuotesListControls(projectId: string) {
   const query = useCommercialListControls(projectId);
@@ -32,11 +32,11 @@ export default function QuotesListSurface({ query, onQueryChange, showHistory, o
   return <div className={styles.wrapper} role="region" aria-label="Quotes" data-quotes-view="list">
     <div className={styles.header}><div><h3 className={styles.title}>Quotes</h3>
       <p className={styles.subtitle}>{evidence?.closed ? 'Recorded agreements and quote history' : 'Agreed scope first'} · all amounts NZD inc GST</p></div>
-      <div className={styles.listHeaderActionSlot}>{evidence?.headerActions}</div></div>
-    <ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Quotes unavailable' : evidence?.pending || !evidence ? 'Reading quotes…' : 'Quotes current')}
+      <div className={styles.listHeaderActionSlot}>{evidence?.headerActions}<ReadStatus title={evidence?.statusTitle ?? (unavailable ? 'Quotes unavailable' : evidence?.pending || !evidence ? 'Reading quotes…' : 'Quotes current')}
       tone={unavailable ? 'error' : evidence?.statusTitle ? 'warning' : 'neutral'}
       action={evidence?.statusAction}
-      details={evidence?.status} />
+      details={evidence?.status} /></div></div>
+
     <div className={styles.acceptedWork} role="region" aria-label="Accepted work" tabIndex={0}>
       {evidence?.hasAccepted && !unavailable ? evidence.accepted : <><Card title="Accepted work" padding="compact" headingLevel={4}><p role={!unavailable && (!evidence || evidence.pending) ? 'status' : undefined}>{unavailable || evidence?.statusTitle ? 'Accepted work unavailable. Retry the quote read.' : !evidence || evidence.pending ? 'Reading accepted work…' : 'No accepted work recorded.'}</p></Card></>}
     </div>

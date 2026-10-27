@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/foundation/FoundationSurfaces";
 import ProjectCurrentStatusBadge from "../ProjectCurrentStatusBadge";
 import styles from "./ProjectPage.module.css";
 import { projectLocation } from '@/lib/projects/projectLocation';
+import ProjectReadFeedback from './ProjectReadFeedback';
 
 export default function ProjectHeaderSurface({
   project,
@@ -25,7 +26,7 @@ export default function ProjectHeaderSurface({
   onTabSelect,
   privateContentReady = true,
   searchReader,
-  ownerControl, privateActions, onTabIntent, deferHistory, search, actions,
+  ownerControl, privateActions, onTabIntent, deferHistory, search, actions, statusPanel,
 }: {
   project: ProjectPageSnapshot["project"] | null;
   projectId?: string;
@@ -44,6 +45,7 @@ export default function ProjectHeaderSurface({
   deferHistory?: boolean;
   search?: ReactNode; actions?: ReactNode;
   ownerControl?: ReactNode; privateActions?: ReactNode; onTabIntent?: (tab: import("@/lib/projects/projectTabs").ProjectNavigationTabKey) => void;
+  statusPanel?: ReactNode;
 }) {
   const metadataPending = snapshotState === "pending" || snapshotState === "summary";
   const subtitle = project ? `${project.contactName || 'Customer not recorded'} · ${projectLocation(project)}` : metadataPending ? 'Reading project details' : 'Project details unavailable';
@@ -78,7 +80,7 @@ export default function ProjectHeaderSurface({
           right={actions ?? <ProjectHeaderActions project={project} projectId={projectId} disabled={readOnly} privateContentReady={privateContentReady} privateActions={privateActions} />}
         />
       </div>
-      <div data-project-header-row="tabs">
+      <div className={styles.navigationRow} data-project-header-row="tabs">
         <ProjectTabNavigation
           onIntent={onTabIntent}
           deferHistory={deferHistory}
@@ -90,6 +92,7 @@ export default function ProjectHeaderSurface({
           optimisticTab={optimisticTab}
           onTabSelect={onTabSelect}
         />
+        <div className={styles.feedbackDock}>{statusPanel ?? <ProjectReadFeedback title={snapshotState==='unavailable'?'Project unavailable':!privateContentReady?'Reading project…':'Project current'} tone={snapshotState==='unavailable'?'error':'neutral'}/>}</div>
       </div>
     </Card>
   );

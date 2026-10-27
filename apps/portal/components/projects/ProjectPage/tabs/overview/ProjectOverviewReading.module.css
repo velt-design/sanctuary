@@ -1,20 +1,7 @@
 .surface { container-type: inline-size; }
-.card { min-width: 0; container-type: inline-size; }
-.card > header { height: 64px; box-sizing: border-box; }
-.reading { height: 360px; overflow: auto; scrollbar-gutter: stable; overflow-wrap: anywhere; min-width: 0; }
+.card { min-width: 0; container-type: inline-size; align-self: start; }
+.card > header { height: auto; }
+.reading { min-width: 0; height: auto; overflow: visible; overflow-wrap: anywhere; }
 .reading:focus-visible, .history:focus-visible { outline: 2px solid var(--ui-focus-colour); outline-offset: -2px; }
-.reading[data-overview-reading="commercial"] { height: 464px; }
-.reading[data-overview-reading="work"] { height: 400px; }
-.reading[data-overview-reading="payment"] { height: 352px; }
-.reading[data-overview-reading="visits"] { height: 288px; }
-.reading[data-overview-reading="emails"] { height: 440px; }
-.workStatus { height: 44px; min-width: 0; }
+.workStatus { display: inline-flex; align-items: center; min-width: 0; }
 .history { min-width: 0; overflow: visible; }
-@media (max-width: 720px) {
- .reading[data-overview-reading="commercial"] { height: 544px; }
- .reading[data-overview-reading="orientation"] { height: 440px; }
- .reading[data-overview-reading="payment"] { height: 400px; }
- .reading[data-overview-reading="work"] { height: 576px; }
- .reading[data-overview-reading="visits"] { height: 352px; }
- .reading[data-overview-reading="emails"] { height: 464px; }
-}

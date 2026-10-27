@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
@@ -56,8 +55,7 @@ import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
 import { invalidateProjectsIndexCaches } from '@/lib/queries/projectCache';
 import PaymentReconciliationDialogs from './PaymentReconciliationDialogs';
 import { useProjectCommercialContext } from '../ProjectCommercialContext';
-
-const InvoiceArtifactPreviewDialog = dynamic(() => import('./InvoiceArtifactPreviewDialog'));
+import InvoicePreviewEntry from './InvoicePreviewEntry';
 
 function formatMoneyFromCents(value: number): string {
   if (!Number.isFinite(value)) return '-';
@@ -549,7 +547,7 @@ export default function InvoicesTab({ projectId, listSurface }: { projectId: str
     dialogs: <>
 
       {!accessEnded&&previewInvoice ? (
-        <InvoiceArtifactPreviewDialog
+        <InvoicePreviewEntry
           invoiceId={previewInvoice.id}
           invoiceRef={previewInvoice.invoiceRef}
           onClose={() => setPreviewInvoice(null)}

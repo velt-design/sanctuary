@@ -304,11 +304,11 @@ export default function ImportsClient() {
               </table>
             </div>
             {sources.length ? (
-              <p className={`${styles.note} ${styles.noteSpaced}`}>
+              <p className={`${styles.muted} ${styles.noteSpaced}`}>
                 Imports are idempotent: records are upserted by id where possible.
               </p>
             ) : (
-              <p className={styles.note}>Select one or more JSON files to preview and import.</p>
+              <p className={styles.muted}>Select one or more JSON files to preview and import.</p>
             )}
           </div>
         </section>

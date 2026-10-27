@@ -36,8 +36,8 @@ export default function CommercialTabSurface({ view, calculatorWorkspace, onSele
       <TabNavigation items={[{ key: 'estimates', label: 'Estimates' }, { key: 'quotes', label: 'Quotes' }, { key: 'invoices', label: 'Invoices' }]}
         selectedKey={view} onSelect={onSelect} onIntent={onIntent} ariaLabel="Commercial sections" />
       {quoteViews}
+      <div className={styles.noticeSlot}>{notice}</div>
     </div> : null}
-    <div className={styles.noticeSlot}>{notice}</div>
     {children}
   </div>;
 }

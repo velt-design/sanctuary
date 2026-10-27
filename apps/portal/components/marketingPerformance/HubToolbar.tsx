@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { SlidersHorizontal, Bookmark, X } from 'lucide-react';
 import { Button, Select } from '@/components/ui/foundation/FoundationControls';
 import { Drawer } from './MarketingDrawer';
@@ -9,7 +9,7 @@ import { evidenceOptions, type HubFilters as Filters, type HubReport } from '@/l
 import HubFilters from './HubFilters';
 import styles from './MarketingPerformance.module.css';
 
-export default function HubToolbar({filters,apply,hub}:{filters:Filters;apply:(f:Filters)=>void;hub:HubReport|null}) {
+export default function HubToolbar({filters,apply,hub,feedback}:{filters:Filters;apply:(f:Filters)=>void;hub:HubReport|null;feedback?:ReactNode}) {
   const [open,setOpen]=useState(false),[draft,setDraft]=useState(filters),[validation,setValidation]=useState(''),[savedOnly,setSavedOnly]=useState(false);
   const edit=(saved=false)=>{setSavedOnly(saved);setDraft(filters);setValidation('');setOpen(true);};
   const labels:Record<string,string>={source:'Source',campaign:'Campaign',owner:'Owner',stage:'Stage',state:'State',evidence:'Evidence',age:'Open age'};
@@ -23,7 +23,7 @@ export default function HubToolbar({filters,apply,hub}:{filters:Filters;apply:(f
       </Select>
       <Button variant="quiet" className={styles.dateLabel} onClick={()=>edit()}>{new Date(filters.start+'T12:00:00Z').toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'})} – {new Date(filters.end+'T12:00:00Z').toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'})}</Button>
       {active.length>0&&<div className={styles.filterChips} aria-label="Applied filters">{active.map(key=><Button variant="quiet" key={key} onClick={()=>apply({...filters,[key]:key==='evidence'?'all':''})} aria-label={`Remove ${labels[key]} filter`}>{labels[key]}: {key==='evidence'?evidenceOptions.find(e=>e[0]===filters.evidence)?.[1]:String(filters[key as keyof Filters]).replaceAll('_',' ')}<X size={13} aria-hidden="true"/></Button>)}</div>}
-      <div className={styles.toolbarActions}><Button variant="secondary" onClick={()=>edit()}><SlidersHorizontal size={16} aria-hidden="true"/>Filters{active.length?` · ${active.length}`:''}</Button><Button variant="quiet" onClick={()=>edit(true)}><Bookmark size={16} aria-hidden="true"/>Saved views</Button></div>
+      <div className={styles.toolbarActions}>{feedback}<Button variant="secondary" onClick={()=>edit()}><SlidersHorizontal size={16} aria-hidden="true"/>Filters{active.length?` · ${active.length}`:''}</Button><Button variant="quiet" onClick={()=>edit(true)}><Bookmark size={16} aria-hidden="true"/>Saved views</Button></div>
     </div>
     <Drawer title={savedOnly?"Saved views":"Filters"} open={open} onClose={()=>setOpen(false)}>
       <div className={styles.filterDrawer}><HubFilters draft={draft} setDraft={setDraft} apply={commit} hub={hub} validation={validation} savedOnly={savedOnly}/></div>

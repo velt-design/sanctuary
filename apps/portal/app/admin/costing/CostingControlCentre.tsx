@@ -485,6 +485,7 @@ export default function CostingControlCentre({ initialOverview,initialOverviewRe
             audited version for future estimates.
           </p>
         </div>
+        <div className={styles.headerActions}>
         {latestDraft ? (
           <button
             className={styles.button}
@@ -499,27 +500,6 @@ export default function CostingControlCentre({ initialOverview,initialOverviewRe
             {overview?'Create first draft':overviewPending?'Reading overview…':'Pricing unavailable'}
           </button>
         )}
-      </header>
-
-      <CostingWorkflow
-        currentStep={workflowStep}
-        hasEditor={Boolean(editor)}
-        canPublish={Boolean(editor && !readOnly)}
-        onOverview={goToOverview}
-        onEdit={() => setSection('materials')}
-        onReview={reviewImpact}
-        onPublish={() => setSection('publish')}
-        busy={busy}
-      />
-
-      <CostingStatusSummary
-        currentVersion={currentVersion}
-        latestDraft={latestDraft}
-        readState={overview?'ready':overviewPending?'pending':'unavailable'}
-        selectedVersion={editor?.version ?? null}
-        dirty={dirty}
-      />
-
       <ReadStatus title={overviewError ? 'Pricing overview unavailable' : error ? 'Pricing change could not be completed' : issues.length ? `${issues.length} pricing values need review` : message || (overview ? 'Pricing current' : overviewPending ? 'Reading pricing overview…' : 'Pricing overview unavailable')}
         tone={overviewError || error || issues.length || !overview && !overviewPending ? 'error' : 'neutral'}
         action={overviewError ? <button type="button" disabled={overviewPending} onClick={()=>{setOverviewPending(true);setOverviewError('');void refreshOverview().catch(()=>setOverviewError('Pricing configuration overview could not be loaded. Retry.')).finally(()=>setOverviewPending(false));}}>Retry overview</button> : undefined}
@@ -553,6 +533,29 @@ export default function CostingControlCentre({ initialOverview,initialOverviewRe
         </div>
       ) : null}
         </> : undefined} />
+        </div>
+      </header>
+
+      <CostingWorkflow
+        currentStep={workflowStep}
+        hasEditor={Boolean(editor)}
+        canPublish={Boolean(editor && !readOnly)}
+        onOverview={goToOverview}
+        onEdit={() => setSection('materials')}
+        onReview={reviewImpact}
+        onPublish={() => setSection('publish')}
+        busy={busy}
+      />
+
+      <CostingStatusSummary
+        currentVersion={currentVersion}
+        latestDraft={latestDraft}
+        readState={overview?'ready':overviewPending?'pending':'unavailable'}
+        selectedVersion={editor?.version ?? null}
+        dirty={dirty}
+      />
+
+
 
       {draftDialog ? (
         <CostingDraftDialog

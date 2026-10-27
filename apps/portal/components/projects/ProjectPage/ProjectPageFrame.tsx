@@ -47,7 +47,7 @@ export default function ProjectPageFrame({
   const projectId = snapshot?.project.id ?? overviewProjectId(routeProjectId);
   const overviewReads = useOptionalProjectOverviewReads(host, projectId);
   const projectWork = snapshot ? currentProjectWork(snapshot, overviewReads?.commandQuery.data) : undefined;
-  return <ProjectPageFrameSurface calculatorWorkspace={calculatorWorkspace} header={<ProjectHeader
+  return <ProjectPageFrameSurface projectId={projectId} selectedTab={optimisticTab??undefined} calculatorWorkspace={calculatorWorkspace} header={<ProjectHeader
             privateContentReady={privateContentReady}
             searchReader={searchReader}
             project={snapshot?.project ?? null}
@@ -62,6 +62,7 @@ export default function ProjectPageFrame({
             tabAvailabilityReady={snapshotContentReady}
             optimisticTab={optimisticTab}
             onTabSelect={onTabSelect}
+            statusPanel={statusPanel}
           />}>
 <ProjectCommercialProvider projectId={projectId} work={projectWork} ready={!readOnly && Boolean(snapshot) && snapshotState === 'fresh' && snapshotContentReady && (snapshot?.workModel === 'legacy' || Boolean(projectWork))}>
         <ProjectPageShell

@@ -5,6 +5,7 @@ import { coerceProjectTab } from '@/lib/projects/projectTabs';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import FixtureLocalFirstBoundary from '../projects-index-mutation-fixture/FixtureLocalFirstBoundary';
 import CommercialClarityBoundary from './CommercialClarityBoundary';
+import { workdeskProjectWork } from './workdeskProjectWork';
 
 function arePortalQaFixturesEnabled(): boolean {
   return process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() === '1';
@@ -42,6 +43,7 @@ export default async function ProjectPageShellFixture({
     fromEstimateId?: string;
     newDesign?: string;
     commercial?: string;
+    workdesk?: string;
   }>;
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
@@ -49,8 +51,8 @@ export default async function ProjectPageShellFixture({
   // Keep long-name shell regression coverage separate from the coherent
   // accepted-agreement example used for the commercial presentation preview.
   const snapshot: ProjectPageSnapshot = params.commercial === '1'
-    ? { ...v2Snapshot, project: { ...v2Snapshot.project,
-        name: 'Sample project - Takapuna outdoor living', stage: 'deposit', contactName: 'Sample customer',
+    ? { ...v2Snapshot, projectWork: workdeskProjectWork(), project: { ...v2Snapshot.project,
+        name: 'Sample project - Takapuna outdoor living', stage: 'deposit', contactName: 'Sample customer', contactEmail:'customer@example.invalid',quoteRef:'Q-CLARITY',
       }, pipeline: { stage: 'deposit' } }
     : v2Snapshot;
   const tab = coerceProjectTab(params.tab, snapshot.project.hasJobPacks ?? false);
@@ -63,12 +65,12 @@ export default async function ProjectPageShellFixture({
   />;
   return (
     <main
-      className={`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ''}`}
-      style={params.commercial === '1' ? { padding: '24px', maxWidth: '1600px', margin: '0 auto' } : undefined}
+      className={params.workdesk==='1'?undefined:`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ''}`}
+      style={params.commercial === '1'&&params.workdesk!=='1' ? { padding: '24px', maxWidth: '1600px', margin: '0 auto' } : undefined}
       data-portal-qa-fixture="project-page-shell"
       data-project-work-fixture-model={snapshot.workModel}
     >
-      {params.commercial === '1' ? <p>Sample project · no live data. Explore Commercial and Job Packs. Server actions are unavailable in this preview.</p> : null}
+      {params.commercial === '1'&&params.workdesk!=='1' ? <p>Sample project · no live data. Explore Commercial and Job Packs. Server actions are unavailable in this preview.</p> : null}
       <FixtureLocalFirstBoundary>
         {params.commercial === '1' ? <CommercialClarityBoundary>{frame}</CommercialClarityBoundary> : frame}
       </FixtureLocalFirstBoundary>

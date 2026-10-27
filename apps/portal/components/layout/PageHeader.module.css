@@ -30,7 +30,6 @@
 .variantDetail .title { font-size: var(--ui-font-size-detail-title); line-height: var(--ui-line-height-heading); letter-spacing: 0; }
 .actionDisabled { opacity: 0.48; pointer-events: none; }
 .primarySlot { min-inline-size:124px; min-block-size:36px; display:flex; align-items:center; }
-:global([data-portal-sidebar-mode='pinned']) .variantDetail .title { min-height:2.2em; max-height:2.2em; line-height:1.1; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
 @media(max-width:767px),(pointer:coarse) { .primarySlot { min-block-size:44px; } }
 
 @container (max-width: 960px) {

@@ -20,6 +20,9 @@ export function useCommercialListState<T>(projectId: string, section: string, in
 export function useCommercialListScroll(projectId: string, section: string, ready: boolean, restore = true) {
   const client = useOptionalPortalQueryClient();
   useEffect(() => {
+    // The persistent project frame now restores every view before data adoption.
+    // Standalone commercial consumers retain their original document owner.
+    if (document.querySelector('[data-project-workspace-scroll="true"]')) return;
     if (!ready || !client) return;
     const key = ['commercialListView', projectId, `${section}-scroll`];
     const saved = client.getQueryData<number>(key);

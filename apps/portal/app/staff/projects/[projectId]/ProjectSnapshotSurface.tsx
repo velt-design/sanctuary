@@ -15,7 +15,7 @@ import ProjectHeaderSurface from '@/components/projects/ProjectPage/ProjectHeade
 import ProjectPageShellSurface from '@/components/projects/ProjectPage/ProjectPageShellSurface';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationDataState';
 import { Button } from '@/components/ui/foundation/FoundationControls';
-import ReadStatus from '@/components/page-state/ReadStatus';
+import ReadStatus from '@/components/projects/ProjectPage/ProjectReadFeedback';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { ProjectOverviewReadsProvider, overviewProjectId } from '@/components/projects/ProjectPage/ProjectOverviewReadContext';
 import type { useProjectOverviewReads } from '@/components/projects/ProjectPage/ProjectOverviewReads';
@@ -53,12 +53,17 @@ export default function ProjectSnapshotSurface({ projectId, tab, evidence, navig
   const calculatorWorkspace = search.get('tab') === null ? initialCalculatorWorkspace : search.get('tab') === 'estimates' && Boolean(search.get('estimateId') || search.get('fromEstimateId') || search.get('newDesign') === '1');
   const frameProjectId = evidence?.snapshot?.project.id ?? overviewProjectId(projectId);
   const state = evidence?.snapshotState ?? (unavailable ? 'unavailable' : 'pending');
+  const statusPanel=evidence?.statusPanel ?? (unavailable ? <ReadStatus title="Project access unavailable" tone="error"
+    action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+    details={<DataStatePanel state="unavailable" title="Project access unavailable"
+      description="The project may have been removed, or your access may have changed." onRetry={onRetry} />} /> : undefined);
   return <PageLayout width="full" className={`${styles.page} ${calculatorWorkspace ? styles.calculatorPageLayout : ''}`}
     data-ui-foundation-consumer="project-detail" data-project-calculator-workspace={calculatorWorkspace ? 'true' : undefined}
     data-project-background-ready={state === 'fresh' ? 'true' : undefined} data-project-id={projectId}
     data-project-shell-ready="true" data-project-snapshot-state={state}>
     <ProjectOverviewReadsProvider value={evidence?.overviewReads ?? null}>
-      <ProjectPageFrameSurface calculatorWorkspace={calculatorWorkspace} header={<ProjectHeaderSurface
+      <ProjectPageFrameSurface projectId={projectId} selectedTab={navigation.activeTab} calculatorWorkspace={calculatorWorkspace} header={<ProjectHeaderSurface
+        statusPanel={statusPanel}
         projectId={frameProjectId} project={evidence?.snapshot?.project ?? null} host={evidence?.host ?? 'unknown'}
         readOnly={evidence?.readOnly ?? true} tab={tab} snapshotState={state}
         workModel={evidence?.snapshot?.workModel} projectWork={evidence?.projectWork}
@@ -67,9 +72,8 @@ export default function ProjectSnapshotSurface({ projectId, tab, evidence, navig
         privateContentReady={Boolean(evidence) && state !== 'unavailable'} deferHistory={deferHistory}
         searchReader={evidence?.searchReader ?? null} ownerControl={evidence?.headerOwner}
         privateActions={evidence?.headerActions} onTabIntent={onTabIntent} /> }>
-        <ProjectPageShellSurface projectId={frameProjectId} snapshot={evidence?.snapshot ?? null} host={evidence?.host ?? 'unknown'}
-        readOnly={evidence?.readOnly ?? true} snapshotContentReady={evidence?.snapshotContentReady ?? false}
-        snapshotState={state} tab={tab} optimisticTab={navigation.optimisticTab} onTabSelect={navigation.selectTab}
+        <ProjectPageShellSurface snapshot={evidence?.snapshot ?? null} snapshotContentReady={evidence?.snapshotContentReady ?? false}
+        snapshotState={state} tab={tab} optimisticTab={navigation.optimisticTab}
         calculatorWorkspace={calculatorWorkspace} privateContentReady={Boolean(evidence) && state !== 'unavailable'}
           publicBody={['estimates', 'quotes', 'invoices'].includes(navigation.activeTab) ? <CommercialTabSurface
             view={navigation.activeTab as 'estimates' | 'quotes' | 'invoices'} calculatorWorkspace={calculatorWorkspace}
@@ -99,11 +103,8 @@ export default function ProjectSnapshotSurface({ projectId, tab, evidence, navig
           {evidence&&state!=='unavailable'?evidence.body:null}</ProjectFilesWorkspace>:navigation.activeTab==='job-packs'&&!search.get('estimateId')?<>
           <JobPacksListSurface evidence={state==='unavailable'?null:evidence?.jobPacks??null} unavailable={state==='unavailable'}/>
           {evidence&&state!=='unavailable'?evidence.body:null}</>:undefined}
-          onProjectAccessEnding={evidence?.onProjectAccessEnding} body={evidence?.body}
-          statusPanel={evidence?.statusPanel ?? (unavailable ? <ReadStatus title="Project access unavailable" tone="error"
-            action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
-            details={<DataStatePanel state="unavailable" title="Project access unavailable"
-              description="The project may have been removed, or your access may have changed." onRetry={onRetry} />} /> : null)} />
+          body={evidence?.body}
+          statusPanel={statusPanel} />
       </ProjectPageFrameSurface>
     </ProjectOverviewReadsProvider>
   </PageLayout>;

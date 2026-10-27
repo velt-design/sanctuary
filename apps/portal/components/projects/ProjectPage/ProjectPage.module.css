@@ -24,6 +24,7 @@
 .projectTabBody {
   width: 100%;
   min-width: 0;
+  min-height: 0;
 }
 
 .pageFrame {
@@ -51,11 +52,6 @@
 
 .pageFrameMastheadSlot {
   min-width: 0;
-}
-
-.pageFrameMastheadSlotSticky {
-  position: sticky;
-  top: var(--portal-sticky-content-top, 0px);
   z-index: 12;
   background: var(--ui-canvas);
 }
@@ -66,51 +62,26 @@
 
 .mastheadBody {
   min-width: 0;
-  padding: var(--ui-space-2) var(--ui-space-3);
 }
 
 .mastheadHeader {
   min-width: 0;
 }
 
-.mastheadHeader :global([data-page-header-row="true"]) {
-  grid-template-areas: 'identity identity' 'utility actions';
-  grid-template-columns: minmax(280px, 440px) minmax(0, 1fr);
-  gap: var(--ui-space-3);
-}
-
-.mastheadHeader :global([data-page-header-identity="true"]) {
-  min-width: 180px;
-  grid-column: 1 / -1;
-}
-
 .masthead .mastheadHeader :global([data-page-header-identity="true"] h1) {
   display: block;
   -webkit-line-clamp: unset;
   -webkit-box-orient: initial;
-  white-space: normal;
   overflow-wrap: anywhere;
-  line-height: 1.2;
-  block-size: 2lh;
-  min-height: 2lh;
-  max-height: 2lh;
-  overflow: auto;
-  scrollbar-gutter: stable;
 }
 
 .mastheadHeader :global([data-page-header-title-line="true"]) {
-  display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto 24px;
 }
 
 .mastheadSubtitle {
   display: block;
-  block-size: 3em;
-  line-height: 1.5;
-  overflow: auto;
   overflow-wrap: anywhere;
-  scrollbar-gutter: stable;
 }
 
 .mastheadSubtitle:focus-visible {
@@ -124,7 +95,6 @@
 }
 
 .mastheadHeader :global([data-page-header-actions="true"]) {
-  width: auto;
   flex-wrap: nowrap;
 }
 
@@ -187,22 +157,11 @@
 .projectTabBody {
   display: grid;
   align-content: start;
-  gap: var(--ui-grid-gutter);
-}
-
-.tabSectionWorkspace,
-.sectionBodyWorkspace {
-  min-width: 0;
-  min-height: 0;
 }
 
 @media (max-width: 767px) {
   .pageFrame {
     --project-page-sticky-masthead-height: 0px;
-  }
-
-  .pageFrameMastheadSlotSticky {
-    position: static;
   }
 
   .mastheadBody {
@@ -272,9 +231,45 @@
     justify-content: flex-start;
   }
 }
-.readStatusSlot { min-height:44px; }
-.readStatusSlot > p { margin:0; display:flex; align-items:center; min-height:44px; color:var(--ui-text-muted); font-size:var(--ui-font-size-small); }
-
 /* Availability changes cannot introduce a horizontal scrollbar below the tabs. */
 .masthead :global(nav[aria-label="Project sections"]) { overflow-x: scroll; }
 .mastheadHeader :global(h1:focus-visible) { outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour); outline-offset: var(--ui-focus-ring-offset); }
+
+/* Work desk: persistent real controls above one viewport-owned work surface. */
+.page:not(.calculatorPageLayout) { display:flex; flex-direction:column; gap:0; min-height:0; height:calc(100dvh - var(--portal-sticky-content-top,0px)); max-width:none; margin:0; }
+:global(html):has(.page:not(.calculatorPageLayout)),
+:global(body):has(.page:not(.calculatorPageLayout)) { height:100% !important; min-height:0; overflow:hidden !important; }
+.pageFrame:not(.pageFrameCalculatorWorkspace) { display:flex; flex-direction:column; gap:var(--ui-space-4); min-height:0; height:100%; }
+.pageFrame:not(.pageFrameCalculatorWorkspace) .pageFrameMastheadSlot { position:static; flex:none; }
+.pageFrame:not(.pageFrameCalculatorWorkspace) .pageFrameBody { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; overflow-anchor:none; }
+.pageFrameBody:focus-visible { outline:2px solid var(--ui-focus-colour); outline-offset:-2px; }
+.pageFrame:not(.pageFrameCalculatorWorkspace) .masthead { border:0; background:transparent; }
+.mastheadBody { padding:0 0 var(--ui-space-3); }
+.mastheadHeader :global([data-page-header-row="true"]) { display:grid; grid-template-areas:'identity utility actions'; grid-template-columns:minmax(260px,1fr) minmax(190px,320px) auto; gap:var(--ui-space-4); align-items:center; overflow:visible; padding:0; }
+.mastheadHeader :global([data-page-header-identity="true"]) { grid-column:auto; min-width:0; width:auto; }
+.mastheadHeader :global([data-page-header-title-line="true"]) { display:flex; align-items:center; gap:var(--ui-space-2); grid-template-rows:none; }
+.masthead .mastheadHeader :global([data-page-header-identity="true"] h1) { block-size:auto; min-height:0; max-height:none; line-height:1.1; white-space:nowrap; overflow:auto; scrollbar-width:none; scrollbar-gutter:auto; }
+.mastheadSubtitle { block-size:auto; line-height:1.5; font-size:var(--ui-font-size-small); white-space:nowrap; overflow:auto; scrollbar-width:none; scrollbar-gutter:auto; }
+.mastheadHeader :global([data-page-header-actions="true"]) { min-width:0; width:auto; }
+.navigationRow { display:flex; align-items:center; gap:var(--ui-space-2); border-bottom:var(--ui-border-width) solid var(--ui-border); }
+.navigationRow > nav { flex:1; min-width:0; }
+.masthead .navigationRow :global(nav[aria-label="Project sections"]) { overflow-x:auto; scrollbar-width:thin; }
+.feedbackDock { flex:none; display:inline-flex; align-items:center; }
+.projectTabBody { gap:var(--ui-space-4); }
+.pageFrame:has([data-project-files-workspace]) .pageFrameBody,
+.pageFrame:has([data-project-files-workspace]) .fullWidthShell,
+.pageFrame:has([data-project-files-workspace]) .projectTabSurface,
+.pageFrame:has([data-project-files-workspace]) .projectTabBody { height:100%; min-height:0; overflow:hidden; }
+.pageFrame:has([data-project-files-workspace]) .projectTabBody { grid-template-rows:minmax(0,1fr); align-content:stretch; }
+.pageFrame:has([data-project-files-workspace]) :global([data-project-files-workspace]) { min-height:0; align-self:stretch; }
+@container(max-width:1450px) {
+ .mastheadHeader :global([data-page-header-row="true"]) { grid-template-areas:'identity identity' 'utility actions'; grid-template-columns:minmax(220px,360px) minmax(0,1fr); gap:var(--ui-space-2) var(--ui-space-4); }
+ .mastheadHeader :global([data-page-header-identity="true"]) { grid-column:1/-1; }
+}
+@container(max-width:650px) {
+ .mastheadHeader :global([data-page-header-row="true"]) { grid-template-areas:'identity' 'utility' 'actions'; grid-template-columns:minmax(0,1fr); }
+ .mastheadHeader :global([data-page-header-identity="true"]),.mastheadHeader :global([data-page-header-utility="true"]),.mastheadHeader :global([data-page-header-actions="true"]) { min-width:0; width:100%; }
+ .mastheadActions { flex-wrap:wrap; justify-content:flex-start; }
+ .mastheadHeader :global([data-page-header-actions="true"]) { flex-wrap:wrap; justify-content:flex-start; }
+}
+:global(html):has(.page:not(.calculatorPageLayout)) :global(body > div:has(> [data-modal-panel="true"])) { align-items:start; padding-top:var(--ui-space-6); }

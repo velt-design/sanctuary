@@ -261,3 +261,14 @@ describe('actual Contact detail while identity is pending', () => {
     click([...view.container.querySelectorAll('button')].find(button=>button.textContent==='Retry')??null); expect(retry).toHaveBeenCalledOnce(); view.unmount();
   });
 });
+
+
+it('offers the complete long customer name through the same focusable native heading',()=>{
+ const name='Fictional coastal property owners and project administration team';
+ const ui=(current:typeof contact|null)=><ContactDetailsView contact={current} contactId={contact.id} hostKey="host" loadError={null} projects={[]} projectsLoaded projectsError={false}/>;
+ const view=renderIntoDocument(ui(null)),heading=view.container.querySelector<HTMLHeadingElement>('h1')!;
+ expect(heading.tabIndex).toBe(0);act(()=>heading.focus());
+ view.rerender(ui({...contact,displayName:name}));
+ expect(view.container.querySelector('h1')).toBe(heading);expect(heading.textContent).toBe(name);expect(heading.title).toBe(name);expect(document.activeElement).toBe(heading);
+ expect(view.container.querySelector('a[href="/staff/contacts"]')).not.toBeNull();view.unmount();
+});

@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/portal-workdesk-20261027": false,
       "codex/marketing-site-visit-results-20261027": false,
       "codex/ga4-attribution-capacity-20261027": false,
       "codex/ga4-automatic-attribution-20261027": false,
