@@ -3,6 +3,7 @@ import { JOURNEY_COMPLETE_FROM } from './journey';
 import { shiftDate, type Measure, type ReportQuery } from './report';
 
 export const DIAGNOSTIC_VERSION = 'sanctuary-ga4-v3' as const;
+export const MAX_ACQUISITION_COHORTS = 750;
 export const STAGES = ['contact_form_interaction', 'contact_start', 'contact_success'] as const;
 export const WITHHELD_LABEL = '(withheld for privacy)';
 export const WITHHELD_PATH = '/[withheld for privacy]';
@@ -17,7 +18,7 @@ const path = label(512).refine(safePath);
 const cohort = z.object({ sourceMedium: label(128), landingPath: path, deviceCategory: label(32), sessions: pair, firstEdits: pair, submitAttempts: pair, acceptedSuccesses: pair }).strict();
 const acquisitionBase = { dimensions: z.tuple([z.literal('sessionSourceMedium'), z.literal('landingPage'), z.literal('deviceCategory')]),
   sessionUnit: z.literal('sessions'), eventUnit: z.literal('event_occurrences'), quality,
-  rows: z.array(cohort).max(200).refine(rows => new Set(rows.map(row => JSON.stringify([row.sourceMedium, row.landingPath, row.deviceCategory]))).size === rows.length) };
+  rows: z.array(cohort).max(MAX_ACQUISITION_COHORTS).refine(rows => new Set(rows.map(row => JSON.stringify([row.sourceMedium, row.landingPath, row.deviceCategory]))).size === rows.length) };
 export const acquisitionSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('available'), ...acquisitionBase }).strict(),
   z.object({ status: z.literal('limited'), ...acquisitionBase }).strict(),
@@ -91,12 +92,12 @@ export function acquisitionPlan(query: ReportQuery) {
   // Separate filtered metrics keep the ceiling on cohorts, not cohort × event.
   // Four profiles still fit in one batch and require no pagination or retries.
   return { requests: [null, ...STAGES].map(event => ({ dimensions: dimensions.map(name => ({ name })),
-    metrics: [{ name: event ? 'eventCount' : 'sessions' }], dateRanges, keepEmptyRows: true, returnPropertyQuota: true, limit: query.comparison ? '401' : '201', offset: '0',
+    metrics: [{ name: event ? 'eventCount' : 'sessions' }], dateRanges, keepEmptyRows: true, returnPropertyQuota: true, limit: String(MAX_ACQUISITION_COHORTS * (query.comparison ? 2 : 1) + 1), offset: '0',
     orderBys: dimensions.map(dimensionName => ({ dimension: { dimensionName } })),
     ...(event ? { dimensionFilter: { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: event, caseSensitive: true } } } } : {}) })) };
 }
 const response = z.object({ dimensionHeaders: z.array(z.object({ name: z.string() })).max(5), metricHeaders: z.array(z.object({ name: z.string(), type: z.literal('TYPE_INTEGER') })).length(1),
-  rows: z.array(z.object({ dimensionValues: z.array(z.object({ value: z.string().max(512) })).max(5), metricValues: z.array(z.object({ value: z.string().max(32) })).length(1) })).max(802).default([]),
+  rows: z.array(z.object({ dimensionValues: z.array(z.object({ value: z.string().max(512) })).max(5), metricValues: z.array(z.object({ value: z.string().max(32) })).length(1) })).max((MAX_ACQUISITION_COHORTS + 1) * 2).default([]),
   rowCount: z.number().int().nonnegative().safe().default(0), metadata });
 /** Structural failure evidence only. Dimension values never leave this helper. */
 export function acquisitionStructure(raw: unknown) {
@@ -157,10 +158,10 @@ export function parseAcquisition(raw: unknown, query: ReportQuery, timezone: str
     // Historical group-count responses need the complete range product to prove
     // completeness. keepEmptyRows does not invent unrecorded observations.
     const completeCount = report.rowCount === groups.size || report.rowCount === report.rows.length;
-    if (groups.size > 200 || (!completeCount && report.rowCount > 200)) { overflow = true; return; }
+    if (groups.size > MAX_ACQUISITION_COHORTS || (!completeCount && report.rowCount > MAX_ACQUISITION_COHORTS)) { overflow = true; return; }
     if (!completeCount || (report.rowCount !== report.rows.length && report.rows.length !== groups.size * (query.comparison ? 2 : 1))) throw new AcquisitionValidationFailure('incomplete_rows');
   });
-  if (overflow || rows.size > 200) return { status: 'unavailable', reason: 'row_limit' };
+  if (overflow || rows.size > MAX_ACQUISITION_COHORTS) return { status: 'unavailable', reason: 'row_limit' };
   const quality = Object.fromEntries(['sampled', 'thresholded', 'otherRowLoss', 'provisional'].map(key => [key, qualities.some(value => value[key as keyof Quality])])) as Omit<Quality, 'comparisonsAllowed'>;
   const combined = { ...quality, comparisonsAllowed: qualities.every(value => value.comparisonsAllowed) };
   for (const [key, row] of rows) {

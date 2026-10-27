@@ -3,7 +3,7 @@ import { z } from "zod";
 import { boundedGoogleJson, during } from "./transport";
 import { websiteJourney } from "./journey";
 import { periodDays, shiftDate, validateQuery, validDate, type AnalyticsReport, type Measure, type PaneId, type ReportQuery } from "./report";
-import { acquisitionPlan, acquisitionStructure, acquisitionValidationReason, coreDiagnostics, DIAGNOSTIC_VERSION, parseAcquisition, safePath, WITHHELD_LABEL, WITHHELD_PATH, PRIVACY_WARNING } from './diagnostics';
+import { acquisitionPlan, acquisitionStructure, acquisitionValidationReason, coreDiagnostics, DIAGNOSTIC_VERSION, MAX_ACQUISITION_COHORTS, parseAcquisition, safePath, WITHHELD_LABEL, WITHHELD_PATH, PRIVACY_WARNING } from './diagnostics';
 import { Ga4ReportFailure, validationReasons, type ReportFailureContext } from './failure';
 export { Ga4ReportFailure } from './failure';
 
@@ -33,7 +33,7 @@ export function reportPlan(query: ReportQuery) {
 export const reportHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export function reportIntent(property: string, query: ReportQuery, version: ReportVersion = REPORT_VERSION) {
   return { property, queryHash: reportHash({ version, property, plan: reportPlan(query), ...(version === DIAGNOSTIC_VERSION ? {
-    diagnosticsPlan: acquisitionPlan(query), prettyPrint: false, bounds: { deadlineMs: 45000, wireBytes: 262144, normalizedBytes: 245760, envelopeBytes: 262144, profileGroups: 200, expandedRows: 400, cohorts: 200 } } : {}) }),
+    diagnosticsPlan: acquisitionPlan(query), prettyPrint: false, bounds: { deadlineMs: 45000, wireBytes: 524288, normalizedBytes: 245760, envelopeBytes: 262144, profileGroups: MAX_ACQUISITION_COHORTS, expandedRows: MAX_ACQUISITION_COHORTS * 2, cohorts: MAX_ACQUISITION_COHORTS } } : {}) }),
     startDate: query.period.start, endDate: query.period.end,
     comparisonStart: query.comparison?.start ?? null, comparisonEnd: query.comparison?.end ?? null, reportVersion: version };
 }
@@ -216,14 +216,14 @@ export async function readGa4Report(accessToken: string, property: string, query
     // allowance on ordinary comparison reports; compact JSON changes no data.
     const endpoint = `https://analyticsdata.googleapis.com/v1beta/properties/${property}:batchRunReports?prettyPrint=false`;
     if (options.version === DIAGNOSTIC_VERSION) {
-      const abort = new AbortController(), phase = AbortSignal.any([...(signal ? [signal] : []), abort.signal, AbortSignal.timeout(45000)]), budget = { remaining: 262144 };
+      const abort = new AbortController(), phase = AbortSignal.any([...(signal ? [signal] : []), abort.signal, AbortSignal.timeout(45000)]), budget = { remaining: 524288 };
       const dispatch = async (plan: unknown, batch: 'core' | 'acquisition') => {
         const owner: ReportFailureContext = { stage: `${batch}_authority` };
         try {
           await during(options.beforeRequest?.() ?? Promise.resolve(), phase); phase.throwIfAborted();
           owner.stage = `${batch}_request`;
           const value = await boundedGoogleJson(observedFetch(owner), endpoint, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(plan), signal: phase }, 262144, 45000, budget);
+            body: JSON.stringify(plan), signal: phase }, 524288, 45000, budget);
           return { value, owner };
         } catch (error) { throw reportFailure(error, owner, undefined, query); }
       };

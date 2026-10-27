@@ -473,7 +473,9 @@ apps/portal/lib/marketingIntegrations/ga4/http.test.ts
 test/sanctuary-ga4-http-sql.test.ts` for the fixed batch plans, complete range
 pairs, redacted dimension collisions, missing observations, strict limits,
 transport/cancellation/authority failures, and HTTP-to-SQL saved-report return.
-The 28-day synthetic fixture covers 200 cohorts with all three stages: compact
+Capacity tests cover 501 representative synthetic groups and 750 groups with 59/45/45
+event cohorts, exact complete rows, unchanged normalized envelope, and 751-group
+denial. The smaller 28-day synthetic fixture covers 200 cohorts with all three stages: compact
 JSON fits the original shared allowance while pretty JSON exceeds it. This
 proves bounded parsing and persistence contracts, not live cohort coverage or
 scheduled delivery. Production acceptance must exercise the existing daily

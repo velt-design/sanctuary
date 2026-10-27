@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-27: Size GA4 capacity against actual daily cardinality
+
+Status: Implemented candidate. Area: GA4 detailed attribution.
+
+An ordinary daily report exceeded the old 200-group ceiling, which honestly
+withheld details. Set a paired 750-cohort ceiling,
+512-KiB shared provider stream, and retain the 240-KiB normalized/256-KiB source
+envelope, two requests and deadline. Deploy the backward-compatible Velt consumer
+first. Synthetic representative full reports fit both independent limits; future
+extreme responses remain unavailable, never top-N or silently truncated. See the
+source owner doc and `report/capacity.test.ts` for measured bytes and bounds.
+
 ## 2026-10-27: Keep automatic attribution compact and privacy-safe
 
 Status: Implemented candidate. Area: Sanctuary-owned GA4 reporting.

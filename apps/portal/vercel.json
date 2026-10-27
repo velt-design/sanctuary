@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/ga4-attribution-capacity-20261027": false,
       "codex/ga4-automatic-attribution-20261027": false,
       "codex/mobile-first-load-20261027": false,
       "codex/project-return-recovery-20261026": false,

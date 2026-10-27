@@ -70,7 +70,7 @@ it('source bearer change during Google effect withholds report and preserves qua
 function v3Request() { const original=request();const url=new URL(original.url);url.searchParams.set('reportVersion','sanctuary-ga4-v3');return new Request(url,original); }
 function diagnosticDependencies(mode:'available'|'row_limit'|'limited'|'unexpected'='available') {
  const raw=acquisitionFixture(query);
- if(mode==='row_limit')raw.reports[0].rowCount=201;
+ if(mode==='row_limit')raw.reports[0].rowCount=751;
  if(mode==='limited')raw.reports[1].metadata.subjectToThresholding=true;
  if(mode==='unexpected')raw.reports[0].dimensionHeaders[0].name='unexpected';
  const calls:number[]=[];
