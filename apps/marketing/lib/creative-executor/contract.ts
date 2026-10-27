@@ -1,3 +1,4 @@
+import {adSettingKeys} from './ad-settings';
 import {inheritedWebsiteSchema} from './website-destination';
 import {ownerReviewSchema,ownerBundleSchema,applyReviewedMedia} from './owner-review';
 import {nativeAnalysisSchema,nativeDeliverySchema} from './analysis-contract';
@@ -12,12 +13,15 @@ export const ownerPayloadLimits={planJsonb:16000,intentJsonb:16000,envelopeJsonb
 /** Larger transport admission is provisional. Source still compares the exact
  * signed plan/intent with its current root-owned proposal before any effect. */
 export function creativeWireLimit(stage:string,payload:unknown){
- const p=payload as {plan?:{purpose?:unknown;ownerReview?:{kind?:unknown}};intent?:{kind?:unknown}}|null;
+ const p=payload as {plan?:{purpose?:unknown;ownerReview?:{kind?:unknown};capabilityReview?:{kind?:unknown}};intent?:{kind?:unknown}}|null;
+ const pausedPrepare=stage==='prepare'&&p?.plan?.purpose==='paused_capability'&&p.plan.capabilityReview?.kind==='owner_directed_paused_normalization_v1';
  const ownerPrepare=stage==='prepare'&&p?.plan?.purpose==='formal_experiment'&&p.plan.ownerReview?.kind==='owner_directed_independent_review_v1';
- return ownerPrepare||stage==='admit'&&p?.intent?.kind==='create_creative'?ownerPayloadLimits.wireUtf8:16000;
+ return pausedPrepare||ownerPrepare||stage==='admit'&&p?.intent?.kind==='create_creative'?ownerPayloadLimits.wireUtf8:16000;
 }
 
 export const retainedAdSchema=z.object({experiment:z.uuid(),planHash:hash,donor:id,ad:id,creative:id}).strict();
+export const capabilityBaselineSchema=z.object({experiment:z.uuid(),planHash:hash,donor:id,sourceCreative:id,ad:id,creative:id,evidenceHash:hash}).strict();
+export type CapabilityBaseline=z.infer<typeof capabilityBaselineSchema>;
 export const path = z.enum(['/auckland-outdoor-living', '/acrylic-roof-pergolas-auckland']);
 export const canonicalHash = (value: unknown): string => {
   const sorted = (v: unknown): unknown => Array.isArray(v) ? v.map(sorted) : v && typeof v === 'object'
@@ -45,6 +49,7 @@ const boundedJsonSchema = (tracking = false) => z.custom<CreativeJson>((value) =
   return valid(value, 0) && Buffer.byteLength(JSON.stringify(value)) <= 6000;
 });
 const boundedJson = boundedJsonSchema();
+export const adSettingsSchema=z.partialRecord(z.enum(adSettingKeys),boundedJson);
 // Meta ConversionActionQuery's finite dotted fields are valid only on direct
 // object clauses of the root tracking array. Every generic creative caller stays strict.
 const adTrackingJson = boundedJsonSchema(true);
@@ -103,8 +108,8 @@ export function creativeAssetHash(creative: Creative) {
 }
 export const executionPlanSchema = z.object({ version: z.literal(1), landingTemplate: hash, purpose: z.enum(['paused_capability', 'formal_experiment']), capabilityDiagnostics:z.object({pageRead:z.enum(['confirmed','unavailable']),studyInventory:z.enum(['complete','partial','unavailable']),nativeEligibility:z.literal('unverified')}).strict().optional(), experiment: z.uuid(),
   scope: z.object({ app: id, principal: id, business: id, account: id, page: id, campaign: id, adset: id }).strict(),
-  originalAds: z.array(id).length(4).refine(v => new Set(v).size === 4), controlAd: id,retainedBaseline:retainedAdSchema.optional(),
-  control: creativeSchema, inheritedWebsite:inheritedWebsiteSchema.optional(), ownerReview:ownerReviewSchema.optional(), adTracking: adTrackingJson, nativeObjective: z.object({ type: z.literal('CONVERSIONS'), is_primary: z.literal(true), name: z.literal('Website Lead'),
+  originalAds: z.array(id).length(4).refine(v => new Set(v).size === 4), controlAd: id,retainedBaseline:retainedAdSchema.optional(),capabilityBaseline:capabilityBaselineSchema.optional(),adSettings:adSettingsSchema.optional(),
+  control: creativeSchema, capabilityReview:z.object({kind:z.literal('owner_directed_paused_normalization_v1'),proposal:ownerBundleSchema}).strict().optional(), inheritedWebsite:inheritedWebsiteSchema.optional(), ownerReview:ownerReviewSchema.optional(), adTracking: adTrackingJson, nativeObjective: z.object({ type: z.literal('CONVERSIONS'), is_primary: z.literal(true), name: z.literal('Website Lead'),
     adspixels: z.array(z.object({ id, event_names: z.tuple([z.literal('Lead')]) }).strict()).length(1) }).strict(), challengerPrimary: text, approvedAssetHash: hash, approvedCopyHash: hash,
   approvalHash: hash, evidenceHash: hash, generator: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/).nullable(),
   reviewer: z.string().regex(/^resp_[A-Za-z0-9_-]{1,140}$/).nullable(), approvedAt: stamp, approvalUntil: stamp,
@@ -133,6 +138,8 @@ export const executionPlanSchema = z.object({ version: z.literal(1), landingTemp
     : !p.ownerReview && p.generator === null && p.reviewer === null && p.challengerPrimary === p.control.primary && p.end>p.start && p.end-p.start<=3600;
   if (!validReview || !p.originalAds.includes(p.controlAd) || p.control.page !== p.scope.page
     || p.control.format==='native_reference' && (p.control.sourceAd!==p.controlAd || !!p.retainedBaseline)
+    ||p.capabilityReview&&(p.purpose!=='paused_capability'||p.control.format!=='video_story'||p.capabilityReview.proposal.controlAd!==p.controlAd||p.capabilityReview.proposal.controlCreative!==p.control.id||canonicalHash(p.capabilityReview.proposal.scope)!==canonicalHash(p.scope)||canonicalHash(p.capabilityReview.proposal.originalAds)!==canonicalHash(p.originalAds))
+    ||p.capabilityBaseline&&(p.purpose==='formal_experiment'&&!p.ownerReview||p.capabilityBaseline.donor!==p.controlAd||p.capabilityBaseline.creative!==p.control.id||p.originalAds.includes(p.capabilityBaseline.ad)||p.capabilityBaseline.experiment===p.experiment||!!p.retainedBaseline)
     ||p.retainedBaseline&&(p.retainedBaseline.donor!==p.controlAd||p.retainedBaseline.creative!==p.control.id||p.originalAds.includes(p.retainedBaseline.ad)||p.retainedBaseline.experiment===p.experiment)
     || p.end <= p.start
     || Date.parse(p.approvalUntil) <= Date.parse(p.approvedAt)
@@ -148,7 +155,7 @@ export const ownerProposalSchema=z.object({version:z.literal(1),proposal:ownerBu
  const p=v.plan,b=v.proposal,review=p?.ownerReview;
  let matches=p===null;
  if(p&&review){
-  matches=v.planHash===canonicalHash(p)&&review.bundleHash===canonicalHash(b)&&p.controlAd===b.controlAd&&p.control.id===b.controlCreative&&
+  matches=v.planHash===canonicalHash(p)&&review.bundleHash===canonicalHash(b)&&p.controlAd===b.controlAd&&(p.capabilityBaseline?.sourceCreative??p.control.id)===b.controlCreative&&
    p.control.path===b.path&&p.challengerPrimary===b.primary&&p.start===b.start&&p.end===b.end&&canonicalHash(p.scope)===canonicalHash(b.scope)&&
    canonicalHash(p.originalAds)===canonicalHash(b.originalAds)&&review.instructionHash===b.instructionHash&&review.reviewArtifactHash===b.reviewArtifactHash&&
    review.mediaManifestHash===b.mediaManifestHash&&review.reviewedAt===b.reviewedAt&&
@@ -178,3 +185,5 @@ export function currentOwnerPlan(state:ExecutorState,now=Date.now()){
 
 export type SourceCommand = (stage: 'read' | 'prepare' | 'authority' | 'admit' | 'check' | 'confirm' | 'no_effect' | 'measurement' | 'canary' | 'cleanup' | 'receipt',
   experiment: string | null, command: string, payload: unknown) => Promise<unknown>;
+
+export function currentCapabilityReview(state:ExecutorState){const p=state.plan,r=p?.capabilityReview,o=state.ownerProposal;return !!p&&p.purpose==='paused_capability'&&!!r&&!!o&&o.plan===null&&Date.parse(o.expiresAt)>Date.now()&&canonicalHash(r.proposal)===canonicalHash(o.proposal);}

@@ -1,3 +1,5 @@
+import {writableVideoEnhancements} from './standard-enhancements';
+import {wireAdSettings} from './ad-settings';
 import {creativeWithPrimary} from './creative-copy';
 import {requireNativeAcceptance} from './native-acceptance';
 import { canonicalHash, type EffectKind, type ExecutionPlan, type ExecutorState } from './contract';
@@ -26,7 +28,8 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
     if (plan.control.format === 'video_assets'||plan.control.format==='video_story') {
       const updated=creativeWithPrimary(plan.control,plan.control.id,plan.challengerPrimary,plan.ownerReview?.edit);
       if(updated.format!=='video_assets'&&updated.format!=='video_story')throw new ExecutorFailure('scope');
-      const payload=updated.payload;
+      const payload=structuredClone(updated.payload);
+      if(payload.degrees_of_freedom_spec!==undefined&&updated.format==='video_story')payload.degrees_of_freedom_spec=writableVideoEnhancements(payload.degrees_of_freedom_spec);
       body = { name, ...Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, typeof value === 'string' ? value : JSON.stringify(value)])), url_tags: plan.control.urlTags };
     } else {
       body = { name, object_story_spec: JSON.stringify({ page_id: plan.scope.page, link_data: {
@@ -40,7 +43,7 @@ export function serializeEffect(plan: ExecutionPlan, state: ExecutorState, kind:
     const creative = arm === 'control' && plan.purpose==='formal_experiment' ? plan.control.id : object(state, 'creative');
     if (!creative || object(state, arm)) throw new ExecutorFailure('scope');
     path = `act_${plan.scope.account}/ads`;
-    body = { name, adset_id: plan.scope.adset, creative: JSON.stringify({ creative_id: creative }), tracking_specs: JSON.stringify(plan.adTracking), status: 'PAUSED' };
+    body = { ...wireAdSettings(plan.adSettings), name, adset_id: plan.scope.adset, creative: JSON.stringify({ creative_id: creative }), tracking_specs: JSON.stringify(plan.adTracking), status: 'PAUSED' };
     if(plan.purpose==='formal_experiment'){
       if(plan.start*1000<=now)throw new ExecutorFailure('scope');
       body.ad_schedule_start_time=new Date(plan.start*1000).toISOString();

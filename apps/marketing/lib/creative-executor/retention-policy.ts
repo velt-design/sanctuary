@@ -1,3 +1,4 @@
+import {wireAdSettings,comparableAdSettings,observedAdSettings} from './ad-settings';
 import {z} from 'zod';
 import {canonicalHash,hash,id,stamp,retainedAdSchema,type ExecutionPlan} from './contract';
 import {nativeAnalysisSchema} from './analysis-contract';
@@ -58,7 +59,7 @@ export function serializeRetentionEffect(plan:ExecutionPlan,input:RetentionState
  let path:string,target:string|null=null,body:Record<string,string>;
  if(kind==='create_retained'){
   path=`act_${plan.scope.account}/ads`;
-  body={name:`velt-${plan.experiment}-retained`,adset_id:plan.scope.adset,creative:JSON.stringify({creative_id:s.creative}),tracking_specs:JSON.stringify(plan.adTracking),status:'PAUSED'};
+  body={...wireAdSettings(comparableAdSettings(plan.adSettings,true)),name:`velt-${plan.experiment}-retained`,adset_id:plan.scope.adset,creative:JSON.stringify({creative_id:s.creative}),tracking_specs:JSON.stringify(plan.adTracking),status:'PAUSED'};
  }else{
   target=(kind==='pause_previous'||kind==='restore_previous'?s.previous?.ad:s.ad)??null;
   if(!target)throw new Error('Retention target unavailable');path=target;
@@ -82,9 +83,11 @@ export const retentionReadbackSchema=z.object({id,account_id:id,campaign_id:id,a
  // Require an explicit returned absence. An omitted field is unknown; a future
  // provider mapping requires real evidence, not a fixture-driven relaxation.
  ad_schedule_start_time:z.null(),ad_schedule_end_time:z.null(),
-}).strict();
+}).passthrough();
 export function verifyRetainedAd(plan:ExecutionPlan,value:unknown,expected:{ad:string;creative:string;status:'ACTIVE'|'PAUSED'}){
  const row=retentionReadbackSchema.parse(value);
+  observedAdSettings(row); // Unknown fields also deny historical plans.
+ if(plan.adSettings&&canonicalHash(comparableAdSettings(observedAdSettings(row),true))!==canonicalHash(comparableAdSettings(plan.adSettings,true)))throw new Error('Retained ad settings differ');
  if(row.id!==expected.ad||row.creative.id!==expected.creative||row.status!==expected.status||plan.originalAds.includes(row.id)||
   row.account_id!==plan.scope.account||row.campaign_id!==plan.scope.campaign||row.adset_id!==plan.scope.adset||
   canonicalHash(row.tracking_specs)!==canonicalHash(plan.adTracking))throw new Error('Retained ad differs');
