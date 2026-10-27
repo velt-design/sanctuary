@@ -9,7 +9,7 @@ describe('fixed v3 diagnostic', () => {
   it('keeps five legacy profiles and adds four fixed profiles with a distinct versioned plan hash', () => {
     expect(reportPlan(query).requests).toHaveLength(5); const plan = acquisitionPlan(query);
     expect(plan.requests).toHaveLength(4); expect(plan.requests[0].metrics).toEqual([{ name: 'sessions' }]);
-    expect(plan.requests.slice(1).map(profile => profile.dimensionFilter?.filter.stringFilter.value)).toEqual(['contact_form_interaction', 'contact_start', 'contact_success']);
+    expect(plan.requests.slice(1).map(profile => profile.dimensionFilter.andGroup.expressions.at(-1)?.filter?.stringFilter?.value)).toEqual(['contact_form_interaction', 'contact_start', 'contact_success']);
     expect(plan.requests.every(profile => profile.limit === '1501' && profile.offset === '0')).toBe(true);
     expect(reportIntent('123', query).queryHash).not.toBe(reportIntent('123', query, 'sanctuary-ga4-v3').queryHash);
   });

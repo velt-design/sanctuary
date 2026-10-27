@@ -1,4 +1,5 @@
 import 'server-only';
+import { verificationAttribution } from '../../../marketing/lib/verificationAttribution';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServiceRole } from '../supabaseClient';
@@ -19,6 +20,7 @@ type MarketingAttributionConsent = {
 };
 
 type MarketingAttributionSummary = {
+  verification?: boolean;
   enquiryRequestId?: string | null;
   source?: string | null;
   page?: string | null;
@@ -150,6 +152,7 @@ export function normalizeMarketingAttributionInput(
 
   return {
     source: cleanString(input.source) ?? cleanString(fallback?.source),
+    ...(verificationAttribution(input)?{verification:true}:{}),
     page: cleanString(input.page) ?? cleanString(fallback?.page),
     utm,
     clickIds,

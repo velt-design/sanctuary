@@ -1,6 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef } from 'react';
+import { trackingAudienceAllowed } from '../lib/trackingAudience';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useConsent } from './ConsentProvider';
 import { callClarity, clarityPageAllowed, clarityProjectId, type ClarityWindow } from '../lib/clarityTracking';
@@ -16,7 +17,7 @@ export default function ClarityAnalytics() {
 
   useLayoutEffect(() => {
     const target = window as ClarityWindow;
-    const allowed = Boolean(project && hasTrackingDecision && consent.analytics && clarityPageAllowed(pathname, search));
+    const allowed = Boolean(project && trackingAudienceAllowed() && hasTrackingDecision && consent.analytics && clarityPageAllowed(pathname, search));
     if (!allowed) {
       target.sanctuaryClarityActive = false;
       if (active.current) {

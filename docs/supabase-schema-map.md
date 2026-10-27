@@ -1,5 +1,27 @@
 # Supabase Schema Map
 
+## Reporting test policy and enquiry cash (27 October 2026 candidate)
+
+`20261027024135_marketing_enquiry_sales_evidence.sql` adds narrowly scoped
+`private.marketing_test_project`, `private.marketing_test_enquiry` and
+`private.marketing_recorded_cash` helpers. The first two return only classification
+booleans under a locked definer search path. EXECUTE for the existing restricted
+Praxis reader lets its two ID-only security-barrier projections work; it gains no
+private-schema USAGE or raw-table access. Browser roles have no helper/projection
+access. Cash remains private and report-owned.
+
+Guarded owner replacements preserve function identity, arguments, owner, ACL,
+security mode and configuration. They cover Enquiries, Sales Hub, Commercial,
+the current `sanctuary_campaign_outcomes_without_intake` calculation, shared offline
+advertising facts and GA4 conversion claim. The intake/creative wrapper and Designer
+review owner remain unchanged. Existing audited test corrections are reversible;
+no reporting migration deletes or rewrites customer, payment, audit or outcome rows.
+The observed-source helper adds strictly consented exact-referrer fallback without
+changing raw attribution. Apply with the normal migration transaction; no embedded
+COMMIT splits the migration from its ledger entry. Capture current definitions for
+recovery; application rollback tolerates the additive fields/projections.
+
+
 ## Paused native-copy proof (24 October 2026, uninstalled local candidate)
 
 Forward `20261024000001_creative_paused_native_copy.sql` patches only the existing

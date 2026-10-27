@@ -2,6 +2,26 @@ import { expect,it } from 'vitest';
 import { hubFixture } from '@/app/qa/marketing-performance-fixture/hubFixtures';
 import { fixtureFilters } from '@/app/qa/marketing-performance-fixture/fixtures';
 import { hubDefaults,hubQuery,parseHubFilters,selectHub,hubSchema } from './hub';
+import { observedSource } from './contract';
+import { sourceOutcomes } from './charts';
+
+it.each(['constructor','__proto__','toString','hasOwnProperty','ordinary-newsletter'])('retains arbitrary source %s through parsing, grouping and saved filters',source=>{
+  expect(observedSource(source)).toBe(source);
+  const raw=structuredClone(hubFixture);
+  raw.enquiries.rows=raw.enquiries.rows.map(row=>({...row,source}));
+  raw.projects=raw.projects.map(project=>({...project,source}));
+  const report=hubSchema.parse(raw);
+  expect(sourceOutcomes(report.enquiries.rows)[0].source).toBe(source);
+  const filters=parseHubFilters(new URLSearchParams({view:'enquiries',source}),fixtureFilters);
+  expect(parseHubFilters(hubQuery(filters),fixtureFilters).source).toBe(source);
+  expect(selectHub(report,filters).enquiries).toHaveLength(report.enquiries.rows.length);
+});
+
+it('retains cash evidence and normalizes saved source aliases when reopening a report URL',()=>{
+  const filters=parseHubFilters(new URLSearchParams('view=enquiries&source=fb&evidence=cash'),fixtureFilters);
+  expect(filters).toMatchObject({view:'enquiries',source:'Facebook',evidence:'cash'});
+  expect(parseHubFilters(hubQuery(filters),fixtureFilters)).toEqual(filters);
+});
 
 it('keeps older manual/archived projects visible unless created-date filtering is requested',()=>{
   const f={...hubDefaults(fixtureFilters),view:'portfolio' as const};

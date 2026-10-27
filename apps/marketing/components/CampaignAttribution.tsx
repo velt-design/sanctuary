@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useConsent } from './ConsentProvider';
+import { trackingAudienceAllowed } from '../lib/trackingAudience';
 import { getMarketingAttributionFromLocation } from '../lib/attribution';
 import { CAMPAIGN_SESSION_MS, captureCampaignSession, clearCampaignSession, hasCampaign, readCampaignSession, type CampaignContext } from '../lib/campaignSession';
 import { capturePersistentIdentifiers, clearPersistentIdentifiers, clearMetaCookies } from '../lib/campaignPersistence';
@@ -13,6 +14,7 @@ export default function CampaignAttribution() {
   const previousRoute = useRef<string | null>(null);
   const candidate = useRef<{ context: CampaignContext; fbclid: string | null; observedAt: number; newArrival: boolean } | null>(null);
   useEffect(() => {
+    if (!trackingAudienceAllowed()) { candidate.current=null; return; }
     const route = `${pathname}?${search}`;
     if (previousRoute.current !== route) {
       const context = getMarketingAttributionFromLocation({ search, href: window.location.href, referrer: document.referrer });

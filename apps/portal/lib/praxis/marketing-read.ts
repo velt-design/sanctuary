@@ -48,7 +48,9 @@ export async function readPraxisMarketing(query: MarketingQuery, config: Connect
         union all select resource, id, project_id, parent_id, payload, omission_count from praxis_reporting.quotes_v1
         union all select resource, id, project_id, parent_id, payload, omission_count from praxis_reporting.quote_versions_v1
       ), marked as materialized (
-        select *, (id = any(${REPORTING_TEST_ENQUIRY_IDS}::uuid[]) or project_id = any(${REPORTING_TEST_PROJECT_IDS}::uuid[])) is true as excluded,
+        select *, (id = any(${REPORTING_TEST_ENQUIRY_IDS}::uuid[]) or project_id = any(${REPORTING_TEST_PROJECT_IDS}::uuid[])
+          or project_id in (select project_id from praxis_reporting.marketing_test_projects_v1)
+          or (resource='enquiry_request' and id in (select enquiry_id from praxis_reporting.marketing_test_enquiries_v1))) is true as excluded,
           ((payload->>'createdAt')::timestamptz at time zone 'Pacific/Auckland')::date as created_day,
           ((payload->>'sentAt')::timestamptz at time zone 'Pacific/Auckland')::date as sent_day,
           ((payload->>'acceptedAt')::timestamptz at time zone 'Pacific/Auckland')::date as accepted_day

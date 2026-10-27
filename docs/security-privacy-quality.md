@@ -1,5 +1,32 @@
 ## Exact owner-reviewed creative bundle
 
+## Verification traffic policy (27 October 2026 candidate)
+
+Before verification browsing, enter the production URL with
+`?measurement=verification` in the address bar (a fresh document). The tab keeps
+this measurement-only choice through navigation. `?measurement=normal` in a fresh
+document, or closing the tab, clears it. This does not grant access or prevent an
+enquiry being saved. It is session storage only, with no new permanent retention.
+The two canonical Sanctuary production hosts are the only browser measurement
+hosts. Development/preview and marked tabs suppress GTM, Meta, Archipro, Clarity,
+web vitals and direct events. Delayed vendor scripts and queued Meta success
+callbacks recheck the policy before dispatch. Consent still applies independently.
+Unavailable storage suppresses measurement but never makes a genuine enquiry a
+test. Business exclusion requires a positive verification URL, saved tab marker
+or nonproduction host. Positively observed verification also stays in document
+memory through client navigation if storage fails; a fresh document without
+working storage needs the explicit URL marker again.
+
+Saved intake carries the explicit verification marker. GA4 server delivery and
+legacy Meta CAPI also require the production execution environment and suppress
+marked/reserved-QA payloads. GA4 claim rechecks current audited project-test status
+without rewriting the audit event, then uses the existing SKIPPED settlement.
+Offline advertising facts exclude confirmed tests while real-customer eligibility
+is unchanged. Test classification does not delete customer records or audit history.
+Historical website-report filters are described in environment-auth-supabase.md;
+they do not label Tag Assistant business enquiries as fake or remove Google data.
+
+
 The donor-thumbnail continuation preserves both a Facebook-hosted HTTPS URL and
 its valid image hash. It makes no assumption about unknown path/query contents;
 the reviewed replacement thumbnail policy stays separate. The media transformer

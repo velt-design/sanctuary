@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
+import { trackingAudienceAllowed } from '../lib/trackingAudience';
 import { useConsent } from '@/components/ConsentProvider';
 
 export default function ArchiproPixel() {
@@ -9,7 +10,7 @@ export default function ArchiproPixel() {
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
-    if (!consent.marketing) {
+    if (!consent.marketing || !trackingAudienceAllowed()) {
       setShouldLoad(false);
       return;
     }
@@ -32,7 +33,7 @@ export default function ArchiproPixel() {
     };
   }, [consent.marketing]);
 
-  if (!consent.marketing || !shouldLoad) return null;
+  if (!consent.marketing || !shouldLoad || !trackingAudienceAllowed()) return null;
 
   return <Script id="sp-runtime-archipro" src="/runtime-archipro.js" strategy="afterInteractive" />;
 }

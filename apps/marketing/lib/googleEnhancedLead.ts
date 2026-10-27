@@ -1,4 +1,5 @@
 import { CONSENT_STORAGE_KEY, parseStoredConsent } from './consent';
+import { trackingAudienceAllowed } from './trackingAudience';
 export type GoogleEnhancedLead = { sha256_email_address?: string; sha256_phone_number?: string };
 type AdsWindow = Window & { dataLayer?: Array<Record<string,unknown>>; sanctuaryGoogleEnhancedLead?: GoogleEnhancedLead };
 function marketingStillAllowed(target: AdsWindow, allowed: boolean) {
@@ -25,6 +26,7 @@ export async function emitSubmittedLead(event: Record<string,unknown>, contact: 
   const target=window as AdsWindow;
   const clear=()=>{delete target.sanctuaryGoogleEnhancedLead;};
   clear();
+  if (!trackingAudienceAllowed()) return;
   try {
     if(enabled && contact && marketingStillAllowed(target,marketingAllowed) && window.crypto?.subtle) {
       let timer: ReturnType<typeof setTimeout> | undefined;

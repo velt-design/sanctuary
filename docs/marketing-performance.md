@@ -1,5 +1,45 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Enquiry source to recorded cash (27 October 2026 candidate)
+
+The existing Sources & outcomes and source/campaign comparison add net recorded
+cash for the same enquiry cohort. A project's outcomes belong to its earliest
+nonexcluded saved receipt. Repeat submissions do not duplicate quote, acceptance
+or cash credit. Cash is signed PAYMENT plus REVERSAL ledger evidence to the read
+time, including GST. Invalid dates, unsafe amounts or broken reversal relations
+make cash unavailable. No ledger entries means zero recorded cash, not proof that
+no money was received elsewhere. Invoice-paid flags and Xero matches are never
+added to the cash sum. Current accepted scope remains distinct from payment.
+Valid adjustment reversals are checked against their original adjustment and
+excluded from cash, just like the adjustment itself. Payment reversals remain
+signed cash evidence; malformed reversal relationships remain unavailable.
+Cash cells open supporting receipts; their project link opens Commercial payments,
+and browser Back restores source, campaign, dates and evidence selection.
+
+Source remains observed evidence: consented saved UTM, then valid Google click
+ID, then an exact allowlisted external referrer. Referral labels explicitly say
+Google/Facebook/Instagram/Bing/ChatGPT referral; they do not assert paid or organic
+traffic. FB/Facebook and IG/Instagram aliases share display rows while the original
+saved alias stays visible in receipt detail. Original stored payloads are unchanged.
+Old source-filter URLs normalize to the same display group. Unknowns remain visible.
+Projects without a directly linked receipt remain in Portfolio; a shared contact
+alone does not assign another project's enquiry or cash to a campaign.
+
+Business totals exclude the existing exact verification records, explicitly marked
+verification receipts, consented reserved codex_qa/qa receipts and projects with
+an audited test outcome. An excluded receipt does not exclude another real receipt
+on the same project. Tag Assistant referrers and test-looking names are not proof
+of a fake business enquiry. Designer intentionally retains test scope/visit facts
+and audited outcomes for its existing review/clear workflow; its consumer excludes
+them from sales totals. This is a review response, not an alternative total.
+
+The implementation owner is `20261027024135_marketing_enquiry_sales_evidence.sql`
+plus the existing report contract/UI. Velt only presents Source evidence. No new
+identity matching, first/last-touch retention, customer-to-GA4 upload or claim of
+complete historical attribution is introduced. The local fixture is provider-free;
+live migration, filtered GA4 collection and production acceptance remain separate.
+
+
 ## Progressive real reports candidate (22 October 2026)
 
 The Overview's real Commercial metric, grouping, trend and timing owners remain

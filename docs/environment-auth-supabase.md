@@ -1,5 +1,20 @@
 # Environment, Auth, And Supabase
 
+## Public website GA4 selection (27 October 2026 candidate)
+
+`production-browsing-v1` is a report-only filter and part of the query identity.
+Every fixed core/acquisition/stage request, including prior-period comparisons,
+selects hostName sanctuarypergolas.co.nz or www.sanctuarypergolas.co.nz and excludes
+exact sessionSourceMedium codex_qa / qa and tagassistant.google.com / referral.
+Its warning is retained in the saved report and shown in Velt Source & freshness.
+Older saved reports without this version remain unfiltered. Unmarked testing may
+remain. Server Measurement Protocol events without a hostname are outside this
+website scope; linked Portal enquiries, current scopes and signed cash own business
+outcomes. No Google property filter, deletion, credential change or extra provider
+call is added. Existing response, normalized/envelope, deadline and cohort bounds
+remain independent and fail honestly.
+
+
 ## Document measurement and telemetry restoration candidate (21 October 2026)
 
 The server-only `PORTAL_DOCUMENT_DIAGNOSTICS` setting is default-disabled and has

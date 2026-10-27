@@ -1,5 +1,6 @@
 // app/api/contact/route.ts
 import { marketingPreviewReadOnly } from '../../../lib/marketingPreviewReadOnly';
+import { verificationAttribution } from '../../../lib/verificationAttribution';
 import { NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'node:crypto';
 import { getEmailDeliveryFailureSummary, sendEmail } from '@/lib/email/sendEmail';
@@ -82,7 +83,7 @@ async function sendMetaLeadEvent(params: {
   enquiryType?: string;
   marketingConsent: boolean;
 }): Promise<void> {
-  if (!params.marketingConsent) return;
+  if (!params.marketingConsent || process.env.VERCEL_ENV !== 'production') return;
   const accessToken = process.env.META_CONVERSIONS_API_TOKEN;
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
   if (!accessToken || !pixelId) return;
@@ -339,7 +340,7 @@ export async function POST(req: Request) {
     eventId: fields.event_id,
     ip,
     enquiryType: fields.enquiry_type || undefined,
-    marketingConsent: fields.marketing_consent,
+    marketingConsent: fields.marketing_consent && formData.verification!==true && !verificationAttribution(formData.attribution),
   });
 
   return NextResponse.json({ ok: true });

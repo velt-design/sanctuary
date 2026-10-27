@@ -1,4 +1,5 @@
 import 'server-only';
+import { verificationAttribution } from './verificationAttribution';
 
 const GA_CLIENT_ID_PATTERN = /^\d{1,20}\.\d{1,20}$/;
 const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/;
@@ -62,6 +63,7 @@ type PreparedGa4Event =
       kind: 'skip';
       errorCode:
         | 'ANALYTICS_CONSENT_NOT_GRANTED'
+        | 'VERIFICATION_TRAFFIC'
         | 'GA_CLIENT_ID_MISSING'
         | 'EVENT_TOO_OLD'
         | 'EVENT_TIME_INVALID'
@@ -114,6 +116,7 @@ export function prepareGa4MarketingEvent(
 ): PreparedGa4Event {
   const payload = isRecord(claim.payload) ? claim.payload : {};
   const attribution = isRecord(payload.attribution) ? payload.attribution : {};
+  if (payload.verificationTraffic === true || verificationAttribution(attribution)) return {kind:'skip',errorCode:'VERIFICATION_TRAFFIC'};
   const consent = isRecord(attribution.consent) ? attribution.consent : {};
   if (consent.analytics !== true) {
     return { kind: 'skip', errorCode: 'ANALYTICS_CONSENT_NOT_GRANTED' };
@@ -278,6 +281,7 @@ export async function processMarketingConversionDeliveries(params: {
     failed: 0,
   };
   const fetchImpl = params.fetchImpl ?? fetch;
+  if (process.env.VERCEL_ENV !== 'production') return summary;
 
   for (let index = 0; index < limit; index += 1) {
     // Claim immediately before delivery so a slow earlier provider request cannot

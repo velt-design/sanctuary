@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-27: Clean measurement and connect enquiries to recorded cash
+
+Reuse the existing marketing source/outcome table and direct enquiry-to-project
+relationships. Confirmed tests are excluded reversibly, ambiguous business receipts
+retained, and explicit verification browsing suppresses client/server measurement.
+Consent-permitted exact referrers reduce unknown sources without claiming paid or
+organic attribution. Accepted scope and signed recorded cash remain separate.
+Designer retains audited test evidence needed for review/clearing. GA4 applies one
+labelled public-website report filter consistently; originals remain in Google.
+No inferred cross-project customer joins, extra tracking retention or new service.
+
+
 ## 2026-10-27: Exercise the database boundary at the claimed report capacity
 
 Status: Implemented candidate. Area: GA4 persistence verification.

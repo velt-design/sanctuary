@@ -1,5 +1,6 @@
 'use client';
 import { isProjectDirection } from './projectFinderContract';
+import { trackingAudienceAllowed } from './trackingAudience';
 import { isProductDesignType } from '../components/products/productDesigns';
 
 // Only public browsing and enquiry routes. Private/token/staff pages fail closed.
@@ -41,6 +42,6 @@ const events = new Set(['design_start', 'design_edit', 'design_review', 'contact
 /** No payload values, IDs, selections or text are copied into replay metadata. */
 export function sendClarityJourneyEvent(event: string): void {
   const target = window as ClarityWindow;
-  if (!events.has(event) || !target.sanctuaryClarityActive || !clarityPageAllowed(location.pathname, location.search)) return;
+  if (!trackingAudienceAllowed() || !events.has(event) || !target.sanctuaryClarityActive || !clarityPageAllowed(location.pathname, location.search)) return;
   callClarity(target, 'event', event);
 }

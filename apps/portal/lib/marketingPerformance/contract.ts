@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 export const UNKNOWN_SOURCE = 'Unknown / unattributed';
 export const NO_CAMPAIGN = 'No recorded campaign';
+export function observedSource(source: string | null): string | null {
+  if (!source) return null;
+  const aliases: Record<string,string> = { fb:'Facebook',facebook:'Facebook',ig:'Instagram',instagram:'Instagram' };
+  const key=source.trim().toLowerCase();
+  return Object.hasOwn(aliases,key) ? aliases[key] : source;
+}
 export const stages = ['visit', 'quote', 'accepted', 'won'] as const;
 export type Stage = typeof stages[number];
 export const stageLabels: Record<Stage, string> = {
@@ -11,10 +17,13 @@ export const rowSchema = z.object({
   enquiryId: z.string().uuid(), receivedAt: z.string().datetime({ offset: true }),
   projectId: z.string().uuid().nullable(), projectName: z.string().nullable(), origin: z.boolean(),
   source: z.string().max(600).nullable(), campaign: z.string().max(600).nullable(),
+  recordedSource: z.string().max(600).nullable().optional(),
+  recordedCash: z.object({ amountCents:z.number().int().safe().nullable(),entryCount:z.number().int().nonnegative().safe(),complete:z.boolean() })
+    .refine(cash=>cash.complete===(cash.amountCents!==null),'Inconsistent cash coverage').nullable().optional(),
   qualification: z.enum(['qualified', 'not_qualified', 'unreviewed', 'ineligible', 'unavailable']),
   visit: z.boolean(), quote: z.boolean(), accepted: z.boolean(), won: z.boolean(),
   closedOutcome: z.string().nullable(),
-});
+}).transform(row=>({...row,...(observedSource(row.source)!==row.source?{recordedSource:row.recordedSource??row.source}:{}),source:observedSource(row.source)}));
 export const reportSchema = z.object({
   schemaVersion: z.literal(1), asOf: z.string().datetime({ offset: true }),
   start: z.string(), end: z.string(), timezone: z.literal('Pacific/Auckland'),
@@ -47,7 +56,7 @@ export function validPeriod(start: string, end: string, today = aucklandDay()): 
     && Date.parse(end) - Date.parse(start) <= 365 * 86400000;
 }
 export function filteredRows(report: MarketingReport, filters: Filters): MarketingRow[] {
-  return report.rows.filter(row => (!filters.source || (row.source ?? UNKNOWN_SOURCE) === filters.source)
+  return report.rows.filter(row => (!filters.source || (row.source ?? UNKNOWN_SOURCE) === observedSource(filters.source))
     && (!filters.campaign || (row.campaign ?? NO_CAMPAIGN) === filters.campaign));
 }
 export function summarize(rows: MarketingRow[]) {
@@ -64,7 +73,15 @@ export function summarize(rows: MarketingRow[]) {
     visit: origins.filter(row => row.visit).length, quote: origins.filter(row => row.quote).length,
     accepted: origins.filter(row => row.accepted).length, won: origins.filter(row => row.won).length,
     lost: origins.filter(row => row.closedOutcome?.startsWith('LOST_')).length,
+    recordedCash: origins.every(row=>row.recordedCash?.complete)
+      ? safeCashTotal(origins.map(row=>row.recordedCash!.amountCents!)) : null,
+    cashEntries: origins.reduce((sum,row)=>sum+(row.recordedCash?.entryCount??0),0),
+    cashUnknown: origins.filter(row=>!row.recordedCash?.complete).length,
   };
+}
+function safeCashTotal(values:number[]):number|null {
+  const total=values.reduce((sum,value)=>sum+value,0);
+  return Number.isSafeInteger(total)?total:null;
 }
 export const comparisonSorts = ['enquiries', 'qualified', 'won', 'winRate'] as const;
 export type ComparisonSort = typeof comparisonSorts[number];

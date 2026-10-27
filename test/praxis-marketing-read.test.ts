@@ -13,6 +13,8 @@ let db: PGlite;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`create schema praxis_reporting;
+    create table praxis_reporting.marketing_test_projects_v1(project_id uuid);
+    create table praxis_reporting.marketing_test_enquiries_v1(enquiry_id uuid);
     create table praxis_reporting.enquiry_requests_v1(resource text default 'enquiry_request', id uuid, project_id uuid, parent_id uuid, payload jsonb, omission_count integer default 0);
     create table praxis_reporting.quotes_v1(like praxis_reporting.enquiry_requests_v1 including all);
     create table praxis_reporting.quote_versions_v1(like praxis_reporting.enquiry_requests_v1 including all);`);

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackingRuntimeGuard } from '../../lib/trackingAudience';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,7 @@ export function GET() {
   const js = `
 ;(function () {
   try {
+    ${trackingRuntimeGuard}
     if (window.__spArchiproRuntimeLoaded) return;
     window.__spArchiproRuntimeLoaded = true;
 
