@@ -1,3 +1,12 @@
+## Native UI creative reporting candidate
+
+Run `node scripts/test-meta-creative-ledger-db.mjs` with the already-installed
+`SANCTUARY_DISPOSABLE_POSTGRES_BIN`. The whole forward migration rollback and
+`supabase/tests/meta_native_creative_reporting.sql` run on local PostgreSQL.
+Fixtures contain only synthetic IDs/business facts and make no provider call.
+Actual Root registration, publication, stop rule, campaign scope/budget and
+matched-period measurement remain separate hosted acceptance.
+
 ## Standard-enhancements normalization
 
 Run the creative-executor suites, signed creative-route tests and
