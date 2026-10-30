@@ -55,4 +55,4 @@ supabase/migrations/20261029223138_studio_booklet_drawing_only_inventory.sql -te
 supabase/migrations/20261029231641_studio_client_package_variants.sql -text
 supabase/migrations/20261029231753_studio_client_package_drafts.sql -text
 supabase/migrations/20261030020837_studio_designer_staff_trial_scope.sql -text
-supabase/migrations/20261030024240_studio_designer_atomic_install.sql -text
+supabase/migrations/20261030070356_studio_designer_atomic_install.sql -text
