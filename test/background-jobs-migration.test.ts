@@ -95,6 +95,20 @@ function returnedTableColumns(definition: string): string[] {
 }
 
 describe('Wave 3 background-job migrations', () => {
+  it('aligns the additive Studio kind registration with its TypeScript contract', () => {
+    const studio = readFileSync(path.join(process.cwd(), 'supabase/migrations/20261028090403_studio_client_documents.sql'), 'utf8');
+    const row = studio.match(/values\('studio_design_booklet_v1',(\d+),'([^']+)',(\d+),(\d+),'([^']+)',(true|false),'([^']*)',(true|false),'([^']+)',(true|false),'([^']*)'\)/i);
+    expect(row, 'Studio must be registered in its own additive migration').not.toBeNull();
+    const definition = getBackgroundJobDefinition('studio_design_booklet_v1', 1);
+    expect(row!.slice(1)).toEqual([
+      String(definition.payloadContractVersion), definition.handlerOwner,
+      String(definition.retry.maxAttempts), String(definition.timeoutMs / 1_000), definition.concurrencyClass,
+      String(definition.hasExternalSideEffect), '{' + definition.requiredEffectCheckpoints.join(',') + '}',
+      String(definition.cancellationAllowed), definition.defaultRolloutMode, 'true',
+      '{' + definition.allowedEffectCheckpoints.join(',') + '}',
+    ]);
+  });
+
   it('creates one logged PGMQ queue with the exact minimal message contract', () => {
     expect(foundation).toMatch(/pgmq\.create\('portal_background_jobs'\)/i);
     expect(foundation).toMatch(/queue\.is_unlogged/i);
@@ -129,7 +143,10 @@ describe('Wave 3 background-job migrations', () => {
       foundation.matchAll(/\('([a-z][a-z0-9_]+)',\s*1,\s*'[a-z0-9-]+'/g),
       (match) => match[1],
     );
-    const foundationKinds = BACKGROUND_JOB_KINDS.filter((kind) => kind !== 'ai_synthetic_v1' && kind !== 'xero_invoice_draft_v1');
+    // These kinds are registered by later additive migrations, never by the historical foundation.
+    const foundationKinds = BACKGROUND_JOB_KINDS.filter((kind) =>
+      kind !== 'ai_synthetic_v1' && kind !== 'xero_invoice_draft_v1' && kind !== 'studio_design_booklet_v1',
+    );
     expect(seededKinds).toEqual(foundationKinds);
 
     for (const kind of foundationKinds) {

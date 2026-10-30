@@ -5,9 +5,13 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 // This exact licensed UMD is byte-identical to the already exempt Portal vendor.
-// Its Unicode codepoint tables intentionally contain U+FFFD. Drift is scanned normally.
+// Its Unicode codepoint tables intentionally contain U+FFFD. Only the exact
+// verified LF and CRLF checkout bytes qualify; all content drift is scanned normally.
 const VERIFIED_FONTKIT_PATH = 'packages/studio-documents/vendor/fontkit.umd.cjs';
-const VERIFIED_FONTKIT_SHA256 = '15d1ce74a2e38a5ee280ff4910091d3c8d003d98fabfdbf85c34370d2e803dcd';
+const VERIFIED_FONTKIT_SHA256 = new Set([
+  'd60739f02b41b636ee0cc2fb79ba589958144f9240e585dbc19e6a3b08d82825', // Public Git blob, LF.
+  '15d1ce74a2e38a5ee280ff4910091d3c8d003d98fabfdbf85c34370d2e803dcd', // Windows CRLF checkout.
+]);
 
 const SKIP_PREFIXES = [
   '.git/',
@@ -98,7 +102,7 @@ for (const relPath of getTrackedFiles()) {
   try {
     const bytes=fs.readFileSync(absPath);
     if (relPath === VERIFIED_FONTKIT_PATH
-      && createHash('sha256').update(bytes).digest('hex') === VERIFIED_FONTKIT_SHA256) continue;
+      && VERIFIED_FONTKIT_SHA256.has(createHash('sha256').update(bytes).digest('hex'))) continue;
     text = bytes.toString('utf8');
   } catch {
     continue;

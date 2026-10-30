@@ -12,14 +12,15 @@ function git(cwd: string, args: string[]) {
   return result.stdout.trim();
 }
 
-it('admits only the three reviewed Studio server commands in a committed-base strict comparison', () => {
+it('admits only the seven reviewed Studio server owners in a committed-base strict comparison', () => {
   const temporaryRoot = realpathSync(tmpdir());
   const repository = mkdtempSync(join(temporaryRoot, 'sanctuary-studio-role-'));
   if (dirname(repository) !== temporaryRoot || !basename(repository).startsWith('sanctuary-studio-role-')) {
     throw Error('Unexpected temporary fixture path');
   }
   const directory = 'apps/portal/lib/designStudio';
-  const approved = ['createCommand.server.ts', 'saveCommand.server.ts', 'quotePrepare.server.ts'].map(name => `${directory}/${name}`);
+  const approved = ['createCommand.server.ts', 'saveCommand.server.ts', 'quotePrepare.server.ts',
+    'atomicQuoteCreate.server.ts', 'clientDocuments.server.ts', 'clientDocumentRequest.server.ts', 'clientPackageContext.server.ts'].map(name => `${directory}/${name}`);
   try {
     git(repository, ['init']);
     git(repository, ['config', 'user.email', 'fixture@example.com']);
@@ -41,11 +42,14 @@ it('admits only the three reviewed Studio server commands in a committed-base st
     git(repository, ['commit', '-m', 'reviewed command fixtures']);
     const accepted = report();
     expect(accepted.status, accepted.stderr || accepted.stdout).toBe(0);
-    expect(accepted.stdout).toContain('3 new-growth');
+    expect(accepted.stdout).toContain('7 new-growth');
     approved.forEach(file => expect(accepted.stdout).toContain(file));
 
     const unapproved = [
       `${directory}/createCommand-extra.server.ts`,
+      `${directory}/atomicQuoteCreate-extra.server.ts`,
+      `${directory}/clientDocuments-extra.server.ts`,
+      `${directory}/other/clientPackageContext.server.ts`,
       `${directory}/saveCommand.ts`,
       `${directory}/other/quotePrepare.server.ts`,
       'apps/portal/lib/unreviewed/createCommand.server.ts',

@@ -29,13 +29,24 @@ execute the forward SQL and scoped readers with a controlled foundation lease
 stub, not the complete state machine or concurrent connections. Exact scope,
 email rollback denial and 32-project/capability-before-visibility checks are
 described in [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
-Connected staging/production, original six bundle caps, normal Next real type
-gate, fresh worker assets and host memory/heartbeat proof remain distinct gates.
+Connected staging/production, the current five active Portal bundle caps (with
+Workbench retained as a retired diagnostic), normal Next real type gate, fresh
+worker assets and host memory/heartbeat proof remain distinct gates.
 
 `node --test scripts/check-mojibake.test.mjs` verifies the exact renderer fontkit
-path/hash exemption against the already-public Portal bytes. Its intentional
-Unicode tables are preserved; vendor drift falls back to normal scanning and
+path/hash exemption against the already-public Portal bytes in the two verified
+LF and CRLF checkout forms. Its intentional Unicode tables are preserved; any
+other vendor bytes fall back to normal scanning and
 authored replacement characters still fail. No broad vendor ignore is added.
+
+Run `publishedPricingReferenceContinuity.test.ts` with the Marketing pricing,
+reference and immutable-publication suites when changing a frozen website result.
+It exercises old protected claims and fresh issuers through the real published
+reader, with immutable lookup mocked, across the retained manifest versions and
+current policy. It rejects changed designs at the same price, altered non-price
+result fields, provenance mismatches and tampered refs. The original six complete
+frozen-price golden hashes remain whole-result assertions. Operational site days
+stay available to Studio; they are outside these signed frozen-v1 wire shapes.
 
 ## Enquiry-to-cash and verification traffic candidate
 

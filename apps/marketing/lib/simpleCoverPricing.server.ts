@@ -27,7 +27,7 @@ export type FrozenSimpleCoverPricingResult = {
   schemaVersion: 'simple-cover-pricing.v1';
   input: SimpleCoverInput;
   siteInputs: ReturnType<typeof buildSimpleCoverSiteInputs>;
-  siteOutput: SiteOutputV1;
+  siteOutput: Omit<SiteOutputV1, 'site_days'>;
   customerPrice: {
     exactExGst: number;
     exactIncGst: number;
@@ -42,7 +42,10 @@ export function calculateFrozenSimpleCoverPricingWithConfiguration(
   resolved: ResolvedPublishedCostingConfigurationV1,
 ): FrozenSimpleCoverPricingResult {
   const siteInputs = buildSimpleCoverSiteInputs(input);
-  const siteOutput = calculateSiteCostV1(siteInputs, resolved.config);
+  // Preserve the signed frozen-v1 shape. Operational site days stay in the full
+  // core result; all existing nested fields, including module days, are retained.
+  const siteOutput = { ...calculateSiteCostV1(siteInputs, resolved.config) };
+  delete siteOutput.site_days;
   const customerPrice = calculateCustomerPriceFromCostEx(
     siteOutput.totals.cost_ex_gst,
     0,

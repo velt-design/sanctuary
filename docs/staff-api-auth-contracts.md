@@ -680,3 +680,16 @@ Package document preview/download/retry names the exact quote, document ID and
 CAS package revision, and the browser checks the echoed identity. See
 [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
 
+
+The service-role architecture guard recognises exactly seven reviewed Studio
+server owners: `createCommand`, `saveCommand`, `quotePrepare`, `atomicQuoteCreate`,
+`clientDocuments`, `clientDocumentRequest` and `clientPackageContext` (all
+`lib/designStudio/*.server.ts`). Create/save/prepare verify fresh staff and
+caller-visible project/source before fixed private commands. Atomic replay runs
+in parallel with caller visibility: SQL independently checks current role/control
+and exact actor/project/estimate/request/payload, and no replay response is
+accepted before caller visibility. The boolean capability helper relies on
+freshly guarded callers plus SQL role/project/control checks. Document/package
+owners verify caller quote/project visibility before privileged operations; their
+SQL retains binding, revision and CAS fences. This is an exact owner list, not a
+directory exemption or expanded role grant.

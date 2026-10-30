@@ -45,7 +45,7 @@ describe('shared Portal quote validation boundary', () => {
     const files=runtimeDependencies('apps/portal/components/designStudio/StudioDocumentSlot.tsx');
     expect(files.filter(file=>/\/(?:StudioDocument|studioOpeningTransport|studioSessionLifecycle|studioLifecycle|studioDocumentNavigation|StudioNativeLink)\.[jt]sx?$/.test(file))).toEqual([]);
     expect(runtimeDependencies('apps/portal/components/layout/PortalShell.tsx')).not.toContain('apps/portal/components/designStudio/StudioNavigationCapture.tsx');
-    expect(fs.readFileSync('apps/portal/components/layout/PortalEnvironment.tsx','utf8')).not.toContain('StudioNavigationCapture');
+    expect(fs.readFileSync('apps/portal/app/layout.tsx','utf8')).not.toContain('StudioNavigationCapture');
   });
   it('keeps retained journal readers outside common native navigation lifetime imports',()=>{
     for(const entry of ['apps/portal/lib/designStudio/studioDocumentNavigation.ts','apps/portal/components/designStudio/StudioDocument.tsx']){

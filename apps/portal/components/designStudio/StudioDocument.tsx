@@ -13,7 +13,7 @@ import {readStudioReviewOpening,StudioReviewProtectedFallback,studioReviewProtec
 import {StudioDocumentContext,type StudioDocumentAdmission} from './StudioDocumentContext';
 import StudioNavigationCapture from './StudioNavigationCapture';
 import type {QuoteVersionDetail} from '@/lib/quotes/types';
-import {getSupabaseBrowser} from '@/lib/supabase/browserClient';
+import {observeStudioDocumentAuth} from '@/components/auth/studioDocumentAuth';
 
 
 /** One native document and one fresh opening authority. Old UI can be hidden
@@ -123,8 +123,7 @@ export default function StudioDocument({callback,children}:{callback:string;chil
   let observedActor:string|null|undefined;
   let initialized!:()=>void;
   startup.current=new Promise<void>(resolve=>{initialized=resolve;});
-  const supabase=getSupabaseBrowser();
-  const {data}=supabase.auth.onAuthStateChange((event,session)=>{
+  const stopObserving=observeStudioDocumentAuth((event,session)=>{
    if(event==='INITIAL_SESSION')return;
    const actor=event==='SIGNED_OUT'?null:session?.user?.id??null;
    // Compare actual events with each other, not only with the deliberately
@@ -132,10 +131,7 @@ export default function StudioDocument({callback,children}:{callback:string;chil
    const previous=observedActor===undefined?current.current?.scope.actorId??null:observedActor;
    observedActor=actor;
    if(event==='SIGNED_OUT'||event==='USER_UPDATED'||actor!==previous)reopen.current(true);
-  });
-  // Subscribe before joining the SDK's one public initialization promise. Even
-  // failed browser initialization cannot veto the fresh server access guard.
-  void Promise.resolve().then(()=>supabase.auth.initialize()).then(initialized,initialized);
+  },initialized);
   reopen.current();
   const hide=()=>{presented.current=false;mask();};
   const leave=()=>{presented.current=false;setLeaving(true);mask();};
@@ -147,7 +143,7 @@ export default function StudioDocument({callback,children}:{callback:string;chil
   const stay=()=>{presented.current=true;reopen.current(true);};
   window.addEventListener('pagehide',hide);window.addEventListener('pageshow',show);window.addEventListener('popstate',pop);
   window.addEventListener('studio:document-leaving',leave);window.addEventListener('studio:document-staying',stay);
-  return()=>{data.subscription.unsubscribe();request.current?.abort();serial.current++;inflight.current=false;fence.current?.release();window.removeEventListener('pagehide',hide);window.removeEventListener('pageshow',show);window.removeEventListener('popstate',pop);window.removeEventListener('studio:document-leaving',leave);window.removeEventListener('studio:document-staying',stay);};
+  return()=>{stopObserving();request.current?.abort();serial.current++;inflight.current=false;fence.current?.release();window.removeEventListener('pagehide',hide);window.removeEventListener('pageshow',show);window.removeEventListener('popstate',pop);window.removeEventListener('studio:document-leaving',leave);window.removeEventListener('studio:document-staying',stay);};
  },[callback,mask]);
  useLayoutEffect(()=>{
   if(studioDocumentCallback(pathname+(search.size?`?${search}`:''),true)===expected.current)return;

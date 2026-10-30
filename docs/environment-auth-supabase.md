@@ -3,7 +3,12 @@
 ## Design Studio trial controls
 
 Studio uses the existing staff session/project RLS and freshly verified role;
-canonical callback headers carry routing only. Server-only app flags are
+canonical callback headers carry routing only. The existing auth component owner
+provides Studio with an auth-only subscription/initialization lifetime through
+`studioDocumentAuth.ts`. It returns subscription cleanup only, exposes no raw
+client or table/role access, and subscribes before initialization. Auth events
+retire stale work; only the fresh server response admits an actor.
+Server-only app flags are
 `ENABLE_PORTAL_DESIGN_STUDIO=1`, `ENABLE_STUDIO_CLIENT_DOCUMENTS=1` and, for
 production staff trial, `STUDIO_DOCUMENT_STAFF_TRIAL_ENABLED=true`. Private
 database admission and a separate worker opt-in are also required. Customer
