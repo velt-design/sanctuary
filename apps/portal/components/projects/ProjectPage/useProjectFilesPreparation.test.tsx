@@ -22,13 +22,16 @@ afterEach(async () => { pdfCode.preload.mockClear(); mounted?.unmount(); mounted
 const rootId = '11111111-1111-4111-8111-111111111111';
 function Owner({ project = 'project-a', enabled = true }: { project?: string; enabled?: boolean }) { useProjectFilesPreparation(project, 'host', enabled); return <p>Snapshot still loading</p>; }
 async function flush() { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); }); }
+// Positive readiness follows the actual import/query, not this file's negative-effect drain.
+// Vitest advances fake timers by the polling interval; zero preserves exact renewal deadlines.
+async function waitForReady(assertReady: () => void) { await vi.waitFor(assertReady, { interval: 0 }); }
 it('prepares current file metadata without importing or evaluating an unrelated PDF viewer', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
   const fetcher = vi.fn(async () => Response.json({ state: 'unlinked', roots: [], rootId: null, folderId: null, items: [], cursor: null }));
   vi.stubGlobal('fetch', fetcher);
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
   await vi.dynamicImportSettled();
-  await vi.waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+  await waitForReady(() => expect(fetcher).toHaveBeenCalledOnce());
   expect(pdfCode.imports).not.toHaveBeenCalled(); expect(pdfCode.preload).not.toHaveBeenCalled();
   expect(mounted.container.textContent).toBe('Snapshot still loading');
 });
@@ -45,28 +48,39 @@ it('prepares alongside snapshot loading, shares exact owner keys, and bounds fir
     const query = new URL(url, 'https://fixture').searchParams;
     return Response.json({ state: 'ready', rootId, folderId: query.get('folderId') ?? 'root', roots: [{ id: rootId, itemId: 'root', label: 'Project' }], items: query.has('folderId') ? [] : Array.from({ length: 8 }, (_, index) => ({ id: 'folder'+index, name: 'Folder '+index, kind: 'folder', size: 0, modifiedAt: null, viewable: false })), cursor: null });
   }); vi.stubGlobal('fetch', fetcher);
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(mounted.container.textContent).toBe('Snapshot still loading'); expect(fetcher).toHaveBeenCalledTimes(3);
-  expect(client.getQueryData(['project-sharepoint-files', 'host', 'staff-a', 'project-a', rootId, 'folder0'])).toBeTruthy();
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await waitForReady(() => {
+    expect(mounted!.container.textContent).toBe('Snapshot still loading'); expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(client.getQueryData(['project-sharepoint-files', 'host', 'staff-a', 'project-a', rootId, 'folder0'])).toBeTruthy();
+    expect(client.getQueryState(projectFilesQueryOptions('host','staff-a','project-a',rootId,'folder1').queryKey)?.status).toBe('success');
+  });
   mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush(); expect(fetcher).toHaveBeenCalledTimes(3);
 });
 it('cancels a departed project and does not start late child preparation or cross an auth-owner boundary', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
-  let finish: ((response: Response) => void) | undefined;
-  const fetcher = vi.fn((_url: string, _init: RequestInit) => new Promise<Response>(resolve => { finish = resolve; })); vi.stubGlobal('fetch', fetcher);
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
+  const finishes = new Map<string, (response: Response) => void>();
+  const fetcher = vi.fn((url: string, _init: RequestInit) => new Promise<Response>(resolve => { finishes.set(url.split('/projects/')[1].split('/')[0], resolve); })); vi.stubGlobal('fetch', fetcher);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await waitForReady(() => expect(fetcher).toHaveBeenCalledTimes(1));
   const oldSignal = fetcher.mock.calls[0][1].signal!;
-  session.user = { id: 'staff-b' }; mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>); await flush();
-  expect(oldSignal.aborted).toBe(true); expect(fetcher).toHaveBeenCalledTimes(2);
-  await act(async () => finish!(Response.json({ state: 'unlinked', roots: [], rootId: null, folderId: null, items: [], cursor: null }))); await flush();
+  session.user = { id: 'staff-b' }; mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>);
+  await waitForReady(() => { expect(oldSignal.aborted).toBe(true); expect(fetcher).toHaveBeenCalledTimes(2); });
+  // Complete the retired A response as well as B, so a late successful root cannot start children.
+  await act(async () => {
+    finishes.get('project-a')!(Response.json({ state: 'ready', rootId, folderId: 'root', roots: [{ id: rootId, itemId: 'root', label: 'Project' }], items: [{ id: 'obsolete-child', name: 'Obsolete', kind: 'folder', size: 0, modifiedAt: null, viewable: false }], cursor: null }));
+    finishes.get('project-b')!(Response.json({ state: 'unlinked', roots: [], rootId: null, folderId: null, items: [], cursor: null }));
+  });
+  await waitForReady(() => expect(client.getQueryData(projectFilesQueryOptions('host','staff-b','project-b').queryKey)?.pages[0].state).toBe('unlinked'));
   expect(client.getQueryData(['project-sharepoint-files', 'host', 'staff-a', 'project-a', 'default', 'root'])).toBeUndefined();
+  expect(fetcher).toHaveBeenCalledTimes(2);
   session.status = 'anonymous'; mounted.rerender(<QueryClientProvider client={client}><Owner project="project-c" /></QueryClientProvider>); await flush(); expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
 it('purges remembered project bytes when the owning route observes access ending', async () => {
   const client = new QueryClient(); clients.push(client);
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ state: 'unlinked', roots: [], rootId: null, folderId: null, items: [], cursor: null })));
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await waitForReady(() => expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a').queryKey)?.pages[0].state).toBe('unlinked'));
   const scope = { owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, itemId: 'file', folderId: 'folder' };
   retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"v1"', name: 'Photo.png', mime: 'image/png' });
   expect(readPreview(client, scope, [])).not.toBeNull();
@@ -98,26 +112,35 @@ it('fetches fresh root and bounded child metadata on the first four-minute renew
   vi.useFakeTimers(); const started = Date.now(), { client, requests, fetcher } = renewalFixture();
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0);
   await vi.dynamicImportSettled();
-  expect(requests).toEqual(['root','folder0','folder1']);
+  await waitForReady(() => {
+    expect(requests).toEqual(['root','folder0','folder1']);
+    expect(client.getQueryState(projectFilesQueryOptions('host','staff-a','project-a',rootId,'folder1').queryKey)?.status).toBe('success');
+  });
   await tick(4 * 60_000 - 1); expect(fetcher).toHaveBeenCalledTimes(3);
-  await tick(1); expect(requests).toEqual(['root','folder0','folder1','root','folder0','folder1']);
+  await tick(1);
+  await waitForReady(() => expect(requests).toEqual(['root','folder0','folder1','root','folder0','folder1']));
   const options = projectFilesQueryOptions('host','staff-a','project-a');
-  expect(client.getQueryState(options.queryKey)?.dataUpdatedAt).toBe(started + 4 * 60_000);
-  expect(client.getQueryData(options.queryKey)?.pages[0].items[0].name).toBe('Folder 0 pass 2');
+  await waitForReady(() => {
+    expect(client.getQueryState(options.queryKey)?.dataUpdatedAt).toBe(started + 4 * 60_000);
+    expect(client.getQueryData(options.queryKey)?.pages[0].items[0].name).toBe('Folder 0 pass 2');
+  });
   await tick(60_000); expect(fetcher).toHaveBeenCalledTimes(6);
 });
 it('renews the latest non-likely folder on the fixed project timer despite intervening selection changes', async () => {
   vi.useFakeTimers(); const { client, requests } = renewalFixture();
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0);
   await vi.dynamicImportSettled();
+  await waitForReady(() => expect(client.getQueryState(projectFilesQueryOptions('host','staff-a','project-a',rootId,'folder1').queryKey)?.status).toBe('success'));
   await tick(60_000);
   const key = filesNavigationKey('host','staff-a','project-a');
   writeFilesNavigation(key, { ...emptyFilesNavigation(), rootId, trail: [{ id: 'deep-folder', name: 'Photos' }], selectedId: 'photo1' });
   await tick(2 * 60_000);
   writeFilesNavigation(key, { ...emptyFilesNavigation(), rootId, trail: [{ id: 'deep-folder', name: 'Photos' }], selectedId: 'photo20' });
   await tick(60_000);
-  expect(requests.slice(3).sort()).toEqual(['deep-folder','folder0','folder1','root']);
-  expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId,'deep-folder').queryKey)?.pages[0].folderId).toBe('deep-folder');
+  await waitForReady(() => {
+    expect(requests.slice(3).sort()).toEqual(['deep-folder','folder0','folder1','root']);
+    expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId,'deep-folder').queryKey)?.pages[0].folderId).toBe('deep-folder');
+  });
 });
 it('keeps the project timer available when entering from website files and later switching to SharePoint', async () => {
   vi.useFakeTimers(); const { client, requests } = renewalFixture(), key = filesNavigationKey('host','staff-a','project-a');
@@ -125,7 +148,7 @@ it('keeps the project timer available when entering from website files and later
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0); expect(requests).toEqual([]);
   await tick(2 * 60_000);
   writeFilesNavigation(key, { ...emptyFilesNavigation(), rootId, trail: [{ id: 'deep-folder', name: 'Photos' }] });
-  await tick(2 * 60_000); await vi.dynamicImportSettled(); expect(requests.sort()).toEqual(['deep-folder','folder0','folder1','root']);
+  await tick(2 * 60_000); await vi.dynamicImportSettled(); await waitForReady(() => expect(requests.sort()).toEqual(['deep-folder','folder0','folder1','root']));
 });
 it('coalesces overlapping forced renewal passes without restarting the same query work', async () => {
   const { client, requests } = renewalFixture();
@@ -166,7 +189,10 @@ it('renews the loaded three-page extent and later-page selected preview without 
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0);
   await vi.dynamicImportSettled();
   await tick(4 * 60_000);
-  expect(metadataRequests).toEqual(['page1','page2','page3','page1','page2','page3']);
+  await waitForReady(() => {
+    expect(metadataRequests).toEqual(['page1','page2','page3','page1','page2','page3']);
+    expect(previewRequests).toEqual([[selectedId,'first','second']]);
+  });
   expect(client.getQueryData(options.queryKey)?.pages).toHaveLength(3);
   expect(client.getQueryData(options.queryKey)?.pages.flatMap(page => page.items).some(item => item.id === selectedId)).toBe(true);
   expect(previewRequests).toEqual([[selectedId,'first','second']]);
@@ -176,9 +202,11 @@ it('renews the loaded three-page extent and later-page selected preview without 
   expect(readPreview(client, scope(selectedId), [], false)).not.toBeNull();
   expect(readFilesNavigation(key)).toEqual(navigation);
   shortened = true; await tick(3 * 60_000 - 1_000);
-  expect(metadataRequests).toEqual(['page1','page2','page3','page1','page2','page3','page1']);
-  expect(client.getQueryData(options.queryKey)?.pages).toHaveLength(1);
-  expect(readPreview(client, scope(selectedId), [], false)).toBeNull();
+  await waitForReady(() => {
+    expect(metadataRequests).toEqual(['page1','page2','page3','page1','page2','page3','page1']);
+    expect(client.getQueryData(options.queryKey)?.pages).toHaveLength(1);
+    expect(readPreview(client, scope(selectedId), [], false)).toBeNull();
+  });
 });
 
 it('does not overwrite a longer explicit-root page set while normalizing a first-page default-root preparation', async () => {
@@ -234,13 +262,18 @@ it('publishes metadata independently of held private code, then prepares the sam
   setPreviewOwner(client, scope.owner);
   retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"old"', name: 'Old.pdf', mime: 'application/pdf' });
   const changed = vi.fn(), unsubscribe = subscribePreview(client, scope, changed);
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(code.entered).toHaveBeenCalledTimes(1); expect(metadata).toEqual(['project-a']); expect(previews).toEqual([]);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await waitForReady(() => {
+    expect(code.entered).toHaveBeenCalledTimes(1); expect(metadata).toEqual(['project-a']);
+    expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].items[0].name).toBe('Plan.pdf');
+    expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
+  });
+  expect(previews).toEqual([]);
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].items[0].name).toBe('Plan.pdf');
   expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
   expect(mounted.container.textContent).toBe('Snapshot still loading');
-  await act(async () => code.release()); await flush();
-  expect(previews).toEqual(['project-a']); expect(code.prepare).toHaveBeenCalledTimes(1);
+  await act(async () => code.release());
+  await waitForReady(() => { expect(previews).toEqual(['project-a']); expect(code.prepare).toHaveBeenCalledTimes(1); });
   expect(code.prepare.mock.calls[0][1]).toEqual({ owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root' });
   mounted.unmount(); mounted = undefined;
   expect(code.cancel).toHaveBeenCalledExactlyOnceWith(client, JSON.stringify(['host','staff-a']), 'project-a');
@@ -251,7 +284,7 @@ it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not revive a held p
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
   // Both independent imports must have started before retiring the held owner.
   // A fixed sleep does not establish metadata readiness under a cold module transform.
-  await vi.waitFor(() => {
+  await waitForReady(() => {
     expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledTimes(1);
   });
   const scope = { owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root', itemId: 'file' };
@@ -264,14 +297,14 @@ it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not revive a held p
     mounted.rerender(<QueryClientProvider client={client}><Owner enabled={retirement !== 'disable'} /></QueryClientProvider>);
     expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
   }
-  await act(async () => code.release()); await flush();
+  await act(async () => code.release()); await vi.dynamicImportSettled(); await flush();
   expect(code.prepare).not.toHaveBeenCalled(); expect(code.cancel).not.toHaveBeenCalled(); expect(previews).toEqual([]);
   unsubscribe();
 });
 it('rejects retired held A while current B and return A work through available code without a late cancellation', async () => {
   const code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
-  await vi.waitFor(() => {
+  await waitForReady(() => {
     expect(metadata).toEqual(['project-a']); expect(code.entered).toHaveBeenCalledOnce();
     expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].folderId).toBe('root');
   });
@@ -281,13 +314,13 @@ it('rejects retired held A while current B and return A work through available c
   // Release shared code only after A retires. No assumption about Vitest bypassing
   // a pending async factory, or a cold module finishing within a fixed sleep.
   await act(async () => code.release()); await vi.dynamicImportSettled();
-  await vi.waitFor(() => expect(previews).toEqual(['project-b']));
+  await waitForReady(() => expect(previews).toEqual(['project-b']));
   expect(code.cancel).not.toHaveBeenCalled();
   expect(code.prepare.mock.calls.every(([, scope]) => scope.owner === JSON.stringify(['host','staff-b']) && scope.projectId === 'project-b')).toBe(true);
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-b','project-b',rootId).queryKey)?.pages[0].folderId).toBe('root');
   session.user = { id: 'staff-a' };
   mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
-  await vi.waitFor(() => expect(previews).toEqual(['project-b','project-a']));
+  await waitForReady(() => expect(previews).toEqual(['project-b','project-a']));
   expect(metadata).toEqual(['project-a','project-b']);
   expect(code.cancel.mock.calls.every(([, owner, project]) => owner === JSON.stringify(['host','staff-b']) && project === 'project-b')).toBe(true);
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].folderId).toBe('root');
@@ -298,12 +331,12 @@ it('keeps metadata after code-load failure and requests code again only on the e
   vi.useFakeTimers(); const started = Date.now();
   const source = await holdMetadataCode(), code = await holdPreparationCode(), { client, metadata, previews } = preparedMetadataFixture();
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0);
-  await vi.waitFor(() => expect(code.entered).toHaveBeenCalledTimes(1));
-  await vi.waitFor(() => expect(source.entered).toHaveBeenCalledTimes(1));
+  await waitForReady(() => expect(code.entered).toHaveBeenCalledTimes(1));
+  await waitForReady(() => expect(source.entered).toHaveBeenCalledTimes(1));
   // These imports are independent: preview-code entry does not confirm metadata.
   expect(metadata).toEqual([]);
   await act(async () => source.release()); await tick(0);
-  await vi.waitFor(() => expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].state).toBe('ready'));
+  await waitForReady(() => expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].state).toBe('ready'));
   expect(metadata).toEqual(['project-a']);
   expect(code.entered).toHaveBeenCalledTimes(1);
   await act(async () => code.reject(new Error('Fictional module unavailable'))); await vi.dynamicImportSettled();
@@ -311,9 +344,9 @@ it('keeps metadata after code-load failure and requests code again only on the e
   expect(previews).toEqual([]); expect(code.entered).toHaveBeenCalledTimes(1);
   const recovery = await holdPreparationCode();
   await tick(started + 4 * 60_000 - 1 - Date.now()); expect(recovery.entered).not.toHaveBeenCalled();
-  await tick(1); await vi.waitFor(() => expect(recovery.entered).toHaveBeenCalledTimes(1)); expect(previews).toEqual([]);
+  await tick(1); await waitForReady(() => expect(recovery.entered).toHaveBeenCalledTimes(1)); expect(previews).toEqual([]);
   await act(async () => recovery.release()); await tick(0);
-  await vi.waitFor(() => expect(previews).toEqual(['project-a']));
+  await waitForReady(() => expect(previews).toEqual(['project-a']));
   expect(metadata).toEqual(['project-a','project-a']); expect(previews).toEqual(['project-a']); expect(recovery.prepare).toHaveBeenCalledTimes(1);
 });
 
@@ -335,21 +368,24 @@ it('starts both independent code loads and reconciles metadata while preview cod
   setPreviewOwner(client, scope.owner);
   retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"old"', name: 'Old.pdf', mime: 'application/pdf' });
   const changed = vi.fn(), unsubscribe = subscribePreview(client, scope, changed);
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(source.entered).toHaveBeenCalledTimes(1); expect(code.entered).toHaveBeenCalledTimes(1);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await waitForReady(() => { expect(source.entered).toHaveBeenCalledTimes(1); expect(code.entered).toHaveBeenCalledTimes(1); });
   expect(metadata).toEqual([]); expect(previews).toEqual([]); expect(readPreview(client, scope, [])).not.toBeNull();
   const frame = mounted.container.firstChild;
-  await act(async () => source.release()); await flush();
-  expect(metadata).toEqual(['project-a']); expect(source.prepare).toHaveBeenCalledTimes(1);
+  await act(async () => source.release());
+  await waitForReady(() => {
+    expect(metadata).toEqual(['project-a']); expect(source.prepare).toHaveBeenCalledTimes(1);
+    expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
+  });
   expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
   expect(code.prepare).not.toHaveBeenCalled(); expect(previews).toEqual([]); expect(mounted.container.firstChild).toBe(frame);
-  await act(async () => code.release()); await flush();
-  expect(previews).toEqual(['project-a']); expect(code.prepare).toHaveBeenCalledTimes(1); unsubscribe();
+  await act(async () => code.release());
+  await waitForReady(() => { expect(previews).toEqual(['project-a']); expect(code.prepare).toHaveBeenCalledTimes(1); }); unsubscribe();
 });
 it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not begin a late metadata read after fully held owner %s', async retirement => {
   const source = await holdMetadataCode(), { client, metadata, previews } = preparedMetadataFixture();
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(source.entered).toHaveBeenCalledTimes(1); expect(metadata).toEqual([]);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await waitForReady(() => expect(source.entered).toHaveBeenCalledTimes(1)); expect(metadata).toEqual([]);
   const scope = { owner: JSON.stringify(['host','staff-a']), projectId: 'project-a', rootId, folderId: 'root', itemId: 'file' };
   retainPreview(client, scope, { bytes: new Uint8Array([1]), version: '"v1"', name: 'Plan.pdf', mime: 'application/pdf' });
   const changed = vi.fn(), unsubscribe = subscribePreview(client, scope, changed);
@@ -360,37 +396,37 @@ it.each(['unmount', 'disable', 'anonymous', 'denied'])('does not begin a late me
     mounted.rerender(<QueryClientProvider client={client}><Owner enabled={retirement !== 'disable'} /></QueryClientProvider>);
     expect(readPreview(client, scope, [])).toBeNull(); expect(changed).toHaveBeenCalledExactlyOnceWith(null);
   }
-  await act(async () => source.release()); await flush();
+  await act(async () => source.release()); await vi.dynamicImportSettled(); await flush();
   expect(source.prepare).not.toHaveBeenCalled(); expect(metadata).toEqual([]); expect(previews).toEqual([]); unsubscribe();
 });
 it('rejects the retired metadata A before its first read while available current B and return A use unchanged keys', async () => {
   const source = await holdMetadataCode(), { client, metadata, previews } = preparedMetadataFixture();
-  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(source.entered).toHaveBeenCalledTimes(1); expect(metadata).toEqual([]);
+  mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await waitForReady(() => expect(source.entered).toHaveBeenCalledTimes(1)); expect(metadata).toEqual([]);
   session.user = { id: 'staff-b' };
   mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>);
   await act(async () => source.release()); await vi.dynamicImportSettled();
-  await vi.waitFor(() => { expect(metadata).toEqual(['project-b']); expect(previews).toEqual(['project-b']); });
+  await waitForReady(() => { expect(metadata).toEqual(['project-b']); expect(previews).toEqual(['project-b']); });
   expect(source.prepare.mock.calls.some(([, , owner]) => owner === 'staff-a')).toBe(false);
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)).toBeUndefined();
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-b','project-b',rootId).queryKey)?.pages[0].folderId).toBe('root');
   session.user = { id: 'staff-a' };
   mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
-  await vi.waitFor(() => { expect(metadata).toEqual(['project-b','project-a']); expect(previews).toEqual(['project-b','project-a']); });
+  await waitForReady(() => { expect(metadata).toEqual(['project-b','project-a']); expect(previews).toEqual(['project-b','project-a']); });
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].folderId).toBe('root');
 });
 it('recovers a metadata-code load on the existing four-minute pass without coupling it to preview code or retrying sooner', async () => {
   vi.useFakeTimers(); const started = Date.now();
   const source = await holdMetadataCode(), { client, metadata, previews } = preparedMetadataFixture();
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await tick(0);
-  await vi.waitFor(() => expect(source.entered).toHaveBeenCalledTimes(1));
+  await waitForReady(() => expect(source.entered).toHaveBeenCalledTimes(1));
   await act(async () => source.reject(new Error('Fictional metadata module unavailable'))); await vi.dynamicImportSettled();
   expect(metadata).toEqual([]); expect(previews).toEqual([]);
   const recovery = await holdMetadataCode();
   await tick(started + 4 * 60_000 - 1 - Date.now()); expect(recovery.entered).not.toHaveBeenCalled();
-  await tick(1); await vi.waitFor(() => expect(recovery.entered).toHaveBeenCalledTimes(1)); expect(metadata).toEqual([]);
+  await tick(1); await waitForReady(() => expect(recovery.entered).toHaveBeenCalledTimes(1)); expect(metadata).toEqual([]);
   await act(async () => recovery.release()); await tick(0);
-  await vi.waitFor(() => expect(previews).toEqual(['project-a']));
+  await waitForReady(() => expect(previews).toEqual(['project-a']));
   expect(recovery.prepare).toHaveBeenCalledTimes(1); expect(recovery.prepare.mock.calls[0][8]).toBe(true);
   expect(metadata).toEqual(['project-a']); expect(previews).toEqual(['project-a']);
 });
