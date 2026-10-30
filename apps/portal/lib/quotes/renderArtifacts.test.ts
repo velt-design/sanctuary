@@ -286,3 +286,69 @@ describe('quote render artifacts', () => {
     expect(buildQuoteRenderHash(initial)).not.toBe(buildQuoteRenderHash(changed));
   });
 });
+
+// Golden identities were captured by executing the actual pre-Studio public625 hash owner.
+it.each([
+  [
+    "DRAFT",
+    "f5883184508a1d15b7abaf5074ca70343d67d7eddbbedf6d9164b8af06bd2e34"
+  ],
+  [
+    "SENT",
+    "b5f78710d06d898110a3f9951dd65ad01a26c94f0201bb27abf2cf21d0dd6726"
+  ],
+  [
+    "ACCEPTED",
+    "000add71046bf72333e01eef512f3ab82d0b12a97183058d570e4a988065b693"
+  ],
+  [
+    "DECLINED",
+    "0eb05267e71e64cc0b64f656ebf10ddb936f6c53d029b21fb2c737c6ccb0b010"
+  ],
+  [
+    "SUPERSEDED",
+    "3b00c2faf85d93505cdbea38db8b6038a4d2158ac1dbbb5aaeb48cbe99fc742c"
+  ]
+] as const)('retains the published pre-Studio %s render hash', (status, expected) => {
+  const detail = makeDetail(); detail.status = status;
+  if (status !== 'DRAFT') { detail.sentAt = '2026-03-11T00:00:00.000Z'; detail.sentBy = 'synthetic-staff'; }
+  expect(buildQuoteRenderHash(detail)).toBe(expected);
+});
+it.each([undefined, null])('omits absent or raw-null Studio metadata from the legacy artifact identity (%s)', value => {
+  const detail = makeDetail(); detail.studioDesign = value as QuoteVersionDetail['studioDesign'];
+  expect(buildQuoteRenderHash(detail)).toBe('f5883184508a1d15b7abaf5074ca70343d67d7eddbbedf6d9164b8af06bd2e34');
+});
+function studioHashDetail(version: 'v1' | 'v2' | 'v3'): QuoteVersionDetail {
+  return { ...makeDetail(), studioDesign: {
+    schemaVersion: version === 'v1' ? 'studio_quote_snapshot.v1' : 'studio_quote_snapshot.v2',
+    ...(version === 'v1' ? {} : { documentMode: 'separate_v1' as const }),
+    ...(version === 'v3' ? { quotePresentationVersion: 'sanctuary-quote.v3' as const } : {}),
+    snapshotId: 'synthetic-snapshot', contentHash: 'a'.repeat(64), designId: 'synthetic-design', revision: 1, publicationVersion: 1, selections: [],
+    images: [{ kind: 'plan', dataUrl: 'data:image/png;base64,AA==', sha256: 'b'.repeat(64), width: 1, height: 1 }, { kind: 'perspective', dataUrl: 'data:image/png;base64,AA==', sha256: 'c'.repeat(64), width: 1, height: 1 }],
+  } };
+}
+// The fix must not change any existing Studio artifact version or frozen design identity.
+it.each([
+  [
+    "v1",
+    "1ee3eef4789ef6df80ad172ad6649997845e45a1776ab2c61e360640f342496c"
+  ],
+  [
+    "v2",
+    "e154e6bab25325ac86e8ce30e34a3993a3e850a10cee2202c0b4269c9b6bef28"
+  ],
+  [
+    "v3",
+    "f3f9bfb6d9b196a7d0a5d78026c03e8445293cd69e9c29706de18cfe208feebf"
+  ]
+] as const)('retains the exact existing Studio %s hash and all frozen identity inputs', (version, expected) => {
+  const detail = studioHashDetail(version), view = detail.studioDesign!;
+  expect(buildQuoteRenderHash(detail)).toBe(expected);
+  for (const changed of [
+    { ...view, snapshotId: 'different-snapshot' },
+    { ...view, contentHash: 'd'.repeat(64) },
+    { ...view, images: view.images.map((image, index) => index ? image : { ...image, sha256: 'd'.repeat(64) }) },
+    { ...view, images: view.images.map(image => ({ ...image, kind: image.kind === 'plan' ? 'perspective' as const : 'plan' as const })) },
+    { ...view, images: [...view.images].reverse() },
+  ]) expect(buildQuoteRenderHash({ ...detail, studioDesign: changed })).not.toBe(expected);
+});
