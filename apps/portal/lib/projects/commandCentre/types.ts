@@ -153,6 +153,7 @@ export type CommandCentreEstimateCandidate = {
 };
 
 export type CommandCentreQuoteCandidate = {
+  pricingSourceMetadata?: unknown;
   id: string;
   sourceId: string;
   quoteRef: string | null;

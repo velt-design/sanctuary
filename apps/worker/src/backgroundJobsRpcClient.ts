@@ -22,12 +22,18 @@ import {
   type BackgroundJobWorkerMode,
 } from '@sp/jobs';
 
-import type { RuntimeBackgroundJobsRpc } from './runtime/contracts';
+import type { RuntimeBackgroundJobsRpc, StudioDocumentWorkerRead } from './runtime/contracts';
 
 export const BACKGROUND_JOBS_RPC_NAMES = {
   readEnquiryDelivery: 'marketing_enquiry_delivery_read',
   finaliseEnquiryDelivery: 'marketing_enquiry_delivery_finalise',
   claim: 'background_jobs_claim',
+  claimScoped:'background_jobs_claim_scoped',
+  claimDocuments:'background_jobs_claim_documents',
+  claimStudioTrial:'background_jobs_claim_studio_trial',
+  documentRead:'studio_client_document_worker_read',
+  documentStage:'studio_client_document_page_stage',
+  documentFinish:'studio_client_document_finish',
   readPayload: 'background_job_read_payload',
   readEffects: 'background_job_read_effects',
   readRuntimeContext: 'background_job_read_runtime_context',
@@ -123,7 +129,7 @@ type CreateBackgroundJobsRpcOptions = Readonly<{
 
 export class BackgroundJobsRpcError extends Error {
   constructor(
-    readonly code: 'BACKGROUND_JOBS_RPC_FAILED' | 'BACKGROUND_JOBS_RPC_INVALID_RESPONSE' | 'BACKGROUND_JOBS_RPC_NOT_FOUND',
+    readonly code: 'BACKGROUND_JOBS_RPC_FAILED' | 'BACKGROUND_JOBS_RPC_INVALID_RESPONSE' | 'BACKGROUND_JOBS_RPC_NOT_FOUND' | 'BACKGROUND_JOBS_RPC_INVALID_SCOPE',
     readonly rpcName: BackgroundJobsRpcName,
     readonly databaseCode: string | null = null,
   ) {
@@ -233,12 +239,32 @@ class SupabaseBackgroundJobsRpc implements RuntimeBackgroundJobsRpc {
     return response.data;
   }
 
-  async claim(input: Readonly<{ workerId: string; batchSize: number; visibilityTimeoutSeconds: number }>) {
-    const rpcName = BACKGROUND_JOBS_RPC_NAMES.claim;
+  readonly studioDocuments = {
+    read:async(input:{jobId:string;workerId:string;leaseToken:string}):Promise<StudioDocumentWorkerRead>=>{
+      const name=BACKGROUND_JOBS_RPC_NAMES.documentRead,data=await this.call(name,ownedParameters(input));
+      if(!data||typeof data!=='object'||Array.isArray(data))throw new BackgroundJobsRpcError('BACKGROUND_JOBS_RPC_INVALID_RESPONSE',name);
+      return data as StudioDocumentWorkerRead;
+    },
+    stage:async(input:{jobId:string;workerId:string;leaseToken:string;pageIndex:number;contentBase64:string;sha256:string})=>{
+      const name=BACKGROUND_JOBS_RPC_NAMES.documentStage,data=await this.call(name,{...ownedParameters(input),p_page_index:input.pageIndex,p_content_base64:input.contentBase64,p_sha256:input.sha256});
+      if(!Number.isInteger(data)||Number(data)<1||Number(data)>200)throw new BackgroundJobsRpcError('BACKGROUND_JOBS_RPC_INVALID_RESPONSE',name);
+      return Number(data);
+    },
+    finish:async(input:{jobId:string;workerId:string;leaseToken:string;contentBase64:string;sha256:string})=>{
+      const name=BACKGROUND_JOBS_RPC_NAMES.documentFinish,data=await this.call(name,{...ownedParameters(input),p_content_base64:input.contentBase64,p_sha256:input.sha256});
+      if(typeof data!=='string'||! /^[0-9a-f-]{36}$/i.test(data))throw new BackgroundJobsRpcError('BACKGROUND_JOBS_RPC_INVALID_RESPONSE',name);
+      return data;
+    },
+  };
+  async claim(input: Parameters<RuntimeBackgroundJobsRpc['claim']>[0]) {
+    if(input.scope?.staffTrial&&(input.scope.projectIds.length!==0||input.scope.kinds.length!==1||input.scope.kinds[0]!=='studio_design_booklet_v1'||!input.scope.manifestVersions?.length))throw new BackgroundJobsRpcError('BACKGROUND_JOBS_RPC_INVALID_SCOPE',BACKGROUND_JOBS_RPC_NAMES.claimStudioTrial);
+    const rpcName = input.scope?.staffTrial?BACKGROUND_JOBS_RPC_NAMES.claimStudioTrial:input.scope?.manifestVersions?BACKGROUND_JOBS_RPC_NAMES.claimDocuments:input.scope?BACKGROUND_JOBS_RPC_NAMES.claimScoped:BACKGROUND_JOBS_RPC_NAMES.claim;
     const data = await this.call(rpcName, {
       p_worker_id: input.workerId,
       p_batch_size: input.batchSize,
       p_visibility_timeout_seconds: input.visibilityTimeoutSeconds,
+      ...(input.scope&&!input.scope.staffTrial?{p_kinds:input.scope.kinds,p_project_ids:input.scope.projectIds}:{}),
+      ...(input.scope?.manifestVersions?{p_manifest_versions:input.scope.manifestVersions}:{}),
     });
     return parseResponse(rpcName, () => parseBackgroundJobClaims(data));
   }

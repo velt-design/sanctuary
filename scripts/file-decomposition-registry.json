@@ -2,6 +2,16 @@
   "version": 1,
   "entries": [
     {
+      "id": "studio-house-workspace",
+      "label": "Studio house workspace integration",
+      "status": "current",
+      "ownerArea": "Portal Studio authored interaction composition",
+      "pathPatterns": ["apps/portal/components/designStudio/StudioHouseWorkspace.tsx"],
+      "whyLarge": "The inherited qualified Studio workspace composes selection, view, house/pergola task navigation and inspector controls. Geometry resolution, durable authoring, direct gesture state, connection tasks, canvas/model, object menu and package Review already have separate owners. This release imports that coherent composition and makes no further inline feature expansion.",
+      "nextSafeExtraction": "Before expanding this component, extract the existing house/product inspector JSX into a presentation owner with explicit current task callbacks. Keep selection/focus lifetime, accepted transaction authority and complete Undo in the workspace/session owners; do not create a second scene or persistence controller.",
+      "focusedTests": ["npx vitest run apps/portal/components/designStudio/StudioWebsiteEditor.integration.test.tsx apps/portal/components/designStudio/StudioPlacementSession.integration.test.tsx apps/portal/components/designStudio/useStudioConnectionTask.test.tsx", "npm run typecheck"]
+    },
+    {
       "id": "calculator",
       "label": "calculator",
       "status": "current",

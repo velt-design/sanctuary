@@ -320,7 +320,7 @@ export default function QuoteWorkflowDialogs({
                     />
                   </>
                 ) : null}
-                {!preparedDelivery.canRetry ? (
+                {!preparedDelivery.canRetry && preparedDelivery.unavailableReason ? <p>{preparedDelivery.unavailableReason}</p> : !preparedDelivery.canRetry ? (
                   <CommercialFinalFailureGuidance
                     artifact="quote"
                     reference={detail.quoteRef}

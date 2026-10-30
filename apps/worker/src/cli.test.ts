@@ -1,3 +1,4 @@
+import {createBackgroundJobWorker} from './runtime';
 import {
   BACKGROUND_JOB_KINDS,
   BACKGROUND_JOB_STATUSES,
@@ -154,4 +155,18 @@ describe('worker CLI', () => {
     expect(observedExitCode).toBe(1);
     expect(stderr.chunks.join('')).toContain('HANDLER_ABORT_UNSETTLED_AFTER_LEASE_LOSS');
   });
+});
+
+it('carries explicit document scope from normal CLI configuration through the real constructor while retaining unscoped coverage',async()=>{
+ const base={SUPABASE_URL:'http://127.0.0.1:54321',SUPABASE_SERVICE_ROLE_KEY:'test-only-key',BACKGROUND_JOBS_WORKER_ACTIVE_ENABLED:'true'},scope={STUDIO_DOCUMENT_WORKER_ENABLED:'true',BACKGROUND_JOBS_WORKER_CLAIM_KINDS:'studio_design_booklet_v1',BACKGROUND_JOBS_WORKER_CLAIM_PROJECT_IDS:'10000000-0000-4000-8000-000000000002'};
+ let constructed=0,ran=0;const stdout=output(),stderr=output();
+ const createWorker:NonNullable<Parameters<typeof runWorkerCli>[1]>['createWorker']=options=>{
+  const worker=createBackgroundJobWorker(options);constructed++;
+  expect(options.config.claimScope).toEqual({kinds:['studio_design_booklet_v1'],projectIds:['10000000-0000-4000-8000-000000000002'],manifestVersions:['legacy','studio-booklet-layout.v2','studio-booklet-layout.v3','studio-booklet-layout.v4','studio-booklet-renders.v1']});
+  return{snapshot:()=>worker.snapshot(),requestShutdown:reason=>worker.requestShutdown(reason),run:async()=>{ran++;return{mode:'once',processedCount:0,succeededCount:0,retryingCount:0,attentionCount:0,failedCount:0};}};
+ };
+ const handlers={studio_design_booklet_v1:async()=>({})};
+ expect(await runWorkerCli(['--mode','once'],{environment:{...base,...scope},stdout,stderr,handlers,createRpc:()=>({}) as RuntimeBackgroundJobsRpc,createWorker})).toBe(0);expect(constructed).toBe(1);expect(ran).toBe(1);
+ expect(await runWorkerCli(['--mode','once'],{environment:base,stdout,stderr,handlers,createRpc:()=>({}) as RuntimeBackgroundJobsRpc,createWorker})).toBe(1);expect(constructed).toBe(1);expect(ran).toBe(1);
+ expect(await runWorkerCli(['--mode','once'],{environment:{...base,...scope},stdout,stderr,handlers:{},createRpc:()=>({}) as RuntimeBackgroundJobsRpc,createWorker})).toBe(1);
 });

@@ -4,7 +4,7 @@ export type BlindMesh = {id:string;kind:'frame'|'fabric'|'infill';positions:numb
 export function buildRepresentativeBlind(opening:BlindOpening, options:{cover:'NONE'|'FLASHING'|'PELMET';lowered:number;infill:boolean}):BlindMesh[] {
   const {start,end,width,top,side}=opening;
   const u={x:(end.x-start.x)/width,y:(end.y-start.y)/width};
-  const n=side==='front'?{x:0,y:1}:side==='left'?{x:-1,y:0}:{x:1,y:0};
+  const n=side==='front'?{x:0,y:1}:side==='rear'?{x:0,y:-1}:side==='left'?{x:-1,y:0}:{x:1,y:0};
   const point=(x:number,y:number,z:number):Point3=>({x:start.x+u.x*x+n.x*y,y:start.y+u.y*x+n.y*y,z});
   const meshes:BlindMesh[]=[];
   const mesh=(id:string,kind:BlindMesh['kind'])=>{const m={id:opening.id+'-'+id,kind,positions:[] as number[],indices:[] as number[]};meshes.push(m);return m;};

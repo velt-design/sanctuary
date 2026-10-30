@@ -1,3 +1,8 @@
+import {wrapText} from './pdfText';
+import type {QuotePdfLayout,QuotePdfLayoutPage} from './quotePdfLayoutTypes';
+import {quotePresentationVersion} from './quotePresentation';
+import {generateBrandedQuotePdf} from './quoteBrandedPdf';
+import {appendStudioDesignPages} from './studioDesignPdf';
 import 'server-only';
 
 import {
@@ -101,28 +106,10 @@ type PreparedRow = {
   amount: string;
 };
 
-type QuotePdfLayoutPage = {
-  hasPageBackground: boolean;
-  hasLeftRail: boolean;
-  pageNumber: number;
-  contentBottomY?: number;
-  headerClientName?: { text: string; xRight: number; y: number };
-  headerClientAddress?: { lines: string[]; xRight: number; y: number };
-  headerWarehouseAddress?: { lines: string[]; xRight: number; y: number };
-  tableBounds?: TableBounds | null;
-  totalsBounds?: TotalsBounds | null;
-  paymentBlock?: { topY: number; bottomY: number; lineCount: number };
-  termLineCount?: number;
-  rules: RuleDrawn[];
-};
-
-type QuotePdfLayout = {
-  pages: QuotePdfLayoutPage[];
-};
-
 type GeneratePdfOptions = {
   collectLayout?: boolean;
   debugBounds?: boolean;
+  onTiming?: (stage:string,durationMs:number)=>void;
 };
 
 const brandColors = {
@@ -188,51 +175,6 @@ function drawRightAligned(
     font,
     color,
   });
-}
-
-function splitLongToken(font: PDFFont, token: string, size: number, maxWidth: number): string[] {
-  if (font.widthOfTextAtSize(token, size) <= maxWidth) return [token];
-  const fragments: string[] = [];
-  let fragment = '';
-  for (const char of token) {
-    const candidate = `${fragment}${char}`;
-    if (fragment && font.widthOfTextAtSize(candidate, size) > maxWidth) {
-      fragments.push(fragment);
-      fragment = char;
-    } else {
-      fragment = candidate;
-    }
-  }
-  if (fragment) fragments.push(fragment);
-  return fragments;
-}
-
-function wrapText(font: PDFFont, text: string, size: number, maxWidth: number): string[] {
-  if (maxWidth <= 0) return [text];
-  const wrapped: string[] = [];
-  for (const paragraph of String(text ?? '').split(/\r?\n/)) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    if (!words.length) {
-      wrapped.push('');
-      continue;
-    }
-
-    let line = '';
-    for (const rawWord of words) {
-      const parts = splitLongToken(font, rawWord, size, maxWidth);
-      for (const part of parts) {
-        const candidate = line ? `${line} ${part}` : part;
-        if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
-          line = candidate;
-        } else {
-          if (line) wrapped.push(line);
-          line = part;
-        }
-      }
-    }
-    if (line) wrapped.push(line);
-  }
-  return wrapped;
 }
 
 function prepareRows(vm: PdfQuoteViewModel, fonts: PdfFonts): PreparedRow[] {
@@ -550,12 +492,15 @@ async function generateQuotePdf(
   quote: QuoteVersionDetail,
   options: GeneratePdfOptions = {},
 ) {
+  let phaseStarted=performance.now();
+  const phase=(stage:string)=>{const now=performance.now();options.onTiming?.(stage,Number((now-phaseStarted).toFixed(1)));phaseStarted=now;};
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   pdfDoc.setTitle(`${quote.quoteRef} v${quote.versionNumber} - Sanctuary Pergolas`);
   pdfDoc.setAuthor('Sanctuary Pergolas');
   pdfDoc.setSubject('Customer quote');
   pdfDoc.setCreator('Sanctuary Pergolas');
+  phase('document');
 
   const [regularData, mediumData, semiboldData, logoBytes] = await Promise.all([
     readQuotePdfFont(QUOTE_PDF_FONT_FILES.regular),
@@ -564,12 +509,14 @@ async function generateQuotePdf(
     readQuotePdfImage(QUOTE_PDF_LOGO_FILE),
   ]);
 
+  phase('assets');
   const fonts: PdfFonts = {
     regular: await pdfDoc.embedFont(regularData, { subset: true }),
     medium: await pdfDoc.embedFont(mediumData, { subset: true }),
     semibold: await pdfDoc.embedFont(semiboldData, { subset: true }),
   };
 
+  phase('fonts');
   let logo: PDFImage | null = null;
   if (logoBytes) {
     try {
@@ -579,6 +526,7 @@ async function generateQuotePdf(
     }
   }
 
+  phase('logo');
   const vm = buildPdfQuoteViewModel(quote);
   const preparedRows = prepareRows(vm, fonts);
   const layout: QuotePdfLayout | null = options.collectLayout ? { pages: [] } : null;
@@ -666,6 +614,12 @@ async function generateQuotePdf(
 
   const drawItemsHeader = (continued: boolean) => {
     drawSectionLabel(continued ? 'Scope of work - continued' : 'Scope of work');
+    if(quote.studioDesign?.schemaVersion==='studio_quote_snapshot.v2'){
+      drawText(page,'Unit prices and amounts include GST',{
+        x:CONTENT_X0,y:cursorY,size:FONT_SIZES.tableHeader,font:fonts.regular,color:brandColors.muted,
+      });
+      cursorY-=16;
+    }
     const headerY = cursorY;
     drawText(page, 'Description', {
       x: DESCRIPTION_X,
@@ -1047,6 +1001,8 @@ async function generateQuotePdf(
     }
   }
 
+  if(quote.studioDesign?.schemaVersion==='studio_quote_snapshot.v1')await appendStudioDesignPages({pdf:pdfDoc,design:quote.studioDesign,page:()=>{addPage(false);return {page,top:cursorY};},regular:fonts.regular,semibold:fonts.semibold,ink:brandColors.ink,muted:brandColors.muted,x:CONTENT_X0,width:CONTENT_W,bottom:CONTENT_BOTTOM_Y});
+
   const pageCount = pdfDoc.getPageCount();
   pdfDoc.getPages().forEach((pdfPage, index) => {
     drawPageFooter({
@@ -1066,21 +1022,24 @@ async function generateQuotePdf(
     }
   });
 
+  phase('layout');
   const bytes = await pdfDoc.save();
+  phase('serialization');
   return { bytes, layout };
 }
 
 export async function generateQuotePdfBytes(
   quote: QuoteVersionDetail,
+  options:Pick<GeneratePdfOptions,'onTiming'>={},
 ): Promise<Uint8Array> {
-  const result = await generateQuotePdf(quote);
+  const result = quotePresentationVersion(quote.studioDesign)==='sanctuary-quote.v3'?await generateBrandedQuotePdf(quote,options):await generateQuotePdf(quote,options);
   return result.bytes;
 }
 
 export async function generateQuotePdfBytesWithLayout(
   quote: QuoteVersionDetail,
 ): Promise<{ bytes: Uint8Array; layout: QuotePdfLayout }> {
-  const result = await generateQuotePdf(quote, { collectLayout: true });
+  const result = quotePresentationVersion(quote.studioDesign)==='sanctuary-quote.v3'?await generateBrandedQuotePdf(quote,{collectLayout:true}):await generateQuotePdf(quote, { collectLayout: true });
   if (!result.layout) throw new Error('PDF layout collection was not enabled.');
   return { bytes: result.bytes, layout: result.layout };
 }

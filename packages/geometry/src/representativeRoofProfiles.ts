@@ -1,6 +1,12 @@
 /** Nominal visible profiles from the owner's Steel & Tube references.
  * Concealed locks and the trapezoidal pan stiffeners are intentionally omitted. */
 export type RepresentativeRoofProfile = 'corrugated' | 'trapezoidal' | 'tray';
+export const REPRESENTATIVE_ROOF_PROFILE_OPTIONS = [
+  { value: 'corrugated', label: 'Corrugated' },
+  { value: 'trapezoidal', label: 'Trapezoidal' },
+  { value: 'tray', label: 'Tray' },
+] as const;
+export const REPRESENTATIVE_ROOF_TRAY_WIDTHS = [300, 400, 500] as const;
 export type RoofProfilePoint = { across: number; height: number };
 
 /** Equal edge cuts, with whole seam crowns inside the region. */

@@ -1,12 +1,8 @@
+import { DEFAULT_ESTIMATE_DRAWING_SCALE, type EstimateDrawingFixedScaleValue, type EstimateDrawingScale } from './drawingSheetLayout';
+export { DEFAULT_ESTIMATE_DRAWING_SCALE, type EstimateDrawingFixedScaleValue, type EstimateDrawingScale } from './drawingSheetLayout';
 import type { CalculatorModuleInputs, LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 
 type EstimateDrawingSheetView = 'plan' | 'section';
-
-const ESTIMATE_DRAWING_FIXED_SCALE_VALUES = [10, 20, 25, 50, 100] as const;
-
-export type EstimateDrawingFixedScaleValue = (typeof ESTIMATE_DRAWING_FIXED_SCALE_VALUES)[number];
-
-export type EstimateDrawingScale = { mode: 'fit' } | { mode: 'fixed'; ratio: EstimateDrawingFixedScaleValue };
 
 type EstimateDrawingSheetInfoRow = {
   label: string;
@@ -44,8 +40,6 @@ type BuildEstimateDrawingSheetMetaInput = {
 };
 
 export const DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE = 'Do not scale off portal preview. Verify all dimensions on site.';
-
-export const DEFAULT_ESTIMATE_DRAWING_SCALE: EstimateDrawingScale = { mode: 'fit' };
 
 export function formatEstimateDrawingScale(scale: EstimateDrawingScale): string {
   return scale.mode === 'fit' ? 'NTS' : `1:${scale.ratio}`;

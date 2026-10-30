@@ -91,9 +91,13 @@ export const PortalAuthContext = createContext<PortalAuthState | null>(null);
 export default function PortalAuthProvider({
   children,
   initialAuthState,
+  requestAdmission,
 }: {
   children: React.ReactNode;
   initialAuthState?: PortalAuthInitialState;
+  /** A live, freshly guarded opening response. Browser sessions can invalidate
+   * this identity, but never supply its actor or current role. */
+  requestAdmission?: {state: PortalAuthInitialState; invalidate: () => void};
 }) {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
@@ -105,11 +109,15 @@ export default function PortalAuthProvider({
       role: null,
     },
   );
-  const stateRef = useRef(state);
+  const visibleState = requestAdmission?.state ?? state;
+  const stateRef = useRef(visibleState);
+  const admissionRef = useRef(requestAdmission);
+  admissionRef.current = requestAdmission;
+  const requestAdmitted=Boolean(requestAdmission);
 
   useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
+    stateRef.current = visibleState;
+  }, [visibleState]);
 
   const applySession = useCallback(
     async (session: Session | null) => {
@@ -169,6 +177,7 @@ export default function PortalAuthProvider({
   );
 
   const refresh = useCallback(async () => {
+    if (admissionRef.current) { admissionRef.current.invalidate(); return; }
     const result = await readBrowserSession(supabase);
     if (result.status === 'unavailable') {
       const currentState = stateRef.current;
@@ -226,6 +235,13 @@ export default function PortalAuthProvider({
   useEffect(() => {
     let active = true;
 
+    if (requestAdmitted) {
+      // The document entry owner already observes transitions BEFORE its fresh
+      // read. Mounting this provider must not read cached hints, veto a fresh
+      // server identity, or create an INITIAL_SESSION/refetch/remount loop.
+      return () => { active=false;applyNonceRef.current++; };
+    }
+
     void (async () => {
       const result = await readBrowserSession(supabase);
       if (!active) return;
@@ -245,23 +261,24 @@ export default function PortalAuthProvider({
 
     return () => {
       active = false;
+      applyNonceRef.current++;
       data.subscription.unsubscribe();
     };
-  }, [applySession, supabase]);
+  }, [applySession, supabase, requestAdmitted]);
 
-  const email = state.user?.email ?? null;
+  const email = visibleState.user?.email ?? null;
   useEffect(() => {
-    setProjectIndexSession(state.user?.id ?? null, supabaseRuntimeUrl());
+    setProjectIndexSession(visibleState.user?.id ?? null, supabaseRuntimeUrl());
     return () => setProjectIndexSession(null, '');
-  }, [state.user?.id]);
-  const isAdmin = state.role === 'admin';
+  }, [visibleState.user?.id]);
+  const isAdmin = visibleState.role === 'admin';
 
   return (
     <PortalAuthContext.Provider
       value={{
-        status: state.status,
-        user: state.user,
-        role: state.role,
+        status: visibleState.status,
+        user: visibleState.user,
+        role: visibleState.role,
         email,
         isAdmin,
         signOut,

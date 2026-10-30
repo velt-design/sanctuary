@@ -1,4 +1,6 @@
-# File Decomposition And Ownership
+# Studio workspace integration
+
+## File Decomposition And Ownership
 
 Status: Active guardrail.
 
@@ -166,3 +168,14 @@ Later slices should tighten it in this order:
 3. Use this registry as the initial allowlist for known transitional hotspots, each with owner area and decomposition direction.
 4. Make CI fail only for newly critical files or changed critical files without an explicit decomposition note.
 5. Retire allowlist entries as files are split by responsibility.
+
+
+`StudioHouseWorkspace.tsx` is an inherited 1,217-line composition owner in the
+qualified Studio import. Its registered boundary retains authored transaction,
+selection/focus lifetime and task navigation while geometry resolution, direct
+gestures, connection tasks, canvas/model, object menu and package Review remain
+separate owners. Further inline feature growth is deferred: extract house/product
+inspector presentation behind explicit task callbacks first. This integration
+does not create another scene or save controller. Coupled whole-editor movement,
+durability, connection and complete Undo tests cover the retained boundary.
+

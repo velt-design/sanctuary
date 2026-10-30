@@ -55,13 +55,13 @@ import { qk } from "@/lib/queries/keys";
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   applyDraftPatchToQuoteDetail,
-  buildOptimisticQuoteDetail,
   buildQuoteEntityKey,
   createLocalQuoteId,
   type PortalQuoteCreateMutationPayload,
   type PortalQuoteUpdateMutationPayload,
   upsertQuoteDetailCache,
 } from "@/lib/localFirst/portalEntities";
+import { buildOptimisticQuoteDetail } from "@/lib/localFirst/studioQuotePreparation";
 import { enqueueAndProcessLocalFirstMutation } from "@/lib/localFirst/queue";
 import { writeLocalFirstWorkingCopy } from "@/lib/localFirst/store";
 import {

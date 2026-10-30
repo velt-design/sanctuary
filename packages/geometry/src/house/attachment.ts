@@ -164,21 +164,14 @@ export function buildAttachmentTarget(input: {
   eaveHeightMm: number;
   fasciaHeightMm: number;
 }): HouseAttachmentTarget3D {
-  const strategy = resolveStrategy(input.config);
+  const strategy = input.config.connection.type === 'freestanding' ? 'none' : resolveStrategy(input.config);
+  if (strategy === 'none') return { kind: 'none', strategy, sourceEdgeId: null };
   const sourceWall = findAttachmentWallSegment(input.wallSegments, input.attachmentEdge);
   const sourceEdgeId = sourceWall?.sourceEdgeId ?? sourceWall?.id ?? null;
   const targetProjection = projectAttachmentEdgeToWallSegment(input.attachmentEdge, sourceWall);
   const targetLine = targetProjection.line;
   const targetWallOrientedLine = targetProjection.wallOrientedLine;
   const targetMetadata = targetProjection.metadata;
-
-  if (strategy === 'none') {
-    return {
-      kind: 'none',
-      strategy,
-      sourceEdgeId,
-    };
-  }
 
   if (strategy === 'soffit_brackets') {
     return {

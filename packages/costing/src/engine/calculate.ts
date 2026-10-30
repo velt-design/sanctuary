@@ -1337,6 +1337,9 @@ function calculateSiteCostV1Internal(
 
   const output: SiteOutputV1 = {
     pergola_count: pergolaOutputs.length,
+    ...((siteDayPolicy.productiveCrewHours ?? baseCrewHours) > 0
+      && Number.isFinite(siteDayPolicy.productiveCrewHours ?? baseCrewHours)
+      ? { site_days: siteDays } : {}),
     pergolas: pergolaOutputs,
     infill_takeoff: siteInfillTakeoff,
     shared: {

@@ -1,4 +1,4 @@
-import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleDrawingContracts';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import {

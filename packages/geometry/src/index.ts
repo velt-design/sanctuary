@@ -1,3 +1,4 @@
+export { buildSoffitBracketSections } from './soffitBracketSections';
 export {layoutCedarLights} from './representativeCedarLights';
 export * from "./contracts";
 export {pergolaLightSites,layoutLights,layoutRafterLights,type RafterLightAmount,type PergolaLighting,type LightLayout,type LightSite,type StripSite} from './representativePergolaLighting';
@@ -114,9 +115,12 @@ export type {
 export { buildRepresentativeRoofFinish } from "./representativeRoofFinish";
 export { DEFAULT_ROOF_FINISH, roofFinishBayLimit } from "./representativeRoofFinishTypes";
 export type { RepresentativeRoofFinish, RoofFinishGeometry, RoofFinishMesh } from "./representativeRoofFinishTypes";
-export { representativeRoofProfile } from "./representativeRoofProfiles";
+export { representativeRoofProfile, REPRESENTATIVE_ROOF_PROFILE_OPTIONS, REPRESENTATIVE_ROOF_TRAY_WIDTHS } from "./representativeRoofProfiles";
+export { roofCoordinates } from './representativeRoofFinishMesh';
 export { representativeBoxRoofMaxProjection } from "./representativeRoofBoxFinish";
 export { representativeBlindOpenings, blindHeaderDepth } from './representativeBlindOpenings';
-export type { BlindOpening } from './representativeBlindOpenings';
+export type { BlindOpening, BlindOpeningOptions } from './representativeBlindOpenings';
 export { buildRepresentativeBlind } from './representativeBlind';
 export type { BlindMesh } from './representativeBlind';
+
+export { parseAssemblyMemberProfile, resolveAssemblyMemberProfileAnchors } from './profiles';

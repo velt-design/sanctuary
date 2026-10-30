@@ -6,7 +6,7 @@ import QuotesListView from './QuotesListView';
 import QuotesListSurface,{useQuotesListControls,type QuotesListEvidence} from './QuotesListSurface';
 import {useOwnedPortalPublication} from '@/components/page-state/PortalPageSource';
 import {PortalQueryClientScope} from '@/lib/react-query/PortalQueryClientContext';
-import { buildOptimisticQuoteDetail } from '@/lib/localFirst/portalEntities';
+import { buildOptimisticQuoteDetail } from '@/lib/localFirst/studioQuotePreparation';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import { CommercialProjectNotice, ProjectCommercialProvider } from '../ProjectCommercialContext';
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
@@ -121,12 +121,13 @@ vi.mock('@/lib/localFirst/portalEntities', () => ({
     quoteUpdateDraft: 'portal.quote.updateDraft',
   },
   applyDraftPatchToQuoteDetail: (detail: any) => detail,
-  buildOptimisticQuoteDetail: vi.fn(),
   buildQuoteEntityKey: (id: string) => `quote:detail:${id}`,
   createLocalQuoteId: () => 'local-quote:1',
   isLocalQuoteId: (id: string) => id.startsWith('local-quote:'),
   upsertQuoteDetailCache: vi.fn(),
 }));
+
+vi.mock('@/lib/localFirst/studioQuotePreparation',()=>({buildOptimisticQuoteDetail:vi.fn()}));
 
 vi.mock('./QuotePdfInlinePreview', () => ({
   default: () => <div data-testid="pdf-preview" />,

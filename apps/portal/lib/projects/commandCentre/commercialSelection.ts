@@ -23,6 +23,7 @@ export const COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT = `
       sent_at,
       accepted_at,
       total_inc_gst_cents,
+      pricing_source_metadata,
       sendLogs:quote_send_logs(status,created_at,sent_at)
     )
   )
@@ -150,6 +151,7 @@ function normalizeQuoteRows(projectRow: AnyRecord): CommandCentreQuoteCandidate[
         })
         .filter((log): log is NonNullable<typeof log> => log !== null);
       out.push({
+        ...(version.pricing_source_metadata !== undefined ? {pricingSourceMetadata:version.pricing_source_metadata} : {}),
         id: appIdFromUuid('qv', sourceId),
         sourceId,
         quoteRef,

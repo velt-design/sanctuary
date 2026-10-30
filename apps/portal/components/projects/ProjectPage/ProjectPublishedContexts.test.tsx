@@ -1,3 +1,4 @@
+import {ToastProvider} from '@/components/ui/toast/ToastProvider';
 import {act,useMemo} from 'react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
@@ -42,7 +43,7 @@ function Fixture({owner,allowed=true,show=true,scope='customer-A'}:{owner:object
  const producer=useMemo(()=>allowed?<StatefulOwner binding={binding} scope={scope} show={show}/>:null,[allowed,binding,scope,show]);
  return <ProjectOverviewReadsProvider value={reads as any}><ProjectOverviewSurface controls={controls} evidence={publication.value} unavailable={!allowed} onFiles={()=>undefined}/>{producer}</ProjectOverviewReadsProvider>;
 }
-const tree=(props:Parameters<typeof Fixture>[0])=><QueryClientProvider client={client}><Fixture {...props}/></QueryClientProvider>;
+const tree=(props:Parameters<typeof Fixture>[0])=><QueryClientProvider client={client}><ToastProvider><Fixture {...props}/></ToastProvider></QueryClientProvider>;
 async function settle(){for(let i=0;i<4;i++)await act(async()=>{await vi.dynamicImportSettled();await Promise.resolve();});}
 function message(){return [...view!.container.querySelectorAll('details')].find(node=>node.querySelector('summary')?.textContent==='Read message')!;}
 function history(){return [...view!.container.querySelectorAll('details')].find(node=>node.querySelector('summary')?.textContent?.startsWith('Earlier messages in this email'))!;}

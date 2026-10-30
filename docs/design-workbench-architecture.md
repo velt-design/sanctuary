@@ -1,4 +1,6 @@
-# Design Workbench Architecture
+# Active editor ownership
+
+## Design Workbench Architecture
 
 Status: Current contract.
 
@@ -266,3 +268,13 @@ HTTP-status and coded-adapter regressions remain distinct; no real authority
 revocation or live grant change is claimed.
 
 The ordinary Workbench leaf also uses the existing Portal selected-source lifetime gate after its unchanged fresh staff guard. This retires the same ReadHost only when another route is accepted; geometry, dirty/Save, read/source and fixture behavior are unchanged. Gate0: legacy audit rows N/A, no legacy build-on, no Phase2/commercial dependency or parameter consolidation. This is route lifetime composition only, not an engine or runtime redesign.
+
+
+Studio is the active Portal editor. This release changes the Project header entry
+only and preserves Workbench URLs/data. Shared geometry/drawing adapters gain
+Studio house/attachment consumers under their existing owners; this is not a
+Workbench improvement or retirement pass. Legacy audit rows: N/A (no cull).
+No costing-input Phase 2 migration or persisted-input removal is included. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md) for current
+authoring, quote and document ownership and verification boundaries.
+

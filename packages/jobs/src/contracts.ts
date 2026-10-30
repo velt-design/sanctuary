@@ -7,6 +7,7 @@ export const BACKGROUND_JOB_KINDS = [
   'email_outbox_deliver',
   'ai_synthetic_v1',
   'xero_invoice_draft_v1',
+  'studio_design_booklet_v1',
 ] as const;
 
 export type BackgroundJobKind = (typeof BACKGROUND_JOB_KINDS)[number];

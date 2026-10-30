@@ -16,6 +16,8 @@ import PortalVitalsReporter from '@/components/performance/PortalVitalsReporter'
 import { getPaymentPilotSession, paymentPilotEnabled } from '@/lib/xero/pilotAccess';
 import SupabaseEnvHydrator from '@/components/diagnostics/SupabaseEnvHydrator';
 import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
+import { headers } from 'next/headers';
+import { STUDIO_EDIT_CALLBACK_HEADER, studioDocumentCallback } from '@/lib/designStudio/studioEditRoute';
 
 export const metadata: Metadata = {
   title: 'Sanctuary Portal',
@@ -33,6 +35,12 @@ const portalInter = localFont({
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const callback = process.env.ENABLE_PORTAL_DESIGN_STUDIO === '1'
+    ? studioDocumentCallback((await headers()).get(STUDIO_EDIT_CALLBACK_HEADER), true) : null;
+  if (callback) {
+    const { default: StudioDocumentSlot } = await import('@/components/designStudio/StudioDocumentSlot');
+    return <html lang="en" className={portalInter.variable}><body><SupabaseEnvHydrator /><StudioDocumentSlot callback={callback}>{children}</StudioDocumentSlot></body></html>;
+  }
   const startedAt = performance.now();
   const diagnostics = await getDocumentRenderDiagnostics();
   try {

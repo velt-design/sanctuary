@@ -86,6 +86,13 @@ For the north-star structure this repo is converging toward, read `docs/target-a
 
 ## Workspace Shape
 
+Design Studio's staff trial is owned by
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md). It reuses
+the authenticated Portal, canonical quote preparation and durable document queue;
+`packages/studio-documents` owns the Node PDF renderer and font assets. A separate
+document worker imports no Portal/Next code. Trial admission extends the existing
+private control and scoped claim rather than creating a second job ledger.
+
 - `apps/marketing`: public marketing site, enquiry form, public quote and invoice viewers, email templates, analytics runtime routes, consent handling, SEO.
 - `apps/portal`: authenticated staff portal, admin surfaces, project workflow, estimates, quotes, invoices, schedule, design list, running jobs, job packs, imports, and the Calculator Brain costing control centre.
 - `apps/worker`: Node 22 durable-job runtime, safe RPC adapter, lease/heartbeat/retry orchestration, bounded concurrency, health server, and CLI modes. It imports no Next.js app and defaults to dark mode.

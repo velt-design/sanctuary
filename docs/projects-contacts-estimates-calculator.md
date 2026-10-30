@@ -1,4 +1,6 @@
-# Projects, Contacts, Estimates, And Calculator
+# Active Design Studio entry
+
+## Projects, Contacts, Estimates, And Calculator
 
 ## Active index/contact presentation, 27 October 2026
 
@@ -674,3 +676,13 @@ actual canvas/layout/viewport owners, with subject/preheader/HTML unknown until 
 matching variant/revision resolves. No provider/email contract changes are made.
 
 Ordinary retained Portal leaves for Calculator, Email Review, Marketing/Financial views, Site Visits, Costing Control Centre and configured-design revision use the existing selected-source lifetime gate around their private client. Fresh staff/admin leaf checks precede completion/props where the previous effective check lived at the ancestor; roles and API permissions remain unchanged. Accepted navigation retires the outgoing client, while a considered or dirty-blocked departure does not select another source. Site Visits return behavior remains source/connected evidence until actual browser verification. Authenticated standalone Booklet and disabled payout ownership are separate and unchanged.
+
+
+The Project header replaces only its Workbench action with one server-capability
+gated Design Studio link. Current progressive/private readiness disabling and
+other actions remain. `/staff/projects/[projectId]/studio` owns new/saved designs
+and opens the existing Studio editor route. No legacy Workbench URL, record or
+contact is removed. Existing staff/project access applies to normal new and
+existing trial projects; a static local test UUID list is not the product scope.
+See [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

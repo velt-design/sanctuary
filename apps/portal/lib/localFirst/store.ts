@@ -48,6 +48,7 @@ let ownerGeneration = 0;
 let snapshot: LocalFirstStoreSnapshot = { hydrated: false, state: createEmptyLocalFirstState() };
 let hydratePromise: Promise<void> | null = null;
 let mutationChain: Promise<void> = Promise.resolve();
+let durableSnapshot: LocalFirstPersistedState | null = null;
 const listeners = new Set<Listener>();
 
 function storageOwnerId(): string {
@@ -65,6 +66,7 @@ function resetInMemoryState() {
   snapshot = { hydrated: false, state: createEmptyLocalFirstState() };
   hydratePromise = null;
   mutationChain = Promise.resolve();
+  durableSnapshot = null;
   emit();
 }
 
@@ -120,9 +122,13 @@ function emit() {
 
 async function persistSnapshot(state: LocalFirstPersistedState): Promise<void> {
   const ownerId = storageOwnerId();
-  await storageAdapter.set(state, ownerId).catch((error) => {
+  const scope = ownerToken();
+  try {
+    await storageAdapter.set(state, ownerId);
+    if (scope === ownerToken()) durableSnapshot = state;
+  } catch (error) {
     console.error('[localFirst] Failed to persist local-first state.', error);
-  });
+  }
 }
 
 function isoNow(): string {
@@ -406,6 +412,7 @@ export async function ensureLocalFirstStoreReady(): Promise<void> {
       const hydratedState = (await storageAdapter.get(ownerId)) ?? createEmptyLocalFirstState();
       if (scope !== ownerToken()) return;
       snapshot = { hydrated: true, state: hydratedState };
+      durableSnapshot = hydratedState;
       emit();
     })().finally(() => {
       hydratePromise = null;
@@ -434,6 +441,29 @@ async function mutateLocalFirstState<T>(recipe: (draft: LocalFirstPersistedState
   );
 
   return operation;
+}
+
+/** A local-only document handoff. Join the existing mutation chain and make
+ * its current snapshot durable; do not send/replay any queued server command.
+ * Later accepted mutations extend the same drain before navigation proceeds. */
+export async function flushLocalFirstStore(ownerId:string):Promise<void> {
+  const scope=ownerToken();
+  for(;;){
+    if(activeOwnerId!==ownerId||scope!==ownerToken())throw Error('The local-first owner changed before navigation.');
+    const operation=mutationChain.then(async()=>{
+      await ensureLocalFirstStoreReady();
+      if(activeOwnerId!==ownerId||scope!==ownerToken())throw Error('The local-first owner changed during navigation.');
+      // Unlike background persistence, failure here must prevent document exit.
+      const current=snapshot.state;
+      if(durableSnapshot===current)return;
+      await storageAdapter.set(cloneState(current),ownerId);
+      if(scope!==ownerToken())throw Error('The local-first owner changed during persistence.');
+      durableSnapshot=current;
+    });
+    const drain=operation.then(()=>undefined,()=>undefined);mutationChain=drain;
+    await operation;
+    if(mutationChain===drain)return;
+  }
 }
 
 export async function writeLocalFirstWorkingCopy<TData>(
@@ -772,5 +802,6 @@ export function __resetLocalFirstStoreForTests(): void {
   snapshot = { hydrated: false, state: createEmptyLocalFirstState() };
   hydratePromise = null;
   mutationChain = Promise.resolve();
+  durableSnapshot = null;
   listeners.clear();
 }

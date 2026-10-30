@@ -1,5 +1,6 @@
 import type { BackgroundJobHandlerRegistry } from '../runtime/contracts';
 
+import {studioDocumentHandler} from './studioDocument';
 import { aiSyntheticHandler } from './aiSynthetic';
 import { createXeroInvoiceHandler } from './xeroInvoice';
 import { loadXeroInvoiceGatewayConfig } from '../config';
@@ -11,6 +12,6 @@ const xeroGateway = loadXeroInvoiceGatewayConfig();
  * external-effect capability. Xero requires a separate explicit gateway gate.
  */
 export const backgroundJobHandlers: BackgroundJobHandlerRegistry = Object.freeze({
-  ai_synthetic_v1: aiSyntheticHandler,
+  ...(process.env.STUDIO_DOCUMENT_WORKER_ENABLED==='true'?{studio_design_booklet_v1:studioDocumentHandler}:{ai_synthetic_v1:aiSyntheticHandler}),
   ...(xeroGateway ? { xero_invoice_draft_v1: createXeroInvoiceHandler(xeroGateway) } : {}),
 });

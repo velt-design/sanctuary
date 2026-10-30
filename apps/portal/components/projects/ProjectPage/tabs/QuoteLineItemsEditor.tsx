@@ -21,6 +21,7 @@ type Setter<T> = Dispatch<SetStateAction<T>>;
 
 type QuoteLineItemsEditorProps = {
   readState?: 'ready' | 'pending' | 'error';
+  structuredPergolas?: boolean;
   editable: boolean;
   draftItems: QuoteLineItem[];
   setDraftItems: Setter<QuoteLineItem[]>;
@@ -53,6 +54,7 @@ type QuoteLineItemsEditorProps = {
 };
 
 export default function QuoteLineItemsEditor({
+  structuredPergolas = true,
   editable,
   readState = 'ready',
   draftItems,
@@ -118,7 +120,7 @@ export default function QuoteLineItemsEditor({
                 (Number.isFinite(item.qty) ? item.qty : 0) *
                   liveUnitPriceIncGstCents,
               );
-              const parsedPergola = parsedPergolaDrafts.get(item.id) ?? null;
+              const parsedPergola = structuredPergolas ? parsedPergolaDrafts.get(item.id) ?? null : null;
               const pergolaOverride = Boolean(
                 draftPergolaOverrideMode[item.id],
               );
@@ -407,7 +409,7 @@ export default function QuoteLineItemsEditor({
                           </div>
                         ) : (
                           <>
-                            {isPergolaLineItemDescription(item.description) ? (
+                            {structuredPergolas && isPergolaLineItemDescription(item.description) ? (
                               <div className={styles.structuredPergolaToolbar}>
                                 <span className={styles.structuredPergolaLabel}>
                                   {parsedPergola
@@ -442,7 +444,7 @@ export default function QuoteLineItemsEditor({
                               }
                               rows={6}
                             />
-                            {isPergolaLineItemDescription(item.description) &&
+                            {structuredPergolas && isPergolaLineItemDescription(item.description) &&
                             !parsedPergola ? (
                               <div className={styles.metaWarning}>
                                 This row is using manual pergola text. Return to

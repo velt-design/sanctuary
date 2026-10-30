@@ -36,3 +36,23 @@ supabase/migrations/20260914062003_marketing_enquiry_delivery_status.sql -text
 supabase/migrations/20260914173001_configurator_estimate_revisions.sql -text
 # Keep the reviewed credential migration identical in native transport and ledger storage.
 supabase/migrations/20261022030852_ga4_vercel_credentials.sql text eol=lf
+
+# Preserve reviewed bytes of the inherited Studio migrations applied to staging.
+supabase/migrations/20261020080001_studio_authored_save.sql -text
+supabase/migrations/20261020080002_studio_authored_create.sql -text
+supabase/migrations/20261020080003_studio_website_quote_snapshot.sql -text
+supabase/migrations/20261020080004_studio_quote_binding_metadata.sql -text
+supabase/migrations/20261027234904_studio_travel_quote_destination_guard.sql -text
+supabase/migrations/20261028004820_studio_required_quote_site_address.sql -text
+supabase/migrations/20261028090403_studio_client_documents.sql -text
+supabase/migrations/20261028090414_background_jobs_scoped_claim.sql -text
+supabase/migrations/20261028114624_studio_client_quote_atomic_create.sql -text
+supabase/migrations/20261028132459_studio_client_document_archives.sql -text
+supabase/migrations/20261028143455_studio_costing_audit_archive.sql -text
+supabase/migrations/20261029042636_studio_booklet_approved_inventory.sql -text
+supabase/migrations/20261029054127_studio_booklet_page_ordinals.sql -text
+supabase/migrations/20261029223138_studio_booklet_drawing_only_inventory.sql -text
+supabase/migrations/20261029231641_studio_client_package_variants.sql -text
+supabase/migrations/20261029231753_studio_client_package_drafts.sql -text
+supabase/migrations/20261030020837_studio_designer_staff_trial_scope.sql -text
+supabase/migrations/20261030070356_studio_designer_atomic_install.sql -text

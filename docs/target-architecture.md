@@ -1,4 +1,6 @@
-# Target Architecture
+# Studio integration boundary
+
+## Target Architecture
 
 Status: Target contract.
 
@@ -488,3 +490,15 @@ The default-dark Xero adapter is portal-owned, with a dedicated database role, e
 The existing Project Files surface uses a staff API and explicit private project-to-drive-item bindings; Graph never runs in the browser. A scoped private outbox handles future enquiry folders using the existing leased-command pattern. This does not activate the generic dark worker. The server-only provisioning owner and operator-only import boundary are documented in [Project SharePoint files](project-sharepoint-files.md).
 
 The exact provisioning adapter is registered in both Portal's service-role usage inventory and the repository's strict service-role report. The operator importer remains covered by the existing operational-script policy with its explicit preflight/apply rationale. No directory-wide SharePoint exception is introduced; a focused governance test rejects neighbouring privileged runtime files.
+
+
+The active staff editor lives inside Portal's existing auth/API/project owners.
+Studio authoring/review and package persistence are application responsibilities;
+shared configurator/geometry contracts and the Node-only `studio-documents`
+renderer are package responsibilities. The dedicated durable document handler
+uses the existing RPC lease/checkpoint pipeline, not direct table access or a
+second queue. Server-controlled staff trial extends the existing private control
+and bounded document scope; unrelated worker handlers remain isolated. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md) for the
+complete current path, default-dark operation and recovery boundaries.
+

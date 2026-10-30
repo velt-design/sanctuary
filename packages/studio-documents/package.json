@@ -1,0 +1,19 @@
+{
+  "name": "@sp/studio-documents",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": "./src/contract.ts",
+    "./render": "./src/render.ts",
+    "./transport": "./src/transport.ts",
+    "./variant": "./src/variant.ts",
+    "./render-image": "./src/renderImage.ts"
+  },
+  "dependencies": {
+    "@sp/geometry": "0.0.0",
+    "@sp/geometry-viewer": "0.0.0",
+    "pdf-lib": "^1.17.1",
+    "three": "^0.183.2"
+  }
+}

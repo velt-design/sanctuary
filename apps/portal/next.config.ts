@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
     '/api/staff/v1/projects/*/design-booklet/pdf': designBookletSharpRuntimeFiles,
   },
   allowedDevOrigins: ['127.0.0.1'],
-  transpilePackages: ['@sp/ai', '@sp/costing', '@sp/email-provider', '@sp/geometry', '@sp/geometry-viewer', '@sp/quote-format', '@sp/theme'],
+  transpilePackages: ['@sp/ai', '@sp/configurator', '@sp/costing', '@sp/email-provider', '@sp/geometry', '@sp/geometry-viewer', '@sp/quote-format', '@sp/studio-documents', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
   // Allow monorepo package resolution for workspace packages.

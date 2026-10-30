@@ -5,13 +5,13 @@ import { boxGutterProfile, boxMember } from './representativeBoxMembers';
 import { representativeBoxRules } from './representativeBoxRules';
 import { addRepresentativeBoxRoof } from './representativeBoxRoof';
 
-export type RepresentativeBoxOptions = {freestanding?:boolean;widthMm:number;projectionMm:number;connection:'facade'|'soffit'};
+export type RepresentativeBoxOptions = {supportDatumMm?:number;freestanding?:boolean;widthMm:number;projectionMm:number;connection:'facade'|'soffit'};
 
 /** Isolated level-box concept; no authored solve, quantity takeoff or price claim. */
-export function buildRepresentativeBox({widthMm:width,projectionMm:projection,connection,freestanding=false}:RepresentativeBoxOptions) {
+export function buildRepresentativeBox({widthMm:width,projectionMm:projection,connection,freestanding=false,supportDatumMm}:RepresentativeBoxOptions) {
   if (connection !== 'facade' && connection !== 'soffit') throw new Error('Box attachment must be facade or soffit');
   if (connection === 'soffit' && projection > 4000) throw new Error('Soffit projection exceeds 4m');
-  const rules=representativeBoxRules(width,projection), z=rules.bottomZ+150;
+  const rules=representativeBoxRules(width,projection,supportDatumMm), z=rules.bottomZ+150;
   const outline=[{x:0,y:0,z:0},{x:width,y:0,z:0},{x:width,y:projection,z:0},{x:0,y:projection,z:0}];
   const assembly:Assembly3D={family:'box',outline,attachmentEdge:freestanding?null:{start:outline[0],end:outline[1]},house:{},
     datum:{origin:outline[0],xAxis:{x:1,y:0,z:0},yAxis:{x:0,y:1,z:0},zAxis:{x:0,y:0,z:1},attachmentEdgeStart:outline[0],attachmentEdgeEnd:outline[1]},

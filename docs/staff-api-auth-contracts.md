@@ -1,4 +1,6 @@
-# Staff API And Auth Contracts
+# Studio staff routes
+
+## Staff API And Auth Contracts
 
 The temporary `/api/integrations/praxis/portal-service-transfer` operator endpoint
 uses independent fixed Vercel-principal/project authorization and a finite nonce
@@ -668,3 +670,26 @@ ordinary documents retain the existing seed; only navigation context omits it.
 RootLayout starts its same caught finance-navigation promise after that guard,
 overlapping current-access/theme work, then awaits finance before completion and
 final props. Neither change establishes the original 100ms cold target.
+
+
+Studio APIs use fresh staff/admin context and project RLS before privileged
+immutable snapshot/document/package RPCs. Canonical Studio middleware hints only
+forward routing and refreshed cookies, never cookie user/role authority. The
+regional document root/slot and protected data loader retain fresh verification.
+Package document preview/download/retry names the exact quote, document ID and
+CAS package revision, and the browser checks the echoed identity. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+
+
+The service-role architecture guard recognises exactly seven reviewed Studio
+server owners: `createCommand`, `saveCommand`, `quotePrepare`, `atomicQuoteCreate`,
+`clientDocuments`, `clientDocumentRequest` and `clientPackageContext` (all
+`lib/designStudio/*.server.ts`). Create/save/prepare verify fresh staff and
+caller-visible project/source before fixed private commands. Atomic replay runs
+in parallel with caller visibility: SQL independently checks current role/control
+and exact actor/project/estimate/request/payload, and no replay response is
+accepted before caller visibility. The boolean capability helper relies on
+freshly guarded callers plus SQL role/project/control checks. Document/package
+owners verify caller quote/project visibility before privileged operations; their
+SQL retains binding, revision and CAS fences. This is an exact owner list, not a
+directory exemption or expanded role grant.

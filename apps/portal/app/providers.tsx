@@ -10,7 +10,7 @@ import {
   resolvePortalQueryCacheBuster,
   shouldDehydratePortalQuery,
 } from '@/lib/react-query/persistence';
-import LocalFirstRuntime from '@/components/sync/LocalFirstRuntime';
+import LocalFirstRuntime,{type LocalFirstRuntimeMode} from '@/components/sync/LocalFirstRuntime';
 import LocalFirstPortalMutations from '@/components/sync/LocalFirstPortalMutations';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
@@ -30,7 +30,7 @@ function createPortalQueryClient() {
   });
 }
 
-function PortalDataBoundary({ children, ownerId }: { children: ReactNode; ownerId: string | null }) {
+function PortalDataBoundary({ children, ownerId,mode }: { children: ReactNode; ownerId: string | null;mode:LocalFirstRuntimeMode }) {
   const [queryClient] = useState(createPortalQueryClient);
   const [persister] = useState(() => ownerId ? createIDBPersister(portalQueryStorageKey(ownerId)) : null);
   const buster = resolvePortalQueryCacheBuster(process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER);
@@ -39,8 +39,8 @@ function PortalDataBoundary({ children, ownerId }: { children: ReactNode; ownerI
 
   const content = (
     <PortalQueryClientScope client={queryClient}>
-      {ownerId ? <LocalFirstRuntime ownerId={ownerId} /> : null}
-      {ownerId ? <LocalFirstPortalMutations /> : null}
+      {ownerId ? <LocalFirstRuntime ownerId={ownerId} mode={mode} /> : null}
+      {ownerId && mode==='sync' ? <LocalFirstPortalMutations /> : null}
       {children}
       {process.env.NODE_ENV === 'development' ? <ReactQueryDevtools initialIsOpen={false} /> : null}
     </PortalQueryClientScope>
@@ -67,11 +67,11 @@ function PortalDataBoundary({ children, ownerId }: { children: ReactNode; ownerI
   );
 }
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({ children,mode='sync' }: { children: ReactNode;mode?:LocalFirstRuntimeMode }) {
   const { status, user } = usePortalSession();
   const ownerId = status === 'authenticated' ? user?.id ?? null : null;
   return (
-    <PortalDataBoundary key={ownerId ?? 'anonymous'} ownerId={ownerId}>
+    <PortalDataBoundary key={ownerId ?? 'anonymous'} ownerId={ownerId} mode={mode}>
       {children}
     </PortalDataBoundary>
   );

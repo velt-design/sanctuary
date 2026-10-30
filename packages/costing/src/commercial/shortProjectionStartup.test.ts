@@ -148,8 +148,10 @@ describe('v2.11 short-projection startup policy', () => {
     ['roof-span-priority', { ...site(), pergolas: [{ id: 'p1', modules: [{ ...site().pergolas[0].modules[0], roof_span_m: 3.2 }] }] }, '8a7ec68789f67ba1bc69299209fb7db5260a8dd44db0e1a7569b587f06c3b800'],
   ] as const;
 
-  it.each(historicalCases)('preserves the complete v2.10 historical output for %s', (_name, inputs, hash) => {
+  it.each(historicalCases)('preserves the complete v2.10 historical cost representation plus additive operational days for %s', (_name, inputs, hash) => {
     const output = calculateSiteCostV1(inputs as SiteInputsV1, historicalConfig());
-    expect(createHash('sha256').update(JSON.stringify(output)).digest('hex')).toBe(hash);
+    const {site_days,...historicalOutput}=output;
+    expect(site_days).toBeGreaterThan(0);
+    expect(createHash('sha256').update(JSON.stringify(historicalOutput)).digest('hex')).toBe(hash);
   });
 });

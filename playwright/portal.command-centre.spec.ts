@@ -20,6 +20,10 @@ registerProjectHeaderStabilityTests(PROJECT_SHELL_FIXTURE_PATH, expectNoDocument
 
 test.beforeEach(async ({ page }) => {
   // Shell fixtures have no real staff session or connected provider.
+  // Model the admitted staff trial explicitly instead of letting a live 401
+  // remove the pending Studio action during header geometry measurements.
+  await page.route('**/api/design-studio/capabilities', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ enabled: true }) }));
   await page.route('**/api/staff/v1/projects/proj_fixture_shell/correspondence', route =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify({ state: 'not_connected' }) }));
 });
@@ -1000,9 +1004,12 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     await expect(
       commandRow.getByRole("link", { name: "Projects", exact: true }),
     ).toBeVisible();
-    await expect(
-      commandRow.getByRole("link", { name: "Design Workbench" }),
-    ).toBeVisible();
+    const studioEntry = commandRow.getByRole("link", { name: "Design Studio", exact: true });
+    await expect(studioEntry).toHaveCount(1);
+    await expect(studioEntry).toBeVisible();
+    await expect(studioEntry).toHaveAttribute('href', '/staff/projects/proj_fixture_shell/studio');
+    await expect(studioEntry).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(commandRow.getByRole('link', { name: 'Design Workbench', exact: true })).toHaveCount(0);
     await expect(commandRow.getByRole("button", { name: "More" })).toHaveCount(
       0,
     );
@@ -1040,7 +1047,7 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
       );
       const finalCommandIsReachable = await commandRail.evaluate((element) => {
         const finalCommand = element.querySelector<HTMLAnchorElement>(
-          'a[href*="design-workbench"]',
+          'a[href="/staff/projects/proj_fixture_shell/studio"]',
         );
         if (!finalCommand) return false;
         const railBounds = element.getBoundingClientRect();
@@ -1219,6 +1226,7 @@ test("shows historical project designs as locked Calculator revision sources", a
             {
               id: "est_history",
               projectId: "proj_fixture_shell",
+              designKind: "calculator",
               createdAt: "2026-07-20T00:00:00.000Z",
               status: "draft",
               summary: {},
@@ -1246,9 +1254,11 @@ test("shows historical project designs as locked Calculator revision sources", a
   await expect(
     page.locator('[data-calculator-locked-source="true"]'),
   ).toContainText("cannot be edited directly");
+  await expect(page.locator('[data-project-calculator-state="locked"]')).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Start revision" }),
   ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start revision', exact: true })).toBeEnabled();
   await expectNoDocumentOverflow(page);
 });
 

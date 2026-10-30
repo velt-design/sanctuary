@@ -501,7 +501,8 @@ export function expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(
   expect(soffitSolids.every((solid) => solid.thicknessMm === 10)).toBe(true);
   for (const [index, solid] of soffitSolids.entries()) {
     if (polygonIsHorizontal(solid.boundary)) {
-      expectVerticalPrismRenderMesh(solid.renderMesh, 2395, 2405);
+      const soffitZ=solid.boundary[0].z;
+      expectVerticalPrismRenderMesh(solid.renderMesh, soffitZ-5, soffitZ+5);
       continue;
     }
     expect(solid.renderMesh, `soffit ${index + 1}`).toBeUndefined();

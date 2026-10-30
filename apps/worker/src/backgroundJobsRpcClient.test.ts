@@ -398,3 +398,27 @@ describe('background jobs RPC adapter', () => {
     expect(invalid).toMatchObject({ code: 'BACKGROUND_JOBS_RPC_INVALID_RESPONSE' });
   });
 });
+
+it('uses SQL scoped admission before claiming, retaining the original call for unscoped workers',async()=>{
+ const {calls,transport}=transportWithResponses({[BACKGROUND_JOBS_RPC_NAMES.claimScoped]:[],[BACKGROUND_JOBS_RPC_NAMES.claim]:[]});const rpc=client(transport),base={workerId:'worker-1',batchSize:1,visibilityTimeoutSeconds:120};
+ await rpc.claim({...base,scope:{kinds:['studio_design_booklet_v1'],projectIds:[projectId]}});await rpc.claim(base);
+ expect(calls.map(c=>c.name)).toEqual(['background_jobs_claim_scoped','background_jobs_claim']);expect(calls[0].parameters).toEqual({p_worker_id:'worker-1',p_batch_size:1,p_visibility_timeout_seconds:120,p_kinds:['studio_design_booklet_v1'],p_project_ids:[projectId]});expect(calls[1].parameters).not.toHaveProperty('p_kinds');
+});
+
+it('uses the explicit document manifest capability before any claim on a new compiled document worker',async()=>{
+ const {calls,transport}=transportWithResponses({[BACKGROUND_JOBS_RPC_NAMES.claimDocuments]:[]});
+ const rpc=client(transport),manifestVersions=['legacy','studio-booklet-layout.v2','studio-booklet-layout.v3'];
+ await rpc.claim({workerId:'worker-v3',batchSize:1,visibilityTimeoutSeconds:120,scope:{kinds:['studio_design_booklet_v1'],projectIds:[projectId],manifestVersions}});
+ expect(calls).toHaveLength(1);expect(calls[0].name).toBe('background_jobs_claim_documents');expect(calls[0].parameters.p_manifest_versions).toEqual(manifestVersions);
+ expect(calls[0].parameters.p_project_ids).toEqual([projectId]);expect(calls[0].parameters.p_kinds).toEqual(['studio_design_booklet_v1']);
+});
+
+it('uses only the bounded trial RPC and never falls back to global claims when trial has no IDs',async()=>{
+ const {calls,transport}=transportWithResponses({[BACKGROUND_JOBS_RPC_NAMES.claimStudioTrial]:[]});
+ const rpc=client(transport),base={workerId:'studio-trial',batchSize:1,visibilityTimeoutSeconds:120};
+ const scope={staffTrial:true as const,kinds:['studio_design_booklet_v1'] as const,projectIds:[],manifestVersions:['studio-booklet-layout.v4','studio-booklet-renders.v1']};
+ expect(await rpc.claim({...base,scope})).toEqual([]);
+ expect(calls).toEqual([{name:'background_jobs_claim_studio_trial',parameters:{p_worker_id:'studio-trial',p_batch_size:1,p_visibility_timeout_seconds:120,p_manifest_versions:scope.manifestVersions}}]);
+ for(const patch of [{projectIds:[projectId]},{kinds:['quote_send'] as const},{manifestVersions:[]}])await expect(rpc.claim({...base,scope:{...scope,...patch}})).rejects.toMatchObject({code:'BACKGROUND_JOBS_RPC_INVALID_SCOPE'});
+ expect(calls).toHaveLength(1);
+});

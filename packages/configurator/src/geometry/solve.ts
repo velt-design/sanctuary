@@ -2,7 +2,7 @@ import {
   buildPergolaInteractionAnchors,
   solvePergolaGeometry,
 } from '@sp/geometry';
-import type { CustomerPergolaConfigurationV1 } from '../core';
+import { CUSTOMER_DIMENSION_BOUNDS, type CustomerPergolaConfigurationV1 } from '../core';
 import { customerConfigurationToPergolaGeometryInputV1 } from './adapter';
 import {
   CUSTOMER_GEOMETRY_FAILURE_CODES_V1,
@@ -108,7 +108,10 @@ export function solveCustomerConfigurationV1(
 
   let solveResult: ReturnType<typeof solvePergolaGeometry>;
   try {
-    solveResult = solvePergolaGeometry(adapterResult.geometryInput);
+    const datum=options.supportDatumMm,bounds=CUSTOMER_DIMENSION_BOUNDS.clearHeightMm;
+    if(datum!==undefined&&(!Number.isFinite(datum)||datum<bounds.minimum||datum>bounds.maximum))throw new Error('Invalid support datum.');
+    if(options.roofDatumBasis!==undefined&&options.roofDatumBasis!=='attached')throw new Error('Invalid roof datum basis.');
+    solveResult = datum===undefined&&options.roofDatumBasis===undefined?solvePergolaGeometry(adapterResult.geometryInput):solvePergolaGeometry(adapterResult.geometryInput,{...(datum!==undefined?{supportDatumMm:datum}:{}),...(options.roofDatumBasis?{roofDatumBasis:options.roofDatumBasis}:{})});
   } catch {
     return unavailableArtifact(
       'invalid',

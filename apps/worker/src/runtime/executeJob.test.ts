@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto';
+import {studioDocumentHandler} from '../handlers/studioDocument';
 import {
   RESEND_PROVIDER_NAME,
   type EmailMessageInput,
@@ -19,6 +21,9 @@ import type { RuntimeBackgroundJobsRpc, RuntimeLogger } from './contracts';
 import { systemRuntimeClock } from './contracts';
 import { BackgroundJobAbortError, BackgroundJobHandlerError } from './errors';
 import { BackgroundJobFatalExitInvokedError, executeBackgroundJob } from './executeJob';
+
+const documentRender=vi.hoisted(()=>({page:vi.fn(),assemble:vi.fn(async()=>Buffer.from('%PDF-complete'))}));
+vi.mock('@sp/studio-documents/render',()=>({renderStudioDocumentPage:documentRender.page,assembleStudioDocumentPages:documentRender.assemble}));
 
 const NOW = Date.parse('2026-07-20T01:02:03.000Z');
 const JOB_ID = '11111111-1111-4111-8111-111111111111';
@@ -970,4 +975,25 @@ describe('executeBackgroundJob', () => {
     expect(fixture.rpc.releaseLease).not.toHaveBeenCalled();
     expect(fixture.rpc.markNeedsAttention).not.toHaveBeenCalled();
   });
+});
+
+function documentFixture(jobClaim:BackgroundJobClaim){
+ const {rpc}=rpcFixture(jobClaim),snapshotId='10000000-0000-4000-8000-000000000002',bytes=Buffer.from('%PDF-complete-page');
+ const source={schemaVersion:'studio_client_document.v1',rendererVersion:'studio-booklet.v1',snapshotId,contentHash:'a'.repeat(64),designId:'fixture',revision:19,designVersionLabel:'V2',projectName:'Synthetic',siteAddress:'12 Example Road',issuedDate:'28 OCT 2026',issuedAt:'2026-10-28T00:00:00Z',houses:[],joins:[],products:[]};
+ vi.mocked(rpc.readPayload).mockResolvedValue({contractVersion:1,payloadHash:HASH,payload:{contractVersion:1,snapshotId,rendererVersion:'studio-booklet.v1'}});
+ const documents={read:vi.fn(async()=>({snapshotId,rendererVersion:'studio-booklet.v1',totalPages:1,readyFileId:null,source,pages:[{index:0,sha256:createHash('sha256').update(bytes).digest('hex'),contentBase64:bytes.toString('base64')}]})),stage:vi.fn(async()=>1),finish:vi.fn(async()=> '10000000-0000-4000-8000-000000000003')};
+ rpc.studioDocuments=documents;return{rpc,documents};
+}
+it('resumes a document finalising claim through the actual runtime without regressing to running or rerendering completed pages',async()=>{
+ const resumed=claim('studio_design_booklet_v1',{status:'finalising',currentPhase:'assembling_booklet',attemptNumber:2});const f=documentFixture(resumed);documentRender.page.mockClear();documentRender.assemble.mockClear();
+ const result=await executeBackgroundJob(executeInput(resumed,f.rpc,studioDocumentHandler));
+ expect(result).toMatchObject({outcome:'succeeded',errorCode:null});expect(documentRender.page).not.toHaveBeenCalled();expect(f.documents.stage).not.toHaveBeenCalled();expect(documentRender.assemble).toHaveBeenCalledOnce();expect(f.documents.finish).toHaveBeenCalledOnce();expect(f.rpc.complete).toHaveBeenCalledOnce();
+ expect(vi.mocked(f.rpc.recordProgress).mock.calls.every(([input])=>input.status==='finalising')).toBe(true);expect(f.rpc.markNeedsAttention).not.toHaveBeenCalled();
+});
+it('executes exactly the fourth explicitly budgeted document attempt and preserves strict rejection for max5 or another kind',async()=>{
+ const fourth=claim('studio_design_booklet_v1',{maxAttempts:4,attemptNumber:4}),f=documentFixture(fourth);
+ await expect(executeBackgroundJob(executeInput(fourth,f.rpc,studioDocumentHandler))).resolves.toMatchObject({outcome:'succeeded',errorCode:null});expect(f.documents.finish).toHaveBeenCalledOnce();expect(f.rpc.complete).toHaveBeenCalledOnce();
+ for(const invalid of [claim('studio_design_booklet_v1',{maxAttempts:5,attemptNumber:4}),claim('studio_design_booklet_v1',{maxAttempts:4,attemptNumber:3}),claim('automation_event',{maxAttempts:5,attemptNumber:4})]){
+  const fixture=rpcFixture(invalid),handler=vi.fn(async()=>({}));await expect(executeBackgroundJob(executeInput(invalid,fixture.rpc,handler))).resolves.toMatchObject({outcome:'needs_attention',errorCode:'RETRY_POLICY_MISMATCH'});expect(handler).not.toHaveBeenCalled();expect(fixture.rpc.complete).not.toHaveBeenCalled();
+ }
 });

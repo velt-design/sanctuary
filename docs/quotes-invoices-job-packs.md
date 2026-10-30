@@ -1,4 +1,6 @@
-# Quotes, Invoices, And Job Packs
+# Studio quote and client package
+
+## Quotes, Invoices, And Job Packs
 
 ## Project Work desk presentation (27 October 2026 candidate)
 
@@ -429,6 +431,8 @@ Customer quote artifacts use one output-specific editorial system rather than br
 
 `renderArtifacts.ts` owns the quote artifact render-version marker used in the render-input hash. A presentation revision may invalidate and regenerate cached PDF/template bytes, but must not change pricing, quote lines, public tokens, selected attachments, send logs, or lifecycle state. Staff send review exposes the actual HTML at desktop and narrow widths plus the exact plain-text body through the existing preview route before sending.
 
+Absent Studio metadata is omitted from that hash input, preserving the published ordinary-quote identity. Studio snapshot, content and ordered image identities remain included for Studio quotes. The render-hash golden tests and `serverCore.artifactIdentity.test.ts` protect legacy cached previews, attachment downloads and send attachment preparation from replacing an existing PDF file or its bytes. The existing explicit inline refresh of an ordinary draft still regenerates its PDF.
+
 Customer invoice artifacts use an invoice-owned translation of that editorial system, not quote browser components or a second visual system inside `server.ts`. `invoiceArtifactViewModel.ts` normalizes the customer, project, quote, scheduled-payment label/basis, date, total, payment-reference, and contact presentation shared by the PDF and email adapter. The PDF uses invoice-owned module-relative Inter assets and a payment-ledger hierarchy. The fluid 640px HTML email and plain-text fallback preserve the same amount due, due date, reference, source quote, GST totals, authoritative payment lines, attachments, next step, and clarification path. Once an invoice exists, PDF, email, preview, and public presentation use its stored `payment_instructions` and payment-term snapshot; the current owners are only fallbacks for legacy null fields.
 
 Staff invoice preview is read-only. When a frozen commercial intent or stored invoice PDF exists, preview returns that historical artifact with the customer token redacted; otherwise it uses the production renderer with an inert link and generates the PDF in memory. Preview never generates a public token, persists an artifact, changes invoice state, writes a send log, or reaches provider transport. Existing delivery preparation remains the only owner of recipient resolution, private links, immutable requests, and delivery side effects.
@@ -791,3 +795,18 @@ All non-GET and unlisted API requests are rejected, including PDF/send/record
 commands. This fixture's preparation is not production-entry timing proof. Its
 coherent data is three estimates, three quote versions and one invoice; larger
 production commercial dataset timings have not been claimed.
+
+
+Studio freezes source and current published pricing through the canonical quote
+owner. The financial PDF remains independent of the optional design booklet.
+Selected frozen renders append to the design booklet only, after its technical
+sheets. Separate project-file imports preserve exact bytes and cannot duplicate
+the mandatory financial or chosen booklet artifacts. Persisted package revision,
+message, recipient and attachment hashes bind deliberate canonical preparation.
+Safe edit cancels only the exact untouched prepared intent; uncertain dispatch
+states remain immutable. All Studio customer sends/recovery are default-disabled
+in the app and database during the trial; ordinary quote/invoice delivery remains.
+Standalone aluminium/infill descriptions now expose validated selected scope,
+without changing prices/GST/discounts or separately priced blinds/exclusions.
+See [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

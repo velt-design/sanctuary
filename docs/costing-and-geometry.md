@@ -1,4 +1,6 @@
-# Costing And Geometry
+# Studio authored and document projections
+
+## Costing And Geometry
 
 ## Accessory evidence review
 
@@ -110,6 +112,16 @@ Standard totals, actual cost drivers and the new Bespoke amounts.
 `calculateConfiguredCustomerPriceV1` is the opt-in `configured-offer.v1` adjustment for the customer configurator's single-module aluminium offer, up to and including 30 m² ground / 20 m² elevated. It removes the calculated bespoke design allocation, retains the supplied labour classification and operational overhead, and adds any shortfall against the GST-normalised historical erection benchmark. The existing multiplier is retained. It requires an explicit configuration; it does not mutate general costing, published rates, frozen quotes or installer agreements.
 
 From effective manifest `v2.10`, `calculateConfiguratorPricing` in `apps/marketing/lib/configuratorReviewPrice.ts` supplies Standard (`simple`) for every supported roof family and finish within those inclusive website limits, before both base and accessory calculation. It uses the package-exported `isCostingManifestAtLeast`, which respects the applied publication version. Actual geometry, materials, labour quantities, structural validation, approval requirements, accessories and the installation floor still apply. Effective `v2.9` and older retain the former adapter classification (acrylic mono Simple; other combinations Bespoke) so historical calculation references reproduce exactly. This website boundary does not reclassify Portal jobs. The public frozen-price pipeline and gated development review share this adapter; production still requires an approved publication and complete schedules. `configuratorStandardPolicy.test.ts` covers pre-change frozen hashes, roof/finish costs and accessories, and exact/above area limits; `configuratorPricing.server.test.ts` covers public responses and historical reference replay.
+The server frozen `configurator-pricing.v1` and `simple-cover-pricing.v1` owners
+retain their signed wire shape: they copy the site output and omit only its new
+top-level operational `site_days`. Every historic nested field, including module
+days, remains. Core costing and Studio keep the full operational result. Existing
+`cf1` and `sc1` references still resolve their immutable publication and compare the
+whole frozen hash, without alternate hash acceptance or current-price fallback.
+The continuity regression pins public baseline whole-result identities across all
+retained compatible manifests; Configurator versions older than v2.4 remain
+unissuable under their existing commercial-overhead guard.
+
 ### September timber pricing release
 
 The pricing-only release advances the package to v2.7 and adds factory-coated Cedar and ThermoPine ceiling selections in 100 mm and 150 mm covers. The package owns selected-length bands, supported stock joins, waste, coating, fixings and fitting labour. Historical inputs without a ceiling selection retain the existing cedar identity; new selections require a published v2.7 configuration. Compatible earlier publications retain their original rates and semantics. Candidate `157b63465bc0` preserves production Version 11 values and adds the reviewed catalogue/accessory allowances; production publication is separate from deploying compatible code.
@@ -800,3 +812,16 @@ argument, so it must use the active UI policy rather than silently assume an old
 manifest. It now permits the acrylic infill request to remain Simple. Server
 calculations still receive the exact published configuration and enforce its
 historical policy. A real eligibility-to-React-hook regression covers this path.
+
+
+Studio uses shared costing and geometry owners for authored pergolas, house
+attachment/composition and standalone accessories. It freezes the saved authored
+revision plus current published costing and verified travel in its quote snapshot;
+the browser projection or captured image is not financial authority. Aluminium
+and infill customer scope text uses validated selected dimensions/profile/finish
+and quantity, preserving all engine prices, GST, discount and other line amounts.
+Technical booklet/render-page composition belongs to `packages/studio-documents`.
+Legacy persisted geometry inputs and their consumers remain compatible; this
+integration adds Studio support rather than retiring Workbench state. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

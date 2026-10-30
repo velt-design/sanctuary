@@ -116,6 +116,7 @@ function safeFailureCode(error: unknown): string {
 function runtimeConfiguration(config: ReturnType<typeof loadWorkerConfig>) {
   return {
     workerId: config.workerId,
+    ...(config.claimScope?{claimScope:config.claimScope}:{}),
     buildVersion: config.buildVersion,
     mode: config.mode,
     globalConcurrency: config.globalConcurrency,

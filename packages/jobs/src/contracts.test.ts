@@ -114,7 +114,7 @@ describe('background job contracts', () => {
         cancellationAllowed: match[9] === 'true',
       }),
     );
-    const packageKinds = BACKGROUND_JOB_KINDS.filter((kind) => kind !== 'ai_synthetic_v1' && kind !== 'xero_invoice_draft_v1').map((kind) => {
+    const packageKinds = BACKGROUND_JOB_KINDS.filter((kind) => kind !== 'ai_synthetic_v1' && kind !== 'xero_invoice_draft_v1' && kind !== 'studio_design_booklet_v1').map((kind) => {
       const definition = getBackgroundJobDefinition(kind);
       return {
         kind,
@@ -188,13 +188,14 @@ describe('background job contracts', () => {
       email_outbox_deliver: 'outbox_intent',
       ai_synthetic_v1: 'ai_task_input_snapshot',
       xero_invoice_draft_v1: 'provider_and_effect_checkpoint',
+      studio_design_booklet_v1:'input_hash_artifact_reuse',
     } as const;
 
     for (const kind of BACKGROUND_JOB_KINDS) {
       const definition = getBackgroundJobDefinition(kind);
       expect(definition.kind).toBe(kind);
       expect(definition.payloadContractVersion).toBeGreaterThan(0);
-      expect(definition.defaultRolloutMode).toBe(kind === 'ai_synthetic_v1' ? 'worker_enabled' : kind === 'xero_invoice_draft_v1' ? 'disabled' : 'legacy');
+      expect(definition.defaultRolloutMode).toBe(kind === 'ai_synthetic_v1' ? 'worker_enabled' : ['xero_invoice_draft_v1','studio_design_booklet_v1'].includes(kind) ? 'disabled' : 'legacy');
       expect(definition.retry.maxAttempts).toBeGreaterThan(0);
       expect(definition.retry.baseDelayMs).toBeGreaterThanOrEqual(1_000);
       expect(definition.retry.maximumDelayMs).toBeGreaterThanOrEqual(definition.retry.baseDelayMs);

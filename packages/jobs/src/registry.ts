@@ -264,6 +264,14 @@ export const BACKGROUND_JOB_REGISTRY = {
     defaultRolloutMode: 'disabled',
     idempotencyStrategy: 'provider_and_effect_checkpoint',
   },
+  studio_design_booklet_v1: {
+    kind:'studio_design_booklet_v1',payloadContractVersion:1,handlerOwner:'studio-client-documents',
+    retry:{...documentRetry,maxAttempts:3},timeoutMs:600_000,concurrencyClass:'documents',
+    hasExternalSideEffect:false,cancellationAllowed:true,requiredHandlerCheckpoints:['pages_staged','pdf_staged'],
+    allowedEffectCheckpoints:[],requiredEffectCheckpoints:[],
+    userFacingStatus:{...userFacingJobPackStatus,claimed:'Preparing design booklet',preparing:'Preparing design booklet',running:'Drawing design booklet',succeeded:'Design booklet ready'},
+    defaultRolloutMode:'disabled',idempotencyStrategy:'input_hash_artifact_reuse',
+  },
 } as const satisfies Record<BackgroundJobKind, BackgroundJobKindDefinition>;
 
 function assertBackgroundJobDefinitionIntegrity(definition: BackgroundJobKindDefinition): void {

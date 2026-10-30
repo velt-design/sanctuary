@@ -1,3 +1,5 @@
+# Security, Privacy, And Quality
+
 ## Compatible paused creative normalization
 
 A complete current pending owner review can use the same existing owner-only
@@ -158,7 +160,6 @@ Deploy optional read consumers before50006; root's guarded operator alone may
 provision the actual receipt after real evidence. Separate delivery authority and
 fresh proof gate the locally connected ACTIVE effects.
 
-# Security, Privacy, And Quality
 
 ## Browser-local enquiry recovery (26 October 2026)
 
@@ -888,6 +889,17 @@ Security:
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
 - `npm run audit:toolchain` fails closed on every development/toolchain vulnerability except the two no-fix `xlsx` advisories `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception is valid only while `xlsx` is a direct root development dependency, is locked development-only, has no fix, and is imported only by `scripts/import-running-jobs-legacy.ts`.
 - The 21 October 2026 toolchain correction pins Vite `7.3.7` through the root override. It fixes bundled launch-editor advisories [GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm), [GHSA-698v-4r3x-3vcv](https://github.com/advisories/GHSA-698v-4r3x-3vcv) and [GHSA-r825-w8mm-5pxw](https://github.com/advisories/GHSA-r825-w8mm-5pxw). Both security gates remain unchanged; no new audit exception is permitted.
+- The 30 October 2026 email dependency correction pins `@react-email/render` to
+  `2.2.0` in the workspace and both apps. The root override references that direct
+  pin so the components barrel cannot retain an older vulnerable renderer.
+  [The maintained upstream release](https://github.com/resend/react-email/releases/tag/@react-email%2Frender@2.2.0)
+  uses `html-to-text` 10 and `deepmerge-ts`, removing the `deepmerge` chain affected
+  by [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4).
+  Its Node minimum is 20.19; the existing Node 22/24 runtimes satisfy it. Preserve
+  actual Marketing HTML/plain-text output and canonical Studio frozen package
+  payloads when changing this boundary. The upstream renderer removes automatic
+  image preload hints; image and message content remain unchanged. Both audit
+  gates retain their existing policy.
 - The 22 October correction raises Vitest and its coupled packages from `4.1.11` to `4.1.12`, retaining the Vite override. This fixes `@vitest/mocker` manual mock code injection [GHSA-qxg6-89mg-rqv8](https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8) (affected `>=2.1.0-beta.7 <4.1.12`) and Windows redirect traversal [GHSA-xp26-3454-mjgp](https://github.com/vitest-dev/vitest/security/advisories/GHSA-xp26-3454-mjgp) (affected `>=4.1.11 <4.1.12`). Revalidate affected tests with the patched runner; prior runner results do not prove its compatibility. No security suppression or new exception is added.
 - The workspace, Portal, and Marketing PostCSS overrides must resolve to the same patched version; verify with `npm ls postcss` after dependency changes.
 - The October 2026 security floor is Next.js `^16.3.6` across the workspace and both apps, fixing the [next/og ImageResponse advisory](https://github.com/advisories/GHSA-vcvr-r3jv-pc5j). The 2 October release audit also requires transitive `brace-expansion` 1.1.21/2.1.7 for the [nested-recursion](https://github.com/advisories/GHSA-qhr7-859c-m2p7), [comma-recursion](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p) and [quadratic expansion](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) advisories. Keep both audit gates blocking; this candidate is not a production-release receipt.
@@ -985,3 +997,18 @@ for reporting credit. Invalid attribution never deletes the canonical enquiry.
 No extra customer content, raw provider payload, credentials or arbitrary URLs
 are added to the public response or model projection. Source registry and
 serving helpers remain private; ownership never follows a provider-only ID.
+# Studio trial delivery and private payloads
+
+Studio package preparation freezes canonical email bytes and exact artifact
+IDs/hashes but grants no send permission. App send/resend/generic recovery checks
+the actual immutable Studio binding or selected frozen intent. The canonical
+database mark-dispatching boundary independently rejects those intents unless
+the private default-false `customer_send_enabled` switch is enabled. It retains
+invoice lock/generation and cancelled-intent refusal, and protects app rollback.
+Ordinary non-Studio email is unchanged. Token-redacted previews never return an
+acceptance token in HTML/text/link hrefs; protected exact payloads stay private.
+Operational credentials, real source/customer fixtures and receipts are excluded
+from the public release. Trial claim eligibility and service-role-only RPC
+admission are documented in
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

@@ -5,6 +5,15 @@ import { describe, expect, it } from 'vitest';
 
 const COMPATIBILITY_CLIENT_FILE = 'apps/portal/lib/supabaseClient.ts';
 const SERVICE_ROLE_ALLOWLIST = [
+  'apps/portal/lib/designStudio/atomicQuoteCreate.server.ts', // Fresh staff/project read; canonical atomic source/quote RPC.
+  'apps/portal/lib/designStudio/clientDocumentRequest.server.ts', // Caller-RLS quote read before exact immutable document RPC.
+  'apps/portal/lib/designStudio/clientDocuments.server.ts', // Service-only capability RPC rechecks current staff/project admission.
+  'apps/portal/lib/designStudio/clientPackageContext.server.ts', // Fresh caller-RLS quote and actor before package CAS/document RPCs.
+  'apps/portal/lib/designStudio/createCommand.server.ts', // Fresh staff/project read before authored creation RPC.
+  'apps/portal/lib/designStudio/quotePrepare.server.ts', // Fresh source/publication/address before immutable preparation RPC.
+  'apps/portal/lib/designStudio/saveCommand.server.ts', // Fresh actor/project and saved revision before authored save RPC.
+  'apps/portal/lib/quotes/serverPackageAttachments.ts', // Protected canonical intent resolves exact project-owned artifact IDs/hash/bytes.
+  'apps/portal/lib/quotes/studioCommit.server.ts', // Bound immutable Studio snapshot/quote commit and view; no alternate pricing authority.
   'apps/portal/app/api/admin/access/route.ts',
   'apps/portal/app/api/staff/v1/projects/[projectId]/enquiry-attachments/[attachmentId]/open/route.ts',
   'apps/portal/lib/automation/AutomationRunner.ts',

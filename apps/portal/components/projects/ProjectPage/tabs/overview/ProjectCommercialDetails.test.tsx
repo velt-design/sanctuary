@@ -1,3 +1,4 @@
+import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderIntoDocument } from '../../../../../../../test/reactHarness';
 import { commandCentreFixtures } from '@/app/qa/project-command-centre-fixture/fixtures';
@@ -9,7 +10,7 @@ describe('compact commercial position', () => {
   it('explains retained accepted history without inventing a warning or correction task', () => {
     const data = { ...commandCentreFixtures['accepted-newer-estimate'], warnings: ['multiple_accepted_quotes'] as const };
     const value = { ...data, warnings: [...data.warnings] };
-    const view = renderIntoDocument(<ProjectCommercialDetails data={value}><ProjectCurrentDesignCommercialCard data={value} /></ProjectCommercialDetails>);
+    const view = renderIntoDocument(<ToastProvider><ProjectCommercialDetails data={value}><ProjectCurrentDesignCommercialCard data={value} /></ProjectCommercialDetails></ToastProvider>);
     const history = view.container.querySelector('details')!;
     expect(history.open).toBe(false);
     expect(history.querySelector('summary')?.textContent).toBe('Quote history');
@@ -27,7 +28,7 @@ describe('compact commercial position', () => {
     ['accepted-newer-estimate', 'Agreed price$1,750.00'],
     ['no-current-design', 'Current estimateNot prepared'],
   ] as const)('keeps %s distinct without showing secondary detail by default', (scenario, expected) => {
-    const view = renderIntoDocument(<ProjectCommercialDetails data={commandCentreFixtures[scenario]}><p>Payment evidence</p></ProjectCommercialDetails>);
+    const view = renderIntoDocument(<ToastProvider><ProjectCommercialDetails data={commandCentreFixtures[scenario]}><p>Payment evidence</p></ProjectCommercialDetails></ToastProvider>);
     expect(view.container.querySelector('summary')?.textContent).toContain(expected);
     expect(view.container.querySelector('details')?.open).toBe(false);
     expect(view.container.textContent).toContain('Payment evidence');

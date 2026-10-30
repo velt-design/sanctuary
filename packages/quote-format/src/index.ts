@@ -316,3 +316,6 @@ export function formatQuoteIntroText(raw: string | null | undefined): string | n
   return sanitizeText(raw);
 }
 export { parseInvoiceContent, type InvoiceContentSnapshot } from './invoiceContent';
+
+export type { StudioQuoteView } from './studioDesign';
+export {studioQuoteSiteAddress} from './studioDesign';

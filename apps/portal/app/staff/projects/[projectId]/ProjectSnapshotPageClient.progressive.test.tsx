@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({ usePathname: () => window.location.pathname,
 vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: { id: 'fictional-staff' }, role: 'staff' }) }));
 vi.mock('@/components/ui/toast/ToastProvider', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({ default: ({children, ...props}: any) => <a {...props}>{children}</a> }));
+vi.mock('@/components/designStudio/StudioProjectLink',()=>({default:({projectId,disabled}:any)=><a href={`/staff/projects/${projectId}/studio`} aria-disabled={disabled||undefined}>Design Studio</a>}));
 vi.mock('@/lib/supabase/browserClient', () => ({ supabaseHostFromUrl: () => 'fictional', supabaseRuntimeUrl: () => 'https://fictional.invalid' }));
 // Keep actual route queries, frame, masthead, tab navigation and access/mutation gates.
 // Specialist bodies are outside this query/identity regression.
@@ -46,7 +47,7 @@ describe('actual project initial query and persistent frame', () => {
   expect(ui.container.querySelector('[data-project-snapshot-state="fresh"]')).not.toBeNull();
   expect(ui.container.querySelector('[aria-label="Project summary"]')).toBe(header);
   expect(loaders.summary).toHaveBeenCalledTimes(1); expect(loaders.snapshot).toHaveBeenCalledTimes(1);
-  expect(ui.container.querySelector('a[href$="/design-workbench"]')?.getAttribute('aria-disabled')).toBe('true');
+  expect(ui.container.querySelector('a[href$="/studio"]')?.getAttribute('aria-disabled')).toBe('true');
   ui.close();
  });
  it('never applies an older project result after A to B changes', async () => {

@@ -152,15 +152,32 @@ export function composeRoofFromComposition(input: {
   // the designer's ridge-axis choice is honoured, and stamp a unified
   // (non-stitched) result. (PR-SS-4: closes the 01 single-rect fixture
   // — it previously fell through to the per-rectangle stitched path.)
-  if (rectangles.length === 1 && rectangles[0]!.roofIntent.form === "hipped") {
+  if (rectangles.length === 1 && input.eaveOverhangMm !== undefined &&
+    (!Number.isFinite(input.eaveOverhangMm) || input.eaveOverhangMm < 0)) {
+    throw new Error("House eave overhang must be finite and nonnegative.");
+  }
+  if (rectangles.length === 1 && (rectangles[0]!.roofIntent.form === "hipped" || (input.eaveOverhangMm ?? 0) > 0)) {
+    const overhang = input.eaveOverhangMm ?? 0;
+    if (!Number.isFinite(overhang) || overhang < 0) throw new Error("House eave overhang must be finite and nonnegative.");
+    const original = rectangles[0]!;
+    // Same outward eave semantics as the canonical multi-rectangle skeleton.
+    // Only the roof rectangle expands; the authored wall footprint is unchanged.
+    const rectangle = {...original, originXMm:original.originXMm-overhang, originYMm:original.originYMm-overhang,
+      widthMm:original.widthMm+2*overhang, depthMm:original.depthMm+2*overhang};
     const result = solveSingleRectangle({
-      rectangle: rectangles[0]!,
+      rectangle,
       eaveHeightMm: input.eaveHeightMm,
       idSuffix: "rect1",
     });
     return {
       roofPlanes: result.roofPlanes,
       roofFeatures: result.roofFeatures,
+      ...(overhang > 0 ? {eavePolygon:[
+        {x:rectangle.originXMm,y:rectangle.originYMm,z:0},
+        {x:rectangle.originXMm+rectangle.widthMm,y:rectangle.originYMm,z:0},
+        {x:rectangle.originXMm+rectangle.widthMm,y:rectangle.originYMm+rectangle.depthMm,z:0},
+        {x:rectangle.originXMm,y:rectangle.originYMm+rectangle.depthMm,z:0},
+      ]} : {}),
       metadata: {
         roofGeometry: "composition_unified",
         roofTopologySolver: "composition_single_rectangle",

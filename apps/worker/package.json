@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/cli.ts",
-    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/worker.mjs --sourcemap=linked --log-level=warning",
+    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/worker.mjs --sourcemap=linked --log-level=warning && node scripts/copy-studio-document-assets.mjs",
     "start": "node dist/worker.mjs",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit --incremental false",
@@ -20,6 +20,7 @@
   "dependencies": {
     "@sp/email-provider": "0.0.0",
     "@sp/jobs": "0.0.0",
+    "@sp/studio-documents": "0.0.0",
     "@supabase/supabase-js": "^2.90.1"
   },
   "devDependencies": {

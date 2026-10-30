@@ -469,3 +469,9 @@ describe('createBackgroundJobWorker', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+it('passes scope to the canonical claim adapter and never runs global reconciliation for a scoped worker',async()=>{
+ const rpc=rpcFixture(),scope={kinds:['studio_design_booklet_v1'] as const,projectIds:['10000000-0000-4000-8000-000000000002']};
+ const worker=createBackgroundJobWorker(workerOptions(config('once',{claimScope:scope}),rpc,fullHandlers()));
+ await worker.run();expect(rpc.claim).toHaveBeenCalledWith(expect.objectContaining({scope}));expect(rpc.reconcile).not.toHaveBeenCalled();expect(rpc.recoverExpiredLeases).not.toHaveBeenCalled();
+});

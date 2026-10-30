@@ -18,6 +18,45 @@ rollback verifies unchanged catalog; only the intended plan constraint and
 reviewed function bodies change. Synthetic tests do not establish Meta acceptance.
 # Testing And QA
 
+## Design Studio staff trial
+
+Run the focused `apps/portal/lib/designStudio`, `components/designStudio`,
+`test/studio-*`, worker document/config/RPC and coupled quote tests. Existing
+middleware regional/navigation tests remain required alongside Studio routing
+tests on the current Node middleware owner. Preserve the current progressive PDF
+transport tests and compact fit math tests. The new staff-trial database tests
+execute the forward SQL and scoped readers with a controlled foundation lease
+stub, not the complete state machine or concurrent connections. Exact scope,
+email rollback denial and 32-project/capability-before-visibility checks are
+described in [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+Connected staging/production, the current five active Portal bundle caps (with
+Workbench retained as a retired diagnostic), normal Next real type gate, fresh
+worker assets and host memory/heartbeat proof remain distinct gates.
+
+Compound Studio geometry and PDF correctness cases use local 15, 20 or 40 second
+deadlines based on measured four-worker CI contention. Their complete fixtures,
+loops and assertions remain required; interaction, solve-count, heartbeat and
+browser performance checks retain their existing bounds. Project commercial
+harnesses mount the real toast provider used by the app. Held file-preparation
+module tests retire the old actor before releasing shared code, then wait for
+actual current-actor reads and verify unchanged actor/project query keys rather
+than assuming a cold import completes within a fixed sleep.
+
+`node --test scripts/check-mojibake.test.mjs` verifies the exact renderer fontkit
+path/hash exemption against the already-public Portal bytes in the two verified
+LF and CRLF checkout forms. Its intentional Unicode tables are preserved; any
+other vendor bytes fall back to normal scanning and
+authored replacement characters still fail. No broad vendor ignore is added.
+
+Run `publishedPricingReferenceContinuity.test.ts` with the Marketing pricing,
+reference and immutable-publication suites when changing a frozen website result.
+It exercises old protected claims and fresh issuers through the real published
+reader, with immutable lookup mocked, across the retained manifest versions and
+current policy. It rejects changed designs at the same price, altered non-price
+result fields, provenance mismatches and tampered refs. The original six complete
+frozen-price golden hashes remain whole-result assertions. Operational site days
+stay available to Studio; they are outside these signed frozen-v1 wire shapes.
+
 ## Enquiry-to-cash and verification traffic candidate
 
 Run `npx vitest run test/marketing-enquiry-sales.test.ts` for current complete SQL

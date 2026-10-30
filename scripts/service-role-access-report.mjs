@@ -107,6 +107,23 @@ function isApprovedServerFlow(file) {
   // Private preview Storage and scoped manifest/lease RPC only. Every new
   // recipient response retains current user/RPC/Graph proof in the batch owner.
   if (file === 'apps/portal/lib/projects/sharePointFiles/previews/repository.ts') return true;
+  // Reviewed server-only Studio commands first prove current staff and caller
+  // project/source visibility; fixed RPCs recheck actor, request and revision.
+  // Exact paths only. See docs/staff-api-auth-contracts.md.
+  if (file === 'apps/portal/lib/designStudio/createCommand.server.ts') return true;
+  if (file === 'apps/portal/lib/designStudio/saveCommand.server.ts') return true;
+  if (file === 'apps/portal/lib/designStudio/quotePrepare.server.ts') return true;
+  // Replay runs alongside caller-RLS visibility. SQL independently checks current
+  // role/control and exact actor/project/estimate/request/payload identity; the
+  // response is accepted only after caller visibility. No generic privileged read.
+  if (file === 'apps/portal/lib/designStudio/atomicQuoteCreate.server.ts') return true;
+  // Boolean capability only: freshly guarded callers plus SQL current role and
+  // exact project/control admission. It does not locally authenticate a caller.
+  if (file === 'apps/portal/lib/designStudio/clientDocuments.server.ts') return true;
+  // Fresh staff and exact caller-visible quote/project precede private document
+  // status/retry and package RPCs. SQL retains actor, binding, revision and CAS fences.
+  if (file === 'apps/portal/lib/designStudio/clientDocumentRequest.server.ts') return true;
+  if (file === 'apps/portal/lib/designStudio/clientPackageContext.server.ts') return true;
   // Delegated bearer grants cannot use staff cookies. This server-only adapter
   // calls scoped grant RPCs (which recheck authority) and the existing lost-
   // conversion owner; see docs/staff-api-auth-contracts.md. No general DB access.

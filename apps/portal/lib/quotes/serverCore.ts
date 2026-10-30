@@ -1,3 +1,6 @@
+import {buildEstimateQuoteCreation,extractEstimateText,quoteLineItemsRpcPayload} from './estimateCreation.server';
+import {commitQuoteWithStudioBinding,loadStudioQuoteView} from './studioCommit.server';
+import {studioQuoteSiteAddress} from '@sp/quote-format';
 import 'server-only';
 
 import { randomUUID } from 'crypto';
@@ -158,13 +161,6 @@ async function ensureQuote(
   return { id: String(insertRes.data.id), quoteRef: String(insertRes.data.quote_ref ?? quoteRef) };
 }
 
-function extractEstimateText(estimate: Estimate, keys: string[]): string | null {
-  for (const key of keys) {
-    const value = (estimate as any)[key] ?? (estimate as any)?.outputs?.[key] ?? (estimate as any)?.inputs?.[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
-}
 
 function normalizeDraftLineItems(
   lineItems: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>,
@@ -195,15 +191,6 @@ function totalsFromNormalizedLineItems(items: Omit<QuoteLineItem, 'id'>[]) {
   );
 }
 
-function quoteLineItemsRpcPayload(items: Omit<QuoteLineItem, 'id'>[]) {
-  return items.map((item) => ({
-    sort_order: item.sortOrder,
-    description: item.description,
-    qty: item.qty,
-    unit_price_inc_gst_cents: item.unitPriceIncGstCents,
-    line_total_inc_gst_cents: item.lineTotalIncGstCents,
-  }));
-}
 
 function firstRpcRow(value: unknown): Record<string, unknown> | null {
   const candidate = Array.isArray(value) ? value[0] : value;
@@ -285,6 +272,11 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
 }
 
 export async function getQuoteVersionDetail(quoteVersionId: string): Promise<QuoteVersionDetail | null> {
+  return readQuoteVersionDetail(quoteVersionId);
+}
+
+type QuoteArtifactState={renderHash:string|null;previewBase:QuotePreviewBasePayload|null};
+async function readQuoteVersionDetail(quoteVersionId: string,onArtifacts?:(state:QuoteArtifactState)=>void): Promise<QuoteVersionDetail | null> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
 
   const versionRes = await supabaseServiceRole
@@ -300,6 +292,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
   if (!versionRes.data) return null;
 
   const row = versionRes.data as any;
+  onArtifacts?.(quoteArtifactState(row));
   const projectUuid = String(row?.quotes?.project_id ?? '');
   const projectId = appIdFromUuid('proj', projectUuid);
 
@@ -309,6 +302,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
     logsRes,
     projectRes,
     deliveryReadiness,
+    studioDesign,
   ] = await Promise.all([
     loadEstimateLabels(projectUuid),
     supabaseServiceRole.from('quote_line_items').select('*').eq('quote_version_id', quoteVersionUuid).order('sort_order', { ascending: true }),
@@ -319,6 +313,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
       .eq('id', projectUuid)
       .maybeSingle(),
     loadQuoteDeliveryReadiness(quoteVersionUuid),
+    loadStudioQuoteView(quoteVersionUuid,row.pricing_source_metadata),
   ]);
 
   const version = mapQuoteVersionRow(row, estimateLabels, projectId);
@@ -361,6 +356,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
 
   return {
     ...version,
+    studioDesign,
     lineItems,
     sendLogs,
     contact: {
@@ -370,7 +366,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
     },
     project: {
       name: firstTrimmedString(projectRow?.name, projectData?.projectName, projectData?.name) ?? '',
-      siteAddress: projectSiteAddress ?? contactAddress,
+      siteAddress: studioQuoteSiteAddress(studioDesign,projectSiteAddress ?? contactAddress),
       region: firstTrimmedString(projectRow?.region, projectData?.region),
       quoteRef: firstTrimmedString(projectRow?.quote_ref, projectRow?.quoteRef, projectData?.quoteRef, projectData?.quote_ref),
     },
@@ -385,6 +381,8 @@ export async function createQuoteFromEstimate(
   actor: string | null,
   clientIntentId = randomUUID(),
   internalName: string | null = null,
+  studioSnapshot?: { snapshotId: string; contentHash: string },
+  onStudioPdf?:(pdf:import('@/lib/designStudio/clientQuotePdf').StudioInitialQuotePdf)=>void,
 ): Promise<QuoteVersionDetail> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
   const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
@@ -393,61 +391,17 @@ export async function createQuoteFromEstimate(
   if (!estimate) throw new Error('Estimate not found');
   if (estimate.projectId !== projectId) throw new Error('Estimate does not belong to this project');
 
-  const quote = await ensureQuote(projectUuid, actor, internalName, estimate.commercialScopeId);
+  const studioMetadata = estimate.pricingSourceMetadata as Record<string, unknown> | undefined;
+  if (studioSnapshot && (studioMetadata?.studioSnapshotId !== studioSnapshot.snapshotId || studioMetadata?.studioSnapshotHash !== studioSnapshot.contentHash)) throw new Error('The prepared design changed. Return to Studio Review before creating the quote.');
 
-  const mapping = buildQuoteLineItemsFromEstimate(estimate);
-  assertQuoteEstimateMappingReady(mapping);
-  const items = mapping.items.map((item, idx) => ({ ...item, sortOrder: idx }));
-  const totals = totalsFromLineItems(
-    items.map((item) => ({
-      id: 'tmp',
-      description: item.description,
-      qty: item.qty,
-      unitPriceIncGstCents: item.unitPriceIncGstCents,
-      lineTotalIncGstCents: item.lineTotalIncGstCents,
-      sortOrder: item.sortOrder,
-    })),
-  );
+  const separateDocuments=studioMetadata?.studioDocumentMode==='separate_v1';
+  const [quote,customerName] = await Promise.all([
+    ensureQuote(projectUuid, actor, internalName, estimate.commercialScopeId),
+    loadProjectCustomerName(projectUuid),
+  ]);
 
-  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
-  const paymentTerms = buildDefaultQuotePaymentSchedule({
-    quoteTotalIncGstCents: totals.totalIncGstCents,
-    approvalRequirement: mapping.approvalRequirement,
-    approvalIncGstCents: mapping.approvalIncGstCents,
-  });
-  const depositPercent = paymentScheduleCompatibilityDepositPercent(paymentTerms, totals.totalIncGstCents);
-  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
-  const termsText = applyPaymentScheduleToTerms(termsSource, paymentTerms);
-  const customerName = await loadProjectCustomerName(projectUuid);
-  const pricingSourceCopy = buildQuotePricingSourceCopyFromEstimate({
-    estimate,
-    sourceEstimateVersionId: estimateUuid,
-    copiedAt: nowIso(),
-    copiedBy: actor,
-    copyReason: 'quote_created',
-  });
-
-  const pricingColumns = quotePricingSourceDbColumns(pricingSourceCopy);
-  const createRes = await supabaseServiceRole.rpc('commercial_quote_create_draft', {
-    p_quote_id: quote.id,
-    p_source_estimate_version_id: estimateUuid,
-    p_revised_from_quote_version_id: null,
-    p_client_intent_id: clientIntentId,
-    p_actor: actor,
-    p_customer_name: customerName,
-    p_reference: null,
-    p_intro_text: introText,
-    p_terms_text: termsText,
-    p_deposit_percent: depositPercent,
-    p_payment_terms: paymentTerms,
-    p_expires_at: null,
-    p_total_inc_gst_cents: totals.totalIncGstCents,
-    p_total_ex_gst_cents: totals.totalExGstCents,
-    p_gst_cents: totals.gstCents,
-    p_pricing_source: pricingColumns.pricing_source,
-    p_pricing_source_metadata: pricingColumns.pricing_source_metadata,
-    p_line_items: quoteLineItemsRpcPayload(items),
-  });
+  const {command,pricingSourceCopy}=buildEstimateQuoteCreation(estimate,estimateUuid,actor,clientIntentId,quote.id,customerName,separateDocuments);
+  const createRes=await commitQuoteWithStudioBinding('create',command);
   if (createRes.error) {
     throw quotePersistenceError(createRes.error, 'Failed to create quote version');
   }
@@ -458,6 +412,7 @@ export async function createQuoteFromEstimate(
     throw new Error('Failed to create quote version');
   }
 
+  if(!separateDocuments){
   await updateProjectStage(projectUuid, 'QUOTING', quoteVersionUuid);
   await insertAuditEvent({
     projectId: projectUuid,
@@ -471,11 +426,14 @@ export async function createQuoteFromEstimate(
     },
   });
 
-  let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
+  }
+  let artifactState:QuoteArtifactState|undefined;
+  let detail = await readQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid),separateDocuments?state=>{artifactState=state;}:undefined);
   if (!detail) throw new Error('Failed to load quote version');
   try {
-    await refreshQuoteArtifactsAfterMutation(detail.id, actor);
-    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
+    if(separateDocuments){const prepared=await ensureQuoteArtifactsForDetail(detail,actor,{requirePdf:true},artifactState);detail=prepared.detail;if(prepared.pdf)onStudioPdf?.({contentBase64:Buffer.from(prepared.pdf.bytes).toString('base64'),renderHash:prepared.renderHash});}
+    else {await refreshQuoteArtifactsAfterMutation(detail.id, actor);
+    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;}
   } catch (error) {
     console.error('[quote_artifacts] failed to refresh after create', { quoteVersionId: detail.id, error });
   }
@@ -774,8 +732,7 @@ export async function refreshDraftQuoteVersionFromEstimate(
     totals.totalIncGstCents,
   );
   const proposedDepositPercent = paymentScheduleCompatibilityDepositPercent(proposedPaymentTerms, totals.totalIncGstCents);
-  const updateRes = await supabaseServiceRole.rpc(
-    'commercial_quote_update_draft',
+  const updateRes = await commitQuoteWithStudioBinding('refresh',
     {
       p_quote_version_id: quoteVersionUuid,
       p_expected_commercial_revision: currentDetail.commercialRevision,
@@ -1025,8 +982,7 @@ export async function reviseQuoteVersion(
       unitPriceIncGstCents: item.unitPriceIncGstCents,
     })),
   );
-  const insertRes = await supabaseServiceRole.rpc(
-    'commercial_quote_create_draft',
+  const insertRes = await commitQuoteWithStudioBinding('revise',
     {
       p_quote_id: quoteUuid,
       p_source_estimate_version_id: versionRes.data.source_estimate_version_id,
@@ -1179,7 +1135,11 @@ async function loadQuoteArtifactRow(
     throw new Error(errorMessage(res.error, 'Failed to load quote artifacts'));
   }
 
-  const row = res.data as any;
+  return quoteArtifactState(res.data);
+}
+
+function quoteArtifactState(value:unknown):QuoteArtifactState {
+  const row = value as any;
   const renderHash = typeof row?.render_hash === 'string' && row.render_hash.trim() ? row.render_hash.trim() : null;
   return {
     renderHash,
@@ -1239,8 +1199,13 @@ export async function ensureQuoteArtifacts(
 }> {
   const detail = await getQuoteVersionDetail(quoteVersionId);
   if (!detail) throw new Error('Quote not found');
+  return ensureQuoteArtifactsForDetail(detail,actor,opts);
+}
 
-  const { renderHash: storedRenderHash, previewBase: storedPreviewBase } = await loadQuoteArtifactRow(quoteVersionId);
+/** Reuses the freshly authorised frozen detail after commit, without re-reading it twice. */
+async function ensureQuoteArtifactsForDetail(detail:QuoteVersionDetail,actor:string|null,opts?:{requirePdf?:boolean;allowCached?:boolean},freshArtifacts?:QuoteArtifactState) {
+  const quoteVersionId=detail.id;
+  const { renderHash: storedRenderHash, previewBase: storedPreviewBase } = freshArtifacts??await loadQuoteArtifactRow(quoteVersionId);
   const expectedRenderHash = buildQuoteRenderHash(detail);
   const allowCached = opts?.allowCached !== false;
 
@@ -1470,6 +1435,11 @@ export async function downloadQuotePdf(
   if (opts.forceRegenerateDraft) {
     const detail = await getQuoteVersionDetail(quoteVersionId);
     if (!detail) throw new Error('Quote not found');
+    if(detail.studioDesign?.schemaVersion==='studio_quote_snapshot.v2'){
+      const ensured=await ensureQuoteArtifactsForDetail(detail,actor,{requirePdf:true});
+      if(!ensured.pdf)throw Error('Failed to load quote PDF');
+      return {filename:ensured.pdf.filename,bytes:ensured.pdf.bytes,cacheHit:ensured.cacheHit};
+    }
     allowCached = detail.status !== 'DRAFT';
   }
 
