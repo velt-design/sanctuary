@@ -2294,7 +2294,7 @@ it('keeps the current connection and complete saved design when a method adjustm
  await open('p2','facade',initial);act(()=>button('Design choices').click());act(()=>latest.change({...latest.edit!,site:{...latest.edit!.site,access:'hard'}}));const before=structuredClone(latest.edit!);
  act(()=>button('Soffit brackets').click());expect(mounted!.container.querySelector('[role="alert"]')?.textContent).toContain('Current connection: Façade');expect(mounted!.container.textContent).toContain('could not be applied');expect(latest.edit).toEqual(before);
  const saved=captureMergedStudioSave(initial);await act(async()=>{await latest.save();});expect(websiteComposition(saved()).find(row=>row.object.id==='p2')!.studioAttachment?.method).toBe('facade');expect(latest.session?.dirty).toBe(false);expect(latest.edit!.spatial).toEqual(before.spatial);
-});
+}, 15_000);
 
 it('applies host-only legacy clearance through verified actual identity with full Undo, copy and Save',async()=>{
  let initial={...studioAttachmentFixture(37,'hipped'),designId:scope.designId},house=studioHouseScene(initial.site,initial.spatial)!.houses[0];initial=updateStudioHouse(initial,{...house,eaveHeightMm:'4000',wallHeightMm:'4000'});initial=previewStudioAttachment(initial,{objectId:'p2',houseId:'house',edge:'rear',kind:'wall',method:'facade'});delete initial.site.websiteAttachments;

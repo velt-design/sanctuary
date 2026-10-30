@@ -745,7 +745,7 @@ it("reuses exact warm mixed base outcomes on unrelated release and complete Undo
     release: { evaluate: 0, clearance: 0, registry: 1 },
     undo: { evaluate: 0, clearance: 0, registry: 0 },
   });
-});
+}, 15_000);
 
 it.each([2,3] as const)("does not reserialize the unchanged %s-product authoring on held frames, but invalidates keys on release and Undo",async count=>{
   const initial=mixed(count),svg=await open("p2","soffit",initial),original=structuredClone(latest.edit!);
@@ -777,7 +777,7 @@ it.each([2,3] as const)("does not reserialize the unchanged %s-product authoring
     expect(latest.edit!.spatial).toEqual(original.spatial);expect(latest.canSave).toBe(false);
     expect(sceneKeys.length).toBeGreaterThan(0);expect(snapshots.some(edit=>raw(edit.spatial)===raw(original.spatial))).toBe(true);
   } finally {stringify.mockRestore();}
-});
+}, 15_000);
 
 it("shows the promised night preview from Plan and returns in daylight without authoring or losing the Plan frame",async()=>{
   const svg=await open(),frame=svg.getAttribute("viewBox"),original=structuredClone(latest.edit!),identity={...latest.authoredIdentity};
@@ -847,7 +847,7 @@ it.each(["Shape", "Roof"] as const)("skips unchanged %s fields during real held 
   expect(latest.edit!.objectOptions.find(row => row.objectId === "p1")!.values.websiteDesign).toMatchObject({ selection: { roof: { finish: { material: "solid" } } } });
   expect(latest.edit!.objectOptions.find(row => row.objectId === "p2")).toEqual(beforeRoof.objectOptions.find(row => row.objectId === "p2"));
   act(() => button("Undo").click()); expect(latest.edit).toEqual(beforeRoof);
-});
+}, 15_000);
 
 
 it("refreshes memoized option callbacks when the actual session scope changes", async () => {

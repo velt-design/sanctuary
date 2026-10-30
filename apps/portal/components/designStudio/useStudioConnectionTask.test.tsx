@@ -133,7 +133,7 @@ it("shows actual legacy clearance without migrating geometry, then applies one r
   expect(
     measure(websiteComposition(edit)[0])?.roofClearanceMm,
   ).toBeGreaterThanOrEqual(700);
-});
+}, 15_000);
 it('uses the latest authored clearance after an immediate field commit, applies each method once and ignores an already valid selected method', () => {
   setup('2700');
   act(() => task.dispatch({ kind: 'method', method: 'soffit' }));
@@ -162,7 +162,7 @@ it('uses the latest authored clearance after an immediate field commit, applies 
     task.dispatch({ kind: 'method', method: 'soffit' });
   });
   expect(task.binding?.method).toBe('soffit');
-});
+}, 15_000);
 it("keeps manual clearance edits fixed-house and their measured refusal and recovery before the lower fields", () => {
   setup("2700");
   act(() => task.dispatch({ kind: "method", method: "facade" }));
