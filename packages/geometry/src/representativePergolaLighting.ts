@@ -20,6 +20,7 @@ export function pergolaLightSites(assembly:Assembly3D,covering?:RoofFinishGeomet
  const rows=paired?[...new Set(eligible.filter(m=>m.role==='rafter').map(station))].sort((a,b)=>a-b):[];
  const pitched=assembly.family==='mono';
  const rafterXs=eligible.filter(m=>m.role==='rafter').map(m=>(m.centerline.start.x+m.centerline.end.x)/2);
+ const boxRafterXs=assembly.family==='box'?[...new Set(rafterXs)].sort((a,b)=>a-b):[];
  const outline=assembly.outline,w=Math.max(...outline.map(p=>p.x)),d=Math.max(...outline.map(p=>p.y));
  const roofSolid=(p:Point3,clearance=1)=>covering?.regions.some(r=>r.material==='solid'&&within(p,r.boundary,-clearance));
  let r=0,b=0;
@@ -28,13 +29,20 @@ export function pergolaLightSites(assembly:Assembly3D,covering?:RoofFinishGeomet
   // Concealed frame behind a cedar ceiling is not an available mounting face.
   if(['rafter','ridge'].includes(m.role)&&roofSolid(mid))continue;
   const hasOuterGutter=m.role==='beam'&&assembly.members.some(g=>g.role==='gutter'&&Math.abs(g.centerline.start.y-start.y)<180&&g.centerline.start.y>start.y&&Math.abs(g.centerline.end.y-g.centerline.start.y)<1);
-  const perimeter=!hasOuterGutter&&m.role!=='ledger'&&((Math.abs(start.x-end.x)<1&&(start.x<120||start.x>w-120))||(Math.abs(start.y-end.y)<1&&(start.y>d-180||(assembly.semantics.connectionType==='freestanding'&&start.y<180))));
+  // Box presets start one real rafter inside the edge rafter. Keep the original
+  // stations before concealed sites are omitted; explicit strip IDs stay valid.
+  const sidePreset=assembly.family==='box'?m.role==='rafter'&&(mid.x===boxRafterXs[1]||mid.x===boxRafterXs[boxRafterXs.length-2]):start.x<120||start.x>w-120;
+  const perimeter=!hasOuterGutter&&m.role!=='ledger'&&((Math.abs(start.x-end.x)<1&&sidePreset)||(Math.abs(start.y-end.y)<1&&(start.y>d-180||(assembly.semantics.connectionType==='freestanding'&&start.y<180))));
   if(!(m.role==='rafter'&&covering?.battenBoundaries?.length))strips.push({id:m.id,label:m.role==='rafter'?'Rafter '+(++r):'Beam '+(++b),start,end,normal:m.localFrame.zAxis,perimeter,rafter:m.role==='rafter'});
   const gableEdge=paired&&(station(m)===rows[0]||station(m)===rows[rows.length-1]);
   // Transition rafters are shifted half a profile into the acrylic band. Their
   // centre is exposed, but their outside face still borders the lined roof.
   const transitionEdge=m.role==='rafter'&&roofSolid(mid,m.profile.widthMm/2+1);
-  const edge=transitionEdge||gableEdge||pitched&&((mid.x<=Math.min(...rafterXs)+1)||(mid.x>=Math.max(...rafterXs)-1));
+  // Box fascia/perimeter members do not count as rafters. The real edge
+  // rafters are also excluded from spot mounting; side LED presets retain
+  // their existing first-inboard stations and are excluded by selection.
+  const boxEdge=assembly.family==='box'&&(mid.x===boxRafterXs[0]||mid.x===boxRafterXs[boxRafterXs.length-1]);
+  const edge=transitionEdge||gableEdge||boxEdge||pitched&&((mid.x<=Math.min(...rafterXs)+1)||(mid.x>=Math.max(...rafterXs)-1));
   if(m.role==='rafter'&&!edge)for(const i of [25,50,75]){
    const p=clearRafterLightPoint(start,end,m.localFrame.zAxis,covering?.battenBoundaries??[],i/100);
    if(p&&!roofSolid(p))rafters.push({...(paired?{rafterRow:rows.indexOf(station(m))-1,rafterRows:Math.max(0,rows.length-2)}:{}),id:m.id+'-'+i,point:add(p,m.localFrame.zAxis,-2),normal:m.localFrame.zAxis,diameter:40});

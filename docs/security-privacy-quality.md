@@ -1,3 +1,5 @@
+# Security, Privacy, And Quality
+
 ## Compatible paused creative normalization
 
 A complete current pending owner review can use the same existing owner-only
@@ -158,7 +160,6 @@ Deploy optional read consumers before50006; root's guarded operator alone may
 provision the actual receipt after real evidence. Separate delivery authority and
 fresh proof gate the locally connected ACTIVE effects.
 
-# Security, Privacy, And Quality
 
 ## Browser-local enquiry recovery (26 October 2026)
 
@@ -985,3 +986,18 @@ for reporting credit. Invalid attribution never deletes the canonical enquiry.
 No extra customer content, raw provider payload, credentials or arbitrary URLs
 are added to the public response or model projection. Source registry and
 serving helpers remain private; ownership never follows a provider-only ID.
+# Studio trial delivery and private payloads
+
+Studio package preparation freezes canonical email bytes and exact artifact
+IDs/hashes but grants no send permission. App send/resend/generic recovery checks
+the actual immutable Studio binding or selected frozen intent. The canonical
+database mark-dispatching boundary independently rejects those intents unless
+the private default-false `customer_send_enabled` switch is enabled. It retains
+invoice lock/generation and cancelled-intent refusal, and protects app rollback.
+Ordinary non-Studio email is unchanged. Token-redacted previews never return an
+acceptance token in HTML/text/link hrefs; protected exact payloads stay private.
+Operational credentials, real source/customer fixtures and receipts are excluded
+from the public release. Trial claim eligibility and service-role-only RPC
+admission are documented in
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

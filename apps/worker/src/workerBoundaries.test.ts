@@ -60,7 +60,8 @@ describe('worker application boundaries', () => {
 
   it('keeps persistence behind the explicit RPC adapter', () => {
     const forbiddenPatterns = [
-      /\.from\s*\(/,
+      // Native sequence/byte construction is not a Supabase table operation.
+      /(?<!\bArray|\bBuffer)\.from\s*\(/,
       /\.schema\s*\(/,
       /\bpgmq\b/i,
       /\bprivate\./i,

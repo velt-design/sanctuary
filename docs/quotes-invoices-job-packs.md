@@ -1,4 +1,6 @@
-# Quotes, Invoices, And Job Packs
+# Studio quote and client package
+
+## Quotes, Invoices, And Job Packs
 
 ## Project Work desk presentation (27 October 2026 candidate)
 
@@ -791,3 +793,18 @@ All non-GET and unlisted API requests are rejected, including PDF/send/record
 commands. This fixture's preparation is not production-entry timing proof. Its
 coherent data is three estimates, three quote versions and one invoice; larger
 production commercial dataset timings have not been claimed.
+
+
+Studio freezes source and current published pricing through the canonical quote
+owner. The financial PDF remains independent of the optional design booklet.
+Selected frozen renders append to the design booklet only, after its technical
+sheets. Separate project-file imports preserve exact bytes and cannot duplicate
+the mandatory financial or chosen booklet artifacts. Persisted package revision,
+message, recipient and attachment hashes bind deliberate canonical preparation.
+Safe edit cancels only the exact untouched prepared intent; uncertain dispatch
+states remain immutable. All Studio customer sends/recovery are default-disabled
+in the app and database during the trial; ordinary quote/invoice delivery remains.
+Standalone aluminium/infill descriptions now expose validated selected scope,
+without changing prices/GST/discounts or separately priced blinds/exclusions.
+See [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

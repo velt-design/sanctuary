@@ -1,8 +1,13 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
+// This exact licensed UMD is byte-identical to the already exempt Portal vendor.
+// Its Unicode codepoint tables intentionally contain U+FFFD. Drift is scanned normally.
+const VERIFIED_FONTKIT_PATH = 'packages/studio-documents/vendor/fontkit.umd.cjs';
+const VERIFIED_FONTKIT_SHA256 = '15d1ce74a2e38a5ee280ff4910091d3c8d003d98fabfdbf85c34370d2e803dcd';
 
 const SKIP_PREFIXES = [
   '.git/',
@@ -91,7 +96,10 @@ for (const relPath of getTrackedFiles()) {
   const absPath = path.join(ROOT, relPath);
   let text;
   try {
-    text = fs.readFileSync(absPath, 'utf8');
+    const bytes=fs.readFileSync(absPath);
+    if (relPath === VERIFIED_FONTKIT_PATH
+      && createHash('sha256').update(bytes).digest('hex') === VERIFIED_FONTKIT_SHA256) continue;
+    text = bytes.toString('utf8');
   } catch {
     continue;
   }

@@ -3,6 +3,7 @@ import {
   isHouseRoofForm as isSupportedHouseRoofForm,
   validateHouseComposition,
   type HouseComposition,
+  type RepresentativeRoofFinish,
 } from "@sp/geometry";
 import {
   migrateLegacyFootprintToComposition,
@@ -570,6 +571,14 @@ export type ObjectFirstWorkbenchProjectModel = {
 
 export type WorkbenchProjectModel = ObjectFirstWorkbenchProjectModel;
 
+/** Optional presentation only. House geometry and commercial policy do not read it. */
+export type HouseFormAppearance = {
+  wallMaterial?: "plaster" | "weatherboard" | "brick";
+  roofProfile?: RepresentativeRoofFinish["profile"];
+  roofTrayWidth?: RepresentativeRoofFinish["trayWidth"];
+  roofColour?: string;
+};
+
 export type ObjectFirstHouseFormDraft = {
   id: string;
   label: string;
@@ -592,6 +601,7 @@ export type ObjectFirstHouseFormDraft = {
   gutterDepthMm?: string | null;
   gutterProjectionMm?: string | null;
   eaveOverhangMm?: string | null;
+  appearance?: HouseFormAppearance;
 };
 
 export type ObjectFirstHouseAssemblyDraft = {
@@ -1178,6 +1188,9 @@ function normalizeObjectFirstHouseFormDraft(
       : null),
     ...(trimNullableString(value?.eaveOverhangMm)
       ? { eaveOverhangMm: trimNullableString(value?.eaveOverhangMm) }
+      : null),
+    ...(value?.appearance !== undefined
+      ? { appearance: structuredClone(value.appearance) }
       : null),
   };
 }

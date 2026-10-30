@@ -5,7 +5,7 @@ export function buildRepresentativeSidePanel(o:BlindOpening,p:{kind:'acrylic'|'t
   const meshes:SidePanelMesh[]=[];
   const make=(kind:SidePanelMesh['kind'])=>{const m={kind,positions:[] as number[],indices:[] as number[]};meshes.push(m);return m;};
   const frame=make('frame'),u={x:(o.end.x-o.start.x)/o.width,y:(o.end.y-o.start.y)/o.width};
-  const n=o.side==='front'?{x:0,y:1}:o.side==='left'?{x:-1,y:0}:{x:1,y:0};
+  const n=o.side==='front'?{x:0,y:1}:o.side==='rear'?{x:0,y:-1}:o.side==='left'?{x:-1,y:0}:{x:1,y:0};
   const point=(x:number,y:number,z:number)=>[o.start.x+x*u.x+y*n.x,o.start.y+x*u.y+y*n.y,z];
   const quad=(m:SidePanelMesh,pts:number[][])=>{const i=m.positions.length/3;m.positions.push(...pts.flat());m.indices.push(i,i+1,i+2,i,i+2,i+3);};
   const top=(x:number)=>{

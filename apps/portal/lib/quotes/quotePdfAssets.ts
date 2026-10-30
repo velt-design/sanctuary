@@ -9,6 +9,7 @@ export const QUOTE_PDF_FONT_FILES = {
 } as const;
 
 export const QUOTE_PDF_LOGO_FILE = 'sp_dark_icon.png';
+export const QUOTE_PDF_WORDMARK_FILE='logo-sanctuary.png';
 
 const fontCache = new Map<string, Uint8Array>();
 const imageCache = new Map<string, Uint8Array | null>();
@@ -30,6 +31,8 @@ function imageAssetUrl(filename: string): URL | null {
   switch (filename) {
     case QUOTE_PDF_LOGO_FILE:
       return new URL('../../public/images/sp_dark_icon.png', import.meta.url);
+    case QUOTE_PDF_WORDMARK_FILE:
+      return new URL('../../public/logo-sanctuary.png',import.meta.url);
     default:
       return null;
   }

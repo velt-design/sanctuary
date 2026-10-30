@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../../test/reactHarness';
 import type { ProjectCommandCentreCurrentDesign } from '@/lib/projects/commandCentre/types';
 import ProjectCurrentDesignCommercialCard from './ProjectCurrentDesignCommercialCard';
@@ -144,3 +144,6 @@ describe('ProjectCurrentDesignCommercialCard', () => {
     rendered.unmount();
   });
 });
+
+// This isolated presenter fixture supplies the native entry link's existing Portal toast surface.
+vi.mock('@/components/ui/toast/ToastProvider',()=>({useToast:()=>({error:vi.fn()})}));

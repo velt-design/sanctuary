@@ -264,7 +264,7 @@ export async function inspectUnfinishedCommercialEmailIntent(
   }
 }
 
-async function readCommercialEmailIntent(
+export async function readCommercialEmailIntent(
   intentId: string,
 ): Promise<CommercialEmailIntent> {
   const result = await supabaseServiceRole.rpc('commercial_email_read', {

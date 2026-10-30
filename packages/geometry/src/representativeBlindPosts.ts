@@ -1,14 +1,14 @@
 import type { Assembly3D } from './contracts';
-import { representativeBlindOpenings } from './representativeBlindOpenings';
+import { representativeBlindOpenings, type BlindOpeningOptions } from './representativeBlindOpenings';
 import { parseAssemblyMemberProfile } from './profiles';
 import { buildPlanViewModel } from './plan';
 import { buildViewerSceneModel } from './viewer';
 
 /** Resolve representative corner clearance before deriving either view or blind widths. */
-export function fitRepresentativeBlindPosts(source:Assembly3D, blinds:readonly {opening:string;cover:string}[]) {
-  const covers=representativeBlindOpenings(source).filter(o=>blinds.some(b=>b.opening===o.id && b.cover==='PELMET'))
-    .map(o=>({side:o.side,minX:Math.min(o.start.x,o.end.x)-(o.side==='front'?0:68),maxX:Math.max(o.start.x,o.end.x)+(o.side==='front'?0:68),
-      minY:Math.min(o.start.y,o.end.y)-(o.side==='front'?68:0),maxY:Math.max(o.start.y,o.end.y)+(o.side==='front'?68:0),
+export function fitRepresentativeBlindPosts(source:Assembly3D, blinds:readonly {opening:string;cover:string}[],options:BlindOpeningOptions={}) {
+  const covers=representativeBlindOpenings(source,options).filter(o=>blinds.some(b=>b.opening===o.id && b.cover==='PELMET'))
+    .map(o=>({side:o.side,minX:Math.min(o.start.x,o.end.x)-(o.side==='front'||o.side==='rear'?0:68),maxX:Math.max(o.start.x,o.end.x)+(o.side==='front'||o.side==='rear'?0:68),
+      minY:Math.min(o.start.y,o.end.y)-(o.side==='front'||o.side==='rear'?68:0),maxY:Math.max(o.start.y,o.end.y)+(o.side==='front'||o.side==='rear'?68:0),
       minZ:o.top-(o.top>2800?165:135),maxZ:o.top}));
   const intersects=covers.some((a,i)=>covers.slice(i+1).some(b=>a.side!==b.side &&
     a.minX<b.maxX && b.minX<a.maxX && a.minY<b.maxY && b.minY<a.maxY && a.minZ<b.maxZ && b.minZ<a.maxZ));

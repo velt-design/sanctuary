@@ -72,6 +72,7 @@ type WorkerAppConfig = Readonly<{
   supabaseUrl: string;
   serviceRoleKey: string;
   workerId: string;
+  claimScope?:Readonly<{kinds:readonly BackgroundJobKind[];projectIds:readonly string[];manifestVersions?:readonly string[];staffTrial?:true}>;
   buildVersion: string;
   mode: BackgroundJobWorkerMode;
   activeExecutionEnabled: boolean;
@@ -233,7 +234,18 @@ export function loadWorkerConfig(
   environment: WorkerEnvironment = process.env,
   options: LoadWorkerConfigOptions = {},
 ): WorkerAppConfig {
+  const kinds=environment.BACKGROUND_JOBS_WORKER_CLAIM_KINDS?.split(',').map(s=>s.trim()).filter(Boolean)??[];
+  const projectIds=environment.BACKGROUND_JOBS_WORKER_CLAIM_PROJECT_IDS?.split(',').map(s=>s.trim()).filter(Boolean)??[];
+  const documentWorker=parseBooleanGate(environment,'STUDIO_DOCUMENT_WORKER_ENABLED');
+  const staffTrial=parseBooleanGate(environment,'STUDIO_DOCUMENT_STAFF_TRIAL_ENABLED');
+  if(kinds.length||projectIds.length||documentWorker||staffTrial){
+    const validProjects=staffTrial?projectIds.length===0:projectIds.length>=1&&projectIds.length<=32&&new Set(projectIds).size===projectIds.length&&projectIds.every(id=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+    if(!documentWorker||kinds.length!==1||kinds[0]!=='studio_design_booklet_v1'||!validProjects)configurationError('STUDIO_DOCUMENT_WORKER_ENABLED','requires the document kind and either an explicit project allowlist or staff trial with no project IDs');
+    if(environment.XERO_INVOICE_WORKER_ENABLED==='true'||environment.BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED==='true')configurationError('STUDIO_DOCUMENT_WORKER_ENABLED','cannot enable unrelated provider handlers');
+  }
+  const claimScope=documentWorker?{kinds:kinds as BackgroundJobKind[],projectIds,manifestVersions:['legacy','studio-booklet-layout.v2','studio-booklet-layout.v3','studio-booklet-layout.v4','studio-booklet-renders.v1'],...(staffTrial?{staffTrial:true as const}:{})}:undefined;
   const mode = options.modeOverride ?? parseMode(environment[BACKGROUND_JOB_WORKER_ENV.mode]);
+  if(claimScope&&['drain','reconcile'].includes(mode))configurationError('BACKGROUND_JOBS_WORKER_MODE','must be active, once or dark for a scoped document worker');
   const enquiryEmailEnabled = parseBooleanGate(environment, BACKGROUND_JOB_WORKER_ENV.enquiryEmailEnabled);
   const resendApiKey = enquiryEmailEnabled ? requiredValue(environment, BACKGROUND_JOB_WORKER_ENV.resendApiKey) : null;
   const activeExecutionEnabled = parseBooleanGate(
@@ -362,6 +374,7 @@ export function loadWorkerConfig(
     supabaseUrl: parseSupabaseUrl(environment),
     serviceRoleKey: requiredValue(environment, BACKGROUND_JOB_WORKER_ENV.serviceRoleKey),
     workerId,
+    ...(claimScope?{claimScope}:{}),
     buildVersion,
     mode,
     activeExecutionEnabled,

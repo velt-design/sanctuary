@@ -7,6 +7,13 @@ import type { PortalResolvedTheme, PortalThemeOverrides, PortalThemeTokens, Port
 import { sanitizePortalThemeOverrides, sanitizePortalThemeTokens } from './utils';
 import type { DocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
 
+type ThemeReadOptions = { client?: Awaited<ReturnType<typeof getSupabaseServerAuth>>; signal?: AbortSignal };
+type ThemeReadContext = DocumentDiagnostics | ThemeReadOptions | null;
+function themeReadContext(context?: ThemeReadContext) {
+  return { diagnostics: context && 'measure' in context ? context : undefined,
+    options: context && !('measure' in context) ? context : {} as ThemeReadOptions };
+}
+
 type ThemeSettingsRow = {
   preset_id: string | null;
   user_preset_id: string | null;
@@ -64,17 +71,21 @@ export async function listPortalUserPresets(userId: string): Promise<PortalTheme
   return (res.data ?? []).map((row) => parsePortalThemeUserPresetRow(row as ThemeUserPresetRow)).filter((row): row is PortalThemeUserPreset => Boolean(row));
 }
 
-export async function getPortalUserPresetById(userId: string, presetId: string, diagnostics?: DocumentDiagnostics | null): Promise<PortalThemeUserPreset | null> {
+export async function getPortalUserPresetById(userId: string, presetId: string, context?: ThemeReadContext): Promise<PortalThemeUserPreset | null> {
+  const { diagnostics, options } = themeReadContext(context);
   const id = typeof presetId === 'string' ? presetId.trim() : '';
   if (!id) return null;
 
-  const supabase = await getSupabaseServerAuth();
-  const read = () => supabase
+  const supabase = options.client ?? await getSupabaseServerAuth();
+  const read = () => {
+    let query = supabase
     .from('portal_user_theme_presets')
     .select('id,user_id,name,tokens,created_at,updated_at')
     .eq('id', id)
-    .eq('user_id', userId)
-    .maybeSingle();
+    .eq('user_id', userId);
+    if (options.signal) query = query.abortSignal(options.signal);
+    return query.maybeSingle();
+  };
   const res = diagnostics ? await diagnostics.measure('theme.preset', read, result => result.error ? 'error' : result.data ? 'complete' : 'empty') : await read();
 
   if (res.error) {
@@ -85,15 +96,19 @@ export async function getPortalUserPresetById(userId: string, presetId: string, 
   return parsePortalThemeUserPresetRow((res.data ?? null) as ThemeUserPresetRow | null);
 }
 
-export async function loadPortalThemeForUser(userId: string | null | undefined, diagnostics?: DocumentDiagnostics | null): Promise<PortalResolvedTheme> {
+export async function loadPortalThemeForUser(userId: string | null | undefined, context?: ThemeReadContext): Promise<PortalResolvedTheme> {
+  const { diagnostics, options } = themeReadContext(context);
   if (!userId) { diagnostics?.record('theme.fallback', performance.now(), 'unauthenticated'); return resolvePortalTheme(); }
 
-  const supabase = await getSupabaseServerAuth();
-  const read = () => supabase
+  const supabase = options.client ?? await getSupabaseServerAuth();
+  const read = () => {
+    let query = supabase
     .from('portal_user_theme_settings')
     .select('preset_id,user_preset_id,overrides,updated_at')
-    .eq('user_id', userId)
-    .maybeSingle();
+    .eq('user_id', userId);
+    if (options.signal) query = query.abortSignal(options.signal);
+    return query.maybeSingle();
+  };
   const res = diagnostics ? await diagnostics.measure('theme.settings', read, result => result.error ? 'error' : result.data ? 'complete' : 'empty') : await read();
 
   if (res.error) {
@@ -102,7 +117,7 @@ export async function loadPortalThemeForUser(userId: string | null | undefined, 
   }
 
   const row = (res.data ?? null) as ThemeSettingsRow | null;
-  const selectedUserPreset = row?.user_preset_id ? await getPortalUserPresetById(userId, row.user_preset_id, diagnostics) : null;
+  const selectedUserPreset = row?.user_preset_id ? await getPortalUserPresetById(userId, row.user_preset_id, context) : null;
   if (!row?.user_preset_id) diagnostics?.record('theme.preset', performance.now(), 'skipped');
   return parsePortalThemeRow(row, selectedUserPreset);
 }

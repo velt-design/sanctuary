@@ -1,4 +1,6 @@
-# Costing And Geometry
+# Studio authored and document projections
+
+## Costing And Geometry
 
 ## Accessory evidence review
 
@@ -800,3 +802,16 @@ argument, so it must use the active UI policy rather than silently assume an old
 manifest. It now permits the acrylic infill request to remain Simple. Server
 calculations still receive the exact published configuration and enforce its
 historical policy. A real eligibility-to-React-hook regression covers this path.
+
+
+Studio uses shared costing and geometry owners for authored pergolas, house
+attachment/composition and standalone accessories. It freezes the saved authored
+revision plus current published costing and verified travel in its quote snapshot;
+the browser projection or captured image is not financial authority. Aluminium
+and infill customer scope text uses validated selected dimensions/profile/finish
+and quantity, preserving all engine prices, GST, discount and other line amounts.
+Technical booklet/render-page composition belongs to `packages/studio-documents`.
+Legacy persisted geometry inputs and their consumers remain compatible; this
+integration adds Studio support rather than retiring Workbench state. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

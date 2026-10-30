@@ -7,6 +7,7 @@ import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from './flow';
 import { summarizeCalculatorSnapshot } from './summarize';
 import type { EstimateDetail, EstimateEditability, EstimateFlowState, EstimateMeta, EstimateStatus, EstimateSummary } from './types';
 import { commercialScopeKind, normalizeCommercialScopeId } from '@/lib/commercial/scope';
+import { estimateDesignKind } from './designNavigation';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -99,6 +100,7 @@ export function mapEstimateMeta(row: any, versionLabel: string): EstimateMeta {
   return {
     id: appIdFromUuid('est', String(row?.id ?? '')),
     projectId: appIdFromUuid('proj', String(row?.project_id ?? '')),
+    designKind: estimateDesignKind(row?.outputs),
     commercialScopeId,
     commercialScopeKind: commercialScopeKind(commercialScopeId),
     internalName: asString(row?.internal_name),
@@ -121,6 +123,7 @@ export function mapEstimateDetail(
   return {
     ...meta,
     ...(flowState ?? null),
+    ...(typeof row?.updated_at === 'string' && Number.isFinite(Date.parse(row.updated_at)) ? { updatedAt: row.updated_at } : {}),
     calculatorSnapshot: calculatorSnapshotFromRow(row),
     internalNotes: asString(row?.internal_notes),
     editability: editability ?? emptyEstimateEditability(),

@@ -10,6 +10,7 @@ import { representativeGableRules } from './representativeGableRules';
 import { sizeRepresentativeGableFlashing } from './representativeGableFlashing';
 
 export type RepresentativeGableOptions = {
+  supportDatumMm?: number;
   freestanding?: boolean; widthMm: number; projectionMm: number; orientation: 'parallel' | 'away'; infills: boolean;
   connection: 'fascia' | 'facade' | 'soffit';
 };
@@ -36,9 +37,9 @@ export function buildRepresentativeGable(options: RepresentativeGableOptions) {
     projectId: 'representative-gable', estimateId: 'representative-gable', family: 'gable',
     dimensions: { lengthM: run / 1000, projectionM: span / 1000 },
     roof: { material: 'acrylic', mode: 'symmetrical', pitchDeg: 25 },
-    connection: { type: 'freestanding' }, supports: { postCount: 4, postCutHeightM: 2.4 },
+    connection: { type: 'freestanding' }, supports: { postCount: 4, postCutHeightM: (options.supportDatumMm ?? 2400) / 1000 },
     gable: { endFramesMode: 'both_ends', houseEaveGutterMode: 'our', outerEaveGutterMode: 'our' },
-    structural: { profiles: { rafter: '150x50', tieBeam: '150x50', strut: '150x50' }, framing: { rafterCount: count, rafterSpacingMm: run / (count - 1) } },
+    structural: { heights: {houseUndersideM:(options.supportDatumMm??2400)/1000,outerUndersideM:(options.supportDatumMm??2400)/1000,referenceUndersideM:(options.supportDatumMm??2400)/1000}, profiles: { rafter: '150x50', tieBeam: '150x50', strut: '150x50' }, framing: { rafterCount: count, rafterSpacingMm: run / (count - 1) } },
   });
   if (!source.ok) throw new Error(source.error);
   let assembly: Assembly3D = source.assembly;

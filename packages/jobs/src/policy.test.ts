@@ -21,6 +21,7 @@ import {
 const NOW_MS = Date.parse('2026-07-20T00:00:00.000Z');
 
 const EXPECTED_ALLOWED_EFFECTS = {
+  studio_design_booklet_v1: [],
   deposit_invoice_prepare_and_send: ['email_dispatch'],
   quote_send: ['email_dispatch'],
   quote_resend: ['email_dispatch'],

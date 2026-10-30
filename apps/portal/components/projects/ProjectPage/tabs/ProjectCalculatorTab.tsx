@@ -24,6 +24,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
 import { getLocalFirstWorkingCopy, resolveLocalFirstId } from '@/lib/localFirst/store';
 import { buildEstimateEntityKey, isLocalEstimateId } from '@/lib/localFirst/portalEntities';
+import { hasEstimateDesignKind, studioEstimateHref } from '@/lib/estimates/designNavigation';
 
 const loadCalculatorEditor = () => import('@/app/staff/calculator/CalculatorGridClient');
 
@@ -101,9 +102,22 @@ export default function ProjectCalculatorTab({
   const renamePendingRef = useRef(false);
   const [calculatorSaving, setCalculatorSaving] = useState(false);
   const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(host, projectId));
+  const ownershipNeedsRefresh = Boolean(estimatesQuery.data?.some(estimate =>
+    estimate.projectId !== projectId || (!isLocalEstimateId(estimate.id) && !hasEstimateDesignKind(estimate)),
+  ));
+  const ownershipReadRef = useRef<{ host: string; projectId: string; data: unknown } | null>(null);
+  useEffect(() => {
+    if (!ownershipNeedsRefresh) { ownershipReadRef.current = null; return; }
+    if (estimatesQuery.isFetching || estimatesQuery.isError) return;
+    const previous = ownershipReadRef.current;
+    if (previous?.host === host && previous.projectId === projectId && previous.data === estimatesQuery.data) return;
+    ownershipReadRef.current = { host, projectId, data: estimatesQuery.data };
+    void estimatesQuery.refetch();
+  }, [host, projectId, ownershipNeedsRefresh, estimatesQuery.data, estimatesQuery.isFetching, estimatesQuery.isError, estimatesQuery.refetch]);
   const estimates = useMemo(
-    () => [...(estimatesQuery.data ?? [])].sort((a, b) => versionNumber(b.versionLabel) - versionNumber(a.versionLabel)),
-    [estimatesQuery.data],
+    () => (estimatesQuery.data ?? []).filter(estimate => estimate.projectId === projectId)
+      .sort((a, b) => versionNumber(b.versionLabel) - versionNumber(a.versionLabel)),
+    [estimatesQuery.data, projectId],
   );
   const activeDrafts = useMemo(
     () => estimates.filter((estimate) => estimate.isActiveDraft),
@@ -131,6 +145,20 @@ export default function ProjectCalculatorTab({
     ?? estimates.find((estimate) => estimate.id === editEstimateId)
     ?? (localSelection?.projectId === projectId ? localSelection : null);
   const revisionSource = estimates.find((estimate) => estimate.id === fromEstimateId) ?? null;
+  const studioSelectionHref = studioEstimateHref(revisionSource, 'revision') ?? studioEstimateHref(selectedEstimate);
+
+  useEffect(() => {
+    if (projectReady && studioSelectionHref && !estimatesQuery.isPending && !estimatesQuery.isError) {
+      router.replace(studioSelectionHref);
+    }
+  }, [projectReady, studioSelectionHref, estimatesQuery.isPending, estimatesQuery.isError, router]);
+
+  const openStudio = useCallback((estimateId: string, intent: 'review' | 'revision' | 'duplicate' = 'review') => {
+    const href = studioEstimateHref(estimates.find(estimate => estimate.id === resolveLocalFirstId(estimateId)), intent);
+    if (!href) return false;
+    router.push(href);
+    return true;
+  }, [estimates, router]);
 
   const replaceParams = useCallback((update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
@@ -150,6 +178,7 @@ export default function ProjectCalculatorTab({
   }, [pathname, router, searchParams]);
 
   const openDraft = useCallback((estimateId: string) => {
+    if (openStudio(estimateId)) return;
     replaceParams((query) => {
       query.set('tab', 'estimates');
       query.set('estimateId', resolveLocalFirstId(estimateId));
@@ -159,7 +188,7 @@ export default function ProjectCalculatorTab({
       query.delete('estimateKind');
       query.delete('commercialScopeId');
     });
-  }, [replaceParams]);
+  }, [openStudio, replaceParams]);
 
   const openBlankDesign = useCallback(() => {
     replaceParams((query) => {
@@ -174,6 +203,7 @@ export default function ProjectCalculatorTab({
   }, [replaceParams]);
 
   const startRevision = useCallback((estimateId: string) => {
+    if (openStudio(estimateId, 'revision')) return;
     replaceParams((query) => {
       query.set('tab', 'estimates');
       query.set('fromEstimateId', estimateId);
@@ -189,9 +219,10 @@ export default function ProjectCalculatorTab({
         query.delete('commercialScopeId');
       }
     });
-  }, [estimates, replaceParams]);
+  }, [estimates, openStudio, replaceParams]);
 
   const openFromList = useCallback((estimateId: string) => {
+    if (openStudio(estimateId)) return;
     pushParams((query) => {
       query.set('tab', 'estimates');
       query.set('estimateId', estimateId);
@@ -201,7 +232,7 @@ export default function ProjectCalculatorTab({
       query.delete('estimateKind');
       query.delete('commercialScopeId');
     });
-  }, [pushParams]);
+  }, [openStudio, pushParams]);
 
   const createFromList = useCallback(() => {
     setCreateKind('base');
@@ -233,6 +264,7 @@ export default function ProjectCalculatorTab({
   }, [createKind, pushParams]);
 
   const duplicateFromList = useCallback((estimateId: string) => {
+    if (openStudio(estimateId, 'duplicate')) return;
     pushParams((query) => {
       query.set('tab', 'estimates');
       query.set('fromEstimateId', estimateId);
@@ -251,7 +283,7 @@ export default function ProjectCalculatorTab({
         query.delete('commercialScopeId');
       }
     });
-  }, [estimates, pushParams]);
+  }, [estimates, openStudio, pushParams]);
 
   const backToEstimates = useCallback(() => {
     replaceParams((query) => {
@@ -274,6 +306,7 @@ export default function ProjectCalculatorTab({
     const kind = value.slice(0, separator);
     const estimateId = value.slice(separator + 1);
     if (!estimateId) return;
+    if (openStudio(estimateId)) return;
     if (kind === 'draft') openDraft(estimateId);
     else replaceParams((query) => {
       query.set('tab', 'estimates');
@@ -284,7 +317,7 @@ export default function ProjectCalculatorTab({
       query.delete('estimateKind');
       query.delete('commercialScopeId');
     });
-  }, [openBlankDesign, openDraft, replaceParams]);
+  }, [openBlankDesign, openDraft, openStudio, replaceParams]);
 
   const selectionValue = selectedEstimate
     ? `${selectedEstimate.isActiveDraft ? 'draft' : 'history'}:${selectedEstimate.id}`
@@ -465,9 +498,19 @@ export default function ProjectCalculatorTab({
     );
   }
 
+  if (ownershipNeedsRefresh) {
+    return <div className={styles.container}>{listReturn}<LoadingSkeleton rows={4} columns={4} label="Confirming saved design ownership" /></div>;
+  }
+
   const invalidSelection = editEstimateId && !selectedEstimate;
   const invalidRevision = fromEstimateId && !revisionSource;
   const historicalSelection = selectedEstimate && !selectedEstimate.isActiveDraft;
+
+  // Studio's own saved-review/revision loader decides validity and quote locks.
+  // Never mount the calculator while replacing a bookmarked or quote-source URL.
+  if (studioSelectionHref) {
+    return <div className={styles.container}>{listReturn}<LoadingSkeleton rows={4} columns={4} label="Opening Studio" /></div>;
+  }
 
   return (
     <div

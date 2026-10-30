@@ -1,3 +1,4 @@
+import {StudioNativeButtonLink} from '@/components/designStudio/StudioNativeLink';
 import type {
   CommandCentreCostingState,
   CommandCentreDeliveryState,
@@ -217,13 +218,13 @@ export default function ProjectCurrentDesignCommercialCard({
             </ButtonLink>
           ) : null}
           {data.links.estimate ? (
-            <ButtonLink disabled={previewOnly}
+            <StudioNativeButtonLink disabled={previewOnly}
               variant="tertiary"
               size="small"
               href={data.links.estimate}
             >
               View source design
-            </ButtonLink>
+            </StudioNativeButtonLink>
           ) : null}
           <ButtonLink disabled={previewOnly}
             variant="tertiary"

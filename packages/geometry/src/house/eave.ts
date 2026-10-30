@@ -193,6 +193,7 @@ export function buildPolygonSoffitPolygons(input: {
   perimeterEdges: HouseRoofPerimeterEdge[];
   roofForm: HouseRoofForm;
   roofPlanes: RoofPlane3D[];
+  fasciaHeightMm: number;
 }): HouseRoofPerimeterPolygon[] {
   if (input.roofForm === 'mono') {
     const roofPlaneById = new Map(input.roofPlanes.map((roofPlane) => [roofPlane.id, roofPlane]));
@@ -253,11 +254,15 @@ export function buildPolygonSoffitPolygons(input: {
   const polygons: HouseRoofPerimeterPolygon[] = [];
   for (const edge of input.perimeterEdges) {
     if (!isEavePackageEdge(edge.edgeKind)) continue;
+    // A horizontal boxed soffit closes the lower fascia edge. The roof eave
+    // remains unchanged; placing this face at its top buried it inside the roof.
+    const startZ = edge.eaveStart.z - input.fasciaHeightMm;
+    const endZ = edge.eaveEnd.z - input.fasciaHeightMm;
     const soffit = [
-      edge.eaveStart,
-      edge.eaveEnd,
-      point(edge.wallEnd.x, edge.wallEnd.y, edge.eaveEnd.z),
-      point(edge.wallStart.x, edge.wallStart.y, edge.eaveStart.z),
+      point(edge.eaveStart.x, edge.eaveStart.y, startZ),
+      point(edge.eaveEnd.x, edge.eaveEnd.y, endZ),
+      point(edge.wallEnd.x, edge.wallEnd.y, endZ),
+      point(edge.wallStart.x, edge.wallStart.y, startZ),
     ];
     if (lineLength(line(soffit[0]!, soffit[1]!)) > 1e-6 && lineLength(line(soffit[1]!, soffit[2]!)) > 1e-6) {
       polygons.push({

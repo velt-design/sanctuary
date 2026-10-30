@@ -1,3 +1,4 @@
+import {studioQuoteSiteAddress} from '@sp/quote-format';
 import {
   formatQuoteIntroText,
   formatQuoteLineDescription,
@@ -129,7 +130,7 @@ export function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewM
     },
     client: {
       name: formatQuoteIntroText(quote.customerName ?? quote.contact.name) ?? undefined,
-      addressLines: addressLines(quote.project.siteAddress),
+      addressLines: addressLines(studioQuoteSiteAddress(quote.studioDesign,quote.project.siteAddress??null)),
     },
     sanctuaryAddressLines: addressLines(WAREHOUSE_ADDRESS),
     issueDate: issueDate ?? undefined,

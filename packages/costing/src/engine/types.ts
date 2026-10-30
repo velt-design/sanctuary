@@ -959,6 +959,9 @@ export type SiteSharedOutputV1 = {
 
 export type SiteOutputV1 = {
   pergola_count: number;
+  /** Once-per-site installation days from the engine's current day-cycle policy.
+   * Absent for historical outputs or a job without verified positive install time. */
+  site_days?: number;
   pergolas: PergolaOutputV1[];
   shared: SiteSharedOutputV1;
   materials: MaterialsV1;

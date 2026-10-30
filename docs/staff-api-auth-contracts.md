@@ -1,4 +1,6 @@
-# Staff API And Auth Contracts
+# Studio staff routes
+
+## Staff API And Auth Contracts
 
 The temporary `/api/integrations/praxis/portal-service-transfer` operator endpoint
 uses independent fixed Vercel-principal/project authorization and a finite nonce
@@ -668,3 +670,13 @@ ordinary documents retain the existing seed; only navigation context omits it.
 RootLayout starts its same caught finance-navigation promise after that guard,
 overlapping current-access/theme work, then awaits finance before completion and
 final props. Neither change establishes the original 100ms cold target.
+
+
+Studio APIs use fresh staff/admin context and project RLS before privileged
+immutable snapshot/document/package RPCs. Canonical Studio middleware hints only
+forward routing and refreshed cookies, never cookie user/role authority. The
+regional document root/slot and protected data loader retain fresh verification.
+Package document preview/download/retry names the exact quote, document ID and
+CAS package revision, and the browser checks the echoed identity. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

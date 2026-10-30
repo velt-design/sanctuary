@@ -135,9 +135,9 @@ class BackgroundJobWorkerRuntime implements BackgroundJobWorker {
     this.#startedAt = new Date(this.#clock.now()).toISOString();
 
     if (['active', 'once', 'drain'].includes(this.#config.mode)) {
-      const missingKinds = BACKGROUND_JOB_KINDS.filter((kind) => {
+      const missingKinds = (this.#config.claimScope?.kinds ?? BACKGROUND_JOB_KINDS).filter((kind) => {
         const rollout = getBackgroundJobDefinition(kind).defaultRolloutMode;
-        return (['worker_cohort', 'worker_enabled'] as readonly BackgroundJobRolloutMode[]).includes(rollout)
+        return (this.#config.claimScope !== undefined || (['worker_cohort', 'worker_enabled'] as readonly BackgroundJobRolloutMode[]).includes(rollout))
           && !this.#handlers[kind];
       });
       if (missingKinds.length > 0) {
@@ -450,6 +450,8 @@ class BackgroundJobWorkerRuntime implements BackgroundJobWorker {
   }
 
   async #runReconciliationCycle(): Promise<void> {
+    // Scoped workers must not mutate another family through global queue repair.
+    if(this.#config.claimScope){this.#lastReconciliationAtMs=this.#clock.now();return;}
     const reconciled = await this.#rpc.reconcile({
       workerId: this.#config.workerId,
       limit: this.#config.reconciliationLimit,
@@ -474,6 +476,7 @@ class BackgroundJobWorkerRuntime implements BackgroundJobWorker {
         workerId: this.#config.workerId,
         batchSize: Math.min(available, this.#config.claimBatchSize),
         visibilityTimeoutSeconds: this.#config.visibilityTimeoutSeconds,
+        ...(this.#config.claimScope?{scope:this.#config.claimScope}:{}),
       });
     } catch {
       this.#lifecycleState = 'unhealthy';

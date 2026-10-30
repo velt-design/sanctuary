@@ -1,3 +1,4 @@
+import {quotePresentationVersion} from './quotePresentation';
 import { createHash } from 'crypto';
 import { renderQuoteReadyEmail, type QuoteReadyEmailInput } from '@/lib/emails/quote';
 import type { QuoteVersionDetail } from './types';
@@ -150,7 +151,8 @@ export function renderExpiresLabel(expiresAtDate: string | null): string | undef
 
 export function buildQuoteRenderHash(detail: QuoteVersionDetail): string {
   const source = JSON.stringify({
-    artifactVersion: QUOTE_ARTIFACT_RENDER_VERSION,
+    artifactVersion: quotePresentationVersion(detail.studioDesign)==='sanctuary-quote.v3'?'sanctuary-quote.v3':detail.studioDesign ? `${QUOTE_ARTIFACT_RENDER_VERSION}:${detail.studioDesign.schemaVersion==='studio_quote_snapshot.v2'?'studio-quote-only-v2':'studio-continuation-v1'}` : QUOTE_ARTIFACT_RENDER_VERSION,
+    studioDesign: detail.studioDesign ? {snapshotId:detail.studioDesign.snapshotId,contentHash:detail.studioDesign.contentHash,images:detail.studioDesign.images.map(image=>({kind:image.kind,sha256:image.sha256}))} : null,
     id: detail.id,
     status: detail.status,
     quoteRef: detail.quoteRef,

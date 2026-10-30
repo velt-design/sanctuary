@@ -1,5 +1,17 @@
 # Environment, Auth, And Supabase
 
+## Design Studio trial controls
+
+Studio uses the existing staff session/project RLS and freshly verified role;
+canonical callback headers carry routing only. Server-only app flags are
+`ENABLE_PORTAL_DESIGN_STUDIO=1`, `ENABLE_STUDIO_CLIENT_DOCUMENTS=1` and, for
+production staff trial, `STUDIO_DOCUMENT_STAFF_TRIAL_ENABLED=true`. Private
+database admission and a separate worker opt-in are also required. Customer
+sends remain disabled by default in both the app policy and canonical database
+dispatch, including after an app rollback. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md) for exact
+worker flags, explicit-project defaults, atomic installation and kill switches.
+
 ## Public website GA4 selection (27 October 2026 candidate)
 
 `production-browsing-v1` is a report-only filter and part of the query identity.

@@ -1,0 +1,492 @@
+import type { CalculatorInputs } from '@/lib/types/calculator';
+import {
+  isCalculatorInputsV2,
+  isLegacyCalculatorInputsV1,
+  migrateLegacyCalculatorInputsToV2,
+  normalizeBlindsState,
+} from '@/lib/types/calculator';
+import type { Estimate } from '@/lib/types/estimate';
+import {
+  normalizeBlindRollCover,
+  priceAllBlinds,
+  type BlindLineItemInput,
+} from '@sp/costing';
+import type { QuoteLineItem } from './types';
+import { configuredQuoteSnapshotItems, requiresConfiguredQuoteSnapshot } from './configuredQuoteSnapshot';
+import { extractLightingTotalCents } from './estimateAddons';
+import {
+  hasStructuredCalculatorLighting,
+  priceCalculatorLighting,
+} from '@/lib/estimates/calculatorLighting';
+import {
+  calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffCustomerPriceMultiplier,
+  normalizeStaffCustomerPriceUpliftPct,
+  normalizeStaffQuoteDiscountPct,
+  roundQuoteMoney,
+} from './pricing';
+import { lineTotalCents, toCents } from './utils';
+import {
+  buildIncludedSiteCostsValue,
+  buildInputPergolaModules,
+  buildLegacyPergolaDescription,
+  buildPergolaDescription,
+  buildSiteCostsDescription,
+  normalizePergolaId,
+} from './estimateQuoteDescriptions';
+import {
+  buildAdditionalAluminiumDescription,
+  buildApprovalDescription,
+  buildBlindDescription,
+  buildHistoricalLightingDescription,
+  buildLightingDescription,
+  buildStandaloneInfillsDescription,
+} from './estimateQuoteAddonDescriptions';
+
+function toNumber(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim()) return Number.parseFloat(value);
+  const parsed = Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function normaliseCalculatorInputs(inputs: unknown): CalculatorInputs | null {
+  if (isCalculatorInputsV2(inputs)) return inputs;
+  if (isLegacyCalculatorInputsV1(inputs)) return migrateLegacyCalculatorInputsToV2(inputs);
+  return null;
+}
+
+function isMeaningfulBlindItem(item: {
+  label?: string;
+  system?: string;
+  fabric?: string;
+  motorised?: string | boolean | null;
+  rollCover?: string;
+  widthMm?: unknown;
+  coverLengthMm?: unknown;
+}): boolean {
+  const hasLabel = typeof item.label === 'string' && item.label.trim().length > 0;
+  const width = toNumber(item.widthMm);
+  const cover = toNumber(item.coverLengthMm);
+  const hasWidth = Number.isFinite(width) && width > 0;
+  const hasCover = Number.isFinite(cover) && cover > 0;
+
+  const system = typeof item.system === 'string' ? item.system.toUpperCase() : 'ZIPTRAK';
+  const fabric = typeof item.fabric === 'string' ? item.fabric.toUpperCase() : 'MESH';
+  const motorisedRaw = typeof item.motorised === 'string' ? item.motorised.toUpperCase() : item.motorised ? 'YES' : 'NONE';
+  const rollCover = typeof item.rollCover === 'string' ? item.rollCover.toUpperCase() : 'NONE';
+  const hasNonDefault =
+    system !== 'ZIPTRAK' ||
+    (fabric !== 'MESH' && fabric !== 'NONE') ||
+    motorisedRaw === 'YES' ||
+    rollCover !== 'NONE';
+
+  return hasLabel || hasWidth || hasCover || hasNonDefault;
+}
+
+type PricedPergola = {
+  snapshotPergola: any;
+  idx: number;
+  pergolaCostEx: number;
+};
+
+function lineUnitPriceIncFromCostEx(
+  costEx: number,
+  quoteDiscountPct: number,
+  customerPriceUpliftPct: number,
+  customerPriceMultiplier: number,
+): number {
+  return toCents(
+    calculateStaffCustomerPriceFromCostEx(
+      costEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    )?.incGst ?? 0,
+  );
+}
+
+function withQuoteDiscountDescription(description: string, quoteDiscountPct: number): string {
+  if (quoteDiscountPct <= 0) return description;
+  return `${description}\n- Quote discount: ${quoteDiscountPct}% included in this item`;
+}
+
+type QuoteMappingBlockingIssue = {
+  code: 'STUDIO_REVIEW_REQUIRED' | 'INVALID_BLIND' | 'INVALID_LIGHTING' | 'NO_PRICED_ITEMS' | 'CONFIGURED_COSTING_REVIEW_REQUIRED';
+  message: string;
+};
+
+export type QuoteEstimateMapping = {
+  items: Omit<QuoteLineItem, 'id'>[];
+  coreTotalIncCents: number;
+  blockingIssues: QuoteMappingBlockingIssue[];
+  approvalRequirement: 'neither' | 'engineering_required' | 'full_building_consent' | null;
+  approvalIncGstCents: number;
+};
+
+export class QuoteHandoffBlockedError extends Error {
+  readonly code = 'QUOTE_HANDOFF_BLOCKED';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteHandoffBlockedError';
+  }
+}
+
+export function isQuoteHandoffBlockedError(error: unknown): error is QuoteHandoffBlockedError {
+  return error instanceof QuoteHandoffBlockedError
+    || Boolean(error && typeof error === 'object' && (error as { code?: unknown }).code === 'QUOTE_HANDOFF_BLOCKED');
+}
+
+export function assertQuoteEstimateMappingReady(mapping: QuoteEstimateMapping): void {
+  if (!mapping.blockingIssues.length) return;
+  throw new QuoteHandoffBlockedError(
+    `Quote handoff blocked: ${mapping.blockingIssues.map((issue) => issue.message).join(' ')}`,
+  );
+}
+
+export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstimateMapping {
+  // Calculator callers cannot reinterpret Studio's authored source.
+  if (estimate.outputs && Object.hasOwn(estimate.outputs, 'studio_authored')) return studioReviewRequiredMapping();
+  if (requiresConfiguredQuoteSnapshot(estimate)) {
+    const items = configuredQuoteSnapshotItems(estimate);
+    if (items) return { items, coreTotalIncCents: items.reduce((sum, item) => sum + item.lineTotalIncGstCents, 0),
+      blockingIssues: [], approvalRequirement: 'neither', approvalIncGstCents: 0 };
+    return {
+      items: [], coreTotalIncCents: 0, approvalRequirement: null, approvalIncGstCents: 0,
+      blockingIssues: [{ code: 'CONFIGURED_COSTING_REVIEW_REQUIRED', message:
+        'This website design includes a separately saved customer estimate. Its imported base costs are not a complete quote. Review the original design and price breakdown, then prepare complete staff costing before creating a quote.' }],
+    };
+  }
+  const inputs = normaliseCalculatorInputs((estimate as any).inputs);
+  const quoteDiscountPct = normalizeStaffQuoteDiscountPct(inputs?.quoteDiscountPct);
+  const modules = inputs?.modules ?? [];
+  const outputs = ((estimate as any)?.outputs ?? {}) as any;
+  const customerPriceUpliftPct = normalizeStaffCustomerPriceUpliftPct(
+    outputs?.pricing_policy?.customer_price_uplift_pct,
+  );
+  const customerPriceMultiplier = normalizeStaffCustomerPriceMultiplier(
+    outputs?.pricing_policy?.customer_price_multiplier,
+  );
+  const snapshotPergolas = Array.isArray(outputs?.pergolas) ? outputs.pergolas : [];
+  const snapshotShared = outputs?.siteShared ?? outputs?.shared ?? null;
+  const siteCostCopyParams = {
+    pergolaCount: snapshotPergolas.length,
+    sharedInstallCostEx: toNumber(snapshotShared?.install?.totals?.install_ex_gst),
+    travelCostEx: toNumber(snapshotShared?.add_ons?.travel_ex_gst ?? inputs?.travelExGst),
+    extrasCostEx: toNumber(snapshotShared?.add_ons?.extras_allowance_ex_gst ?? inputs?.extrasAllowanceExGst),
+  };
+  const siteCostsDescription = buildSiteCostsDescription(siteCostCopyParams);
+  const inputPergolas = buildInputPergolaModules(inputs);
+  const lineItems: Omit<QuoteLineItem, 'id'>[] = [];
+  let primaryPergolaLine: Omit<QuoteLineItem, 'id'> | undefined;
+  const blockingIssues: QuoteMappingBlockingIssue[] = [];
+  let coreTotalIncCents = 0;
+
+  if (snapshotPergolas.length > 0) {
+    const pricedPergolas: PricedPergola[] = snapshotPergolas
+      .map((snapshotPergola: any, idx: number): PricedPergola | null => {
+        const pergolaCostEx = toNumber(snapshotPergola?.totals?.cost_ex_gst);
+        if (!Number.isFinite(pergolaCostEx) || pergolaCostEx < 0) return null;
+        return {
+          snapshotPergola,
+          idx,
+          pergolaCostEx,
+        };
+      })
+      .filter(
+        (entry: PricedPergola | null): entry is PricedPergola =>
+          entry !== null,
+      );
+
+    const sharedCostEx = toNumber(snapshotShared?.totals?.cost_ex_gst);
+    const hasSharedCost = Boolean(snapshotShared) && Number.isFinite(sharedCostEx) && sharedCostEx >= 0;
+    const showSharedLine = hasSharedCost && snapshotPergolas.length > 1 && pricedPergolas.length > 0;
+
+    pricedPergolas.forEach(({ snapshotPergola, idx, pergolaCostEx }, pergolaIndex: number) => {
+      const snapshotId = normalizePergolaId(snapshotPergola?.id, `pergola-${idx + 1}`);
+      const matchingInputPergola = inputPergolas.find((p) => p.id === snapshotId) ?? inputPergolas[idx] ?? null;
+      const description = buildPergolaDescription({
+        label: snapshotPergola?.label ?? matchingInputPergola?.label,
+        fallbackIndex: idx,
+        modules: matchingInputPergola?.modules ?? [],
+        projectDelivery: !showSharedLine && hasSharedCost && sharedCostEx > 0 && pergolaIndex === 0
+          ? buildIncludedSiteCostsValue(siteCostCopyParams)
+          : undefined,
+      });
+
+      const lineCostEx = !showSharedLine && hasSharedCost && pergolaIndex === 0
+        ? roundQuoteMoney(pergolaCostEx + sharedCostEx)
+        : pergolaCostEx;
+
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+        lineCostEx,
+        quoteDiscountPct,
+        customerPriceUpliftPct,
+        customerPriceMultiplier,
+      );
+      const qty = 1;
+      const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
+      lineItems.push({
+        description: withQuoteDiscountDescription(description, quoteDiscountPct),
+        qty,
+        unitPriceIncGstCents,
+        lineTotalIncGstCents,
+        sortOrder: lineItems.length,
+      });
+      coreTotalIncCents += lineTotalIncGstCents;
+      primaryPergolaLine ??= lineItems[lineItems.length - 1];
+    });
+
+    if (showSharedLine) {
+      const qty = 1;
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+        sharedCostEx,
+        quoteDiscountPct,
+        customerPriceUpliftPct,
+        customerPriceMultiplier,
+      );
+      const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
+      lineItems.push({
+        description: withQuoteDiscountDescription(
+          siteCostsDescription,
+          quoteDiscountPct,
+        ),
+        qty,
+        unitPriceIncGstCents,
+        lineTotalIncGstCents,
+        sortOrder: lineItems.length,
+      });
+      coreTotalIncCents += lineTotalIncGstCents;
+    }
+  }
+
+  const standaloneInfills = outputs?.standalone_infills;
+  const standaloneInfillsCostEx = toNumber(standaloneInfills?.totals?.cost_ex_gst);
+  if (standaloneInfills && Number.isFinite(standaloneInfillsCostEx) && standaloneInfillsCostEx >= 0) {
+    const qty = 1;
+    const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+      standaloneInfillsCostEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    );
+    const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
+    lineItems.push({
+      description: withQuoteDiscountDescription(buildStandaloneInfillsDescription(inputs), quoteDiscountPct),
+      qty,
+      unitPriceIncGstCents,
+      lineTotalIncGstCents,
+      sortOrder: lineItems.length,
+    });
+    coreTotalIncCents += lineTotalIncGstCents;
+
+  }
+
+  const additionalAluminium = outputs?.additional_aluminium;
+  const additionalAluminiumCostEx = toNumber(additionalAluminium?.totals?.cost_ex_gst);
+  if (additionalAluminium && Number.isFinite(additionalAluminiumCostEx) && additionalAluminiumCostEx > 0) {
+    const itemCount = Number(additionalAluminium.item_count ?? inputs?.additionalAluminium?.rows?.length ?? 0);
+    const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+      additionalAluminiumCostEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    );
+    // Additional materials supporting a pergola are an internal costing input.
+    // Add the separately rounded sell cents, so presentation never reprices it.
+    if (primaryPergolaLine) {
+      primaryPergolaLine.unitPriceIncGstCents += unitPriceIncGstCents;
+      primaryPergolaLine.lineTotalIncGstCents += unitPriceIncGstCents;
+    } else lineItems.push({
+      description: withQuoteDiscountDescription(
+        buildAdditionalAluminiumDescription(inputs, itemCount),
+        quoteDiscountPct,
+      ),
+      qty: 1,
+      unitPriceIncGstCents,
+      lineTotalIncGstCents: unitPriceIncGstCents,
+      sortOrder: lineItems.length,
+    });
+    coreTotalIncCents += unitPriceIncGstCents;
+  }
+
+  const zeroPergolaSharedCostEx = toNumber(snapshotShared?.totals?.cost_ex_gst);
+  if (snapshotPergolas.length === 0 && Number.isFinite(zeroPergolaSharedCostEx) && zeroPergolaSharedCostEx > 0) {
+    const sharedUnitPrice = lineUnitPriceIncFromCostEx(
+      zeroPergolaSharedCostEx,
+      quoteDiscountPct,
+      customerPriceUpliftPct,
+      customerPriceMultiplier,
+    );
+    const sharedTotal = lineTotalCents(1, sharedUnitPrice);
+    lineItems.push({
+      description: withQuoteDiscountDescription(siteCostsDescription, quoteDiscountPct),
+      qty: 1,
+      unitPriceIncGstCents: sharedUnitPrice,
+      lineTotalIncGstCents: sharedTotal,
+      sortOrder: lineItems.length,
+    });
+    coreTotalIncCents += sharedTotal;
+  }
+
+  if (lineItems.length === 0) {
+    const legacyCoreCostEx = toNumber(outputs?.totals?.cost_ex_gst);
+    const safeLegacyCoreCostEx = Number.isFinite(legacyCoreCostEx) && legacyCoreCostEx > 0 ? legacyCoreCostEx : 0;
+    if (modules.length > 0 || safeLegacyCoreCostEx > 0) {
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(
+        safeLegacyCoreCostEx,
+        quoteDiscountPct,
+        customerPriceUpliftPct,
+        customerPriceMultiplier,
+      );
+      const qty = 1;
+      lineItems.push({
+        description: withQuoteDiscountDescription(
+          modules.length > 0
+            ? buildLegacyPergolaDescription(modules)
+            : siteCostsDescription,
+          quoteDiscountPct,
+        ),
+        qty,
+        unitPriceIncGstCents,
+        lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
+        sortOrder: lineItems.length,
+      });
+      coreTotalIncCents += lineTotalCents(qty, unitPriceIncGstCents);
+    }
+  }
+
+  const approval = outputs?.customer_add_ons?.approval;
+  const approvalIncGst = toNumber(approval?.sell_inc_gst);
+  const approvalRequirement = approval?.requirement === 'full_building_consent'
+    ? 'full_building_consent'
+    : approval?.requirement === 'engineering_required'
+      ? 'engineering_required'
+      : approval?.requirement === 'neither'
+        ? 'neither'
+        : null;
+  const approvalIncGstCents = Number.isFinite(approvalIncGst) && approvalIncGst > 0
+    ? toCents(approvalIncGst)
+    : 0;
+  if (approval && Number.isFinite(approvalIncGst) && approvalIncGst > 0) {
+    const qty = 1;
+    const unitPriceIncGstCents = toCents(approvalIncGst);
+    lineItems.push({
+      description: buildApprovalDescription(
+        approval.requirement === 'full_building_consent'
+          ? 'full_building_consent'
+          : 'engineering_required',
+      ),
+      qty,
+      unitPriceIncGstCents,
+      lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
+      sortOrder: lineItems.length,
+    });
+  }
+
+  if (inputs && hasStructuredCalculatorLighting(inputs)) {
+    priceCalculatorLighting(inputs).items.forEach((lighting) => {
+      if (lighting.lightCount <= 0 && lighting.errors.length === 0) return;
+      if (lighting.errors.length) {
+        blockingIssues.push({
+          code: 'INVALID_LIGHTING',
+          message: `${lighting.label?.trim() || 'Pergola'} lighting needs review before a quote can be created: ${lighting.errors[0]}`,
+        });
+        return;
+      }
+
+      const qty = 1;
+      const unitPriceIncGstCents = lighting.lightingSellIncCents;
+      lineItems.push({
+        description: buildLightingDescription(lighting),
+        qty,
+        unitPriceIncGstCents,
+        lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
+        sortOrder: lineItems.length,
+      });
+    });
+  } else {
+    const lightingTotal = extractLightingTotalCents(estimate);
+    if (lightingTotal !== null) {
+      const qty = 1;
+      lineItems.push({
+        description: buildHistoricalLightingDescription(),
+        qty,
+        unitPriceIncGstCents: lightingTotal,
+        lineTotalIncGstCents: lineTotalCents(qty, lightingTotal),
+        sortOrder: lineItems.length,
+      });
+    }
+  }
+
+  const blindsState = normalizeBlindsState((inputs as any)?.blinds);
+  const blindItems = (blindsState?.items ?? []).filter((item) => isMeaningfulBlindItem(item as any));
+  if (blindItems.length) {
+    const pricingInputs: BlindLineItemInput[] = blindItems.map((item) => ({
+      id: item.id,
+      label: item.label,
+      system: item.system,
+      widthMm: Number.isFinite(toNumber(item.widthMm)) ? toNumber(item.widthMm) : null,
+      coverLengthMm: Number.isFinite(toNumber(item.coverLengthMm)) ? toNumber(item.coverLengthMm) : null,
+      fabric: item.fabric,
+      motorised: item.motorised === 'YES',
+      rollCover: normalizeBlindRollCover(item.rollCover),
+    }));
+
+    const pricing = priceAllBlinds(pricingInputs);
+    pricing.items.forEach((priced, idx) => {
+      if (priced.errors.length) {
+        blockingIssues.push({
+          code: 'INVALID_BLIND',
+          message: `${priced.label?.trim() || `Blind ${idx + 1}`} needs valid dimensions and selections before a quote can be created.`,
+        });
+        return;
+      }
+      const qty = 1;
+      const unitPrice = priced.blindSellIncCents;
+      const source = pricingInputs[idx];
+      lineItems.push({
+        description: buildBlindDescription(source ?? {
+          id: priced.id,
+          label: priced.label,
+          system: priced.system,
+          widthMm: priced.widthMm,
+          coverLengthMm: priced.coverLengthMm,
+          fabric: 'NONE',
+          motorised: null,
+          rollCover: priced.rollCover,
+        }, idx, priced.label, priced.errors, priced),
+        qty,
+        unitPriceIncGstCents: unitPrice,
+        lineTotalIncGstCents: lineTotalCents(qty, unitPrice),
+        sortOrder: lineItems.length,
+      });
+    });
+  }
+
+  if (
+    blockingIssues.length === 0
+    && !lineItems.some((item) => item.lineTotalIncGstCents > 0)
+  ) {
+    blockingIssues.push({
+      code: 'NO_PRICED_ITEMS',
+      message: 'Add at least one priced item before creating a quote from this estimate.',
+    });
+  }
+
+  return {
+    items: lineItems,
+    coreTotalIncCents,
+    blockingIssues,
+    approvalRequirement,
+    approvalIncGstCents,
+  };
+}
+
+/** Shared fail-closed result. Studio acceptance remains in the canonical strict mapper. */
+export function studioReviewRequiredMapping(): QuoteEstimateMapping {
+  return { items: [], coreTotalIncCents: 0, approvalRequirement: null, approvalIncGstCents: 0, blockingIssues: [{
+    code: 'STUDIO_REVIEW_REQUIRED', message: 'Open Studio Review and prepare the saved design and views before creating a quote.',
+  }] };
+}

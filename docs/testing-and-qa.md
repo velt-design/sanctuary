@@ -18,6 +18,25 @@ rollback verifies unchanged catalog; only the intended plan constraint and
 reviewed function bodies change. Synthetic tests do not establish Meta acceptance.
 # Testing And QA
 
+## Design Studio staff trial
+
+Run the focused `apps/portal/lib/designStudio`, `components/designStudio`,
+`test/studio-*`, worker document/config/RPC and coupled quote tests. Existing
+middleware regional/navigation tests remain required alongside Studio routing
+tests on the current Node middleware owner. Preserve the current progressive PDF
+transport tests and compact fit math tests. The new staff-trial database tests
+execute the forward SQL and scoped readers with a controlled foundation lease
+stub, not the complete state machine or concurrent connections. Exact scope,
+email rollback denial and 32-project/capability-before-visibility checks are
+described in [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+Connected staging/production, original six bundle caps, normal Next real type
+gate, fresh worker assets and host memory/heartbeat proof remain distinct gates.
+
+`node --test scripts/check-mojibake.test.mjs` verifies the exact renderer fontkit
+path/hash exemption against the already-public Portal bytes. Its intentional
+Unicode tables are preserved; vendor drift falls back to normal scanning and
+authored replacement characters still fail. No broad vendor ignore is added.
+
 ## Enquiry-to-cash and verification traffic candidate
 
 Run `npx vitest run test/marketing-enquiry-sales.test.ts` for current complete SQL

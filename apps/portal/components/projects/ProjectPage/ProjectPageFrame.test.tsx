@@ -17,6 +17,7 @@ let mockSearchParams = "tab=activity";
 vi.mock("@/components/navigation/ProjectsIndexLink", () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
+vi.mock('@/components/designStudio/StudioProjectLink',()=>({default:({projectId,disabled}:any)=><a href={`/staff/projects/${projectId}/studio`} aria-disabled={disabled||undefined}>Design Studio</a>}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -182,7 +183,7 @@ describe("ProjectPageFrame", () => {
     expect(rendered.container.textContent).not.toContain("proj_123");
     expect(rendered.container.textContent).toContain("Alex · North");
     expect(rendered.container.textContent).toContain("Projects");
-    expect(rendered.container.textContent).toContain("Design Workbench");
+    expect(rendered.container.textContent).toContain("Design Studio");
     expect(rendered.container.textContent).toContain("More");
     expect(rendered.container.textContent).not.toContain("Delete project");
     expect(

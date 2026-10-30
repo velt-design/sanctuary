@@ -7,9 +7,9 @@ import {
 } from '@/lib/estimates/costingPayload';
 import {
   buildOptimisticEstimateDetail,
-  buildQuoteHandoffPreviewFromEstimateDetail,
   type PortalEstimatePayload,
 } from '@/lib/localFirst/portalEntities';
+import { buildQuoteHandoffPreviewFromEstimateDetail } from '@/lib/localFirst/quotePreparation';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildBlindInputs } from './calculatorBlindUi';
 import { makeDefaultCalculatorInputs, makeDefaultInfillItem } from './calculatorInputs';

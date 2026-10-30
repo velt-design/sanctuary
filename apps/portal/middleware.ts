@@ -3,6 +3,7 @@ import { createProxySupabase } from '@/lib/supabase/proxyClient';
 import { isRegionalDocumentPath, isRegionalNavigationPath, prepareRegionalPageAccess } from '@/lib/regionalDocumentAccess';
 import { DOCUMENT_ID_HEADER, prepareProxyDocumentDiagnostics } from '@/lib/performance/documentDiagnostics';
 import type { PortalAccessTimingObserver } from '@/lib/portalAccess';
+import { STUDIO_EDIT_CALLBACK_HEADER, studioDocumentCallback, studioEditCallback } from '@/lib/designStudio/studioEditRoute';
 import {
   buildAccessStatusHref,
   buildLoginHref,
@@ -174,6 +175,8 @@ function buildNormalizedResponse(req: NextRequest, route: NormalizedRoute, reque
 }
 
 export async function middleware(req: NextRequest) {
+  // Routing hints never come from the caller, including on regional fast paths.
+  req.headers.delete(STUDIO_EDIT_CALLBACK_HEADER);
   const startedAt = performance.now();
   const { requestHeaders, diagnostics } = prepareProxyDocumentDiagnostics(req);
   try {
@@ -239,6 +242,23 @@ async function runProxy(req: NextRequest, requestHeaders?: Headers, observer?: P
   const proxySupabase = createProxySupabase(req);
   if (!proxySupabase.supabase) {
     return buildNormalizedResponse(req, normalized, requestHeaders);
+  }
+
+  const studioEnabled = process.env.ENABLE_PORTAL_DESIGN_STUDIO === '1';
+  const studioCallback = normalized.action === 'next'
+    ? studioDocumentCallback(originalCallback, studioEnabled) ?? studioEditCallback(originalCallback, studioEnabled)
+    : null;
+  if (studioCallback) {
+    // Renew transport only. Studio's request-owned guard verifies the user and
+    // current database role before any private identity or project content.
+    let present = false;
+    try { const result = await proxySupabase.supabase.auth.getSession(); present = !result.error && Boolean(result.data.session); } catch { present = false; }
+    if (!present) return proxySupabase.apply(NextResponse.redirect(withLocalHref(req, buildLoginHref(studioCallback))));
+    const forwarded = proxySupabase.forwardRefreshedCookies(requestHeaders);
+    forwarded.set(STUDIO_EDIT_CALLBACK_HEADER, studioCallback);
+    const response = proxySupabase.apply(buildNormalizedResponse(req, normalized, forwarded));
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
   }
 
   const accessState = await resolvePortalAccessState(proxySupabase.supabase as unknown as PortalAccessLookup, observer);

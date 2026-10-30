@@ -1,0 +1,171 @@
+import { expect, it } from 'vitest';
+import { EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT } from '../drawings/state/objectFirstWorkbenchModel';
+import { applyStudioHouseEdit } from './houseEditing';
+import { addWebsitePergola, websiteComposition } from './websiteComposition';
+import type { StudioAuthoringEdit } from './authoringView';
+import { studioHouseScene } from './studioHouseScene';
+import { changeStudioProduct, detachStudioPergola, previewStudioAttachment, updateStudioHouse } from './studioHouseCommands';
+import { studioConnectionSwitchTarget, previewStudioConnectionSwitch } from './studioConnectionSwitch';
+import { parseStudioAuthoringEdit } from './authoringView';
+import { createStudioSaveSession, changeStudioSaveSession, navigateStudioSaveHistory } from './saveSession';
+
+function fixture(projection = 3000) {
+  let edit: StudioAuthoringEdit = { schemaVersion: 'studio_authoring_edit.v1', designId: 'one-click-test', revision: 1, spatial: structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT), site: {}, objectOptions: [], deletions: [] };
+  const result = applyStudioHouseEdit(edit.spatial, { kind: 'add', id: 'house' });
+  if (!result.ok) throw Error(result.message);
+  edit.spatial = result.spatial;
+  edit = addWebsitePergola(edit, 'p');
+  const value = websiteComposition(edit)[0].value!;
+  value.rawDimensions.projectionMm = String(projection);
+  value.selection.input.projectionMm = projection;
+  return changeStudioProduct(edit, value);
+}
+function change(edit: StudioAuthoringEdit, method: 'facade' | 'fascia' | 'soffit') {
+  return previewStudioConnectionSwitch(edit, studioConnectionSwitchTarget(edit, 'p', method)).edit;
+}
+it.each([3000, 4000])('applies every supported method to the regular house in one command for a %i projection, with no repeated-cycle ratchet', projection => {
+  let edit = fixture(projection);
+  const original = structuredClone(edit);
+  for (const method of ['soffit', 'facade', 'fascia', 'soffit', 'facade'] as const) {
+    edit = change(edit, method);
+    const row = websiteComposition(edit)[0];
+    expect(row.error).toBeNull();
+    expect(row.studioAttachment?.method).toBe(method);
+    expect(row.geometryOptions!.supportDatumMm).toBeGreaterThanOrEqual(2000);
+    expect(row.value!.rawDimensions).toEqual(websiteComposition(original)[0].value!.rawDimensions);
+    expect(row.design!.roof).toEqual(websiteComposition(original)[0].design!.roof);
+    const before = structuredClone(edit);
+    expect(change(edit, method)).toEqual(before);
+  }
+  const house = structuredClone(edit.spatial.houseAssembly);
+  for (const method of ['fascia', 'soffit', 'facade'] as const) edit = change(edit, method);
+  expect(edit.spatial.houseAssembly).toEqual(house);
+  expect(parseStudioAuthoringEdit(JSON.parse(JSON.stringify(edit))).ok).toBe(true);
+});
+it('retains the actual host, rotated semantic edge and tangent through method changes and custom clearance; direct gap edits keep the house fixed', () => {
+  let edit = fixture();
+  const house = studioHouseScene(edit.site, edit.spatial)!.houses[0];
+  edit = updateStudioHouse(edit, { ...house, position: { ...house.position, rotationDeg: '37' } });
+  edit = previewStudioAttachment(edit, { objectId: 'p', houseId: 'house', edge: 'rear', kind: 'eave', method: 'soffit', alongEdgeMm: 1600 });
+  let value = structuredClone(websiteComposition(edit)[0].value!);
+  value.facadeClearanceMm = '700';
+  edit = changeStudioProduct(edit, value);
+  const before = websiteComposition(edit)[0].position!;
+  edit = change(edit, 'facade');
+  const row = websiteComposition(edit)[0];
+  expect(row.studioAttachment).toMatchObject({ houseId: 'house', edge: 'rear', method: 'facade' });
+  expect(row.studioAttachment!.alongEdgeMm).toBeCloseTo(1600, 6);
+  expect(row.attachment && 'measurements' in row.attachment && row.attachment.measurements!.roofClearanceMm).toBeGreaterThanOrEqual(700);
+  const radians = 37 * Math.PI / 180;
+  expect((row.position!.x - before.x) * Math.cos(radians) + (row.position!.y - before.y) * Math.sin(radians)).toBeCloseTo(0, 5);
+  const source = structuredClone(edit.spatial.houseAssembly);
+  value = structuredClone(row.value!); value.facadeClearanceMm = '1700';
+  edit = changeStudioProduct(edit, value);
+  expect(edit.spatial.houseAssembly).toEqual(source);
+  expect(websiteComposition(edit)[0].error).toContain('2000');
+});
+it('reattaches a freestanding object in one command and retains its dormant clearance', () => {
+  let edit = change(fixture(), 'facade');
+  const value = structuredClone(websiteComposition(edit)[0].value!); value.facadeClearanceMm = '700';
+  edit = changeStudioProduct(edit, value);
+  edit = change(edit, 'soffit');
+  edit = detachStudioPergola(edit, 'p');
+  edit = change(edit, 'facade');
+  expect(websiteComposition(edit)[0].error).toBeNull();
+  expect(websiteComposition(edit)[0].value!.facadeClearanceMm).toBe('700');
+});
+it('records one compound history entry and restores the complete house, connection and raw preference with one Undo', () => {
+  const edit = fixture();
+  const scope = { actorId: 'actor', projectId: 'project', estimateId: 'estimate', designId: edit.designId };
+  const session = createStudioSaveSession(scope, { ...edit, schemaVersion: 'studio_authoring_view.v1', pricing: 'unpriced' }, null);
+  const changed = changeStudioSaveSession(session, change(session.edit, 'facade'));
+  expect(changed.history!.past).toHaveLength(1);
+  expect(changed.edit.spatial.houseAssembly).not.toEqual(session.edit.spatial.houseAssembly);
+  const repeated = changeStudioSaveSession(changed, change(changed.edit, 'facade'));
+  expect(repeated.history!.past).toHaveLength(1);
+  expect(repeated.edit).toEqual(changed.edit);
+  const undone = navigateStudioSaveHistory(changed, 'undo').session;
+  expect(undone.edit.spatial).toEqual(session.edit.spatial);
+  expect(undone.edit.site).toEqual(session.edit.site);
+  expect(undone.edit.objectOptions).toEqual(session.edit.objectOptions);
+  const redone = navigateStudioSaveHistory(undone, 'redo').session;
+  expect(redone.edit).toEqual(changed.edit);
+});
+it('keeps the whole original design when a house adjustment would invalidate a sibling', () => {
+  let edit = fixture();
+  const house = studioHouseScene(edit.site, edit.spatial)!.houses[0];
+  edit = updateStudioHouse(edit, { ...house, wallHeightMm: '5600', eaveHeightMm: '5600' });
+  edit = change(edit, 'facade');
+  edit = addWebsitePergola(edit, 'sibling');
+  const sibling = structuredClone(websiteComposition(edit).find(row => row.object.id === 'sibling')!.value!);
+  sibling.facadeClearanceMm = '2840';
+  edit = changeStudioProduct(edit, sibling);
+  edit = previewStudioAttachment(edit, { objectId: 'sibling', houseId: 'house', edge: 'rear', kind: 'wall', method: 'facade', facadeClearanceMm: '2840' });
+  const input = structuredClone(edit);
+  expect(() => change(edit, 'soffit')).toThrow(/Pergola 2.*2000/);
+  expect(edit).toEqual(input);
+});
+it('chooses the nearby actual rear edge of a later house, rather than the first house or front edge', () => {
+  let edit = fixture();
+  const first = studioHouseScene(edit.site, edit.spatial)!.houses[0];
+  edit = updateStudioHouse(edit, { ...first, position: { ...first.position, xMm: '50000' } });
+  const added = applyStudioHouseEdit(edit.spatial, { kind: 'add', id: 'nearby' });
+  if (!added.ok) throw Error(added.message);
+  edit.spatial = added.spatial;
+  const nearby = studioHouseScene(edit.site, edit.spatial)!.houses.find(house => house.id === 'nearby')!;
+  edit = updateStudioHouse(edit, { ...nearby, position: { xMm: '0', yMm: '-8000', rotationDeg: '0' } });
+  const target = studioConnectionSwitchTarget(edit, 'p', 'soffit');
+  expect(target.choice).toMatchObject({ houseId: 'nearby', edge: 'rear' });
+  const connected = previewStudioConnectionSwitch(edit, target).edit;
+  expect(websiteComposition(connected)[0].studioAttachment).toMatchObject({ houseId: 'nearby', edge: 'rear', method: 'soffit' });
+});
+it('keeps unsupported roof combinations and invalid raw clearance honest without changing the design', () => {
+  let edit = fixture();
+  const raw = structuredClone(websiteComposition(edit)[0].value!);
+  raw.facadeClearanceMm = '199';
+  edit = changeStudioProduct(edit, raw);
+  const before = structuredClone(edit);
+  expect(() => change(edit, 'facade')).toThrow('200 mm');
+  expect(edit).toEqual(before);
+  edit = change(edit, 'soffit');
+  const box = structuredClone(websiteComposition(edit)[0].value!);
+  box.selection.roof.family = 'box';
+  edit = changeStudioProduct(edit, box);
+  expect(() => change(edit, 'fascia')).toThrow('unavailable for Box');
+});
+it.each([undefined, '3.2'])('uses the actual independent roof datum on an explicit method change when saved eave height is absent (wall %s)', wall => {
+  let edit = fixture();
+  const form = edit.spatial.houseAssembly!.houseForms[0];
+  delete form.eaveHeightM;
+  if (wall === undefined) delete form.wallHeightM;
+  else form.wallHeightM = wall;
+  const before = structuredClone(edit);
+  websiteComposition(edit);
+  expect(edit).toEqual(before);
+  edit = change(edit, 'facade');
+  const row = websiteComposition(edit)[0];
+  expect(row.error).toBeNull();
+  expect(row.geometryOptions!.supportDatumMm).toBeGreaterThanOrEqual(2000);
+  expect(edit.spatial.houseAssembly!.houseForms[0].eaveHeightM).toBeTruthy();
+  expect(before.spatial.houseAssembly!.houseForms[0].eaveHeightM).toBeUndefined();
+});
+it('projects an overhanging fascia end onto the same finite wall without changing custom clearance or footprint, and restores it with one Undo', () => {
+  let edit = fixture();
+  const house = studioHouseScene(edit.site, edit.spatial)!.houses[0];
+  edit = updateStudioHouse(edit, { ...house, wallHeightMm: '4000', eaveHeightMm: '4000', roof: { ...house.roof, fasciaHeightMm: '335' } });
+  const value = structuredClone(websiteComposition(edit)[0].value!); value.facadeClearanceMm = '700';
+  edit = changeStudioProduct(edit, value);
+  edit = previewStudioAttachment(edit, { objectId: 'p', houseId: 'house', edge: 'front', kind: 'eave', method: 'fascia', alongEdgeMm: 6900 });
+  const before = websiteComposition(edit)[0];
+  const next = change(edit, 'facade');
+  const after = websiteComposition(next)[0];
+  expect(after.error).toBeNull();
+  expect(after.studioAttachment).toMatchObject({ houseId: 'house', edge: 'front', method: 'facade' });
+  expect(after.value!.facadeClearanceMm).toBe('700');
+  expect(Math.abs(after.position!.x - before.position!.x)).toBeCloseTo(450, 5);
+  expect(next.spatial.houseAssembly).toEqual(edit.spatial.houseAssembly);
+  const scope = { actorId: 'actor', projectId: 'project', estimateId: 'estimate', designId: edit.designId };
+  const session = createStudioSaveSession(scope, { ...edit, schemaVersion: 'studio_authoring_view.v1', pricing: 'unpriced' }, null);
+  const changed = changeStudioSaveSession(session, next);
+  expect(navigateStudioSaveHistory(changed, 'undo').session.edit).toEqual(session.edit);
+});

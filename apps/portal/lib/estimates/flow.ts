@@ -57,6 +57,71 @@ function isDraftStatus(value: unknown): boolean {
   return typeof value === 'string' && value.trim().toLowerCase() === 'draft';
 }
 
+/** Fresh caller-bound quote authority only. No project-flow/job-pack claim. */
+export async function loadEstimateQuoteEditability(
+  estimateIds: string[],
+  client: SupabaseClient,
+  signal?: AbortSignal,
+): Promise<Map<string, EstimateEditability>> {
+  signal?.throwIfAborted();
+  if (!estimateIds.length) return new Map();
+  const quoteVersionsQuery = client
+    .from('quote_versions')
+    .select('id, source_estimate_version_id, status, sent_at, created_at, version_number, quotes(quote_ref)')
+    .in('source_estimate_version_id', estimateIds);
+  const quoteVersionsRes = await (signal ? quoteVersionsQuery.abortSignal(signal) : quoteVersionsQuery);
+  signal?.throwIfAborted();
+  if (quoteVersionsRes.error) throw new Error(quoteVersionsRes.error.message ?? 'Failed to load related quotes');
+
+  const quoteVersions = (Array.isArray(quoteVersionsRes.data) ? quoteVersionsRes.data : []) as QuoteVersionRow[];
+  const quoteVersionIds = quoteVersions.map((row) => row.id).filter(Boolean);
+
+  let sendLogs: QuoteSendLogRow[] = [];
+  if (quoteVersionIds.length) {
+    const sendLogsQuery = client
+      .from('quote_send_logs')
+      .select('quote_version_id, status, sent_at, created_at')
+      .in('quote_version_id', quoteVersionIds);
+    const sendLogsRes = await (signal ? sendLogsQuery.abortSignal(signal) : sendLogsQuery);
+    signal?.throwIfAborted();
+    if (sendLogsRes.error) throw new Error(sendLogsRes.error.message ?? 'Failed to load quote send logs');
+    sendLogs = (Array.isArray(sendLogsRes.data) ? sendLogsRes.data : []) as QuoteSendLogRow[];
+  }
+
+  const versionsByEstimateId = new Map<string, QuoteVersionRow[]>();
+  for (const row of quoteVersions) {
+    const estimateId = typeof row.source_estimate_version_id === 'string' ? row.source_estimate_version_id : '';
+    if (!estimateId) continue;
+    const bucket = versionsByEstimateId.get(estimateId) ?? [];
+    bucket.push(row);
+    versionsByEstimateId.set(estimateId, bucket);
+  }
+
+  const logsByEstimateId = new Map<string, QuoteSendLogRow[]>();
+  for (const log of sendLogs) {
+    const quoteVersionId = typeof log.quote_version_id === 'string' ? log.quote_version_id : '';
+    if (!quoteVersionId) continue;
+    const version = quoteVersions.find((row) => row.id === quoteVersionId);
+    const estimateId = version?.source_estimate_version_id ?? '';
+    if (!estimateId) continue;
+    const bucket = logsByEstimateId.get(estimateId) ?? [];
+    bucket.push(log);
+    logsByEstimateId.set(estimateId, bucket);
+  }
+
+  const editabilityByEstimateId = new Map<string, EstimateEditability>();
+  for (const estimateId of estimateIds) {
+    editabilityByEstimateId.set(
+      estimateId,
+      computeEstimateEditability({
+        quoteVersions: versionsByEstimateId.get(estimateId) ?? [],
+        sendLogs: logsByEstimateId.get(estimateId) ?? [],
+      }),
+    );
+  }
+  return editabilityByEstimateId;
+}
+
 export async function loadProjectEstimateFlowMaps(
   projectUuid: string,
   estimateRows?: EstimateRowLite[],
@@ -84,24 +149,7 @@ export async function loadProjectEstimateFlowMaps(
     };
   }
 
-  const quoteVersionsRes = await client
-    .from('quote_versions')
-    .select('id, source_estimate_version_id, status, sent_at, created_at, version_number, quotes(quote_ref)')
-    .in('source_estimate_version_id', estimateIds);
-  if (quoteVersionsRes.error) throw new Error(quoteVersionsRes.error.message ?? 'Failed to load related quotes');
-
-  const quoteVersions = (Array.isArray(quoteVersionsRes.data) ? quoteVersionsRes.data : []) as QuoteVersionRow[];
-  const quoteVersionIds = quoteVersions.map((row) => row.id).filter(Boolean);
-
-  let sendLogs: QuoteSendLogRow[] = [];
-  if (quoteVersionIds.length) {
-    const sendLogsRes = await client
-      .from('quote_send_logs')
-      .select('quote_version_id, status, sent_at, created_at')
-      .in('quote_version_id', quoteVersionIds);
-    if (sendLogsRes.error) throw new Error(sendLogsRes.error.message ?? 'Failed to load quote send logs');
-    sendLogs = (Array.isArray(sendLogsRes.data) ? sendLogsRes.data : []) as QuoteSendLogRow[];
-  }
+  const editabilityByEstimateId = await loadEstimateQuoteEditability(estimateIds, client);
 
   let jobPackGenerations: JobPackGenerationRow[] = [];
   const jobPackGenerationsRes = await client
@@ -117,27 +165,6 @@ export async function loadProjectEstimateFlowMaps(
     jobPackGenerations = (Array.isArray(jobPackGenerationsRes.data) ? jobPackGenerationsRes.data : []) as JobPackGenerationRow[];
   }
 
-  const versionsByEstimateId = new Map<string, QuoteVersionRow[]>();
-  for (const row of quoteVersions) {
-    const estimateId = typeof row.source_estimate_version_id === 'string' ? row.source_estimate_version_id : '';
-    if (!estimateId) continue;
-    const bucket = versionsByEstimateId.get(estimateId) ?? [];
-    bucket.push(row);
-    versionsByEstimateId.set(estimateId, bucket);
-  }
-
-  const logsByEstimateId = new Map<string, QuoteSendLogRow[]>();
-  for (const log of sendLogs) {
-    const quoteVersionId = typeof log.quote_version_id === 'string' ? log.quote_version_id : '';
-    if (!quoteVersionId) continue;
-    const version = quoteVersions.find((row) => row.id === quoteVersionId);
-    const estimateId = version?.source_estimate_version_id ?? '';
-    if (!estimateId) continue;
-    const bucket = logsByEstimateId.get(estimateId) ?? [];
-    bucket.push(log);
-    logsByEstimateId.set(estimateId, bucket);
-  }
-
   const generatedByEstimateId = new Map<string, JobPackGenerationRow>();
   for (const row of jobPackGenerations) {
     const estimateId = typeof row.estimate_id === 'string' ? row.estimate_id : '';
@@ -146,17 +173,6 @@ export async function loadProjectEstimateFlowMaps(
     const currentAt = current?.created_at ?? '';
     const nextAt = row.created_at ?? '';
     if (!current || nextAt > currentAt) generatedByEstimateId.set(estimateId, row);
-  }
-
-  const editabilityByEstimateId = new Map<string, EstimateEditability>();
-  for (const estimateId of estimateIds) {
-    editabilityByEstimateId.set(
-      estimateId,
-      computeEstimateEditability({
-        quoteVersions: versionsByEstimateId.get(estimateId) ?? [],
-        sendLogs: logsByEstimateId.get(estimateId) ?? [],
-      }),
-    );
   }
 
   const activeDraftIds = new Set<string>();

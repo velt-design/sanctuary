@@ -1,4 +1,10 @@
-import type { EstimateDrawingFixedScaleValue } from './drawingSheet';
+const ESTIMATE_DRAWING_FIXED_SCALE_VALUES = [10, 20, 25, 50, 100] as const;
+
+export type EstimateDrawingFixedScaleValue = (typeof ESTIMATE_DRAWING_FIXED_SCALE_VALUES)[number];
+
+export type EstimateDrawingScale = { mode: 'fit' } | { mode: 'fixed'; ratio: EstimateDrawingFixedScaleValue };
+
+export const DEFAULT_ESTIMATE_DRAWING_SCALE: EstimateDrawingScale = { mode: 'fit' };
 
 const DRAWING_SHEET_VIEWBOX = {
   width: 120,

@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "codex/studio-designer-trial-20261030": false,
       "codex/approved-visit-date-estimates": false,
       "codex/quote-date-visit-estimates": false,
       "codex/historical-visitor-steve": false,

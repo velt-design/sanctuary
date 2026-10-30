@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getPortalSession } from '@/lib/auth';
+import { getPortalSession, getPortalAccessContext } from '@/lib/auth';
 import { applyRouteDiagnostics, type RouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { NextResponse } from 'next/server';
@@ -18,12 +18,14 @@ export async function requireStaffSession() {
   return session ?? null;
 }
 
-export async function requireStaffContext(diagnostics?: RouteDiagnostics | null) {
-  const session = await requireStaffSession();
+export async function requireStaffContext(diagnostics?: RouteDiagnostics | null,includeAccessKind=false,mode?: 'studio-opening') {
+  const access=includeAccessKind?await (mode?getPortalAccessContext(mode):getPortalAccessContext()):null;
+  const session=access?(access.accessState.kind==='authenticated'&&access.authenticatedUser?{user:access.authenticatedUser,role:access.accessState.session.role}:null):await requireStaffSession();
   if (!session) {
     return {
       ok: false as const,
       response: jsonError('Unauthorized', 401, diagnostics),
+      ...(access?{accessKind:access.accessState.kind==='authenticated'?'unauthenticated' as const:access.accessState.kind}:{}),
     };
   }
 

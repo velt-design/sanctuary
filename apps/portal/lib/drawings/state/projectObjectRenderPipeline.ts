@@ -68,6 +68,8 @@ export type ProjectPergolaRenderHealth = {
 };
 
 export type ProjectPergolaRenderArtifact = {
+  /** Canonical solve evidence for an explicit saved-design import; never a second solve. */
+  resolvedGeometry?: Extract<ReturnType<typeof import('@sp/geometry').solvePergolaGeometry>, { ok: true }> | null;
   artifactId: string;
   pergolaId: string | null;
   renderStatus: WorkbenchPergolaRenderStatus;

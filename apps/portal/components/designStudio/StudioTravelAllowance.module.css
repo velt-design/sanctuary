@@ -1,0 +1,100 @@
+.control {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.control label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.control label input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--ui-border, #d8dcd2);
+  border-radius: 3px;
+  padding: 10px;
+  background: var(--ui-surface, #fcfdf8);
+  color: inherit;
+  font: inherit;
+}
+.control input:focus-visible {
+  outline: 2px solid var(--ui-text, #283027);
+  outline-offset: 3px;
+}
+.actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ui-text-muted, #73786c);
+}
+.status,
+.labelLine,
+.formula {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.planActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.labelLine {
+  display: block;
+  line-height: 20px;
+  height: 20px;
+}
+.status {
+  line-height: 16px;
+  min-width: 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.control .actions button,
+.control p button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+}
+.control button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.plan {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.control small,
+.control p {
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 0;
+  color: var(--ui-text-muted, #73786c);
+}
+.attribution {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: #5e5e5e;
+  white-space: nowrap;
+}

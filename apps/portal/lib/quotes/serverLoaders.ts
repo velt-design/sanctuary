@@ -45,6 +45,7 @@ export function mapQuoteSourceEstimateRow(row: any): QuoteSourceEstimate {
             : undefined,
       pricing_policy: outputs.pricing_policy,
       customer_add_ons: outputs.customer_add_ons,
+      ...(Object.hasOwn(outputs, 'studio_authored') ? { studio_authored: outputs.studio_authored, drawing_object_first: outputs.drawing_object_first, studio_quote_handoff: outputs.studio_quote_handoff } : {}),
       standalone_infills: outputs.standalone_infills,
       additional_aluminium: outputs.additional_aluminium,
     },

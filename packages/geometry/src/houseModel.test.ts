@@ -88,10 +88,10 @@ describe("house model geometry builder", () => {
     });
     expect(model.eave.fasciaPolygons?.[0]?.[2]?.z).toBe(2220);
     expect(model.eave.soffitPolygons?.[0]).toEqual([
-      { x: -450, y: -2250, z: 2400 },
-      { x: 6450, y: -2250, z: 2400 },
-      { x: 6000, y: -1800, z: 2400 },
-      { x: 0, y: -1800, z: 2400 },
+      { x: -450, y: -2250, z: 2220 },
+      { x: 6450, y: -2250, z: 2220 },
+      { x: 6000, y: -1800, z: 2220 },
+      { x: 0, y: -1800, z: 2220 },
     ]);
     expect(
       model.solids?.surfaceSolids.filter((solid) => solid.kind === "wall"),
@@ -132,7 +132,7 @@ describe("house model geometry builder", () => {
       {
         x: -450,
         y: -2250,
-        z: 2400,
+        z: 2220,
       },
     );
     expectPoint3CloseTo(
@@ -141,7 +141,7 @@ describe("house model geometry builder", () => {
       {
         x: 6450,
         y: -2250,
-        z: 2400,
+        z: 2220,
       },
     );
     expectPoint3CloseTo(
@@ -288,5 +288,9 @@ describe("buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)", () => {
     // Pergola attachment fields are absent for freestanding -- the model
     // is a standalone house, not a pergola-attached configuration.
     expect(result?.attachmentTarget?.kind).toBe("none");
+    expect(result?.attachmentTarget?.sourceEdgeId).toBeNull();
+    expect(result?.eave.gutterLines).toHaveLength(4);
+    expect(result?.eave.fasciaPolygons).toHaveLength(4);
+    expect(result?.eave.soffitPolygons).toHaveLength(4);
   });
 });

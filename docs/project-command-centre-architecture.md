@@ -1,4 +1,6 @@
-# Project Operational Command Centre Architecture
+# Studio quote provenance
+
+## Project Operational Command Centre Architecture
 
 ## Selected Work desk presentation (27 October 2026 candidate)
 
@@ -1296,3 +1298,11 @@ or records are ready. The connected regression uses the installed Loadable
 factory with its actual boundary defaults and real Quotes/Invoices bodies, plus
 deferred code, guard, Back/Forward and project isolation. Optimized feedback and
 actual table readiness remain separate acceptance checks.
+
+
+The quote candidate contract carries optional pricing-source metadata so the
+existing canonical quote owner can retain immutable Studio snapshot provenance.
+Command Centre presentation and actions keep their current owner; this adds no
+parallel pricing calculation or send path. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

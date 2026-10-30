@@ -147,3 +147,16 @@ describe('loadWorkerConfig', () => {
     expect(() => loadWorkerConfig({ ...requiredEnvironment, [name]: value })).toThrow(WorkerConfigurationError);
   });
 });
+
+it('requires a default-off document worker to name only its document kind and explicit project scope',()=>{
+ const base={...requiredEnvironment,STUDIO_DOCUMENT_WORKER_ENABLED:'true',BACKGROUND_JOBS_WORKER_CLAIM_KINDS:'studio_design_booklet_v1',BACKGROUND_JOBS_WORKER_CLAIM_PROJECT_IDS:'10000000-0000-4000-8000-000000000002'};
+ expect(loadWorkerConfig(base).claimScope).toEqual({kinds:['studio_design_booklet_v1'],projectIds:['10000000-0000-4000-8000-000000000002'],manifestVersions:['legacy','studio-booklet-layout.v2','studio-booklet-layout.v3','studio-booklet-layout.v4','studio-booklet-renders.v1']});
+ expect(loadWorkerConfig(requiredEnvironment).claimScope).toBeUndefined();
+ for(const patch of [{STUDIO_DOCUMENT_WORKER_ENABLED:'false'},{BACKGROUND_JOBS_WORKER_CLAIM_KINDS:'quote_send'},{BACKGROUND_JOBS_WORKER_CLAIM_PROJECT_IDS:''},{XERO_INVOICE_WORKER_ENABLED:'true'},{BACKGROUND_JOBS_WORKER_MODE:'drain',BACKGROUND_JOBS_WORKER_ACTIVE_ENABLED:'true'}])expect(()=>loadWorkerConfig({...base,...patch})).toThrow();
+});
+
+it('requires both server-controlled document trial flags with no static project list or unrelated handlers',()=>{
+ const base={...requiredEnvironment,STUDIO_DOCUMENT_WORKER_ENABLED:'true',STUDIO_DOCUMENT_STAFF_TRIAL_ENABLED:'true',BACKGROUND_JOBS_WORKER_CLAIM_KINDS:'studio_design_booklet_v1'};
+ expect(loadWorkerConfig(base).claimScope).toMatchObject({staffTrial:true,projectIds:[],kinds:['studio_design_booklet_v1']});
+ for(const patch of [{STUDIO_DOCUMENT_WORKER_ENABLED:'false'},{STUDIO_DOCUMENT_STAFF_TRIAL_ENABLED:'false'},{STUDIO_DOCUMENT_STAFF_TRIAL_ENABLED:'yes'},{BACKGROUND_JOBS_WORKER_CLAIM_PROJECT_IDS:'10000000-0000-4000-8000-000000000002'},{BACKGROUND_JOBS_WORKER_CLAIM_KINDS:'quote_send'},{BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED:'true'},{XERO_INVOICE_WORKER_ENABLED:'true'}])expect(()=>loadWorkerConfig({...base,...patch})).toThrow();
+});

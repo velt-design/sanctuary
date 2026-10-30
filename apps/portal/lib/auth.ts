@@ -16,6 +16,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { DOCUMENT_CALLBACK_HEADER, NAVIGATION_CALLBACK_HEADER, regionalDocumentCallback, regionalNavigationCallback } from './regionalDocumentAccess';
 import { getDocumentRenderDiagnostics } from '@/lib/performance/documentRenderDiagnostics';
+import { resolveStudioPortalAccessState, type StudioPortalAccessLookup, type PortalAccessMode } from './studioPortalAccess.server';
 
 export type PortalSession = {
   user: User;
@@ -25,7 +26,7 @@ export type PortalSession = {
 // React cache is scoped to the current server render. It prevents nested layouts
 // and pages from repeating the same auth and portal-role lookup without creating
 // a process-wide cache that could cross users or requests.
-async function readPortalAccess(): Promise<{
+async function readPortalAccess(mode?: PortalAccessMode): Promise<{
   accessState: PortalAccessState;
   authenticatedUser: User | null;
 }> {
@@ -35,10 +36,11 @@ async function readPortalAccess(): Promise<{
     const supabase = await getSupabaseServerAuth();
     const lookup = supabase as unknown as PortalAccessLookup;
     let authenticatedUser: User | null = null;
-    const trackedLookup: PortalAccessLookup = {
+    const trackedLookup: StudioPortalAccessLookup = {
       auth: {
-        getUser: async () => {
-          const readUser = () => supabase.auth.getUser();
+        getSession: () => supabase.auth.getSession(),
+        getUser: async (jwt) => {
+          const readUser = () => jwt ? supabase.auth.getUser(jwt) : supabase.auth.getUser();
           const result = await (diagnostics ? diagnostics.measureTransport('rsc.identity', readUser) : readUser());
           authenticatedUser = result.data?.user ?? null;
           return result;
@@ -46,7 +48,7 @@ async function readPortalAccess(): Promise<{
       },
       from: lookup.from.bind(lookup),
     };
-    const accessState = await resolvePortalAccessState(trackedLookup, diagnostics?.accessObserver('rsc'));
+    const accessState = mode === 'studio-opening' ? await resolveStudioPortalAccessState(trackedLookup) : await resolvePortalAccessState(trackedLookup, diagnostics?.accessObserver('rsc'));
     diagnostics?.record('rsc.access', startedAt, accessState.kind);
     return { accessState, authenticatedUser };
   } catch (error) {
@@ -59,6 +61,11 @@ const getRequestPortalAccess = cache(readPortalAccess);
 
 export async function getPortalAccessState(): Promise<PortalAccessState> {
   return (await getRequestPortalAccess()).accessState;
+}
+
+/** Same request-owned fresh authority; Studio mode changes only its verified read path. */
+export async function getPortalAccessContext(mode?: PortalAccessMode) {
+  return mode ? getRequestPortalAccess(mode) : getRequestPortalAccess();
 }
 
 export async function getPortalSession(): Promise<PortalSession | null> {

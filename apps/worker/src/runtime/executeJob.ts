@@ -120,6 +120,11 @@ function createHandlerRpc(
       ['provider_accepted', 'uncertain', 'failed'].includes(nextState)) ||
     (previous?.state === 'provider_accepted' && nextState === 'finalised');
   return Object.freeze({
+    ...(input.claim.kind==='studio_design_booklet_v1'&&input.rpc.studioDocuments?{studioDocuments:{
+      read:async()=>{throwIfAborted(signal);return input.rpc.studioDocuments!.read(owned);},
+      stage:async(value:{pageIndex:number;contentBase64:string;sha256:string})=>{throwIfAborted(signal);return input.rpc.studioDocuments!.stage({...owned,...value});},
+      finish:async(value:{contentBase64:string;sha256:string})=>{throwIfAborted(signal);return input.rpc.studioDocuments!.finish({...owned,...value});},
+    }}:{}),
     progress: async ({ status, phase, safeProgress = {} }) => {
       throwIfAborted(signal);
       if (!backgroundJobTransitionAllowed(stateRef.status, status)) {
@@ -549,7 +554,11 @@ async function executeOwnedJob(
     if (input.claim.executionOwner === 'legacy') {
       throw new BackgroundJobHandlerError({ code: 'INVALID_EXECUTION_OWNER', disposition: 'needs_attention' });
     }
-    if (input.claim.maxAttempts !== definition.retry.maxAttempts) {
+    // This domain permits exactly one explicit manual attempt after its three
+    // automatic attempts. Other kinds and any larger budget remain strict.
+    const documentManualAttempt = input.claim.kind === 'studio_design_booklet_v1'
+      && definition.retry.maxAttempts === 3 && input.claim.maxAttempts === 4 && input.claim.attemptNumber === 4;
+    if (input.claim.maxAttempts !== definition.retry.maxAttempts && !documentManualAttempt) {
       throw new BackgroundJobHandlerError({ code: 'RETRY_POLICY_MISMATCH', disposition: 'needs_attention' });
     }
     if (runtimeContext.cancellationRequestedAt || input.claim.cancellationRequestedAt) {

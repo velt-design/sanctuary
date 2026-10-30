@@ -109,6 +109,18 @@ export async function listProjectEnquiryAttachments(
   return result.rows.map(mapAttachment);
 }
 
+/** Resolve an explicitly selected project file into immutable package bytes. No public URL is created. */
+export async function readProjectEnquiryAttachmentBytes(supabase:SupabaseClient,storage:SupabaseClient,projectId:string,attachmentId:string){
+ const uuid=await assertProjectAccess(supabase,projectId);
+ if(!UUID_PATTERN.test(attachmentId))throw new ProjectEnquiryAttachmentError('Attachment not found.',404,'attachment_not_found');
+ const result=await supabase.from('project_enquiry_attachments').select('id,project_id,storage_bucket,storage_path,original_filename,content_type,size_bytes').eq('id',attachmentId).eq('project_id',uuid).maybeSingle();
+ const row=result.data;
+ if(result.error||!row||row.project_id!==uuid||row.storage_bucket!==BUCKET||!['application/pdf','image/png','image/jpeg','image/webp'].includes(row.content_type)||row.size_bytes<1||row.size_bytes>4*1024*1024)throw new ProjectEnquiryAttachmentError('The selected project file is unavailable or larger than 4MB.',409,'attachment_unavailable');
+ const read=await storage.storage.from(BUCKET).download(row.storage_path);
+ if(read.error||!read.data||read.data.size!==row.size_bytes)throw new ProjectEnquiryAttachmentError('The selected project file could not be read.',503,'attachment_read_failed');
+ return{filename:row.original_filename,contentType:row.content_type,content:Buffer.from(await read.data.arrayBuffer())};
+}
+
 export async function createProjectEnquiryAttachmentSignedUrl(
   supabase: SupabaseClient,
   signingSupabase: SupabaseClient,

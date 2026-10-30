@@ -1,4 +1,6 @@
-# Sanctuary Background Worker
+# Studio staff-trial document worker
+
+## Sanctuary Background Worker
 
 Website enquiry email delivery is opt-in with
 `BACKGROUND_JOBS_ENQUIRY_EMAIL_ENABLED=true` and `RESEND_API_KEY`. The global
@@ -92,3 +94,42 @@ docker build -f apps/worker/Dockerfile -t sanctuary-background-worker .
 ```
 
 The final image contains the bundled worker artifact, runs as the non-root `node` user, and exposes port `8080`. A production host must provide durable process supervision, the two required Supabase secrets, an immutable build version, and HTTP liveness/readiness checks. Its termination window must exceed shutdown grace plus abort-settlement grace plus two RPC timeouts and the five-second safety margin (70 seconds with defaults), leaving time for cooperative handler settlement and final heartbeat/state writes. An abort-ignoring handler causes the worker to exit after the settlement grace; the supervisor's termination deadline remains a backstop, and recovery must still wait for lease expiry plus provider-idempotency policy. Deploy dark first and verify migrations, RPC reachability, worker heartbeats, queue metrics, and zero claims before any separately reviewed rollout change.
+## Studio drawing capability, local v3 integration
+
+The ordinary compiled document worker declares support for legacy, v2 and v3
+frozen inventories. Its existing explicit kind/project scope uses
+`background_jobs_claim_documents`, which filters unsupported layouts before
+queue mutation. No worker-ID convention or post-claim handler rejection is used
+as admission. Unscoped workers retain the original claim route; older scoped
+workers cannot consume v3 jobs. The worker remains dark unless its existing
+runtime configuration explicitly enables a scoped document run.
+
+V3's manifest may contain up to 193 sheets for 32 selected products. Pages remain
+serial durable checkpoints and the existing source/page/final artifact byte
+bounds remain. This is not a claim that a 193-sheet real job has been rasterised.
+The inventory migration's 193 total-page limit requires companion migration
+`20261029054127_studio_booklet_page_ordinals.sql` (staging version 20261029054603)
+for checkpoint indexes 0..192; per-job index validation remains unchanged.
+Optional v3 blind-cover facts retain absent-field historical page bytes. During
+this pre-release local cohort, stop older v3 workers and verify the new compiled
+artifact before admitting jobs: old v3 parsers accept the extra fact but their
+renderer ignores it. Existing SQL still prevents legacy/v2 workers from claiming
+v3 sources. This is not a new mixed-v3 protocol capability or release claim.
+The image-free quote is independent of these background drawing pages.
+
+
+The default explicit project-list mode remains unchanged. Production staff trial
+requires both `STUDIO_DOCUMENT_WORKER_ENABLED=true` and
+`STUDIO_DOCUMENT_STAFF_TRIAL_ENABLED=true`, exact
+`BACKGROUND_JOBS_WORKER_CLAIM_KINDS=studio_design_booklet_v1`, and an empty/unset
+`BACKGROUND_JOBS_WORKER_CLAIM_PROJECT_IDS`. Database `enabled` plus
+`project_scope=staff_trial` is independently required. The service-only trial
+claim selects at most 32 compatible eligible projects per poll and keeps its
+admission lock through the normal canonical claim. Empty means zero claims.
+Explicit manifest capabilities are checked before queue visibility changes.
+No enquiry/Xero handler may be enabled in this worker. Do not repurpose an
+existing finance worker. Docker's build copies the three renderer fonts and
+their notices into dist; measure actual host memory and heartbeat during the
+first representative generation. The complete Studio migration chain must
+commit atomically to preserve the old worker's eight-kind metrics projection.
+

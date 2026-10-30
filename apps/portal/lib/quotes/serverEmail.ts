@@ -1,4 +1,7 @@
 import 'server-only';
+import {createHash} from 'node:crypto';
+import {resolveQuotePackageAttachments} from './serverPackageAttachments';
+import { STUDIO_EMAIL_DISABLED_REASON, studioQuoteDeliveryBlocked } from './studioEmailPolicy.server';
 
 import { sendTransactionalEmail } from '@/lib/emails/sendTransactionalEmail';
 import {
@@ -11,6 +14,7 @@ import {
   markCommercialEmailProviderAccepted,
   prepareCommercialEmailIntent,
   prepareQuoteDeliveryEmailIntent,
+  readCommercialEmailIntent,
   type CommercialEmailIntent,
 } from '@/lib/commercial/emailIntent';
 import { generateAcceptToken } from '@/lib/quotes/acceptToken';
@@ -81,6 +85,9 @@ type QuoteEmailPayload = {
   bodyHtml?: string | null;
   attachmentNames?: string[];
   attachments?: QuoteEmailAttachment[];
+  /** Server-only immutable package references. Never accepted by generic send HTTP parsers. */
+  artifactIds?: string[];
+  studioPackage?: {actorUserId:string;revision:number;documentId:string|null;value:import('@/lib/designStudio/clientPackage').StudioPackageDraftValue};
 };
 
 type QuoteEmailMode = 'send' | 'resend';
@@ -141,7 +148,7 @@ function personalNoteFromPayload(payload: QuoteEmailPayload): string | null {
 
 function redactToken(value: string | null): string | null {
   if (typeof value !== 'string') return value;
-  return value.replace(/([?&]token=)[^&\\s\"'<>]+/gi, '$1[redacted]');
+  return value.replace(/([?&](?:amp;)?token(?:=|&#x3d;|&#61;))[^&\s"'<>]+/gi, '$1[redacted]');
 }
 
 function quoteSubject(detail: QuoteVersionDetail, explicit: string | undefined): string {
@@ -235,6 +242,7 @@ async function resolveExtraAttachments(params: {
   actor: string | null;
 }): Promise<Array<{ fileUuid: string; filename: string; contentType: string; content: Buffer }>> {
   const attachments = Array.isArray(params.payload.attachments) ? params.payload.attachments : [];
+  if(params.payload.artifactIds)return resolveQuotePackageAttachments({projectUuid:params.projectUuid,ids:params.payload.artifactIds,hasUploadedAttachments:attachments.length>0,maxCount:MAX_ATTACHMENT_COUNT,maxBytes:MAX_ATTACHMENTS_TOTAL_BYTES,isAllowed:isAllowedAttachment,allowedBookletFileId:params.payload.studioPackage?.value.includeBooklet?params.payload.artifactIds[0]:undefined});
   if (!attachments.length) return [];
 
   if (attachments.length > MAX_ATTACHMENT_COUNT) {
@@ -395,6 +403,7 @@ function parseFrozenQuoteEmail(intent: CommercialEmailIntent): FrozenQuoteEmail 
 
 async function loadPreparedAttachments(
   fileIds: string[],
+  hashes?: string[],
 ): Promise<Array<{ filename: string; content: Buffer; contentType: string }>> {
   if (!fileIds.length) return [];
   const result = await supabaseServiceRole
@@ -410,9 +419,10 @@ async function loadPreparedAttachments(
       row,
     ]),
   );
-  return fileIds.map((fileId) => {
+  return fileIds.map((fileId,index) => {
     const row: any = rows.get(fileId);
     if (!row) throw new Error('A prepared quote attachment is unavailable');
+    if(hashes&&createHash('sha256').update(Buffer.from(String(row.content_base64??''),'base64')).digest('hex')!==hashes[index])throw Error('A prepared quote attachment changed. Delivery was not attempted.');
     return {
       filename: String(row.filename ?? 'attachment.bin'),
       contentType: String(row.content_type ?? 'application/octet-stream'),
@@ -468,6 +478,7 @@ async function prepareQuoteEmailIntent(params: {
     payload: params.payload,
     actor: params.actor,
   });
+  if(params.payload.studioPackage&&extraAttachments.some(file=>file.fileUuid===pdf.fileUuid))throw Error('The financial quote is already included. Remove its duplicate attachment.');
   const attachmentFileIds = [
     pdf.fileUuid,
     ...extraAttachments.map((attachment) => attachment.fileUuid),
@@ -484,8 +495,9 @@ async function prepareQuoteEmailIntent(params: {
   });
   const rendered = await renderQuoteReadyContent({
     base,
-    payload: params.payload,
+    payload: params.payload.studioPackage?{...params.payload,attachmentNames:extraAttachments.map(file=>file.filename)}:params.payload,
   });
+  if(params.payload.studioPackage){rendered.html=rendered.html.replace(/<\/?(?:strong|b)\b[^>]*>/gi,'').replace(/font-weight\s*:\s*(?:bold|[6-9]00)/gi,'font-weight:400').replace(/\u2014/g,',');rendered.text=rendered.text?.replace(/\u2014/g,',')??null;}
 
   const preparedInput = {
     intentKey: params.intentKey,
@@ -506,6 +518,7 @@ async function prepareQuoteEmailIntent(params: {
       html: rendered.html,
       text: rendered.text,
       attachmentFileIds,
+      ...(params.payload.studioPackage?{studioPackage:params.payload.studioPackage,attachmentHashes:[createHash('sha256').update(pdf.content).digest('hex'),...extraAttachments.map(a=>createHash('sha256').update(a.content).digest('hex'))]}:{}),
       actor: params.actor,
     },
   } as const;
@@ -613,6 +626,8 @@ async function executeQuoteEmail(
     throw new Error('Prepared delivery does not belong to this quote action');
   }
 
+  if (studioQuoteDeliveryBlocked(detail, intent)) throw new Error(STUDIO_EMAIL_DISABLED_REASON);
+
   if (!intent) {
     if (
       mode === 'resend' &&
@@ -684,6 +699,7 @@ async function executeQuoteEmail(
     try {
       const attachments = await loadPreparedAttachments(
         frozen.attachmentFileIds,
+        Array.isArray(intent.protectedPayload.attachmentHashes)?intent.protectedPayload.attachmentHashes as string[]:undefined,
       );
       const response = await sendTransactionalEmail({
         to: frozen.to,
@@ -818,6 +834,19 @@ async function executeQuoteEmail(
   return updated;
 }
 
+/** Canonical prepare without dispatch. The SQL owner atomically fences package revision and readiness. */
+export async function prepareStudioPackageEmail(quoteVersionId:string,payload:QuoteEmailPayload,actor:string|null){
+ if(!payload.studioPackage||!payload.intentId||! /^[A-Za-z0-9._:/-]{8,128}$/.test(payload.intentId))throw Error('Invalid package preparation');
+ const quoteVersionUuid=uuidFromAppId(quoteVersionId,'qv'),intentKey=`quote-send:${quoteVersionUuid}:${payload.intentId}`;
+ let intent=await findCommercialEmailIntentByKey(intentKey);
+ if(!intent){const detail=await loadQuoteForMode(quoteVersionId,'send');intent=await prepareQuoteEmailIntent({detail,mode:'send',payload,actor,projectUuid:uuidFromAppId(detail.projectId,'proj'),quoteVersionUuid,intentKey});}
+ if(intent.subjectId!==quoteVersionUuid||intent.kind!=='quote_send'||intent.status==='cancelled')throw Error('This preparation is unavailable');
+ return studioPackageEmailSummary(intent);
+}
+function studioPackageEmailSummary(intent:CommercialEmailIntent){const frozen=parseFrozenQuoteEmail(intent);return{id:intent.id,subject:frozen.subject,text:redactToken(frozen.text),html:redactToken(frozen.html),to:frozen.to,attachmentNames:[] as string[],payloadHash:intent.payloadHash,status:intent.status};}
+export async function readStudioPackageEmail(quoteVersionId:string,intentId:string){const intent=await readCommercialEmailIntent(intentId);if(intent.kind!=='quote_send'||intent.subjectId!==uuidFromAppId(quoteVersionId,'qv')||!intent.protectedPayload.studioPackage)throw Error('Wrong package preparation');return{...studioPackageEmailSummary(intent),attachmentNames:await loadPreparedAttachmentNames(parseFrozenQuoteEmail(intent).attachmentFileIds)};}
+export async function sendPreparedStudioPackageEmail(quoteVersionId:string,intentId:string,actor:string|null){const intent=await readCommercialEmailIntent(intentId);if(intent.kind!=='quote_send'||intent.subjectId!==uuidFromAppId(quoteVersionId,'qv')||!intent.protectedPayload.studioPackage||intent.status==='cancelled')throw Error('Wrong package preparation');const frozen=parseFrozenQuoteEmail(intent),detail=await getQuoteVersionDetail(quoteVersionId);if(!detail||detail.commercialRevision!==frozen.commercialRevision)throw Error('Quote changed after this package was prepared. Review the current version before sending.');return executeQuoteEmail(quoteVersionId,'send',{intentId:`studio-package:${intent.id}`,expectedCommercialRevision:frozen.commercialRevision,to:frozen.to},actor,intent);}
+
 export async function sendQuote(
   quoteVersionId: string,
   payload: QuoteEmailPayload,
@@ -847,6 +876,7 @@ export async function getPreparedQuoteDelivery(
   if (!intent || intent.status === 'finalised' || intent.status === 'cancelled') return null;
   const frozen = parseFrozenQuoteEmail(intent);
   const expiresAtMs = Date.parse(intent.providerIdempotencyExpiresAt);
+  const deliveryBlocked = studioQuoteDeliveryBlocked(await getQuoteVersionDetail(quoteVersionId), intent);
   return {
     mode,
     status: intent.status,
@@ -861,7 +891,9 @@ export async function getPreparedQuoteDelivery(
     preparedAt: intent.createdAt,
     attemptCount: intent.attemptCount,
     lastErrorCode: intent.lastErrorCode,
+    ...(deliveryBlocked ? { unavailableReason: STUDIO_EMAIL_DISABLED_REASON } : {}),
     canRetry:
+      !deliveryBlocked &&
       intent.status !== 'needs_attention' &&
       Number.isFinite(expiresAtMs) &&
       expiresAtMs > Date.now(),

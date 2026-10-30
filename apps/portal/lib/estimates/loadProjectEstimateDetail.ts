@@ -7,22 +7,35 @@ import type { EstimateDetail } from '@/lib/estimates/types';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 
-async function resolveEstimateVersionLabel(
+export async function resolveEstimateVersionLabels(
   supabase: SupabaseClient,
   projectUuid: string,
-  estimateUuid: string,
-): Promise<string> {
-  const res = await supabase
+  signal?: AbortSignal,
+): Promise<Map<string, string>> {
+  signal?.throwIfAborted();
+  const query = supabase
     .from('estimates')
-    .select('id, created_at, outputs')
+    // Keep the original outputs.version numeric JSON value, without transferring
+    // every calculator snapshot or falling back to the physical version column.
+    .select('id, created_at, version:outputs->version')
     .eq('project_id', projectUuid)
     .order('created_at', { ascending: false });
+  const res = await (signal ? query.abortSignal(signal) : query);
+  signal?.throwIfAborted();
 
   if (res.error) throw res.error;
 
   const rows = Array.isArray(res.data) ? res.data : [];
-  const labels = buildVersionLabelMap(rows);
-  return labels.get(estimateUuid) ?? 'V-';
+  return buildVersionLabelMap(rows);
+}
+
+export async function resolveEstimateVersionLabel(
+  supabase: SupabaseClient,
+  projectUuid: string,
+  estimateUuid: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  return (await resolveEstimateVersionLabels(supabase, projectUuid, signal)).get(estimateUuid) ?? 'V-';
 }
 
 export async function loadProjectEstimateDetail(projectId: string, estimateId: string): Promise<EstimateDetail | null> {

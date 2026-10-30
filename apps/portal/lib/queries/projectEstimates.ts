@@ -2,6 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
 import { portalEditorPersistMeta } from '@/lib/react-query/persistence';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
+import { hasEstimateDesignKind } from '@/lib/estimates/designNavigation';
 import { qk } from './keys';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
@@ -9,7 +10,11 @@ const TEN_MINUTES = 1000 * 60 * 10;
 
 async function fetchEstimateMetasByProject(projectId: string): Promise<EstimateMeta[]> {
   const res = await apiJson<{ estimates: EstimateMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
-  return Array.isArray(res.estimates) ? res.estimates : [];
+  const estimates = Array.isArray(res.estimates) ? res.estimates : [];
+  if (estimates.some(estimate => estimate.projectId !== projectId || !hasEstimateDesignKind(estimate))) {
+    throw new Error('Saved design ownership could not be confirmed. Refresh the project designs to try again.');
+  }
+  return estimates;
 }
 
 async function fetchEstimateDetail(estimateId: string): Promise<EstimateDetail> {

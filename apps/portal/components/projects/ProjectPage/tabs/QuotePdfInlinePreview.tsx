@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styles from './QuotesTab.module.css';
+import compactStyles from './QuotePdfCompact.module.css';
 import type { ProjectPdfStream } from './overview/ProjectPdfStream';
 
 type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -9,7 +10,9 @@ type PdfDocumentProxy = import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentPro
 type PdfLoadingTask = ReturnType<PdfJsModule['getDocument']>;
 type PdfRenderTask = import('pdfjs-dist/legacy/build/pdf.mjs').RenderTask;
 
-const PDF_WORKER_SRC = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+const PDF_MODULE_SRC = new URL('pdfjs-dist/legacy/build/pdf.mjs', import.meta.url).toString();
+const PDF_WORKER_SRC = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+const LEGACY_VIEW_WORKER_SRC = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
 type PromiseWithResolversCtor = PromiseConstructor & {
   withResolvers?: unknown;
@@ -55,9 +58,17 @@ async function destroyLoadingTask(task: PdfLoadingTask | null): Promise<void> {
 
 export async function preloadQuotePdfPreview() { await import('pdfjs-dist/legacy/build/pdf.mjs'); }
 
-export default function QuotePdfInlinePreview({ data = null, source, pending = !data && !source, readError, onRetry }: { data?: Uint8Array | null; source?: ProjectPdfStream; pending?: boolean; readError?: string; onRetry?: () => void }) {
+export function compactPdfFitScale(bounds: Pick<HTMLElement, 'clientWidth' | 'clientHeight'>, pageWidth: number, pageHeight: number): number {
+  return Math.min((bounds.clientWidth - 32) / pageWidth, (bounds.clientHeight - 32) / pageHeight);
+}
+export function compactPdfViewportHeight(bounds: Pick<HTMLElement, 'clientWidth' | 'clientHeight'>, pageWidth: number, pageHeight: number): number {
+  return Math.min(bounds.clientHeight, Math.floor(pageHeight * compactPdfFitScale(bounds, pageWidth, pageHeight)) + 32);
+}
+
+export default function QuotePdfInlinePreview({ data = null, source, pending = !data && !source, readError, onRetry, compact = false }: { data?: Uint8Array | null; source?: ProjectPdfStream; pending?: boolean; readError?: string; onRetry?: () => void; compact?: boolean }) {
   const sourceIdentity = source ?? data;
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const pdfRef = useRef<PdfDocumentProxy | null>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const [pageCount, setPageCount] = useState(0);
@@ -65,24 +76,32 @@ export default function QuotePdfInlinePreview({ data = null, source, pending = !
   const [containerWidth, setContainerWidth] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState<{ identity: typeof sourceIdentity; index: number; width: number; height: number } | null>(null);
+  const [activePage,setActivePage]=useState(0),[zoom,setZoom]=useState(1),[expanded,setExpanded]=useState(false),[availableHeight,setAvailableHeight]=useState(500);
+  useEffect(()=>{if(!expanded)return;const key=(event:KeyboardEvent)=>{if(event.key==='Escape')setExpanded(false);if(event.key==='Tab'){const controls=Array.from(containerRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')??[]),first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[expanded]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const updateWidth = () => {
-      const computed = window.getComputedStyle(container);
+      const measured = compact ? viewportRef.current : container;
+      if (!measured) return;
+      const computed = window.getComputedStyle(measured);
       const paddingX = Number.parseFloat(computed.paddingLeft) + Number.parseFloat(computed.paddingRight);
-      const nextWidth = Math.max(0, Math.floor(container.clientWidth - paddingX));
+      const nextWidth = Math.max(0, Math.floor(measured.clientWidth - paddingX));
       setContainerWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+      if(compact)setAvailableHeight(Math.max(240,window.innerHeight-container.getBoundingClientRect().top-92));
     };
 
     updateWidth();
 
     const observer = new ResizeObserver(() => updateWidth());
     observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
+    if(compact&&viewportRef.current)observer.observe(viewportRef.current);
+    window.addEventListener('resize',updateWidth);
+    return () => {observer.disconnect();window.removeEventListener('resize',updateWidth);};
+  }, [compact,expanded]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +110,7 @@ export default function QuotePdfInlinePreview({ data = null, source, pending = !
 
     setDocumentSource(source ?? data);
     setPageCount(0);
+    setPageSize(null);setActivePage(0);setZoom(1);
     setRenderError(null);
     const byteLength = source?.length ?? data?.byteLength ?? 0;
     setStatusMessage(byteLength ? 'Loading PDF preview...' : null);
@@ -109,11 +129,16 @@ export default function QuotePdfInlinePreview({ data = null, source, pending = !
       }
 
       try {
-        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        // Preserve main's progressive-stream loader. Studio retains the qualified
+        // prebuilt module path that avoids the older Next export-wrapper clash.
+        const pdfjs = compact
+          ? await import(/* webpackIgnore: true */ /* @vite-ignore */ PDF_MODULE_SRC) as PdfJsModule
+          : await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const workerSrc = compact ? PDF_WORKER_SRC : LEGACY_VIEW_WORKER_SRC;
 
         const loadPdf = async (mode: 'auto' | 'fake'): Promise<PdfDocumentProxy> => {
-          if (pdfjs.GlobalWorkerOptions.workerSrc !== PDF_WORKER_SRC) {
-            pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+          if (pdfjs.GlobalWorkerOptions.workerSrc !== workerSrc) {
+            pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
           }
           if (mode === 'fake') {
             await pdfjs.PDFWorker._setupFakeWorkerGlobal;
@@ -188,7 +213,7 @@ export default function QuotePdfInlinePreview({ data = null, source, pending = !
         void activePdf.destroy();
       }
     };
-  }, [data, source]);
+  }, [data, source, compact]);
 
   useEffect(() => {
     const pdf = pdfRef.current;
@@ -204,6 +229,7 @@ export default function QuotePdfInlinePreview({ data = null, source, pending = !
         const outputScale = window.devicePixelRatio || 1;
 
         for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+          if(compact&&pageIndex!==activePage)continue;
           const page = await pdf.getPage(pageIndex + 1);
           if (cancelled) return;
 
@@ -216,13 +242,14 @@ export default function QuotePdfInlinePreview({ data = null, source, pending = !
           if (!context) throw new Error('Canvas unavailable');
 
           const baseViewport = page.getViewport({ scale: 1 });
-          const scale = containerWidth / baseViewport.width;
+          if(compact)setPageSize(previous=>previous?.identity===sourceIdentity&&previous.index===pageIndex&&previous.width===baseViewport.width&&previous.height===baseViewport.height?previous:{identity:sourceIdentity,index:pageIndex,width:baseViewport.width,height:baseViewport.height});
+          const scale = compact?compactPdfFitScale({clientWidth:containerWidth,clientHeight:availableHeight},baseViewport.width,baseViewport.height)*zoom:containerWidth/baseViewport.width;
           const viewport = page.getViewport({ scale });
 
           canvas.width = Math.ceil(viewport.width * outputScale);
           canvas.height = Math.ceil(viewport.height * outputScale);
-          canvas.style.width = `${Math.ceil(viewport.width)}px`;
-          canvas.style.height = `${Math.ceil(viewport.height)}px`;
+          canvas.style.width = `${compact?Math.floor(viewport.width):Math.ceil(viewport.width)}px`;
+          canvas.style.height = `${compact?Math.floor(viewport.height):Math.ceil(viewport.height)}px`;
 
           const renderTask = page.render({
             canvas,
@@ -263,26 +290,33 @@ export default function QuotePdfInlinePreview({ data = null, source, pending = !
         }
       }
     };
-  }, [containerWidth, pageCount, data, source]);
+  }, [containerWidth, pageCount, data, source, sourceIdentity,compact,activePage,zoom,availableHeight]);
 
   const current = documentSource === sourceIdentity;
   const visibleError = readError ?? (current ? renderError : null);
   const status = pending ? "Reading PDF…" : current ? statusMessage : "Loading PDF preview…";
-
-  return (
-    <div ref={containerRef} className={styles.quotePreviewDocument} aria-busy={pending || Boolean(!visibleError && status)}>
+  const compactHeight=pageSize?.identity===sourceIdentity&&pageSize.index===activePage&&containerWidth>32
+    ?compactPdfViewportHeight({clientWidth:containerWidth,clientHeight:availableHeight},pageSize.width,pageSize.height)
+    :Math.min(availableHeight,500);
+  const content=<>
       {visibleError ? <p className={styles.quotePreviewRenderState}>{visibleError} {onRetry ? <button type="button" onClick={onRetry}>Retry PDF</button> : null}</p> : null}
       {!visibleError && status ? <p role="status" className={styles.quotePreviewRenderState}>{status}</p> : null}
       {Array.from({ length: current && sourceIdentity && !readError ? pageCount : 0 }, (_, pageIndex) => (
-        <div key={pageIndex} className={styles.quotePreviewPage}>
+        (!compact||pageIndex===activePage)&&<div key={pageIndex} className={compact?compactStyles.page:styles.quotePreviewPage}>
           <canvas
             ref={(node) => {
               canvasRefs.current[pageIndex] = node;
             }}
-            className={styles.quotePreviewCanvas}
+            className={compact?compactStyles.canvas:styles.quotePreviewCanvas}
           />
         </div>
       ))}
+  </>;
+
+  return (
+    <div ref={containerRef} className={compact?`${compactStyles.root} ${expanded?compactStyles.expanded:''}`:styles.quotePreviewDocument} aria-busy={pending || Boolean(!visibleError && status)} role={expanded?'dialog':undefined} aria-modal={expanded||undefined} aria-label={expanded?'Enlarged document':undefined}>
+      {compact&&<div className={compactStyles.tools} aria-label="Document controls"><button aria-label="Previous page" disabled={activePage===0} onClick={()=>{setActivePage(n=>n-1);setZoom(1);}}>‹</button><span aria-live="polite">{current&&pageCount?`${activePage+1} / ${pageCount}`:'Opening…'}</span><button aria-label="Next page" disabled={!current||!pageCount||activePage>=pageCount-1} onClick={()=>{setActivePage(n=>n+1);setZoom(1);}}>›</button><button onClick={()=>setZoom(1)} aria-pressed={zoom===1}>Fit page</button><button aria-label="Zoom out" disabled={zoom<=1} onClick={()=>setZoom(n=>Math.max(1,n-.25))}>−</button><button aria-label="Zoom in" disabled={zoom>=3} onClick={()=>setZoom(n=>Math.min(3,n+.25))}>+</button><button onClick={()=>setExpanded(n=>!n)}>{expanded?'Close enlarged':'Enlarge'}</button></div>}
+      {compact?<div ref={viewportRef} className={compactStyles.viewport} style={{height:compactHeight}}>{content}</div>:content}
     </div>
   );
 }

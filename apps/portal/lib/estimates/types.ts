@@ -21,6 +21,8 @@ export type EstimateFlowState = {
 export type EstimateMeta = {
   id: string;
   projectId: string;
+  /** Navigation ownership, not editability or a claim that the saved design is valid. */
+  designKind?: 'calculator' | 'studio';
   commercialScopeId?: string | null;
   commercialScopeKind?: 'base' | 'add_on';
   internalName?: string | null;
@@ -43,6 +45,8 @@ export type EstimateEditability = {
 };
 
 export type EstimateDetail = EstimateMeta & {
+  /** Concurrency metadata only when the authoritative row supplied a valid timestamp. */
+  updatedAt?: string;
   calculatorSnapshot: Record<string, unknown> | null;
   internalNotes?: string | null;
   editability: EstimateEditability;

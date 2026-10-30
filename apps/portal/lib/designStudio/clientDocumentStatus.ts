@@ -1,0 +1,1 @@
+export type StudioClientDocumentStatus={snapshotId:string;documentId?:string;rendererVersion:string;completedPages:number;totalPages:number;state:'queued'|'running'|'failed'|'ready'|'unavailable';percent:number;canRetry:boolean};

@@ -2,6 +2,8 @@ import { act, type ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import ProjectCalculatorTab from './ProjectCalculatorTab';
+import {CommercialProjectNotice,ProjectCommercialProvider} from '../ProjectCommercialContext';
+import type {ProjectWorkProjection} from '@/lib/projects/workItems/types';
 import { __resetLocalFirstStoreForTests, __setLocalFirstStorageAdapterForTests, ensureLocalFirstStoreReady, registerLocalFirstIdAlias, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 import { buildEstimateEntityKey } from '@/lib/localFirst/portalEntities';
 
@@ -72,6 +74,7 @@ vi.mock('@/app/staff/calculator/CalculatorGridClient', () => ({
 const activeDraft = {
   id: 'est_draft',
   projectId: 'proj_1',
+  designKind: 'calculator',
   createdAt: '2026-07-20T00:00:00Z',
   status: 'draft',
   summary: {},
@@ -400,12 +403,15 @@ describe('ProjectCalculatorTab', () => {
   });
 
   it('rejects a retired project editor while the current project waits for its own code', async () => {
+    let currentProject='proj_1';
+    useQueryMock.mockImplementation(options=>({data:options.queryKey?.[0]==='quote-links'?[]:[{...activeDraft,projectId:currentProject},{...historical,projectId:currentProject}],isPending:false,isError:false}));
     let releaseA!: (value: { default: ComponentType<any> }) => void, releaseB!: (value: { default: ComponentType<any> }) => void;
     const heldA = new Promise<{ default: ComponentType<any> }>(resolve => { releaseA = resolve; });
     const heldB = new Promise<{ default: ComponentType<any> }>(resolve => { releaseB = resolve; });
     editorCode.load = vi.fn().mockReturnValueOnce(heldA).mockReturnValueOnce(heldB);
     search = 'tab=estimates&newDesign=1';
     const view = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    currentProject='proj_2';
     view.rerender(<ProjectCalculatorTab host="host" projectId="proj_2" />);
     expect(editorCode.calls).toHaveBeenCalledTimes(2);
     await act(async () => { releaseA(await import('@/app/staff/calculator/CalculatorGridClient')); });
@@ -442,4 +448,81 @@ describe('ProjectCalculatorTab', () => {
     expect(editorCode.calls).toHaveBeenCalledTimes(3);
   });
 
+
+
+  it.each(['button', 'row', 'Enter', ' '] as const)('opens Studio review from the %s action without assuming draft editability', (action) => {
+    const studio = { ...activeDraft, designKind: 'studio', hasSentQuote: true };
+    useQueryMock.mockImplementation(options => ({ data: options.queryKey?.[0] === 'quote-links' ? [] : [studio, historical], isPending: false, isError: false }));
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    const row = rendered.container.querySelector<HTMLElement>('[data-estimate-id="est_draft"]')!;
+    expect(row.getAttribute('aria-label')).toContain('Open in Studio');
+    act(() => {
+      if (action === 'button') Array.from(row.querySelectorAll('button')).find(button => button.textContent === 'Open in Studio')!.click();
+      else if (action === 'row') row.click();
+      else row.dispatchEvent(new KeyboardEvent('keydown', { key: action, bubbles: true }));
+    });
+    expect(push).toHaveBeenLastCalledWith('/staff/design-studio/proj_1/est_draft');
+    expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it.each([
+    ['estimateId=est_history', '/staff/design-studio/proj_1/est_history'],
+    ['fromEstimateId=est_history', '/staff/design-studio/proj_1/est_history/edit?intent=revision'],
+  ])('recovers saved and quote-source bookmarks through Studio authority: %s', (params, href) => {
+    search = `tab=estimates&${params}`;
+    useQueryMock.mockReturnValue({ data: [activeDraft, { ...historical, designKind: 'studio' }], isPending: false, isError: false });
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    expect(replace).toHaveBeenCalledWith(href);
+    expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-calculator-locked-source]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it('keeps Studio open navigation available on a closed project while duplicate requires current acknowledgement', () => {
+    useQueryMock.mockImplementation(options => ({ data: options.queryKey?.[0] === 'quote-links' ? [] : [{ ...historical, designKind: 'studio' }], isPending: false, isError: false }));
+    const rendered = renderIntoDocument(<ProjectCommercialProvider projectId="proj_1" ready work={{effectiveState:'CLOSED',stateRowVersion:1} as ProjectWorkProjection}><CommercialProjectNotice projectId="proj_1" view="estimates"/><ProjectCalculatorTab host="host" projectId="proj_1" /></ProjectCommercialProvider>);
+    const actions=()=>act(()=>rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Actions for Estimate V1"]')!.click());
+    actions();
+    const duplicate=()=>Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(button=>button.textContent==='Duplicate in Studio')!;
+    expect(duplicate().disabled).toBe(true);
+    act(()=>duplicate().click());expect(push).not.toHaveBeenCalled();
+    act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+    const open=[...rendered.container.querySelectorAll('button')].find(b=>b.textContent==='Open in Studio')!;
+    expect(open.disabled).toBe(false);act(()=>open.click());
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');push.mockClear();
+    act(()=>[...rendered.container.querySelectorAll('button')].find(b=>b.textContent==='Review commercial actions')!.click());
+    actions();expect(duplicate().disabled).toBe(false);
+    act(()=>duplicate().click());expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit?intent=duplicate');
+    rendered.unmount();
+  });
+
+  it('sends Studio duplicate to the existing explicit new-revision confirmation', () => {
+    useQueryMock.mockImplementation(options => ({ data: options.queryKey?.[0] === 'quote-links' ? [] : [{ ...historical, designKind: 'studio' }], isPending: false, isError: false }));
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    act(() => rendered.container.querySelector<HTMLButtonElement>('button[aria-label="Actions for Estimate V1"]')!.click());
+    act(() => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(button => button.textContent === 'Duplicate in Studio')!.click());
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit?intent=duplicate');
+    rendered.unmount();
+  });
+
+  it('keeps a cached Studio bookmark on the stationary list until current project admission is ready',()=>{
+    search='tab=estimates&estimateId=est_history';
+    useQueryMock.mockImplementation(options=>({data:options.queryKey?.[0]==='quote-links'?[]:[{...historical,designKind:'studio'}],isPending:false,isError:false}));
+    const rendered=renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" projectReady={false}/>);
+    expect(replace).not.toHaveBeenCalled();expect(rendered.container.querySelector('[data-estimates-view="list"]')).not.toBeNull();expect(editorCode.calls).not.toHaveBeenCalled();
+    rendered.rerender(<ProjectCalculatorTab host="host" projectId="proj_1" projectReady/>);
+    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');expect(editorCode.calls).not.toHaveBeenCalled();rendered.unmount();
+  });
+
+  it('opens a historical Studio version from the calculator selector without converting the source', async () => {
+    search = 'tab=estimates&newDesign=1';
+    useQueryMock.mockReturnValue({ data: [activeDraft, { ...historical, designKind: 'studio' }], isPending: false, isError: false });
+    const rendered = renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" />);
+    await settleEditor();
+    const select = rendered.container.querySelector<HTMLSelectElement>('[aria-label="Design version"]')!;
+    act(() => { select.value = 'history:est_history'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');
+    rendered.unmount();
+  });
 });

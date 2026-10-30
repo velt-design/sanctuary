@@ -17,7 +17,6 @@ import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildEstimateEntityKey,
   buildEstimatePayloadFromDetail,
-  buildQuoteHandoffPreviewFromEstimateDetail,
   buildNextEstimateVersionLabel,
   buildOptimisticEstimateDetail,
   createLocalEstimateId,
@@ -26,6 +25,7 @@ import {
   type PortalEstimateUpdateMutationPayload,
   upsertEstimateDetailCache,
 } from '@/lib/localFirst/portalEntities';
+import { buildQuoteHandoffPreviewFromEstimateDetail } from '@/lib/localFirst/quotePreparation';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import {
   clearLocalFirstWorkingCopy,

@@ -1,4 +1,6 @@
-# Local-First Sync
+# Studio authored commands and package persistence
+
+## Local-First Sync
 
 The portal uses local-first primitives for heavy staff editing flows where routine edits should feel instant while durable business state remains server-authoritative.
 
@@ -135,3 +137,14 @@ The nullable working-copy and alias hooks defer storage hydration as well as
 entity lookup when their identity key is null. Calculator save-outcome tracking
 uses a null key until a genuine outcome exists. Ordinary non-null keys retain
 the authenticated owner binding and existing persistence behavior.
+
+
+Studio retains actor/project/design-owned pending authored commands and explicit
+revision conflicts. Package text/selections use a separate server CAS draft;
+polling never rebases unsaved fields over another window's newer revision. Retry
+and internal navigation drain pending saves or preserve local conflict recovery.
+Late async file imports merge into the current lifetime's state without restoring
+stale text/selections or loose-attaching an already selected render. Prepared
+packages first require exact safe cancellation before editing. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

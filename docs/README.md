@@ -26,6 +26,10 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 
 ## Canonical Reference Docs
 
+Design Studio staff authoring, immutable quotes, separate design booklets,
+persisted client packages and default-off trial operation:
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+
 Marketing Performance implementation, definitions, spend proposal and review evidence:
 `marketing-performance.md` (Jordan-only report live; four-view visual Business Overview / Marketing & Sales hub approved for release; see its current release status).
 

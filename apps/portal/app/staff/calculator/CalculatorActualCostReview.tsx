@@ -63,16 +63,27 @@ function signed(value: number | null, currency: boolean): string {
 }
 
 export default function CalculatorActualCostReview({ estimateId }: { estimateId: string }) {
+  // A different estimate must never inherit an authorised draft or an in-flight save.
+  return estimateId ? <ActualCostRecord key={estimateId} estimateId={estimateId} /> : null;
+}
+
+function ActualCostRecord({ estimateId }: { estimateId: string }) {
   const [comparison, setComparison] = useState<EstimateCostCalibrationComparison | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const generationRef = useRef(0);
   const saveLockedRef = useRef(false);
   const canLoad = Boolean(estimateId && !estimateId.startsWith('local-'));
 
   useEffect(() => {
     if (!canLoad) return;
+    const generation = ++generationRef.current;
     let cancelled = false;
+    setLoaded(false);
+    setError('');
     setStatus('loading');
     apiJson<{ comparison: EstimateCostCalibrationComparison }>(
       `/api/staff/v1/estimates/${encodeURIComponent(estimateId)}/actual-costs`,
@@ -80,14 +91,18 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
       if (cancelled) return;
       setComparison(response.comparison);
       setDraft(draftFromComparison(response.comparison));
+      setLoaded(true);
       setStatus('idle');
     }).catch((caught) => {
       if (cancelled) return;
       setError(caught instanceof Error ? caught.message : 'Failed to load actual job costs');
       setStatus('error');
     });
-    return () => { cancelled = true; };
-  }, [canLoad, estimateId]);
+    return () => {
+      cancelled = true;
+      if (generationRef.current === generation) generationRef.current++;
+    };
+  }, [canLoad, estimateId, loadAttempt]);
 
   const payload = useMemo<EstimateActualCostInput>(() => ({
     materialsExGst: numberOrNull(draft.materialsExGst),
@@ -100,10 +115,11 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
     isComplete: draft.isComplete,
   }), [draft]);
 
-  if (!estimateId) return null;
+  const disabled = !loaded || status === 'loading' || status === 'saving';
 
   const save = async () => {
-    if (saveLockedRef.current || status === 'saving') return;
+    if (!canLoad || disabled || saveLockedRef.current) return;
+    const generation = generationRef.current;
     saveLockedRef.current = true;
     setStatus('saving');
     setError('');
@@ -112,10 +128,12 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
         `/api/staff/v1/estimates/${encodeURIComponent(estimateId)}/actual-costs`,
         { method: 'PUT', body: JSON.stringify(payload) },
       );
+      if (generationRef.current !== generation) return;
       setComparison(response.comparison);
       setDraft(draftFromComparison(response.comparison));
       setStatus('saved');
     } catch (caught) {
+      if (generationRef.current !== generation) return;
       setError(caught instanceof Error ? caught.message : 'Failed to save actual job costs');
       setStatus('error');
     } finally {
@@ -145,7 +163,7 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
                     min="0"
                     step="0.01"
                     value={draft[key]}
-                    disabled={status === 'loading' || status === 'saving'}
+                    disabled={disabled}
                     onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
                   /></span>
                   <small>
@@ -161,7 +179,7 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
                 rows={3}
                 maxLength={2000}
                 value={draft.notes}
-                disabled={status === 'loading' || status === 'saving'}
+                disabled={disabled}
                 onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
                 placeholder="Explain major supplier, fabrication or site variances."
               />
@@ -170,15 +188,16 @@ export default function CalculatorActualCostReview({ estimateId }: { estimateId:
               <input
                 type="checkbox"
                 checked={draft.isComplete}
-                disabled={status === 'loading' || status === 'saving'}
+                disabled={disabled}
                 onChange={(event) => setDraft((current) => ({ ...current, isComplete: event.target.checked }))}
               />
               <span>Actuals are complete and ready for pricing review</span>
             </label>
             {error ? <p className={styles.error}>{error}</p> : null}
+            {!loaded && status === 'error' ? <button type="button" onClick={() => setLoadAttempt(value => value + 1)}>Retry loading actual costs</button> : null}
             <div className={styles.footer}>
               <span>{status === 'saved' ? 'Actual costs saved.' : comparison?.actual?.updatedByEmail ? `Last updated by ${comparison.actual.updatedByEmail}` : ''}</span>
-              <button type="button" onClick={() => void save()} disabled={status === 'loading' || status === 'saving'}>
+              <button type="button" onClick={() => void save()} disabled={disabled}>
                 {status === 'saving' ? 'Saving…' : 'Save actual costs'}
               </button>
             </div>

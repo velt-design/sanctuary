@@ -61,7 +61,9 @@ function isPublicRoutePath(pathname: string | null, searchParams: { get(name: st
 function isAuthenticatedStandaloneRoutePath(pathname: string | null): boolean {
   return Boolean(
     pathname &&
-      (pathname === '/staff/design-booklets' ||
+      (/^\/staff\/design-studio\/[^/]+\/[^/]+\/edit$/.test(pathname) ||
+        /^\/staff\/design-studio\/proj_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/est_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname) ||
+        pathname === '/staff/design-booklets' ||
         pathname.startsWith('/staff/design-booklets/')),
   );
 }

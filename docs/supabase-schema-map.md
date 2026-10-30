@@ -1,3 +1,5 @@
+# Supabase Schema Map
+
 ## Standard-enhancements normalization continuation
 
 ## Native Meta UI creative reporting candidate
@@ -20,7 +22,7 @@ remains available. A formal capability baseline must join the confirmed creative
 reference, registered ad and its exact creative-ID intent, pause, canary and
 cleanup receipts, same original scope/native binding and preserved ad settings.
 It creates no fake creative object or new provider effect and preserves history.
-# Supabase Schema Map
+
 
 ## Reporting test policy and enquiry cash (27 October 2026 candidate)
 
@@ -1641,3 +1643,24 @@ Deploy compatible Portal/Marketing and Velt consumers before installing 50013.
 The public transport dependency changes the generated landing template hash, so
 review serving compatibility before any later activation. This is local source
 work, not evidence of installed schema, provider acceptance or live delivery.
+# Studio staff-trial document boundary
+
+Studio authored estimate RPCs, immutable `studio_website_quote_snapshots` and
+quote bindings are introduced by the ordered Studio chain. Private document
+sources freeze the canonical geometry; documents use explicit `document_id`
+identity, with a unique base per snapshot and ordered render-manifest variants.
+Page checkpoints, final artifact IDs and package draft CAS revisions remain
+private. Service-only RPCs are called only after fresh staff/project admission.
+Package prepare binds exact persisted revision/assets; safe cancel locks the
+quote before its exact attempt-zero intent and cannot resurrect superseded drafts.
+
+Forward `20261030020837_studio_designer_staff_trial_scope.sql` extends the
+existing private control with default `explicit_projects` scope and default-off
+`customer_send_enabled`. Its trial claim holds the control row through the
+canonical claim and rechecks compatible exact jobs before VT/read count. The
+canonical email dispatch fence classifies immutable Studio binding or frozen
+package payload under the intent lock. RLS/revokes and fixed search paths remain.
+Install the complete missing chain atomically to retain the original eight-kind
+v1 metrics projection for old workers. See
+[`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
+

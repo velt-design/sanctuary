@@ -110,13 +110,21 @@ type RecordEffectCheckpointInput = OwnedJobInput &
     safeMetadata?: BackgroundJobSafeEffectSummary;
   }>;
 
+export type StudioDocumentCheckpoint = Readonly<{index:number;sha256:string;contentBase64:string}>;
+export type StudioDocumentWorkerRead = Readonly<{snapshotId:string;documentId?:string;variantVersion?:string;renders?:unknown;rendererVersion:string;totalPages:number;readyFileId:string|null;source:unknown;pages:readonly StudioDocumentCheckpoint[]}>;
 export interface RuntimeBackgroundJobsRpc {
+  studioDocuments?: {
+    read(input:OwnedJobInput):Promise<StudioDocumentWorkerRead>;
+    stage(input:OwnedJobInput & {pageIndex:number;contentBase64:string;sha256:string}):Promise<number>;
+    finish(input:OwnedJobInput & {contentBase64:string;sha256:string}):Promise<string>;
+  };
   readEnquiryDelivery(input: OwnedJobInput): Promise<NormalizedEmailMessage>;
   finaliseEnquiryDelivery(input: OwnedJobInput & Readonly<{ providerMessageId: string }>): Promise<void>;
   claim(input: Readonly<{
     workerId: string;
     batchSize: number;
     visibilityTimeoutSeconds: number;
+    scope?: Readonly<{kinds:readonly BackgroundJobKind[];projectIds:readonly string[];manifestVersions?:readonly string[];staffTrial?:true}>;
   }>): Promise<readonly BackgroundJobClaim[]>;
   readPayload(input: OwnedJobInput): Promise<BackgroundJobProtectedPayload>;
   readEffects(input: OwnedJobInput): Promise<readonly BackgroundJobWorkerEffect[]>;
@@ -172,6 +180,11 @@ export interface RuntimeBackgroundJobsRpc {
 }
 
 export type BackgroundJobHandlerRpc = Readonly<{
+  studioDocuments?: {
+    read():Promise<StudioDocumentWorkerRead>;
+    stage(input:{pageIndex:number;contentBase64:string;sha256:string}):Promise<number>;
+    finish(input:{contentBase64:string;sha256:string}):Promise<string>;
+  };
   progress(input: Readonly<{
     status: BackgroundJobStatus;
     phase: string;
@@ -208,6 +221,7 @@ export type BackgroundJobHandlerRegistry = Readonly<Partial<Record<BackgroundJob
 
 export type BackgroundJobWorkerConfig = Readonly<{
   workerId: string;
+  claimScope?:Readonly<{kinds:readonly BackgroundJobKind[];projectIds:readonly string[];manifestVersions?:readonly string[];staffTrial?:true}>;
   buildVersion: string;
   mode: BackgroundJobWorkerMode;
   globalConcurrency: number;
