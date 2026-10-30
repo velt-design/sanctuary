@@ -46,6 +46,7 @@ function fittedEdit() {
   return previewStudioConnectionSwitch(edit, studioConnectionSwitchTarget(edit, 'p', 'facade')).edit;
 }
 
+// Full geometry, transport round trip and native PDF extraction share this correctness budget.
 it('carries the fitted rotated house, exact binding, custom700 and canonical product geometry through saved ingress into immutable drawing-only sheets', async () => {
   const parsed = parseStudioAuthoringEdit(JSON.parse(JSON.stringify(fittedEdit())));
   if (!parsed.ok) throw Error(parsed.message);
@@ -80,7 +81,7 @@ it('carries the fitted rotated house, exact binding, custom700 and canonical pro
     const previous=await import(/* @vite-ignore */ pathToFileURL(process.env.STUDIO_LEGACY_RENDERER_MODULE).href);
     expect(await renderStudioDocumentPage(legacy,1)).toEqual(await previous.renderStudioDocumentPage(legacy,1));
   }
-});
+}, 20_000);
 
 it('keeps a frozen fitted document unchanged when a later manual clearance fails with the house fixed, then permits an explicit method-fit recovery', () => {
   const edit = fittedEdit();

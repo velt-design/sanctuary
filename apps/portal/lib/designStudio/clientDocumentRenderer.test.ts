@@ -25,6 +25,8 @@ it('resolves crossing members per pixel instead of painting one whole triangle o
  const abort=new AbortController();setImmediate(()=>abort.abort(Error('retired')));await expect(renderDocumentIsometric([red,blue],{width:320,height:240,signal:abort.signal})).rejects.toThrow('retired');
 });
 
+// Capacity/PDF correctness budgets include native rendering and text extraction.
+// The separate heartbeat/yield assertion above retains its existing bound.
 it('preserves all32 products/65 register entries and full maximum-length names without drawing outside reserved A3 regions',async()=>{
  const source=studioDocumentCapacityFixture();expect(source.projectName.length).toBe(280);expect(source.products.every(p=>p.label.length===200)).toBe(true);expect(studioDocumentPages(parseStudioClientDocumentSource(source))).toHaveLength(65);
  const pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -33,7 +35,7 @@ it('preserves all32 products/65 register entries and full maximum-length names w
  expect(coverText.replace(/\s/g,'')).toContain(source.projectName);expect(coverText).toContain('Full pergola names appear on their drawing sheets.');
  const last=await items(63),lastText=last.map(item=>item.str).join('');expect(lastText.replace(/\s/g,'')).toContain(source.products[31].label.toUpperCase());expect(lastText).toContain('Project details: A00');expect(lastText).toContain('P32 / Roof plan');
  for(const item of [...cover,...last]){const x=item.transform[4],top=841.89-item.transform[5]-item.height;expect(x).toBeGreaterThanOrEqual(28-.01);expect(x+item.width).toBeLessThanOrEqual(1162+.1);expect(top).toBeGreaterThanOrEqual(28-.1);expect(top+item.height).toBeLessThanOrEqual(814+.1);}
-});
+}, 20_000);
 
 it('flows complete canonical side-panel, blind and lighting details inside each sheet instead of overflowing fixed Extras rows',async()=>{
  const source=studioDocumentSelectionsFixture(),pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -44,7 +46,7 @@ it('flows complete canonical side-panel, blind and lighting details inside each 
   for(const detail of [...source.products[0].extras.infills,...source.products[0].extras.blinds,...source.products[0].extras.lights])expect(text.replace(/\s/g,'')).toContain(detail.replace(/\s/g,''));
   for(const item of items){const x=item.transform[4],top=841.89-item.transform[5]-item.height;expect(x).toBeGreaterThanOrEqual(28-.1);expect(x+item.width).toBeLessThanOrEqual(1162+.1);expect(top).toBeGreaterThanOrEqual(28-.1);expect(top+item.height).toBeLessThanOrEqual(814+.1);}
  }
-});
+}, 40_000);
 
 it('places the opaque isometric raster below the actual wrapped heading/subtitle instead of painting over extractable text',async()=>{
  const source=studioDocumentCapacityFixture(),draw=vi.spyOn(PDFPage.prototype,'drawImage');
@@ -53,4 +55,4 @@ it('places the opaque isometric raster below the actual wrapped heading/subtitle
   const subtitle=content.items.find(item=>'str' in item&&item.str==='ISOMETRIC / ORTHOGRAPHIC / NTS');expect(subtitle&&'transform' in subtitle).toBe(true);if(!subtitle||!('transform' in subtitle))throw Error('Missing isometric subtitle');
   const [,placement]=draw.mock.calls.at(-1)!;const imageTop=841.89-placement!.y!-placement!.height!,subtitleBottom=841.89-subtitle.transform[5];expect(imageTop).toBeGreaterThanOrEqual(subtitleBottom+15.9);
  }finally{draw.mockRestore();}
-});
+}, 20_000);

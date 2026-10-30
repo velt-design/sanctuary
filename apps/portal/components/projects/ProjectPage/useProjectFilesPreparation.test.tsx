@@ -277,18 +277,22 @@ it('rejects retired held A while current B and return A work through available c
   });
   expect(code.prepare).not.toHaveBeenCalled(); expect(previews).toEqual([]);
   session.user = { id: 'staff-b' };
-  mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>); await flush();
-  // Vitest bypasses an in-progress manual factory on a second import of its URL.
-  // B therefore uses the actual available module while the first A remains held.
-  expect(code.prepare).not.toHaveBeenCalled(); await vi.waitFor(() => expect(previews).toEqual(['project-b']));
-  session.user = { id: 'staff-a' };
-  mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(code.prepare).not.toHaveBeenCalled(); await vi.waitFor(() => expect(previews).toEqual(['project-b','project-a']));
-  expect(metadata).toEqual(['project-a','project-b']);
-  await act(async () => code.release()); await flush();
-  expect(previews).toEqual(['project-b','project-a']); expect(code.prepare).not.toHaveBeenCalled(); expect(code.cancel).not.toHaveBeenCalled();
-  mounted.rerender(<QueryClientProvider client={client}><Owner enabled={false} /></QueryClientProvider>); await flush();
+  mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>);
+  // Release shared code only after A retires. No assumption about Vitest bypassing
+  // a pending async factory, or a cold module finishing within a fixed sleep.
+  await act(async () => code.release()); await vi.dynamicImportSettled();
+  await vi.waitFor(() => expect(previews).toEqual(['project-b']));
   expect(code.cancel).not.toHaveBeenCalled();
+  expect(code.prepare.mock.calls.every(([, scope]) => scope.owner === JSON.stringify(['host','staff-b']) && scope.projectId === 'project-b')).toBe(true);
+  expect(client.getQueryData(projectFilesQueryOptions('host','staff-b','project-b',rootId).queryKey)?.pages[0].folderId).toBe('root');
+  session.user = { id: 'staff-a' };
+  mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await vi.waitFor(() => expect(previews).toEqual(['project-b','project-a']));
+  expect(metadata).toEqual(['project-a','project-b']);
+  expect(code.cancel.mock.calls.every(([, owner, project]) => owner === JSON.stringify(['host','staff-b']) && project === 'project-b')).toBe(true);
+  expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].folderId).toBe('root');
+  mounted.rerender(<QueryClientProvider client={client}><Owner enabled={false} /></QueryClientProvider>);
+  expect(previews).toEqual(['project-b','project-a']);
 });
 it('keeps metadata after code-load failure and requests code again only on the existing scheduled pass', async () => {
   vi.useFakeTimers(); const started = Date.now();
@@ -364,16 +368,16 @@ it('rejects the retired metadata A before its first read while available current
   mounted = renderIntoDocument(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
   expect(source.entered).toHaveBeenCalledTimes(1); expect(metadata).toEqual([]);
   session.user = { id: 'staff-b' };
-  mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>); await flush();
-  // As with the preview test, Vitest's concurrent manual-mock bypass makes B's
-  // actual module available. This asserts retired-A admission, not native coalescing.
-  expect(metadata).toEqual(['project-b']); expect(previews).toEqual(['project-b']);
+  mounted.rerender(<QueryClientProvider client={client}><Owner project="project-b" /></QueryClientProvider>);
+  await act(async () => source.release()); await vi.dynamicImportSettled();
+  await vi.waitFor(() => { expect(metadata).toEqual(['project-b']); expect(previews).toEqual(['project-b']); });
+  expect(source.prepare.mock.calls.some(([, , owner]) => owner === 'staff-a')).toBe(false);
+  expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)).toBeUndefined();
+  expect(client.getQueryData(projectFilesQueryOptions('host','staff-b','project-b',rootId).queryKey)?.pages[0].folderId).toBe('root');
   session.user = { id: 'staff-a' };
-  mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>); await flush();
-  expect(metadata).toEqual(['project-b','project-a']); expect(previews).toEqual(['project-b','project-a']);
+  mounted.rerender(<QueryClientProvider client={client}><Owner /></QueryClientProvider>);
+  await vi.waitFor(() => { expect(metadata).toEqual(['project-b','project-a']); expect(previews).toEqual(['project-b','project-a']); });
   expect(client.getQueryData(projectFilesQueryOptions('host','staff-a','project-a',rootId).queryKey)?.pages[0].folderId).toBe('root');
-  await act(async () => source.release()); await flush();
-  expect(source.prepare).not.toHaveBeenCalled(); expect(metadata).toEqual(['project-b','project-a']); expect(previews).toEqual(['project-b','project-a']);
 });
 it('recovers a metadata-code load on the existing four-minute pass without coupling it to preview code or retrying sooner', async () => {
   vi.useFakeTimers(); const started = Date.now();

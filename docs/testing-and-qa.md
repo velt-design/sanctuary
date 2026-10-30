@@ -33,6 +33,15 @@ Connected staging/production, the current five active Portal bundle caps (with
 Workbench retained as a retired diagnostic), normal Next real type gate, fresh
 worker assets and host memory/heartbeat proof remain distinct gates.
 
+Compound Studio geometry and PDF correctness cases use local 15, 20 or 40 second
+deadlines based on measured four-worker CI contention. Their complete fixtures,
+loops and assertions remain required; interaction, solve-count, heartbeat and
+browser performance checks retain their existing bounds. Project commercial
+harnesses mount the real toast provider used by the app. Held file-preparation
+module tests retire the old actor before releasing shared code, then wait for
+actual current-actor reads and verify unchanged actor/project query keys rather
+than assuming a cold import completes within a fixed sleep.
+
 `node --test scripts/check-mojibake.test.mjs` verifies the exact renderer fontkit
 path/hash exemption against the already-public Portal bytes in the two verified
 LF and CRLF checkout forms. Its intentional Unicode tables are preserved; any

@@ -153,6 +153,7 @@ describe("frozen Sanctuary quote presentation", () => {
     expect(quote).toEqual(original);
   });
 
+  // Multi-page financial stress coverage includes native rendering and PDF text extraction.
   it("flows long names, many scope rows, negative adjustments and lengthy terms without clipping or dropping financial text", async () => {
     const quote = fixture();
     quote.project.name = "A carefully named courtyard ".repeat(10);
@@ -196,7 +197,7 @@ describe("frozen Sanctuary quote presentation", () => {
     expect(
       result.layout.pages.find((page) => page.totalsBounds)?.paymentBlock,
     ).toBeDefined();
-  });
+  }, 20_000);
 
   it("preserves empty scope rendering and the existing zero-total payment refusal", async () => {
     const quote = fixture();

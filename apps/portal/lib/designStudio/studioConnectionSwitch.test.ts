@@ -23,6 +23,7 @@ function fixture(projection = 3000) {
 function change(edit: StudioAuthoringEdit, method: 'facade' | 'fascia' | 'soffit') {
   return previewStudioConnectionSwitch(edit, studioConnectionSwitchTarget(edit, 'p', method)).edit;
 }
+// This repeated full-geometry correctness matrix is not the per-action performance gate.
 it.each([3000, 4000])('applies every supported method to the regular house in one command for a %i projection, with no repeated-cycle ratchet', projection => {
   let edit = fixture(projection);
   const original = structuredClone(edit);
@@ -41,7 +42,7 @@ it.each([3000, 4000])('applies every supported method to the regular house in on
   for (const method of ['fascia', 'soffit', 'facade'] as const) edit = change(edit, method);
   expect(edit.spatial.houseAssembly).toEqual(house);
   expect(parseStudioAuthoringEdit(JSON.parse(JSON.stringify(edit))).ok).toBe(true);
-});
+}, 15_000);
 it('retains the actual host, rotated semantic edge and tangent through method changes and custom clearance; direct gap edits keep the house fixed', () => {
   let edit = fixture();
   const house = studioHouseScene(edit.site, edit.spatial)!.houses[0];

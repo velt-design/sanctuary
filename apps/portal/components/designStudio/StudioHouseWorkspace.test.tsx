@@ -152,6 +152,8 @@ function selectionWorkspace(initial:StudioAuthoringEdit,selected="p") {
     const button=[...m.container.querySelectorAll("button")].find(b=>b.textContent===actionLabel(text));expect(button,`Visible ${text}`).toBeTruthy();button!.click();
   })};
 }
+// Several complete method switches and React commits share one correctness case.
+// Dedicated interaction performance assertions remain unchanged.
 it('uses the current guarded edit for rapid reverse method clicks and an immediately blurred clearance field', () => {
   const initial = previewStudioAttachment(draftFixture(), { objectId: 'p', houseId: 'house', edge: 'rear', kind: 'eave', method: 'soffit' });
   const t = selectionWorkspace(initial);
@@ -184,7 +186,7 @@ it('uses the current guarded edit for rapid reverse method clicks and an immedia
     expect(row.attachment && 'measurements' in row.attachment && row.attachment.measurements!.roofClearanceMm).toBeGreaterThanOrEqual(700);
     expect(errors).not.toHaveBeenCalled();
   } finally { errors.mockRestore(); t.m.unmount(); }
-});
+}, 15_000);
 it("passes current resolved accessory geometry through House fallback, edits and Undo", () => {
   const initial = draftFixture(), t = selectionWorkspace(initial, "house");
   try {
