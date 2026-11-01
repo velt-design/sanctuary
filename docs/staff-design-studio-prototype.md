@@ -72,6 +72,15 @@ world-space gap from the occupied physical envelope; `houseEditing` converts tha
 world position to the existing rectangle composition origin. Adding an object
 fits the existing camera once; later edits and moves preserve the user's view.
 Soffit bracket meshes inherit frame finish in the live scene and quote capture.
+`studioHouseCoordinates` losslessly serializes internal finite transform values
+to the existing decimal-string house contract. Quarter-turn trig results near
+zero must not become exponent text that the strict user-input parser rejects.
+This boundary does not round coordinates or widen user grammar/range checks;
+read projection, inverse house moves and house pointer release use the same
+serializer. Actual quarter-turn scene retention, house pointer movement and
+four-side attachment release/Undo/save/reopen regressions
+cover this numeric failure. The owner's specific disappearance report is not
+claimed reproduced solely from that separate verified cause.
 
 The forward `studio_base_creation_seed` migration is required before enabling
 this new creation code. It updates only the existing creation function's blank

@@ -9,6 +9,7 @@ import {
   type StudioHouse,
   type StudioHouseScene,
 } from "./studioAttachmentContract";
+import { studioComputedCoordinate } from './studioHouseCoordinates';
 export * from "./studioAttachmentContract";
 const millimetresForDisplay = (raw: string) =>
   Number.isFinite(Number(raw)) ? String(Number(raw) * 1000) : raw;
@@ -27,17 +28,17 @@ export function studioHousePose(form: House) {
     ),
     r = (rotation * Math.PI) / 180;
   return {
-    xMm: String(
+    xMm: studioComputedCoordinate(
       Number(form.position?.originXMm ?? form.transform.offsetXM * 1000) +
         p.originXMm * Math.cos(r) -
         p.originYMm * Math.sin(r),
     ),
-    yMm: String(
+    yMm: studioComputedCoordinate(
       Number(form.position?.originYMm ?? form.transform.offsetYM * 1000) +
         p.originXMm * Math.sin(r) +
         p.originYMm * Math.cos(r),
     ),
-    rotationDeg: String(rotation),
+    rotationDeg: studioComputedCoordinate(rotation),
   };
 }
 export function canonicalHouseProjection(
