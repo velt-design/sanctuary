@@ -889,6 +889,17 @@ Security:
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
 - `npm run audit:toolchain` fails closed on every development/toolchain vulnerability except the two no-fix `xlsx` advisories `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception is valid only while `xlsx` is a direct root development dependency, is locked development-only, has no fix, and is imported only by `scripts/import-running-jobs-legacy.ts`.
 - The 21 October 2026 toolchain correction pins Vite `7.3.7` through the root override. It fixes bundled launch-editor advisories [GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm), [GHSA-698v-4r3x-3vcv](https://github.com/advisories/GHSA-698v-4r3x-3vcv) and [GHSA-r825-w8mm-5pxw](https://github.com/advisories/GHSA-r825-w8mm-5pxw). Both security gates remain unchanged; no new audit exception is permitted.
+- The 2 November 2026 toolchain correction uses maintained ESLint `10.14.0`,
+  TypeScript parser `8.72.1` and patched minimatch `11.0.1` for
+  [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+  Removing ESLint's legacy callable minimatch consumer permits the fixed named
+  API without a compatibility shim. The Node 22 runtime satisfies these engines.
+  Preserve the existing `@eslint/js` `9.39.2` rule set and former shadow-name
+  defaults. The root lint command explicitly selects its root config because
+  ESLint 10 searches from each file; browser read and restricted-import guards
+  must retain their previous owner. Toolchain compatibility and existing audit
+  policy tests run before the unchanged audit evaluator. Production dependencies,
+  financial/email behavior and audit exceptions are unchanged.
 - The 30 October 2026 email dependency correction pins `@react-email/render` to
   `2.2.0` in the workspace and both apps. The root override references that direct
   pin so the components barrel cannot retain an older vulnerable renderer.

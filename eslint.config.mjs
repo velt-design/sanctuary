@@ -55,6 +55,8 @@ const config = [
     },
     rules: {
       ...js.configs.recommended.rules,
+      // Retain the ESLint 9 policy when running the maintained ESLint 10 engine.
+      'no-shadow-restricted-names': ['error', { reportGlobalThis: false }],
       // Allow regexes that intentionally include control characters
       'no-control-regex': 'off',
       // Allow occasionally-empty blocks used as placeholders
