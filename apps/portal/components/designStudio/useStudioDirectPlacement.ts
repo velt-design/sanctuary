@@ -121,23 +121,27 @@ export function useStudioDirectPlacement(args: Inputs) {
     current?.studioAttachment?.method ??
     current?.design?.input.connection ??
     "facade";
-  const scheduler = useMemo(
-    () =>
-      createStudioPlacementPreparation(
-        () =>
-          new Worker(new URL("./studioPlacement.worker.ts", import.meta.url)),
-        (results) =>
-          setPrepared({
-            scopeKey: session.identity.scopeKey,
-            epoch: session.identity.epoch,
-            results,
-          }),
-      ),
-    [session.identity.scopeKey, session.identity.epoch],
-  );
-  useEffect(() => () => scheduler.dispose(), [scheduler]);
+  const scheduler = useRef<ReturnType<typeof createStudioPlacementPreparation> | null>(null);
   useEffect(() => {
-    scheduler.update({
+    // A scheduler is terminal after disposal. Each effect lifetime, including
+    // replay, owns a fresh one rather than reusing a disposed memoized owner.
+    const owner = createStudioPlacementPreparation(
+      () => new Worker(new URL("./studioPlacement.worker.ts", import.meta.url)),
+      (results) => setPrepared({
+        scopeKey: session.identity.scopeKey,
+        epoch: session.identity.epoch,
+        results,
+      }),
+    );
+    scheduler.current = owner;
+    setPrepared(null);
+    return () => {
+      if (scheduler.current === owner) scheduler.current = null;
+      owner.dispose();
+    };
+  }, [session.identity.scopeKey, session.identity.epoch]);
+  useEffect(() => {
+    scheduler.current?.update({
       context: {
         scopeKey: session.identity.scopeKey,
         epoch: session.identity.epoch,
@@ -147,7 +151,7 @@ export function useStudioDirectPlacement(args: Inputs) {
       selectedId,
       method,
     });
-  }, [scheduler, taskSetKey, pendingKey, pendingValid, selectedId, method]);
+  }, [session.identity.scopeKey, session.identity.epoch, taskSetKey, pendingKey, pendingValid, selectedId, method]);
 
   const resources = useMemo(
     () =>

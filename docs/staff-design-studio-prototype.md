@@ -63,6 +63,11 @@ A cancelled effect acquires no navigation fence, including React effect replay;
 the live action still uses the existing same-owner local drain. Explicit user
 navigation continues to fence synchronously. The mounted-frame return and held
 local-write tests cover re-entry without creating another design or losing work.
+Placement preparation also belongs to its effect lifetime: cleanup permanently
+disposes the old scheduler and a replay or new session creates a fresh owner.
+Worker replies retain their original scope/epoch/request checks; a terminated
+owner cannot publish into its replacement. Mounted replay tests warm the real
+preparation and exercise Plan offers, commits and Undo on all four house sides.
 Representative project size is 1–20 saved versions/options. Entry/selector refresh
 uses one metadata request, backed by project, estimate and quote-flow reads; no
 per-frame or per-keystroke list request is added. Existing all-row version labels

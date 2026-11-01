@@ -2,7 +2,7 @@ import {studioConnectionSwitchTarget,previewStudioConnectionSwitch} from '@/lib/
 import {newStudioBaseSeed} from '@/lib/designStudio/newDesignSeed';
 import { studioAlignmentFixture } from "../../../../test/studioAlignmentFixture";
 import { studioWallAcquisitionFixture } from "../../../../test/studioWallAcquisitionFixture";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../test/reactHarness";
 import {
@@ -158,6 +158,7 @@ async function open(
   method: "facade" | "soffit" = "facade",
   initial?: StudioAuthoringEdit,
   updatedAt = "2026-10-21T00:00:00Z",
+  replay = false,
 ) {
   const edit = initial ?? fixture(method);
   sessionStorage.setItem(
@@ -169,7 +170,7 @@ async function open(
       view: "Plan",
     }),
   );
-  mounted = renderIntoDocument(
+  const content = (
     <Harness
       scope={scope}
       editable
@@ -179,8 +180,9 @@ async function open(
         schemaVersion: "studio_authoring_view.v1",
         pricing: "unpriced",
       }}
-    />,
+    />
   );
+  mounted = renderIntoDocument(replay ? <StrictMode>{content}</StrictMode> : content);
   await flush();
   expect(latest.canEdit).toBe(true);
   return mounted.container.querySelector<SVGSVGElement>(
@@ -2023,6 +2025,23 @@ it("commits the fully warm ordinary rotated wall offer at distinct final-up and 
   expect(button("Undo").disabled).toBe(true);
   expect(svg.getAttribute("viewBox")).toBe(viewBox);
   await flush();
+});
+it.each(['front','right','rear','left'] as const)('warms after actual effect replay, rejects the terminated worker and offers/commits the %s Plan connection with Undo',async side=>{
+ const f=studioWallAcquisitionFixture(180,side),initial={...f.edit,designId:scope.designId};
+ sessionStorage.setItem(`${studioHouseContextKey(scope)}:camera:plan`,JSON.stringify({x:0,y:0,units:f.units}));
+ const svg=await open('p2','facade',initial,undefined,true),before=structuredClone(latest.edit!);
+ expect(workers.filter(worker=>!worker.terminated)).toHaveLength(1);expect(workers[0].terminated).toBe(true);
+ const live=workers.at(-1)!;await act(async()=>live.reply());
+ const obsolete=workers[0],old=studioPreparationReply(obsolete.request);old.result={kind:'refused',reason:'Obsolete worker result'};
+ await act(async()=>obsolete.onmessage?.({data:old} as MessageEvent));
+ expect(mounted!.container.textContent).not.toContain('Obsolete');
+ pointer(grab(svg),'pointerdown',10,20);pointer(svg,'pointermove',10+f.delta.x*.8,20-f.delta.y*.8);
+ expect(mounted!.container.textContent).toContain('Release to connect');expect(latest.session!.generation).toBe(0);
+ expect([...svg.querySelectorAll('polygon[aria-label]')].some(node=>node.getAttribute('aria-label')===`Select ${before.spatial.houseAssembly!.houseForms[0].label}`)).toBe(true);
+ pointer(svg,'pointerup',10+f.delta.x,20-f.delta.y);
+ expect(latest.session!.generation).toBe(1);const row=websiteComposition(latest.edit!)[0];expect(row.studioAttachment?.edge).toBe(side);expect(row.error).toBeNull();
+ expect(latest.edit!.spatial.houseAssembly).toEqual(before.spatial.houseAssembly);
+ act(()=>button('Undo').click());expect(latest.edit!.spatial).toEqual(before.spatial);expect(latest.edit!.site).toEqual(before.site);expect(latest.edit!.objectOptions).toEqual(before.objectOptions);
 });
 it('keeps an actual180-degree house drag visible and commits a tiny finite axis coordinate through Undo and save/reopen',async()=>{
  const initial=fixture();initial.spatial.houseAssembly!.houseForms[0].position={originXMm:'0',originYMm:'0',rotationDeg:'180'};
