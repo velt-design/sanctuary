@@ -1,5 +1,18 @@
 # Decision Log
 
+## 2026-11-02: Exercise creation defaults through the database command
+
+The new Studio starter passed trusted preparation and mocked RPC tests, but the
+actual creation function still required an exact empty authored/spatial pair.
+Those passes did not establish first-open persistence. Keep the existing atomic
+creation owner and add only the exact permitted base seed through a forward
+migration. The Portal-discovered `baseCreationSeed.migration.test.ts` executes the
+original function's refusal, then forward acceptance, old receipt replay, exact
+clone/add-on behavior, tamper denial and preserved ACL/search path. See
+`staff-design-studio-prototype.md` and `supabase-schema-map.md`. Applied migration
+history and historical saved designs stay intact; mocks complement the real
+boundary check rather than proving its compatibility.
+
 ## 2026-10-27: Clean measurement and connect enquiries to recorded cash
 
 Reuse the existing marketing source/outcome table and direct enquiry-to-project

@@ -2,7 +2,7 @@
 import type { StudioSceneView } from "./studioHouseContext";
 import StudioHousePlan, { type StudioPlanFootprint } from "./StudioHousePlan";
 import { useStudioPlanViewport } from "./useStudioPlanViewport";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
 import StudioHouseModel from "./StudioHouseModel";
 import { useLighting } from "@sp/configurator/react/controls";
 import type { StudioAuthoringEdit } from "@/lib/designStudio/authoringView";
@@ -297,6 +297,17 @@ export default function StudioHouseCanvas({
     joinDraft: joinActive,
     hasFootprint: !!directFootprint,
   });
+  const objectIds = JSON.stringify([...readScene.houseRecords.map(h=>h.id), ...readScene.rows.map(p=>p.object.id)].sort());
+  const previousObjects = useRef(objectIds);
+  useLayoutEffect(() => {
+    const old = previousObjects.current;
+    previousObjects.current = objectIds;
+    if (old === objectIds || !(JSON.parse(objectIds) as string[]).some(id=>!(JSON.parse(old) as string[]).includes(id))) return;
+    // A newly added object must enter the view; ordinary edits/moves preserve
+    // the user's camera. Both presenters keep their normal Fit implementation.
+    plan.fitToFrame(points);
+    setFit(value=>value+1);
+  }, [objectIds, points, plan]);
   const zoom = (step: number) =>
     view !== "3D" ? plan.zoom(step) : setZoomStep((n) => n + step);
   return (

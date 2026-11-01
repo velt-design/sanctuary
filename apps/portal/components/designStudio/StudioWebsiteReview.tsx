@@ -625,6 +625,7 @@ function WorkingReview({
           </small>
         </>
       }
+      renameAvailable={!!controller.session && !controller.session.dirty && !controller.session.pending && controller.status==='ready' && !busy}
       actions={replayOnly?undefined:createButton}
     >
       <div className={css.reviewInputs}>

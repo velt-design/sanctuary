@@ -1,6 +1,6 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {loadCostingConfigV1,ACCESSORY_REVIEW_RATES,getDefaultInstalledSellingRates,snapshotCostingControlConfigV1} from '@sp/costing';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {projectStudioAuthoringView,createStudioAuthoringEdit,mergeStudioAuthoringEdit} from './authoringView';
 import {addWebsitePergola} from './websiteComposition';
 import {computeEstimateEditability} from '@/lib/estimates/editability';
@@ -22,7 +22,7 @@ type Query={table:string;fields:string;filters:Array<[string,unknown]>};
 let row:any,body:any,version:any,publication:any,role:string,quotes:any[],logs:any[],themeSettings:any,themePreset:any,failure:string|null,failureCode:string,hold:((table:string,query:Query)=>Promise<void>)|null;
 const queries:Query[]=[],publicationSignals:AbortSignal[]=[],childSignals:AbortSignal[]=[];
 function fixture(){
- const made=prepareStudioCreation({mode:'blank',projectId:ids.projectId,designId:'request-read-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId:ids.projectId,designId:'request-read-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const outputs=made.prepared.row.outputs,view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
  const edit=addWebsitePergola(createStudioAuthoringEdit(view.value),'pergola'),saved=mergeStudioAuthoringEdit({storedAuthored:outputs.studio_authored,storedSpatial:outputs.drawing_object_first,edit});if(!saved.ok)throw Error(saved.message);
  row={id:estimate,project_id:project,status:'draft',updated_at:'2026-10-22T10:00:00Z',created_at:'2026-10-20T01:02:03Z',internal_name:'  Courtyard  ',summary:{total:123},outputs:{...outputs,version:7,studio_authored:saved.value.authored,drawing_object_first:saved.value.spatial,privateProof:'never sent'}};

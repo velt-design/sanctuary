@@ -5,6 +5,12 @@ import {registerStudioLifecycle,prepareStudioNavigation} from './studioSessionLi
 import {navigateStudioDocument} from './studioDocumentNavigation';
 
 const deferred=()=>{let resolve!:()=>void;const promise=new Promise<void>(done=>{resolve=done;});return{promise,resolve};};
+
+it('keeps a supplied postmutation fence held across failed navigation until its recovery owner retires',async()=>{
+ const prepared={ready:Promise.resolve(),valid:()=>true,release:vi.fn(),fenced:()=>true,status:()=> 'ready' as const};
+ await expect(navigateStudioDocument('/same-saved-design',true,()=>{throw Error('Navigation refused');},undefined,prepared)).rejects.toThrow('Navigation refused');expect(prepared.release).not.toHaveBeenCalled();
+ const navigate=vi.fn();await navigateStudioDocument('/same-saved-design',true,navigate,undefined,prepared);expect(navigate).toHaveBeenCalledWith('/same-saved-design',true);expect(prepared.release).not.toHaveBeenCalled();prepared.release();expect(prepared.release).toHaveBeenCalledOnce();
+});
 let saved:ReturnType<typeof createEmptyLocalFirstState>;
 const save=vi.fn(async(value:ReturnType<typeof createEmptyLocalFirstState>,_ownerId:string)=>{saved=structuredClone(value);});
 beforeEach(()=>{__resetLocalFirstStoreForTests();invalidateStudioLifecycle();saved=createEmptyLocalFirstState();save.mockReset();save.mockImplementation(async(value)=>{saved=structuredClone(value);});__setLocalFirstStorageAdapterForTests({get:async()=>saved,set:(...args)=>save(...args)});bindLocalFirstStoreOwner('actor');});

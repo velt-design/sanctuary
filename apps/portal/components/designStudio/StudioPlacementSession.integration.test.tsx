@@ -1,4 +1,5 @@
 import {studioConnectionSwitchTarget,previewStudioConnectionSwitch} from '@/lib/designStudio/studioConnectionSwitch';
+import {newStudioBaseSeed} from '@/lib/designStudio/newDesignSeed';
 import { studioAlignmentFixture } from "../../../../test/studioAlignmentFixture";
 import { studioWallAcquisitionFixture } from "../../../../test/studioWallAcquisitionFixture";
 import { act } from "react";
@@ -305,6 +306,20 @@ function captureMergedStudioSave(initial:StudioAuthoringEdit){
  return ()=>{expect(captured,JSON.stringify({status:latest.status,message:latest.message,dirty:latest.session?.dirty,pending:!!latest.session?.pending,durable:latest.localDurable})).toBeTruthy();return captured!;};
 }
 function chooseHouseEdge(edge:string){const select=mounted!.container.querySelector<HTMLSelectElement>('select[aria-label="House edge"]')!;expect(select).toBeTruthy();act(()=>{select.value='house:'+edge;select.dispatchEvent(new Event('change',{bubbles:true}));});}
+it('saves and reopens the exact total mixed panels and local side through the real controller and canonical merge',async()=>{
+ const seed=newStudioBaseSeed();let initial:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:scope.designId,revision:3,spatial:seed.spatial,site:{},objectOptions:seed.objectOptions.map(row=>({objectId:row.objectId,values:row.options.values as any})),deletions:[]};
+ const value=websiteComposition(initial)[0].value!;
+ initial=changeStudioProduct(initial,{...value,selection:{...value.selection,roof:{family:'gable',orientation:'parallel',infills:false,attachmentIntent:'freestanding'}}});
+ await open('initial-pergola','facade',initial);act(()=>button('Design choices').click());act(()=>button('Mixed').click());
+ const select=(label:string,value:string)=>act(()=>{const field=mounted!.container.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;expect(field).toBeTruthy();field.value=value;field.dispatchEvent(new Event('change',{bubbles:true}));});
+ select('Acrylic panels','3');select('Panel position','front');
+ const before=structuredClone(latest.edit!),captured=captureMergedStudioSave(initial);
+ await act(async()=>{await latest.save();});const saved=captured();
+ expect(websiteComposition(saved)[0].design!.roof.finish!.studioPanels).toEqual({version:1,count:3,side:'front'});
+ expect(saved.objectOptions).toEqual(before.objectOptions);
+ mounted!.unmount();mounted=undefined;await flush();await open('initial-pergola','facade',saved,'2026-10-29T06:00:00Z');
+ expect(latest.session!.dirty).toBe(false);expect(latest.edit!.objectOptions).toEqual(saved.objectOptions);expect(button('Save design').disabled).toBe(true);
+});
 it.each(['blur','Enter'])('connects inline from 3D with actual 200 mm clearance through measured house repair on %s and complete Undo',async(completion)=>{
  let initial:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:scope.designId,revision:3,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};
  const added=applyStudioHouseEdit(initial.spatial,{kind:'add',id:'house',label:'House'});if(!added.ok)throw Error(added.message);initial.spatial=added.spatial;

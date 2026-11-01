@@ -12,14 +12,19 @@ import {StudioOpeningAccessError} from '@/lib/designStudio/studioOpeningTranspor
 import {STUDIO_OPENING_FIRST_MS} from '@/lib/designStudio/studioOpening';
 import {navigateStudioDocument} from '@/lib/designStudio/studioDocumentNavigation';
 import {useStudioEditingSession,type StudioEditingSessionProps} from './useStudioEditingSession';
-import {clearLocalFirstStoreOwner,getLocalFirstStoreOwner,getLocalFirstStoreSnapshot,localFirstStorageKey,createEmptyLocalFirstState,__resetLocalFirstStoreForTests} from '@/lib/localFirst/store';
+import {bindLocalFirstStoreOwner,clearLocalFirstStoreOwner,getLocalFirstStoreOwner,getLocalFirstStoreSnapshot,localFirstStorageKey,createEmptyLocalFirstState,__resetLocalFirstStoreForTests} from '@/lib/localFirst/store';
 import {enqueueAndProcessLocalFirstMutation,__resetLocalFirstQueueForTests} from '@/lib/localFirst/queue';
 import {stopLocalFirstRuntime} from '@/lib/localFirst/runtime';
 import {invalidateStudioLifecycle} from '@/lib/designStudio/studioLifecycle';
 import {PORTAL_LOCAL_FIRST_MUTATIONS} from '@/lib/localFirst/portalEntities';
 import {readStudioWorkingCopy} from '@/lib/designStudio/workingCopy';
+import {renameStudioDesign} from '@/lib/designStudio/renameDesign';
+import {prepareStudioNavigation} from '@/lib/designStudio/studioSessionLifecycle';
 
-const mocks=vi.hoisted(()=>({opening:vi.fn(),initialize:vi.fn(),sdk:null as SupabaseClient|null,leaf:vi.fn(),get:vi.fn(),set:vi.fn(),update:vi.fn(),keys:vi.fn(),del:vi.fn(),api:vi.fn(),editorBarrier:null as Promise<void>|null,cleanupProbe:null as null|(()=>void),authChanged:null as null|((event:string,session:unknown)=>void)}));
+const mocks=vi.hoisted(()=>({opening:vi.fn(),initialize:vi.fn(),sdk:null as SupabaseClient|null,leaf:vi.fn(),get:vi.fn(),set:vi.fn(),update:vi.fn(),keys:vi.fn(),del:vi.fn(),api:vi.fn(),inventory:vi.fn(),nativeNavigate:null as null|((url:string,replace:boolean)=>void),editorBarrier:null as Promise<void>|null,cleanupProbe:null as null|(()=>void),authChanged:null as null|((event:string,session:unknown)=>void)}));
+// Only the physical browser navigation is doubled. The real navigation,
+// retained preparation, frame mask, admission and authoring controller all run.
+vi.mock('@/lib/designStudio/studioDocumentNavigation',async original=>{const real=await original<typeof import('@/lib/designStudio/studioDocumentNavigation')>();return {...real,navigateStudioDocument:(href:string,replace=false,native?:Parameters<typeof real.navigateStudioDocument>[2],signal?:AbortSignal,preparation?:Parameters<typeof real.navigateStudioDocument>[4])=>real.navigateStudioDocument(href,replace,native??mocks.nativeNavigate??undefined,signal,preparation)};});
 vi.mock('next/navigation',()=>({usePathname:()=>location.pathname,useSearchParams:()=>new URLSearchParams(location.search),useRouter:()=>({replace:vi.fn()})}));
 vi.mock('@/lib/designStudio/studioOpeningTransport',async load=>({...await load<typeof import('@/lib/designStudio/studioOpeningTransport')>(),readStudioOpening:mocks.opening}));
 vi.mock('./studioLeafLoading',()=>({loadStudioEditor:mocks.leaf}));
@@ -32,17 +37,83 @@ const view:StudioEditingSessionProps['view']={schemaVersion:'studio_authoring_vi
 const authoring={state:'ready',estimate:{id:estimateId,projectId,versionLabel:'V1',updatedAt:'2026-10-20T00:00:00Z',requiresNewRevision:false},view,nextAction:'edit',reason:null};
 const response=(actorId=actor)=>({scope:{actorId,role:'staff',projectId,estimateId},authoring});
 const deferred=()=>{let resolve!:()=>void;const promise=new Promise<void>(done=>{resolve=done;});return{promise,resolve};};
-let latest:ReturnType<typeof useStudioEditingSession>,db:Map<string,unknown>,mounted:ReturnType<typeof renderIntoDocument>|undefined;
-function Editor(props:StudioEditingSessionProps){useLayoutEffect(()=>()=>{mocks.cleanupProbe?.();},[]);const ready=useRef(false);if(!ready.current&&mocks.editorBarrier)throw mocks.editorBarrier;ready.current=true;latest=useStudioEditingSession(props);return <main data-editor data-status={latest.status}/>;}
+let latest:ReturnType<typeof useStudioEditingSession>,db:Map<string,unknown>,mounted:ReturnType<typeof renderIntoDocument>|undefined,activeFrame:React.ContextType<typeof StudioDocumentContext>;
+function Editor(props:StudioEditingSessionProps){activeFrame=useContext(StudioDocumentContext);useLayoutEffect(()=>()=>{mocks.cleanupProbe?.();},[]);const ready=useRef(false);if(!ready.current&&mocks.editorBarrier)throw mocks.editorBarrier;ready.current=true;latest=useStudioEditingSession(props);return <main data-editor data-status={latest.status}/>;}
+const inventoryUrl=`/api/projects/${projectId}/studio`;
+function inventoryResponse(url:string,options?:RequestInit){
+ if(url!==inventoryUrl||options?.method&&options.method!=='GET'||options?.cache!=='no-store'||!(options?.signal instanceof AbortSignal))throw Error('Unexpected ordinary API operation');
+ const owner=getLocalFirstStoreOwner();expect([actor,other]).toContain(owner);mocks.inventory({url,actorId:owner,signal:options.signal,cache:options.cache});
+ return {projectId,project:{id:projectId.slice(5),name:'Synthetic project'},designs:[],loadError:false};
+}
+function expectNoOrdinaryApi(){
+ const ordinary=mocks.api.mock.calls.filter(([url,options])=>url!==inventoryUrl||options?.method&&options.method!=='GET'||options?.cache!=='no-store'||!(options?.signal instanceof AbortSignal));
+ expect(ordinary).toEqual([]);
+ for(const read of mocks.inventory.mock.calls)expect([actor,other]).toContain(read[0].actorId);
+}
 beforeEach(()=>{
- __resetLocalFirstQueueForTests();stopLocalFirstRuntime({clearOwner:true});__resetLocalFirstStoreForTests();invalidateStudioLifecycle();vi.clearAllMocks();mocks.editorBarrier=null;mocks.cleanupProbe=null;mocks.authChanged=null;mocks.sdk=null;mocks.initialize.mockResolvedValue({error:null});db=new Map();history.replaceState({},'',callback);
+ __resetLocalFirstQueueForTests();stopLocalFirstRuntime({clearOwner:true});__resetLocalFirstStoreForTests();invalidateStudioLifecycle();vi.clearAllMocks();mocks.nativeNavigate=null;mocks.editorBarrier=null;mocks.cleanupProbe=null;mocks.authChanged=null;mocks.sdk=null;mocks.initialize.mockResolvedValue({error:null});db=new Map();history.replaceState({},'',callback);
  Object.defineProperty(navigator,'onLine',{configurable:true,value:true});Object.defineProperty(navigator,'locks',{configurable:true,value:{request:async(name:string,_options:unknown,fn:(lock:unknown)=>unknown)=>fn({name})}});
- mocks.leaf.mockResolvedValue(Editor);mocks.opening.mockResolvedValue(response());mocks.api.mockResolvedValue({ok:true});
+ mocks.leaf.mockResolvedValue(Editor);mocks.opening.mockResolvedValue(response());mocks.api.mockImplementation(async(url,options)=>inventoryResponse(url,options));
  mocks.get.mockImplementation(async key=>structuredClone(db.get(key)));mocks.keys.mockImplementation(async()=>[...db.keys()]);mocks.del.mockImplementation(async key=>db.delete(key));mocks.set.mockImplementation(async(key,value)=>{db.set(key,structuredClone(value));});mocks.update.mockImplementation(async(key,fn)=>{db.set(key,structuredClone(fn(structuredClone(db.get(key)))));});
 });
 afterEach(()=>{mounted?.unmount();mounted=undefined;stopLocalFirstRuntime({clearOwner:true});__resetLocalFirstQueueForTests();invalidateStudioLifecycle();clearLocalFirstStoreOwner();vi.unstubAllGlobals();vi.useRealTimers();});
 const flush=async()=>{await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1));});};
 const open=async()=>{mounted=renderIntoDocument(<Suspense fallback={<p>Waiting for editor</p>}><StudioDocument callback={callback}><StudioDocumentPage callback={callback}/></StudioDocument></Suspense>);await flush();expect(latest.canEdit).toBe(true);};
+
+it.each(['throw','cancel'] as const)('hands real rename recovery to the actual frame across native %s and fresh continuation without reviving the old baseline',async method=>{
+ await open();const originalSession=structuredClone(latest.session!),lifetime=new AbortController(),nextTimestamp='2026-11-02T02:00:00Z';let patches=0;
+ const renamed={...authoring,estimate:{...authoring.estimate,updatedAt:nextTimestamp},identity:{projectName:'Synthetic project',internalName:'Courtyard',createdAt:null,history:'working',quoteLabel:null}};
+ mocks.api.mockImplementation(async(url,options)=>{
+  if(url===inventoryUrl)return inventoryResponse(url,options);
+  if(url===`/api/estimates/${estimateId}`&&options?.method==='PATCH'){patches++;throw Error('Server committed name, response was lost');}
+  if(url===`/api/projects/${projectId}/estimates/${estimateId}/studio`&&options?.cache==='no-store')return{authoring:renamed};
+  throw Error('Unexpected domain request during rename recovery');
+ });
+ mocks.opening.mockResolvedValue({...response(),authoring:renamed});mocks.cleanupProbe=()=>lifetime.abort();
+ mocks.nativeNavigate=()=>{if(method==='throw')throw Error('Controlled native navigation failure');};
+ let recovery!:Awaited<ReturnType<typeof renameStudioDesign>>;
+ await act(async()=>{recovery=await renameStudioDesign({actorId:actor,projectId,estimateId,designId:'design'},'Courtyard',lifetime.signal,undefined,preparation=>activeFrame!.retainNavigationPreparation!({actorId:actor,projectId,estimateId,preparation}));});
+ expect(patches).toBe(1);expect(latest.canEdit).toBe(false);expect(latest.session?.baseUpdatedAt).toBe(authoring.estimate.updatedAt);expect(activeFrame?.visible).toBe(true);
+ if(method==='throw')await act(async()=>{await expect(recovery.reopen()).rejects.toThrow('Controlled native');});
+ else{
+  await act(async()=>recovery.reopen());await flush();expect(latest.canEdit).toBe(false);expect(activeFrame?.visible).toBe(false);
+  await act(async()=>{const button=[...document.querySelectorAll('button')].find(node=>node.textContent?.includes('Continue editing'));expect(button).toBeTruthy();button!.click();});
+ }
+ await vi.waitFor(async()=>{await flush();expect(latest.canEdit).toBe(true);},{timeout:2000,interval:1});
+ expect(mocks.opening).toHaveBeenCalledTimes(2);expect(latest.session?.baseUpdatedAt).toBe(nextTimestamp);expect(latest.session?.dirty).toBe(false);expect(latest.session?.edit).toEqual(originalSession.edit);expect(originalSession.baseUpdatedAt).toBe(authoring.estimate.updatedAt);expect(patches).toBe(1);expect(lifetime.signal.aborted).toBe(true);
+ expect(mocks.api.mock.calls.filter(([,options])=>options?.method==='POST')).toEqual([]);await expect(recovery.reopen()).rejects.toThrow('owner changed');
+});
+it('never dispatches rename after the actual frame withdraws during a held working-copy read',async()=>{
+ await open();const held=deferred(),get=mocks.get.getMockImplementation()!;let entered=false;
+ mocks.get.mockImplementation(async key=>{if(String(key).includes('studio-working-copy')){entered=true;await held.promise;}return get(key);});
+ const adopt=activeFrame!.retainNavigationPreparation!;
+ let outcome!:Promise<unknown>;
+ act(()=>{outcome=renameStudioDesign({actorId:actor,projectId,estimateId,designId:'design'},'Courtyard',new AbortController().signal,undefined,preparation=>adopt({actorId:actor,projectId,estimateId,preparation})).catch(error=>error);});
+ await vi.waitFor(()=>expect(entered).toBe(true),{interval:1});
+ act(()=>window.dispatchEvent(new Event('pagehide')));
+ expect(activeFrame?.visible).toBe(false);expect(latest.canEdit).toBe(false);
+ let result:unknown;await act(async()=>{held.resolve();result=await outcome;});
+ expect(result).toBeInstanceOf(Error);expect((result as Error).message).toContain('open design changed');
+ expect(mocks.api.mock.calls.filter(([,options])=>options?.method==='PATCH')).toEqual([]);
+ expectNoOrdinaryApi();
+});
+it('refuses wrong actor/project, failed and non-owned preparations in the actual live frame',async()=>{
+ await open();const preparation=prepareStudioNavigation(actor);await preparation.ready;
+ const adopt=activeFrame!.retainNavigationPreparation!;
+ expect(()=>adopt({actorId:other,projectId,estimateId,preparation})).toThrow();expect(()=>adopt({actorId:actor,projectId:'proj-other',estimateId,preparation})).toThrow();
+ expect(()=>adopt({actorId:actor,projectId,estimateId,preparation:{...preparation,fenced:()=>false}})).toThrow();expect(()=>adopt({actorId:actor,projectId,estimateId,preparation:{...preparation,status:()=> 'failed'}})).toThrow();
+ preparation.release();await flush();expect(latest.canEdit).toBe(true);expectNoOrdinaryApi();
+ bindLocalFirstStoreOwner(other);const otherPreparation=prepareStudioNavigation(other);await otherPreparation.ready;expect(()=>adopt({actorId:actor,projectId,estimateId,preparation:otherPreparation})).toThrow();otherPreparation.release();bindLocalFirstStoreOwner(actor);
+});
+it('adopts the same ready preparation idempotently without releasing it or leaving stale pre-dispatch ownership',async()=>{
+ await open();const preparation=prepareStudioNavigation(actor);await preparation.ready;const release=vi.spyOn(preparation,'release');
+ const first=activeFrame!.retainNavigationPreparation!({actorId:actor,projectId,estimateId,preparation}),second=activeFrame!.retainNavigationPreparation!({actorId:actor,projectId,estimateId,preparation});expect(release).not.toHaveBeenCalled();first();second();expect(release).toHaveBeenCalledOnce();await flush();expect(latest.canEdit).toBe(true);
+});
+it('returns a pre-dispatch dirty rename refusal to the actual frame without leaving stale fence ownership',async()=>{
+ await open();act(()=>{const edit=structuredClone(latest.edit!);edit.site.access='hard';latest.change(edit);});await flush();
+ await act(async()=>{await expect(renameStudioDesign({actorId:actor,projectId,estimateId,designId:'design'},'Name',new AbortController().signal,undefined,preparation=>activeFrame!.retainNavigationPreparation!({actorId:actor,projectId,estimateId,preparation}))).rejects.toThrow('Save the current design');});
+ await flush();expect(latest.canEdit).toBe(true);expect(latest.session?.dirty).toBe(true);expect(latest.edit?.site.access).toBe('hard');expect(activeFrame?.visible).toBe(true);expectNoOrdinaryApi();
+});
 
 it('preloads the page-local module but mounts no real actor provider/storage runtime before its fresh API frame',async()=>{
  const first=deferred();mocks.opening.mockImplementationOnce(()=>first.promise.then(()=>response()));
@@ -68,18 +139,18 @@ it('keeps retained ordinary commands local while accepted work is held across fr
  mocks.opening.mockImplementationOnce(()=>fresh.promise.then(()=>response(other)));
  act(()=>mocks.authChanged?.('SIGNED_IN',{user:{id:other}}));expect(getLocalFirstStoreOwner()).toBe(actor);expect(latest.canEdit).toBe(false);
  await act(async()=>{local.resolve();working.resolve();await queued;});await flush();
- expect(mocks.api).not.toHaveBeenCalled();expect(getLocalFirstStoreOwner()).toBe(actor);
+ expectNoOrdinaryApi();expect(getLocalFirstStoreOwner()).toBe(actor);
  await act(async()=>fresh.resolve());await flush();expect(getLocalFirstStoreOwner()).toBe(other);
  expect(db.get(localFirstStorageKey(actor))).toEqual(retained);expect(getLocalFirstStoreSnapshot().state.queue).toEqual([]);
 });
 
 it('preserves queued and previously syncing ordinary payloads/statuses/aliases across first admission and pagehide/fresh same-actor return',async()=>{
  const state=createEmptyLocalFirstState();state.queue=[{id:'ordinary-queued',entityKey:'project:note',mutationKey:PORTAL_LOCAL_FIRST_MUTATIONS.projectNoteDelete,payload:{projectId,noteId:'note'},status:'queued',attempts:0,enqueuedAt:'2026-10-26T00:00:00Z',updatedAt:'2026-10-26T00:00:00Z'},{id:'ordinary-unconfirmed',entityKey:'project:other',mutationKey:PORTAL_LOCAL_FIRST_MUTATIONS.projectNoteDelete,payload:{projectId,noteId:'other'},status:'syncing',attempts:1,enqueuedAt:'2026-10-26T00:00:00Z',updatedAt:'2026-10-26T00:00:00Z'}];state.idAliases={'local-note':'note'};db.set(localFirstStorageKey(actor),structuredClone(state));
- await open();expect(mocks.api).not.toHaveBeenCalled();expect(getLocalFirstStoreSnapshot().state).toEqual(state);
+ await open();expectNoOrdinaryApi();expect(getLocalFirstStoreSnapshot().state).toEqual(state);
  act(()=>{const edit=structuredClone(latest.edit!);edit.site.access='hard';latest.change(edit);});await flush();
  act(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));expect(latest.canEdit).toBe(false);
  act(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));await flush();
- expect(latest.edit?.site.access).toBe('hard');expect(latest.canUndo).toBe(true);expect(mocks.opening).toHaveBeenCalledTimes(2);expect(mocks.api).not.toHaveBeenCalled();
+ expect(latest.edit?.site.access).toBe('hard');expect(latest.canUndo).toBe(true);expect(mocks.opening).toHaveBeenCalledTimes(2);expectNoOrdinaryApi();
  expect(getLocalFirstStoreSnapshot().state).toEqual(state);expect(db.get(localFirstStorageKey(actor))).toEqual(state);
  act(()=>latest.undo());await flush();expect(latest.edit?.site.access).toBe('normal');
 });
@@ -88,7 +159,7 @@ it.each(['SIGNED_OUT','SIGNED_IN'])('retires a response across A to %s to A even
  await open();const denied=deferred();mocks.opening.mockImplementationOnce(()=>denied.promise.then(()=>response(other)));mocks.opening.mockResolvedValueOnce(response());
  act(()=>mocks.authChanged?.(event,event==='SIGNED_OUT'?null:{user:{id:other}}));await flush();expect(latest.canEdit).toBe(false);
  act(()=>mocks.authChanged?.('SIGNED_IN',{user:{id:actor}}));await flush();expect(mocks.opening).toHaveBeenCalledTimes(3);
- await act(async()=>denied.resolve());await flush();expect(getLocalFirstStoreOwner()).toBe(actor);expect(latest.canEdit).toBe(true);expect(mocks.api).not.toHaveBeenCalled();
+ await act(async()=>denied.resolve());await flush();expect(getLocalFirstStoreOwner()).toBe(actor);expect(latest.canEdit).toBe(true);expectNoOrdinaryApi();
 });
 
 it.each(['pending','denied','navigation'])('retains a staged own Save but never dispatches it after %s withdrawal during IDB staging',async cause=>{
@@ -99,7 +170,7 @@ it.each(['pending','denied','navigation'])('retains a staged own Save but never 
  const expected=structuredClone(latest.session!.pending!.command);
  if(cause==='navigation')await act(async()=>navigateStudioDocument('/staff/projects',false,vi.fn()));
  else{if(cause==='denied')mocks.opening.mockRejectedValueOnce(new StudioOpeningAccessError('no_access'));else mocks.opening.mockImplementationOnce(()=>fresh.promise.then(()=>response(other)));act(()=>mocks.authChanged?.('SIGNED_IN',{user:{id:other}}));await flush();}
- await act(async()=>{staged.resolve();await saving;});expect(mocks.api).not.toHaveBeenCalled();
+ await act(async()=>{staged.resolve();await saving;});expectNoOrdinaryApi();
  const retained=[...db].find(([key])=>key.startsWith('sanctuary-studio-pending:'))![1] as {body:string;receipt:unknown};expect(JSON.parse(retained.body)).toEqual(expected);expect(retained.receipt).toBeNull();
 });
 
@@ -109,8 +180,8 @@ it('keeps the old-controller dispatch fence while a newly admitted render is sus
  mocks.update.mockImplementation(async(key,fn)=>{if(String(key).startsWith('sanctuary-studio-pending:')){held=true;await stage.promise;}return update(key,fn);});
  let saving!:Promise<void>;act(()=>{saving=latest.save();});await flush();expect(held).toBe(true);
  mocks.editorBarrier=render.promise;act(()=>mocks.authChanged?.('USER_UPDATED',{user:{id:actor}}));await flush();
- expect(mocks.opening).toHaveBeenCalledTimes(2);await act(async()=>{stage.resolve();await saving;});expect(mocks.api).not.toHaveBeenCalled();
- mocks.editorBarrier=null;await act(async()=>render.resolve());await flush();expect(getLocalFirstStoreOwner()).toBe(actor);expect(mocks.api).not.toHaveBeenCalled();
+ expect(mocks.opening).toHaveBeenCalledTimes(2);await act(async()=>{stage.resolve();await saving;});expectNoOrdinaryApi();
+ mocks.editorBarrier=null;await act(async()=>render.resolve());await flush();expect(getLocalFirstStoreOwner()).toBe(actor);expectNoOrdinaryApi();
 });
 
 it('withholds an unknown soft child at render while its detached editor drains under the retained provider owner',async()=>{
@@ -119,7 +190,7 @@ it('withholds an unknown soft child at render while its detached editor drains u
  const privateMount=vi.fn();function Private(){privateMount();return <p>Private ordinary route</p>;}
  history.replaceState({},'','/staff/projects');act(()=>mounted!.rerender(<Suspense fallback={<p>Waiting for editor</p>}><StudioDocument callback={callback}><Private/></StudioDocument></Suspense>));
  expect(privateMount).not.toHaveBeenCalled();expect(getLocalFirstStoreOwner()).toBe(actor);
- await act(async()=>hold.resolve());await flush();expect(await readStudioWorkingCopy({actorId:actor,projectId,estimateId,designId:'design'})).toMatchObject({state:'valid',session:{edit:{site:{access:'hard'}}}});expect(mocks.api).not.toHaveBeenCalled();
+ await act(async()=>hold.resolve());await flush();expect(await readStudioWorkingCopy({actorId:actor,projectId,estimateId,designId:'design'})).toMatchObject({state:'valid',session:{edit:{site:{access:'hard'}}}});expectNoOrdinaryApi();
 });
 
 it('uses a native boundary on a retained ordinary root, without starting opening, actor storage or editor preload',async()=>{
@@ -128,6 +199,7 @@ it('uses a native boundary on a retained ordinary root, without starting opening
 });
 
 it('keeps normal Portal Providers default outbound behavior for its freshly admitted ordinary document',async()=>{
+ mocks.api.mockResolvedValueOnce({ok:true}); // The existing intended ordinary note-delete response.
  const state=createEmptyLocalFirstState();state.queue=[{id:'normal-queued',entityKey:'project:note',mutationKey:PORTAL_LOCAL_FIRST_MUTATIONS.projectNoteDelete,payload:{projectId,noteId:'note'},status:'queued',attempts:0,enqueuedAt:'2026-10-26T00:00:00Z',updatedAt:'2026-10-26T00:00:00Z'}];db.set(localFirstStorageKey(actor),state);
  mounted=renderIntoDocument(<PortalAuthProvider requestAdmission={{state:{status:'authenticated',user:{id:actor,email:null},role:'staff'},invalidate:vi.fn()}}><Providers><main>Ordinary document</main></Providers></PortalAuthProvider>);await flush();
  expect(mocks.api).toHaveBeenCalledOnce();expect(getLocalFirstStoreSnapshot().state.queue).toEqual([]);
@@ -149,7 +221,7 @@ it('fences a staged own Save during unknown-route layout cleanup before promise 
   history.replaceState({},'','/staff/projects');mounted!.root.render(<Suspense fallback={<p>Waiting</p>}><StudioDocument callback={callback}><Private/></StudioDocument></Suspense>);
   await new Promise(resolve=>setTimeout(resolve,40));await saving;
  } finally {(globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;}
- expect(released).toBe(true);expect(privateMount).not.toHaveBeenCalled();expect(mocks.api).not.toHaveBeenCalled();expect(getLocalFirstStoreOwner()).toBe(actor);
+ expect(released).toBe(true);expect(privateMount).not.toHaveBeenCalled();expectNoOrdinaryApi();expect(getLocalFirstStoreOwner()).toBe(actor);
  const retained=[...db].find(([key])=>key.startsWith('sanctuary-studio-pending:'))![1] as {body:string;receipt:unknown};expect(JSON.parse(retained.body)).toEqual(expected);expect(retained.receipt).toBeNull();
 });
 
@@ -175,7 +247,7 @@ it('retains an installed frame and same actor while unknown soft children are wi
  const privateMount=vi.fn();function Private(){privateMount();return <p>Private ordinary route</p>;}
  history.replaceState({},'','/staff/projects');act(()=>mounted!.rerender(<StudioDocumentSlot callback={callback}><Private/></StudioDocumentSlot>));
  expect(privateMount).not.toHaveBeenCalled();expect(getLocalFirstStoreOwner()).toBe(actor);expect(mocks.opening).toHaveBeenCalledOnce();
- await act(async()=>hold.resolve());await flush();expect(getLocalFirstStoreOwner()).toBe(actor);expect(await readStudioWorkingCopy({actorId:actor,projectId,estimateId,designId:'design'})).toMatchObject({state:'valid',session:{edit:{site:{access:'hard'}}}});expect(mocks.api).not.toHaveBeenCalled();
+ await act(async()=>hold.resolve());await flush();expect(getLocalFirstStoreOwner()).toBe(actor);expect(await readStudioWorkingCopy({actorId:actor,projectId,estimateId,designId:'design'})).toMatchObject({state:'valid',session:{edit:{site:{access:'hard'}}}});expectNoOrdinaryApi();
 });
 
 
@@ -296,5 +368,5 @@ it('does not mount an editor from a module completion after its issued request w
  mounted=renderIntoDocument(<StudioDocument callback={callback}><StudioDocumentPage callback={callback}/></StudioDocument>);await flush();
  expect(getLocalFirstStoreOwner()).toBe(actor);expect(mounted.container.querySelector('[data-editor]')).toBeNull();
  act(()=>{window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));leaf.resolve();});await flush();
- expect(mounted.container.querySelector('[data-editor]')).toBeNull();expect(mocks.opening).toHaveBeenCalledOnce();expect(mocks.api).not.toHaveBeenCalled();
+ expect(mounted.container.querySelector('[data-editor]')).toBeNull();expect(mocks.opening).toHaveBeenCalledOnce();expectNoOrdinaryApi();
 });

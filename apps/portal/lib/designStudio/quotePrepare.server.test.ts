@@ -13,11 +13,11 @@ vi.mock('./studioTravelPlan',()=>({studioTravelTripPlanIssue:mocks.trip}));
 vi.mock('./studioInstallationEstimate',()=>({studioInstallationEstimate:()=>({siteDays:3})}));
 vi.mock('./quoteCustomerLines',()=>({studioCustomerQuoteLines:()=>[{description:'Synthetic quoted arrangement',qty:1,unitPriceIncGstCents:10000,lineTotalIncGstCents:10000,sortOrder:0}]}));
 import {prepareStudioQuoteRequest} from './quotePrepare.server';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {mergeStudioAuthoringEdit,projectStudioAuthoringView} from './authoringView';
 import {studioClientDocumentFixture} from '../../../../test/fixtures/studio-client-documents';
 const ids={projectId:'proj_10000000-0000-4000-8000-000000000001',estimateId:'est_10000000-0000-4000-8000-000000000003'},snapshotId='10000000-0000-4000-8000-000000000002';
-const made=prepareStudioCreation({mode:'blank',projectId:ids.projectId,designId:'document-fixture',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+const made=prepareEmptyStudioFixture({mode:'blank',projectId:ids.projectId,designId:'document-fixture',commercialScopeId:null});if(!made.ok)throw Error(made.message);
 const merged=mergeStudioAuthoringEdit({storedAuthored:made.prepared.row.outputs.studio_authored,storedSpatial:made.prepared.row.outputs.drawing_object_first,edit:studioClientDocumentFixture()});if(!merged.ok)throw Error(merged.message);
 const outputs={studio_authored:merged.value.authored,drawing_object_first:merged.value.spatial},view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
 beforeEach(()=>{

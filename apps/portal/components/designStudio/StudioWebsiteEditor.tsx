@@ -8,6 +8,7 @@ import StudioHouseWorkspace from "./StudioHouseWorkspace";
 import StudioWebsiteSavedView from "./StudioWebsiteSavedView";
 import Link from "next/link";
 import StudioDesignHeading from "./StudioDesignHeading";
+import StudioDesignSelector from './StudioDesignSelector';
 import StudioWebsiteRecovery from "./StudioWebsiteRecovery";
 import css from "./StudioWebsite.module.css";
 import type {StudioOpeningPrice} from '@/lib/designStudio/studioOpening';
@@ -37,7 +38,7 @@ export default function StudioWebsiteEditor(
         <header className={css.header}>
           <div>
             <Link prefetch={prefetch} className={css.back} href={`/staff/projects/${scope.projectId}?tab=estimates`}>Sanctuary</Link>
-            <StudioDesignHeading identity={identity} versionLabel={versionLabel} />
+            <StudioDesignSelector projectId={scope.projectId} estimateId={scope.estimateId}><StudioDesignHeading identity={identity} versionLabel={versionLabel} /></StudioDesignSelector>
           </div>
           <div className={css.actions}>
             <button disabled>Save design</button>

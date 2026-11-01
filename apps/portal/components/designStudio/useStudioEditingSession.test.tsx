@@ -50,6 +50,17 @@ beforeEach(() => {
 afterEach(() => { for (const item of mounted.splice(0)) item.unmount(); });
 async function edit(access: string) { await act(async () => { const next = structuredClone(latest.edit!); next.site.access = access; latest.change(next); }); }
 
+it('refreshes a fully acknowledged clean cache after metadata-only naming, keeping the same authoring revision and next Save CAS',async()=>{
+ const first=mount();await flush();expect(latest.session?.dirty).toBe(false);first.unmount();await flush();
+ const updatedAt='2026-11-02T01:00:00Z';mount({...props,updatedAt});await flush();
+ expect(latest.status).toBe('ready');expect(latest.edit).toEqual(createStudioAuthoringEdit(props.view));expect(latest.session?.baseRevision).toBe(props.view.revision);expect(latest.session?.baseUpdatedAt).toBe(updatedAt);expect(latest.canEdit).toBe(true);
+ await edit('hard');const next=prepareStudioSave(latest.session!,requestId);expect(next.pending?.command.expectedUpdatedAt).toBe(updatedAt);expect(next.pending?.command.edit.site.access).toBe('hard');expect(mocks.api).not.toHaveBeenCalled();
+});
+it('does not discard dirty retained work when a metadata timestamp changed elsewhere',async()=>{
+ const first=mount();await flush();await edit('hard');const retained=db.get(studioWorkingCopyKey(scope));first.unmount();await flush();
+ mount({...props,updatedAt:'2026-11-02T01:00:00Z'});await flush();expect(latest.canEdit).toBe(false);expect(latest.edit?.site.access).toBe('hard');expect(db.get(studioWorkingCopyKey(scope))).toBe(retained);expect(mocks.api).not.toHaveBeenCalled();
+});
+
 it('retains one composite Create command through uncertainty, then reconciles the exact Save receipt and locked source timestamp',async()=>{
  mount();await flush();await edit('hard');let first!:import('@/lib/designStudio/saveTransport').StudioPendingCommand;
  await act(async()=>{first=await latest.beginQuote(requestId);});

@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ api: vi.fn(), opening:vi.fn(),role:'staff', le
 vi.mock('next/link',()=>({default:({prefetch,...props}:React.ComponentProps<'a'>&{prefetch?:boolean})=><a data-prefetch={String(prefetch)} {...props}/>}));
 vi.mock('@/lib/repo/apiClient', () => ({ apiJson: mocks.api }));
 vi.mock('@/lib/designStudio/studioOpeningTransport',()=>({readStudioOpening:mocks.opening}));
-vi.mock('@/components/auth/PortalAuthProvider', () => ({ usePortalSession: () => ({ user: mocks.actorId ? { id: mocks.actorId } : null, role: mocks.role }) }));
+vi.mock('@/components/auth/PortalAuthProvider', async original => ({ ...await original<typeof import('@/components/auth/PortalAuthProvider')>(), usePortalSession: () => ({ user: mocks.actorId ? { id: mocks.actorId } : null, role: mocks.role }) }));
 vi.mock('./studioLeafLoading', () => ({ loadStudioEditor: mocks.leaf }));
 vi.mock('./StudioRevisionStart', () => ({ default: (props: Record<string, unknown>) => <div data-testid="revision">{JSON.stringify(props)}</div> }));
 vi.mock('./StudioCreateAction', () => ({ default: (props: Record<string, unknown>) => <div data-testid="recovery">{JSON.stringify(props)}</div> }));

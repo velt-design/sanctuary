@@ -14,6 +14,7 @@ import { useStudioHouseDraft } from "./useStudioHouseDraft";
 import StudioHouseConnectionControls from "./StudioHouseConnectionControls";
 import StudioHouseInspector from "./StudioHouseInspector";
 import StudioDesignHeading from "./StudioDesignHeading";
+import StudioDesignSelector from './StudioDesignSelector';
 import StudioWorkspaceSubtotal from "./StudioWorkspaceSubtotal";
 import type { StudioDesignIdentity } from "@/lib/designStudio/studioDesignIdentity";
 import { useContext, useCallback, useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
@@ -47,6 +48,7 @@ import StudioWebsiteJoinControls from "./StudioWebsiteJoinControls";
 import { applyStudioPergolaEdit } from "@/lib/designStudio/pergolaEditing";
 import css from "./StudioWebsite.module.css";
 import { applyStudioHouseEdit } from "@/lib/designStudio/houseEditing";
+import { newStudioHousePosition } from '@/lib/designStudio/newHousePlacement';
 import StudioWebsiteRecovery from "./StudioWebsiteRecovery";
 import { useStudioDirectPlacement } from "./useStudioDirectPlacement";
 import { useStudioResolvedScene } from "./useStudioResolvedScene";
@@ -652,7 +654,7 @@ export default function StudioHouseWorkspace({
           >
             Sanctuary
           </Link>
-          <StudioDesignHeading
+          <StudioDesignSelector projectId={scope.projectId} estimateId={scope.estimateId} renameAvailable={!!controller.session && !controller.session.dirty && !controller.session.pending && controller.status==='ready' && !houseDraft}><StudioDesignHeading
             identity={identity}
             versionLabel={versionLabel}
             state={
@@ -660,7 +662,7 @@ export default function StudioHouseWorkspace({
                 ? "Unsaved changes kept on this device"
                 : "Saved design"
             }
-          />
+          /></StudioDesignSelector>
         </div>
         <StudioWorkspaceSubtotal
           houseInputNotice={
@@ -802,6 +804,7 @@ export default function StudioHouseWorkspace({
                       kind: "add",
                       id: `${edit.designId}:house:${crypto.randomUUID()}`,
                       label: "House",
+                      worldPosition: newStudioHousePosition(resolved),
                     });
                     if (!r.ok) throw Error(r.message);
                     if (

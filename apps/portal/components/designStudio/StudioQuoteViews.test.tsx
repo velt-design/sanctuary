@@ -6,15 +6,18 @@ import {addWebsitePergola} from '@/lib/designStudio/websiteComposition';
 import type {StudioAuthoringEdit} from '@/lib/designStudio/authoringView';
 import StudioQuoteViews from './StudioQuoteViews';
 import {applyStudioHouseEdit} from '@/lib/designStudio/houseEditing';
+import {studioAttachmentFixture} from '../../../../test/studioAttachmentFixture';
+import {previewStudioAttachment,changeStudioProduct} from '@/lib/designStudio/studioHouseCommands';
+import {websiteComposition} from '@/lib/designStudio/websiteComposition';
 
 // The actual composition and capture controller run here. GPU pixels and camera
 // feel are separately checked in the hosted browser, not inferred from this test.
-const observed=vi.hoisted(()=>({camera:null as any,houses:[] as any[],accessories:[] as {kind:string;openings:string[];panels:string[]}[],render:vi.fn(),invalidate:vi.fn(),decode:vi.fn(),perspective:vi.fn(()=> 'data:image/png;base64,cGVyc3BlY3RpdmU=')}));
+const observed=vi.hoisted(()=>({brackets:[] as any[],camera:null as any,houses:[] as any[],accessories:[] as {kind:string;openings:string[];panels:string[]}[],render:vi.fn(),invalidate:vi.fn(),decode:vi.fn(),perspective:vi.fn(()=> 'data:image/png;base64,cGVyc3BlY3RpdmU=')}));
 vi.mock('@sp/geometry-viewer/react/canvas',()=>({SceneCanvas:({children}:any)=>children}));
 vi.mock('@react-three/fiber',()=>({useThree:()=>({gl:{render:observed.render,domElement:{toDataURL:observed.perspective}},scene:{},camera:{},invalidate:observed.invalidate})}));
 vi.mock('@sp/configurator/react',async()=>{const {usePreviewBlinds}=await import('@sp/configurator/react/controls');const read=(kind:string)=>{const sides=usePreviewBlinds();observed.accessories.push({kind,openings:sides?.openings.map(o=>o.id)??[],panels:sides?.panels.map(p=>p.opening)??[]});return null;};return{PreviewCamera:(props:any)=>{observed.camera=props;return null;},PreviewLighting:()=>null,PreviewProductNode:()=>read('perspective'),PreviewPlanProduct:()=>read('plan'),StudioTreatment:{Provider:({children}:any)=>children}};});
 vi.mock('./StudioHouseNode',()=>({default:({geometry}:any)=>{observed.houses.push(geometry);return null;}}));
-vi.mock('./directDemo/WebsiteConnectionDetail',()=>({default:()=>null}));
+vi.mock('./directDemo/WebsiteConnectionDetail',()=>({default:(props:any)=>{observed.brackets.push(props);return null;}}));
 let mount:ReturnType<typeof renderIntoDocument>|undefined;
 function design(){const edit:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:'view-proof',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};return addWebsitePergola(edit,'p');}
 async function click(label:string){await act(async()=>{const button=[...mount!.container.querySelectorAll('button')].find(b=>b.textContent===label)!;expect(button).toBeTruthy();button.click();});}
@@ -22,6 +25,7 @@ beforeEach(()=>{
  vi.useFakeTimers();vi.clearAllMocks();observed.decode.mockResolvedValue(undefined);
  observed.accessories=[];
  observed.houses=[];
+ observed.brackets=[];
  vi.stubGlobal('Image',class {src='';decode(){return observed.decode();}});
  vi.stubGlobal('URL',Object.assign(class {},{createObjectURL:vi.fn(()=> 'blob:plan'),revokeObjectURL:vi.fn()}));
  vi.spyOn(HTMLCanvasElement.prototype,'getContext').mockReturnValue({fillStyle:'',fillRect:vi.fn(),drawImage:vi.fn()} as any);
@@ -29,6 +33,12 @@ beforeEach(()=>{
  sessionStorage.clear();sessionStorage.setItem('editor-camera-proof','unchanged');
 });
 afterEach(()=>{mount?.unmount();mount=undefined;vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();});
+it('uses the selected frame finish for soffit details in the actual quote capture composition',()=>{
+ let edit=previewStudioAttachment(studioAttachmentFixture(),{objectId:'p2',houseId:'house',edge:'rear',kind:'eave',method:'soffit'}),value=websiteComposition(edit)[0].value!;
+ edit=changeStudioProduct(edit,{...value,selection:{...value.selection,roof:{...value.selection.roof,frameFinish:'white'}}});
+ mount=renderIntoDocument(<StudioQuoteViews edit={edit} onCapture={vi.fn()}/>);
+ expect(observed.brackets.length).toBeGreaterThan(0);expect(observed.brackets.every(p=>p.frameFinish==='white')).toBe(true);
+});
 it('uses explicit presentation framing without changing editor storage or capturing on a view change',async()=>{
  const edit=design(),capture=vi.fn();mount=renderIntoDocument(<StudioQuoteViews edit={edit} onCapture={capture}/>);
  expect(observed.camera.preserveUserCamera).toBe(true);expect(observed.camera.fit).toBe(0);

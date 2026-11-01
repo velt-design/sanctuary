@@ -680,8 +680,13 @@ Ordinary retained Portal leaves for Calculator, Email Review, Marketing/Financia
 
 The Project header replaces only its Workbench action with one server-capability
 gated Design Studio link. Current progressive/private readiness disabling and
-other actions remain. `/staff/projects/[projectId]/studio` owns new/saved designs
-and opens the existing Studio editor route. No legacy Workbench URL, record or
+other actions remain. `/staff/projects/[projectId]/studio` resolves directly to
+the current selected Studio design, or starts a first default through the existing
+durable client command. It has no name/scope landing form. Design selection,
+history, optional naming and explicit New option/New add-on actions live inside
+Studio; quoted versions open for protected review with Edit a new revision.
+GET `/api/projects/[projectId]/studio` reuses the caller-RLS project/estimate/quote
+flow owner and never creates on a read. No legacy Workbench URL, record or
 contact is removed. Existing staff/project access applies to normal new and
 existing trial projects; a static local test UUID list is not the product scope.
 See [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).

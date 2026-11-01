@@ -1,7 +1,7 @@
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
 import {loadCostingConfigV1,ACCESSORY_REVIEW_RATES,getDefaultInstalledSellingRates,snapshotCostingControlConfigV1} from '@sp/costing';
 import {hashCostingControlConfig} from '@/lib/costing/configurationShared';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {projectStudioAuthoringView,createStudioAuthoringEdit,mergeStudioAuthoringEdit} from './authoringView';
 import {addWebsitePergola} from './websiteComposition';
 import type {StudioWebsiteDesign} from './websiteDesign';
@@ -17,7 +17,7 @@ const projectId='proj_10000000-0000-4000-8000-000000000001',estimateId='est_1000
 beforeEach(()=>{vi.stubEnv('ENABLE_PORTAL_DESIGN_STUDIO','1');mocks.detail.mockResolvedValue({isLocked:false,hasDraftQuotes:false,draftQuoteCount:0});});
 afterEach(()=>vi.unstubAllEnvs());
 function source(role:'admin'|'staff'){
- const made=prepareStudioCreation({mode:'blank',projectId,designId:'privacy-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId,designId:'privacy-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const outputs=made.prepared.row.outputs,view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
  const edit=addWebsitePergola(createStudioAuthoringEdit(view.value),'pergola');edit.site={travelExGst:'123'};
  const saved=mergeStudioAuthoringEdit({storedAuthored:outputs.studio_authored,storedSpatial:outputs.drawing_object_first,edit});if(!saved.ok)throw Error(saved.message);

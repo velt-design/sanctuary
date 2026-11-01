@@ -6,7 +6,7 @@ import {
   positionWebsitePergola,
   websiteComposition,
 } from "@/lib/designStudio/websiteComposition";
-import { changeStudioProduct } from "@/lib/designStudio/studioHouseCommands";
+import { changeStudioProduct, previewStudioAttachment } from "@/lib/designStudio/studioHouseCommands";
 import StudioHouseModel from "./StudioHouseModel";
 const host = vi.hoisted(() => ({ renders: 0, props: null as any }));
 vi.mock("@sp/geometry-viewer/react/canvas", () => ({
@@ -29,6 +29,13 @@ function nodes(node: any, name: string): any[] {
     ...nodes(node.props?.children, name),
   ];
 }
+it('passes the selected white frame to actual live soffit detail instances',()=>{
+ let edit=previewStudioAttachment(studioAttachmentFixture(),{objectId:'p2',houseId:'house',edge:'rear',kind:'eave',method:'soffit'});
+ const value=websiteComposition(edit)[0].value!;edit=changeStudioProduct(edit,{...value,selection:{...value.selection,roof:{...value.selection.roof,frameFinish:'white'}}});
+ const scene=createStudioSceneResolver().resolve(edit);
+ mounted=renderIntoDocument(<StudioHouseModel active scene={scene} selected="p2" onSelect={()=>{}} readOnly={false} section="Shape" refinedHouse persistentViewport={false} zoomStep={0} fit={0} framingKey="bracket" focused={null} points={[]} onVisibility={()=>{}} isNight={false}/>);
+ const details=nodes(host.props.children,'WebsiteConnectionDetail');expect(details.length).toBeGreaterThan(0);expect(details.every(d=>d.props.frameFinish==='white')).toBe(true);
+});
 it("defers hidden Studio scene rebuilding and reveals current options, pending/invalid presentation and callbacks without replacing camera intent", () => {
   host.renders = 0;
   const resolver = createStudioSceneResolver(),

@@ -2,6 +2,8 @@ import type { Point3 } from './contracts';
 import type { RepresentativeRoofProfile } from './representativeRoofProfiles';
 
 export type RepresentativeRoofFinish = {
+  /** Explicit Studio opt-in. Absent on historical/public band layouts. */
+  studioPanels?: { version: 1; count: number; side: 'front' | 'back' | 'left' | 'right' };
   ceiling?: 'cedar-100' | 'cedar-150' | 'thermopine-100' | 'thermopine-150';
   material: 'acrylic' | 'solid' | 'combination';
   layout: 'central' | 'house'; acrylicBays: number;

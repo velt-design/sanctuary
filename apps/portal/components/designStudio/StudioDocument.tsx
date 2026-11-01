@@ -14,6 +14,7 @@ import {StudioDocumentContext,type StudioDocumentAdmission} from './StudioDocume
 import StudioNavigationCapture from './StudioNavigationCapture';
 import type {QuoteVersionDetail} from '@/lib/quotes/types';
 import {observeStudioDocumentAuth} from '@/components/auth/studioDocumentAuth';
+import {getLocalFirstStoreOwner} from '@/lib/localFirst/store';
 
 
 /** One native document and one fresh opening authority. Old UI can be hidden
@@ -27,6 +28,22 @@ export default function StudioDocument({callback,children}:{callback:string;chil
  const current=useRef(admission);current.current=admission;
  const frame=useRef<HTMLDivElement>(null),request=useRef<AbortController|null>(null),serial=useRef(0),inflight=useRef(false);
  const fence=useRef<ReturnType<typeof prepareStudioNavigation>|null>(null);
+ const retainNavigationPreparation=useCallback(({actorId,projectId,estimateId,preparation}:{actorId:string;projectId:string;estimateId:string;preparation:ReturnType<typeof prepareStudioNavigation>})=>{
+  const active=current.current;
+  if(!presented.current||!active||active.scope.actorId!==actorId||getLocalFirstStoreOwner()!==actorId||active.scope.projectId!==projectId||active.scope.estimateId!==estimateId
+    ||studioDocumentCallback(location.pathname+location.search,true)!==expected.current||!frame.current||frame.current.hasAttribute('inert')
+    ||!preparation.fenced()||!preparation.valid()||preparation.status()!=='ready')throw Error('The open design changed. Reopen it before renaming.');
+  if(fence.current&&fence.current!==preparation&&fence.current.fenced())throw Error('The current design is already being checked.');
+  if(fence.current!==preparation)fence.current?.release();fence.current=preparation;
+  return()=>{
+   if(fence.current!==preparation)return;
+   // A still-present pre-dispatch refusal can return its fence immediately.
+   // Once the frame withdraws/adopts a new turn, only its existing commit or
+   // teardown owner releases, after the old controller has actually cleaned up.
+   if(!presented.current||frame.current?.hasAttribute('inert')||current.current?.turn!==active.turn)return;
+   fence.current=null;preparation.release();
+  };
+ },[]);
  const restoreTheme=useRef<()=>void>(()=>{});
  const startup=useRef<Promise<void>>(Promise.resolve()),presented=useRef(true);
  const mask=useCallback(()=>{
@@ -175,7 +192,7 @@ export default function StudioDocument({callback,children}:{callback:string;chil
  const exact=studioDocumentCallback(pathname+(search.size?`?${search}`:''),true)===expected.current;
  const page=exact?children:<main><h1>Design Studio</h1><p role="status">Opening saved design…</p>{error&&<div role="alert"><p>{error}</p><button onClick={()=>exit.current()}>Try again</button></div>}</main>;
  const requestIssued=issuedTurn===serial.current&&presented.current&&request.current&&!request.current.signal.aborted?{turn:issuedTurn,signal:request.current.signal}:null;
- return <StudioDocumentContext.Provider value={{callback,admissionCallback,adoptCommittedQuote,admission,visible,error,leaving,requestIssued,frame,retry:()=>{presented.current=true;reopen.current(true);}}}>
+ return <StudioDocumentContext.Provider value={{callback,admissionCallback,adoptCommittedQuote,retainNavigationPreparation,admission,visible,error,leaving,requestIssued,frame,retry:()=>{presented.current=true;reopen.current(true);}}}>
   {admission?<PortalAuthProvider key={admission.scope.actorId} requestAdmission={{state:{status:'authenticated',user:{id:admission.scope.actorId,email:null},role:admission.scope.role},invalidate}}>
    <Providers mode="storage-only"><ToastProvider><StudioNavigationCapture enabled/>{page}</ToastProvider></Providers>
   </PortalAuthProvider>:page}

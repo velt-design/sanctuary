@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { reviewStudioSavedRequest } from './reviewRequest.server';
 import {readStudioReviewOpening} from './studioReviewOpeningTransport';
 import {STUDIO_REVIEW_OPENING_ACCEPT} from './studioReviewOpening';
-import { prepareStudioCreation } from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import { buildSavedEstimateReview } from './savedReview';
 import { mapEstimateDetail } from '@/lib/estimates/server';
 import { computeEstimateEditability } from '@/lib/estimates/editability';
@@ -57,7 +57,7 @@ const client = { from(table: string) {
 function request(signal?: AbortSignal) { return reviewStudioSavedRequest(new Request('http://localhost/studio-review', { signal }), ids); }
 beforeEach(() => {
   vi.clearAllMocks(); process.env.ENABLE_PORTAL_DESIGN_STUDIO = '1'; delete process.env.STUDIO_REQUEST_DIAGNOSTICS;
-  const created = prepareStudioCreation({ mode: 'blank', projectId: ids.projectId, designId: 'public-read-fixture', commercialScopeId: null });
+  const created = prepareEmptyStudioFixture({ mode: 'blank', projectId: ids.projectId, designId: 'public-read-fixture', commercialScopeId: null });
   if (!created.ok) throw Error(created.message);
   row = { ...created.prepared.row, id: target, project_id: project, status: 'draft', created_at: '2026-10-20T00:00:00Z', updated_at: '2026-10-27T00:00:00Z' };
   reference = null; history = [{ id: target, created_at: row.created_at, version: 3 }, { id: source, created_at: '2026-10-01', version: 2 }];

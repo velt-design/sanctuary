@@ -1,13 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-const auth = vi.hoisted(() => ({ requireStaffContext: vi.fn() }));
+const auth = vi.hoisted(() => ({ requireStaffContext: vi.fn(), entry: vi.fn() }));
 const projectAuth = vi.hoisted(() => ({ getSupabaseServerAuth: vi.fn() }));
 vi.mock('@/lib/api/staffApi', () => auth);
 vi.mock('@/lib/supabase/serverClient', () => projectAuth);
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('NOT_FOUND'); } }));
-vi.mock('@/components/designStudio/StudioNewDesign', () => ({
-  default: ({ projectId }: { projectId: string }) => <div data-new-design={projectId} />,
+vi.mock('@/components/designStudio/StudioProjectEntry', () => ({
+  default: (props: any) => { auth.entry(props); return <div>{props.initial.project.name}</div>; },
 }));
 import StudioProjectPage from '@/app/staff/projects/[projectId]/studio/page';
 import {loadStudioProject,loadStudioProjectName} from './studioProject.server';
@@ -32,7 +32,7 @@ function client(project: unknown = { id: projectUuid, name: 'Exact project' }, r
   estimateQuery.eq.mockReturnValue(estimateQuery);
   const relatedQuery={select:vi.fn(),in:vi.fn().mockResolvedValue({data:[],error:null})};relatedQuery.select.mockReturnValue(relatedQuery);
   const supabase = { from: vi.fn((table: string) => table === 'projects' ? projectQuery : table === 'estimates' ? estimateQuery : relatedQuery) };
-  auth.requireStaffContext.mockResolvedValue({ ok: true, session: { role: 'staff' }, supabase });
+  auth.requireStaffContext.mockResolvedValue({ ok: true, session: { role: 'staff', user: { id: 'actor' } }, supabase });
   projectAuth.getSupabaseServerAuth.mockResolvedValue(supabase);
   return { supabase, projectQuery, estimateQuery, relatedQuery };
 }
@@ -62,7 +62,7 @@ it.each(['staff', 'admin'])('uses the authenticated %s client and preserves proj
     { id: '44444444-4444-4444-8444-444444444444', version: 8, internal_name: 'Calculator only', status: 'draft', outputs: {} },
     { id: secondUuid, version: 1, internal_name: null, status: 'archived', created_at:'2026-10-20T00:00:00Z', outputs: { studio_authored: {} } },
   ]);
-  auth.requireStaffContext.mockResolvedValue({ ok: true, session: { role }, supabase });
+  auth.requireStaffContext.mockResolvedValue({ ok: true, session: { role, user: { id: 'actor' } }, supabase });
   const html = await page();
   expect(supabase.from.mock.calls).toEqual([['projects'], ['estimates'], ['quote_versions'], ['job_pack_generations']]);
   expect(projectQuery.select).toHaveBeenCalledWith('id,name');
@@ -71,11 +71,9 @@ it.each(['staff', 'admin'])('uses the authenticated %s client and preserves proj
   expect(estimateQuery.eq).toHaveBeenCalledWith('project_id', projectUuid);
   expect(estimateQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
   expect(html).toContain('Exact project');
-  expect(html).toContain(`data-new-design="${projectId}"`);
-  expect(html).toContain(`/staff/design-studio/${projectId}/est_${firstUuid}/edit`);
-  expect(html).toContain(`/staff/design-studio/${projectId}/est_${secondUuid}"`);
-  expect(html.indexOf('Saved draft')).toBeLessThan(html.indexOf('Untitled Studio design'));
-  expect(html).not.toContain('Calculator only');
+  expect(auth.entry.mock.calls[0][0]).toMatchObject({projectId,actorId:'actor',mode:'current'});
+  expect(auth.entry.mock.calls[0][0].initial.designs).toMatchObject([{id:`est_${firstUuid}`,label:'Saved draft',canOpenEditor:true},{id:`est_${secondUuid}`,label:'Untitled Studio design',canOpenEditor:false}]);
+  expect(auth.entry.mock.calls[0][0].initial.designs.some((design:any)=>design.label==='Calculator only')).toBe(false);
 });
 
 it('does not query estimates when the authenticated project read is not visible', async () => {
@@ -87,15 +85,13 @@ it('does not query estimates when the authenticated project read is not visible'
 
 it('retains the retry alert rather than showing an empty list on estimate-read failure', async () => {
   client(undefined, [], { message: 'read failed' });
-  const html = await page();
-  expect(html).toContain('role="alert"');
-  expect(html).toContain('Saved designs could not be loaded. Reload to retry.');
-  expect(html).not.toContain('Create your first design');
+  await page();
+  expect(auth.entry.mock.calls[0][0].initial).toMatchObject({loadError:true,designs:[]});
 });
 
 it('retains the empty state and propagates transport rejection', async () => {
   const { estimateQuery } = client();
-  expect(await page()).toContain('Create your first design for this project.');
+  await page(); expect(auth.entry.mock.calls[0][0].initial).toMatchObject({loadError:false,designs:[]});
   estimateQuery.order.mockRejectedValueOnce(new Error('transport failed'));
   await expect(page()).rejects.toThrow('transport failed');
 });
@@ -106,9 +102,8 @@ it('distinguishes same-name quoted and editable versions using the existing flow
   {id:secondUuid,status:'draft',internal_name:'Courtyard',created_at:'2026-10-20T00:00:00Z',outputs:{studio_authored:{}}},
  ]);
  relatedQuery.in.mockResolvedValueOnce({data:[{id:'quote-1',source_estimate_version_id:secondUuid,status:'SENT',sent_at:'2026-10-20T06:00:00Z',version_number:3,quotes:{quote_ref:'Q-1093'}}],error:null});
- const html=await page();
- expect(html).toContain('Design V2');expect(html).toContain('Design V1');expect(html).toContain('quote revision 3');expect(html).toContain('Used by a quote');
- expect(html).toContain(`/est_${firstUuid}/edit`);expect(html).not.toContain(`/est_${secondUuid}/edit`);expect(html).toContain('Review saved design');
+ await page(); const designs=auth.entry.mock.calls[0][0].initial.designs;
+ expect(designs).toMatchObject([{id:`est_${firstUuid}`,versionLabel:'V2',canOpenEditor:true},{id:`est_${secondUuid}`,versionLabel:'V1',canOpenEditor:false,history:'Used by a quote',quoteLabel:expect.stringContaining('quote revision 3')}]);
 });
 
 it('never displays a mismatched or failed Project identity read',async()=>{
@@ -122,7 +117,7 @@ it('never displays a mismatched or failed Project identity read',async()=>{
 it('keeps review accessible without inventing editability when quote history cannot be read',async()=>{
  const {relatedQuery}=client(undefined,[{id:firstUuid,status:'draft',internal_name:'Retained design',created_at:'2026-10-21T00:00:00Z',outputs:{studio_authored:{}}}]);
  relatedQuery.in.mockResolvedValueOnce({data:null,error:{message:'unavailable'}} as any);
- const html=await page();expect(html).toContain('Retained design');expect(html).toContain('Quote history unavailable');expect(html).toContain('Review saved design');expect(html).not.toContain(`/est_${firstUuid}/edit`);
+ await page();const data=auth.entry.mock.calls[0][0].initial;expect(data.loadError).toBe(true);expect(data.designs).toMatchObject([{label:'Retained design',history:'Quote history unavailable',canOpenEditor:false}]);
 });
 
 it('matches canonical Project versions across mixed Studio/calculator rows with a missing legacy snapshot version',async()=>{

@@ -58,6 +58,7 @@ const finish = shape(
     trayWidth: choice(300, 400, 500),
   },
   {
+    studioPanels: shape({ version: choice(1), count: integer(1, 32), side: choice('front', 'back', 'left', 'right') }),
     ceiling: choice(
       "cedar-100",
       "cedar-150",

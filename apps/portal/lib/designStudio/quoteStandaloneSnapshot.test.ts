@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import sharp from 'sharp';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { ACCESSORY_REVIEW_RATES, getDefaultInstalledSellingRates, loadCostingConfigV1 } from '@sp/costing';
-import { prepareStudioCreation } from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import { createStudioAuthoringEdit, mergeStudioAuthoringEdit, projectStudioAuthoringView } from './authoringView';
 import { addWebsitePergola, websiteComposition } from './websiteComposition';
 import type { StudioWebsiteDesign } from './websiteDesign';
@@ -58,7 +58,7 @@ beforeEach(() => {
 });
 
 it('saves and freezes the canonical 6×4 three-day travel plan, rejects stale/legacy plans, and preserves explicit/overnight quantities',async()=>{
- const made=prepareStudioCreation({mode:'blank',projectId,designId:'trip-days-quote-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId,designId:'trip-days-quote-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const initial=made.prepared.row.outputs,projected=projectStudioAuthoringView({authored:initial.studio_authored,spatial:initial.drawing_object_first});if(!projected.ok)throw Error(projected.message);
  const edit=addWebsitePergola(createStudioAuthoringEdit(projected.value),'p');
  (edit.objectOptions[0].values.websiteDesign as unknown as StudioWebsiteDesign).rawDimensions={widthMm:'6000',projectionMm:'4000'};
@@ -92,7 +92,7 @@ it('saves and freezes the canonical 6×4 three-day travel plan, rejects stale/le
 });
 
 it('freezes priced standalone scope through the real preparation route and existing PDF selection renderer', async () => {
-  const made = prepareStudioCreation({ mode: 'blank', projectId, designId: 'standalone-snapshot-proof', commercialScopeId: null });
+  const made = prepareEmptyStudioFixture({ mode: 'blank', projectId, designId: 'standalone-snapshot-proof', commercialScopeId: null });
   if (!made.ok) throw Error(made.message);
   const initial = made.prepared.row.outputs;
   const projected = projectStudioAuthoringView({ authored: initial.studio_authored, spatial: initial.drawing_object_first });
@@ -181,7 +181,7 @@ it('keeps a short frozen Studio selection heading and every detail on the same P
 
 
 it.each([{family:'mono',zero:false},{family:'gable',zero:false},{family:'mono',zero:true}] as const)('freezes effective $family lighting quantities including known-zero=$zero without changing the source', async ({family,zero}) => {
-  const made = prepareStudioCreation({ mode: 'blank', projectId, designId: 'lighting-snapshot-proof', commercialScopeId: null });
+  const made = prepareEmptyStudioFixture({ mode: 'blank', projectId, designId: 'lighting-snapshot-proof', commercialScopeId: null });
   if (!made.ok) throw Error(made.message);
   const initial = made.prepared.row.outputs;
   const projected = projectStudioAuthoringView({ authored: initial.studio_authored, spatial: initial.drawing_object_first });

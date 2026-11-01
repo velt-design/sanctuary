@@ -16,6 +16,7 @@ export type WebsiteSubmittedDesignV1 = {
     infills: boolean;
     attachmentIntent?: "freestanding" | "unsure";
     finish?: {
+      studioPanels?: { version: 1; count: number; side: 'front' | 'back' | 'left' | 'right' };
       ceiling?: "cedar-100" | "cedar-150" | "thermopine-100" | "thermopine-150";
       material: "acrylic" | "solid" | "combination";
       layout: "central" | "house";

@@ -39,7 +39,8 @@ export function buildReviewSiteInputs({ input, roof }: PreviewDraft, geometryOpt
       if (!geometry?.covering) throw new Error('Missing mixed roof regions');
       const counts = geometry.assembly.roofPlanes.map((_, index) =>
         geometry.assembly.roofCladdingPanels.filter(panel => panel.id.startsWith(`finish-acrylic-${index}-`)).length);
-      if (!counts.length || counts.some(count => count < 1)) throw new Error('Missing mixed roof acrylic bays');
+      if (!counts.length || counts.some(count => count < (finish.studioPanels ? 0 : 1)) || !counts.some(count => count > 0)) throw new Error('Missing mixed roof acrylic bays');
+      if (finish.studioPanels && counts.reduce((sum, count) => sum + count, 0) !== finish.studioPanels.count) throw new Error('Mixed roof panel count does not match the selected total');
       if (counts.length > 2) throw new Error('Unsupported mixed roof plane count');
       module.mixed_roof = { mode: 'acrylic_bays', acrylic_bays_by_plane: counts.length === 1
         ? { main: counts[0] } : { A: counts[0], B: counts[1] } };

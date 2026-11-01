@@ -17,6 +17,7 @@ export const hasSimpleRoofPrice = (roof: PreviewRoofChoices) => !roof.attachment
 export const allowsHouseBand = (roof: PreviewRoofChoices) => roof.family === 'gable' && roof.orientation === 'away';
 export function constrainRoofFinish(roof: PreviewRoofChoices, input: SimpleCoverInput): PreviewRoofChoices {
   if (!roof.finish) return roof;
+  if (roof.finish.studioPanels) return roof; // Exact Studio requests are validated, never silently clamped.
   const finish = { ...roof.finish, layout: allowsHouseBand(roof) ? roof.finish.layout : 'central' as const };
   finish.acrylicBays = Math.min(finish.acrylicBays, roofFinishBayLimit(input.widthMm, input.projectionMm, roof.family, roof.orientation));
   return { ...roof, finish };
@@ -29,7 +30,9 @@ export function parseRoofFinish(value: unknown): RepresentativeRoofFinish | null
     || !['corrugated', 'trapezoidal', 'tray'].includes(String(f.profile)) || ![300, 400, 500].includes(f.trayWidth as number)
     || typeof f.acrylicBays !== 'number' || !Number.isInteger(f.acrylicBays) || f.acrylicBays < 1 || f.acrylicBays > 16) return null;
   if (f.ceiling !== undefined && !isCeilingOption(f.ceiling)) return null;
-  return { ...(f.ceiling ? { ceiling: f.ceiling as RepresentativeRoofFinish['ceiling'] } : {}), material: f.material as RepresentativeRoofFinish['material'], layout: f.layout as RepresentativeRoofFinish['layout'],
+  const p = f.studioPanels as Record<string, unknown> | undefined;
+  if (p !== undefined && (!p || typeof p !== 'object' || Array.isArray(p) || Object.keys(p).length !== 3 || p.version !== 1 || !Number.isSafeInteger(p.count) || Number(p.count) < 1 || Number(p.count) > 32 || !['front','back','left','right'].includes(String(p.side)))) return null;
+  return { ...(p ? { studioPanels: { ...p } as NonNullable<RepresentativeRoofFinish['studioPanels']> } : {}), ...(f.ceiling ? { ceiling: f.ceiling as RepresentativeRoofFinish['ceiling'] } : {}), material: f.material as RepresentativeRoofFinish['material'], layout: f.layout as RepresentativeRoofFinish['layout'],
     profile: f.profile as RepresentativeRoofFinish['profile'], acrylicBays: f.acrylicBays, trayWidth: f.trayWidth as RepresentativeRoofFinish['trayWidth'] };
 }
 export function roofFinishDescription(roof: PreviewRoofChoices) {
@@ -38,5 +41,5 @@ export function roofFinishDescription(roof: PreviewRoofChoices) {
   if (f.material === 'acrylic') return 'Acrylic roof' + tint;
   return `${f.profile === 'tray' ? `Tray ${f.trayWidth} mm` : f.profile === 'trapezoidal' ? 'Trapezoidal' : 'Corrugated'} Colorsteel · ${f.ceiling?.startsWith('thermopine') ? 'ThermoPine' : 'Cedar'} ceiling${f.ceiling ? ' · ' + f.ceiling.split('-')[1] + ' mm boards' : ''}`
     + (f.material === 'combination' ? tint : '')
-    + (f.material === 'combination' ? ` · ${f.layout === 'central' ? 'Central skylight · equal thirds' : 'House-side skylight · equal halves'}` : '');
+    + (f.material === 'combination' ? f.studioPanels ? ` · ${f.studioPanels.count} acrylic panel${f.studioPanels.count === 1 ? '' : 's'} total · ${f.studioPanels.side} · full-length` : ` · ${f.layout === 'central' ? 'Central skylight · equal thirds' : 'House-side skylight · equal halves'}` : '');
 }

@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest';
 import {ACCESSORY_REVIEW_RATES,getDefaultInstalledSellingRates,loadCostingConfigV1,calculateSiteCostV1} from '@sp/costing';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {createStudioAuthoringEdit,projectStudioAuthoringView,mergeStudioAuthoringEdit} from './authoringView';
 import {addWebsitePergola} from './websiteComposition';
 import type {StudioWebsiteDesign} from './websiteDesign';
@@ -12,7 +12,7 @@ import {studioTravelPlanForReceipt,studioTravelTripPlanIssue,studioPendingTravel
 const receipt:StudioTravelReceipt={schemaVersion:'studio_travel_receipt.v1',policyVersion:'studio-travel-local.v1',base:'71G Montgomerie Rd, Mangere, Auckland',projectId:'proj_fixture',destinationCanonical:'12 Example Road, Auckland',placeId:'fixture',drivingCostPerRoundTripCents:5415,overnightEligible:false,proof:'a'.repeat(64)};
 const config={...loadCostingConfigV1(),accessoryRates:ACCESSORY_REVIEW_RATES,installedSellingRates:getDefaultInstalledSellingRates()};
 function design(){
- const made=prepareStudioCreation({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'site-days-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'site-days-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const outputs=made.prepared.row.outputs,view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
  const edit=addWebsitePergola(createStudioAuthoringEdit(view.value),'p');
  (edit.objectOptions[0].values.websiteDesign as unknown as StudioWebsiteDesign).rawDimensions={widthMm:'6000',projectionMm:'4000'};

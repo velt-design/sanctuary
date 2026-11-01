@@ -1,7 +1,7 @@
 import {expect,it} from 'vitest';
 import {ACCESSORY_REVIEW_RATES,getDefaultInstalledSellingRates,loadCostingConfigV1} from '@sp/costing';
 import {prepareStudioAtomicSource,normalizeStudioAtomicTravel} from './atomicQuoteSource.server';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {addWebsitePergola} from './websiteComposition';
 import {createStudioAuthoringEdit,projectStudioAuthoringView} from './authoringView';
 import {calculateStudioCommercialPricing} from './studioCommercialPricing.server';
@@ -9,7 +9,7 @@ import {studioInstallationEstimate} from './studioInstallationEstimate';
 import {studioTravelPlanForReceipt,studioTravelTripPlanIssue} from './studioTravelPlan';
 import {studioTravelTotalCents,type StudioTravelReceipt} from './studioTravelAllowance';
 const config={...loadCostingConfigV1(),accessoryRates:ACCESSORY_REVIEW_RATES,installedSellingRates:getDefaultInstalledSellingRates()};
-const made=prepareStudioCreation({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'atomic-days',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+const made=prepareEmptyStudioFixture({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'atomic-days',commercialScopeId:null});if(!made.ok)throw Error(made.message);
 const row={outputs:made.prepared.row.outputs,updated_at:'2026-10-28T00:00:00Z'};
 const projected=projectStudioAuthoringView({authored:row.outputs.studio_authored,spatial:row.outputs.drawing_object_first});if(!projected.ok)throw Error(projected.message);
 function edit(){const value=addWebsitePergola(createStudioAuthoringEdit(projected.ok?projected.value:never()),'p');const design=value.objectOptions[0].values.websiteDesign as any;design.rawDimensions={widthMm:'6000',projectionMm:'4000'};return value;}

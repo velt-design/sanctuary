@@ -7,6 +7,9 @@ import {EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT} from '@/lib/drawings/state/objectFir
 import {addWebsitePergola} from '@/lib/designStudio/websiteComposition';
 import type {StudioAuthoringEdit} from '@/lib/designStudio/authoringView';
 import StudioHouseCanvas from './StudioHouseCanvas';
+import {applyStudioHouseEdit} from '@/lib/designStudio/houseEditing';
+import {createStudioSceneResolver} from '@/lib/designStudio/interaction/resolvedScene';
+import {newStudioHousePosition} from '@/lib/designStudio/newHousePlacement';
 const host=vi.hoisted(()=>({active:false,mounts:0}));
 vi.mock('@sp/geometry-viewer/react/canvas',async()=>{const React=await import('react');return{SceneCanvas:({active}:any)=>{host.active=active;React.useEffect(()=>{host.mounts++;},[]);return <div data-model-host/>;}};});
 let m:ReturnType<typeof renderIntoDocument>|undefined;
@@ -32,4 +35,14 @@ it('preserves legacy non-CAD provider view-driven Night behavior',()=>{
  const click=(text:string)=>act(()=>[...m!.container.querySelectorAll('button')].find(b=>b.textContent===text)!.click());
  click('Open light tools');expect(m.container.querySelector('[data-night]')!.textContent).toBe('false');
  click('Plan');click('3D');expect(m.container.querySelector('[data-night]')!.textContent).toBe('true');
+});
+it('fits a newly added house once and keeps that same camera during later edits and moves',()=>{
+ let edit=addWebsitePergola({schemaVersion:'studio_authoring_edit.v1',designId:'add-fit',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]} as StudioAuthoringEdit,'p');
+ const render=()=> <StudioHouseCanvas edit={edit} selected="p" onSelect={()=>{}} view="Plan" cameraStorageKey="add-fit" persistentViewport/>;
+ m=renderIntoDocument(render());const before=m.container.querySelector('svg')!.getAttribute('viewBox');
+ const result=applyStudioHouseEdit(edit.spatial,{kind:'add',id:'house',worldPosition:newStudioHousePosition(createStudioSceneResolver().resolve(edit))});if(!result.ok)throw Error(result.message);
+ edit={...edit,spatial:result.spatial};act(()=>m!.rerender(render()));
+ const after=m.container.querySelector('svg')!.getAttribute('viewBox');expect(after).not.toBe(before);
+ edit=structuredClone(edit);edit.site.access='hard';act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(after);
+ edit.spatial.pergolas[0].position!.originXMm='17000';act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(after);
 });

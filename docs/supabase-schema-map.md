@@ -1645,6 +1645,16 @@ review serving compatibility before any later activation. This is local source
 work, not evidence of installed schema, provider acceptance or live delivery.
 # Studio staff-trial document boundary
 
+Forward `20261101210344_studio_base_creation_seed.sql` is required for the new
+Studio creation starter. The existing service-only `studio_authored_create`
+signature, owner, ACL, fixed search path, receipt replay and source/actor/project
+guards are preserved. Only blank validation additionally accepts the exact
+canonical 6 x 3 m freestanding pitched seed in base scope. Historical empty base
+and add-on creation remain compatible; clones retain their exact source. This
+file is a pending forward installation, not a change to applied history or the
+historical atomic installer. Its local execution tests include original-function
+refusal, forward acceptance and unchanged state on denial.
+
 Studio authored estimate RPCs, immutable `studio_website_quote_snapshots` and
 quote bindings are introduced by the ordered Studio chain. Private document
 sources freeze the canonical geometry; documents use explicit `document_id`

@@ -83,23 +83,32 @@ describe('trusted studio creation preparation', () => {
     expect(original).toEqual(before);
     expect(result.prepared.pricing).toBe('unpriced');
   });
-  it('creates an explicit empty unpriced base without physical defaults or financial zeroes', () => {
+  it('seeds only a new base with one unpriced freestanding6x3 pitched design and no financial zeroes', () => {
     const result = prepareStudioCreation(blank()); expect(result.ok).toBe(true);
     if (!result.ok) throw Error();
     expect(result.prepared).toMatchObject({ pricing: 'unpriced', lineage: null, sourceSnapshot: null,
       row: { project_id: projectId, commercial_scope_id: null, status: 'draft', inputs: {}, outputs: {
-        [STUDIO_SPATIAL_OUTPUT_KEY]: { houseAssembly: null, decks: [], openings: [], pergolas: [] },
-        [STUDIO_OUTPUT_KEY]: { revision: 1, site: { values: {} }, objectOptions: [], provenance: { sourceKind: 'authored', sourceEstimateId: null, sourcePayload: null } },
+        [STUDIO_SPATIAL_OUTPUT_KEY]: { houseAssembly: null, decks: [], openings: [], pergolas: [{id:'initial-pergola',family:'mono'}] },
+        [STUDIO_OUTPUT_KEY]: { revision: 1, site: { values: {} }, objectOptions: [{objectId:'initial-pergola',options:{values:{websiteDesign:{rawDimensions:{widthMm:'6000',projectionMm:'3000'},selection:{roof:{family:'mono',attachmentIntent:'freestanding'}}}}}}], provenance: { sourceKind: 'authored', sourceEstimateId: null, sourcePayload: null } },
       } } });
     expect(Object.keys(result.prepared.row).sort()).toEqual(['commercial_scope_id', 'inputs', 'outputs', 'project_id', 'status']);
     expect(Object.keys(result.prepared.row.outputs).sort()).toEqual([STUDIO_SPATIAL_OUTPUT_KEY, STUDIO_OUTPUT_KEY].sort());
+    expect(projectStudioAuthoringView({authored:result.prepared.row.outputs[STUDIO_OUTPUT_KEY],spatial:result.prepared.row.outputs[STUDIO_SPATIAL_OUTPUT_KEY]}).ok).toBe(true);
   });
   it('retains explicit add-on scope and allocates separate empty drafts without shared references', () => {
     const a = prepareStudioCreation({ ...blank(), commercialScopeId: addOn }), b = prepareStudioCreation(blank());
     if (!a.ok || !b.ok) throw Error();
     expect(a.prepared.row.commercial_scope_id).toBe(addOn);
+    expect(a.prepared.row.outputs[STUDIO_SPATIAL_OUTPUT_KEY]).toMatchObject({pergolas:[]});
+    expect(a.prepared.row.outputs[STUDIO_OUTPUT_KEY]).toMatchObject({objectOptions:[]});
     (a.prepared.row.outputs[STUDIO_SPATIAL_OUTPUT_KEY] as Record<string, unknown>).decks = ['mutation'];
     expect(b.prepared.row.outputs[STUDIO_SPATIAL_OUTPUT_KEY]).toMatchObject({ decks: [] });
+  });
+  it('keeps an existing empty saved source empty when starting its revision',()=>{
+    const original=source();(original.outputs[STUDIO_SPATIAL_OUTPUT_KEY] as any).pergolas=[];(original.outputs[STUDIO_OUTPUT_KEY] as any).objectOptions=[];
+    const before=structuredClone(original),result=prepareStudioCreation({mode:'clone',projectId,designId:'empty-revision',source:original});if(!result.ok)throw Error(result.message);
+    expect(result.prepared.row.outputs[STUDIO_SPATIAL_OUTPUT_KEY]).toEqual(original.outputs[STUDIO_SPATIAL_OUTPUT_KEY]);
+    expect(result.prepared.row.outputs[STUDIO_OUTPUT_KEY]).toMatchObject({objectOptions:[]});expect(original).toEqual(before);
   });
   it('copies even archived source without mutation and keeps original provenance separate from parent lineage', () => {
     const original = source(), before = structuredClone(original);

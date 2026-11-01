@@ -113,6 +113,7 @@ export type {
 } from "./house/composition";
 
 export { buildRepresentativeRoofFinish } from "./representativeRoofFinish";
+export { studioRoofPanelOptions, STUDIO_PANEL_SIDES } from './representativeStudioRoofPanels';
 export { DEFAULT_ROOF_FINISH, roofFinishBayLimit } from "./representativeRoofFinishTypes";
 export type { RepresentativeRoofFinish, RoofFinishGeometry, RoofFinishMesh } from "./representativeRoofFinishTypes";
 export { representativeRoofProfile, REPRESENTATIVE_ROOF_PROFILE_OPTIONS, REPRESENTATIVE_ROOF_TRAY_WIDTHS } from "./representativeRoofProfiles";

@@ -3,6 +3,7 @@ import type { requireStaffContext } from '@/lib/api/staffApi';
 import { studioIdentifier } from '@/lib/designStudio/identifiers';
 import { buildVersionLabelMap } from '@/lib/estimates/server';
 import { loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
+import type { StudioProjectDesigns } from '@/lib/designStudio/projectDesigns';
 
 type StaffClient = Extract<Awaited<ReturnType<typeof requireStaffContext>>, { ok: true }>['supabase'];
 
@@ -15,9 +16,9 @@ export async function loadStudioProjectName(supabase: StaffClient, projectUuid: 
 }
 
 /** Uses the page's authenticated client so project visibility remains RLS-owned. */
-export async function loadStudioProject(supabase: StaffClient, projectUuid: string) {
+export async function loadStudioProject(supabase: StaffClient, projectUuid: string): Promise<StudioProjectDesigns | null> {
   const visible = await supabase.from('projects').select('id,name').eq('id', projectUuid).maybeSingle();
-  if (!visible.data) return null;
+  if (visible.error || visible.data?.id !== projectUuid) return null;
   const result = await supabase.from('estimates')
     .select('id,internal_name,status,outputs,created_at,commercial_scope_id')
     .eq('project_id', projectUuid)
@@ -41,6 +42,9 @@ export async function loadStudioProject(supabase: StaffClient, projectUuid: stri
     // The authoring loader still rechecks actual authority before any command.
     canOpenEditor: Boolean(lock && !quoted && row.status === 'draft'),
     status: row.status,
+    commercialScopeId: row.commercial_scope_id ?? null,
+    isActiveDraft: Boolean(flow?.flowByEstimateId.get(row.id)?.isActiveDraft),
+    designId: typeof row.outputs.studio_authored.designId === 'string' ? row.outputs.studio_authored.designId : null,
   };});
-  return { project: visible.data, designs, loadError: Boolean(result.error) };
+  return { project: visible.data, designs, loadError: !flow };
 }
