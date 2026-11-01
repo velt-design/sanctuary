@@ -58,6 +58,11 @@ Direct-entry navigation retains the existing worker, pricing, document and email
 contracts. The authoring changes below add an explicit geometry selection and
 the narrowly expanded creation predicate described below, using the existing
 commercial and document owners.
+Automatic project/fallback entry starts after its mount lifetime is established.
+A cancelled effect acquires no navigation fence, including React effect replay;
+the live action still uses the existing same-owner local drain. Explicit user
+navigation continues to fence synchronously. The mounted-frame return and held
+local-write tests cover re-entry without creating another design or losing work.
 Representative project size is 1–20 saved versions/options. Entry/selector refresh
 uses one metadata request, backed by project, estimate and quote-flow reads; no
 per-frame or per-keystroke list request is added. Existing all-row version labels

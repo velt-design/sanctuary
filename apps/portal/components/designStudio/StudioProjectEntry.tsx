@@ -22,6 +22,10 @@ export default function StudioProjectEntry({ projectId, actorId, initial, mode =
     setState({ data: initial, create: false, error: null });
     if (!eligible) return () => abort.abort();
     async function open() {
+      // Effect replay/retirement must finish before this automatic action takes
+      // the shared navigation fence. Explicit user navigation still fences now.
+      await Promise.resolve();
+      if (abort.signal.aborted) return;
       const data = attempt ? await apiJson<StudioProjectDesigns & { projectId: string }>(`/api/projects/${projectId}/studio`, { signal: abort.signal, cache: 'no-store' }) : initial;
       if (abort.signal.aborted) return;
       if (data.project.id !== projectId.slice(5) || data.loadError) throw Error('Design history could not be checked. Nothing new has been created.');

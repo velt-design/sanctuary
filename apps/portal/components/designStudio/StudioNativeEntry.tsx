@@ -6,6 +6,15 @@ import {navigateStudioDocument} from '@/lib/designStudio/studioDocumentNavigatio
  * navigation. No editor/provider/storage is mounted in this fallback. */
 export default function StudioNativeEntry({callback}:{callback:string}) {
  const [error,setError]=useState<string|null>(null),[attempt,setAttempt]=useState(0);
- useEffect(()=>{const controller=new AbortController();void navigateStudioDocument(callback,true,undefined,controller.signal).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'The design could not be opened.');});return()=>controller.abort();},[callback,attempt]);
+ useEffect(()=>{
+  const controller=new AbortController();
+  // A replayed/retired mount must not acquire a navigation fence before its
+  // live replacement starts. The navigation owner still performs the drain.
+  void Promise.resolve().then(()=>{
+   controller.signal.throwIfAborted();
+   return navigateStudioDocument(callback,true,undefined,controller.signal);
+  }).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'The design could not be opened.');});
+  return()=>controller.abort();
+ },[callback,attempt]);
  return <main><h1>Design Studio</h1><p role="status">Opening saved design…</p>{error&&<div role="alert"><p>{error}</p><button onClick={()=>setAttempt(v=>v+1)}>Try again</button></div>}</main>;
 }

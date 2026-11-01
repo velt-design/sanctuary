@@ -6,6 +6,7 @@ import StudioDocument from './StudioDocument';
 import {StudioDocumentContext} from './StudioDocumentContext';
 import StudioDocumentSlot from './StudioDocumentSlot';
 import StudioDocumentPage from './StudioDocumentPage';
+import StudioProjectEntry from './StudioProjectEntry';
 import PortalAuthProvider from '@/components/auth/PortalAuthProvider';
 import {Providers} from '@/app/providers';
 import {StudioOpeningAccessError} from '@/lib/designStudio/studioOpeningTransport';
@@ -59,6 +60,18 @@ beforeEach(()=>{
 afterEach(()=>{mounted?.unmount();mounted=undefined;stopLocalFirstRuntime({clearOwner:true});__resetLocalFirstQueueForTests();invalidateStudioLifecycle();clearLocalFirstStoreOwner();vi.unstubAllGlobals();vi.useRealTimers();});
 const flush=async()=>{await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1));});};
 const open=async()=>{mounted=renderIntoDocument(<Suspense fallback={<p>Waiting for editor</p>}><StudioDocument callback={callback}><StudioDocumentPage callback={callback}/></StudioDocument></Suspense>);await flush();expect(latest.canEdit).toBe(true);};
+
+it('returns through the actual frame withdrawal and ordinary project entry to the same saved design without leaking a navigation fence',async()=>{
+ await open();const saved=structuredClone(latest.edit!),native=vi.fn();
+ act(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));expect(latest.canEdit).toBe(false);
+ mounted!.unmount();mounted=undefined;await flush();
+ history.replaceState({},'',`/staff/projects/${projectId}/studio`);mocks.nativeNavigate=native;
+ const inventory={project:{id:projectId.slice(5),name:'Synthetic project'},loadError:false,designs:[{id:estimateId,label:'Design 1',versionLabel:'V1',createdAt:'',history:'Current draft',quoteLabel:null,canOpenEditor:true,status:'draft',commercialScopeId:null,isActiveDraft:true}]};
+ mounted=renderIntoDocument(<StrictMode><PortalAuthProvider requestAdmission={{state:{status:'authenticated',user:{id:actor,email:null},role:'staff'},invalidate:vi.fn()}}><Providers mode="storage-only"><StudioProjectEntry projectId={projectId} actorId={actor} initial={inventory}/></Providers></PortalAuthProvider></StrictMode>);
+ await flush();expect(mounted.container.textContent).not.toContain('already being checked');expect(native).toHaveBeenCalledExactlyOnceWith(callback,true);
+ mounted.unmount();mounted=undefined;history.replaceState({},'',callback);await open();
+ expect(latest.edit).toEqual(saved);expect(latest.canEdit).toBe(true);expectNoOrdinaryApi();expect(mocks.api.mock.calls.filter(([,options])=>options?.method==='POST'||options?.method==='PATCH')).toEqual([]);
+});
 
 it.each(['throw','cancel'] as const)('hands real rename recovery to the actual frame across native %s and fresh continuation without reviving the old baseline',async method=>{
  await open();const originalSession=structuredClone(latest.session!),lifetime=new AbortController(),nextTimestamp='2026-11-02T02:00:00Z';let patches=0;
