@@ -1,10 +1,10 @@
 import {LightingProvider,useLighting} from "@sp/configurator/react/controls";
 import {newStudioWebsiteDesign} from "@/lib/designStudio/websiteDesign";
 import {act} from 'react';
-import {afterEach,expect,it,vi} from 'vitest';
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {renderIntoDocument} from '../../../../test/reactHarness';
 import {EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT} from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import {addWebsitePergola} from '@/lib/designStudio/websiteComposition';
+import {addWebsitePergola,positionWebsitePergola} from '@/lib/designStudio/websiteComposition';
 import type {StudioAuthoringEdit} from '@/lib/designStudio/authoringView';
 import StudioHouseCanvas from './StudioHouseCanvas';
 import {applyStudioHouseEdit} from '@/lib/designStudio/houseEditing';
@@ -13,7 +13,13 @@ import {newStudioHousePosition} from '@/lib/designStudio/newHousePlacement';
 const host=vi.hoisted(()=>({active:false,mounts:0}));
 vi.mock('@sp/geometry-viewer/react/canvas',async()=>{const React=await import('react');return{SceneCanvas:({active}:any)=>{host.active=active;React.useEffect(()=>{host.mounts++;},[]);return <div data-model-host/>;}};});
 let m:ReturnType<typeof renderIntoDocument>|undefined;
-afterEach(()=>{m?.unmount();m=undefined;vi.restoreAllMocks();});
+let width:ReturnType<typeof vi.spyOn>,height:ReturnType<typeof vi.spyOn>,resize:Array<()=>void>;
+beforeEach(()=>{
+ width=vi.spyOn(Element.prototype,'clientWidth','get').mockReturnValue(1000);
+ height=vi.spyOn(Element.prototype,'clientHeight','get').mockReturnValue(700);
+ resize=[];vi.stubGlobal('ResizeObserver',class{constructor(callback:()=>void){resize.push(callback);}observe(){}disconnect(){}});
+});
+afterEach(()=>{m?.unmount();m=undefined;vi.restoreAllMocks();vi.unstubAllGlobals();});
 it('shows live Plan and the same persistent 3D host in Split, preserving both camera storage addresses across views',()=>{
  let edit:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:'split',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};edit=addWebsitePergola(edit,'p');
  sessionStorage.setItem('split-camera:3d','retained-model-camera');sessionStorage.setItem('split-camera:plan',JSON.stringify({x:123,y:456,units:12}));host.mounts=0;
@@ -45,4 +51,27 @@ it('fits a newly added house once and keeps that same camera during later edits 
  const after=m.container.querySelector('svg')!.getAttribute('viewBox');expect(after).not.toBe(before);
  edit=structuredClone(edit);edit.site.access='hard';act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(after);
  edit.spatial.pergolas[0].position!.originXMm='17000';act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(after);
+});
+
+it('retains an explored Plan camera for a visible copy, its removal and re-addition',()=>{
+ let edit=addWebsitePergola({schemaVersion:'studio_authoring_edit.v1',designId:'visible-copy',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]} as StudioAuthoringEdit,'p');
+ sessionStorage.setItem('visible-copy:plan',JSON.stringify({x:3000,y:-1500,units:15,viewport:{width:1000,height:700},framingPolicy:'pergola-context.v1'}));
+ const render=()=> <StudioHouseCanvas edit={edit} selected="p" onSelect={()=>{}} view="Plan" cameraStorageKey="visible-copy" persistentViewport/>;
+ m=renderIntoDocument(render());const original=edit,frame=m.container.querySelector('svg')!.getAttribute('viewBox'),stored=sessionStorage.getItem('visible-copy:plan');
+ edit=positionWebsitePergola(addWebsitePergola(edit,'copy'),'copy',{originXMm:'0',originYMm:'0'});const copy=edit;
+ act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(frame);expect(sessionStorage.getItem('visible-copy:plan')).toBe(stored);
+ edit=original;act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(frame);
+ edit=copy;act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(frame);
+});
+
+it('defers outside-add visibility while Plan has no drawable, then reveals it when a real viewport returns',()=>{
+ width.mockReturnValue(0);height.mockReturnValue(0);
+ let edit=addWebsitePergola({schemaVersion:'studio_authoring_edit.v1',designId:'deferred-add',revision:1,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]} as StudioAuthoringEdit,'p');
+ const render=()=> <StudioHouseCanvas edit={edit} selected="p" onSelect={()=>{}} view="Plan" cameraStorageKey="deferred-add" persistentViewport/>;
+ m=renderIntoDocument(render());const before=m.container.querySelector('svg')!.getAttribute('viewBox');
+ const result=applyStudioHouseEdit(edit.spatial,{kind:'add',id:'house',worldPosition:newStudioHousePosition(createStudioSceneResolver().resolve(edit))});if(!result.ok)throw Error(result.message);
+ edit={...edit,spatial:result.spatial};act(()=>m!.rerender(render()));expect(m.container.querySelector('svg')!.getAttribute('viewBox')).toBe(before);
+ width.mockReturnValue(1000);height.mockReturnValue(700);act(()=>resize.forEach(callback=>callback()));
+ const [x,y,w,h]=m.container.querySelector('svg')!.getAttribute('viewBox')!.split(' ').map(Number);
+ for(const point of createStudioSceneResolver().resolve(edit).houses[0].footprint){expect(point.x).toBeGreaterThanOrEqual(x);expect(point.x).toBeLessThanOrEqual(x+w);expect(-point.y).toBeGreaterThanOrEqual(y);expect(-point.y).toBeLessThanOrEqual(y+h);}
 });

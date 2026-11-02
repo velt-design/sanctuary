@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { computeSceneBoundsFromPoints } from '@sp/geometry-viewer';
-import { isLegacyStudioOverview, perspectiveFitDistance } from './perspectiveFit';
+import { isLegacyStudioOverview, perspectiveFitDistance, perspectiveRevealDistance } from './perspectiveFit';
 
 it('recognizes only the exact old automatic overview, preserving unknown manual orbit, pan, zoom and Fit intent records',()=>{
   const points=[{x:-3000,y:-9000,z:0},{x:9000,y:3000,z:4000}],bounds=computeSceneBoundsFromPoints(points),direction={x:1,y:2,z:.65},size={width:900,height:600};
@@ -17,4 +17,14 @@ it('recognizes only the exact old automatic overview, preserving unknown manual 
   expect(old({...saved,zoom:1.2})).toBe(false);
   expect(old({...saved,viewport:{aspect:1,zoom:1}})).toBe(false);
   expect(old({...saved,position:centre.clone().addScaledVector(normal,distance*.8).toArray()})).toBe(false);
+});
+
+it.each([.8,1,2])('reveals an outside object using the actual retained projection zoom %s',zoom=>{
+ const camera=new PerspectiveCamera(30,1.5,1,200000);camera.up.set(0,0,1);camera.position.set(0,1000,1000);camera.lookAt(0,0,0);camera.zoom=zoom;camera.updateProjectionMatrix();camera.updateMatrixWorld();
+ const target=new Vector3(),direction=camera.position.clone().normalize(),distance=camera.position.length();
+ expect(perspectiveRevealDistance(camera,[{x:0,y:0,z:0}],distance,.97,.9,.76)).toBe(distance);
+ const points=[{x:4000,y:1000,z:0},{x:5000,y:3000,z:2000}],reveal=perspectiveRevealDistance(camera,points,distance,.97,.9,.76);
+ expect(reveal).toBeGreaterThan(distance);camera.position.copy(target).addScaledVector(direction,reveal);camera.updateMatrixWorld();
+ for(const point of points){const q=new Vector3(point.x,point.y,point.z).project(camera);expect(Math.abs(q.x)).toBeLessThan(1);expect(Math.abs(q.y)).toBeLessThan(1);}
+ expect(camera.zoom).toBe(zoom);
 });

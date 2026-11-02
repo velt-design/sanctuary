@@ -8,7 +8,7 @@ import type { SceneBounds } from "@sp/geometry-viewer";
 import type { Point3 } from "@sp/geometry";
 import { useCameraTransition } from "./useCameraTransition";
 
-import { perspectiveFitDistance, isLegacyStudioOverview, type StudioOpeningFit } from './perspectiveFit';
+import { perspectiveFitDistance, perspectiveRevealDistance, isLegacyStudioOverview, type StudioOpeningFit } from './perspectiveFit';
 
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 const PRESENTATION_DIRECTION = new Vector3(0.85, 1.9, 0.65).normalize();
@@ -17,6 +17,7 @@ export default function PreviewCamera({
   studioCad = false,
   storageKey,
   openingFit,
+  sceneObjects,
   preserveUserCamera = false,
   zoomStep = 0,
   enhanced = false,
@@ -45,6 +46,8 @@ export default function PreviewCamera({
   storageKey?: string;
   /** Studio-only opening policy. All other consumers retain their saved-camera contract. */
   openingFit?: StudioOpeningFit;
+  /** Studio-only addition visibility. Never turns an ordinary edit into Fit. */
+  sceneObjects?: ReadonlyArray<{id:string;points:Point3[]}>;
   preserveUserCamera?: boolean;
   zoomStep?: number;
   enhanced?: boolean;
@@ -88,6 +91,8 @@ export default function PreviewCamera({
   } | null>(null);
   const touched = useRef(false);
   const cameraIntent = useRef<'opening'|'manual'|'overview'>('opening');
+  const visibleObjects=useRef(new Set(sceneObjects?.map(object=>object.id)));
+  const newlyAddedSelection=!!sceneObjects?.some(object=>object.id===selectionPivot?.id&&!visibleObjects.current.has(object.id));
   const framedBounds = useRef<SceneBounds | null>(null);
   const framedKey = useRef<string | undefined>(undefined);
   // One reversible projection basis, owned and persisted with this camera.
@@ -143,6 +148,8 @@ export default function PreviewCamera({
   }, [studioCad, selectionPivot, camera, recordCamera, invalidate]);
   const pivotSelection = useRef<string | undefined>(undefined);
   const rotationIntent = useRef(false);
+
+
   useLayoutEffect(() => {
     if (!studioCad) return;
     const element = gl.domElement,
@@ -625,20 +632,38 @@ export default function PreviewCamera({
     studioCad,
   ]);
 
+  useLayoutEffect(()=>{
+    const orbit=controls.current;
+    if(!sceneObjects||!enabled||!orbit||!(camera instanceof PerspectiveCamera)||size.width<=0||size.height<=0)return;
+    const added=sceneObjects.filter(object=>!visibleObjects.current.has(object.id));
+    visibleObjects.current=new Set(sceneObjects.map(object=>object.id));
+    if(!added.length)return;
+    camera.updateMatrixWorld();
+    const direction=camera.position.clone().sub(orbit.target),before=direction.length();
+    const distance=perspectiveRevealDistance(camera,added.flatMap(object=>object.points),before,.97,Math.max(.5,(size.height-(size.height<320?16:40))/size.height)*(surroundings ? .9 : 1),padding);
+    if(distance===before)return;
+    cancel();
+    camera.position.copy(orbit.target).add(direction.setLength(distance));
+    orbit.update();recordCamera();invalidate();
+  },[sceneObjects,enabled,camera,size.width,size.height,surroundings,padding,cancel,recordCamera,invalidate]);
+
   useLayoutEffect(() => {
     if (
       studioCad &&
       selectionPivot &&
       pivotSelection.current !== selectionPivot.id
     ) {
-      const initial = pivotSelection.current === undefined;
+      const previousSelection=pivotSelection.current;
+      const initial = previousSelection === undefined;
+      const removedSelection=sceneObjects && previousSelection!==undefined && !sceneObjects.some(object=>object.id===previousSelection);
       pivotSelection.current = selectionPivot.id;
-      // Restoring the same saved selection is not a new selection intent.
-      if (initial) return;
+      // Creation/removal selects its object/fallback automatically. Neither is
+      // a deliberate request to replace the user's explored camera target.
+      if (initial || newlyAddedSelection || removedSelection) return;
       cancel();
       reanchorSelection();
     }
-  }, [studioCad, selectionPivot, reanchorSelection, cancel]);
+  }, [studioCad, selectionPivot, newlyAddedSelection, sceneObjects, reanchorSelection, cancel]);
 
   return (
     <OrbitControls

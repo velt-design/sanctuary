@@ -104,8 +104,16 @@ New base/options use `newDesignSeed` only in canonical blank creation. Add-on
 scopes remain empty for accessory-only work; clones/revisions preserve their
 exact source, including saved empty designs. `newHousePlacement` derives a clear
 world-space gap from the occupied physical envelope; `houseEditing` converts that
-world position to the existing rectangle composition origin. Adding an object
-fits the existing camera once; later edits and moves preserve the user's view.
+world position to the existing rectangle composition origin. An added object
+already inside the current view keeps its exact camera. Each viewport reveals
+only newly added physical points outside its actual projection; hidden or
+zero-sized views defer that check until visible. Plan expands the explored
+rectangle and 3D keeps its target/orbit while increasing distance if needed.
+Automatic reveal is separate from deliberate Fit, including duplicate, Paste
+and Undo/Redo. Removing the selected object uses an automatic selection fallback,
+not a new camera pivot, even when the removed copy had an offset pose. Deliberate
+selection between existing objects retains its normal pivot. Ordinary edits and
+moves preserve the user's view.
 Opening draft and protected canvases frame the pergolas with nearby house context;
 the complete house is still rendered. Fit remains a deliberate whole-design
 overview. `studioOpeningFrame` owns the camera guide points, not geometry or

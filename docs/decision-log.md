@@ -11,6 +11,15 @@ and value row stable rather than disabling resize cancellation or relaxing
 canonical geometry checks. Verify the held browser gesture, then release,
 Undo/Redo and persistence. See the Studio owner map and Plan pointer tests.
 
+The new opening focus also exposed an old unconditional add-object Fit: a visible
+copy, Paste or Undo could replace the explored view with the whole-scene centre.
+Keep visibility checks local to the actual viewport and reveal only outside
+additions. Cover the full placement-session return/Undo/save suite as well as
+camera tests; a smaller passing selection did not establish that retention.
+Assert the original camera immediately after removal/Undo, before resetting any
+test pose. A removed selection's automatic fallback is distinct from deliberately
+selecting another existing object, including copies at different positions.
+
 Preparation recovery is separate: cache geometric refusals, but distinguish an
 execution failure and offer one explicit operation-local retry. Preserve peers
 and retire the old gesture before recovery so a late reply cannot commit it.

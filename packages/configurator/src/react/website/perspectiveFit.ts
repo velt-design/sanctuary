@@ -24,6 +24,16 @@ export function perspectiveFitDistance(camera: PerspectiveCamera, fitPoints: Poi
 
 export type StudioOpeningFit = { policy: string; overviewBounds: SceneBounds; overviewPoints: Point3[] };
 
+/** Visibility uses the current projection, including a retained manual zoom.
+ * Reveal only zooms out along the existing eye/target direction. */
+export function perspectiveRevealDistance(camera:PerspectiveCamera,points:Point3[],distance:number,paddingX:number,paddingY:number,padding:number){
+  const inside=points.every(p=>{
+    const v=new Vector3(p.x,p.y,p.z).project(camera);
+    return [v.x,v.y,v.z].every(Number.isFinite)&&v.x>=-1&&v.x<=1&&v.y>=-1&&v.y<=1&&v.z>=-1&&v.z<=1;
+  });
+  return inside?distance:Math.max(distance,perspectiveFitDistance(camera,points,distance,paddingX/camera.zoom,paddingY/camera.zoom,padding));
+}
+
 /** Old records contain no input provenance. Migrate only the exact automatic
  * overview at the same drawable aspect, never an unknown/panned/zoomed pose. */
 export function isLegacyStudioOverview(saved: {position:number[];target:number[];fov:number;zoom?:number;viewport?:{aspect:number;zoom:number}}, opening: StudioOpeningFit, direction: Point3 | undefined, size:{width:number;height:number}, padding:number, surroundings:boolean) {

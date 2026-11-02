@@ -63,6 +63,14 @@ export function studioPlanViewBox(
     h = viewport.height * units;
   return [camera.x - w / 2, camera.y - h / 2, w, h].join(" ");
 }
+
+/** Keep the exact explored camera for visible additions. An outside addition
+ * expands the current rectangle, never swaps it for a different overview. */
+export function revealStudioPlanCamera(camera:StudioPlanCamera,viewport:{width:number;height:number},points:ReadonlyArray<{x:number;y:number}>):StudioPlanCamera {
+  const [x,y,width,height]=studioPlanViewBox(camera,viewport).split(' ').map(Number);
+  if(points.every(p=>p.x>=x&&p.x<=x+width&&-p.y>=y&&-p.y<=y+height))return camera;
+  return initialStudioPlanCamera([{x,y:-y},{x:x+width,y:-(y+height)},...points],viewport);
+}
 /** Legacy explicit-fit helper. Persistent Studio cameras capture this only once. */
 export function captureStudioHousePlanFrame(
   points: ReadonlyArray<{ x: number; y: number }>,

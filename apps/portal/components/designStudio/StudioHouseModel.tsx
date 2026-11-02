@@ -42,6 +42,7 @@ type Props = {
   focused: ReturnType<typeof connectionView> | null;
   points: Point3[];
   openingPoints?: Point3[];
+  objectFrames?: {id:string;points:Point3[]}[];
   onVisibility: (visibility: SelectionVisibility) => void;
   isNight: boolean;
 };
@@ -65,6 +66,7 @@ function StudioHouseModel({
   focused,
   points,
   openingPoints,
+  objectFrames,
   onVisibility,
   isNight,
 }: Props) {
@@ -191,6 +193,7 @@ function StudioHouseModel({
                 bounds={bounds}
                 fitPoints={focused?.points ?? (fit===0 ? openingPoints??points : points)}
                 openingFit={openingFit}
+                sceneObjects={objectFrames}
                 framingKey={framingKey}
                 fitPadding={0.76}
                 studio

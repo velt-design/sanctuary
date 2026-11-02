@@ -9,6 +9,7 @@ import {
   studioPlanPoint,
   studioPlanViewBox,
   studioPlanUnits,
+  revealStudioPlanCamera,
   type StudioPlanCamera,
 } from "./studioHousePlanFrame";
 import {
@@ -22,6 +23,7 @@ type Inputs = {
   view: StudioSceneView;
   points: ReadonlyArray<Point>;
   openingPoints?: ReadonlyArray<Point>;
+  objectFrames?: ReadonlyArray<{id:string;points:ReadonlyArray<Point>}>;
   directFramePoints?: ReadonlyArray<Point>;
   cameraStorageKey?: string;
   persistentViewport: boolean;
@@ -36,6 +38,7 @@ export function useStudioPlanViewport({
   view,
   points,
   openingPoints,
+  objectFrames,
   directFramePoints,
   cameraStorageKey,
   persistentViewport,
@@ -139,7 +142,7 @@ export function useStudioPlanViewport({
   }, [svgSize.width, svgSize.height]);
   useEffect(() => {
     if (persistentViewport) {
-      if (!planCamera && svg.current && svgSize.width > 0 && svgSize.height > 0)
+      if (!planCamera && svg.current && svg.current.clientWidth > 0 && svg.current.clientHeight > 0)
         setPlanCamera(
           initialStudioPlanCamera([...(openingPoints??points), ...(directFramePoints ?? [])], {
             width: svg.current.clientWidth,
@@ -172,6 +175,16 @@ export function useStudioPlanViewport({
     persistentViewport && planCamera
       ? studioPlanViewBox(planCamera, svgSize)
       : legacyPlanFrame;
+  const visibleObjects=useRef(new Set(objectFrames?.map(object=>object.id)));
+  useLayoutEffect(()=>{
+    const node=svg.current;
+    // Hidden/zero-sized views cannot establish visibility. Keep their last
+    // inventory until a real viewport can reveal every addition since then.
+    if(!persistentViewport||!planCamera||!objectFrames||!node||node.clientWidth<=0||node.clientHeight<=0)return;
+    const added=objectFrames.filter(object=>!visibleObjects.current.has(object.id));
+    visibleObjects.current=new Set(objectFrames.map(object=>object.id));
+    if(added.length)setPlanCamera(current=>current?revealStudioPlanCamera(current,{width:node.clientWidth,height:node.clientHeight},added.flatMap(object=>object.points)):current);
+  },[objectFrames,persistentViewport,planCamera,view,svgSize]);
   const zoomPlan = (factor: number) => {
     finishTouch(false);
     setPlanCamera((current) =>

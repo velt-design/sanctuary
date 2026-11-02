@@ -5,7 +5,7 @@ import {initialStudioPlanCamera, type StudioPlanCamera} from './studioHousePlanF
 
 export const STUDIO_OPENING_FRAME = 'pergola-context.v1';
 
-function productFramePoints(scene:ResolvedStudioScene):Point3[] {
+function productFramePoints(scene:Pick<ResolvedStudioScene,'products'>):Point3[] {
   return scene.products.flatMap((p) => {
         if (!p.geometry || !p.position) return [];
         const local =
@@ -43,9 +43,10 @@ function productFramePoints(scene:ResolvedStudioScene):Point3[] {
 }
 
 export function studioCameraFrames(scene:ResolvedStudioScene){
-  const products=productFramePoints(scene);
-  const points=[...scene.houses.flatMap(h=>h.walls.flat()),...scene.houses.flatMap(h=>h.roof.flat()),...products];
-  return {points,openingPoints:studioOpeningFrame(scene,points,products)};
+  const productFrames=scene.products.map(p=>({id:p.object.id,points:productFramePoints({products:[p]})}));
+  const objectFrames=[...scene.houses.map(h=>({id:h.house.id,points:[...h.walls.flat(),...h.roof.flat()]})),...productFrames];
+  const products=productFrames.flatMap(p=>p.points),points=objectFrames.flatMap(p=>p.points);
+  return {points,objectFrames,openingPoints:studioOpeningFrame(scene,points,products)};
 }
 
 export function isLegacyStudioPlanOverview(saved:StudioPlanCamera & {framingPolicy?:unknown},points:ReadonlyArray<{x:number;y:number}>){
