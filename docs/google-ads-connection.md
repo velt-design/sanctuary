@@ -1,30 +1,31 @@
 # Google advertising connections
 
-14 October extension: Google reporting was released and verified on 13 October;
-real-sale delivery and enhanced matching remain disabled pending the genuine
-canary and website tag verification. The local cross-provider capture candidate
-and explicit Ads-only prehashed website handoff are owned by
-[meta-offline-sales.md](meta-offline-sales.md). Its new Meta release and historical
-batch permissions do not follow from the existing Google approval. Older candidate
-status below is retained as implementation history, not current hosted status.
+Google reporting, connection setup and the staged rollout infrastructure already
+exist in production. Real-sale uploads and enhanced matching remain disabled;
+a genuine eligible paid-lead canary, provider processing and advertising credit
+are not established. The current owning offline-sale reporting work record keeps
+exact installed revisions, controls and dated live receipts. Source presence or
+local tests alone do not establish activation.
 
-The extension's forward disclosure migration requires an explicit release policy
-selection: v1 accepts only v1; v2 accepts original v1 and v2. Unknown/missing
-receipt versions remain excluded. Installation does not change current policy,
-receipt versions, source fingerprints or the existing consent cutoff. An edited
-idempotent form replay omits enhanced identity because its edited fields are not
-the accepted original receipt. Actual GTM/browser payload evidence remains separate.
+The cross-provider capture and explicit Ads-only prehashed website handoff are
+owned by [meta-offline-sales.md](meta-offline-sales.md). Meta activation and
+historical batch permissions remain separate from Google's staged rollout.
+The forward disclosure policy selection is explicit: v1 accepts only v1; v2
+accepts original v1 and v2. Unknown/missing receipt versions remain excluded.
+Reader installation changes neither that selection nor the original cutoff or
+receipt data. Edited idempotent replay omits enhanced identity because its
+edited fields are not the accepted original receipt. Existing dated browser/tag
+and destination-routing/preflight evidence remains separate from new funding
+verification; neither is evidence of an ingested or attributed real sale.
 
-## Candidate status and ownership
+## Current ownership and release evidence
 
-This is an install-only, default-disabled release candidate. It has not enabled
-Google APIs, granted OAuth scopes, changed an advertising action, deployed a
-schedule, uploaded a customer record or demonstrated attributed production sales.
 Jordan approved the deposit/full accepted-scope value definition and staged
-production rollout on 13 October 2026. This records approval, not completed
-activation. Release spending, exact deployment and live verification remain
-coordinated by the owning task. Browser access is setup and
-diagnostic access; the ongoing collectors are server-owned.
+Google production rollout on 13 October 2026. Release execution, installed
+catalog/ledger checks and live verification remain coordinated by the owning
+task. The new reader repair does not enable a control, change an advertising
+action, send a record or expand credentials. Browser access is setup and
+diagnostic access; ongoing collectors are server-owned.
 
 `lib/marketingIntegrations/googleAds` owns the source credential adapter, provider
 contracts, sale preparation, delivery and report collection. It reuses the tested
@@ -49,9 +50,12 @@ consumer of Sanctuary-owned evidence; it is not a second collector or sale owner
 ## Business and privacy contract
 
 The approved Closed Sale is one currently accepted **quote family/commercial
-scope** with a verified first-instalment deposit. An unreversed positive Xero
-deposit match counts even when the invoice remains OPEN; a PAID positive
-first-instalment invoice also counts. Multiple payment rows and duplicate first
+scope** with a verified first-instalment deposit. The shared verified-payment reader
+substantiates each deposit with a positive unreversed ledger receipt. Approved
+Xero partials count while OPEN; permitted first-term allocations also qualify.
+Effective invoice family and allocation ownership follow revised-quote funding: a
+SEPARATE_CHARGE assessment never funds construction, QUOTE_PAYMENT assignments
+can qualify standalone receipts, and fully split money follows its funded families. Multiple payment rows and duplicate first
 invoices cannot produce multiple scope sales. A later accepted revision uses the
 same family identity and updates its full accepted value. Paid prior versions
 within that family preserve the original deposit evidence. Distinct add-ons are
@@ -60,9 +64,15 @@ current sales. Pipeline labels are not proof of payment.
 Only current paid scopes and previously assessed delivery records enter delivery
 coverage. Never-paid drafts and unaccepted scopes are not counted as missed sales.
 
-Occurrence is the earliest applicable payment-ledger timestamp, falling back to
-the invoice's saved `paid_at` only where there is no unreversed ledger payment.
-Only NZD invoices are eligible. The amount is the current accepted scope's stored
+Occurrence is the earliest qualifying receipt's actual payment-ledger timestamp.
+Forward `20261102000002_advertising_reconciled_funding.sql` removes the prior
+`paid_at`-only fallback: a PAID projection alone cannot substantiate a newly
+qualified sale. This is a verification-method change, not a claim that historical
+PAID-only records were false or excluded by the owner. Such legacy records remain
+unresolved coverage requiring authoritative evidence; installation never repairs
+or backfills them. Genuine frozen administrative first terms remain eligible when
+the same invoice/version/effective family proves their first-instalment identity,
+even if historical schedule metadata is absent. Only NZD invoices are eligible. The amount is the current accepted scope's stored
 GST-inclusive NZD value, **not** the deposit amount or banked revenue. Jordan
 approved these date/value and first-deposit semantics on 13 October 2026. Existing
 explicit test project/receipt exclusions match the marketing owner.
@@ -101,6 +111,35 @@ event. No names, addresses, notes or CRM raw payload are exported. New events ol
 than 90 days are held; enhanced-only origin enquiries older than 63 days are held.
 A recent enquiry does not establish the original click date or guarantee matching.
 Provider lookback limits and account eligibility can reject additional records.
+
+## Reconciled funding validation (2 November 2026)
+
+`private.advertising_scope_facts()` reuses the current
+`private.marketing_verified_deposit_facts()` accounting reader once per accepted
+project. Its facts shape and Google/Meta projection/fingerprint algorithms are
+unchanged. Direct advertising still reads the current accepted family value and
+funding date on every scan; it does not consume or rewrite the frozen GA4 event.
+The forward migration replaces only these two private reader bodies, preserving
+catalog authority, all triggers, controls, original receipts and delivery history.
+No installation enqueue, historical upload or provider activation occurs.
+
+Connected SQL verification covers reconciled ownership through preparation,
+freeze, canary filtering, claim, final current-source fencing and accepted replay.
+The real runtime test changes ownership after claim and proves zero ingestion
+calls with the attempted frozen event retained. Engine and release verification
+limits are in `testing-and-qa.md`. Source correctness does not establish provider
+ingestion, Google matching or advertising credit. The next genuine eligible
+paid lead still needs its exact consent/cutoff/identity/date checks and a separately
+controlled canary; synthetic events are never sent to a production destination.
+At that payment, read the current source and canonical funded family first, then
+prepare the exact event under the unchanged live policy without uploading. Check
+original receipt, true payment timestamp, full current value, permitted matching
+identity and absence of suppression. With those checks satisfied, pin only that
+family in canary mode, follow the staged activation steps below, retain the request
+receipt and inspect provider processing before testing repeat use. Stop/reconcile
+any identity, ownership, date or policy change. Existing routing/preflight evidence
+is distinct from this new local funding proof; repeat it only if its destination,
+wire contract, configuration or authority changed.
 
 ## Delivery and recovery
 
@@ -207,9 +246,12 @@ capabilities. The Portal shows a compact attention notice beside the report for
 these failures, sale reviews, cancellations and provider diagnostics, with details
 in the existing recovery disclosure.
 
-## Post-approval connection and activation
+## Staged connection and activation reference
 
-These are concrete operator steps, not instructions to execute before approval.
+Steps 1-7 retain the original approved setup sequence as operational reference;
+completed setup must be reconciled with the owning record, not repeated. Step 8
+owns the next eligible genuine-sale canary within the staged rollout authority.
+No step grants new access, spending, Meta activation or historical batch authority.
 
 1. Apply the two forward migrations to the approved database after the release
    checks. They seed only a disabled control. Keep both application feature flags

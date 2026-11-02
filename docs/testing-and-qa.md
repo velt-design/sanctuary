@@ -18,6 +18,32 @@ rollback verifies unchanged catalog; only the intended plan constraint and
 reviewed function bodies change. Synthetic tests do not establish Meta acceptance.
 # Testing And QA
 
+## Advertising funding validation
+
+Run `npx vitest run test/advertising-reconciled-funding.integration.test.ts test/google-ads-source.test.ts test/meta-sales-source.test.ts test/verified-payment-conversion.integration.test.ts test/verified-payment-reconciled-scope.integration.test.ts`.
+The new connected suite applies the complete current revised-quote finance
+fixture and actual Google/Meta source/command migrations on disposable PGlite18.
+It covers separate historical assessment versus later construction receipt,
+assigned standalone manual/Xero partial, manual allocated partial, split/residual,
+frozen administrative first terms, earliest genuine dates, full current value,
+reversal, original non-test consent receipt, cancellation, source metadata,
+Google canary/freeze/claim/check/replay and a real-runtime pre-ingestion fence.
+Synthetic auth/reporting prerequisites are explicit; unrelated Meta reporting
+scoped-delete evolution is not part of this fixture. No external provider is called.
+
+`npx tsx scripts/test-advertising-funding-native.ts` uses the existing local
+Windows/Ubuntu PostgreSQL16 and a uniquely named disposable database. It measures
+the actual SQL engine at 1,500 synthetic projects, 300 accepted scopes/40 funded
+scopes and a 2,000-receipt larger ledger, with retained reader/helper plans.
+Representative local source medians were 527ms before and 92ms after; the larger
+ledger was 98ms. Source aggregation evaluates the helper once per accepted
+project. Plans use source-invoice/payment/reversal keys, while small allocation
+relations can use sequential scans. No payment-write remote dependency is added.
+Timings describe this synthetic local engine, not production service latency.
+Neither fixture proves deployed PostgreSQL17/PostgREST, provider acceptance or
+matching. Exact guarded release rehearsal/catalog/preservation evidence and the
+next eligible genuine lead remain separate operational verification.
+
 ## Verified-payment conversion
 
 Run `npx vitest run test/verified-payment-conversion.integration.test.ts test/verified-payment-reconciled-scope.integration.test.ts`.

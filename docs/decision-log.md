@@ -7091,3 +7091,20 @@ current funding fixture and assignment transitions, not only older command owner
 Owners: `automation-email-audit.md`, `supabase-schema-map.md`; regression:
 `test/verified-payment-conversion.integration.test.ts` and
 `test/verified-payment-reconciled-scope.integration.test.ts`.
+
+
+## 2026-11-02: Reuse reconciled funding without dropping genuine legacy first terms
+
+Area: Shared Google/Meta sale source. Immutable invoice quote identity and a
+PAID-date fallback cannot establish current economic funding after separate-charge
+or reassignment decisions. Reuse the verified ledger reader for source receipt
+ownership; keep current advertising value/restatement distinct from frozen GA4.
+Compare actual source deltas before installation: a valid fully allocated frozen
+administrative first invoice may have no schedule/plan term. Preserve its exact
+same-invoice/version/effective-family first-term proof, never just a matching
+term string or an unrelated unallocated project receipt. PAID-only history remains
+unresolved evidence, not an owner-excluded or invented false sale. Exercise the
+complete current finance fixture through freeze/claim/check and deny ingestion
+after ownership changes while retaining the frozen event and attempt history.
+Owners: `google-ads-connection.md`, `meta-offline-sales.md`; regression:
+`test/advertising-reconciled-funding.integration.test.ts`.
