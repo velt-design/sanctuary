@@ -7070,3 +7070,17 @@ Why it mattered: The shared shell previously enabled an authored dark palette th
 Current guardrail: Keep website autoresponses light-only through the shared shell and canonical renderer. Current and retained send layouts use one conditional contact-detail component; omit missing or blank values. Preview theme choices change only the surrounding inbox and retain identical light message HTML. Preserve existing content, commercial data and delivery contracts. Establish any reported spacing defect in the actual email client before changing the approved layout.
 Promoted to: `docs/automation-email-audit.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/emails/SubmittedContactDetails.tsx`; `apps/marketing/emails/alternatives/AlternativeEmailShell.tsx`; `apps/marketing/emails/enquiryEmailClarity.test.ts`; `apps/portal/lib/emailPreviews/websiteAutoresponderPreviewRenderer.ts`
+
+## 2026-11-02: Produce payment conversions at the verified accounting boundary
+
+Area: Offline payment lifecycle. Status: local candidate, production approval pending.
+Invoice/ledger and Xero payment commands could record genuine deposits without
+invoking the separate staff stage action that created the GA4 deposit event.
+The forward verified-payment migration evaluates final committed family facts
+and atomically creates the idempotent audit/outbox. Tests must exercise actual
+financial commands through that boundary, including partial/repeated payments,
+reversals and persistence failure. A PAID label is not a ledger receipt. Preserve
+true source dates, freeze the first event's accepted family value, and keep
+provider acceptance/attribution and direct Ads activation separate.
+Owners: `automation-email-audit.md`, `supabase-schema-map.md`; regression:
+`test/verified-payment-conversion.integration.test.ts`.
