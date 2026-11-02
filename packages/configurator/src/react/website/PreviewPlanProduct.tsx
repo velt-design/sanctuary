@@ -6,7 +6,9 @@ import PlanFinishes from './PlanFinishes';
 import PlanLighting from './PlanLighting';
 import BlindPlan from './BlindPlan';
 /** Product geometry only; the caller owns world placement and optional reflection. */
-export default function PreviewPlanProduct({plan,covering,profile='corrugated',trayWidth=400,roofPlanes=[],flashings=[],scale,compact=false,roofFocus=false,readOnly=false,guidedOpenings=false,idPrefix='plan',inlineDefs=false,showRoofFallLabel=true}:{plan:GeometryPlanViewModel;covering?:RoofFinishGeometry;profile?:string;trayWidth?:number;roofPlanes?:RoofPlane3D[];flashings?:RoofFlashing3D[];scale:number;compact?:boolean;roofFocus?:boolean;readOnly?:boolean;guidedOpenings?:boolean;idPrefix?:string;inlineDefs?:boolean;showRoofFallLabel?:boolean}){
+export default function PreviewPlanProduct({plan,covering,profile='corrugated',trayWidth=400,roofPlanes=[],flashings=[],scale,compact=false,roofFocus=false,readOnly=false,guidedOpenings=false,idPrefix='plan',inlineDefs=false,showRoofFallLabel=true,roofFallScale}:{plan:GeometryPlanViewModel;covering?:RoofFinishGeometry;profile?:string;trayWidth?:number;roofPlanes?:RoofPlane3D[];flashings?:RoofFlashing3D[];scale:number;compact?:boolean;roofFocus?:boolean;readOnly?:boolean;guidedOpenings?:boolean;idPrefix?:string;inlineDefs?:boolean;showRoofFallLabel?:boolean;roofFallScale?:number}){
+ const customArrow=typeof roofFallScale==='number'&&Number.isFinite(roofFallScale)&&roofFallScale>0;
+ const arrowScale=customArrow?roofFallScale:scale;
  const lighting=useLighting(),sides=usePreviewBlinds(),lightingPlan=Boolean(lighting?.editing);
  const polygons=(points:{x:number;y:number}[])=>points.map(p=>`${p.x},${p.y}`).join(' ');
  const members=[...plan.members.rafters,...plan.members.beams,...plan.members.ledgers,...plan.members.gutters,...plan.members.joiners,...plan.members.ridge];
@@ -45,9 +47,10 @@ export default function PreviewPlanProduct({plan,covering,profile='corrugated',t
       const positions=[...new Set(plan.members.rafters.map(m=>(m.centerline.start.x+m.centerline.end.x)/2*nx+(m.centerline.start.y+m.centerline.end.y)/2*ny))].filter(v=>v>=Math.min(...bounds)&&v<=Math.max(...bounds)).sort((a,b)=>a-b);
       const bays=positions.slice(1).map((v,i)=>(v+positions[i])/2).sort((a,b)=>Math.abs(a-centre)-Math.abs(b-centre));
       if(bays.length){const shift=bays[0]-centre;x+=nx*shift;y+=ny*shift;}
-      const half=(compact ? 14 : 22)/scale,tip=6/scale;
+      const half=(compact ? 14 : 22)/arrowScale,tip=6/arrowScale;
       const ex=x+dx*half,ey=y+dy*half;
-      return <g key={plane.id} data-roof-fall pointerEvents="none" stroke="#5d675c" strokeWidth={1/scale} fill="none">
+      return <g key={plane.id} data-roof-fall pointerEvents="none" stroke="#5d675c" strokeWidth={1/arrowScale} fill="none" role={customArrow?'img':undefined} aria-label={customArrow?'Roof fall':undefined}>
+        {customArrow&&<title>Roof fall</title>}
         <path d={`M ${x-dx*half} ${y-dy*half} L ${ex} ${ey} M ${ex-dx*tip-dy*tip*.6} ${ey-dy*tip+dx*tip*.6} L ${ex} ${ey} L ${ex-dx*tip+dy*tip*.6} ${ey-dy*tip-dx*tip*.6}`}/>
         {showRoofFallLabel&&<text x={x+10/scale} y={y-8/scale} fill="#5d675c" stroke="#e5eeeb" strokeWidth={3/scale} paintOrder="stroke" fontFamily="Inter, sans-serif" fontSize={(compact ? 9 : 12)/scale}>Roof fall</text>}
       </g>;

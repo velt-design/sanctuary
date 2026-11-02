@@ -67,7 +67,8 @@ it.each(['quoted','archived'] as const)('opens the actual admitted %s model with
  const reads=mocks.api.mock.calls.map(([url])=>url);expect(reads,JSON.stringify(reads)).toEqual([`/api/projects/${projectId}/studio`]);expect(mocks.keys).not.toHaveBeenCalled();expect(mocks.update).not.toHaveBeenCalled();expect(mocks.navigate).not.toHaveBeenCalled();
  await click('Plan');const svg=mounted!.container.querySelector('svg[aria-label="Studio design Plan"]')!;expect(svg).not.toBeNull();expect(svg.querySelectorAll('polygon').length).toBeGreaterThan(0);
  const before=svg.innerHTML;for(const key of ['Delete','ArrowLeft','Backspace','z','v'])act(()=>svg.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key,ctrlKey:key==='z'||key==='v'})));
- for(const type of ['pointerdown','pointermove','pointerup'])act(()=>svg.querySelector('polygon')!.dispatchEvent(new MouseEvent(type,{bubbles:true,button:0,clientX:type==='pointerdown'?50:150,clientY:100})));
+ const hit=svg.querySelector('[role="button"][aria-label="Select Pergola 1"]')!;expect(hit).not.toBeNull();
+ for(const type of ['pointerdown','pointermove','pointerup'])act(()=>hit.dispatchEvent(new MouseEvent(type,{bubbles:true,button:0,clientX:type==='pointerdown'?50:150,clientY:100})));
  expect(svg.innerHTML).toBe(before);await click('3D');expect(sessionSpy).not.toHaveBeenCalled();expect(mocks.update).not.toHaveBeenCalled();expect(mocks.api.mock.calls.every(([,options])=>!options?.method||options.method==='GET')).toBe(true);
 });
 

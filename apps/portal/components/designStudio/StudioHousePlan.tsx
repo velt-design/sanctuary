@@ -6,6 +6,7 @@ import type { StudioDirectDrag } from "@/lib/designStudio/interaction/contracts"
 import type { AlignmentGuide } from "@/lib/designStudio/interaction/finiteAlignment";
 import { transformWebsitePoint } from "@/lib/designStudio/websiteComposition";
 import type { StudioJoinCanvasProjection, StudioJoinEdge } from "./studioJoinPresentation";
+import StudioPlanHouse from './StudioPlanHouse';
 import StudioProductContext from "./StudioProductContext";
 import { JoinPlanTarget } from "./StudioJoinPlanTarget";
 import type { useStudioPlanViewport } from "./useStudioPlanViewport";
@@ -128,40 +129,7 @@ export default function StudioHousePlan({
               </text>
             </g>
           )}
-          {houses.map((g) => {
-            return (
-              <g key={g.house.id}>
-                <polygon
-                  points={g.footprint.map((p) => `${p.x},${p.y}`).join(" ")}
-                  fill="#ddd8cc"
-                  stroke={selected === g.house.id ? "#826344" : "#777"}
-                  strokeWidth={18}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Select ${g.house.label}`}
-                  onClick={() => onSelect(g.house.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onSelect(g.house.id);
-                  }}
-                  onPointerDown={(e) => {
-                    if (e.button !== 0) return;
-                    onSelect(g.house.id);
-                    viewport.startDrag(e, g.house.id);
-                  }}
-                />
-                {g.roof.map((r, i) => (
-                  <polygon
-                    key={i}
-                    points={r.map((p) => `${p.x},${p.y}`).join(" ")}
-                    fill="none"
-                    stroke="#999"
-                    strokeWidth={8}
-                    pointerEvents="none"
-                  />
-                ))}
-              </g>
-            );
-          })}
+          {houses.map(g=><StudioPlanHouse key={g.house.id} geometry={g} selected={selected===g.house.id} unitsPerPixel={viewport.unitsPerPixel} onSelect={onSelect} onStartDrag={viewport.startDrag}/>)}
           {directDrag &&
             preview &&
             (resolvedScene?.products ?? products)
@@ -233,6 +201,8 @@ export default function StudioHousePlan({
                     idPrefix={`studio-${i}`}
                     inlineDefs
                     showRoofFallLabel={false}
+                    compact
+                    roofFallScale={1/viewport.unitsPerPixel}
                     readOnly={
                       readOnly ||
                       placement ||
@@ -273,6 +243,7 @@ export default function StudioHousePlan({
             return (
               <text
                 key={p.object.id}
+                data-studio-object-label={p.object.id}
                 x={x}
                 y={y}
                 textAnchor="middle"
@@ -288,43 +259,6 @@ export default function StudioHousePlan({
               </text>
             );
           })}
-          {section !== "Lighting" &&
-            section !== "Sides" &&
-            products.flatMap((p) => {
-              if (!p.geometry || !p.position) return [];
-              const pose = p.position;
-              return p.geometry.assembly.roofPlanes.flatMap((plane) => {
-                if (
-                  !plane.boundary.length ||
-                  !Math.hypot(plane.fallVector.x, plane.fallVector.y)
-                )
-                  return [];
-                const local = plane.boundary.reduce(
-                  (a, v) => ({
-                    x: a.x + v.x / plane.boundary.length,
-                    y: a.y + v.y / plane.boundary.length,
-                    z: 0,
-                  }),
-                  { x: 0, y: 0, z: 0 },
-                );
-                const world = transformWebsitePoint(local, pose);
-                return (
-                  <text
-                    key={`${p.object.id}:${plane.id}`}
-                    data-roof-fall-label
-                    x={world.x + 12 * viewport.unitsPerPixel}
-                    y={world.y + 16 * viewport.unitsPerPixel}
-                    fontSize={12 * viewport.unitsPerPixel}
-                    stroke="var(--ui-canvas)"
-                    strokeWidth={3 * viewport.unitsPerPixel}
-                    paintOrder="stroke"
-                    pointerEvents="none"
-                  >
-                    Roof fall
-                  </text>
-                );
-              });
-            })}
           {repairTarget && (
             <g pointerEvents="none" aria-label="Affected house edge">
               <line

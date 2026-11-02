@@ -1,0 +1,5 @@
+.roof{fill:#f8f9f5}
+.slope{stroke:#c5cdc2;stroke-width:.65}
+.edges{fill:none;stroke:#aab4a5;stroke-width:.9;stroke-linejoin:round;stroke-linecap:round}
+.wall{fill:transparent;stroke:#8d9887;stroke-width:1;stroke-dasharray:6 4}
+.wall[aria-pressed=true]{stroke:#738268;stroke-width:1.4}
