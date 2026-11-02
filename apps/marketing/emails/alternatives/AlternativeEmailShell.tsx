@@ -13,12 +13,10 @@ import {
 } from '@react-email/components';
 import { THEME } from '../theme';
 
-export type AlternativePreviewTheme = 'light' | 'dark';
-
 const emailCss = `
   :root {
-    color-scheme: light dark;
-    supported-color-schemes: light dark;
+    color-scheme: light;
+    supported-color-schemes: light;
     background-color: ${THEME.canvas};
   }
   body,
@@ -69,89 +67,18 @@ const emailCss = `
       overflow: hidden !important;
     }
   }
-  @media (prefers-color-scheme: dark) {
-    html { background-color: #11130f !important; }
-    .spx-body { background-color: #11130f !important; }
-    .spx-shell { color: #f2f2ed !important; }
-    .spx-surface { background-color: #1c1f1a !important; }
-    .spx-warm { background-color: #242820 !important; }
-    .spx-neutral { background-color: #2a2d27 !important; }
-    .spx-text { color: #f2f2ed !important; }
-    .spx-muted { color: #c7cabf !important; }
-    .spx-subtle { color: #a5aa9e !important; }
-    .spx-rule { border-color: #3a3f37 !important; }
-    .spx-rule-strong { border-color: #555b50 !important; }
-    .spx-link { color: #f2f2ed !important; }
-    .spx-button {
-      background-color: #65715b !important;
-      border-color: #9aa78d !important;
-      color: #ffffff !important;
-    }
-  }
-  html.sp-preview-dark { background-color: #11130f !important; }
-  [data-ogsc] .spx-body,
-  html.sp-preview-dark .spx-body { background-color: #11130f !important; }
-  [data-ogsc] .spx-shell,
-  html.sp-preview-dark .spx-shell { color: #f2f2ed !important; }
-  [data-ogsc] .spx-surface,
-  html.sp-preview-dark .spx-surface { background-color: #1c1f1a !important; }
-  [data-ogsc] .spx-warm,
-  html.sp-preview-dark .spx-warm { background-color: #242820 !important; }
-  [data-ogsc] .spx-neutral,
-  html.sp-preview-dark .spx-neutral { background-color: #2a2d27 !important; }
-  [data-ogsc] .spx-text,
-  html.sp-preview-dark .spx-text { color: #f2f2ed !important; }
-  [data-ogsc] .spx-muted,
-  html.sp-preview-dark .spx-muted { color: #c7cabf !important; }
-  [data-ogsc] .spx-subtle,
-  html.sp-preview-dark .spx-subtle { color: #a5aa9e !important; }
-  [data-ogsc] .spx-rule,
-  html.sp-preview-dark .spx-rule { border-color: #3a3f37 !important; }
-  [data-ogsc] .spx-rule-strong,
-  html.sp-preview-dark .spx-rule-strong { border-color: #555b50 !important; }
-  [data-ogsc] .spx-link,
-  html.sp-preview-dark .spx-link { color: #f2f2ed !important; }
-  [data-ogsc] .spx-button,
-  html.sp-preview-dark .spx-button {
-    background-color: #65715b !important;
-    border-color: #9aa78d !important;
-    color: #ffffff !important;
-  }
-  html.sp-preview-light { background-color: #e9eae6 !important; }
-  html.sp-preview-light .spx-body { background-color: #e9eae6 !important; }
-  html.sp-preview-light .spx-shell { color: #111210 !important; }
-  html.sp-preview-light .spx-surface { background-color: #f8f8f5 !important; }
-  html.sp-preview-light .spx-warm { background-color: #f1f0eb !important; }
-  html.sp-preview-light .spx-neutral { background-color: #e1e3de !important; }
-  html.sp-preview-light .spx-text { color: #111210 !important; }
-  html.sp-preview-light .spx-muted { color: #555852 !important; }
-  html.sp-preview-light .spx-subtle { color: #6b6f68 !important; }
-  html.sp-preview-light .spx-rule { border-color: #c7cac3 !important; }
-  html.sp-preview-light .spx-rule-strong { border-color: #aeb2aa !important; }
-  html.sp-preview-light .spx-link { color: #111210 !important; }
-  html.sp-preview-light .spx-button {
-    background-color: ${THEME.inverse} !important;
-    border-color: ${THEME.inverse} !important;
-    color: #f4f4f0 !important;
-  }
 `;
 
 export function AlternativeEmailShell(props: {
   preview: string;
-  previewTheme?: AlternativePreviewTheme;
   children: React.ReactNode;
 }) {
   return (
-    <Html
-      lang="en"
-      className={
-        props.previewTheme ? `sp-preview-${props.previewTheme}` : undefined
-      }
-    >
+    <Html lang="en">
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="color-scheme" content="light dark" />
-        <meta name="supported-color-schemes" content="light dark" />
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
         <style>{emailCss}</style>
       </Head>
       <Preview>{props.preview}</Preview>

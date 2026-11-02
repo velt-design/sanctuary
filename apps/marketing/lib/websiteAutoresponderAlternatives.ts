@@ -9,7 +9,6 @@ import { ImageLedEmail } from '../emails/alternatives/ImageLedEmail';
 import {
   buildAlternativeEmailModel,
 } from '../emails/alternatives/alternativeEmailModel';
-import type { AlternativePreviewTheme } from '../emails/alternatives/AlternativeEmailShell';
 import {
   type WebsiteAutoresponderTemplateId,
   websiteAutoresponderPreheader,
@@ -61,7 +60,6 @@ function alternativeEmail(
   props: {
     model: ReturnType<typeof buildAlternativeEmailModel>;
     preheader: string;
-    previewTheme?: AlternativePreviewTheme;
   },
 ): ReactElement {
   if (layout === 'image-led') return ImageLedEmail(props);
@@ -84,16 +82,14 @@ export async function renderWebsiteAutoresponderAlternative(
   templateId: WebsiteAutoresponderTemplateId,
   variables: Record<string, unknown>,
   layout: WebsiteAutoresponderPreviewLayout,
-  options: { previewTheme?: AlternativePreviewTheme } = {},
 ) {
   const subject = websiteAutoresponderSubject(templateId, variables);
   const preheader = websiteAutoresponderPreheader(templateId, variables);
   const model = buildAlternativeEmailModel(templateId, legacyEnquiryEmailVariables(variables));
   const experience = experienceFromTemplate(templateId);
-  const reactEmail = experience ? EnquiryExperienceEmail({ experience, variables, previewTheme: options.previewTheme }) : alternativeEmail(layout, {
+  const reactEmail = experience ? EnquiryExperienceEmail({ experience, variables }) : alternativeEmail(layout, {
     model,
     preheader,
-    previewTheme: options.previewTheme,
   });
   const html = await render(reactEmail);
   const text = await render(reactEmail, { plainText: true });

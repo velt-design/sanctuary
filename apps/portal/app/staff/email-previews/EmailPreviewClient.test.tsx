@@ -39,8 +39,8 @@ function previewResponse(
       subject: "Alex, we've received your pergola enquiry",
       sendSubject: `[Preview: ${layout.name}] Alex, we've received your pergola enquiry`,
       preheader: 'Your project details and next steps from Sanctuary.',
-      htmlLight: `<html class="sp-preview-light"><body>${layout.id} light</body></html>`,
-      htmlDark: `<html class="sp-preview-dark"><body>${layout.id} dark</body></html>`,
+      htmlLight: `<html><body>${layout.id} light</body></html>`,
+      htmlDark: `<html><body>${layout.id} light</body></html>`,
       text: `${layout.name} plain text`,
     })),
     image: {
@@ -228,7 +228,7 @@ describe('EmailPreviewClient', () => {
     expect(rendered.container.querySelectorAll('iframe')).toHaveLength(1);
     expect(
       rendered.container.querySelector('iframe')?.getAttribute('srcdoc'),
-    ).toContain('editorial-refined dark');
+    ).toContain('editorial-refined light');
     const focusedCard = rendered.container.querySelector<HTMLElement>(
       '[data-layout-id="editorial-refined"]',
     );

@@ -75,3 +75,59 @@ describe('customer enquiry email clarity', () => {
     expect(fileResult.text).toContain('expire seven days');
   });
 });
+
+
+describe('light-only autoresponses and submitted contact details', () => {
+  const fixtures = [
+    ...enquiryExperienceFixtures(),
+    ...['residential-pitched-without-blinds', 'commercial-gable-with-blinds', 'professional'].map(variant =>
+      getWebsiteAutoresponderPreviewFixture(variant as Parameters<typeof getWebsiteAutoresponderPreviewFixture>[0])),
+  ];
+
+  it.each(fixtures)('keeps $templateId light and includes supplied phone and suburb', async fixture => {
+    const result = await renderWebsiteAutoresponder(fixture.templateId, {
+      ...fixture.variables, phone: '  021 555 0199  ', suburb: '  Mount Eden  ',
+    });
+    expect(result.html).toContain('name="color-scheme" content="light"');
+    expect(result.html).not.toContain('prefers-color-scheme: dark');
+    expect(result.html).not.toContain('data-ogsc');
+    expect(result.html).not.toContain('sp-preview-dark');
+    for (const content of [result.html, result.text]) {
+      expect(content).toContain('Phone: 021 555 0199');
+      expect(content).toContain('Suburb: Mount Eden');
+    }
+  });
+
+  it.each([
+    { phone: '021 555 0199', suburb: '   ', present: 'Phone: 021 555 0199', absent: 'Suburb:' },
+    { phone: undefined, suburb: 'Mount Eden', present: 'Suburb: Mount Eden', absent: 'Phone:' },
+  ])('omits the missing contact row without dropping the supplied row: $present', async fields => {
+    for (const fixture of fixtures) {
+      const result = await renderWebsiteAutoresponder(fixture.templateId, { ...fixture.variables, ...fields });
+      for (const content of [result.html, result.text]) {
+        expect(content).toContain(fields.present);
+        expect(content).not.toContain(fields.absent);
+      }
+    }
+  });
+
+  it.each(fixtures)('omits empty contact details for $templateId', async fixture => {
+    const result = await renderWebsiteAutoresponder(fixture.templateId, { ...fixture.variables, phone: '\t ', suburb: null });
+    for (const content of [result.html, result.text]) {
+      expect(content).not.toContain('Phone:');
+      expect(content).not.toContain('Suburb:');
+      expect(content).not.toContain('Not supplied');
+    }
+  });
+
+  it('renders submitted contact values as text rather than markup', async () => {
+    const fixture = fixtures[0];
+    const result = await renderWebsiteAutoresponder(fixture.templateId, {
+      ...fixture.variables, phone: '<img src=x onerror=alert(1)>', suburb: 'A & B <script>alert(1)</script>',
+    });
+    expect(result.html).not.toContain('<img');
+    expect(result.html).not.toContain('<script>');
+    expect(result.html).toContain('&lt;img');
+    expect(result.html).toContain('A &amp; B &lt;script&gt;');
+  });
+});

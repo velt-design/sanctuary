@@ -184,7 +184,7 @@ export function EmailPreviewCanvas({
           </h2>
           <p>
             {preview?.label??(controller.loading?'Reading selected enquiry…':'Selected enquiry unavailable')} · {viewport.label} {viewport.width}px ·{' '}
-            {controller.theme} simulation · {controller.zoom}% zoom
+            {controller.theme} inbox surround · {controller.zoom}% zoom
           </p>
         </div>
         <div className={styles.canvasContract}>

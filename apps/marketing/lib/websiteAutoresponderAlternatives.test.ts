@@ -64,10 +64,9 @@ describe('website autoresponder layout alternatives', () => {
           expect(rendered.text).toContain(hero.projectTitle);
         }
         expect(rendered.html).toContain('name="color-scheme"');
-        expect(rendered.html).toContain('content="light dark"');
-        expect(rendered.html).toContain(
-          '@media (prefers-color-scheme: dark)',
-        );
+        expect(rendered.html).toContain('content="light"');
+        expect(rendered.html).not.toContain('prefers-color-scheme: dark');
+        expect(rendered.html).not.toContain('data-ogsc');
         expect(rendered.html).toContain(
           '@media only screen and (max-width: 620px)',
         );
@@ -117,38 +116,6 @@ describe('website autoresponder layout alternatives', () => {
     expect(compact.html).toContain('width:56%');
     expect(compact.html).toContain('width:49%');
     expect(new Set([editorial.html, imageLed.html, compact.html]).size).toBe(3);
-  });
-
-  it('supports controlled light and dark simulations without changing send HTML', async () => {
-    const fixture = getWebsiteAutoresponderPreviewFixture('professional');
-    const variables =
-      fixture.variables as unknown as Record<string, unknown>;
-    const [adaptive, light, dark] = await Promise.all([
-      renderWebsiteAutoresponderAlternative(
-        fixture.templateId,
-        variables,
-        'editorial-refined',
-      ),
-      renderWebsiteAutoresponderAlternative(
-        fixture.templateId,
-        variables,
-        'editorial-refined',
-        { previewTheme: 'light' },
-      ),
-      renderWebsiteAutoresponderAlternative(
-        fixture.templateId,
-        variables,
-        'editorial-refined',
-        { previewTheme: 'dark' },
-      ),
-    ]);
-
-    expect(adaptive.html).not.toContain('class="sp-preview-light"');
-    expect(adaptive.html).not.toContain('class="sp-preview-dark"');
-    expect(light.html).toContain('class="sp-preview-light"');
-    expect(dark.html).toContain('class="sp-preview-dark"');
-    expect(light.text).toBe(dark.text);
-    expect(adaptive.subject).toBe(light.subject);
   });
 
   it('promotes Editorial Refined as the exact production renderer', async () => {

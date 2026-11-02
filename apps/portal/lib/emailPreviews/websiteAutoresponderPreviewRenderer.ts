@@ -18,20 +18,11 @@ export async function renderWebsiteAutoresponderPreviewPayload(
     : WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS;
   const renderedLayouts = await Promise.all(
     layouts.map(async (layout) => {
-      const [light, dark] = await Promise.all([
-        renderWebsiteAutoresponderAlternative(
-          fixture.templateId,
-          fixture.variables as unknown as Record<string, unknown>,
-          layout.id,
-          { previewTheme: 'light' },
-        ),
-        renderWebsiteAutoresponderAlternative(
-          fixture.templateId,
-          fixture.variables as unknown as Record<string, unknown>,
-          layout.id,
-          { previewTheme: 'dark' },
-        ),
-      ]);
+      const light = await renderWebsiteAutoresponderAlternative(
+        fixture.templateId,
+        fixture.variables as unknown as Record<string, unknown>,
+        layout.id,
+      );
       return {
         id: layout.id,
         name: layout.name,
@@ -42,7 +33,7 @@ export async function renderWebsiteAutoresponderPreviewPayload(
         preheader: light.preheader,
         hero: light.hero,
         htmlLight: light.html,
-        htmlDark: dark.html,
+        htmlDark: light.html,
         text: light.text,
       };
     }),

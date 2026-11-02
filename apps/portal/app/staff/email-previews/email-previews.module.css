@@ -886,7 +886,7 @@
     grid-column: 1 / -1;
   }
 
-  .viewControls > [data-segmented-control='simulation'] {
+  .viewControls > [data-segmented-control='inbox-surround'] {
     grid-column: 2;
     grid-row: 1;
   }

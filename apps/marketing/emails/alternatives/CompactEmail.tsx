@@ -7,7 +7,6 @@ import {
   Text,
 } from '@react-email/components';
 import { THEME } from '../theme';
-import type { AlternativePreviewTheme } from './AlternativeEmailShell';
 import { AlternativeEmailShell } from './AlternativeEmailShell';
 import type { AlternativeEmailModel } from './alternativeEmailModel';
 import {
@@ -24,14 +23,10 @@ import {
 export function CompactEmail(props: {
   model: AlternativeEmailModel;
   preheader: string;
-  previewTheme?: AlternativePreviewTheme;
 }) {
   const { model } = props;
   return (
-    <AlternativeEmailShell
-      preview={props.preheader}
-      previewTheme={props.previewTheme}
-    >
+    <AlternativeEmailShell preview={props.preheader}>
       <Section
         className="spx-surface spx-rule spx-mobile-pad"
         style={{
