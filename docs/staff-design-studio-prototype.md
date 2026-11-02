@@ -114,6 +114,9 @@ choices are never clamped on resize. `representativeStudioRoofPanels` owns the
 counts per plane, including explicit zero on the unselected slope. Rates and
 historical public defaults are unchanged. Frozen document sources carry the
 already-built assembly/covering, not a new worker solve or selection protocol.
+The opted-in acrylic interval subdivides using that validated integer allocation,
+not a count recomputed from floating-point projected endpoints. The final built
+panel-count guard remains authoritative; absent selections keep legacy geometry.
 
 Gate0: legacy audit rows N/A. This extends the active Studio geometry path under
 the owner's explicit 2 November request; no retired Workbench UI is improved.

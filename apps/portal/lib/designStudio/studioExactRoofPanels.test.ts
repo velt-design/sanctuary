@@ -7,6 +7,35 @@ import { buildReviewSiteInputs } from '@sp/configurator/server';
 
 const input = { widthMm: 6000, projectionMm: 3000, level: 'ground' as const, connection: 'facade' as const };
 const finish = { material: 'combination' as const, layout: 'central' as const, acrylicBays: 2, profile: 'corrugated' as const, trayWidth: 400 as const, ceiling: 'thermopine-150' as const };
+it.each(['left', 'right'] as const)('builds two exact panels on the 8m away gable %s face', side => {
+ const sized = { ...input, widthMm: 8000 };
+ const roof:PreviewRoofChoices = { family:'gable', orientation:'away', infills:false, attachmentIntent:'freestanding', finish };
+ const base = solvePergolaPreview(sized, roof).geometry!;
+ expect(studioRoofPanelOptions(base.assembly.roofPlanes).limits[side]).toBe(3);
+ const result = solvePergolaPreview(sized, { ...roof, finish:{ ...finish, studioPanels:{ version:1, count:2, side } } });
+ expect(result.geometry, result.messages.map(m => m.message).join(',')).toBeTruthy();
+ expect(result.geometry!.assembly.roofCladdingPanels.filter(p => p.id.startsWith('finish-acrylic-'))).toHaveLength(2);
+ const commercial = buildReviewSiteInputs({ version:1, input:sized, roof:{ ...roof, finish:{ ...finish, studioPanels:{ version:1, count:2, side } } } });
+ expect(Object.values(commercial.pergolas[0].modules[0].mixed_roof!.acrylic_bays_by_plane!).reduce((a,b) => a+b,0)).toBe(2);
+});
+it.each([
+ ['mono','parallel',3719,3000], ['mono','parallel',3720,3000], ['mono','parallel',3721,3000], ['mono','parallel',8000,3000],
+ ['gable','parallel',6000,2479], ['gable','parallel',6000,2480], ['gable','parallel',6000,2481], ['gable','parallel',8000,4000],
+ ['gable','away',2479,3000], ['gable','away',2480,3000], ['gable','away',2481,3000], ['gable','away',8000,3000],
+ ['box','parallel',3719,3000], ['box','parallel',3720,3000], ['box','parallel',3721,3000], ['box','parallel',8000,4000],
+] as const)('retains every advertised integer count for %s/%s at %sx%s bay boundaries', (family,orientation,widthMm,projectionMm) => {
+ const sized = { ...input, widthMm, projectionMm };
+ const roof:PreviewRoofChoices = { family, orientation, infills:false, attachmentIntent:'freestanding', finish };
+ const base = solvePergolaPreview(sized,roof).geometry!;
+ expect(base).toBeTruthy();
+ const options = studioRoofPanelOptions(base.assembly.roofPlanes);
+ for(const side of options.sides) for(let count=1;count<=options.limits[side];count++) {
+  const result = solvePergolaPreview(sized,{ ...roof, finish:{ ...finish, studioPanels:{ version:1, count, side } } });
+  expect(result.geometry, `${side}/${count}: ${result.messages.map(m=>m.message).join(',')}`).toBeTruthy();
+  expect(result.geometry!.assembly.roofCladdingPanels.filter(p=>p.id.startsWith('finish-acrylic-')), `${side}/${count}`).toHaveLength(count);
+  expect(result.geometry!.covering!.acrylicBays).toBe(count);
+ }
+});
 it.each([['mono','parallel'],['gable','parallel'],['gable','away'],['box','parallel']] as const)('builds the exact TOTAL across actual %s/%s roof planes and projects identical commercial counts', (family, orientation) => {
  const roof:PreviewRoofChoices={family,orientation,infills:false,attachmentIntent:'freestanding',finish};
  const legacy=solvePergolaPreview(input,roof).geometry!;expect(legacy).toBeTruthy();

@@ -48,8 +48,12 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
       .filter((x, i, all) => all.indexOf(x) === i).sort((a, b) => a - b);
     const rows = new Set<number>();
     for (let i = 1; i < cuts.length; i++) {
-      const count = Math.ceil((cuts[i] - cuts[i - 1]) / 620);
-      for (let j = 0; j <= count; j++) rows.add(cuts[i - 1] + (cuts[i] - cuts[i - 1]) * j / count);
+      // The opted-in band already has a validated integer panel allocation.
+      // Re-deriving it from projected endpoints can turn 1240mm into 1240+ulp.
+      const count = selected && cuts[i - 1] === light.a && cuts[i] === light.b
+        ? selected.count : Math.ceil((cuts[i] - cuts[i - 1]) / 620);
+      for (let j = 0; j <= count; j++) rows.add(explicit && j === count
+        ? cuts[i] : cuts[i - 1] + (cuts[i] - cuts[i - 1]) * j / count);
     }
     const xs = [...rows].sort((a, b) => a - b);
     const rowCentre = (x: number) => finish.material === 'combination' && x > lo + 1 && x < hi - 1
