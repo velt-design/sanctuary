@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { prepareStudioCreation } from './createPreparation';
 import { STUDIO_OUTPUT_KEY, STUDIO_SPATIAL_OUTPUT_KEY, type StudioAuthoredV1 } from './contracts';
+import {applyStudioHouseEdit} from './houseEditing';
+import type {ObjectFirstWorkbenchDraftVNext} from '../drawings/state/objectFirstWorkbenchModel';
 import { projectStudioAuthoringView } from './authoringView';
 
 const projectId = '10000000-0000-4000-8000-000000000001';
@@ -175,4 +177,11 @@ describe('trusted studio creation preparation', () => {
     expect(prepareStudioCreation({ mode: 'clone', projectId, designId: 'new', source: row }).ok).toBe(false);
     expect(prepareStudioCreation({ ...blank(), mode: 'import' }).ok).toBe(false);
   });
+});
+
+it.each(['plaster','weatherboard','brick'] as const)('clones the exact protected %s appearance and custom roof without changing the source',wallMaterial=>{
+ const row=source(),added=applyStudioHouseEdit(row.outputs[STUDIO_SPATIAL_OUTPUT_KEY] as unknown as ObjectFirstWorkbenchDraftVNext,{kind:'add',id:'house'});if(!added.ok)throw Error(added.message);
+ const styled=applyStudioHouseEdit(added.spatial,{kind:'appearance',houseFormId:'house',patch:{wallMaterial,roofColour:'#343b39',roofProfile:'tray',roofTrayWidth:300}});if(!styled.ok)throw Error(styled.message);row.outputs[STUDIO_SPATIAL_OUTPUT_KEY]=styled.spatial as unknown as typeof row.outputs[typeof STUDIO_SPATIAL_OUTPUT_KEY];
+ const before=structuredClone(row),result=prepareStudioCreation({mode:'clone',projectId,designId:'new-design',source:row});if(!result.ok)throw Error(result.message);expect(result.prepared.sourceSnapshot).toEqual(before);expect(result.prepared.pricing).toBe('unpriced');
+ const projected=projectStudioAuthoringView({authored:result.prepared.row.outputs[STUDIO_OUTPUT_KEY],spatial:result.prepared.row.outputs[STUDIO_SPATIAL_OUTPUT_KEY]});if(!projected.ok)throw Error(projected.message);expect(projected.value.spatial.houseAssembly!.houseForms[0].appearance).toEqual({wallMaterial,roofColour:'#343b39',roofProfile:'tray',roofTrayWidth:300});projected.value.spatial.houseAssembly!.houseForms[0].appearance!.wallMaterial='brick';expect(row).toEqual(before);
 });

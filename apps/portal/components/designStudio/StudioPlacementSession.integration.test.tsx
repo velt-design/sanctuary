@@ -556,7 +556,7 @@ it("roundtrips keyboard Paste Save Delete Save Undo Save through actual merge an
 });
 
 type WorkspaceApply = "house" | "connection" | "join";
-it('completes house appearance through the real session, full Undo, durable merge and normal reopen without moving the scene',async()=>{
+it.each(['plaster','weatherboard','brick'] as const)('completes %s house appearance through the real session, full Undo, durable merge and normal reopen without moving the scene',async wallMaterial=>{
  const svg=await open('house'),before=structuredClone(latest.edit!),frame=svg.getAttribute('viewBox');
  const typeColour=(raw:string)=>{const field=mounted!.container.querySelector<HTMLInputElement>('input[aria-label="House roof colour HEX"]')!;act(()=>{field.focus();Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,raw);field.dispatchEvent(new Event('input',{bubbles:true}));});return field;};
  let field=typeColour('#506070');act(()=>field.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})));
@@ -566,9 +566,9 @@ it('completes house appearance through the real session, full Undo, durable merg
  act(()=>button('Undo').click());expect(latest.edit).toEqual(before);expect(latest.session!.dirty).toBe(false);
  const config={...loadCostingConfigV1(),accessoryRates:structuredClone(ACCESSORY_REVIEW_RATES)},price=calculateStudioCommercialPricing(before,config);
  const change=(label:string,value:string)=>act(()=>{const select=mounted!.container.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));});
- change('House wall material','brick');change('House roof profile','tray');change('House roof tray width','300');
+ change('House wall cladding',wallMaterial);change('House roof profile','tray');change('House roof tray width','300');
  field=typeColour('#506070');act(()=>field.blur());
- const edited=structuredClone(latest.edit!);expect(edited.spatial.houseAssembly!.houseForms[0].appearance).toEqual({wallMaterial:'brick',roofProfile:'tray',roofTrayWidth:300,roofColour:'#506070'});
+ const edited=structuredClone(latest.edit!);expect(edited.spatial.houseAssembly!.houseForms[0].appearance).toEqual({wallMaterial,roofProfile:'tray',roofTrayWidth:300,roofColour:'#506070'});
  expect(calculateStudioCommercialPricing(edited,config)).toEqual(price);expect(svg.getAttribute('viewBox')).toBe(frame);
  let server={authored:{schemaVersion:'studio_authored.v1',designId:scope.designId,revision:before.revision,spatialOutputKey:'drawing_object_first',site:{validation:'preserved_unvalidated',values:before.site},objectOptions:before.objectOptions.map(row=>({objectId:row.objectId,options:{validation:'preserved_unvalidated',values:row.values}})),legacyCommercialAssociations:[],provenance:{sourceEstimateId:null,sourceKind:'authored',sourcePayload:null}} as StudioAuthoredV1,spatial:before.spatial};
  const savedAt='2026-10-23T04:00:00Z';mocks.api.mockImplementationOnce(async(_url,options)=>{const command=JSON.parse(options.body),merged=mergeStudioAuthoringEdit({storedAuthored:server.authored,storedSpatial:server.spatial,edit:command.edit});if(!merged.ok)throw Error(merged.message);server={authored:{...merged.value.authored,revision:before.revision+1},spatial:merged.value.spatial};return{receipt:{revision:before.revision+1,savedAt,alreadyExisted:false},pricing:'unpriced'};});
