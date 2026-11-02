@@ -287,7 +287,76 @@ Resend `email.sent` callbacks enter through `/api/webhooks/resend`. The route bo
 
 Forward marketing attribution starts with project audit events. New enquiries store campaign fields, Google click identifiers, landing URL, and referrer only while marketing tracking is enabled; landing/referrer query strings and fragments are removed. The first-party GA client ID requires analytics tracking to be enabled. The server independently enforces both category gates and stores the submission snapshot, including `user_choice` or NZ `regional_default` basis, in `enquiry_requests.raw_payload.attribution`. Lifecycle events are `marketing.lead_submitted`, confirmed-only `marketing.site_visit_booked`, `marketing.quote_accepted`, `marketing.deposit_received`, and structured `marketing.project_lost`.
 
-The browser sends the initial `generate_lead` through GTM. The four downstream event types enter `marketing_conversion_deliveries` from an `audit_events` trigger and are delivered by the marketing cron as GA4 `qualify_lead`, `quote_accepted`, `close_convert_lead`, or `close_unconvert_lead`. The first three downstream events and `generate_lead` are GA4 key events; the loss event is diagnostic only. Each portal event is written only after its authoritative business transition, preserves that transition's database occurrence time, and permits idempotent crash repair only inside the shared 72-hour window. Quote acceptance and deposit received both send the accepted quote's GST-inclusive value in NZD; the won value comes from the open deposit invoice's frozen quote total. The claim/complete RPCs are service-role-only and use bounded leases, attempts, and retry delays. Exhausted rows are terminally failed before another claim, and the sender claims one row immediately before each outbound request so queued rows do not spend their leases waiting behind network calls. The sender uses the originating visitor's enabled GA client ID and projects an explicit analytics-safe payload: source, value/currency where authoritative, confirmed visit status, or a closed loss code. It does not send portal IDs, contact data, notes, campaign names, or provider response bodies. Missing analytics enablement/identity and events outside the 72-hour GA4 window are terminally skipped. Delivery is at-least-once because GA4 can accept an event before the completion checkpoint is persisted and does not generically deduplicate non-purchase Measurement Protocol events. This is not a direct Google Ads API or enhanced-conversions integration.
+### Verified-payment lifecycle (2 November 2026)
+
+Forward migration `20261102000001_verified_payment_conversion_events.sql` makes
+verified accounting the owner of `marketing.deposit_received`. Its presence in
+source does not establish installation or external delivery; the exact installed
+catalog and migration ledger own release evidence. Deferred constraint
+triggers evaluate the affected project and quote family after the financial
+command's final writes. The accepted family requires a positive unreversed
+ledger payment, connected by a paid NZD first invoice, an approved positive Xero
+deposit match (partial included), or an active allocation to the first accepted
+payment term. Unallocated credit, final-stage or unassigned standalone receipts, adjustments,
+PAID labels without ledger evidence, test projects and cancelled projects cannot
+create a scope sale. The existing financial command still prohibits allocating
+a partial manual receipt against an OPEN whole invoice; this repair does not
+weaken it. Manual first-term allocation without such an invoice and partial Xero
+matching are independently covered.
+
+Qualification follows the current revised-quote economic owner, not the immutable
+invoice's original quote ID. `commercial_invoice_effective_quote` assigns NATIVE
+or explicit QUOTE_PAYMENT residual to its effective family; active quoted
+allocations subtract from that residual and may fund other accepted families.
+SEPARATE_CHARGE receipts and their frozen settlement allocations do not fund
+construction. A paid standalone invoice becomes eligible only after an explicit
+QUOTE_PAYMENT assignment to accepted work. The assignment command is itself a
+deferred qualification path. No financial ownership, billing or direct Ads/Meta
+reader is changed by this lifecycle repair.
+
+`private.marketing_verified_deposit_facts` reads only that project/family.
+`private.marketing_enqueue_verified_deposit` takes the existing commercial project
+lock and inserts one family-keyed audit event. The existing audit trigger creates
+its GA4 outbox row in the same transaction. Persistence failure rolls back the
+financial command as well: its caller receives an error and must retry the same
+financial intent, rather than seeing paid success with a missing conversion.
+No remote request is added to payment recording. Replays and later accepted
+revisions preserve the original event, occurrence and value. A later reversal
+does not rewrite an already recorded historical event or enable retractions.
+Reversal before commit prevents creation when no qualifying payment remains.
+
+The occurrence is the earliest qualifying positive payment's actual timestamp;
+the value freezes the full currently accepted family total including GST when
+the event is first created, never the deposit cash amount. This replaces the old
+GA4 dependency on a separate staff stage action and its invoice snapshot value.
+Separate accepted add-ons have separate family identities. Original non-test
+enquiry analytics consent and client identity are preserved in a minimal safe
+projection; no raw contact, click ID, URL or free text is copied. Missing analytics
+consent or identity remains an explicit sender skip.
+
+Installation performs no historical scan or enqueue. New verified payment or
+first-term qualification may have an older occurrence: it records that truthful
+date, and the existing sender skips it as `EVENT_TOO_OLD` beyond 72 hours. A later
+payment in a previously paid family cannot admit that family's old first receipt;
+new add-on evidence cannot admit another old family in the project. Harmless
+updates and legacy action recovery only consider recent facts. The compatibility
+audit guard redirects older app deposit writes to this same source owner, so a
+DB-first deployment cannot create an additional project-level event. Existing
+legacy family audits are retained; an unmappable old project-only event
+conservatively prevents automatic duplication rather than guessing its family.
+
+This is exactly-once source audit/outbox creation per family, not exactly-once
+GA4 delivery. Existing leases, retry limits and acknowledgement/checkpoint
+uncertainty remain at-least-once. Google/Meta direct paid-scope readers, disclosure
+cutoffs, contact-sharing policy, canary switches and provider activation are
+unchanged. Creation of this lifecycle event is not Google Ads ingestion or credit.
+Release must first review/install only this forward migration and verify its
+prerequisite tables/test-policy helpers. To stop automatic creation, disable its
+six `marketing_verified_*` constraint triggers; retain event/outbox history and
+the compatibility guard while reconciling any in-flight delivery. Do not remove
+the guard or restore an old independent emitter over already recorded events.
+
+The browser sends the initial `generate_lead` through GTM. The four downstream event types enter `marketing_conversion_deliveries` from an `audit_events` trigger and are delivered by the marketing cron as GA4 `qualify_lead`, `quote_accepted`, `close_convert_lead`, or `close_unconvert_lead`. The first three downstream events and `generate_lead` are GA4 key events; the loss event is diagnostic only. Each portal event is written only after its authoritative business transition, preserves that transition's database occurrence time, and permits idempotent crash repair only inside the shared 72-hour window. Quote acceptance and deposit received send an accepted GST-inclusive value in NZD; the historical separate-stage deposit action used the invoice's frozen quote total, while the verified-payment owner above freezes accepted family value at the first source event. The claim/complete RPCs are service-role-only and use bounded leases, attempts, and retry delays. Exhausted rows are terminally failed before another claim, and the sender claims one row immediately before each outbound request so queued rows do not spend their leases waiting behind network calls. The sender uses the originating visitor's enabled GA client ID and projects an explicit analytics-safe payload: source, value/currency where authoritative, confirmed visit status, or a closed loss code. It does not send portal IDs, contact data, notes, campaign names, or provider response bodies. Missing analytics enablement/identity and events outside the 72-hour GA4 window are terminally skipped. Delivery is at-least-once because GA4 can accept an event before the completion checkpoint is persisted and does not generically deduplicate non-purchase Measurement Protocol events. This is not a direct Google Ads API or enhanced-conversions integration.
 
 Current website enquiry autoresponders keep the existing payload shape for preview compatibility, but new base pergola estimates are sent and stored as a single lower-only amount by setting equal low/high values. Ordinary dimension-led enquiries use the canonical one-pergola active-publication snapshot. A verified Simple calculator continuation instead reuses the calculator's exact immutable publication, dimensions, level, selected connection, automatic posts, frozen engine output and displayed installed estimate; the email summary names the selected level/connection and does not restate the generic fascia assumption. The opaque reference is removed from stored raw payload and never becomes an email variable. Custom, unavailable, unconfigured or invalid-reference Simple continuations receive the same confirmation without a fabricated base estimate. Manifest `v2.3` retains the Simple 21% customer-price uplift and adds the Version 6 longer-rafter labour curve; the shared package calculation applies both to the calculator and autoresponder. Publishing the reviewed configuration switches new portal, public-calculator and ordinary autoresponder calculations together, while an already-issued calculator reference remains tied to its immutable historical version. Missing or invalid publication omits the base estimate without blocking the enquiry; package defaults are not a fallback. Historical rows with unequal low/high values still preview as ranges. Short residential or commercial enquiries without enough dimensions for a reliable costing snapshot still receive the same confirmation, with the investment panel and estimate wording omitted. Optional blinds remain range-based, use the shared corrected `@sp/costing` baseline, and persist into the generated calculator draft with No cover unless staff later selects a flashing or pelmet.
 

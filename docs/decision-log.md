@@ -7070,3 +7070,24 @@ Why it mattered: The shared shell previously enabled an authored dark palette th
 Current guardrail: Keep website autoresponses light-only through the shared shell and canonical renderer. Current and retained send layouts use one conditional contact-detail component; omit missing or blank values. Preview theme choices change only the surrounding inbox and retain identical light message HTML. Preserve existing content, commercial data and delivery contracts. Establish any reported spacing defect in the actual email client before changing the approved layout.
 Promoted to: `docs/automation-email-audit.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/emails/SubmittedContactDetails.tsx`; `apps/marketing/emails/alternatives/AlternativeEmailShell.tsx`; `apps/marketing/emails/enquiryEmailClarity.test.ts`; `apps/portal/lib/emailPreviews/websiteAutoresponderPreviewRenderer.ts`
+
+## 2026-11-02: Produce payment conversions at the verified accounting boundary
+
+Area: Offline payment lifecycle. Status: verified source contract; environment activation requires release evidence.
+Invoice/ledger and Xero payment commands could record genuine deposits without
+invoking the separate staff stage action that created the GA4 deposit event.
+The forward verified-payment migration evaluates final committed family facts
+and atomically creates the idempotent audit/outbox. Tests must exercise actual
+financial commands through that boundary, including partial/repeated payments,
+reversals and persistence failure. A PAID label is not a ledger receipt. Preserve
+true source dates, freeze the first event's accepted family value, and keep
+provider acceptance/attribution and direct Ads activation separate.
+The initial consumer used immutable invoice family identity and retained
+settlement allocations, missing the already-live revised-quote reconciliation.
+Every selected receipt must itself fund the target: effective-family residual
+after quoted allocations or a permitted target allocation. SEPARATE_CHARGE is
+excluded even when its old invoice remains quote-linked. Test the complete
+current funding fixture and assignment transitions, not only older command owners.
+Owners: `automation-email-audit.md`, `supabase-schema-map.md`; regression:
+`test/verified-payment-conversion.integration.test.ts` and
+`test/verified-payment-reconciled-scope.integration.test.ts`.

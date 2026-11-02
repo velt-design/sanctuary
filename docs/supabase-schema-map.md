@@ -1,5 +1,23 @@
 # Supabase Schema Map
 
+## Verified-payment lifecycle (2 November 2026)
+
+Forward `20261102000001_verified_payment_conversion_events.sql` adds three private
+source/compatibility helpers and one deferred trigger owner, with locked definer
+search paths and EXECUTE revoked from all application roles. Six affected-family
+constraint triggers cover invoice payment, source payment, first-term allocation,
+Xero deposit match, accepted-quote writes and explicit invoice-scope assignments.
+Existing revised-funding economic ownership controls invoice residual and quoted
+allocations; SEPARATE_CHARGE cannot be mistaken for a construction deposit.
+The existing commercial project lock,
+audit idempotency key and audit-to-GA4-outbox trigger own serialization/durability.
+It creates no table, grant, provider job or historical enqueue, and changes no
+Google/Meta control or shared direct-sale reader. Existing legacy deposit audit
+calls are redirected to the verified source rather than admitted as a second
+emitter. Source helpers are private; staff/admin still use their established
+financial commands. See [the lifecycle contract](automation-email-audit.md#verified-payment-lifecycle-2-november-2026)
+for exact qualification, frozen date/value, release/stop procedure and limitations.
+
 ## Standard-enhancements normalization continuation
 
 ## Native Meta UI creative reporting candidate
