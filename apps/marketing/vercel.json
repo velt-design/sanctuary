@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/autoresponse-light-20261102": false,
       "codex/studio-quoted-design-view-20261102": false,
       "codex/studio-direct-entry-20261102": false,
       "codex/studio-designer-trial-20261030": false,
