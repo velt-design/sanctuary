@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { StudioDesignIdentity } from "@/lib/designStudio/studioDesignIdentity";
 import StudioDesignHeading from "./StudioDesignHeading";
+import StudioDesignSelector from './StudioDesignSelector';
 import StudioNativeLink from "./StudioNativeLink";
 import css from "./StudioReview.module.css";
 
@@ -14,6 +15,7 @@ export default function StudioFlowShell({
   versionLabel,
   stage,
   readOnly = false,
+  renameAvailable = readOnly || stage === 'quote',
   quoteId,
   total,
   actions,
@@ -25,6 +27,7 @@ export default function StudioFlowShell({
   versionLabel: string;
   stage: "review" | "quote";
   readOnly?: boolean;
+  renameAvailable?: boolean;
   quoteId?: string;
   total?: ReactNode;
   actions?: ReactNode;
@@ -43,10 +46,12 @@ export default function StudioFlowShell({
           Sanctuary
         </Link>
         <div className={css.flowTitle}>
+          <StudioDesignSelector projectId={projectId} estimateId={estimateId} renameAvailable={renameAvailable}>
           <StudioDesignHeading
             identity={identity}
             versionLabel={versionLabel}
           />
+          </StudioDesignSelector>
         </div>
         {total && <div className={css.price}>{total}</div>}
         <div className={css.actions}>{actions}</div>

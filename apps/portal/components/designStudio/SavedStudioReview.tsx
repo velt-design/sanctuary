@@ -1,5 +1,6 @@
 import StudioNativeLink from './StudioNativeLink';
 import StudioDesignHeading from './StudioDesignHeading';
+import StudioDesignSelector from './StudioDesignSelector';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { SavedEstimateReview, SavedReviewPrice } from '../../lib/designStudio/savedReview';
@@ -49,7 +50,7 @@ export default function SavedStudioReview({ review, projectId, editHref, revisio
     <header className={styles.header}>
       <div>
         <p className={styles.eyebrow}>{estimate.commercialScopeKind === 'add_on' ? 'Add-on scope' : 'Base scope'} · Saved review</p>
-        <StudioDesignHeading identity={review.identity} versionLabel={estimate.versionLabel}/>
+        <StudioDesignSelector projectId={projectId} estimateId={estimate.id} renameAvailable><StudioDesignHeading identity={review.identity} versionLabel={estimate.versionLabel}/></StudioDesignSelector>
         <p className={styles.subtitle}>{estimate.status === 'archived' ? 'Archived estimate' : 'Saved estimate'}{estimate.lock.isLocked ? ' · Locked' : ''}</p>
       </div>
       <div className={styles.action}>

@@ -26,6 +26,7 @@ import {
 } from "./studioViewContext";
 import { useStudioWebsitePrice } from "./useStudioWebsitePrice";
 import StudioDesignHeading from "./StudioDesignHeading";
+import StudioDesignSelector from './StudioDesignSelector';
 import StudioWebsiteRecovery from "./StudioWebsiteRecovery";
 import StudioWebsiteObjectNavigator from "./StudioWebsiteObjectNavigator";
 import css from "./StudioWebsite.module.css";
@@ -125,11 +126,11 @@ export default function StudioWebsiteSavedView({
           >
             ← Project
           </Link>
-          <StudioDesignHeading
+          <StudioDesignSelector projectId={scope.projectId} estimateId={scope.estimateId}><StudioDesignHeading
             identity={identity}
             versionLabel={versionLabel}
             state="Saved design"
-          />
+          /></StudioDesignSelector>
           <StudioWebsiteRecovery controller={controller} />
         </div>
         <div className={css.price} aria-live="polite">

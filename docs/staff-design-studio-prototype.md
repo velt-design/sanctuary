@@ -7,11 +7,125 @@ The Projects header retains progressive private-content loading and disabling.
 
 ## Current journey and owners
 
-`/staff/projects/[projectId]/studio` lists saved designs and creates a base design.
+`/staff/projects/[projectId]/studio` is now a direct-entry resolver, not a landing
+form. Its server GET reads only. The browser opens the last explicitly selected
+visible, non-archived design for that actor and project, or the canonical current
+base draft. Quoted designs open in Review; their frozen design and quote stay
+protected. Add-ons are a deliberate selection, not a newer-row override of base.
+An empty successful project inventory starts one default-named base design with a
+freestanding 6 x 3 m pitched pergola through
+the existing retained creation journal. The same Web Lock rechecks fresh inventory
+before staging, so two tabs cannot both create from stale empty data. Failed list
+or quote-history reads show Retry and never create a blank.
+
+The current title is editable inside Studio. Naming reuses the existing commercial
+name dialog and metadata-only estimate PATCH. Save-before-rename and a fenced
+working-copy/journal check protect unsaved, pending and recovery work, including
+when naming from Review or Quote. After confirmation the same document reopens:
+the existing fully acknowledged clean-cache restore adopts the metadata timestamp.
+Dirty content is never silently rebased or discarded.
+After a dispatched name command, an unknown response or failed navigation keeps
+the old editor fenced. Reopen saved design checks the exact current source and
+re-enters fresh admission without resending the name PATCH. Back to Project is
+also available. Dialog dismissal and selector refresh cannot clear this recovery;
+only actual actor/project/document retirement releases its owned fence.
+The live Studio frame adopts that same ready, actor/project/estimate-bound
+preparation before PATCH. Masking, native failure and Continue use one fence;
+fresh server admission still owns the existing post-commit release after the old
+controller cleans up. The frame refuses failed, non-owned or mismatched preparations.
+The inventory GET and its browser requests explicitly use private/no-store.
+Design/Review/Quote share a
+compact Designs selector and bounded history popover. Switching and New actions
+use the existing local navigation drain. New option and New add-on are available
+inside that selector. Each explicit New action owns a durable URL request nonce;
+reload, Back and unconfirmed outcomes reconcile the same request, and successful
+creation replaces the transient entry URL. Edit a new revision uses the selected
+source's current revision and opens the new editable design without changing the
+quoted source. The Quote header exposes that action beside Download PDF.
+
 `/staff/design-studio/[projectId]/[estimateId]/edit` owns authoring; the same route
 without `/edit` owns Review, quote preparation and the client package. Staff/admin
 identity and project access are checked freshly on the server. Middleware hints
 only carry canonical routing and refreshed cookies, never access authority.
+
+Incremental implementation map: `projectDesigns.ts` owns selection/routing hints;
+`loadStudioProject` and GET `/api/projects/[projectId]/studio` own fresh caller-RLS
+inventory and existing quote-flow authority. `StudioProjectEntry` resolves entry;
+`StudioCreateAction` retains creation, locking, exact replay and automatic opening.
+`StudioDesignSelector` owns the shared header/popover; `renameDesign.ts` coordinates
+the existing metadata name command with local preservation and fresh reopening.
+Direct-entry navigation retains the existing worker, pricing, document and email
+contracts. The authoring changes below add an explicit geometry selection and
+the narrowly expanded creation predicate described below, using the existing
+commercial and document owners.
+Automatic project/fallback entry starts after its mount lifetime is established.
+A cancelled effect acquires no navigation fence, including React effect replay;
+the live action still uses the existing same-owner local drain. Explicit user
+navigation continues to fence synchronously. The mounted-frame return and held
+local-write tests cover re-entry without creating another design or losing work.
+Placement preparation also belongs to its effect lifetime: cleanup permanently
+disposes the old scheduler and a replay or new session creates a fresh owner.
+Worker replies retain their original scope/epoch/request checks; a terminated
+owner cannot publish into its replacement. Mounted replay tests warm the real
+preparation and exercise Plan offers, commits and Undo on all four house sides.
+Representative project size is 1–20 saved versions/options. Entry/selector refresh
+uses one metadata request, backed by project, estimate and quote-flow reads; no
+per-frame or per-keystroke list request is added. Existing all-row version labels
+remain canonical. Fixture response timings are not production latency evidence.
+
+### Studio authoring feedback, 2 November 2026
+
+New base/options use `newDesignSeed` only in canonical blank creation. Add-on
+scopes remain empty for accessory-only work; clones/revisions preserve their
+exact source, including saved empty designs. `newHousePlacement` derives a clear
+world-space gap from the occupied physical envelope; `houseEditing` converts that
+world position to the existing rectangle composition origin. Adding an object
+fits the existing camera once; later edits and moves preserve the user's view.
+Soffit bracket meshes inherit frame finish in the live scene and quote capture.
+`studioHouseCoordinates` losslessly serializes internal finite transform values
+to the existing decimal-string house contract. Quarter-turn trig results near
+zero must not become exponent text that the strict user-input parser rejects.
+This boundary does not round coordinates or widen user grammar/range checks;
+read projection, inverse house moves and house pointer release use the same
+serializer. Actual quarter-turn scene retention, house pointer movement and
+four-side attachment release/Undo/save/reopen regressions
+cover this numeric failure. The owner's specific disappearance report is not
+claimed reproduced solely from that separate verified cause.
+
+The forward `studio_base_creation_seed` migration is required before enabling
+this new creation code. It updates only the existing creation function's blank
+predicate: exact historical empty pairs remain valid, and base scope additionally
+accepts the exact canonical starter pair. Receipt replay, clone/import source
+proof, role/project checks, locking, function owner and ACL stay intact. Applied
+migrations and the historical atomic installer remain unchanged. Local execution
+tests establish old-function refusal then forward acceptance; this is not a
+claim of staging/production installation or concurrent database verification.
+
+Mixed roofs opt into `finish.studioPanels` version 1 with an exact TOTAL count and
+product-local side. Front is the existing Sides/Blinds outer +Y edge, Back/Rear
+is -Y, Left is -X and Right is +X; world rotation/camera do not change the choice.
+Full fall-length sheets are retained. Jordan chose "Keep full-length panels, with
+front/back available on gables (Recommended)" on 2 November. A single-slope roof
+offers Left/Right and explains why Front/Back needs a gable. A chosen gable face
+has its own exact limit, with no silent spill to the opposite face. Legacy bands
+display their actual arrangement/count without migrating on open. Explicit
+choices are never clamped on resize. `representativeStudioRoofPanels` owns the
+620mm bay allocation; the existing costing adapter reads the actual built panel
+counts per plane, including explicit zero on the unselected slope. Rates and
+historical public defaults are unchanged. Frozen document sources carry the
+already-built assembly/covering, not a new worker solve or selection protocol.
+The opted-in acrylic interval subdivides using that validated integer allocation,
+not a count recomputed from floating-point projected endpoints. The final built
+panel-count guard remains authoritative; absent selections keep legacy geometry.
+
+Gate0: legacy audit rows N/A. This extends the active Studio geometry path under
+the owner's explicit 2 November request; no retired Workbench UI is improved.
+House composition remains rectangle-owned. There is no cost input migration or
+`inputs.modules` dependency, and no consolidation drops fields. Consumers checked:
+website contract parse/serialize and finish constraints, Studio raw/edit/save/
+revision projection, roof solve and Plan/3D, commercial per-plane counts, quote
+descriptions/capture and immutable document-source consumers. Missing optional
+Studio selection retains historical/public equal-third/half geometry.
 
 The ordinary Project saved-design list, bookmarks, source-design action and
 revision/duplicate actions route Studio rows back to Studio. Untyped rehydrated

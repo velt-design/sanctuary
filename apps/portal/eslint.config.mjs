@@ -50,6 +50,8 @@ const config = [
     },
     rules: {
       ...js.configs.recommended.rules,
+      // Retain the previous recommended-rule semantics across the engine update.
+      'no-shadow-restricted-names': ['error', { reportGlobalThis: false }],
       // Allow regexes that intentionally include control characters
       'no-control-regex': 'off',
       // Allow occasionally-empty blocks used as placeholders

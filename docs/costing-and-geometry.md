@@ -351,6 +351,15 @@ Blocked or untraceable takeoff returns a blocked attribution and must not be pre
 
 ## Geometry Source Of Truth
 
+Studio mixed roofs may explicitly opt into `finish.studioPanels` version 1.
+The geometry package allocates an exact total of full fall-length acrylic panels
+in 620 mm bays at the selected product-local side. Existing/public selections
+without that key retain their previous proportional bands. The commercial
+projection reads actual cladding-panel counts by structural plane, including zero
+on the unselected gable face, through the existing `acrylic_bays` costing mode.
+No rate or cost engine rule changes. See the incremental owners and Gate 0
+answers in [staff-design-studio-prototype.md](staff-design-studio-prototype.md).
+
 The marketing preview's `buildRepresentativeSurroundings()` is a package-owned
 visual reference derived from an untransformed mono assembly. It implements the
 owner-confirmed soffit/fascia/facade relationships recorded in

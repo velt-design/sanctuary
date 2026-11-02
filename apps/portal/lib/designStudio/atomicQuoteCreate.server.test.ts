@@ -16,11 +16,11 @@ vi.mock('@/lib/quotes/pdf',()=>({generateQuotePdfBytes:async()=>new TextEncoder(
 vi.mock('@/lib/costing/configurationArchive.server',()=>({packStudioFrozenConfiguration:async(value:unknown)=>value}));
 import {unpackStudioFrozenAuditEvidence} from '@/lib/costing/auditArchive.server';
 import {createStudioClientQuoteRequest} from './atomicQuoteCreate.server';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {mergeStudioAuthoringEdit,projectStudioAuthoringView,createStudioAuthoringEdit} from './authoringView';
 import {studioClientDocumentFixture} from '../../../../test/fixtures/studio-client-documents';
 const ids={projectId:'proj_10000000-0000-4000-8000-000000000001',estimateId:'est_10000000-0000-4000-8000-000000000003'},requestId='10000000-0000-4000-8000-000000000002',actor='10000000-0000-4000-8000-000000000005';
-const made=prepareStudioCreation({mode:'blank',projectId:ids.projectId,designId:'document-fixture',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+const made=prepareEmptyStudioFixture({mode:'blank',projectId:ids.projectId,designId:'document-fixture',commercialScopeId:null});if(!made.ok)throw Error(made.message);
 const merged=mergeStudioAuthoringEdit({storedAuthored:made.prepared.row.outputs.studio_authored,storedSpatial:made.prepared.row.outputs.drawing_object_first,edit:studioClientDocumentFixture()});if(!merged.ok)throw Error(merged.message);
 const outputs={studio_authored:merged.value.authored,drawing_object_first:merged.value.spatial},view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
 function command(){const edit=createStudioAuthoringEdit(view.ok?view.value:never());edit.site.extrasAllowanceExGst='40';return{requestId,expectedUpdatedAt:'2026-10-28T00:00:00Z',expectedRevision:edit.revision,edit};}

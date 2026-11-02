@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {projectStudioAuthoringView} from './authoringView';
 import {readStudioQuoteHandoff, type StudioQuoteHandoff} from './quoteSnapshot';
 import {mapQuoteSourceEstimateRow} from '../quotes/serverLoaders';
@@ -10,7 +10,7 @@ import type {EstimateDetail} from '../estimates/types';
 import {emptyEstimateEditability} from '../estimates/editability';
 import type {QuoteVersion} from '../quotes/types';
 function fixture(){
- const made=prepareStudioCreation({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'quote-proof',commercialScopeId:null});
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'quote-proof',commercialScopeId:null});
  if(!made.ok)throw Error(made.message);
  const outputs=made.prepared.row.outputs;
  const view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});

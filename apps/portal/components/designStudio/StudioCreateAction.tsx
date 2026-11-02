@@ -24,19 +24,21 @@ type Pending = Extract<StudioCreatePendingRead, { state: 'valid' }>;
 type View = { identity: string; state: 'loading' | 'ready' | 'sending' | 'retry' | 'confirmed' | 'blocked'; command?: StudioCreateCommand; receipt?: StudioCreateReceipt; body?: string; receiptStored?: boolean; opening?:boolean; message?: string };
 const matches = (command: StudioCreateCommand, intent: StudioCreateIntent) => command.mode === 'blank' ? intent.mode === 'blank' && command.scope === intent.scope : intent.mode !== 'blank' && command.sourceEstimateId === intent.sourceEstimateId;
 
-export default function StudioCreateAction({ scope, intent, openOnCreated=false }: { scope: StudioCreateScope; intent: StudioCreateIntent; openOnCreated?:boolean }) {
-  return <StudioCommercialPolicy actorId={scope.actorId} projectId={scope.projectId}><StudioCreationCommand scope={scope} intent={intent} openOnCreated={openOnCreated} /></StudioCommercialPolicy>;
+type AutomaticEntry = { automatic?: 'first' | 'new'; creationRequestId?: string; beforeCreate?: () => Promise<boolean>; onRetryEntry?: () => void };
+export default function StudioCreateAction({ scope, intent, openOnCreated=false, ...entry }: { scope: StudioCreateScope; intent: StudioCreateIntent; openOnCreated?:boolean } & AutomaticEntry) {
+  return <StudioCommercialPolicy actorId={scope.actorId} projectId={scope.projectId}><StudioCreationCommand scope={scope} intent={intent} openOnCreated={openOnCreated} {...entry} /></StudioCommercialPolicy>;
 }
 
-function StudioCreationCommand({ scope, intent, openOnCreated=false }: { scope: StudioCreateScope; intent: StudioCreateIntent; openOnCreated?:boolean }) {
+function StudioCreationCommand({ scope, intent, openOnCreated=false, automatic, creationRequestId, beforeCreate, onRetryEntry }: { scope: StudioCreateScope; intent: StudioCreateIntent; openOnCreated?:boolean } & AutomaticEntry) {
   const commercial = useProjectCommercialContext();
   const actionsAvailable = useRef(commercial.actionsAvailable);
   actionsAvailable.current = commercial.actionsAvailable;
   const router=useRouter(),refreshed=useRef<string|null>(null);
   const queryClient = useQueryClient();
-  const identity = JSON.stringify({ scope, intent });
+  const identity = JSON.stringify({ scope, intent, ...(creationRequestId ? {creationRequestId} : {}) });
   const [view, setView] = useState<View>({ identity, state: 'loading' });
   const lifecycle = useRef<{ identity: string; live: boolean; busy: boolean; participant: StudioLifecycleRegistration | null; staging: Promise<boolean>; durable: boolean; checking?:AbortController }>({ identity, live: false, busy: false, participant: null, staging: Promise.resolve(true), durable: true });
+  const automaticTurns = useRef(new Set<string>());
   useEffect(() => {
     const current: typeof lifecycle.current = { identity, live: true, busy: false, participant: null, staging: Promise.resolve(true), durable: true }; lifecycle.current = current;
     const captured = JSON.parse(identity) as { scope: StudioCreateScope; intent: StudioCreateIntent };
@@ -57,7 +59,10 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false }: { scope: 
     const found = await listStudioPendingCreations(boundScope);
     if (found.state !== 'available') return { state: 'blocked', message: found.message };
     if (found.entries.some(entry => entry.recovery.state !== 'valid')) return { state: 'blocked', message: 'A retained creation request needs recovery. It has been kept unchanged.' };
-    const relevant = found.entries.map(entry => entry.recovery as Pending).filter(entry => matches(entry.command, boundIntent));
+    const matching = found.entries.map(entry => entry.recovery as Pending).filter(entry => matches(entry.command, boundIntent));
+    // An explicit New action owns its URL nonce. A reload/Back must reopen that
+    // exact receipt, while an older unknown outcome still needs explicit recovery.
+    const relevant = creationRequestId ? matching.filter(entry => entry.command.requestId === creationRequestId || !entry.receipt) : matching;
     if (relevant.length > 1) return { state: 'blocked', message: 'Multiple creation requests need reconciliation. No new request has been created.' };
     const retained = relevant[0];
     if (!retained) return { state: 'ready' };
@@ -85,6 +90,10 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false }: { scope: 
         if (found.state !== 'ready' && found.state !== 'retry') { setView({ identity, ...found }); return; }
         if (found.state === 'retry' && (view.state !== 'retry' || view.command?.requestId !== found.command?.requestId)) { setView({ identity, ...found }); return; }
         if (found.state === 'ready' && view.state === 'retry') { setView({ identity, state: 'blocked', message: 'The retained request changed. Reload to reconcile it before creating anything else.' }); return; }
+        if (found.state === 'ready' && beforeCreate) {
+          const proceed = await beforeCreate();
+          if (!valid() || !actionsAvailable.current || !proceed) return;
+        }
         let command = found.command;
         if (!command) {
           if (boundIntent.mode === 'recover') return;
@@ -94,7 +103,7 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false }: { scope: 
               : 'family' in boundIntent.enrichment
               ? { ...boundIntent, enrichment: boundIntent.enrichment, schemaVersion: 'studio_create.v3', requestId: crypto.randomUUID() }
               : { ...boundIntent, enrichment: boundIntent.enrichment, schemaVersion: 'studio_create.v2', requestId: crypto.randomUUID() }
-            : { schemaVersion: 'studio_create.v1', requestId: crypto.randomUUID(), ...boundIntent };
+            : { schemaVersion: 'studio_create.v1', requestId: creationRequestId ?? crypto.randomUUID(), ...boundIntent };
         }
         setView({ identity, state: 'sending', command });
         current.durable = false;
@@ -122,7 +131,10 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false }: { scope: 
             const {authoring}=await apiJson<{authoring:StudioAuthoringResponse}>(`/api/projects/${boundScope.projectId}/estimates/${target}/studio`,{signal:checking.signal});
             if(!valid()||!actionsAvailable.current){if(retained())setView(previous=>({...previous,opening:false,message:'Your revision is created and kept. Open it when the current project state is ready.'}));return;}
             if(authoring.estimate.id!==target||authoring.estimate.projectId!==boundScope.projectId)throw Error('Wrong created design');
-            if(authoring.nextAction==='edit'&&!authoring.estimate.requiresNewRevision) await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}/edit`);
+            if(authoring.nextAction==='edit'&&!authoring.estimate.requiresNewRevision) {
+              if(automatic) await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}/edit`,true);
+              else await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}/edit`);
+            } else if(automatic) await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}`,true);
             else router.push(`/staff/design-studio/${boundScope.projectId}/${target}`);
           }catch{if(retained())setView(previous=>({...previous,opening:false,message:'The revision is created and kept. Open the design to continue.'}));}finally{clearTimeout(timer);if(current.checking===checking)current.checking=undefined;}
         }
@@ -161,6 +173,24 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false }: { scope: 
   }
   const lifecycleAllowed = Boolean(lifecycle.current.participant?.allowed());
   const current = view.identity === identity && getLocalFirstStoreOwner() === scope.actorId ? view : { identity, state: 'loading' as const };
+  useEffect(() => {
+    if (!automatic || !lifecycleAllowed || !commercial.actionsAvailable || view.identity !== identity) return;
+    const key = `${identity}:${view.state}:${view.command?.requestId ?? ''}`;
+    if (automaticTurns.current.has(key)) return;
+    if (view.state === 'ready') { automaticTurns.current.add(key); void run(); }
+    else if (view.state === 'confirmed' && view.receiptStored && view.receipt && !view.opening) {
+      automaticTurns.current.add(key);
+      const active = lifecycle.current, target = view.receipt.estimateId, abort = new AbortController();
+      active.checking = abort;
+      void apiJson<{authoring:StudioAuthoringResponse}>(`/api/projects/${scope.projectId}/estimates/${target}/studio`, {signal:abort.signal}).then(({authoring})=>{
+        if (!active.live || lifecycle.current !== active || !active.participant?.allowed() || getLocalFirstStoreOwner() !== scope.actorId || abort.signal.aborted) return;
+        if (authoring.estimate.id !== target || authoring.estimate.projectId !== scope.projectId) throw Error('Wrong created design');
+        return navigateStudioDocument(`/staff/design-studio/${scope.projectId}/${target}${authoring.nextAction === 'edit' && !authoring.estimate.requiresNewRevision ? '/edit' : ''}`, true, undefined, abort.signal);
+      }).catch(()=>{if(active.live&&!abort.signal.aborted)setView(previous=>({...previous,message:'The design is kept. Open it to continue.'}));});
+    }
+    // The existing command owns authority, lock, durability and exact replay.
+    // Automatic entry only initiates a fresh ready command, never an uncertain retry.
+  }, [automatic, identity, view, lifecycleAllowed, commercial.actionsAvailable]);
   useEffect(() => {
     if (view.identity !== identity || view.state !== 'confirmed' || getLocalFirstStoreOwner() !== scope.actorId) return;
     const host = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
@@ -203,6 +233,7 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false }: { scope: 
     </section>}
     {intent.mode !== 'recover' && current.command && ((current.command.internalName ?? null) !== (intent.internalName ?? null) || (current.command.mode !== 'blank' && Object.hasOwn(current.command, 'internalName') !== Object.hasOwn(intent, 'internalName'))) && <p role="status">Retained request: {current.command.mode !== 'blank' && !Object.hasOwn(current.command, 'internalName') ? 'Original source name' : current.command.internalName ?? 'Unnamed design'}. Open or retry this request before creating another.</p>}
     {current.message && <p role={current.state === 'blocked' ? 'alert' : 'status'}>{current.message}</p>}
+    {automatic && current.state === 'blocked' && !current.command && onRetryEntry && <button type="button" onClick={onRetryEntry}>Try again</button>}
     {current.state === 'loading' ? <p role="status">Checking retained requests…</p>
       : current.state === 'confirmed' && current.receipt ? current.opening?<p role="status">Opening your new revision…</p>:<><StudioNativeLink className={styles.actionLink} href={`/staff/design-studio/${encodeURIComponent(scope.projectId)}/${encodeURIComponent(current.receipt.estimateId)}${openOnCreated?'':'/edit'}`}>{openOnCreated?'View created revision':'Open design'}</StudioNativeLink>
         {current.receiptStored && intent.mode !== 'recover' && !openOnCreated && <button type="button" disabled={!lifecycleAllowed || !commercial.actionsAvailable} style={{ display: 'block', marginTop: 16 }} onClick={() => { void startAnother(); }}>{intent.mode === 'blank' ? 'Create another design' : 'Start another revision'}</button>}</>

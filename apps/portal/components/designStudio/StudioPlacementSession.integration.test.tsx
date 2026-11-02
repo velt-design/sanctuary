@@ -1,7 +1,8 @@
 import {studioConnectionSwitchTarget,previewStudioConnectionSwitch} from '@/lib/designStudio/studioConnectionSwitch';
+import {newStudioBaseSeed} from '@/lib/designStudio/newDesignSeed';
 import { studioAlignmentFixture } from "../../../../test/studioAlignmentFixture";
 import { studioWallAcquisitionFixture } from "../../../../test/studioWallAcquisitionFixture";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../test/reactHarness";
 import {
@@ -157,6 +158,7 @@ async function open(
   method: "facade" | "soffit" = "facade",
   initial?: StudioAuthoringEdit,
   updatedAt = "2026-10-21T00:00:00Z",
+  replay = false,
 ) {
   const edit = initial ?? fixture(method);
   sessionStorage.setItem(
@@ -168,7 +170,7 @@ async function open(
       view: "Plan",
     }),
   );
-  mounted = renderIntoDocument(
+  const content = (
     <Harness
       scope={scope}
       editable
@@ -178,8 +180,9 @@ async function open(
         schemaVersion: "studio_authoring_view.v1",
         pricing: "unpriced",
       }}
-    />,
+    />
   );
+  mounted = renderIntoDocument(replay ? <StrictMode>{content}</StrictMode> : content);
   await flush();
   expect(latest.canEdit).toBe(true);
   return mounted.container.querySelector<SVGSVGElement>(
@@ -305,6 +308,20 @@ function captureMergedStudioSave(initial:StudioAuthoringEdit){
  return ()=>{expect(captured,JSON.stringify({status:latest.status,message:latest.message,dirty:latest.session?.dirty,pending:!!latest.session?.pending,durable:latest.localDurable})).toBeTruthy();return captured!;};
 }
 function chooseHouseEdge(edge:string){const select=mounted!.container.querySelector<HTMLSelectElement>('select[aria-label="House edge"]')!;expect(select).toBeTruthy();act(()=>{select.value='house:'+edge;select.dispatchEvent(new Event('change',{bubbles:true}));});}
+it('saves and reopens the exact total mixed panels and local side through the real controller and canonical merge',async()=>{
+ const seed=newStudioBaseSeed();let initial:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:scope.designId,revision:3,spatial:seed.spatial,site:{},objectOptions:seed.objectOptions.map(row=>({objectId:row.objectId,values:row.options.values as any})),deletions:[]};
+ const value=websiteComposition(initial)[0].value!;
+ initial=changeStudioProduct(initial,{...value,selection:{...value.selection,roof:{family:'gable',orientation:'parallel',infills:false,attachmentIntent:'freestanding'}}});
+ await open('initial-pergola','facade',initial);act(()=>button('Design choices').click());act(()=>button('Mixed').click());
+ const select=(label:string,value:string)=>act(()=>{const field=mounted!.container.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;expect(field).toBeTruthy();field.value=value;field.dispatchEvent(new Event('change',{bubbles:true}));});
+ select('Acrylic panels','3');select('Panel position','front');
+ const before=structuredClone(latest.edit!),captured=captureMergedStudioSave(initial);
+ await act(async()=>{await latest.save();});const saved=captured();
+ expect(websiteComposition(saved)[0].design!.roof.finish!.studioPanels).toEqual({version:1,count:3,side:'front'});
+ expect(saved.objectOptions).toEqual(before.objectOptions);
+ mounted!.unmount();mounted=undefined;await flush();await open('initial-pergola','facade',saved,'2026-10-29T06:00:00Z');
+ expect(latest.session!.dirty).toBe(false);expect(latest.edit!.objectOptions).toEqual(saved.objectOptions);expect(button('Save design').disabled).toBe(true);
+});
 it.each(['blur','Enter'])('connects inline from 3D with actual 200 mm clearance through measured house repair on %s and complete Undo',async(completion)=>{
  let initial:StudioAuthoringEdit={schemaVersion:'studio_authoring_edit.v1',designId:scope.designId,revision:3,spatial:structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT),site:{},objectOptions:[],deletions:[]};
  const added=applyStudioHouseEdit(initial.spatial,{kind:'add',id:'house',label:'House'});if(!added.ok)throw Error(added.message);initial.spatial=added.spatial;
@@ -2008,6 +2025,56 @@ it("commits the fully warm ordinary rotated wall offer at distinct final-up and 
   expect(button("Undo").disabled).toBe(true);
   expect(svg.getAttribute("viewBox")).toBe(viewBox);
   await flush();
+});
+it.each(['front','right','rear','left'] as const)('warms after actual effect replay, rejects the terminated worker and offers/commits the %s Plan connection with Undo',async side=>{
+ const f=studioWallAcquisitionFixture(180,side),initial={...f.edit,designId:scope.designId};
+ sessionStorage.setItem(`${studioHouseContextKey(scope)}:camera:plan`,JSON.stringify({x:0,y:0,units:f.units}));
+ const svg=await open('p2','facade',initial,undefined,true),before=structuredClone(latest.edit!);
+ expect(workers.filter(worker=>!worker.terminated)).toHaveLength(1);expect(workers[0].terminated).toBe(true);
+ const live=workers.at(-1)!;await act(async()=>live.reply());
+ const obsolete=workers[0],old=studioPreparationReply(obsolete.request);old.result={kind:'refused',reason:'Obsolete worker result'};
+ await act(async()=>obsolete.onmessage?.({data:old} as MessageEvent));
+ expect(mounted!.container.textContent).not.toContain('Obsolete');
+ pointer(grab(svg),'pointerdown',10,20);pointer(svg,'pointermove',10+f.delta.x*.8,20-f.delta.y*.8);
+ expect(mounted!.container.textContent).toContain('Release to connect');expect(latest.session!.generation).toBe(0);
+ expect([...svg.querySelectorAll('polygon[aria-label]')].some(node=>node.getAttribute('aria-label')===`Select ${before.spatial.houseAssembly!.houseForms[0].label}`)).toBe(true);
+ pointer(svg,'pointerup',10+f.delta.x,20-f.delta.y);
+ expect(latest.session!.generation).toBe(1);const row=websiteComposition(latest.edit!)[0];expect(row.studioAttachment?.edge).toBe(side);expect(row.error).toBeNull();
+ expect(latest.edit!.spatial.houseAssembly).toEqual(before.spatial.houseAssembly);
+ act(()=>button('Undo').click());expect(latest.edit!.spatial).toEqual(before.spatial);expect(latest.edit!.site).toEqual(before.site);expect(latest.edit!.objectOptions).toEqual(before.objectOptions);
+});
+it('keeps an actual180-degree house drag visible and commits a tiny finite axis coordinate through Undo and save/reopen',async()=>{
+ const initial=fixture();initial.spatial.houseAssembly!.houseForms[0].position={originXMm:'0',originYMm:'0',rotationDeg:'180'};
+ const svg=await open('house','facade',initial),before=structuredClone(latest.edit!),house=()=>svg.querySelector('[aria-label="Select House"]')!;
+ const points=house().getAttribute('points');expect(points).toBeTruthy();
+ pointer(house(),'pointerdown',10,20);pointer(svg,'pointermove',30,60);
+ expect(svg.querySelector('[data-direct-footprint]')).toBeTruthy();expect(house().getAttribute('points')).toBe(points);expect(latest.edit).toEqual(before);
+ pointer(svg,'pointerup',10+1e-10,80);
+ expect(latest.session!.generation).toBe(1);expect(mounted!.container.textContent).toContain('Placement applied.');expect(house()).toBeTruthy();
+ const current=studioHouseScene(latest.edit!.site,latest.edit!.spatial)!.houses[0];expect(Number(current.position.xMm)).toBeGreaterThan(0);expect(Number(current.position.xMm)).toBeLessThan(1e-8);expect(Number(current.position.rotationDeg)).toBe(180);
+ expect(latest.edit!.spatial.pergolas.map(p=>p.id)).toEqual(before.spatial.pergolas.map(p=>p.id));
+ act(()=>button('Undo').click());expect(latest.edit).toEqual(before);expect(house().getAttribute('points')).toBe(points);
+ act(()=>button('Redo').click());const captured=captureMergedStudioSave(before);await act(async()=>{await latest.save();});const saved=captured();
+ mounted!.unmount();mounted=undefined;await flush();const reopened=await open('house','facade',saved,'2026-10-29T06:00:00Z');
+ expect(latest.session!.dirty).toBe(false);expect(latest.edit!.spatial).toEqual(saved.spatial);expect(reopened.querySelector('[aria-label="Select House"]')).toBeTruthy();
+});
+it.each(['front','right','rear','left'] as const)('retains the axis-aligned180-degree house through actual %s drag release, Undo and saved reopening',async side=>{
+ const f=studioWallAcquisitionFixture(180,side),initial={...f.edit,designId:scope.designId};
+ sessionStorage.setItem(`${studioHouseContextKey(scope)}:camera:plan`,JSON.stringify({x:0,y:0,units:f.units}));
+ const svg=await open('p2','facade',initial),before=structuredClone(latest.edit!);
+ const label=`Select ${before.spatial.houseAssembly!.houseForms[0].label}`,house=()=>[...svg.querySelectorAll('polygon[aria-label]')].find(node=>node.getAttribute('aria-label')===label);
+ const housePoints=house()!.getAttribute('points');expect(housePoints).toBeTruthy();
+ await act(async()=>workers.at(-1)!.reply());
+ pointer(grab(svg),'pointerdown',10,20);pointer(svg,'pointermove',10+f.delta.x*.8,20-f.delta.y*.8);
+ expect(mounted!.container.textContent).toContain('Release to connect');expect(house()!.getAttribute('points')).toBe(housePoints);expect(latest.session!.generation).toBe(0);
+ pointer(svg,'pointerup',10+f.delta.x,20-f.delta.y);
+ expect(latest.session!.generation).toBe(1);expect(websiteComposition(latest.edit!)[0].studioAttachment?.edge).toBe(side);expect(websiteComposition(latest.edit!)[0].error).toBeNull();
+ expect(latest.edit!.spatial.houseAssembly).toEqual(before.spatial.houseAssembly);expect(house()!.getAttribute('points')).toBe(housePoints);
+ act(()=>button('Undo').click());expect(latest.edit!.spatial).toEqual(before.spatial);expect(latest.edit!.site).toEqual(before.site);expect(latest.edit!.objectOptions).toEqual(before.objectOptions);
+ act(()=>button('Redo').click());const captured=captureMergedStudioSave(before);await act(async()=>{await latest.save();});const saved=captured();
+ mounted!.unmount();mounted=undefined;await flush();const reopened=await open('p2','facade',saved,'2026-10-29T06:00:00Z');
+ expect(latest.session!.dirty).toBe(false);expect(latest.edit!.spatial).toEqual(saved.spatial);expect(latest.edit!.objectOptions).toEqual(saved.objectOptions);
+ expect(websiteComposition(latest.edit!)[0].studioAttachment?.edge).toBe(side);expect([...reopened.querySelectorAll('polygon[aria-label]')].some(node=>node.getAttribute('aria-label')===label)).toBe(true);
 });
 
 it("retains the real Workspace product task and authored edit through a House orbit, then selects the house on a deliberate click", async () => {

@@ -7,6 +7,7 @@ import { apiJson } from '@/lib/repo/apiClient';
 import type { StudioAuthoringResponse } from '@/lib/designStudio/authoringRequest.server';
 import { loadStudioEditor } from './studioLeafLoading';
 import StudioDesignHeading from './StudioDesignHeading';
+import StudioDesignSelector from './StudioDesignSelector';
 import css from './SavedStudioReview.module.css';
 import StudioRevisionStart from './StudioRevisionStart';
 import StudioCreateAction from './StudioCreateAction';
@@ -51,7 +52,7 @@ export function StudioAuthoringContent({projectId,estimateId,actorId,role,intent
   const Editor = current?.Editor;
   if (Editor && actorId && intent === 'edit' && authoring?.state === 'ready' && authoring.view && !authoring.estimate.requiresNewRevision) return <Editor key={identity} scope={scope} view={authoring.view} updatedAt={authoring.estimate.updatedAt} editable={authoring.nextAction === 'edit'} versionLabel={authoring.estimate.versionLabel} websiteBrief={authoring.websiteBrief} identity={authoring.identity} openingPrice={current?.openingPrice} />;
   return <main className={css.review}><Link prefetch={prefetch} className={css.back} href={`/staff/design-studio/${encodeURIComponent(projectId)}/${encodeURIComponent(estimateId)}`}>← Review estimate</Link>
-    <header className={css.header}><StudioDesignHeading identity={authoring?.identity} versionLabel={authoring?.estimate.versionLabel ?? "not loaded"}/></header>
+    <header className={css.header}><StudioDesignSelector projectId={projectId} estimateId={estimateId}><StudioDesignHeading identity={authoring?.identity} versionLabel={authoring?.estimate.versionLabel ?? "not loaded"}/></StudioDesignSelector></header>
     {!current ? <p role="status">Opening saved design…</p> : current.leafFailed ? <div role="alert"><p>The design editor could not be opened.</p><button className={css.actionLink} onClick={retry}>Try again</button></div> : !authoring ? <><div role="alert"><p>The saved design could not be loaded.</p><button className={css.actionLink} onClick={retry}>Try again</button></div>{actorId && <StudioCreateAction scope={{ actorId, projectId }} intent={{ mode: 'recover', sourceEstimateId: estimateId }} />}</>
       : actorId && authoring.state === 'ready' && authoring.view && (intent !== 'edit' || authoring.estimate.requiresNewRevision) && authoring.estimate.updatedAt
         ? <StudioRevisionStart openOnCreated={intent !== 'duplicate'} key={identity} actorId={actorId} projectId={projectId} estimateId={estimateId} revision={authoring.view.revision} updatedAt={authoring.estimate.updatedAt} duplicateName={intent === 'duplicate' ? duplicateName ?? `Copy of ${authoring.identity?.internalName || `Design ${authoring.estimate.versionLabel}`}` : undefined} />

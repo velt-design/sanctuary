@@ -1,4 +1,5 @@
 import { prepareBoxRoofFinish } from "./representativeRoofBoxFinish";
+import { studioRoofPanelLayout } from './representativeStudioRoofPanels';
 import { addRoofEdgeFlashings } from './representativeRoofEdgeFlashings';
 import type { Assembly3D, RoofCladdingPanel3D } from './contracts';
 import { boxMember } from './representativeBoxMembers';
@@ -9,15 +10,17 @@ import { representativeRoofProfile } from './representativeRoofProfiles';
 import { roofFinishBayLimit, type RepresentativeRoofFinish, type RoofFinishGeometry } from './representativeRoofFinishTypes';
 import { addProfiledRoof, roofCoordinates, roofMesh, roofQuad, roofRectangleBoundary, roofSlab, type RoofRectangle } from './representativeRoofFinishMesh';
 
-/** Marketing-only roof build-up, applied before both view derivations. Never a takeoff. */
+/** Shared roof build-up, applied before both view derivations. Studio's explicit
+ * panels feed the existing downstream commercial adapter, never prices here. */
 export function buildRepresentativeRoofFinish(source: Assembly3D, finish: RepresentativeRoofFinish,
   options: { widthMm: number; projectionMm: number; family: string; orientation: string }) {
-  if (finish.layout === 'house' && !(options.family === 'gable' && options.orientation === 'away')) throw new Error('House-side skylights require an away-running gable');
+  if (!finish.studioPanels && finish.layout === 'house' && !(options.family === 'gable' && options.orientation === 'away')) throw new Error('House-side skylights require an away-running gable');
   const assembly = structuredClone(source);
   const box = options.family === 'box' ? prepareBoxRoofFinish(assembly, finish, options.projectionMm) : null;
   if (box?.gable) assembly.members.push(boxMember('solid-box-ridge', 'ridge', { x: 50, y: options.projectionMm / 2, z: box.peak - (options.widthMm > 3100 ? 75 : 50) }, { x: options.widthMm - 50, y: options.projectionMm / 2, z: box.peak - (options.widthMm > 3100 ? 75 : 50) }, options.widthMm > 3100 ? '150x50' : '100x50'));
   const maxAcrylicBays = roofFinishBayLimit(options.widthMm, options.projectionMm, options.family, options.orientation);
-  const covering: RoofFinishGeometry = { meshes: [], regions: [], acrylicBays: 0, maxAcrylicBays };
+  const explicit = finish.material === 'combination' && finish.studioPanels ? studioRoofPanelLayout(assembly.roofPlanes, finish.studioPanels) : null;
+  const covering: RoofFinishGeometry = { meshes: [], regions: [], acrylicBays: 0, maxAcrylicBays: explicit?.max ?? maxAcrylicBays };
   const acrylic: RoofCladdingPanel3D[] = assembly.roofCladdingPanels.filter(p => p.metadata?.representativeGableInfill);
   assembly.members = assembly.members.filter(m => m.role !== 'rafter' && m.role !== 'joiner');
   const profileHeight = representativeRoofProfile(finish.profile, finish.trayWidth).height;
@@ -28,8 +31,9 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
     const start = lo, end = hi;
     // Proportions stay constant as the design grows. The legacy acrylicBays
     // field remains readable in saved links, but no longer sets the band width.
-    const bandWidth = (end - start) / (finish.layout === 'house' ? 2 : 3);
-    const bandStart = finish.layout === 'house' ? start : (start + end - bandWidth) / 2;
+    const selected = explicit?.planes.get(index);
+    const bandWidth = selected ? selected.end - selected.start : (end - start) / (finish.layout === 'house' ? 2 : 3);
+    const bandStart = selected ? selected.start : finish.layout === 'house' ? start : (start + end - bandWidth) / 2;
     const bandEnd = bandStart + bandWidth;
     const whole: RoofRectangle = { a: lo, b: hi, c: near, d: far };
     const light: RoofRectangle = { ...whole, a: bandStart, b: bandEnd };
@@ -44,8 +48,12 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
       .filter((x, i, all) => all.indexOf(x) === i).sort((a, b) => a - b);
     const rows = new Set<number>();
     for (let i = 1; i < cuts.length; i++) {
-      const count = Math.ceil((cuts[i] - cuts[i - 1]) / 620);
-      for (let j = 0; j <= count; j++) rows.add(cuts[i - 1] + (cuts[i] - cuts[i - 1]) * j / count);
+      // The opted-in band already has a validated integer panel allocation.
+      // Re-deriving it from projected endpoints can turn 1240mm into 1240+ulp.
+      const count = selected && cuts[i - 1] === light.a && cuts[i] === light.b
+        ? selected.count : Math.ceil((cuts[i] - cuts[i - 1]) / 620);
+      for (let j = 0; j <= count; j++) rows.add(explicit && j === count
+        ? cuts[i] : cuts[i - 1] + (cuts[i] - cuts[i - 1]) * j / count);
     }
     const xs = [...rows].sort((a, b) => a - b);
     const rowCentre = (x: number) => finish.material === 'combination' && x > lo + 1 && x < hi - 1
@@ -63,15 +71,15 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
     if (finish.material === 'combination') {
       // Glazing is cut between joiner faces and never continues beneath the solid roof.
       const lightXs = xs.filter(x => x >= light.a - .01 && x <= light.b + .01);
-      covering.acrylicBays = Math.max(covering.acrylicBays, lightXs.length - 1);
+      covering.acrylicBays = explicit ? covering.acrylicBays + lightXs.length - 1 : Math.max(covering.acrylicBays, lightXs.length - 1);
       for (let i = 1; i < lightXs.length; i++) {
         const r = { ...light, a: rowCentre(lightXs[i - 1]) + 26, b: rowCentre(lightXs[i]) - 26 };
         if (r.b <= r.a) continue;
         const boundary = roofRectangleBoundary(frame, r, joiner.depthMm / 2);
         acrylic.push({ id: `finish-acrylic-${index}-${i}`, material: 'acrylic', thicknessMm: 6, boundary, plane: { ...roof.plane, origin: boundary[0] } });
       }
-      covering.regions.push({ id: `skylight-${index}`, material: 'acrylic', boundary: roofRectangleBoundary(frame, light) });
-      const transitions = [light.a, light.b].filter(x => x > lo + 1 && x < hi - 1);
+      if (bandWidth > 0) covering.regions.push({ id: `skylight-${index}`, material: 'acrylic', boundary: roofRectangleBoundary(frame, light) });
+      const transitions = (bandWidth > 0 ? [light.a, light.b] : []).filter(x => x > lo + 1 && x < hi - 1);
       for (const [i, cut] of transitions.entries()) {
         const startPoint = point(cut + (cut === light.a ? -25 : 25), near, -75);
         const endPoint = point(cut + (cut === light.a ? -25 : 25), far, -75);
@@ -105,6 +113,8 @@ export function buildRepresentativeRoofFinish(source: Assembly3D, finish: Repres
     covering.meshes.push(steel, cedar, edges);
   }
   assembly.roofCladdingPanels = acrylic;
+  if (explicit && acrylic.filter(panel => panel.id.startsWith('finish-acrylic-')).length !== finish.studioPanels!.count)
+    throw Error('The requested acrylic panel count could not be built. Your selection is kept.');
   // Lift the existing single-fold cap above the highest profile, preserving its 150mm wings.
   for (const flashing of assembly.roofFlashings ?? []) for (const wing of flashing.wings) {
     wing.boundary = wing.boundary.map(p => ({ ...p, z: p.z + profileHeight + 4 }));

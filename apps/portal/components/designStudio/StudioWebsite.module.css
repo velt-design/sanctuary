@@ -1,7 +1,7 @@
 .page{color:var(--ui-text);font-family:var(--ui-font-body);background:var(--ui-canvas);padding:24px 32px;margin:0 auto;max-width:1500px}
 .editorPage{position:fixed;inset:0;max-width:none;padding:0;display:grid;grid-template-rows:80px minmax(0,1fr);overflow:hidden}
 .header{display:flex;align-items:center;gap:24px;padding:12px 24px;border-bottom:1px solid var(--ui-border);background:var(--ui-surface-primary);z-index:10}
-.header>div:first-child{display:grid;grid-template-columns:auto auto;column-gap:20px;align-items:center}.header h1{font-size:18px;font-weight:600;letter-spacing:-.4px;margin:0}.header p{grid-column:2;margin:3px 0 0;font-size:11px;color:var(--ui-text-muted)}.back{grid-row:1/3;font-size:13px;color:var(--ui-text);text-decoration:none;border-right:1px solid var(--ui-border);padding-right:20px}
+.header>div:first-child{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:20px;align-items:center}.header h1{font-size:18px;font-weight:600;letter-spacing:-.4px;margin:0}.header p{grid-column:2;margin:3px 0 0;font-size:11px;color:var(--ui-text-muted)}.back{grid-row:1/3;font-size:13px;color:var(--ui-text);text-decoration:none;border-right:1px solid var(--ui-border);padding-right:20px}
 .price{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:12px;align-items:baseline}.price span{font-size:11px;color:var(--ui-text-muted)}.price strong{font-size:26px;letter-spacing:-1px;font-weight:550;font-variant-numeric:tabular-nums}.price small{grid-column:1/3;text-align:right;min-height:14px;font-size:10px;color:var(--ui-text-muted)}
 .actions{display:flex;gap:8px;align-items:center}.actions button,.actions a,.next{border:1px solid var(--ui-border);border-radius:3px;padding:10px 14px;background:var(--ui-surface-primary);color:var(--ui-text);font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap}.actions a,.next{background:var(--ui-text);color:var(--ui-text-inverse);border-color:var(--ui-text)}.actions button:disabled{opacity:.4}
 .statusRegion{height:28px;min-height:0;background:var(--ui-surface-primary);border-bottom:1px solid var(--ui-border);overflow:auto}.notice{display:flex;align-items:center;gap:10px;padding:4px 24px;font-size:12px;line-height:18px;color:#804025}.notice button{font-weight:600;text-decoration:underline}.quietStatus{height:28px}
@@ -100,3 +100,7 @@
 
 /* House material controls and canonical contiguous Mixed swatch. */
 .houseColour{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center}.houseColour input[type=color]{width:44px;height:38px;padding:3px;cursor:pointer}.materialSwatch .mixedSwatch{display:block;width:100%;height:100%;margin:0;object-fit:fill}
+.panelHint{font-size:12px;line-height:1.4;color:var(--ui-text-muted);margin:8px 0 12px}
+/* Desktop identity and subtotal are functional tracks, independent of the
+   current Saved/Unsaved/Preview text. Keep primary actions anchored. */
+@media(min-width:761px){.cadEditor .header .price{flex:0 0 clamp(260px,25vw,320px);min-width:0;grid-template-columns:minmax(0,1fr) max-content}}

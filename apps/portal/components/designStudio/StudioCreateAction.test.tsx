@@ -4,7 +4,6 @@ import { makeWebsiteFacadeCommand } from '@/lib/designStudio/websiteFacadeComman
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 import StudioCreateAction, { type StudioCreateIntent } from './StudioCreateAction';
-import StudioNewDesign from './StudioNewDesign';
 import StudioRevisionStart from './StudioRevisionStart';
 import type { StudioCreateCommand } from '../../lib/designStudio/createCommand';
 import { makeStudioWebsiteImportTestFixture } from '../../lib/designStudio/websiteImportTestFixture';
@@ -165,7 +164,7 @@ describe('studio creation action', () => {
     expect(mocks.send.mock.calls[0][1]).toEqual(previous);
   });
   it('keeps the chosen add-on scope and canonical name in the new design command', async () => {
-    mounted.push(renderIntoDocument(<StudioNewDesign projectId="proj-one" initialScope="add_on" initialName="  Courtyard   option  " />));
+    mount({ mode: 'blank', scope: 'add_on', internalName: 'Courtyard option' });
     await flush(); await click('Create design');
     expect(mocks.send.mock.calls[0][1]).toMatchObject({ mode: 'blank', scope: 'add_on', internalName: 'Courtyard option' });
   });
@@ -248,11 +247,9 @@ describe('studio creation action', () => {
     Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined }); mount(); await flush();
     expect(mocks.send).not.toHaveBeenCalled(); expect(document.querySelector('[role="alert"]')).not.toBeNull();
   });
-  it('offers accessible base/add-on selection and submits the selected scope', async () => {
-    const rendered = renderIntoDocument(<StudioNewDesign projectId={scope.projectId} />); mounted.push(rendered); await flush();
-    const choices = [...document.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
-    expect(choices).toHaveLength(2); expect(choices[0].checked).toBe(true);
-    await act(async () => choices[1].click()); await click('Create design');
+  it('submits the explicit add-on intent without frontloading a scope form', async () => {
+    mount({mode:'blank',scope:'add_on'}); await flush();
+    expect(document.querySelector('input[type="radio"]')).toBeNull(); await click('Create design');
     expect(mocks.send.mock.calls[0][1]).toMatchObject({ mode: 'blank', scope: 'add_on' });
   });
   it('does not confuse a retained blank base request with an add-on intent', async () => {
@@ -297,4 +294,42 @@ describe('explicit create-and-open revision',()=>{
 
 it('keeps the created receipt and a usable Review link when guarded native opening fails',async()=>{
  mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});mocks.navigate.mockRejectedValue(Error('Local persistence unavailable'));const m=renderIntoDocument(<StudioCreateAction scope={scope} intent={intent} openOnCreated/>);mounted.push(m);await flush();await click('Edit a new revision');expect(m.container.textContent).toContain('created and kept');expect(m.container.querySelector('a')?.getAttribute('href')).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}`);expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.send).toHaveBeenCalledOnce();
+});
+
+describe('direct first entry and explicit new option', () => {
+ const blank = {mode:'blank',scope:'base',internalName:'Design 1'} as const;
+ function entry(extra:Record<string,unknown>={}) { const m=renderIntoDocument(<StudioCreateAction scope={scope} intent={blank} openOnCreated automatic="first" {...extra}/>);mounted.push(m);return m; }
+ it('starts once after the under-lock inventory recheck and automatically opens the exact editable receipt', async()=>{
+  const check=vi.fn(async()=>{expect(mocks.lock).toHaveBeenCalled();expect(mocks.stage).not.toHaveBeenCalled();return true;});
+  mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});
+  entry({beforeCreate:check});await flush();await flush();
+  expect(check).toHaveBeenCalledOnce();expect(mocks.stage).toHaveBeenCalledOnce();expect(mocks.send).toHaveBeenCalledOnce();expect(mocks.send.mock.calls[0][1]).toMatchObject(blank);
+  expect(mocks.navigate).toHaveBeenCalledWith(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}/edit`,true);expect(mocks.ack).not.toHaveBeenCalled();
+ });
+ it('does not stage a duplicate when another tab won the fresh inventory recheck',async()=>{
+  entry({beforeCreate:async()=>false});await flush();expect(mocks.stage).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled();
+ });
+ it('keeps pending unknown outcomes for explicit retry instead of automatically resending',async()=>{
+  mocks.list.mockResolvedValue({state:'available',entries:[retained({command:{schemaVersion:'studio_create.v1',requestId:'pending',...blank}})]});entry();await flush();
+  expect(mocks.send).not.toHaveBeenCalled();expect(document.body.textContent).toContain('Retry creation');
+ });
+ it('opens a retained confirmed result through fresh authority without creating or acknowledging it',async()=>{
+  mocks.list.mockResolvedValue({state:'available',entries:[retained({command:{schemaVersion:'studio_create.v1',requestId:'confirmed',...blank},receipt})]});
+  mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:true},nextAction:'create-revision'}});
+  entry();await flush();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.navigate.mock.calls[0][0]).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}`);
+ });
+ it('gives each deliberate New a durable URL nonce, ignores older confirmed creations and never clears receipts',async()=>{
+  const previous={schemaVersion:'studio_create.v1',requestId:'previous',...blank};
+  mocks.list.mockResolvedValue({state:'available',entries:[retained({command:previous,receipt})]});mocks.ack.mockImplementation(async()=>{mocks.list.mockResolvedValue({state:'available',entries:[]});return true;});
+  mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});
+  entry({automatic:'new',creationRequestId:'10000000-0000-4000-8000-000000000099',beforeCreate:async()=>true});await flush();await flush();
+  expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.send).toHaveBeenCalledOnce();expect(mocks.send.mock.calls[0][1].requestId).toBe('10000000-0000-4000-8000-000000000099');expect(mocks.navigate.mock.calls[0][1]).toBe(true);
+ });
+ it('reopens the same created nonce on Back/reload even if navigation previously failed',async()=>{
+  const requestId='10000000-0000-4000-8000-000000000099';mocks.list.mockResolvedValue({state:'available',entries:[retained({command:{schemaVersion:'studio_create.v1',requestId,...blank},receipt})]});mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});
+  const first=entry({automatic:'new',creationRequestId:requestId});await flush();first.unmount();entry({automatic:'new',creationRequestId:requestId});await flush();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.navigate).toHaveBeenCalledTimes(2);expect(mocks.navigate.mock.calls.every(([url,replace])=>url.endsWith(`/${receipt.estimateId}/edit`)&&replace===true)).toBe(true);
+ });
+ it('refuses automatic creation after a held fresh list crosses the auth lifetime',async()=>{
+  let finish!:(value:boolean)=>void;entry({beforeCreate:()=>new Promise(resolve=>{finish=resolve;})});await flush();await act(async()=>invalidateStudioLifecycle());await act(async()=>finish(true));expect(mocks.stage).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled();
+ });
 });

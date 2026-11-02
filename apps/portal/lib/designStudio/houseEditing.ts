@@ -9,6 +9,7 @@ import {
 import { deriveRectangleRoofIntent } from "../drawings/state/houseFormCompositionAdapter";
 import { deriveHouseFormDisplayLabel } from "../drawings/state/houseFormDisplayLabel";
 import { parseStudioSpatialDraft } from "./spatialValidation";
+export const STUDIO_NEW_HOUSE_SIZE = { widthMm: 12000, depthMm: 8000 } as const;
 
 export type StudioHouseDetails = Partial<
   Pick<
@@ -26,7 +27,7 @@ export type StudioHouseDetails = Partial<
   >
 >;
 export type StudioHouseEdit =
-  | { kind: "add"; id: string; label?: string }
+  | { kind: "add"; id: string; label?: string; worldPosition?: { x: number; y: number } }
   | { kind: "duplicate"; houseFormId: string; id: string; label?: string }
   | { kind: "remove"; houseFormId: string }
   | { kind: "details"; houseFormId: string; patch: StudioHouseDetails }
@@ -98,7 +99,7 @@ export function applyStudioHouseEdit(
     if (!parsed.ok) throw Error(parsed.message);
     const next = parsed.value;
     const keys = {
-      add: ["kind", "id", "label"],
+      add: ["kind", "id", "label", "worldPosition"],
       duplicate: ["kind", "houseFormId", "id", "label"],
       remove: ["kind", "houseFormId"],
       details: ["kind", "houseFormId", "patch"],
@@ -133,8 +134,12 @@ export function applyStudioHouseEdit(
         form.eaveHeightM = "2.7";
         const primitive = form.composition.primitives[0];
         if (primitive.kind === "axisAlignedRectangle") {
-          primitive.widthMm = 12000;
-          primitive.depthMm = 8000;
+          primitive.widthMm = STUDIO_NEW_HOUSE_SIZE.widthMm;
+          primitive.depthMm = STUDIO_NEW_HOUSE_SIZE.depthMm;
+          if (edit.kind === 'add' && edit.worldPosition) {
+            if (!Number.isFinite(edit.worldPosition.x) || !Number.isFinite(edit.worldPosition.y)) throw Error('Invalid new house position.');
+            form.position = { originXMm: String(edit.worldPosition.x - primitive.originXMm), originYMm: String(edit.worldPosition.y - primitive.originYMm), rotationDeg: '0' };
+          }
           primitive.roofIntent = deriveRectangleRoofIntent({
             roofIntent: form.roofIntent,
             widthMm: primitive.widthMm,

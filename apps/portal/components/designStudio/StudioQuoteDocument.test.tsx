@@ -53,6 +53,7 @@ it('opens the cached v2 financial PDF and never regenerates it through the legac
  const v2={...quote,studioDesign:{schemaVersion:'studio_quote_snapshot.v2',documentMode:'separate_v1',snapshotId:'snapshot-v2'}} as any;
  mounted=renderIntoDocument(<StudioQuoteDocument review={review} quote={v2} actorId="actor"/>);await act(async()=>{});
  expect(fetch).toHaveBeenCalledWith('/api/quotes/qv-exact/pdf?disposition=inline',expect.objectContaining({signal:expect.any(AbortSignal),credentials:'same-origin'}));expect(mocks.pdf).not.toHaveBeenCalled();expect(mounted.container.textContent).toContain('Client package');expect([...mounted.container.querySelectorAll('[role=tab]')].map(tab=>tab.textContent)).toEqual(['Quote','Booklet','Rendered']);
+ expect(mounted.container.querySelector('header')?.textContent).toContain('Edit a new revision');expect(mounted.container.querySelector('details')?.textContent).not.toContain('Edit a new revision');expect(mocks.revision.mock.calls.at(-1)?.[0]).toMatchObject({projectId:review.estimate.projectId,estimateId:review.estimate.id,revision:source.view.revision,openOnCreated:true});
 });
 
 it('uses PDF bytes from the just-committed v2 command only when its render hash matches',async()=>{

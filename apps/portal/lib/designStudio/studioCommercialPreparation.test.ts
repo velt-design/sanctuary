@@ -2,7 +2,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {loadCostingConfigV1, ACCESSORY_REVIEW_RATES} from '@sp/costing';
 import * as compositionOwner from './websiteComposition';
 import * as eligibilityOwner from './websiteCompositionEligibility';
-import {prepareStudioCreation} from './createPreparation';
+import { prepareEmptyStudioFixture } from '../../../../test/fixtures/empty-studio-source';
 import {projectStudioAuthoringView,createStudioAuthoringEdit,mergeStudioAuthoringEdit} from './authoringView';
 import {studioPriceComposition} from './studioWebsitePricing.server';
 import {applyStudioHouseEdit} from './houseEditing';
@@ -11,7 +11,7 @@ import {previewBlindOpenings} from '@sp/configurator/geometry';
 import {calculateStudioCommercialPricing,prepareStudioCommercialPricing} from './studioCommercialPricing.server';
 const config={...loadCostingConfigV1(),accessoryRates:structuredClone(ACCESSORY_REVIEW_RATES)};
 function fixture(){
- const made=prepareStudioCreation({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'preparation-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'preparation-proof',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const outputs=made.prepared.row.outputs,view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
  const edit=compositionOwner.addWebsitePergola(createStudioAuthoringEdit(view.value),'first');
  const merged=mergeStudioAuthoringEdit({storedAuthored:outputs.studio_authored,storedSpatial:outputs.drawing_object_first,edit});if(!merged.ok)throw Error(merged.message);

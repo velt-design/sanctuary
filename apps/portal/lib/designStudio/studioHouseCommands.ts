@@ -8,6 +8,7 @@ import {studioHouseScene,type StudioHouseScene,type StudioHouseAttachment,type H
 import {studioHouseTargets,houseNumber,solveStudioHouse} from './studioHouseGeometry';
 import type {StudioJsonObject} from './contracts';
 import {StudioConnectionError} from './studioConnectionDiagnostics';
+import {studioComputedCoordinate} from './studioHouseCoordinates';
 
 export {resolveStudioAttachment} from "./studioAttachmentResolver";
 
@@ -64,7 +65,7 @@ export function updateStudioHouse(edit:StudioAuthoringEdit,house:StudioHouse){
  apply({kind:'details',houseFormId:house.id,patch:{...Object.fromEntries(['soffitDepthMm','fasciaHeightMm','gutterWidthMm','gutterDepthMm','gutterProjectionMm'].flatMap(key=>{const value=house.source[key as keyof typeof house.source];return value===undefined?[]:[[key,value]];})),...(house.eaveHeightMm!==undefined?{eaveHeightM:house.eaveHeightMm===''?'':String(Number(house.eaveHeightMm)/1000)}:{}),wallHeightM:String(Number(house.wallHeightMm)/1000),eaveOverhangMm:house.roof.overhangMm,...(house.roof.fasciaHeightMm!==undefined?{fasciaHeightMm:house.roof.fasciaHeightMm}:{})}});
  const fall={front:'negative_y',rear:'positive_y',left:'negative_x',right:'positive_x'} as const;
  apply({kind:'roof',houseFormId:house.id,roof:{...original.roofIntent,form:house.roof.form,primaryPitchDeg:house.roof.pitchDeg,primaryFallDirection:fall[house.roof.fall],ridgeAxis:house.roof.ridge==='width'?'x':'y'}});
- apply({kind:'move',houseFormId:house.id,position:{originXMm:String(Number(house.position.xMm)-primitive.originXMm*Math.cos(r)+primitive.originYMm*Math.sin(r)),originYMm:String(Number(house.position.yMm)-primitive.originXMm*Math.sin(r)-primitive.originYMm*Math.cos(r)),rotationDeg:house.position.rotationDeg}});
+ apply({kind:'move',houseFormId:house.id,position:{originXMm:studioComputedCoordinate(Number(house.position.xMm)-primitive.originXMm*Math.cos(r)+primitive.originYMm*Math.sin(r)),originYMm:studioComputedCoordinate(Number(house.position.yMm)-primitive.originXMm*Math.sin(r)-primitive.originYMm*Math.cos(r)),rotationDeg:house.position.rotationDeg}});
  return refreshHouseReferences({...edit,spatial});
 }
 function studioAttachmentIntent(edit:StudioAuthoringEdit,choice:StudioHouseConnectionChoice){

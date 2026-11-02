@@ -37,6 +37,8 @@ type PortalVisualFeedbackCondition = {
   selector: string;
   state: PortalVisualFeedbackState;
   text?: string;
+  /** Start at matched activation input, before focus/blur or click handlers. */
+  action?: { selector: string; text?: string };
 };
 
 export const PORTAL_PROJECT_TAB_USEFUL_CONTENT_SELECTORS = {
@@ -55,10 +57,15 @@ declare global {
       longTasks: number[];
     };
     __portalVisualFeedbackProbes?: Record<string, {
-      startedAt: number;
+      id: number;
+      armedAt: number;
+      startedAt: number | null;
       completedAt: number | null;
+      error: string | null;
       observer?: MutationObserver;
+      stop: () => void;
     }>;
+    __portalVisualFeedbackSerial?: number;
   }
 }
 
@@ -138,13 +145,18 @@ export async function beginPortalVisualFeedback(
   condition: PortalVisualFeedbackCondition,
   name = 'default',
 ): Promise<void> {
-  await page.evaluate(({ selector, state, text, name }) => {
+  await page.evaluate(({ selector, state, text, action, name }) => {
     const probes = window.__portalVisualFeedbackProbes ??= {};
-    probes[name]?.observer?.disconnect();
+    probes[name]?.stop();
+    const armedAt = performance.now();
     const probe = {
-      startedAt: performance.now(),
+      id: window.__portalVisualFeedbackSerial = (window.__portalVisualFeedbackSerial ?? 0) + 1,
+      armedAt,
+      startedAt: action ? null : armedAt,
       completedAt: null as number | null,
+      error: null as string | null,
       observer: undefined as MutationObserver | undefined,
+      stop: () => {},
     };
     probes[name] = probe;
 
@@ -165,10 +177,36 @@ export async function beginPortalVisualFeedback(
       return !element.hidden && style.display !== 'none' && style.visibility !== 'hidden';
     };
 
+    let active = true, frame: number | null = null;
     const captureFeedback = () => {
-      if (probe.completedAt !== null || !conditionMet()) return;
+      if (!active || probe.startedAt === null || probe.completedAt !== null || !conditionMet()) return;
       probe.completedAt = performance.now();
+      probe.stop();
+    };
+    const stopAction = () => {
+      document.removeEventListener('pointerdown', startAction, true);
+      document.removeEventListener('keydown', startAction, true);
+      document.removeEventListener('click', startAction, true);
+    };
+    const startAction = (event: MouseEvent | KeyboardEvent) => {
+      const activation = event instanceof KeyboardEvent ? !event.repeat && (event.key === 'Enter' || event.key === ' ') : event.button === 0;
+      if (!active || probe.startedAt !== null || !activation || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !(event.target instanceof Element)) return;
+      const target = event.target.closest(action!.selector);
+      if (!target || (action!.text !== undefined && target.textContent?.trim() !== action!.text)) return;
+      if (conditionMet()) {
+        probe.error = 'Feedback was already present before the matched action.';
+        probe.stop();
+        return;
+      }
+      probe.startedAt = performance.now();
+      stopAction();
+      frame = requestAnimationFrame(captureFeedback);
+    };
+    probe.stop = () => {
+      active = false;
       probe.observer?.disconnect();
+      stopAction();
+      if (frame !== null) cancelAnimationFrame(frame);
     };
     probe.observer = new MutationObserver(captureFeedback);
     probe.observer.observe(document.documentElement, {
@@ -176,20 +214,44 @@ export async function beginPortalVisualFeedback(
       childList: true,
       subtree: true,
     });
-    requestAnimationFrame(captureFeedback);
+    if (action) {
+      document.addEventListener('pointerdown', startAction, true);
+      document.addEventListener('keydown', startAction, true);
+      document.addEventListener('click', startAction, true);
+    }
+    else frame = requestAnimationFrame(captureFeedback);
   }, { ...condition, name });
 }
 
 export async function portalVisualFeedbackMs(page: Page, timeoutMs = 5_000, name = 'default'): Promise<number> {
-  await page.waitForFunction(
-    (name) => window.__portalVisualFeedbackProbes?.[name]?.completedAt != null,
-    name,
-    { timeout: timeoutMs },
-  );
-  return page.evaluate((name) => {
+  const id = await page.evaluate(name => window.__portalVisualFeedbackProbes?.[name]?.id, name);
+  if (id === undefined) throw new Error('Portal visual feedback was not captured.');
+  try {
+    await page.waitForFunction(({ name, id }) => {
+      const probe = window.__portalVisualFeedbackProbes?.[name];
+      return !probe || probe.id !== id || probe.error !== null || probe.completedAt !== null;
+    }, { name, id }, { timeout: timeoutMs });
+    return await page.evaluate(({ name, id }) => {
+      const probe = window.__portalVisualFeedbackProbes?.[name];
+      if (!probe || probe.id !== id) throw new Error('Portal visual feedback capture was replaced or cancelled.');
+      if (probe.error) throw new Error(probe.error);
+      if (probe.completedAt === null || probe.startedAt === null) throw new Error('Portal visual feedback was not captured.');
+      return Math.round(probe.completedAt - probe.startedAt);
+    }, { name, id });
+  } catch (error) {
+    await page.evaluate(({ name, id }) => {
+      const probe = window.__portalVisualFeedbackProbes?.[name];
+      if (probe?.id === id) { probe.stop(); delete window.__portalVisualFeedbackProbes![name]; }
+    }, { name, id }).catch(() => {});
+    throw error;
+  }
+}
+
+export async function cancelPortalVisualFeedback(page: Page, name = 'default'): Promise<void> {
+  await page.evaluate(name => {
     const probe = window.__portalVisualFeedbackProbes?.[name];
-    if (!probe || probe.completedAt === null) throw new Error('Portal visual feedback was not captured.');
-    return Math.round(probe.completedAt - probe.startedAt);
+    probe?.stop();
+    if (window.__portalVisualFeedbackProbes) delete window.__portalVisualFeedbackProbes[name];
   }, name);
 }
 

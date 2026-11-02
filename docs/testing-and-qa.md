@@ -42,6 +42,14 @@ module tests retire the old actor before releasing shared code, then wait for
 actual current-actor reads and verify unchanged actor/project query keys rather
 than assuming a cold import completes within a fixed sleep.
 
+Interaction feedback clocks arm before the driver action but start on the
+matched primary pointer input, keyboard activation or programmatic click.
+This includes focus/blur feedback before a button's click handler and excludes
+driver actionability delay. Keep the existing 100 ms target, background-save and
+long-task assertions. The mutation performance fixture covers delayed dispatch,
+pre-click blur, named capture replacement, cancellation, timeout and late events.
+Asynchronous loading-only probes retain their explicit setup-time clock.
+
 `node --test scripts/check-mojibake.test.mjs` verifies the exact renderer fontkit
 path/hash exemption against the already-public Portal bytes in the two verified
 LF and CRLF checkout forms. Its intentional Unicode tables are preserved; any

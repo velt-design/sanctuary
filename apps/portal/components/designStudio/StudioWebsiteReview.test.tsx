@@ -13,7 +13,7 @@ vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({})}));
 vi.mock('@/lib/queries/projectCache',()=>({invalidateProjectReadCaches:mocks.invalidate}));
 vi.mock('@/lib/supabase/browserClient',()=>({supabaseRuntimeUrl:()=>'',supabaseHostFromUrl:()=>''}));
 vi.mock('@/lib/repo/apiClient',()=>({apiJson:mocks.api}));
-vi.mock('@/components/auth/PortalAuthProvider',()=>({usePortalSession:()=>({role:'staff'})}));
+vi.mock('@/components/auth/PortalAuthProvider',async original=>({...await original<typeof import('@/components/auth/PortalAuthProvider')>(),usePortalSession:()=>({role:'staff'})}));
 vi.mock('./useStudioEditingSession',()=>({useStudioEditingSession:(...args:any[])=>{const value=mocks.session(...args);return {...value,beginQuote:value.beginQuote??(async(requestId:string)=>({requestId,expectedUpdatedAt:'2026-10-20T00:00:00Z',expectedRevision:value.edit.revision,edit:value.edit})),canSubmitQuote:value.canSubmitQuote??(()=>true),finishQuote:value.finishQuote??mocks.finishQuote,failQuote:value.failQuote??mocks.failQuote,changeDerived:value.changeDerived??value.change,authoredIdentity:value.authoredIdentity??'proof',captureEdit:value.captureEdit??(()=>value.edit)};}}));
 vi.mock('./useStudioWebsitePrice',()=>({useStudioWebsitePrice:(args:unknown)=>{mocks.priceArgs(args);return{price:mocks.price,error:mocks.priceError,retry:vi.fn()};}}));
 vi.mock('./StudioWebsiteRecovery',()=>({default:()=>null}));

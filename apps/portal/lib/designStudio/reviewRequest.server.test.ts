@@ -34,8 +34,8 @@ it('retains historical unsupported/ambiguous draft refusals instead of treating 
 it('does not expose raw thrown errors',async()=>{mocks.estimate.mockRejectedValue(Error('private-secret-customer'));const response=await get();expect(response.status).toBe(503);expect(await response.text()).not.toContain('private-secret');});
 
 it('reuses the exact authorised public composition and saved metadata, preserving only the validated preparation binding',async()=>{
- const {prepareStudioCreation}=await import('./createPreparation'),{projectStudioAuthoringView}=await import('./authoringView'),actual=await vi.importActual<typeof import('./savedReview')>('./savedReview');
- const made=prepareStudioCreation({mode:'blank',projectId:ids.projectId,designId:'review-input-source',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+ const {prepareEmptyStudioFixture}=await import('../../../../test/fixtures/empty-studio-source'),{projectStudioAuthoringView}=await import('./authoringView'),actual=await vi.importActual<typeof import('./savedReview')>('./savedReview');
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId:ids.projectId,designId:'review-input-source',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const outputs=made.prepared.row.outputs,view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
  outputs.studio_quote_handoff={schemaVersion:'studio_quote_snapshot.v1',snapshotId:'10000000-0000-4000-8000-000000000004',contentHash:'a'.repeat(64),source:view.value,lines:[{description:'Fixture design',qty:1,unitPriceIncGstCents:100,lineTotalIncGstCents:100,sortOrder:0}],totalIncGstCents:100,approvalRequirement:'neither',approvalIncGstCents:0};
  mocks.rows=[];mocks.estimate.mockResolvedValue({...estimate,createdAt:'2026-10-01T00:00:00Z',status:'draft',versionLabel:'V1',updatedAt:'2026-10-27T01:02:03Z',editability:{isLocked:false,hasDraftQuotes:false,draftQuoteCount:0},calculatorSnapshot:{outputs}});mocks.projection.mockImplementation(actual.buildSavedEstimateReview);

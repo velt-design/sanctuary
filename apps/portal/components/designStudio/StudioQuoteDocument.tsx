@@ -119,14 +119,16 @@ export default function StudioQuoteDocument({
         </>
       }
       actions={
+        <>
+        {quote.studioDesign?.schemaVersion==='studio_quote_snapshot.v2' && (revision?.view&&revision.estimate.updatedAt?<StudioRevisionStart actorId={actorId} projectId={review.estimate.projectId} estimateId={review.estimate.id} revision={revision.view.revision} updatedAt={revision.estimate.updatedAt} openOnCreated/>:sourceError?<p role="alert">The source design could not be checked. <button onClick={()=>setSourceAttempt(n=>n+1)}>Retry source design</button></p>:<button disabled>Checking source design…</button>)}
         <button className={css.primary} disabled={!pdf} onClick={download}>
           Download PDF
         </button>
+        </>
       }
     >
       {quote.studioDesign?.schemaVersion==='studio_quote_snapshot.v2'?<StudioClientPackage quote={quote} actorId={actorId} pdf={pdf} pdfError={error} onRetryPdf={()=>setAttempt(n=>n+1)} lifetime={lifetime}>
-        <details><summary>Design revision &amp; quote history</summary><p>{quote.quoteRef}, quote version {quote.versionNumber}. Design {review.estimate.versionLabel}.</p>
-          {revision?.view&&revision.estimate.updatedAt?<StudioRevisionStart actorId={actorId} projectId={review.estimate.projectId} estimateId={review.estimate.id} revision={revision.view.revision} updatedAt={revision.estimate.updatedAt} openOnCreated/>:sourceError?<p role="alert">The source design could not be checked. <button onClick={()=>setSourceAttempt(n=>n+1)}>Retry source design</button></p>:<p role="status">Checking the source design…</p>}
+        <details><summary>Quote details &amp; history</summary><p>{quote.quoteRef}, quote version {quote.versionNumber}. Design {review.estimate.versionLabel}. The quoted design is protected.</p>
           <p><Link prefetch={false} href={`/staff/projects/${review.estimate.projectId}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}`}>Open quote controls</Link></p>
         </details>
       </StudioClientPackage>:<div className={css.quoteLayout}>

@@ -20,6 +20,7 @@ import {
   parseRoofBattens,
 } from "@sp/configurator/website";
 import Gap from "./StudioWebsiteGap";
+import StudioMixedRoofControls, { newStudioMixedPanels } from './StudioMixedRoofControls';
 import {
   changeStudioGap,
   clearStudioGap,
@@ -65,6 +66,7 @@ function StudioWebsiteRoofControls({
                 finish: {
                   ...finish,
                   material,
+                  ...(material === 'combination' && !finish.studioPanels ? { studioPanels: newStudioMixedPanels(value.selection.input,{...roof,finish}) } : {}),
                   ...(material !== "acrylic" && !finish.ceiling
                     ? { ceiling: "thermopine-150" as const }
                     : {}),
@@ -76,7 +78,7 @@ function StudioWebsiteRoofControls({
               aria-hidden="true"
               className={`${css.materialSwatch} ${css[material]}`}
             >
-              {material === "combination" && (
+              {material === "combination" && !finish.studioPanels && (
                 <img
                   className={css.mixedSwatch}
                   alt=""
@@ -117,6 +119,7 @@ function StudioWebsiteRoofControls({
         </label>
       )}
 
+      {finish.material === 'combination' && <StudioMixedRoofControls input={value.selection.input} roof={{...roof,finish}} onChange={changeRoof}/>}
       <label className={css.field}>
         Finish
         <div>
@@ -221,28 +224,6 @@ function StudioWebsiteRoofControls({
                   {n} mm
                 </option>
               ))}
-            </select>
-          </label>
-        )}
-        {finish.material === "combination" && (
-          <label className={css.field}>
-            Skylight arrangement
-            <select
-              value={finish.layout}
-              onChange={(e) =>
-                changeRoof({
-                  ...roof,
-                  finish: {
-                    ...finish,
-                    layout: e.target.value as "central" | "house",
-                  },
-                })
-              }
-            >
-              <option value="central">Central band</option>
-              {allowsHouseBand(roof) && (
-                <option value="house">House-side band</option>
-              )}
             </select>
           </label>
         )}

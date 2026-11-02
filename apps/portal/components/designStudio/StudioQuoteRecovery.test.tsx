@@ -17,7 +17,7 @@ vi.mock('next/dynamic',()=>({default:(load:()=>unknown)=>String(load).includes('
 vi.mock('@tanstack/react-query',()=>({useQueryClient:()=>({})}));
 vi.mock('@/lib/queries/projectCache',()=>({invalidateProjectReadCaches:vi.fn()}));
 vi.mock('@/lib/supabase/browserClient',()=>({supabaseRuntimeUrl:()=>'',supabaseHostFromUrl:()=>''}));
-vi.mock('@/components/auth/PortalAuthProvider',()=>({usePortalSession:()=>({role:'staff'})}));
+vi.mock('@/components/auth/PortalAuthProvider',async original=>({...await original<typeof import('@/components/auth/PortalAuthProvider')>(),usePortalSession:()=>({role:'staff'})}));
 vi.mock('@/components/ui/toast/ToastProvider',()=>({useToast:()=>({error:vi.fn()})}));
 vi.mock('./StudioCommercialPolicy',()=>({default:({children,projectId}:{children:ReactNode;projectId:string})=><ProjectCommercialProvider projectId={projectId} ready work={{effectiveState:'ACTIVE',stateRowVersion:1} as ProjectWorkProjection}>{children}</ProjectCommercialProvider>}));
 vi.mock('./useStudioWebsitePrice',()=>({useStudioWebsitePrice:()=>({price:{status:'priced',amount:100,versionNumber:2},retry:vi.fn()})}));

@@ -276,15 +276,17 @@ async function measureInteraction(
 ) {
   const budget = interactionBudget(name);
   const probe = await beginPortalJourney(page);
+  const actionStart = selectedTabText ? { selector: '[role="tab"]', text: selectedTabText } : undefined;
   if (usefulContentSelector) {
     await beginPortalVisualFeedback(page, {
       selector: usefulContentSelector,
       state: 'visible',
+      action: actionStart,
     });
   }
   if (selectedTabText) {
     await beginPortalVisualFeedback(page, {
-      selector: '[role="tab"]', state: 'selected', text: selectedTabText,
+      selector: '[role="tab"]', state: 'selected', text: selectedTabText, action: actionStart,
     }, 'tab-selection');
   }
   await action();

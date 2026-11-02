@@ -1,5 +1,28 @@
 # Decision Log
 
+## 2026-11-02: Treat dependency directories as shared mutable inputs
+
+A clean install can collide with another local preview using the same dependency
+directory, even when its source checkout differs. Check active dependency users
+before replacing an installation. Use an isolated clean install and a verified
+repair when necessary: retain identical running binaries, remap workspace links
+to their real source, and quarantine obsolete development packages. Verify actual
+file hashes and resolved targets before accepting the repaired graph. Do not stop
+another preview or copy through a workspace link to solve an installation problem.
+
+## 2026-11-02: Exercise creation defaults through the database command
+
+The new Studio starter passed trusted preparation and mocked RPC tests, but the
+actual creation function still required an exact empty authored/spatial pair.
+Those passes did not establish first-open persistence. Keep the existing atomic
+creation owner and add only the exact permitted base seed through a forward
+migration. The Portal-discovered `baseCreationSeed.migration.test.ts` executes the
+original function's refusal, then forward acceptance, old receipt replay, exact
+clone/add-on behavior, tamper denial and preserved ACL/search path. See
+`staff-design-studio-prototype.md` and `supabase-schema-map.md`. Applied migration
+history and historical saved designs stay intact; mocks complement the real
+boundary check rather than proving its compatibility.
+
 ## 2026-10-27: Clean measurement and connect enquiries to recorded cash
 
 Reuse the existing marketing source/outcome table and direct enquiry-to-project

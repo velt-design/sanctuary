@@ -16,6 +16,7 @@ import {
   type StudioPointer,
 } from "./contracts";
 import type { StudioHouse } from "../studioHouseScene";
+import { studioComputedCoordinate } from "../studioHouseCoordinates";
 import {
   updateStudioHouse,
   previewStudioAttachment,
@@ -189,8 +190,8 @@ export function createStudioPlacementController(
           ...basis.house,
           position: {
             ...basis.house.position,
-            xMm: String(preview.x),
-            yMm: String(preview.y),
+            xMm: studioComputedCoordinate(preview.x),
+            yMm: studioComputedCoordinate(preview.y),
           },
         });
       if (preview.candidate) {

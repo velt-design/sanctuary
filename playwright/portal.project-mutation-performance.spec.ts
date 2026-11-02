@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 import {
   beginPortalJourney,
   beginPortalVisualFeedback,
+  cancelPortalVisualFeedback,
   elapsedJourneyMs,
   finishPortalJourney,
   installPortalPerformanceProbe,
@@ -21,12 +22,18 @@ const journeys: PortalPerformanceJourney[] = [];
 
 test('visual timing separates tab selection from content and driver delays', async ({ page }) => {
   await page.setContent('<button role="tab" aria-selected="false">Commercial</button><main></main>');
-  await beginPortalVisualFeedback(page, { selector: '[data-ready]', state: 'visible' });
+  await page.evaluate(() => document.querySelector('button')!.addEventListener('click', event => (event.currentTarget as HTMLElement).setAttribute('aria-selected', 'true')));
+  const action = { selector: '[role="tab"]', text: 'Commercial' };
+  await beginPortalVisualFeedback(page, { selector: '[data-ready]', state: 'visible', action });
   await beginPortalVisualFeedback(page, {
-    selector: '[role="tab"]', state: 'selected', text: 'Commercial',
+    selector: '[role="tab"]', state: 'selected', text: 'Commercial', action,
   }, 'tab-selection');
-  await page.evaluate(() => document.querySelector('button')!.setAttribute('aria-selected', 'true'));
+  await page.waitForTimeout(180);
+  await page.getByRole('tab', { name: 'Commercial' }).click();
   const selection = await portalVisualFeedbackMs(page, 5_000, 'tab-selection');
+  const driverOffset = await page.evaluate(() => { const probe = window.__portalVisualFeedbackProbes!['tab-selection']; return probe.startedAt! - probe.armedAt; });
+  expect(selection).toBeLessThanOrEqual(100);
+  expect(driverOffset).toBeGreaterThanOrEqual(180);
   // Deliberately delayed content and driver reads must not extend the captured selection.
   await page.waitForTimeout(200);
   await page.evaluate(() => document.querySelector('main')!.setAttribute('data-ready', 'true'));
@@ -34,6 +41,67 @@ test('visual timing separates tab selection from content and driver delays', asy
   expect(content - selection).toBeGreaterThanOrEqual(150);
   expect(await portalVisualFeedbackMs(page, 5_000, 'tab-selection')).toBe(selection);
   await expect(portalVisualFeedbackMs(page, 50, 'missing')).rejects.toThrow();
+});
+
+test('click captures match nested targets, isolate names and retire cancellation, replacement and timeout', async ({ page }) => {
+  await page.setContent('<button id="other">Other</button><button id="done"><span>Done</span></button><main></main>');
+  await page.evaluate(() => document.querySelector('#done')!.addEventListener('click', event => { if (!(event as MouseEvent).ctrlKey) document.querySelector('main')!.setAttribute('data-ready', 'true'); }));
+  const condition = { selector: '[data-ready]', state: 'visible' as const, action: { selector: '#done', text: 'Done' } };
+  await beginPortalVisualFeedback(page, condition, 'old');
+  await cancelPortalVisualFeedback(page, 'old');
+  await expect(portalVisualFeedbackMs(page, 50, 'old')).rejects.toThrow();
+  await beginPortalVisualFeedback(page, condition, 'timeout');
+  await expect(portalVisualFeedbackMs(page, 50, 'timeout')).rejects.toThrow();
+  expect(await page.evaluate(() => window.__portalVisualFeedbackProbes?.timeout)).toBeUndefined();
+  await beginPortalVisualFeedback(page, condition, 'replacement');
+  const replaced = portalVisualFeedbackMs(page, 5_000, 'replacement').then(() => null, error => error);
+  await page.evaluate(() => undefined);
+  await beginPortalVisualFeedback(page, condition, 'replacement');
+  expect((await replaced as Error).message).toContain('replaced or cancelled');
+  expect(await page.evaluate(() => window.__portalVisualFeedbackProbes!.replacement.startedAt)).toBeNull();
+  await beginPortalVisualFeedback(page, condition, 'current');
+  await page.getByRole('button', { name: 'Other' }).click();
+  expect(await page.evaluate(() => window.__portalVisualFeedbackProbes!.current.startedAt)).toBeNull();
+  await page.locator('#done span').click({ modifiers: ['Control'] });
+  expect(await page.evaluate(() => window.__portalVisualFeedbackProbes!.current.startedAt)).toBeNull();
+  await page.locator('#done span').click();
+  expect(await portalVisualFeedbackMs(page, 5_000, 'current')).toBeLessThanOrEqual(100);
+  expect(await portalVisualFeedbackMs(page, 5_000, 'replacement')).toBeLessThanOrEqual(100);
+  expect(await page.evaluate(() => Object.keys(window.__portalVisualFeedbackProbes!).sort())).toEqual(['current', 'replacement']);
+  await beginPortalVisualFeedback(page, condition, 'preexisting');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(portalVisualFeedbackMs(page, 50, 'preexisting')).rejects.toThrow('already present');
+});
+
+test('anchors before focus blur can finish editing ahead of the button click', async ({ page }) => {
+  await page.setContent('<button id="done">Done</button><input aria-label="Draft"/>');
+  await page.evaluate(() => {
+    const input = document.querySelector('input')!, button = document.querySelector('button')!;
+    input.addEventListener('blur', () => { (window as any).blurAt = performance.now(); input.remove(); });
+    button.addEventListener('click', () => { (window as any).clickAt = performance.now(); });
+    input.focus();
+  });
+  await beginPortalVisualFeedback(page, { selector: 'input[aria-label="Draft"]', state: 'hidden', action: { selector: '#done', text: 'Done' } });
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  expect(await portalVisualFeedbackMs(page)).toBeLessThanOrEqual(100);
+  const timing = await page.evaluate(() => ({ start: window.__portalVisualFeedbackProbes!.default.startedAt!, end: window.__portalVisualFeedbackProbes!.default.completedAt!, blur: (window as any).blurAt as number, click: (window as any).clickAt as number }));
+  expect(timing.start).toBeLessThanOrEqual(timing.blur);
+  expect(timing.blur).toBeLessThanOrEqual(timing.end);
+  expect(timing.end).toBeLessThanOrEqual(timing.click);
+});
+
+test('anchors keyboard activation and programmatic click without accepting unrelated keys', async ({ page }) => {
+  for (const activation of ['Enter', 'Space', 'programmatic']) {
+    await page.setContent('<button id="done">Done</button><input aria-label="Draft"/>');
+    await page.evaluate(() => document.querySelector('button')!.addEventListener('click', () => document.querySelector('input')!.remove()));
+    await page.getByRole('button', { name: 'Done' }).focus();
+    await beginPortalVisualFeedback(page, { selector: 'input[aria-label="Draft"]', state: 'hidden', action: { selector: '#done', text: 'Done' } });
+    await page.keyboard.press('ArrowLeft');
+    expect(await page.evaluate(() => window.__portalVisualFeedbackProbes!.default.startedAt)).toBeNull();
+    if (activation === 'programmatic') await page.evaluate(() => (document.querySelector('button') as HTMLButtonElement).click());
+    else await page.keyboard.press(activation);
+    expect(await portalVisualFeedbackMs(page)).toBeLessThanOrEqual(100);
+  }
 });
 
 function delay(ms: number): Promise<void> {
@@ -90,9 +158,11 @@ test('records immediate project feedback separately from deliberately slow persi
     (candidate) => candidate.url().includes('/api/projects/fixture-project/details') && candidate.status() === 200,
   );
   const probe = await beginPortalJourney(page);
+  await expect(page.locator('[data-fixture-project-saving="true"]')).toHaveCount(0);
   await beginPortalVisualFeedback(page, {
     selector: '[data-fixture-project-saving="true"]',
     state: 'visible',
+    action: { selector: '[data-project-mutation-fixture="ready"] button', text: 'Save' },
   });
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.locator('[data-fixture-project-name="true"]')).toHaveText('Instant Fixture Project');
@@ -144,12 +214,15 @@ test('records Project Details Done feedback separately from its local-first save
     (candidate) => candidate.url().includes('/api/projects/fixture-project/details') && candidate.status() === 200,
   );
   const probe = await beginPortalJourney(page);
+  await expect(fixture.locator('input#projectName')).toHaveCount(1);
   await beginPortalVisualFeedback(page, {
-    selector: '[data-project-details-mutation-fixture="ready"] input[aria-label="Project name"]',
+    selector: '[data-project-details-mutation-fixture="ready"] input#projectName',
     state: 'hidden',
+    action: { selector: '[data-project-details-mutation-fixture="ready"] button', text: 'Done' },
   });
   await fixture.getByRole('button', { name: 'Done' }).click();
   await expect(fixture.getByLabel('Project name')).toBeHidden();
+  await expect(fixture.locator('input#projectName')).toHaveCount(0);
   await expect(fixture.getByText('Instant Detail Project', { exact: true })).toBeVisible();
   const feedbackMs = await portalVisualFeedbackMs(page);
   const usefulContentMs = feedbackMs;
@@ -207,12 +280,15 @@ test('records Contact Details Done feedback separately from its local-first save
     (candidate) => candidate.url().includes('/api/contacts/fixture-contact') && candidate.status() === 200,
   );
   const probe = await beginPortalJourney(page);
+  await expect(fixture.locator('input[aria-label="Contact name"]')).toHaveCount(1);
   await beginPortalVisualFeedback(page, {
     selector: '[data-contact-details-mutation-fixture="ready"] input[aria-label="Contact name"]',
     state: 'hidden',
+    action: { selector: '[data-contact-details-mutation-fixture="ready"] button', text: 'Done' },
   });
   await fixture.getByRole('button', { name: 'Done' }).click();
   await expect(fixture.getByLabel('Contact name')).toBeHidden();
+  await expect(fixture.locator('input[aria-label="Contact name"]')).toHaveCount(0);
   await expect(fixture.getByRole('heading', { name: 'Instant Fixture Contact' })).toBeVisible();
   const feedbackMs = await portalVisualFeedbackMs(page);
   const usefulContentMs = feedbackMs;

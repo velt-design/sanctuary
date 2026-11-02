@@ -6,7 +6,7 @@ import type { StudioAuthoringEdit } from "@/lib/designStudio/authoringView";
 import type { StudioSelectedAddressProof } from "@/lib/designStudio/studioTravelAllowance";
 import {studioPendingTravelAllowance} from '@/lib/designStudio/studioTravelPlan';
 import {ACCESSORY_REVIEW_RATES,getDefaultInstalledSellingRates,loadCostingConfigV1} from '@sp/costing';
-import {prepareStudioCreation} from '@/lib/designStudio/createPreparation';
+import {prepareEmptyStudioFixture as prepareStudioCreation} from '../../../../test/fixtures/empty-studio-source';
 import {projectStudioAuthoringView,createStudioAuthoringEdit} from '@/lib/designStudio/authoringView';
 import {addWebsitePergola} from '@/lib/designStudio/websiteComposition';
 import {calculateStudioCommercialPricing} from '@/lib/designStudio/studioCommercialPricing.server';
@@ -185,6 +185,7 @@ it('uses canonical 6×4 installation days in the actual field, follows changed e
  const made=prepareStudioCreation({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'field-days',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const outputs=made.prepared.row.outputs,view=projectStudioAuthoringView({authored:outputs.studio_authored,spatial:outputs.drawing_object_first});if(!view.ok)throw Error(view.message);
  const edit=addWebsitePergola(createStudioAuthoringEdit(view.value),'p');(edit.objectOptions[0].values.websiteDesign as unknown as StudioWebsiteDesign).rawDimensions={widthMm:'6000',projectionMm:'4000'};
+ expect(edit.spatial.pergolas.map(pergola=>pergola.id)).toEqual(['p']);expect(edit.objectOptions.map(row=>row.objectId)).toEqual(['p']);
  const config={...loadCostingConfigV1(),accessoryRates:ACCESSORY_REVIEW_RATES,installedSellingRates:getDefaultInstalledSellingRates()};
  const days=studioInstallationEstimate(calculateStudioCommercialPricing(edit,config).siteOutput)!.siteDays;expect(days).toBe(3);
  const m=await mount(proof,'pending',undefined,days);await act(async()=>m.rerender());

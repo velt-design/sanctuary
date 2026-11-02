@@ -148,3 +148,21 @@ stale text/selections or loose-attaching an already selected render. Prepared
 packages first require exact safe cancellation before editing. See
 [`staff-design-studio-prototype.md`](staff-design-studio-prototype.md).
 
+# Studio direct entry and metadata naming
+
+Studio's project entry and in-editor selector use the existing navigation drain
+before replacing the selected document. The remembered actor/project design ID is
+only a routing hint, checked against a fresh caller-RLS inventory. First creation
+and explicit New actions retain the existing creation journal and Web Lock; URL
+nonces prevent a recovered New action from creating a second design.
+
+The Studio title reuses the metadata-only estimate name command. Naming fences
+local authoring and checks the selected design's retained working copy and journal.
+Dirty, pending or recovery work requires Save/recovery first. The existing clean
+cache restoration, not a dirty-content rebase, adopts the changed metadata timestamp
+on fresh reopening. See [the Studio owner map](staff-design-studio-prototype.md#current-journey-and-owners).
+After metadata dispatch, uncertain outcomes retain the same navigation fence until
+fresh exact-source reopening or actual document/actor retirement. Recovery does
+not resend PATCH, release old save authority on dialog close, or adopt a new
+authoring timestamp into dirty content.
+

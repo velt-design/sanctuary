@@ -3,6 +3,7 @@ import { isStudioObject, parseStudioAuthored, STUDIO_AUTHORED_SCHEMA, STUDIO_OUT
 import { studioIdentifier } from './identifiers';
 import { parseStudioSpatialDraft } from './spatialValidation';
 import { validateCommercialInternalName } from '@/lib/commercial/internalName';
+import { newStudioBaseSeed } from './newDesignSeed';
 
 /** Trusted server preparation only. Contains private source data: NEVER serialize
  * this result to a browser. This is not an authenticated command or insert API. */
@@ -31,9 +32,10 @@ function scope(value: unknown): string | null {
   return id;
 }
 
-/** Explicit blank: {mode, projectId, designId, commercialScopeId, internalName?}.
+/** New design: {mode:blank, projectId, designId, commercialScopeId, internalName?}.
  * Clone: {mode, projectId, designId, source: trusted raw estimate row, internalName?}.
- * No defaults, calculator conversion, normalization, repricing or source writes.
+ * Base scopes start with one pitched6x3. Add-ons stay empty. No calculator
+ * conversion, normalization, repricing or source writes.
  * The command owner must authorize, generate a fresh designId, compare source
  * proof under lock, allocate estimate identity/version and record exact replay. */
 export function prepareStudioCreation(input: unknown): Result {
@@ -45,14 +47,16 @@ export function prepareStudioCreation(input: unknown): Result {
       const name = validateCommercialInternalName(input.internalName);
       if (hasName && (!name.ok || name.value !== input.internalName)) return invalid();
       if (!exact(input, ['mode', 'projectId', 'designId', 'commercialScopeId', ...(hasName ? ['internalName'] : [])])) return invalid();
+      const commercialScopeId = scope(input.commercialScopeId);
+      const seed = commercialScopeId === null ? newStudioBaseSeed() : { spatial: structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT), objectOptions: [] };
       const authored: StudioAuthoredV1 = {
         schemaVersion: STUDIO_AUTHORED_SCHEMA, designId: input.designId, revision: 1, spatialOutputKey: STUDIO_SPATIAL_OUTPUT_KEY,
-        site: { validation: 'preserved_unvalidated', values: {} }, objectOptions: [], legacyCommercialAssociations: [],
+        site: { validation: 'preserved_unvalidated', values: {} }, objectOptions: seed.objectOptions as unknown as StudioAuthoredV1['objectOptions'], legacyCommercialAssociations: [],
         provenance: { sourceEstimateId: null, sourceKind: 'authored', sourcePayload: null },
       };
-      return { ok: true, prepared: { row: { project_id: projectId, commercial_scope_id: scope(input.commercialScopeId), status: 'draft', inputs: {},
+      return { ok: true, prepared: { row: { project_id: projectId, commercial_scope_id: commercialScopeId, status: 'draft', inputs: {},
         ...(hasName && name.ok ? { internal_name: name.value } : {}),
-        outputs: { [STUDIO_OUTPUT_KEY]: authored as unknown as StudioJsonObject, [STUDIO_SPATIAL_OUTPUT_KEY]: structuredClone(EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT) as unknown as StudioJsonObject } },
+        outputs: { [STUDIO_OUTPUT_KEY]: authored as unknown as StudioJsonObject, [STUDIO_SPATIAL_OUTPUT_KEY]: seed.spatial as unknown as StudioJsonObject } },
         lineage: null, sourceSnapshot: null, pricing: 'unpriced' } };
     }
     const hasOverride = Object.hasOwn(input, 'internalName');

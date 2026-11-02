@@ -29,6 +29,9 @@ vi.mock('@/app/providers',()=>({Providers:({children}:{children:React.ReactNode}
 }}));
 const actor=mocks.browser,other='10000000-0000-4000-8000-000000000002',projectId='proj_20000000-0000-4000-8000-000000000001',estimateId='est_30000000-0000-4000-8000-000000000001';
 const callback=`/staff/design-studio/${projectId}/${estimateId}/edit`;
+const inventoryUrl=`/api/projects/${projectId}/studio`;
+function isInventoryFetch(url:unknown,options?:RequestInit){return url===inventoryUrl&&(!options?.method||options.method==='GET')&&options?.cache==='no-store'&&options?.credentials==='same-origin'&&options?.signal instanceof AbortSignal;}
+function expectNoPriceOrDomainFetch(){expect(vi.mocked(fetch).mock.calls.filter(([url,options])=>!isInventoryFetch(url,options))).toEqual([]);}
 const view:StudioEditingSessionProps['view']={schemaVersion:'studio_authoring_view.v1',designId:'design',revision:1,spatial:{houseAssembly:null,decks:[],openings:[],pergolas:[]},site:{access:'normal'},objectOptions:[],pricing:'unpriced'};
 const authoring={state:'ready',estimate:{id:estimateId,projectId,versionLabel:'V1',updatedAt:'2026-10-20T00:00:00Z',requiresNewRevision:false},view,nextAction:'edit',reason:null};
 function deferred<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(done=>{resolve=done;});return{promise,resolve};}
@@ -54,7 +57,7 @@ beforeEach(()=>{
  mocks.keys.mockImplementation(async()=>[...db.keys()]);
  const transaction=(key:string,recipe:(old:unknown)=>unknown)=>{const pending=transactions.then(()=>{db.set(key,structuredClone(recipe(structuredClone(db.get(key)))));});transactions=pending.catch(()=>{});return pending;};
  mocks.set.mockImplementation((key,value)=>transaction(key,()=>value));mocks.update.mockImplementation(transaction);
- vi.stubGlobal('fetch',vi.fn(async(_url,options)=>{const body=JSON.parse(options.body);return Response.json({...body,status:'priced',amount:222});}));
+ vi.stubGlobal('fetch',vi.fn(async(url,options)=>{if(isInventoryFetch(url,options)){expect([actor,other]).toContain(getLocalFirstStoreOwner());return Response.json({projectId,project:{id:projectId.slice(5),name:'Synthetic project'},designs:[],loadError:false});}const body=JSON.parse(options.body);return Response.json({...body,status:'priced',amount:222});}));
 });
 afterEach(()=>{mounted?.unmount();mounted=undefined;clearLocalFirstStoreOwner();invalidateStudioLifecycle();vi.unstubAllGlobals();});
 const open=async()=>{mounted=renderIntoDocument(<StudioDocument callback={callback}><StudioDocumentPage callback={callback}/></StudioDocument>);await act(async()=>{});return mounted.container;};
@@ -64,7 +67,7 @@ it('mounts no actor runtime/storage before the fresh frame, then uses its scope 
  expect(ui.querySelector('[data-runtime-owner]')).toBeNull();expect(mocks.get).not.toHaveBeenCalled();expect(getLocalFirstStoreOwner()).toBeNull();
  expect(mocks.leaf).toHaveBeenCalledOnce();
  await act(async()=>first.resolve(r.value));
- expect(ui.querySelector('[data-runtime-owner]')?.getAttribute('data-runtime-owner')).toBe(actor);expect(latest.canEdit).toBe(true);expect(mocks.role).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();
+ expect(ui.querySelector('[data-runtime-owner]')?.getAttribute('data-runtime-owner')).toBe(actor);expect(latest.canEdit).toBe(true);expect(mocks.role).not.toHaveBeenCalled();expectNoPriceOrDomainFetch();
  expect(document.documentElement.style.getPropertyValue('--portal-accent')).toBe('#123456');
  expect(mocks.opening.mock.calls[0][1]).toEqual({projectId,estimateId});
 });
@@ -86,10 +89,10 @@ it('rejects an opening response overtaken by an actual session transition, witho
 it('keeps a held first local persist and held price waiting without an automatic price POST',async()=>{
  const hold=deferred<void>(),r=response();mocks.opening.mockResolvedValue(r.value);
  const update=mocks.update.getMockImplementation()!;mocks.update.mockImplementation((key,fn)=>{transactions=hold.promise;return update(key,fn);});
- await open();expect(latest.status).toBe('loading');expect(fetch).not.toHaveBeenCalled();
- await act(async()=>hold.resolve());expect(latest.canEdit).toBe(true);expect(fetch).not.toHaveBeenCalled();
- await act(async()=>r.tail.resolve({ok:false,error:'Current publication unavailable'}));expect(fetch).not.toHaveBeenCalled();
- act(()=>latestPrice.retry());await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1));});expect(fetch).toHaveBeenCalledOnce();expect(latestPrice.price?.amount).toBe(222);
+ await open();expect(latest.status).toBe('loading');expectNoPriceOrDomainFetch();
+ await act(async()=>hold.resolve());expect(latest.canEdit).toBe(true);expectNoPriceOrDomainFetch();
+ await act(async()=>r.tail.resolve({ok:false,error:'Current publication unavailable'}));expectNoPriceOrDomainFetch();
+ act(()=>latestPrice.retry());await act(async()=>{await new Promise(resolve=>setTimeout(resolve,1));});const priceCalls=vi.mocked(fetch).mock.calls.filter(([url,options])=>!isInventoryFetch(url,options));expect(priceCalls).toHaveLength(1);expect(priceCalls[0][0]).toBe(`/api/projects/${projectId}/estimates/${estimateId}/studio-website-price`);expect(priceCalls[0][1]?.method).toBe('POST');expect(latestPrice.price?.amount).toBe(222);
 });
 
 it('synchronously fences pagehide while accepted IDB work drains, then fresh re-entry restores exact edit and Undo',async()=>{
@@ -132,10 +135,10 @@ it('cancels a native handoff abandoned while IDB is held, preserving its exact l
 it('restores the existing usable editor after a local navigation flush fails, without a Save or permanent movement fence',async()=>{
  mocks.opening.mockResolvedValue(response().value);const ui=await open();const before=structuredClone(latest.edit);vi.spyOn(console,'error').mockImplementation(()=>{});mocks.set.mockRejectedValueOnce(Error('quota'));await writeLocalFirstWorkingCopy({entityKey:'estimate:ordinary',data:{name:'Kept'}});mocks.set.mockRejectedValueOnce(Error('quota'));
  const navigate=vi.fn();let failure:unknown;await act(async()=>{try{await navigateStudioDocument('/staff/projects',false,navigate);}catch(error){failure=error;}});
- expect(failure).toBeInstanceOf(Error);expect(navigate).not.toHaveBeenCalled();expect(latest.canEdit).toBe(true);expect(latest.edit).toEqual(before);expect(ui.querySelector('[data-editor]')?.closest('[inert]')).toBeNull();expect(fetch).not.toHaveBeenCalled();
+ expect(failure).toBeInstanceOf(Error);expect(navigate).not.toHaveBeenCalled();expect(latest.canEdit).toBe(true);expect(latest.edit).toEqual(before);expect(ui.querySelector('[data-editor]')?.closest('[inert]')).toBeNull();expectNoPriceOrDomainFetch();
 });
 
 it('keeps the canonical quoted/read-only revision action and does not mount an editing session',async()=>{
  const r=response();mocks.opening.mockResolvedValue({...r.value,authoring:{...authoring,nextAction:'create-revision',estimate:{...authoring.estimate,requiresNewRevision:true}}});const ui=await open();
- expect(ui.textContent).toContain('Revision required');expect(ui.querySelector('[data-editor]')).toBeNull();expect(mounts).toBe(0);expect(fetch).not.toHaveBeenCalled();
+ expect(ui.textContent).toContain('Revision required');expect(ui.querySelector('[data-editor]')).toBeNull();expect(mounts).toBe(0);expectNoPriceOrDomainFetch();
 });

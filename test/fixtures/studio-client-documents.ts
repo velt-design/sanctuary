@@ -1,11 +1,11 @@
-import {prepareStudioCreation} from '../../apps/portal/lib/designStudio/createPreparation';
+import {prepareEmptyStudioFixture} from './empty-studio-source';
 import {projectStudioAuthoringView,createStudioAuthoringEdit} from '../../apps/portal/lib/designStudio/authoringView';
 import {addWebsitePergola} from '../../apps/portal/lib/designStudio/websiteComposition';
 import {applyStudioHouseEdit} from '../../apps/portal/lib/designStudio/houseEditing';
 import type {StudioWebsiteDesign} from '../../apps/portal/lib/designStudio/websiteDesign';
 /** Synthetic source only. It is never a live project or inferred site survey. */
 export function studioClientDocumentFixture(){
- const made=prepareStudioCreation({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'document-fixture',commercialScopeId:null});if(!made.ok)throw Error(made.message);
+ const made=prepareEmptyStudioFixture({mode:'blank',projectId:'proj_10000000-0000-4000-8000-000000000001',designId:'document-fixture',commercialScopeId:null});if(!made.ok)throw Error(made.message);
  const initial=made.prepared.row.outputs,view=projectStudioAuthoringView({authored:initial.studio_authored,spatial:initial.drawing_object_first});if(!view.ok)throw Error(view.message);
  const edit=addWebsitePergola(addWebsitePergola(createStudioAuthoringEdit(view.value),'p1'),'p2');
  const house=applyStudioHouseEdit(edit.spatial,{kind:'add',id:'house'});if(!house.ok)throw Error(house.message);edit.spatial=house.spatial;

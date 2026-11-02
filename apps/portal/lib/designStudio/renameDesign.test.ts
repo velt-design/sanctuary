@@ -1,0 +1,28 @@
+import { beforeEach, expect, it, vi } from 'vitest';
+const mocks=vi.hoisted(()=>({api:vi.fn(),read:vi.fn(),ready:vi.fn(),valid:vi.fn(),release:vi.fn(),navigate:vi.fn(),owner:vi.fn()}));
+vi.mock('@/lib/repo/apiClient',()=>({apiJson:mocks.api}));
+vi.mock('@/lib/localFirst/store',()=>({getLocalFirstStoreOwner:mocks.owner}));
+vi.mock('./workingCopy',()=>({readStudioWorkingCopy:mocks.read}));
+vi.mock('./studioSessionLifecycle',()=>({prepareStudioNavigation:()=>({ready:mocks.ready(),valid:mocks.valid,release:mocks.release})}));
+vi.mock('./studioDocumentNavigation',()=>({navigateStudioDocument:mocks.navigate}));
+import {renameStudioDesign} from './renameDesign';
+const scope={actorId:'actor',projectId:'proj-project',estimateId:'est-design',designId:'design'};
+const freshSource=()=>({authoring:{state:'ready',estimate:{id:scope.estimateId,projectId:scope.projectId,updatedAt:'2026-11-02T01:00:00Z'},view:{designId:scope.designId,revision:1},identity:{internalName:'Courtyard'}}});
+beforeEach(()=>{vi.resetAllMocks();mocks.owner.mockReturnValue('actor');mocks.ready.mockResolvedValue(undefined);mocks.valid.mockReturnValue(true);mocks.read.mockResolvedValue({state:'absent'});mocks.api.mockImplementation(async(_url,options)=>options?.method==='PATCH'?{estimate:{id:'est-design',projectId:'proj-project',internalName:'Courtyard'}}:freshSource());mocks.navigate.mockResolvedValue(undefined);});
+it('reuses only metadata PATCH after the local fence/read and reopens the exact document for clean cache refresh',async()=>{
+ const recovery=await renameStudioDesign(scope,'Courtyard',new AbortController().signal);
+ expect(mocks.read).toHaveBeenCalledExactlyOnceWith(scope);expect(mocks.api).toHaveBeenCalledWith('/api/estimates/est-design',expect.objectContaining({method:'PATCH',body:'{"internalName":"Courtyard"}'}));
+ expect(mocks.api).toHaveBeenLastCalledWith('/api/projects/proj-project/estimates/est-design/studio',expect.objectContaining({cache:'no-store'}));expect(mocks.navigate).toHaveBeenCalledWith(location.pathname+location.search,true,undefined,expect.any(AbortSignal),expect.objectContaining({release:mocks.release}));expect(mocks.release).not.toHaveBeenCalled();recovery.retire();expect(mocks.release).toHaveBeenCalledOnce();
+});
+it.each([{state:'valid',session:{dirty:true,status:'idle',pending:null,acknowledged:{}}},{state:'valid',session:{dirty:false,status:'pending',pending:{},acknowledged:{}}},{state:'recovery'},{state:'corrupt'},{state:'unavailable'}])('refuses Review/Quote rename over retained unsaved or uncertain work %j',async found=>{mocks.read.mockResolvedValue(found);await expect(renameStudioDesign(scope,'Kept input',new AbortController().signal)).rejects.toThrow('Save the current design');expect(mocks.api).not.toHaveBeenCalled();expect(mocks.navigate).not.toHaveBeenCalled();expect(mocks.release).toHaveBeenCalled();});
+it('permits fully acknowledged clean storage without changing its baseline or clearing any record',async()=>{const found={state:'valid',session:{dirty:false,status:'idle',pending:null,acknowledged:{edit:'exact'}}};mocks.read.mockResolvedValue(found);const recovery=await renameStudioDesign(scope,'Name',new AbortController().signal);expect(found).toEqual({state:'valid',session:{dirty:false,status:'idle',pending:null,acknowledged:{edit:'exact'}}});expect(mocks.api).toHaveBeenCalledTimes(2);recovery.retire();});
+it.each(['response-lost','navigation-failed'])('keeps the old editor fenced after server commit and %s, reopens fresh authority without retrying PATCH',async fault=>{
+ const oldBaseline={dirty:false,status:'idle',pending:null,baseUpdatedAt:'old',acknowledged:{edit:'exact'}};mocks.read.mockResolvedValue({state:'valid',session:oldBaseline});let serverName='old',serverUpdatedAt='old',patches=0;
+ mocks.api.mockImplementation(async(_url,options)=>{if(options?.method==='PATCH'){patches++;serverName='Courtyard';serverUpdatedAt='2026-11-02T01:00:00Z';if(fault==='response-lost')throw Error('Response lost after commit');return {estimate:{id:scope.estimateId,projectId:scope.projectId,internalName:serverName}};}return {...freshSource(),authoring:{...freshSource().authoring,estimate:{...freshSource().authoring.estimate,updatedAt:serverUpdatedAt}}};});
+ if(fault==='navigation-failed')mocks.navigate.mockRejectedValueOnce(Error('Native navigation refused'));
+ const lifetime=new AbortController(),recovery=await renameStudioDesign(scope,'Courtyard',lifetime.signal);
+ expect(serverName).toBe('Courtyard');expect(mocks.release).not.toHaveBeenCalled();expect(oldBaseline.baseUpdatedAt).toBe('old');expect(recovery.message).toContain('Reopen');
+ await recovery.reopen();expect(patches).toBe(1);expect(mocks.api.mock.calls.filter(([,options])=>options?.method!=='PATCH')).toHaveLength(fault==='response-lost'?1:2);expect(mocks.release).not.toHaveBeenCalled();expect(oldBaseline.acknowledged.edit).toBe('exact');
+ lifetime.abort();expect(mocks.release).toHaveBeenCalledOnce();await expect(recovery.reopen()).rejects.toThrow('owner changed');expect(patches).toBe(1);
+});
+it('retains recovery for wrong-project postmutation results and releases only on actor/document retirement',async()=>{mocks.api.mockResolvedValueOnce({estimate:{id:'est-design',projectId:'other'}});const lifetime=new AbortController(),recovery=await renameStudioDesign(scope,'Name',lifetime.signal);expect(mocks.navigate).not.toHaveBeenCalled();expect(mocks.release).not.toHaveBeenCalled();lifetime.abort();expect(mocks.release).toHaveBeenCalledOnce();await expect(recovery.reopen()).rejects.toThrow();mocks.owner.mockReturnValue('other');await expect(renameStudioDesign(scope,'Name',new AbortController().signal)).rejects.toThrow('owner changed');expect(mocks.api).toHaveBeenCalledOnce();});

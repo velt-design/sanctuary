@@ -257,6 +257,7 @@ function StudioHouseModel({
                               assembly={p.geometry!.assembly}
                               pose={p.position!}
                               widthMm={p.design!.input.widthMm}
+                              frameFinish={p.design!.roof.frameFinish}
                             />
                           ) : null;
                         })}

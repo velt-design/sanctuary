@@ -13,7 +13,7 @@ import {
 /** The ordinary V10 Black Box fixture. Starts and deltas are rigid equivalents
  * around the actual house origin, not independently repositioned wall cases. */
 export function studioWallAcquisitionFixture(
-  rotation: 0 | 37,
+  rotation: number,
   side: "front" | "right" | "rear" | "left",
 ) {
   let edit = studioAttachmentFixture(rotation);
