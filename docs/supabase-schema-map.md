@@ -1,5 +1,18 @@
 # Supabase Schema Map
 
+## Advertising reconciled funding (2 November 2026)
+
+Forward `20261102000002_advertising_reconciled_funding.sql` replaces only
+`private.advertising_scope_facts()` and the shared
+`private.marketing_verified_deposit_facts(uuid,uuid)` reader. Advertising preserves
+its existing facts schema and original non-test receipt selection; current
+accepted value, cancellation and provider projections remain with their existing
+owners. The shared helper additionally recognises the exact frozen first-invoice
+version/term/effective-family tuple for legacy administrative terms missing plan
+metadata. This cannot transfer a first-term identity to another family's term.
+No table, index, trigger, grant, financial command, outbox or provider control changes.
+See `google-ads-connection.md` for verified-receipt and legacy coverage semantics.
+
 ## Verified-payment lifecycle (2 November 2026)
 
 Forward `20261102000001_verified_payment_conversion_events.sql` adds three private

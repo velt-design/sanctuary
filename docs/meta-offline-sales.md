@@ -12,9 +12,17 @@ campaign change or live matching is established by this candidate.
 one currently accepted quote family after a verified positive first-instalment
 deposit, including a partial Xero match. Full accepted NZD value includes GST;
 it is not the deposit cash amount. Revisions retain family identity. Reversed
-payments, void invoices and cancelled scopes remove eligibility. The existing
-Google source projection and fingerprint remain equivalent when the new shared
-suppression table is empty. Applied Google migrations are unchanged.
+payments, void invoices and cancelled scopes remove eligibility. The shared source now follows current reconciled invoice and allocation
+ownership through `marketing_verified_deposit_facts`: separate assessments do
+not fund construction, assigned standalone and allocated partial receipts can
+qualify, and only genuine source residual stays with the original family. Frozen
+first-invoice administrative terms retain their invoice-proven identity.
+Google/Meta projection shapes and fingerprint algorithms are unchanged; dates
+and active eligibility reflect that corrected ownership. The former PAID-only
+`paid_at` fallback is unsupported without authoritative ledger evidence; legacy
+coverage remains unresolved rather than being rewritten. Original receipt,
+Meta policy/windows/history approval and inactive controls are unchanged.
+See `google-ads-connection.md` for the shared forward reader migration.
 
 Meta sends `Purchase`, `action_source=other`, actual payment Unix seconds and
 `sanctuary-scope-<quote-family-uuid>` as both `event_id` and `order_id`. A bank
