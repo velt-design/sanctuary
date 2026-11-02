@@ -58,7 +58,8 @@ describe('website autoresponder preview sender', () => {
         "[Preview: Editorial Refined] Alex, we've received your pergola enquiry",
     });
     expect(message).not.toHaveProperty('bcc');
-    expect(message.html).toContain('sp-preview');
+    expect(message.html).toContain('name="color-scheme" content="light"');
+    expect(message.html).not.toContain('prefers-color-scheme: dark');
     expect(message.text).toContain('Reply to this email');
     expect(options).toMatchObject({ timeoutMs: 15_000 });
     expect(options.idempotencyKey).toMatch(

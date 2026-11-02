@@ -1348,6 +1348,7 @@ Related docs/tests: `docs/commercial-truth-audit.md`, `docs/quotes-invoices-job-
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-02 | Website Autoresponse | Promoted | Preserve the approved light design and conditional submitted phone/suburb; inbox surrounds never generate separate dark email HTML. |
 | 2026-09-08 | Customer Preview Touch Gestures | Active | Removing an orbit activation step requires native touch tests: both canvas and event wrapper must permit vertical scrolling while preserving horizontal rotation and pinch zoom. |
 | 2026-09-08 | Customer Preview Interaction | Active | Preserve camera state separately from solved geometry; honour layer visibility and resolve coplanar reference surfaces in rendering without altering physical dimensions. |
 | 2026-09-08 | Customer Preview Framing | Promoted | Derive counts from the product layout owner and opt into an outside-face width datum; verify counts and shared Plan/3D member faces without reinterpreting existing portal designs. |
@@ -7033,3 +7034,15 @@ attribution and history coverage retain their domain contracts. Workbench,
 paused Studio and public marketing are excluded. Original performance gates,
 compiled native recovery/return checks and independent review remain mandatory;
 this implementation description is not a production-release claim.
+
+
+### 2026-11-02 - Website Autoresponse - Preserve The Approved Light Version
+
+Date: 2026-11-02
+Area: Marketing website autoresponder
+Status: Promoted
+Decision or mistake: Jordan clarified, "I have no issue with the light version, just added the screenshot as a comparision. yes lets just use the light version." He also requested the submitted customer's phone number and suburb when included. The existing light design, including its black button and footer, is the reference.
+Why it mattered: The shared shell previously enabled an authored dark palette through system-theme and Outlook overrides. Tests required those overrides, and previews could generate a separate dark template. Browser simulation was not evidence of inbox rendering.
+Current guardrail: Keep website autoresponses light-only through the shared shell and canonical renderer. Current and retained send layouts use one conditional contact-detail component; omit missing or blank values. Preview theme choices change only the surrounding inbox and retain identical light message HTML. Preserve existing content, commercial data and delivery contracts. Establish any reported spacing defect in the actual email client before changing the approved layout.
+Promoted to: `docs/automation-email-audit.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/emails/SubmittedContactDetails.tsx`; `apps/marketing/emails/alternatives/AlternativeEmailShell.tsx`; `apps/marketing/emails/enquiryEmailClarity.test.ts`; `apps/portal/lib/emailPreviews/websiteAutoresponderPreviewRenderer.ts`

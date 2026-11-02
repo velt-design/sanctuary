@@ -84,7 +84,6 @@ describe('staff website autoresponder preview route', () => {
         _templateId: string,
         _variables: unknown,
         layout: string,
-        options: { previewTheme: string },
       ) => ({
         layout,
         subject: "Alex, we've received your pergola enquiry",
@@ -102,7 +101,7 @@ describe('staff website autoresponder preview route', () => {
           roofApproach: 'Mixed roof',
           match: 'exact',
         },
-        html: `<html class="${options.previewTheme}"><body>${layout}</body></html>`,
+        html: `<html><body>${layout}</body></html>`,
         text: `${layout} preview`,
       }),
     );
@@ -174,7 +173,7 @@ describe('staff website autoresponder preview route', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(h.render).toHaveBeenCalledTimes(6);
+    expect(h.render).toHaveBeenCalledTimes(3);
     await expect(response.json()).resolves.toMatchObject({
       environment: 'Vercel Production',
       recipient: null,
@@ -195,18 +194,16 @@ describe('staff website autoresponder preview route', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(h.fixture).toHaveBeenCalledWith('residential-gable-with-blinds');
-    expect(h.render).toHaveBeenCalledTimes(6);
+    expect(h.render).toHaveBeenCalledTimes(3);
     expect(h.render).toHaveBeenCalledWith(
       fixture.templateId,
       fixture.variables,
       'editorial-refined',
-      { previewTheme: 'light' },
     );
     expect(h.render).toHaveBeenCalledWith(
       fixture.templateId,
       fixture.variables,
       'compact',
-      { previewTheme: 'dark' },
     );
     await expect(response.json()).resolves.toMatchObject({
       variant: 'residential-gable-with-blinds',
@@ -216,9 +213,9 @@ describe('staff website autoresponder preview route', () => {
           id: 'editorial-refined',
           name: 'Editorial Refined',
           htmlLight:
-            '<html class="light"><body>editorial-refined</body></html>',
+            '<html><body>editorial-refined</body></html>',
           htmlDark:
-            '<html class="dark"><body>editorial-refined</body></html>',
+            '<html><body>editorial-refined</body></html>',
         },
         { id: 'image-led', name: 'Image-led' },
         { id: 'compact', name: 'Compact' },
