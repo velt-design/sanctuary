@@ -14,6 +14,7 @@ import {
 import type { Point3 } from "@sp/geometry";
 import type { ResolvedStudioScene } from "@/lib/designStudio/interaction/resolvedScene";
 import { transformWebsitePoint } from "@/lib/designStudio/websiteComposition";
+import { STUDIO_OPENING_FRAME } from './studioOpeningFrame';
 import { studioCompositionOverview } from "./studioCompositionOverview";
 import StudioHouseNode from "./StudioHouseNode";
 import StudioViewOrientation from "./StudioViewOrientation";
@@ -40,6 +41,8 @@ type Props = {
   framingKey: string;
   focused: ReturnType<typeof connectionView> | null;
   points: Point3[];
+  openingPoints?: Point3[];
+  objectFrames?: {id:string;points:Point3[]}[];
   onVisibility: (visibility: SelectionVisibility) => void;
   isNight: boolean;
 };
@@ -62,6 +65,8 @@ function StudioHouseModel({
   framingKey,
   focused,
   points,
+  openingPoints,
+  objectFrames,
   onVisibility,
   isNight,
 }: Props) {
@@ -109,9 +114,10 @@ function StudioHouseModel({
       } catch {}
   }, [cameraStorageKey]);
   const bounds = useMemo(
-    () => computeSceneBoundsFromPoints(focused?.points ?? points),
-    [points, focused],
+    () => computeSceneBoundsFromPoints(focused?.points ?? (fit===0 ? openingPoints??points : points)),
+    [points, focused, openingPoints, fit],
   );
+  const openingFit=useMemo(()=>openingPoints?{policy:STUDIO_OPENING_FRAME,overviewBounds:computeSceneBoundsFromPoints(points),overviewPoints:points}:undefined,[openingPoints,points]);
   const overview = useMemo(
     () =>
       studioCompositionOverview(
@@ -185,7 +191,9 @@ function StudioHouseModel({
                 zoomStep={zoomStep}
                 overviewDirection={focused?.direction ?? overview}
                 bounds={bounds}
-                fitPoints={focused?.points ?? points}
+                fitPoints={focused?.points ?? (fit===0 ? openingPoints??points : points)}
+                openingFit={openingFit}
+                sceneObjects={objectFrames}
                 framingKey={framingKey}
                 fitPadding={0.76}
                 studio

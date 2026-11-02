@@ -81,3 +81,57 @@ it.each(['shiftKey','ctrlKey','metaKey'])('uses the actual OrbitControls %s pan/
  for(const field of ['enabled','enableRotate']){f.orbit[field]=false;drag(1);expect(f.orbit.target.toArray()).toEqual(old);f.orbit[field]=true;}
  drag(1);expect(f.orbit.target.toArray()).toEqual([9000,2000,1600]);expect(camera.position.clone().sub(f.orbit.target).distanceTo(delta)).toBeLessThan(1e-8);
 });
+it('migrates an exact legacy automatic overview once, preserves manual cameras, and honours deliberate whole-scene Fit',()=>{
+ vi.stubGlobal('matchMedia',()=>({matches:true}));sessionStorage.removeItem('opening-policy');
+ const overview=[{x:-3000,y:-9000,z:0},{x:9000,y:3000,z:4000}],opening=[{x:-1000,y:-1000,z:0},{x:7000,y:4000,z:3400}],direction={x:1,y:2,z:.65};
+ const overviewBounds=computeSceneBoundsFromPoints(overview),openingFit={policy:'pergola-context.v1',overviewBounds,overviewPoints:overview};
+ const setup=()=>{const camera=new PerspectiveCamera(24,1,10,200000);f.orbit={target:new Vector3(),update:()=>{camera.lookAt(f.orbit.target);camera.updateMatrixWorld();}};f.state={camera,size:{width:900,height:600},gl:{domElement:document.createElement('canvas')},invalidate:vi.fn()};return camera;};
+ const base={bounds:overviewBounds,fitPoints:overview,enabled:true,reset:0,fit:0,surroundings:true,studio:true,studioCad:true,preserveUserCamera:true,storageKey:'opening-policy',overviewDirection:direction,fitPadding:.76,framingKey:'design'};
+ setup();m=renderIntoDocument(<PreviewCamera {...base}/>);const legacy=JSON.parse(sessionStorage.getItem('opening-policy')!);m.unmount();m=undefined;
+ const camera=setup(),props={...base,bounds:computeSceneBoundsFromPoints(opening),fitPoints:opening,openingFit};
+ m=renderIntoDocument(<PreviewCamera {...props}/>);
+ expect(f.orbit.target.toArray()).toEqual(Object.values(props.bounds.center));expect(camera.position.toArray()).not.toEqual(legacy.position);
+ expect(JSON.parse(sessionStorage.getItem('opening-policy')!).intent).toBe('opening');
+ camera.position.add(new Vector3(1200,1300,1400));f.orbit.target.add(new Vector3(100,200,300));f.props.onStart();f.props.onChange();
+ const manual=JSON.parse(sessionStorage.getItem('opening-policy')!);m.unmount();m=undefined;
+ setup();m=renderIntoDocument(<PreviewCamera {...props}/>);expect(f.state.camera.position.toArray()).toEqual(manual.position);expect(f.orbit.target.toArray()).toEqual(manual.target);
+ m.rerender(<PreviewCamera {...props} fit={1} bounds={overviewBounds} fitPoints={overview}/>);
+ expect(f.orbit.target.toArray()).toEqual(Object.values(overviewBounds.center));
+ expect(JSON.parse(sessionStorage.getItem('opening-policy')!).intent).toBe('overview');
+ m.unmount();m=undefined;sessionStorage.removeItem('opening-policy');
+});
+it.each([{label:'coincident',offset:0},{label:'offset',offset:250}])('keeps a $label visible copy through Undo/Redo and cached reopen before revealing outside additions',({offset})=>{
+ vi.stubGlobal('matchMedia',()=>({matches:true}));const storageKey='addition-camera-'+offset;sessionStorage.removeItem(storageKey);
+ function freshCamera(){const c=new PerspectiveCamera(24,1,10,200000);f.orbit={target:new Vector3(),update:()=>{c.lookAt(f.orbit.target);c.updateMatrixWorld();}};f.state={camera:c,size:{width:900,height:600},gl:{domElement:document.createElement('canvas')},invalidate:vi.fn()};return c;}
+ let camera=freshCamera();
+ const points=[0,6000].flatMap(x=>[0,3000].flatMap(y=>[0,3000].map(z=>({x,y,z})))),bounds=computeSceneBoundsFromPoints(points),base={bounds,fitPoints:points,enabled:true,reset:0,fit:0,surroundings:true,studio:true,studioCad:true,preserveUserCamera:true,framingKey:'same-design',storageKey,openingFit:{policy:'pergola-context.v1',overviewBounds:bounds,overviewPoints:points}},p={id:'p',points};
+ const copy={id:'copy',points:points.map(v=>({...v,x:v.x+offset}))},copyCentre=computeSceneBoundsFromPoints(copy.points).center;
+ m=renderIntoDocument(<PreviewCamera {...base} sceneObjects={[p]} selectionPivot={{id:'p',centre:bounds.center}}/>);
+ camera.zoom=.9;camera.updateProjectionMatrix();f.props.onStart();camera.position.add(new Vector3(100,150,50));f.orbit.target.add(new Vector3(100,150,50));f.orbit.update();f.props.onChange();
+ for(const point of [...points,...copy.points]){const q=new Vector3(point.x,point.y,point.z).project(camera);expect(Math.abs(q.x)).toBeLessThan(1);expect(Math.abs(q.y)).toBeLessThan(1);}
+ const eye=camera.position.toArray(),target=f.orbit.target.toArray(),zoom=camera.zoom;
+ const unchanged=()=>{expect(camera.position.toArray()).toEqual(eye);expect(f.orbit.target.toArray()).toEqual(target);expect(camera.zoom).toBe(zoom);};
+ m.rerender(<PreviewCamera {...base} sceneObjects={[p,copy]} selectionPivot={{id:'copy',centre:copyCentre}}/>);unchanged();
+ m.rerender(<PreviewCamera {...base} sceneObjects={[p]} selectionPivot={{id:'p',centre:bounds.center}}/>);unchanged();
+ m.rerender(<PreviewCamera {...base} sceneObjects={[p,copy]} selectionPivot={{id:'copy',centre:copyCentre}}/>);unchanged();
+ const retained=JSON.parse(sessionStorage.getItem(storageKey)!);expect(retained.intent).toBe('manual');m.unmount();m=undefined;
+ camera=freshCamera();m=renderIntoDocument(<PreviewCamera {...base} sceneObjects={[p,copy]} selectionPivot={{id:'copy',centre:copyCentre}}/>);unchanged();
+ const a={id:'a',points:points.map(v=>({...v,x:v.x+30000}))},b={id:'b',points:points.map(v=>({...v,y:v.y-20000}))};
+ f.state.size={width:0,height:600};m.rerender(<PreviewCamera {...base} sceneObjects={[p,copy,a,b]} selectionPivot={{id:'copy',centre:copyCentre}}/>);unchanged();
+ f.state.size={width:900,height:600};m.rerender(<PreviewCamera {...base} enabled={false} sceneObjects={[p,copy,a,b]} selectionPivot={{id:'copy',centre:copyCentre}}/>);unchanged();
+ const beforeDirection=camera.position.clone().sub(f.orbit.target).normalize();
+ m.rerender(<PreviewCamera {...base} sceneObjects={[p,copy,a,b]} selectionPivot={{id:'copy',centre:copyCentre}}/>);
+ expect(f.orbit.target.toArray()).toEqual(target);expect(camera.position.clone().sub(f.orbit.target).normalize().distanceTo(beforeDirection)).toBeLessThan(1e-12);expect(camera.zoom).toBe(zoom);
+ for(const point of [...points,...copy.points,...a.points,...b.points]){const q=new Vector3(point.x,point.y,point.z).project(camera);expect(Math.abs(q.x)).toBeLessThan(1);expect(Math.abs(q.y)).toBeLessThan(1);}
+ const saved=JSON.parse(sessionStorage.getItem(storageKey)!);expect(saved.intent).toBe('manual');m.unmount();m=undefined;
+ camera=freshCamera();m=renderIntoDocument(<PreviewCamera {...base} sceneObjects={[p,copy,a,b]} selectionPivot={{id:'copy',centre:copyCentre}}/>);expect(camera.position.toArray()).toEqual(saved.position);expect(f.orbit.target.toArray()).toEqual(saved.target);expect(camera.zoom).toBe(saved.zoom);
+ sessionStorage.removeItem(storageKey);
+});
+
+it('retains deliberate selection pivoting when both existing Studio objects remain in the scene',()=>{
+ vi.stubGlobal('matchMedia',()=>({matches:true}));const camera=new PerspectiveCamera(24,1,10,200000);f.orbit={target:new Vector3(),update:()=>{camera.lookAt(f.orbit.target);camera.updateMatrixWorld();}};f.state={camera,size:{width:900,height:600},gl:{domElement:document.createElement('canvas')},invalidate:vi.fn()};
+ const p={id:'p',points:[{x:0,y:0,z:0},{x:6000,y:3000,z:3000}]},q={id:'q',points:p.points.map(v=>({...v,x:v.x+10000}))},sceneObjects=[p,q],points=sceneObjects.flatMap(o=>o.points),base={bounds:computeSceneBoundsFromPoints(points),fitPoints:points,sceneObjects,enabled:true,reset:0,fit:0,surroundings:true,studio:true,studioCad:true,preserveUserCamera:true,framingKey:'existing-selection'};
+ m=renderIntoDocument(<PreviewCamera {...base} selectionPivot={{id:'p',centre:computeSceneBoundsFromPoints(p.points).center}}/>);
+ camera.position.add(new Vector3(100,150,50));f.orbit.target.add(new Vector3(100,150,50));f.orbit.update();f.props.onStart();f.props.onChange();const delta=camera.position.clone().sub(f.orbit.target),zoom=camera.zoom,centre=computeSceneBoundsFromPoints(q.points).center;
+ m.rerender(<PreviewCamera {...base} selectionPivot={{id:'q',centre}}/>);expect(f.orbit.target.toArray()).toEqual([centre.x,centre.y,centre.z]);expect(camera.position.clone().sub(f.orbit.target).distanceTo(delta)).toBeLessThan(1e-8);expect(camera.zoom).toBe(zoom);
+});

@@ -16,6 +16,8 @@ import {
   preparedStudioResources,
 } from "../../../../test/studioPlacementTestWorker";
 import type { StudioPreparationRequest } from "./studioPlacementPreparation";
+import { createStudioSceneResolver } from '@/lib/designStudio/interaction/resolvedScene';
+import {studioWallAcquisitionFixture} from '../../../../test/studioWallAcquisitionFixture';
 
 let worker: TestWorker,
   current: StudioAuthoringEdit,
@@ -77,8 +79,8 @@ function initial() {
     },
   });
 }
-function Harness() {
-  const [edit, setEdit] = useState(initial);
+function Harness({initialEdit}:{initialEdit?:StudioAuthoringEdit}) {
+  const [edit, setEdit] = useState(()=>initialEdit??initial());
   current = edit;
   replace = setEdit;
   api = useStudioDirectPlacement(edit, setEdit, false);
@@ -216,4 +218,52 @@ it("keeps free movement available after a worker failure and reports only that o
     reason: expect.stringContaining("could not be prepared"),
   });
   expect(api.readiness("p", "fascia").kind).toBe("preparing");
+});
+
+it('recovers execution failure explicitly, rejects its old reply and requires a new deliberate connection release',()=>{
+  const fixture=studioWallAcquisitionFixture(0,'rear'),base=fixture.edit,target={x:fixture.start.x+fixture.delta.x,y:fixture.start.y+fixture.delta.y};
+  mount=renderIntoDocument(<Harness initialEdit={base}/>);
+  const failed=worker,old=requests.at(-1)!;
+  act(()=>failed.onerror?.(new ErrorEvent('error')));
+  act(()=>worker.drain());
+  expect(api.retryPreparation).toBeTypeOf('function');
+  act(()=>api.directDrag.begin('p2'));
+  act(()=>api.directDrag.move('p2',target.x,target.y,{x:0,y:0},fixture.units));
+  act(()=>api.directDrag.finish(true));
+  // Free placement remains allowed; preparation recovery cannot replay that
+  // completed release as a later attachment.
+  const released=current;
+  expect(websiteComposition(released)[0].studioAttachment).toBeNull();
+  act(()=>api.retryPreparation!());
+  act(()=>failed.reply(old));
+  expect(current).toEqual(released);
+  act(()=>worker.drain());
+  expect(api.retryPreparation).toBeUndefined();
+  expect(api.readiness('p2','facade').kind).toBe('ready');
+  expect(current).toEqual(released);expect(api.phase).toBe('idle');
+  act(()=>api.directDrag.begin('p2'));
+  act(()=>api.directDrag.move('p2',target.x,target.y,{x:0,y:0},fixture.units));
+  expect(api.proposal?.message).toContain('Release to connect');
+  const candidate=api.proposal!.candidate!;
+  act(()=>api.directDrag.finish(true));
+  const {facadeClearanceMm,...binding}=candidate.choice;
+  expect(websiteComposition(current)[0].studioAttachment).toMatchObject(binding);
+  expect(websiteComposition(current)[0].value?.facadeClearanceMm).toBe(facadeClearanceMm);
+  expect(websiteComposition(current)[0].position).toEqual(candidate.pose);
+});
+
+it('allows both overlapping pergolas to be grabbed and separated while commercial eligibility correctly refuses overlap',()=>{
+  const base=positionWebsitePergola(addWebsitePergola(initial(),'second'),'second',{originXMm:'0',originYMm:'0'});
+  const resolver=createStudioSceneResolver();
+  expect(resolver.resolve(base).arrangementEligibility).toContain('touching or overlapping');
+  mount=renderIntoDocument(<Harness initialEdit={base}/>);
+  expect(api.directDrag.canDrag('p')).toBe(true);expect(api.directDrag.canDrag('second')).toBe(true);
+  act(()=>api.directDrag.begin('second'));
+  act(()=>api.directDrag.move('second',15000,6000,{x:0,y:0},1));
+  act(()=>api.directDrag.finish(true));
+  expect(websiteComposition(current).find(p=>p.object.id==='second')!.position).toMatchObject({x:15000,y:6000});
+  expect(resolver.resolve(current).arrangementEligibility).toBeNull();
+  expect(api.directDrag.canDrag('p')).toBe(true);expect(api.directDrag.canDrag('second')).toBe(true);
+  act(()=>api.directDrag.begin('p'));act(()=>api.directDrag.move('p',1000,2000,{x:0,y:0},1));act(()=>api.directDrag.finish(true));
+  expect(websiteComposition(current)[0].position).toMatchObject({x:1000,y:2000});
 });
