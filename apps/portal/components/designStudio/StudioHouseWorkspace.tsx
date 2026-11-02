@@ -767,6 +767,7 @@ export default function StudioHouseWorkspace({
       {direct.message && (
         <p className={css.placementNotice} role="status">
           {direct.message}
+          {direct.retryPreparation && <>{' '}<button type="button" disabled={direct.busy} onClick={direct.retryPreparation}>Retry connection preparation</button></>}
         </p>
       )}
       <div className={css.workspace}>

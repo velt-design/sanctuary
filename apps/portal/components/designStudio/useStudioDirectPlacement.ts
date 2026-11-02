@@ -310,6 +310,15 @@ export function useStudioDirectPlacement(args: Inputs) {
       ? prepared.results.get(selectedTask.dependencyKey)
       : null;
   return {
+    retryPreparation: !locked && selectedTask && selectedResult?.kind==='refused' && selectedResult.executionFailure
+      ? () => {
+          // A failed/released gesture is over. Retry prepares another deliberate
+          // grab; it cannot revive the previous release into a commit.
+          controller.api.cancel();
+          setMessage(null);
+          scheduler.current?.retry({scopeKey:session.identity.scopeKey,epoch:session.identity.epoch,pendingKey},selectedTask.dependencyKey);
+        }
+      : undefined,
     canMove: (id: string) =>
       !locked && pendingValid && latest.current.acquire(id) !== null,
     readiness: (

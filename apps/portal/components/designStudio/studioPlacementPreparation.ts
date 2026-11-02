@@ -128,6 +128,7 @@ export function createStudioPlacementPreparation(
           return;
         results.set(task.dependencyKey, {
           kind: "refused",
+          executionFailure: true,
           reason:
             "This connection could not be prepared.",
         });
@@ -139,6 +140,7 @@ export function createStudioPlacementPreparation(
     } catch (error) {
       results.set(task.dependencyKey, {
         kind: "refused",
+        executionFailure: true,
         reason:
           error instanceof Error
             ? error.message
@@ -150,6 +152,16 @@ export function createStudioPlacementPreparation(
     }
   }
   return {
+    retry(context:StudioPreparationContext,dependencyKey:string){
+      const result=results.get(dependencyKey);
+      if(disposed || !desired || !sameContext(context,desired.context)
+        || !desired.tasks.some(task=>task.dependencyKey===dependencyKey)
+        || result?.kind!=='refused' || !result.executionFailure)return false;
+      results.delete(dependencyKey);
+      snapshot();
+      next();
+      return true;
+    },
     update(value: Desired) {
       if (disposed) return;
       if (

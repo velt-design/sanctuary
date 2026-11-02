@@ -88,6 +88,11 @@ disposes the old scheduler and a replay or new session creates a fresh owner.
 Worker replies retain their original scope/epoch/request checks; a terminated
 owner cannot publish into its replacement. Mounted replay tests warm the real
 preparation and exercise Plan offers, commits and Undo on all four house sides.
+An execution failure is distinct from a physical refusal. Only that failed
+object/method offers explicit Retry connection preparation; cached peers remain
+usable, and retry ends the old gesture before preparing a new deliberate grab.
+Canonical sloping-edge refusals stay disabled and their existing reasons appear
+beside the edge selector as well as in its options.
 Representative project size is 1–20 saved versions/options. Entry/selector refresh
 uses one metadata request, backed by project, estimate and quote-flow reads; no
 per-frame or per-keystroke list request is added. Existing all-row version labels
@@ -101,6 +106,19 @@ exact source, including saved empty designs. `newHousePlacement` derives a clear
 world-space gap from the occupied physical envelope; `houseEditing` converts that
 world position to the existing rectangle composition origin. Adding an object
 fits the existing camera once; later edits and moves preserve the user's view.
+Opening draft and protected canvases frame the pergolas with nearby house context;
+the complete house is still rendered. Fit remains a deliberate whole-design
+overview. `studioOpeningFrame` owns the camera guide points, not geometry or
+pricing. Existing camera keys remain in use: only an exactly recognised legacy
+automatic overview is replaced, while unknown/manual poses are retained. New
+3D records distinguish opening, manual camera and explicit overview intent.
+`perspectiveFit` shares the existing projection calculation with that conservative
+recognition. No per-frame server read, document change or new rendering engine
+is introduced.
+The subtotal's caption and value align within the existing compact value row.
+Changing Check placement to Preview only must not change the canvas rectangle:
+otherwise the real-resize safety guard correctly cancels an in-progress drag.
+The guard remains in place for actual viewport, Split and camera changes.
 Soffit bracket meshes inherit frame finish in the live scene and quote capture.
 `studioHouseCoordinates` losslessly serializes internal finite transform values
 to the existing decimal-string house contract. Quarter-turn trig results near
@@ -111,6 +129,15 @@ serializer. Actual quarter-turn scene retention, house pointer movement and
 four-side attachment release/Undo/save/reopen regressions
 cover this numeric failure. The owner's specific disappearance report is not
 claimed reproduced solely from that separate verified cause.
+
+Camera decomposition: `StudioHouseCanvas` delegates its existing bounded product
+fit points and opening-context policy to `studioOpeningFrame`.
+`PreviewCamera` delegates fit-distance math to `perspectiveFit`; its controls and
+transition lifetime stay together. `StudioHouseModel` only selects opening versus
+explicit overview inputs. The next safe split for the still-large Plan viewport
+owner is its camera/storage adapter, independently of pointer capture/commit.
+Workspace changes only wire operation-local preparation recovery. Its broader
+inspector/action split is deferred to avoid mixing an input defect with UI moves.
 
 The forward `studio_base_creation_seed` migration is required before enabling
 this new creation code. It updates only the existing creation function's blank

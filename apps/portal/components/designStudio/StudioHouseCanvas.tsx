@@ -3,6 +3,7 @@ import type { StudioSceneView } from "./studioHouseContext";
 import StudioHousePlan, { type StudioPlanFootprint } from "./StudioHousePlan";
 import { useStudioPlanViewport } from "./useStudioPlanViewport";
 import { useMemo, useState, useRef, useEffect, useLayoutEffect } from "react";
+import { studioCameraFrames } from './studioOpeningFrame';
 import StudioHouseModel from "./StudioHouseModel";
 import { useLighting } from "@sp/configurator/react/controls";
 import type { StudioAuthoringEdit } from "@/lib/designStudio/authoringView";
@@ -156,47 +157,7 @@ export default function StudioHouseCanvas({
   );
   const { targets: joinTargets, proposed } = joinView;
   const joined = readScene.joins;
-  const points = useMemo(
-    () => [
-      ...houses.flatMap((h) => h.walls.flat()),
-      ...houses.flatMap((h) => h.roof.flat()),
-      ...products.flatMap((p) => {
-        if (!p.geometry || !p.position) return [];
-        const local =
-          p.physical?.points ??
-          p.geometry.assembly.members.flatMap((m) => [
-            m.centerline.start,
-            m.centerline.end,
-          ]);
-        const bound = local.reduce(
-          (a, v) => ({
-            minX: Math.min(a.minX, v.x),
-            minY: Math.min(a.minY, v.y),
-            minZ: Math.min(a.minZ, v.z),
-            maxX: Math.max(a.maxX, v.x),
-            maxY: Math.max(a.maxY, v.y),
-            maxZ: Math.max(a.maxZ, v.z),
-          }),
-          {
-            minX: Infinity,
-            minY: Infinity,
-            minZ: Infinity,
-            maxX: -Infinity,
-            maxY: -Infinity,
-            maxZ: -Infinity,
-          },
-        );
-        return [bound.minX, bound.maxX].flatMap((x) =>
-          [bound.minY, bound.maxY].flatMap((y) =>
-            [bound.minZ, bound.maxZ].map((z) =>
-              transformWebsitePoint({ x, y, z }, p.position!),
-            ),
-          ),
-        );
-      }),
-    ],
-    [houses, products],
-  );
+  const {points,openingPoints}=useMemo(()=>studioCameraFrames(readScene),[readScene]);
   const selection = useMemo<StudioPlacementSelection | null>(() => {
     const p = products.find((p) => p.object.id === selected);
     if (p?.geometry && p.position)
@@ -287,6 +248,7 @@ export default function StudioHouseCanvas({
   }, [detailView, detail]);
   const focused = detailView ? detail : null;
   const plan = useStudioPlanViewport({
+    openingPoints,
     view,
     points,
     directFramePoints,
@@ -331,6 +293,7 @@ export default function StudioHouseCanvas({
           framingKey={edit.designId}
           focused={focused}
           points={points}
+          openingPoints={openingPoints}
           onVisibility={setVisibility3D}
           isNight={!!lighting?.night}
         />

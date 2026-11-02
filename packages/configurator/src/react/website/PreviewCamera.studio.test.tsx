@@ -81,3 +81,22 @@ it.each(['shiftKey','ctrlKey','metaKey'])('uses the actual OrbitControls %s pan/
  for(const field of ['enabled','enableRotate']){f.orbit[field]=false;drag(1);expect(f.orbit.target.toArray()).toEqual(old);f.orbit[field]=true;}
  drag(1);expect(f.orbit.target.toArray()).toEqual([9000,2000,1600]);expect(camera.position.clone().sub(f.orbit.target).distanceTo(delta)).toBeLessThan(1e-8);
 });
+it('migrates an exact legacy automatic overview once, preserves manual cameras, and honours deliberate whole-scene Fit',()=>{
+ vi.stubGlobal('matchMedia',()=>({matches:true}));sessionStorage.removeItem('opening-policy');
+ const overview=[{x:-3000,y:-9000,z:0},{x:9000,y:3000,z:4000}],opening=[{x:-1000,y:-1000,z:0},{x:7000,y:4000,z:3400}],direction={x:1,y:2,z:.65};
+ const overviewBounds=computeSceneBoundsFromPoints(overview),openingFit={policy:'pergola-context.v1',overviewBounds,overviewPoints:overview};
+ const setup=()=>{const camera=new PerspectiveCamera(24,1,10,200000);f.orbit={target:new Vector3(),update:()=>{camera.lookAt(f.orbit.target);camera.updateMatrixWorld();}};f.state={camera,size:{width:900,height:600},gl:{domElement:document.createElement('canvas')},invalidate:vi.fn()};return camera;};
+ const base={bounds:overviewBounds,fitPoints:overview,enabled:true,reset:0,fit:0,surroundings:true,studio:true,studioCad:true,preserveUserCamera:true,storageKey:'opening-policy',overviewDirection:direction,fitPadding:.76,framingKey:'design'};
+ setup();m=renderIntoDocument(<PreviewCamera {...base}/>);const legacy=JSON.parse(sessionStorage.getItem('opening-policy')!);m.unmount();m=undefined;
+ const camera=setup(),props={...base,bounds:computeSceneBoundsFromPoints(opening),fitPoints:opening,openingFit};
+ m=renderIntoDocument(<PreviewCamera {...props}/>);
+ expect(f.orbit.target.toArray()).toEqual(Object.values(props.bounds.center));expect(camera.position.toArray()).not.toEqual(legacy.position);
+ expect(JSON.parse(sessionStorage.getItem('opening-policy')!).intent).toBe('opening');
+ camera.position.add(new Vector3(1200,1300,1400));f.orbit.target.add(new Vector3(100,200,300));f.props.onStart();f.props.onChange();
+ const manual=JSON.parse(sessionStorage.getItem('opening-policy')!);m.unmount();m=undefined;
+ setup();m=renderIntoDocument(<PreviewCamera {...props}/>);expect(f.state.camera.position.toArray()).toEqual(manual.position);expect(f.orbit.target.toArray()).toEqual(manual.target);
+ m.rerender(<PreviewCamera {...props} fit={1} bounds={overviewBounds} fitPoints={overview}/>);
+ expect(f.orbit.target.toArray()).toEqual(Object.values(overviewBounds.center));
+ expect(JSON.parse(sessionStorage.getItem('opening-policy')!).intent).toBe('overview');
+ m.unmount();m=undefined;sessionStorage.removeItem('opening-policy');
+});

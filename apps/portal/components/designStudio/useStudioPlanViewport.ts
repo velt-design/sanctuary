@@ -16,10 +16,12 @@ import {
   studioPlanPointerPoint,
   type StudioPlanPointerMapping,
 } from "./studioPlanPointer";
+import { STUDIO_OPENING_FRAME, isLegacyStudioPlanOverview } from './studioOpeningFrame';
 type Point = { x: number; y: number };
 type Inputs = {
   view: StudioSceneView;
   points: ReadonlyArray<Point>;
+  openingPoints?: ReadonlyArray<Point>;
   directFramePoints?: ReadonlyArray<Point>;
   cameraStorageKey?: string;
   persistentViewport: boolean;
@@ -33,6 +35,7 @@ type Inputs = {
 export function useStudioPlanViewport({
   view,
   points,
+  openingPoints,
   directFramePoints,
   cameraStorageKey,
   persistentViewport,
@@ -49,6 +52,7 @@ export function useStudioPlanViewport({
       const v = JSON.parse(
         sessionStorage.getItem(`${cameraStorageKey}:plan`) ?? "null",
       );
+      if(v && openingPoints && isLegacyStudioPlanOverview(v,points))return null;
       return cameraStorageKey &&
         v &&
         [v.x, v.y, v.units].every(Number.isFinite) &&
@@ -75,7 +79,7 @@ export function useStudioPlanViewport({
       try {
         sessionStorage.setItem(
           `${cameraStorageKey}:plan`,
-          JSON.stringify(planCamera),
+          JSON.stringify({...planCamera,framingPolicy:STUDIO_OPENING_FRAME}),
         );
       } catch {}
   }, [cameraStorageKey, planCamera]);
@@ -137,7 +141,7 @@ export function useStudioPlanViewport({
     if (persistentViewport) {
       if (!planCamera && svg.current && svgSize.width > 0 && svgSize.height > 0)
         setPlanCamera(
-          initialStudioPlanCamera([...points, ...(directFramePoints ?? [])], {
+          initialStudioPlanCamera([...(openingPoints??points), ...(directFramePoints ?? [])], {
             width: svg.current.clientWidth,
             height: svg.current.clientHeight,
           }),
@@ -163,7 +167,7 @@ export function useStudioPlanViewport({
           svgSize,
         ),
       );
-  }, [directFramePoints, svgSize, persistentViewport, planCamera, points]);
+  }, [directFramePoints, svgSize, persistentViewport, planCamera, points, openingPoints]);
   const planFrame =
     persistentViewport && planCamera
       ? studioPlanViewBox(planCamera, svgSize)
