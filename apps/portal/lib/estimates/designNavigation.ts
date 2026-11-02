@@ -12,9 +12,9 @@ export function estimateDesignKind(outputs: unknown): 'calculator' | 'studio' {
 
 export function studioEstimateHref(
   estimate: Pick<EstimateMeta, 'id' | 'projectId' | 'designKind'> | null | undefined,
-  intent: 'review' | 'revision' | 'duplicate' = 'review',
+  intent: 'design' | 'revision' | 'duplicate' = 'design',
 ): string | null {
   if (estimate?.designKind !== 'studio') return null;
   const root = `/staff/design-studio/${encodeURIComponent(estimate.projectId)}/${encodeURIComponent(estimate.id)}`;
-  return intent === 'review' ? root : `${root}/edit?intent=${intent}`;
+  return intent === 'design' ? `${root}/edit` : `${root}/edit?intent=${intent}`;
 }

@@ -24,7 +24,7 @@ type Pending = Extract<StudioCreatePendingRead, { state: 'valid' }>;
 type View = { identity: string; state: 'loading' | 'ready' | 'sending' | 'retry' | 'confirmed' | 'blocked'; command?: StudioCreateCommand; receipt?: StudioCreateReceipt; body?: string; receiptStored?: boolean; opening?:boolean; message?: string };
 const matches = (command: StudioCreateCommand, intent: StudioCreateIntent) => command.mode === 'blank' ? intent.mode === 'blank' && command.scope === intent.scope : intent.mode !== 'blank' && command.sourceEstimateId === intent.sourceEstimateId;
 
-type AutomaticEntry = { automatic?: 'first' | 'new'; creationRequestId?: string; beforeCreate?: () => Promise<boolean>; onRetryEntry?: () => void };
+type AutomaticEntry = { automatic?: 'first' | 'new' | 'revision'; creationRequestId?: string; beforeCreate?: () => Promise<boolean>; onRetryEntry?: () => void };
 export default function StudioCreateAction({ scope, intent, openOnCreated=false, ...entry }: { scope: StudioCreateScope; intent: StudioCreateIntent; openOnCreated?:boolean } & AutomaticEntry) {
   return <StudioCommercialPolicy actorId={scope.actorId} projectId={scope.projectId}><StudioCreationCommand scope={scope} intent={intent} openOnCreated={openOnCreated} {...entry} /></StudioCommercialPolicy>;
 }
@@ -131,11 +131,8 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false, automatic, 
             const {authoring}=await apiJson<{authoring:StudioAuthoringResponse}>(`/api/projects/${boundScope.projectId}/estimates/${target}/studio`,{signal:checking.signal});
             if(!valid()||!actionsAvailable.current){if(retained())setView(previous=>({...previous,opening:false,message:'Your revision is created and kept. Open it when the current project state is ready.'}));return;}
             if(authoring.estimate.id!==target||authoring.estimate.projectId!==boundScope.projectId)throw Error('Wrong created design');
-            if(authoring.nextAction==='edit'&&!authoring.estimate.requiresNewRevision) {
-              if(automatic) await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}/edit`,true);
-              else await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}/edit`);
-            } else if(automatic) await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}`,true);
-            else router.push(`/staff/design-studio/${boundScope.projectId}/${target}`);
+            if(automatic) await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}/edit`,automatic!=='revision');
+            else await navigateStudioDocument(`/staff/design-studio/${boundScope.projectId}/${target}/edit`);
           }catch{if(retained())setView(previous=>({...previous,opening:false,message:'The revision is created and kept. Open the design to continue.'}));}finally{clearTimeout(timer);if(current.checking===checking)current.checking=undefined;}
         }
       });
@@ -185,7 +182,7 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false, automatic, 
       void apiJson<{authoring:StudioAuthoringResponse}>(`/api/projects/${scope.projectId}/estimates/${target}/studio`, {signal:abort.signal}).then(({authoring})=>{
         if (!active.live || lifecycle.current !== active || !active.participant?.allowed() || getLocalFirstStoreOwner() !== scope.actorId || abort.signal.aborted) return;
         if (authoring.estimate.id !== target || authoring.estimate.projectId !== scope.projectId) throw Error('Wrong created design');
-        return navigateStudioDocument(`/staff/design-studio/${scope.projectId}/${target}${authoring.nextAction === 'edit' && !authoring.estimate.requiresNewRevision ? '/edit' : ''}`, true, undefined, abort.signal);
+        return navigateStudioDocument(`/staff/design-studio/${scope.projectId}/${target}/edit`, automatic!=='revision', undefined, abort.signal);
       }).catch(()=>{if(active.live&&!abort.signal.aborted)setView(previous=>({...previous,message:'The design is kept. Open it to continue.'}));});
     }
     // The existing command owns authority, lock, durability and exact replay.
@@ -235,7 +232,7 @@ function StudioCreationCommand({ scope, intent, openOnCreated=false, automatic, 
     {current.message && <p role={current.state === 'blocked' ? 'alert' : 'status'}>{current.message}</p>}
     {automatic && current.state === 'blocked' && !current.command && onRetryEntry && <button type="button" onClick={onRetryEntry}>Try again</button>}
     {current.state === 'loading' ? <p role="status">Checking retained requests…</p>
-      : current.state === 'confirmed' && current.receipt ? current.opening?<p role="status">Opening your new revision…</p>:<><StudioNativeLink className={styles.actionLink} href={`/staff/design-studio/${encodeURIComponent(scope.projectId)}/${encodeURIComponent(current.receipt.estimateId)}${openOnCreated?'':'/edit'}`}>{openOnCreated?'View created revision':'Open design'}</StudioNativeLink>
+      : current.state === 'confirmed' && current.receipt ? current.opening?<p role="status">Opening your new revision…</p>:<><StudioNativeLink className={styles.actionLink} href={`/staff/design-studio/${encodeURIComponent(scope.projectId)}/${encodeURIComponent(current.receipt.estimateId)}/edit`}>{openOnCreated?'View created revision':'Open design'}</StudioNativeLink>
         {current.receiptStored && intent.mode !== 'recover' && !openOnCreated && <button type="button" disabled={!lifecycleAllowed || !commercial.actionsAvailable} style={{ display: 'block', marginTop: 16 }} onClick={() => { void startAnother(); }}>{intent.mode === 'blank' ? 'Create another design' : 'Start another revision'}</button>}</>
         : current.state !== 'blocked' && <button className={styles.actionLink} type="button" disabled={!lifecycleAllowed || !commercial.actionsAvailable || current.state === 'sending'} onClick={() => { void run(); }}>{current.state === 'sending' ? 'Creating…' : current.state === 'retry' ? 'Retry creation' : intent.mode === 'import' || intent.mode === 'website' ? 'Import as new design' : intent.mode === 'clone' ? openOnCreated ? 'Edit a new revision' : 'Create new revision' : 'Create design'}</button>}
   </div>;

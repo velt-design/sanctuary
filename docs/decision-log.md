@@ -1,5 +1,20 @@
 # Decision Log
 
+## 2026-11-02: Verify the first visible design, not only its route and lock
+
+Jordan clarified: "Can it open the actual design rather than Review & quote? I
+want them to see the pergola straight away. Keep quoted versions read only, with
+the option to start a new revision." Routing quoted rows to a protected Review
+form preserved locks but missed that outcome. Visual entry now uses the actual
+Studio canvas for both draft and protected sources. A thin read-only host avoids
+the editing controller entirely, so retained dirty work and pending quote journals
+cannot replace or write the protected view. Actual-frame tests cover that separation,
+retained creation receipts and the explicit exact-source revision action. See the
+Studio owner map for the visual-entry and recovery owners; Review remains deliberate.
+A prior confirmed clone is completed work, not a new-revision intent. Give each
+distinct New action a click-created nonce while retaining unknown/rejected requests
+for exact recovery; tests must distinguish a new copy from reopening an edited clone.
+
 ## 2026-11-02: Treat dependency directories as shared mutable inputs
 
 A clean install can collide with another local preview using the same dependency

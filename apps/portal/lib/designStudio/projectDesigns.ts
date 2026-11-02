@@ -9,7 +9,7 @@ export type StudioProjectDesigns = {
   project: { id: string; name: string }; designs: StudioProjectDesign[]; loadError: boolean;
 };
 export function studioDesignHref(projectId: string, design: StudioProjectDesign) {
-  return `/staff/design-studio/${projectId}/${design.id}${design.canOpenEditor ? '/edit' : ''}`;
+  return `/staff/design-studio/${projectId}/${design.id}/edit`;
 }
 /** Deliberate options can be remembered. Automatic fallback stays in base scope. */
 export function selectStudioProjectDesign(designs: StudioProjectDesign[], remembered: string | null) {

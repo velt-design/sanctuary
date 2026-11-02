@@ -153,7 +153,7 @@ export default function ProjectCalculatorTab({
     }
   }, [projectReady, studioSelectionHref, estimatesQuery.isPending, estimatesQuery.isError, router]);
 
-  const openStudio = useCallback((estimateId: string, intent: 'review' | 'revision' | 'duplicate' = 'review') => {
+  const openStudio = useCallback((estimateId: string, intent: 'design' | 'revision' | 'duplicate' = 'design') => {
     const href = studioEstimateHref(estimates.find(estimate => estimate.id === resolveLocalFirstId(estimateId)), intent);
     if (!href) return false;
     router.push(href);

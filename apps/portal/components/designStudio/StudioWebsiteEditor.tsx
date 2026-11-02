@@ -12,16 +12,22 @@ import StudioDesignSelector from './StudioDesignSelector';
 import StudioWebsiteRecovery from "./StudioWebsiteRecovery";
 import css from "./StudioWebsite.module.css";
 import type {StudioOpeningPrice} from '@/lib/designStudio/studioOpening';
+import StudioReadOnlyDesign from './StudioReadOnlyDesign';
 
 /** One unconditional durable session. Saved-data viewing is mounted only while
  * no edit exists; obsolete authoring hooks never precede the live Workspace. */
-export default function StudioWebsiteEditor(
-  props: StudioEditingSessionProps & {
+type Props = StudioEditingSessionProps & {
     versionLabel: string;
     identity?: StudioDesignIdentity;
     openingPrice?:StudioOpeningPrice;
-  },
-) {
+  };
+
+/** Protected viewing never mounts the durable editing/recovery owner. */
+export default function StudioWebsiteEditor(props: Props) {
+  return props.editable ? <EditableDesign {...props} /> : <StudioReadOnlyDesign {...props} />;
+}
+
+function EditableDesign(props: Props) {
   const prefetch=useContext(StudioDocumentContext)?false:undefined;
   const { scope, view, updatedAt, editable, versionLabel, identity, openingPrice } = props;
   const controller = useStudioEditingSession({

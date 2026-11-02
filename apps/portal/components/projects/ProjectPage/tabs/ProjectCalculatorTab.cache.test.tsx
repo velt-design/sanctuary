@@ -66,7 +66,7 @@ describe('saved design metadata upgrade', () => {
     await act(async () => request.resolve({ estimates: [{ ...oldRow, designKind: kind }] }));
     await settle();
     if (kind === 'studio') {
-      expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1');
+      expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1/edit');
       expect(rendered.container.querySelector('[data-calculator]')).toBeNull();
     } else {
       expect(rendered.container.querySelector('[data-calculator="est_1"]')).not.toBeNull();
@@ -92,7 +92,7 @@ describe('saved design metadata upgrade', () => {
     expect(retry).toBeTruthy();
     await act(async () => retry.click());
     await settle();
-    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1');
+    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1/edit');
     expect(getLocalFirstWorkingCopy('unrelated-working-copy')?.data).toEqual(saved);
     rendered.unmount(); client.clear();
   });
@@ -112,8 +112,8 @@ describe('saved design metadata upgrade', () => {
     expect(replace).not.toHaveBeenCalled();
     await act(async () => second.resolve({ estimates: [{ ...target, designKind: 'studio' }] }));
     await settle();
-    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_2/est_2');
-    expect(replace).not.toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1');
+    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_2/est_2/edit');
+    expect(replace).not.toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1/edit');
     rendered.unmount(); client.clear();
   });
 
@@ -131,7 +131,7 @@ describe('saved design metadata upgrade', () => {
     expect(apiJson).toHaveBeenCalledTimes(1);
     await act(async () => request.resolve({ estimates: [{ ...oldRow, designKind: 'studio' }] }));
     await settle();
-    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1');
+    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_1/edit');
     rendered.unmount(); client.clear();
   });
 

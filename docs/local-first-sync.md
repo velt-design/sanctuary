@@ -156,6 +156,16 @@ only a routing hint, checked against a fresh caller-RLS inventory. First creatio
 and explicit New actions retain the existing creation journal and Web Lock; URL
 nonces prevent a recovered New action from creating a second design.
 
+Protected visual entry is separate from an editing session. It renders the exact
+fresh server view through the existing Studio canvas without consulting, overlaying,
+clearing or replaying local dirty copies or pending quote commands. Camera and
+inspection state are presentation only. Its Edit a new revision button mounts the
+existing source-bound creation/recovery owner only after explicit user action;
+merely viewing cannot discover a prior clone and navigate away. Each deliberate
+new-revision click has a fresh nonce: an older confirmed clone cannot satisfy it,
+while uncertain/rejected commands remain retained for exact recovery. Draft navigation
+continues to drain accepted local work through the same existing fence.
+
 The Studio title reuses the metadata-only estimate name command. Naming fences
 local authoring and checks the selected design's retained working copy and journal.
 Dirty, pending or recovery work requires Save/recovery first. The existing clean

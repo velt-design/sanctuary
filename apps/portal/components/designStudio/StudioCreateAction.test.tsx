@@ -278,22 +278,28 @@ vi.mock('@/components/ui/toast/ToastProvider',()=>({useToast:()=>({error:vi.fn()
 
 describe('explicit create-and-open revision',()=>{
  function direct(){const value=renderIntoDocument(<StudioCreateAction scope={scope} intent={intent} openOnCreated/>);mounted.push(value);return value;}
+ it('starts the deferred revision only on its single user action and pushes the clone so Back retains its protected source',async()=>{
+  mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});
+  const value=renderIntoDocument(<StudioRevisionStart actorId={scope.actorId} projectId={scope.projectId} estimateId={intent.sourceEstimateId} revision={intent.expectedRevision} updatedAt={intent.expectedUpdatedAt} openOnCreated/>);mounted.push(value);
+  await flush();expect(mocks.list).not.toHaveBeenCalled();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.navigate).not.toHaveBeenCalled();
+  await click('Edit a new revision');await flush();expect(mocks.send).toHaveBeenCalledOnce();expect(mocks.stage.mock.calls[0][1]).toMatchObject(intent);expect(mocks.stage.mock.calls[0][1].requestId).toMatch(/^[0-9a-f-]{36}$/);expect(mocks.navigate).toHaveBeenCalledWith(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}/edit`,false);
+ });
  it('creates only on click and opens the exact freshly checked editable target without clearing its receipt',async()=>{
   mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});direct();await flush();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.navigate).not.toHaveBeenCalled();await click('Edit a new revision');expect(mocks.send).toHaveBeenCalledOnce();expect(mocks.navigate).toHaveBeenCalledWith(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}/edit`);expect(mocks.ack).not.toHaveBeenCalled();expect(document.body.textContent).not.toContain('Start another revision');
  });
- it('keeps a discovered confirmed target as an explicit useful Review link, never auto-opening or auto-creating',async()=>{
-  mocks.list.mockResolvedValue({state:'available',entries:[retained({receipt})]});direct();await flush();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.api).not.toHaveBeenCalled();expect(mocks.navigate).not.toHaveBeenCalled();expect(document.querySelector('a')?.getAttribute('href')).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}`);expect(mocks.ack).not.toHaveBeenCalled();
+ it('keeps a discovered confirmed target as an explicit useful design link, never auto-opening or auto-creating',async()=>{
+  mocks.list.mockResolvedValue({state:'available',entries:[retained({receipt})]});direct();await flush();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.api).not.toHaveBeenCalled();expect(mocks.navigate).not.toHaveBeenCalled();expect(document.querySelector('a')?.getAttribute('href')).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}/edit`);expect(mocks.ack).not.toHaveBeenCalled();
  });
- it('opens Review when the exact confirmed destination has since become quoted, without creating another revision',async()=>{
-  mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:true},nextAction:'create-revision'}});direct();await flush();await click('Edit a new revision');expect(mocks.push).toHaveBeenCalledWith(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}`);expect(mocks.navigate).not.toHaveBeenCalled();expect(mocks.send).toHaveBeenCalledOnce();expect(mocks.ack).not.toHaveBeenCalled();
+ it('opens the read-only visual design when the exact confirmed destination has since become quoted, without creating another revision',async()=>{
+  mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:true},nextAction:'create-revision'}});direct();await flush();await click('Edit a new revision');expect(mocks.navigate).toHaveBeenCalledWith(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}/edit`);expect(mocks.push).not.toHaveBeenCalled();expect(mocks.send).toHaveBeenCalledOnce();expect(mocks.ack).not.toHaveBeenCalled();
  });
  it('does not navigate after a held target verification crosses an identity lifetime',async()=>{
   let finish!:(value:unknown)=>void;mocks.api.mockImplementation(()=>new Promise(r=>{finish=r;}));direct();await flush();await click('Edit a new revision');await act(async()=>invalidateStudioLifecycle());await act(async()=>finish({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}}));expect(mocks.navigate).not.toHaveBeenCalled();expect(mocks.push).not.toHaveBeenCalled();expect(mocks.ack).not.toHaveBeenCalled();
  });
 });
 
-it('keeps the created receipt and a usable Review link when guarded native opening fails',async()=>{
- mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});mocks.navigate.mockRejectedValue(Error('Local persistence unavailable'));const m=renderIntoDocument(<StudioCreateAction scope={scope} intent={intent} openOnCreated/>);mounted.push(m);await flush();await click('Edit a new revision');expect(m.container.textContent).toContain('created and kept');expect(m.container.querySelector('a')?.getAttribute('href')).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}`);expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.send).toHaveBeenCalledOnce();
+it('keeps the created receipt and a usable design link when guarded native opening fails',async()=>{
+ mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:false},nextAction:'edit'}});mocks.navigate.mockRejectedValue(Error('Local persistence unavailable'));const m=renderIntoDocument(<StudioCreateAction scope={scope} intent={intent} openOnCreated/>);mounted.push(m);await flush();await click('Edit a new revision');expect(m.container.textContent).toContain('created and kept');expect(m.container.querySelector('a')?.getAttribute('href')).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}/edit`);expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.send).toHaveBeenCalledOnce();
 });
 
 describe('direct first entry and explicit new option', () => {
@@ -316,7 +322,7 @@ describe('direct first entry and explicit new option', () => {
  it('opens a retained confirmed result through fresh authority without creating or acknowledging it',async()=>{
   mocks.list.mockResolvedValue({state:'available',entries:[retained({command:{schemaVersion:'studio_create.v1',requestId:'confirmed',...blank},receipt})]});
   mocks.api.mockResolvedValue({authoring:{estimate:{id:receipt.estimateId,projectId:scope.projectId,requiresNewRevision:true},nextAction:'create-revision'}});
-  entry();await flush();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.navigate.mock.calls[0][0]).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}`);
+  entry();await flush();expect(mocks.send).not.toHaveBeenCalled();expect(mocks.ack).not.toHaveBeenCalled();expect(mocks.navigate.mock.calls[0][0]).toBe(`/staff/design-studio/${scope.projectId}/${receipt.estimateId}/edit`);
  });
  it('gives each deliberate New a durable URL nonce, ignores older confirmed creations and never clears receipts',async()=>{
   const previous={schemaVersion:'studio_create.v1',requestId:'previous',...blank};

@@ -24,7 +24,7 @@ export default function StudioDocumentPage({callback}:{callback:string}) {
  if(!frame||frame.callback!==callback)return installation?.callback===callback?<main><h1>Design Studio</h1><p role="status">Opening saved design…</p></main>:<StudioNativeEntry callback={callback}/>;
  const {visible,error,leaving,retry}=frame,admission=frame.admission?.kind==='edit'?frame.admission:null,parts=callback.split('?')[0].split('/'),projectId=parts[3],estimateId=parts[4];
  const authoring=admission?.authoring;
- const needsEditor=authoring?.state==='ready'&&authoring.view&&!authoring.estimate.requiresNewRevision&&authoring.nextAction==='edit';
+ const needsEditor=authoring?.state==='ready'&&authoring.view;
  const loaded=admission&&(!needsEditor||leaf)?{authoring:admission.authoring,Editor:leaf?.Editor,leafFailed:Boolean(needsEditor&&!leaf?.Editor),openingPrice:admission.openingPrice}:null;
  const loading=<StudioAuthoringContent projectId={projectId} estimateId={estimateId} loaded={null} retry={retry}/>;
  return <>

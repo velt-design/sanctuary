@@ -10,8 +10,10 @@ The Projects header retains progressive private-content loading and disabling.
 `/staff/projects/[projectId]/studio` is now a direct-entry resolver, not a landing
 form. Its server GET reads only. The browser opens the last explicitly selected
 visible, non-archived design for that actor and project, or the canonical current
-base draft. Quoted designs open in Review; their frozen design and quote stay
-protected. Add-ons are a deliberate selection, not a newer-row override of base.
+base draft. Both drafts and quoted designs open the actual visual design first.
+Quoted designs use the same 3D/Plan canvas with read-only geometry and choices;
+their frozen design and quote stay protected. Add-ons are a deliberate selection,
+not a newer-row override of base.
 An empty successful project inventory starts one default-named base design with a
 freestanding 6 x 3 m pitched pergola through
 the existing retained creation journal. The same Web Lock rechecks fresh inventory
@@ -43,8 +45,9 @@ creation replaces the transient entry URL. Edit a new revision uses the selected
 source's current revision and opens the new editable design without changing the
 quoted source. The Quote header exposes that action beside Download PDF.
 
-`/staff/design-studio/[projectId]/[estimateId]/edit` owns authoring; the same route
-without `/edit` owns Review, quote preparation and the client package. Staff/admin
+`/staff/design-studio/[projectId]/[estimateId]/edit` owns the visual design entry:
+fresh edit authority selects editable authoring or protected viewing. The same route
+without `/edit` owns deliberate Review, quote preparation and the client package. Staff/admin
 identity and project access are checked freshly on the server. Middleware hints
 only carry canonical routing and refreshed cookies, never access authority.
 
@@ -54,6 +57,23 @@ inventory and existing quote-flow authority. `StudioProjectEntry` resolves entry
 `StudioCreateAction` retains creation, locking, exact replay and automatic opening.
 `StudioDesignSelector` owns the shared header/popover; `renameDesign.ts` coordinates
 the existing metadata name command with local preservation and fresh reopening.
+`StudioReadOnlyDesign` is a thin host for the existing `StudioHouseCanvas` and
+resolved scene. It uses only the freshly admitted server view, starts in 3D and
+permits object inspection, Plan/3D/Split, pan, orbit, Fit and zoom. It does not mount
+an editing session, read or restore retained dirty work, replay a quote journal,
+reprice, or expose save/reset/add/delete/drag/option/keyboard mutation commands.
+The compact header identifies the protected version and offers Edit a new revision.
+Only that explicit click mounts the existing durable creation owner, bound to the
+displayed source revision and timestamp. A retained creation receipt cannot redirect
+the visual entry on mount. Successful creation opens the editable clone's canvas;
+unknown outcomes retain the existing explicit recovery. The original stays unchanged.
+Every deliberate Edit a new revision action, including Review and Quote, creates
+its request nonce only on click. The existing owner ignores older confirmed clones
+for that new intent, while unknown or rejected requests still require exact recovery.
+The new canvas is pushed into browser history so Back returns to its protected source.
+Project saved/source links, Designs history, confirmed creation links and the Design
+return from Review/Quote all select this visual entry rather than using editability
+to send a protected version to a form. Unsupported source recovery stays explicit.
 Direct-entry navigation retains the existing worker, pricing, document and email
 contracts. The authoring changes below add an explicit geometry selection and
 the narrowly expanded creation predicate described below, using the existing
