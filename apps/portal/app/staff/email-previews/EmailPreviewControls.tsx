@@ -204,7 +204,7 @@ export function EmailPreviewControls({
             onChange={controller.setViewport}
           />
           <EmailPreviewSegmentedControl
-            label="Simulation"
+            label="Inbox surround"
             options={previewThemeOptions}
             value={controller.theme}
             disabled={controller.controlsLocked}
@@ -226,8 +226,7 @@ export function EmailPreviewControls({
             {viewport?.width ?? 760}px · {controller.theme} · {controller.zoom}%
           </strong>
           <span>
-            {displayMode?.description}. Theme is simulated; the exact email
-            HTML remains isolated.
+            {displayMode?.description}. Only the inbox surround changes. The email stays light.
           </span>
         </p>
       </section>

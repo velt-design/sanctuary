@@ -11,6 +11,7 @@ import type {
 import { formatInvestmentAmount } from '../components/InvestmentPanel';
 import { formatNZD } from '../utils/money';
 import { submittedEmailDesign } from '../SubmittedDesign';
+import { submittedEmailContact } from '../SubmittedContactDetails';
 
 export type AlternativeEmailStep = Readonly<{
   title: string;
@@ -24,6 +25,7 @@ export type AlternativeEmailRow = Readonly<{
 
 export type AlternativeEmailModel = Readonly<{
   audience: 'residential' | 'commercial' | 'professional';
+  contactDetails: ReturnType<typeof submittedEmailContact>;
   eyebrow: string;
   heading: string;
   intro: string;
@@ -175,6 +177,7 @@ function buildEstimateModel(
   return {
     audience,
     submittedDesign: submittedEmailDesign(variables),
+    contactDetails: submittedEmailContact(variables),
     configuredEstimate: props.configuredEstimate,
     filesReceivedCount: props.filesReceivedCount,
     eyebrow: `${isCommercial ? 'Commercial' : 'Residential'} pergola enquiry · received`,
@@ -221,6 +224,7 @@ function buildProfessionalModel(
   return {
     audience: 'professional',
     submittedDesign: submittedEmailDesign(variables),
+    contactDetails: submittedEmailContact(variables),
     filesReceivedCount: props.filesReceivedCount,
     eyebrow: 'Professional project enquiry · received',
     heading: `Thanks, ${firstName(props.name)}. We’ve received your project enquiry.`,

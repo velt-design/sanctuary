@@ -155,7 +155,7 @@ test('focus, theme, viewport, zoom and delivery confirmation remain synchronized
   await expect(page.locator('iframe')).toHaveAttribute('sandbox', '');
   await expect(page.locator('iframe')).toHaveAttribute(
     'srcdoc',
-    /sp-preview-dark/,
+    /content="light"/,
   );
 
   await page.getByRole('button', { name: 'Send Image-led' }).click();

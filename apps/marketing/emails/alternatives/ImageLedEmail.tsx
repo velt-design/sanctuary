@@ -7,7 +7,6 @@ import {
   Text,
 } from '@react-email/components';
 import { THEME } from '../theme';
-import type { AlternativePreviewTheme } from './AlternativeEmailShell';
 import { AlternativeEmailShell } from './AlternativeEmailShell';
 import type { AlternativeEmailModel } from './alternativeEmailModel';
 import {
@@ -29,16 +28,12 @@ function priorityFacts(model: AlternativeEmailModel) {
 export function ImageLedEmail(props: {
   model: AlternativeEmailModel;
   preheader: string;
-  previewTheme?: AlternativePreviewTheme;
 }) {
   const { model } = props;
   const facts = priorityFacts(model);
 
   return (
-    <AlternativeEmailShell
-      preview={props.preheader}
-      previewTheme={props.previewTheme}
-    >
+    <AlternativeEmailShell preview={props.preheader}>
       <Section
         className="spx-rule"
         style={{
