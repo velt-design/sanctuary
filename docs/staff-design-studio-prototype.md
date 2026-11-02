@@ -98,6 +98,26 @@ uses one metadata request, backed by project, estimate and quote-flow reads; no
 per-frame or per-keystroke list request is added. Existing all-row version labels
 remain canonical. Fixture response timings are not production latency evidence.
 
+### Muted 3D house context
+
+`studioHousePalette` owns the shared pale roof, warm-grey walls and quiet trim.
+The existing `studioHouseMaterials` uses matte, low-relief procedural finishes:
+Plain / render, horizontal Weatherboard and staggered Brick, through the existing
+Wall cladding selector and optional `appearance.wallMaterial` source. The roof's
+physical profile and authored HEX colour remain exact; only presentation relief
+and reflectivity are restrained. Unset roof colour agrees across the material,
+flashings, colour picker and HEX field without authoring a value on opening or
+blur. Explicit saved colours, including the previous dark default, remain authored.
+
+The existing local-mm UVs, mipmapped small textures, memoized resources and
+disposal stay in place. No new mesh, network asset or per-frame allocation is
+added. Editable, protected and Review/capture views reuse `StudioHouseNode`;
+previously frozen document artifacts are not regenerated. Appearance commands,
+Undo, Save/reopen and exact-source revision cloning reuse existing owners. Plan,
+camera, contact/support geometry, preparation, quantities, pricing and schema
+are unchanged. Focused tests cover default agreement, material/UV/resource
+lifetime, all three claddings through session persistence and revision copying.
+
 ### Architectural Plan house context
 
 Studio Plan and Split keep pergolas visually primary. `StudioPlanHouse` owns the

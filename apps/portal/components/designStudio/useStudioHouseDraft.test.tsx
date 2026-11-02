@@ -10,6 +10,7 @@ import type { StudioAuthoringEdit } from "@/lib/designStudio/authoringView";
 import type { StudioAuthoredIdentity } from "@/lib/designStudio/interaction/contracts";
 import { useStudioHouseDraft } from "./useStudioHouseDraft";
 import StudioHouseInspector from "./StudioHouseInspector";
+import {STUDIO_HOUSE_PALETTE} from './studioHousePalette';
 import * as houseGeometry from '@/lib/designStudio/studioHouseGeometry';
 const scope = {
   actorId: "actor",
@@ -107,7 +108,7 @@ it("completes each house property without Apply and keeps unrelated invalid raw 
 });
 it('completes house materials without a shape solve, retains invalid raw dimensions and completes a colour only once',()=>{
   render();
-  const walls=mounted.container.querySelector<HTMLSelectElement>('select[aria-label="House wall material"]');
+  const walls=mounted.container.querySelector<HTMLSelectElement>('select[aria-label="House wall cladding"]');
   expect(walls).not.toBeNull();
   const solve=vi.spyOn(houseGeometry,'solveStudioHouse');
   act(()=>{walls!.value='weatherboard';walls!.dispatchEvent(new Event('change',{bubbles:true}));});
@@ -135,6 +136,9 @@ it('completes house materials without a shape solve, retains invalid raw dimensi
 });
 it('does not author an absent appearance on focus/blur and fences an old material callback after target replacement',()=>{
   render();
+  expect(mounted.container.querySelector<HTMLInputElement>('input[aria-label="House roof colour"]')!.value).toBe(STUDIO_HOUSE_PALETTE.roof);
+  expect(mounted.container.querySelector<HTMLInputElement>('input[aria-label="House roof colour HEX"]')!.value).toBe(STUDIO_HOUSE_PALETTE.roof);
+  expect(mounted.container.querySelector<HTMLSelectElement>('select[aria-label="House wall cladding"]')!.selectedOptions[0].textContent).toBe('Plain / render');
   const colour=mounted.container.querySelector<HTMLInputElement>('input[aria-label="House roof colour HEX"]')!;
   act(()=>{colour.focus();colour.blur();});
   expect(current.spatial.houseAssembly!.houseForms[0]).not.toHaveProperty('appearance');

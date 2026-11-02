@@ -19,6 +19,7 @@ import {
   studioHouseMaterial,
   studioHouseSurfaceUV,
 } from "./studioHouseMaterials";
+import {STUDIO_HOUSE_PALETTE} from './studioHousePalette';
 import { houseWorld } from "@/lib/designStudio/studioHouseGeometry";
 import { boxedHouseSoffits } from "@/lib/designStudio/studioHouseWebsiteContact";
 import type { StudioHouseGeometry } from "@/lib/designStudio/studioHouseGeometry";
@@ -95,7 +96,7 @@ function Solid({
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial color={color} roughness={0.82} side={DoubleSide} />
+      <meshStandardMaterial color={color} roughness={0.92} side={DoubleSide} />
     </mesh>
   );
 }
@@ -198,8 +199,8 @@ function RoofFlashing({
         <mesh key={wing.id} geometry={wing.geometry} castShadow receiveShadow>
           <meshStandardMaterial
             color={color}
-            metalness={0.25}
-            roughness={0.48}
+            metalness={0}
+            roughness={0.92}
             side={DoubleSide}
           />
         </mesh>
@@ -243,7 +244,7 @@ export default function StudioHouseNode({
               y: centre.y + (p.y - centre.y) * 1.075,
               z: 1,
             }))}
-            color="#c5bfb2"
+            color={STUDIO_HOUSE_PALETTE.base}
           />
           {solids.surfaceSolids
             .filter((s) => s.kind !== "soffit" && s.renderMesh)
@@ -267,7 +268,7 @@ export default function StudioHouseNode({
                   key={s.id}
                   mesh={s.renderMesh!}
                   house={geometry.house}
-                  color={cad ? "#cbd1ca" : "#dddcd2"}
+                  color={cad ? STUDIO_HOUSE_PALETTE.trim : STUDIO_HOUSE_PALETTE.plaster}
                 />
               ),
             )}
@@ -278,26 +279,26 @@ export default function StudioHouseNode({
                 key={s.id}
                 mesh={s.renderMesh!}
                 house={geometry.house}
-                color="#adb7aa"
+                color={STUDIO_HOUSE_PALETTE.trim}
               />
             ))}
           {boxedHouseSoffits(geometry).map((s, i) => (
-            <Surface key={`${s.side}:${i}`} points={s.world} color="#d8d7cc" />
+            <Surface key={`${s.side}:${i}`} points={s.world} color={STUDIO_HOUSE_PALETTE.soffit} />
           ))}
         </>
       ) : (
         <>
           {geometry.walls.map((p, i) => (
-            <Surface key={`wall${i}`} points={p} color="#ddd8cc" />
+            <Surface key={`wall${i}`} points={p} color={STUDIO_HOUSE_PALETTE[geometry.house.source.appearance?.wallMaterial ?? "plaster"]} />
           ))}
           {geometry.roof.map((p, i) => (
-            <Surface key={`roof${i}`} points={p} color="#7e837b" />
+            <Surface key={`roof${i}`} points={p} color={geometry.house.source.appearance?.roofColour ?? STUDIO_HOUSE_PALETTE.roof} />
           ))}
           {geometry.eaves.map((p, i) => (
-            <Surface key={`eave${i}`} points={p} color="#b4b7ad" />
+            <Surface key={`eave${i}`} points={p} color={STUDIO_HOUSE_PALETTE.trim} />
           ))}
           {geometry.soffits.map((p, i) => (
-            <Surface key={`soffit${i}`} points={p} color="#d2cfc5" />
+            <Surface key={`soffit${i}`} points={p} color={STUDIO_HOUSE_PALETTE.soffit} />
           ))}
         </>
       )}
@@ -309,7 +310,7 @@ export default function StudioHouseNode({
             house={geometry.house}
             color={
               geometry.house.source.appearance?.roofColour ??
-              (refined ? "#343b39" : "#7e837b")
+              STUDIO_HOUSE_PALETTE.roof
             }
           />
         ))}
