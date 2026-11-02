@@ -98,6 +98,31 @@ uses one metadata request, backed by project, estimate and quote-flow reads; no
 per-frame or per-keystroke list request is added. Existing all-row version labels
 remain canonical. Fixture response timings are not production latency evidence.
 
+### Architectural Plan house context
+
+Studio Plan and Split keep pergolas visually primary. `StudioPlanHouse` owns the
+pale house roof, light continuous roof edges and dashed actual wall footprint.
+Its display-only `studioHousePlanPresentation` derives illustrative slope lines
+from resolved world roof faces, including rotated, hipped, open-gable and mono
+forms; flat or degenerate faces gain no invented fall. Line density is bounded
+by screen scale and per-face count, not a construction sheet-spacing claim.
+Decorative faces and lines cannot receive pointer events. The existing actual
+wall footprint remains the keyboard/select/drag surface, below existing pergola
+and attachment overlays. Selected walls retain a distinct dashed outline.
+
+Studio opts into compact screen-scaled fall arrows in `PreviewPlanProduct`,
+with accessible downhill labels instead of repeated visible words. Shared
+Marketing and quote callers retain their original defaults. No solver, roof
+geometry, 3D material, price, source, save or read-only authority changes.
+Presentation/rotation/density tests, native text-selection and pointer tests,
+the full placement-session suite and the real read-only frame cover this owner.
+
+Gate0: no legacy audit/consolidation work is requested. This is an authorised
+active-Studio presentation change consuming existing geometry. No drawing-state
+conversion, topology, schema, construction detail or Phase 2 behaviour changes.
+The named house component removes presentation from the warning-size Plan
+composition owner; its camera/storage adapter remains the next safe extraction.
+
 ### Studio authoring feedback, 2 November 2026
 
 New base/options use `newDesignSeed` only in canonical blank creation. Add-on

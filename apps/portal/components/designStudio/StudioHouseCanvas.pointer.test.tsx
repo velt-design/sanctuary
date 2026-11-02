@@ -253,20 +253,20 @@ it.each(["Sides", "Lighting"] as const)(
     expect(drag.press).toHaveBeenCalledOnce();
   },
 );
-function selectRoofText(svg: SVGSVGElement) {
-  const text = svg.querySelector("[data-roof-fall-label]")!;
+function selectObjectLabel(svg: SVGSVGElement) {
+  const text = svg.querySelector("[data-studio-object-label]")!;
   expect(text).toBeTruthy();
   const range = document.createRange();
   range.selectNodeContents(text);
   window.getSelection()!.removeAllRanges();
   window.getSelection()!.addRange(range);
-  expect(window.getSelection()!.toString()).toBe("Roof fall");
+  expect(window.getSelection()!.toString()).toBe("Pergola 1");
 }
 
-it("suppresses the native default with existing roof text selected and releases the exact grabbed delta", () => {
+it("suppresses the native default with existing object label selected and releases the exact grabbed delta", () => {
   const drag = handlers(),
     svg = open(drag);
-  selectRoofText(svg);
+  selectObjectLabel(svg);
   const down = pointer(
     svg.querySelector("[data-selected-product-grab]")!,
     "pointerdown",
@@ -300,7 +300,7 @@ it("suppresses the native default with existing roof text selected and releases 
 it("prevents native selection even when placement preparation denies the start", () => {
   const drag = handlers(false),
     svg = open(drag);
-  selectRoofText(svg);
+  selectObjectLabel(svg);
   expect(
     pointer(svg.querySelector("[data-selected-product-grab]")!, "pointerdown")
       .defaultPrevented,
@@ -348,7 +348,7 @@ it("keeps capture on the stable SVG when selecting an inactive product replaces 
 
 it("cancels native dragstart only inside Plan and leaves external numeric selection and input events intact", () => {
   const svg = open(handlers());
-  selectRoofText(svg);
+  selectObjectLabel(svg);
   const nativeDrag = new Event("dragstart", {
     bubbles: true,
     cancelable: true,
