@@ -57,13 +57,7 @@ export default function StudioFlowShell({
         <div className={css.actions}>{actions}</div>
       </header>
       <nav className={css.flowNav} aria-label="Studio stages">
-        {readOnly || stage === "quote" ? (
-          <span title="Quoted design. Use Edit a new revision to make changes.">
-            Design
-          </span>
-        ) : (
-          <StudioNativeLink href={`${base}/edit`}>Design</StudioNativeLink>
-        )}
+        <StudioNativeLink href={`${base}/edit`}>Design</StudioNativeLink>
         {stage === "quote" ? (
           <StudioNativeLink href={base}>Review &amp; quote</StudioNativeLink>
         ) : (

@@ -461,13 +461,13 @@ describe('ProjectCalculatorTab', () => {
       else if (action === 'row') row.click();
       else row.dispatchEvent(new KeyboardEvent('keydown', { key: action, bubbles: true }));
     });
-    expect(push).toHaveBeenLastCalledWith('/staff/design-studio/proj_1/est_draft');
+    expect(push).toHaveBeenLastCalledWith('/staff/design-studio/proj_1/est_draft/edit');
     expect(rendered.container.querySelector('[data-testid="embedded-calculator"]')).toBeNull();
     rendered.unmount();
   });
 
   it.each([
-    ['estimateId=est_history', '/staff/design-studio/proj_1/est_history'],
+    ['estimateId=est_history', '/staff/design-studio/proj_1/est_history/edit'],
     ['fromEstimateId=est_history', '/staff/design-studio/proj_1/est_history/edit?intent=revision'],
   ])('recovers saved and quote-source bookmarks through Studio authority: %s', (params, href) => {
     search = `tab=estimates&${params}`;
@@ -490,7 +490,7 @@ describe('ProjectCalculatorTab', () => {
     act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
     const open=[...rendered.container.querySelectorAll('button')].find(b=>b.textContent==='Open in Studio')!;
     expect(open.disabled).toBe(false);act(()=>open.click());
-    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');push.mockClear();
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit');push.mockClear();
     act(()=>[...rendered.container.querySelectorAll('button')].find(b=>b.textContent==='Review commercial actions')!.click());
     actions();expect(duplicate().disabled).toBe(false);
     act(()=>duplicate().click());expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit?intent=duplicate');
@@ -512,7 +512,7 @@ describe('ProjectCalculatorTab', () => {
     const rendered=renderIntoDocument(<ProjectCalculatorTab host="host" projectId="proj_1" projectReady={false}/>);
     expect(replace).not.toHaveBeenCalled();expect(rendered.container.querySelector('[data-estimates-view="list"]')).not.toBeNull();expect(editorCode.calls).not.toHaveBeenCalled();
     rendered.rerender(<ProjectCalculatorTab host="host" projectId="proj_1" projectReady/>);
-    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');expect(editorCode.calls).not.toHaveBeenCalled();rendered.unmount();
+    expect(replace).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit');expect(editorCode.calls).not.toHaveBeenCalled();rendered.unmount();
   });
 
   it('opens a historical Studio version from the calculator selector without converting the source', async () => {
@@ -522,7 +522,7 @@ describe('ProjectCalculatorTab', () => {
     await settleEditor();
     const select = rendered.container.querySelector<HTMLSelectElement>('[aria-label="Design version"]')!;
     act(() => { select.value = 'history:est_history'; select.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history');
+    expect(push).toHaveBeenCalledWith('/staff/design-studio/proj_1/est_history/edit');
     rendered.unmount();
   });
 });

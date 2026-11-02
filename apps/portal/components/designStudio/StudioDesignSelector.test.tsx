@@ -21,7 +21,7 @@ it('keeps a compact trigger across the header and reveals current, quoted, archi
   await mount(); expect(mounted.container.querySelector('ul')).toBeNull(); expect(readStudioProjectChoice('actor', projectId)).toBe('est-0');
   await open(); const links = [...mounted.container.querySelectorAll('a')]; expect(links).toHaveLength(20);
   expect(links[0].getAttribute('aria-current')).toBe('page'); expect(links[0].getAttribute('href')).toBe(`/staff/design-studio/${projectId}/est-0/edit`);
-  expect(links[1].getAttribute('href')).toBe(`/staff/design-studio/${projectId}/est-1`); expect(links[1].textContent).toContain('Q-SYNTHETIC'); expect(links[1].textContent).toContain('Review');
+  expect(links[1].getAttribute('href')).toBe(`/staff/design-studio/${projectId}/est-1/edit`); expect(links[1].textContent).toContain('Q-SYNTHETIC'); expect(links[1].textContent).toContain('View read only');
   expect(links[2].textContent).toContain('Archived'); expect(links[3].textContent).toContain('Add-on');
   expect(mounted.container.textContent).toContain('New option'); expect(mounted.container.textContent).toContain('New add-on');
   expect(mocks.api).toHaveBeenCalledTimes(2); // one admission summary, one deliberate fresh opening
@@ -30,7 +30,7 @@ it('keeps a compact trigger across the header and reveals current, quoted, archi
 it('uses the existing awaited navigation drain, retains current choice on refusal, and permits retry', async () => {
   await mount(); await open(); mocks.navigate.mockRejectedValueOnce(Error('Unsaved work is kept. Finish the current change.'));
   await act(async () => mounted.container.querySelectorAll('a')[1].click());
-  expect(mocks.navigate).toHaveBeenCalledWith(`/staff/design-studio/${projectId}/est-1`, false, undefined, expect.any(AbortSignal));
+  expect(mocks.navigate).toHaveBeenCalledWith(`/staff/design-studio/${projectId}/est-1/edit`, false, undefined, expect.any(AbortSignal));
   expect(mounted.container.textContent).toContain('Unsaved work is kept'); expect(readStudioProjectChoice('actor', projectId)).toBe('est-0');
   await act(async () => mounted.container.querySelectorAll('a')[1].click()); expect(mocks.navigate).toHaveBeenCalledTimes(2);
 });

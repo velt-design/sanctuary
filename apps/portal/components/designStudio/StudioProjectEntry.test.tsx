@@ -19,9 +19,9 @@ it('returns directly to the remembered editable design with no creation or landi
   expect(mocks.navigate).toHaveBeenCalledWith(`/staff/design-studio/${projectId}/option/edit`, true, undefined, expect.any(AbortSignal));
   expect(mocks.create).not.toHaveBeenCalled(); expect(mounted.container.querySelector('input,fieldset')).toBeNull();
 });
-it('returns quoted choices to read-only review without starting a revision', async () => {
+it('returns quoted choices to the actual read-only design without starting a revision', async () => {
   const initial = data(['quoted']); initial.designs[0].canOpenEditor = false; await mount(initial);
-  expect(mocks.navigate.mock.calls[0][0]).toBe(`/staff/design-studio/${projectId}/quoted`); expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.navigate.mock.calls[0][0]).toBe(`/staff/design-studio/${projectId}/quoted/edit`); expect(mocks.create).not.toHaveBeenCalled();
 });
 it('starts a sensible default only for confirmed empty inventory, then rechecks inside the creation lock', async () => {
   await mount(); const props = mocks.create.mock.calls.at(-1)![0];

@@ -15,7 +15,7 @@ vi.mock('./StudioRevisionStart', () => ({ default: (props: Record<string, unknow
 vi.mock('./StudioCreateAction', () => ({ default: (props: Record<string, unknown>) => <div data-testid="recovery">{JSON.stringify(props)}</div> }));
 const source = () => ({ state: 'ready', estimate: { id: 'est_source', projectId: 'proj_one', versionLabel: 'V1', updatedAt: '2026-09-24T00:00:00Z', requiresNewRevision: false }, view: { designId: 'design', revision: 4 }, nextAction: 'edit', reason: null });
 const mounted: ReturnType<typeof renderIntoDocument>[] = [];
-const Editor = (props: { scope: { estimateId: string; actorId: string } }) => <div data-testid="editor">{props.scope.actorId}:{props.scope.estimateId}</div>;
+const Editor = (props: { scope: { estimateId: string; actorId: string }; editable?:boolean }) => <div data-testid="editor" data-editable={String(props.editable)}>{props.scope.actorId}:{props.scope.estimateId}</div>;
 beforeEach(() => { vi.resetAllMocks(); mocks.actorId = 'actor'; mocks.role='staff';mocks.opening.mockImplementation((path:string,_scope:unknown,signal:AbortSignal)=>mocks.api(path,{signal})); mocks.api.mockResolvedValue({ authoring: source() }); mocks.leaf.mockResolvedValue(Editor); });
 afterEach(() => mounted.splice(0).forEach(value => value.unmount()));
 async function mount(intent?: 'edit' | 'revision' | 'duplicate') {
@@ -33,6 +33,11 @@ describe('Studio authoring intent', () => {
   it('opens the editor only for the normal editable source intent', async () => {
     const container = await mount(); expect(container.querySelector('[data-testid="editor"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="revision"]')).toBeNull();
+  });
+  it.each([[true,'create-revision'],[true,'edit'],[false,'create-revision']] as const)('opens the actual protected visual leaf with edit authority disabled (%s/%s)',async(requiresNewRevision,nextAction)=>{
+    mocks.api.mockResolvedValue({authoring:{...source(),estimate:{...source().estimate,requiresNewRevision},nextAction}});
+    const container=await mount();expect(container.querySelector('[data-testid="editor"]')?.getAttribute('data-editable')).toBe('false');
+    expect(container.querySelector('[data-testid="revision"]')).toBeNull();expect(mocks.api.mock.calls.some(([,options])=>options?.method==='POST')).toBe(false);
   });
   it.each(['revision', 'duplicate'] as const)('requires explicit creation for %s, without forwarding navigation query into source reads', async intent => {
     const container = await mount(intent);

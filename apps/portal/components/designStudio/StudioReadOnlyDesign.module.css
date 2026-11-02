@@ -1,0 +1,8 @@
+.page > header > div:first-child { flex:0 0 min(52vw,640px); min-width:0; }
+.page > header > div:last-child { margin-left:auto; }
+.page > header > div:last-child > a { background:transparent; border-color:var(--ui-border); color:var(--ui-text); }
+.page > header > div:last-child button { background:#3e5b26; border-color:#3e5b26; color:var(--ui-text-inverse); }
+.choices { overflow:auto; scrollbar-gutter:stable; padding:18px; }
+.choices h2 { font-size:15px; margin:0 0 16px; }
+.choices h3 { font-size:13px; }
+.choices p,.choices dl,.choices small { font-size:12px; line-height:1.5; }

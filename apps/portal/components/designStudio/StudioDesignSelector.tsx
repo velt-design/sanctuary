@@ -12,8 +12,8 @@ import { renameStudioDesign, type StudioRenameRecovery } from '@/lib/designStudi
 import {StudioDocumentContext} from './StudioDocumentContext';
 
 /** Shared across Design, Review and frozen Quote. Summaries never grant editing. */
-export default function StudioDesignSelector({ projectId, estimateId, children, renameAvailable = false }: {
-  projectId: string; estimateId: string; children: ReactNode; renameAvailable?: boolean;
+export default function StudioDesignSelector({ projectId, estimateId, children, renameAvailable = false, renameAllowed = true }: {
+  projectId: string; estimateId: string; children: ReactNode; renameAvailable?: boolean; renameAllowed?: boolean;
 }) {
   // The heading also renders in isolated/static presenters. Without a real
   // authenticated Portal context it exposes no selector reads or actions.
@@ -53,8 +53,8 @@ export default function StudioDesignSelector({ projectId, estimateId, children, 
   }, [open]);
   const current = result?.identity === identity ? result : null;
   const selected = current?.data?.designs.find(design => design.id === estimateId);
-  const canRename = Boolean(actorId && selected?.designId && !pending && !renamePending && !renameRecovery && renameAvailable);
-  const heading = actorId && isValidElement<ComponentProps<typeof StudioDesignHeading>>(children) && children.type === StudioDesignHeading
+  const canRename = Boolean(renameAllowed && actorId && selected?.designId && !pending && !renamePending && !renameRecovery && renameAvailable);
+  const heading = renameAllowed && actorId && isValidElement<ComponentProps<typeof StudioDesignHeading>>(children) && children.type === StudioDesignHeading
     ? cloneElement(children, { onRename: () => setRenaming(true), renameDisabled: !canRename, ...(confirmedName?.identity===identity ? {identity:{...children.props.identity,projectName:children.props.identity?.projectName??null,internalName:confirmedName.name,createdAt:children.props.identity?.createdAt??null,history:children.props.identity?.history??'working',quoteLabel:children.props.identity?.quoteLabel??null}} : {}) }) : children;
   async function rename(internalName: string | null) {
     const signal = lifetime.current?.signal;
@@ -93,13 +93,13 @@ export default function StudioDesignSelector({ projectId, estimateId, children, 
       {!current ? <p role="status">Checking design history…</p> : current.error ? <div role="alert"><p>{current.error}</p><button type="button" onClick={() => refresh(n => n + 1)}>Retry history</button></div> : <>
         <ul className={css.list}>{current.data!.designs.map(design => <li key={design.id}>
           <a href={studioDesignHref(projectId, design)} aria-current={design.id === estimateId ? 'page' : undefined} aria-disabled={pending || undefined} onClick={event => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); if (studioDesignHref(projectId, design) === location.pathname + location.search) close(); else void go(studioDesignHref(projectId, design)); }}>
-            <span className={css.name}>{design.label}<span>{design.id === estimateId ? '✓' : design.canOpenEditor ? 'Open' : 'Review'}</span></span>
+            <span className={css.name}>{design.label}<span>{design.id === estimateId ? '✓' : design.canOpenEditor ? 'Open' : 'View read only'}</span></span>
             <small>Design {design.versionLabel} · {design.history}{design.commercialScopeId ? ' · Add-on' : ''}</small>
             <small>{[design.quoteLabel, studioDesignDate(design.createdAt)].filter(Boolean).join(' · ')}</small>
           </a>
         </li>)}</ul>
         <div className={css.footer}><button type="button" disabled={pending || renamePending || !!renameRecovery} onClick={() => void go(`/staff/projects/${projectId}/studio?new=option&requestId=${crypto.randomUUID()}`)}>New option</button><button type="button" disabled={pending || renamePending || !!renameRecovery} onClick={() => void go(`/staff/projects/${projectId}/studio?new=add-on&requestId=${crypto.randomUUID()}`)}>New add-on</button></div>
-        {selected && !renameAvailable && <p className={css.hint}>Save the current design before renaming.</p>}
+        {selected && renameAllowed && !renameAvailable && <p className={css.hint}>Save the current design before renaming.</p>}
       </>}
       {navigationError && <p role="alert">{navigationError}</p>}
     </section>}

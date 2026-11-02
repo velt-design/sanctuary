@@ -12,11 +12,10 @@ import {bindLocalFirstStoreOwner,clearLocalFirstStoreOwner,getLocalFirstStoreOwn
 import {invalidateStudioLifecycle} from '@/lib/designStudio/studioLifecycle';
 import {navigateStudioDocument} from '@/lib/designStudio/studioDocumentNavigation';
 
-const mocks=vi.hoisted(()=>({opening:vi.fn(),leaf:vi.fn(),get:vi.fn(),set:vi.fn(),update:vi.fn(),keys:vi.fn(),role:vi.fn(),browser:'10000000-0000-4000-8000-000000000001',authChanged:null as null|((event:string,session:unknown)=>void)}));
+const mocks=vi.hoisted(()=>({opening:vi.fn(),leaf:vi.fn(),protectedLeaf:vi.fn(),get:vi.fn(),set:vi.fn(),update:vi.fn(),keys:vi.fn(),role:vi.fn(),browser:'10000000-0000-4000-8000-000000000001',authChanged:null as null|((event:string,session:unknown)=>void)}));
 vi.mock('next/navigation',()=>({usePathname:()=>location.pathname,useSearchParams:()=>new URLSearchParams(location.search),useRouter:()=>({replace:vi.fn()})}));
 vi.mock('@/lib/designStudio/studioOpeningTransport',async load=>({...await load<typeof import('@/lib/designStudio/studioOpeningTransport')>(),readStudioOpening:mocks.opening}));
 vi.mock('./studioLeafLoading',()=>({loadStudioEditor:mocks.leaf}));
-vi.mock('./StudioRevisionStart',()=>({default:()=> <p>Revision required</p>}));
 vi.mock('./StudioCreateAction',()=>({default:()=> <p>Recovery available</p>}));
 vi.mock('./StudioNavigationCapture',()=>({default:()=>null}));
 vi.mock('@/lib/queries/auth',()=>({fetchPortalRole:mocks.role}));
@@ -36,7 +35,12 @@ const view:StudioEditingSessionProps['view']={schemaVersion:'studio_authoring_vi
 const authoring={state:'ready',estimate:{id:estimateId,projectId,versionLabel:'V1',updatedAt:'2026-10-20T00:00:00Z',requiresNewRevision:false},view,nextAction:'edit',reason:null};
 function deferred<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(done=>{resolve=done;});return{promise,resolve};}
 let latest:ReturnType<typeof useStudioEditingSession>,latestPrice:ReturnType<typeof useStudioWebsitePrice>,mounts:number,db:Map<string,unknown>,transactions:Promise<unknown>;
-function Editor(props:StudioEditingSessionProps&{openingPrice:ReturnType<typeof studioOpeningPrice>}) {
+type EditorProps=StudioEditingSessionProps&{openingPrice?:ReturnType<typeof studioOpeningPrice>};
+function Editor(props:EditorProps) {
+ if(!props.editable){mocks.protectedLeaf(props);return <main data-protected-visual/>;}
+ return <MutableEditor {...props}/>;
+}
+function MutableEditor(props:EditorProps) {
  latest=useStudioEditingSession(props);
  const price=useStudioWebsitePrice({...props.scope,revision:latest.edit?.revision??view.revision,design:null,composition:latest.edit,openingPrice:props.openingPrice,openingState:latest.status==='loading'?'waiting':latest.session?.dirty?'ineligible':'eligible'});
  latestPrice=price;
@@ -138,7 +142,14 @@ it('restores the existing usable editor after a local navigation flush fails, wi
  expect(failure).toBeInstanceOf(Error);expect(navigate).not.toHaveBeenCalled();expect(latest.canEdit).toBe(true);expect(latest.edit).toEqual(before);expect(ui.querySelector('[data-editor]')?.closest('[inert]')).toBeNull();expectNoPriceOrDomainFetch();
 });
 
-it('keeps the canonical quoted/read-only revision action and does not mount an editing session',async()=>{
- const r=response();mocks.opening.mockResolvedValue({...r.value,authoring:{...authoring,nextAction:'create-revision',estimate:{...authoring.estimate,requiresNewRevision:true}}});const ui=await open();
- expect(ui.textContent).toContain('Revision required');expect(ui.querySelector('[data-editor]')).toBeNull();expect(mounts).toBe(0);expectNoPriceOrDomainFetch();
+it('admits the exact canonical protected view to the visual leaf without granting edit or price authority',async()=>{
+ const r=response(),pending=deferred<any>(),protectedView={...structuredClone(view),revision:7,site:{access:'hard'}};
+ const quoted={...authoring,view:protectedView,nextAction:'create-revision',estimate:{...authoring.estimate,requiresNewRevision:true}};
+ mocks.opening.mockReturnValue(pending.promise);const ui=await open();
+ expect(mocks.protectedLeaf).not.toHaveBeenCalled();expect(ui.querySelector('[data-runtime-owner]')).toBeNull();expect(mocks.get).not.toHaveBeenCalled();
+ await act(async()=>pending.resolve({scope:r.value.scope,authoring:quoted,presentation:r.value.presentation}));
+ expect(mocks.protectedLeaf).toHaveBeenCalledOnce();const admitted=mocks.protectedLeaf.mock.calls[0][0] as EditorProps;
+ expect(admitted.scope).toEqual({actorId:actor,projectId,estimateId,designId:view.designId});expect(admitted.view).toEqual(protectedView);expect(admitted.updatedAt).toBe(authoring.estimate.updatedAt);expect(admitted.editable).toBe(false);expect(admitted.openingPrice).toBeUndefined();
+ expect(ui.querySelector('[data-protected-visual]')).not.toBeNull();expect(ui.querySelector('[data-protected-visual]')?.closest('[inert]')).toBeNull();expect(ui.querySelector('[data-runtime-owner]')?.getAttribute('data-runtime-owner')).toBe(actor);
+ expect(ui.querySelector('[data-editor]')).toBeNull();expect(mounts).toBe(0);expect(mocks.get).not.toHaveBeenCalled();expect(mocks.keys).not.toHaveBeenCalled();expect(mocks.update).not.toHaveBeenCalled();expect(mocks.set).not.toHaveBeenCalled();expectNoPriceOrDomainFetch();
 });

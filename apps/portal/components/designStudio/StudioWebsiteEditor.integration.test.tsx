@@ -490,19 +490,17 @@ it("waits for the real hydrated session without building a temporary saved scene
   expect(latest.edit!.objectOptions).toEqual(next.view.objectOptions);
   expect(websiteComposition(latest.edit!).find(row => row.object.id === "p2")!.value!.rawDimensions.widthMm).toBe("7100");
 });
-it("keeps a locked saved version current and read-only without opening a second session", async () => {
+it("renders the protected composition without mounting any editing or storage recovery session", async () => {
   const props = parentProps(fixture(), false);
   mounted = renderIntoDocument(<Harness {...props} />);
   await flush();
-  expect(latest.edit).toBeNull();
-  expect(latest.status).toBe("locked");
-  expect(latest.canEdit).toBe(false);
-  expect(mounted.container.textContent).toContain(
-    "This saved version is locked",
-  );
-  expect(button("Save design").disabled).toBe(true);
-  expect(mounted.container.querySelector("fieldset")?.disabled).toBe(true);
-  expect(webgl.saved.design.input.widthMm).toBe(6000);
+  expect(sessionOwner.useStudioEditingSession).not.toHaveBeenCalled();
+  expect(mounted.container.querySelector('[data-studio-read-only]')).not.toBeNull();
+  expect(mounted.container.textContent).toContain('Quoted · read only');
+  expect(button('Save design')).toBeUndefined();
+  expect(mounted.container.textContent).toContain('6,000');
+  expect(mocks.get).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
   const next = structuredClone(props);
   (
     next.view.objectOptions.find((row) => row.objectId === "p1")!.values
@@ -510,8 +508,8 @@ it("keeps a locked saved version current and read-only without opening a second 
   ).rawDimensions.widthMm = "7250";
   mounted.rerender(<Harness {...next} />);
   await flush();
-  expect(latest.edit).toBeNull();
-  expect(webgl.saved.design.input.widthMm).toBe(7250);
+  expect(sessionOwner.useStudioEditingSession).not.toHaveBeenCalled();
+  expect(mounted.container.textContent).toContain('7,250');
   expect(mocks.api).not.toHaveBeenCalled();
 });
 it("retains an unavailable local-storage recovery and useful current saved view without an alternate authoring path", async () => {
@@ -1135,8 +1133,8 @@ it('keeps loading, live Workspace and saved-only exits native without unused pre
  expect(links()).toHaveLength(2);expect(links().every(a=>a.dataset.prefetch==='false')).toBe(true);
  mocks.get.mockImplementation(async()=>undefined);await act(async()=>{for(const resolve of waiting.splice(0))resolve(undefined);});await flush();
  expect(latest.canEdit).toBe(true);expect(links()).toHaveLength(3);expect(links().every(a=>a.dataset.prefetch==='false')).toBe(true);
- mounted.unmount();mounted=renderIntoDocument(<StudioDocumentContext.Provider value={value}><Harness {...parentProps(fixture(),false)}/></StudioDocumentContext.Provider>);await flush();
- expect(latest.status).toBe('locked');expect(links()).toHaveLength(2);expect(links().every(a=>a.dataset.prefetch==='false')).toBe(true);
+ mounted.unmount();vi.mocked(sessionOwner.useStudioEditingSession).mockClear();mounted=renderIntoDocument(<StudioDocumentContext.Provider value={value}><Harness {...parentProps(fixture(),false)}/></StudioDocumentContext.Provider>);await flush();
+ expect(sessionOwner.useStudioEditingSession).not.toHaveBeenCalled();expect(links()).toHaveLength(2);expect(links().every(a=>a.dataset.prefetch==='false')).toBe(true);
  mounted.unmount();mounted=renderIntoDocument(<Harness {...parentProps(fixture(),false)}/>);await flush();
  expect(links()).toHaveLength(2);expect(links().every(a=>a.dataset.prefetch==='undefined')).toBe(true);
 });

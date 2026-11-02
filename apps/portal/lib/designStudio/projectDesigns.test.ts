@@ -11,9 +11,9 @@ it('honours a deliberately selected option/add-on only while it is freshly visib
   expect(selectStudioProjectDesign(rows, 'addon')?.id).toBe('addon');
   for (const hint of ['missing', 'other-project', 'archived']) expect(selectStudioProjectDesign(rows, hint)?.id).toBe('base');
 });
-it('opens a quoted active draft for review and never treats the active flag as edit authority', () => {
+it('opens the actual quoted design while leaving fresh authoring authority to enforce read-only access', () => {
   const quoted = row('quoted', { canOpenEditor: false, isActiveDraft: true, history: 'Used by a quote' });
-  expect(studioDesignHref('proj-test', selectStudioProjectDesign([quoted], null)!)).toBe('/staff/design-studio/proj-test/quoted');
+  expect(studioDesignHref('proj-test', selectStudioProjectDesign([quoted], null)!)).toBe('/staff/design-studio/proj-test/quoted/edit');
   expect(selectStudioProjectDesign([quoted,row('older-editable-option')],null)?.id).toBe('quoted');
   expect(studioDesignHref('proj-test', row('edit'))).toBe('/staff/design-studio/proj-test/edit/edit');
 });
