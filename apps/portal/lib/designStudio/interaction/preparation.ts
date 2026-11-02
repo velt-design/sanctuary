@@ -77,7 +77,7 @@ export type StudioPreparedMethod = {
 };
 export type StudioPreparationResult =
   | { kind: "ready"; value: StudioPreparedMethod }
-  | { kind: "refused"; reason: string };
+  | { kind: "refused"; reason: string; executionFailure?: true };
 
 /** Selected INPUTS only. A rigid world pose, selection, transport revision and
  * joins cannot invalidate local candidate geometry. Join witnesses use the

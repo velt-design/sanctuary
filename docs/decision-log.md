@@ -1,5 +1,29 @@
 # Decision Log
 
+## 2026-11-02: Trace a cancelled drag through the browser layout
+
+Pure attachment comparisons and mounted tests with fixed viewport dimensions
+passed, but an ordinary two-pergola drag still jumped back. Browser tracing found
+that Check placement became Preview only, the subtotal caption stopped wrapping,
+and baseline alignment shrank its first grid row by 9px. The resulting real
+canvas resize correctly cancelled the captured gesture. Keep the compact caption
+and value row stable rather than disabling resize cancellation or relaxing
+canonical geometry checks. Verify the held browser gesture, then release,
+Undo/Redo and persistence. See the Studio owner map and Plan pointer tests.
+
+The new opening focus also exposed an old unconditional add-object Fit: a visible
+copy, Paste or Undo could replace the explored view with the whole-scene centre.
+Keep visibility checks local to the actual viewport and reveal only outside
+additions. Cover the full placement-session return/Undo/save suite as well as
+camera tests; a smaller passing selection did not establish that retention.
+Assert the original camera immediately after removal/Undo, before resetting any
+test pose. A removed selection's automatic fallback is distinct from deliberately
+selecting another existing object, including copies at different positions.
+
+Preparation recovery is separate: cache geometric refusals, but distinguish an
+execution failure and offer one explicit operation-local retry. Preserve peers
+and retire the old gesture before recovery so a late reply cannot commit it.
+
 ## 2026-11-02: Verify the first visible design, not only its route and lock
 
 Jordan clarified: "Can it open the actual design rather than Review & quote? I

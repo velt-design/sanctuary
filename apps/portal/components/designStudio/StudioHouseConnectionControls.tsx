@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { attachmentUnavailable } from "@sp/configurator/geometry";
 import type { ResolvedStudioScene } from "@/lib/designStudio/interaction/resolvedScene";
 import { readStudioFacadeClearance } from "@/lib/designStudio/studioFacadeClearance";
@@ -16,6 +16,8 @@ export default function StudioHouseConnectionControls({
   product: ResolvedStudioScene["rows"][number];
   onProductRepair?: () => void;
 }) {
+  const edgeReasonsId=useId();
+  const unavailableEdges=task.targets.filter(t=>t.error);
   const value = product.value!,
     design = product.design ?? value.selection;
   const free =
@@ -197,6 +199,7 @@ export default function StudioHouseConnectionControls({
             House edge
             <select
               aria-label="House edge"
+              aria-describedby={unavailableEdges.length?edgeReasonsId:undefined}
               value={
                 target && !needsActualEdge
                   ? `${target.houseId}:${target.edge}`
@@ -219,11 +222,14 @@ export default function StudioHouseConnectionControls({
                   value={`${t.houseId}:${t.side}`}
                   disabled={!!t.error}
                 >
-                  {t.label}
+                  {t.label}{t.error ? `: ${t.error}` : ''}
                 </option>
               ))}
             </select>
           </label>
+          {unavailableEdges.length>0 && <small id={edgeReasonsId}>
+            {unavailableEdges.map(t=>`${t.label}: ${t.error}`).join(' ')}
+          </small>}
           {task.method === "facade" && (
             <>
               <label className={css.field}>

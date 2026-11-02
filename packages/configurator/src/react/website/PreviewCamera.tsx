@@ -8,12 +8,16 @@ import type { SceneBounds } from "@sp/geometry-viewer";
 import type { Point3 } from "@sp/geometry";
 import { useCameraTransition } from "./useCameraTransition";
 
+import { perspectiveFitDistance, perspectiveRevealDistance, isLegacyStudioOverview, type StudioOpeningFit } from './perspectiveFit';
+
 const FRONT_DIRECTION = new Vector3(1, 1.7, 1.25).normalize();
 const PRESENTATION_DIRECTION = new Vector3(0.85, 1.9, 0.65).normalize();
 
 export default function PreviewCamera({
   studioCad = false,
   storageKey,
+  openingFit,
+  sceneObjects,
   preserveUserCamera = false,
   zoomStep = 0,
   enhanced = false,
@@ -40,6 +44,10 @@ export default function PreviewCamera({
   /** Editor-only input/clipping policy. Website and quote consumers keep defaults. */
   studioCad?: boolean;
   storageKey?: string;
+  /** Studio-only opening policy. All other consumers retain their saved-camera contract. */
+  openingFit?: StudioOpeningFit;
+  /** Studio-only addition visibility. Never turns an ordinary edit into Fit. */
+  sceneObjects?: ReadonlyArray<{id:string;points:Point3[]}>;
   preserveUserCamera?: boolean;
   zoomStep?: number;
   enhanced?: boolean;
@@ -82,6 +90,9 @@ export default function PreviewCamera({
     eyeLevel?: boolean;
   } | null>(null);
   const touched = useRef(false);
+  const cameraIntent = useRef<'opening'|'manual'|'overview'>('opening');
+  const visibleObjects=useRef(new Set(sceneObjects?.map(object=>object.id)));
+  const newlyAddedSelection=!!sceneObjects?.some(object=>object.id===selectionPivot?.id&&!visibleObjects.current.has(object.id));
   const framedBounds = useRef<SceneBounds | null>(null);
   const framedKey = useRef<string | undefined>(undefined);
   // One reversible projection basis, owned and persisted with this camera.
@@ -102,6 +113,7 @@ export default function PreviewCamera({
     }
     const stored = JSON.stringify({
       projection: "perspective",
+      ...(openingFit ? {framingPolicy:openingFit.policy,intent:cameraIntent.current} : {}),
       fov: camera.fov,
       position: camera.position.toArray(),
       target: controls.current.target.toArray(),
@@ -114,7 +126,7 @@ export default function PreviewCamera({
       try {
         sessionStorage.setItem(storageKey, stored);
       } catch {}
-  }, [camera, gl, enhanced, groundZ, storageKey, studioCad, bounds.size]);
+  }, [camera, gl, enhanced, groundZ, storageKey, studioCad, bounds.size, openingFit]);
   const { move, cancel } = useCameraTransition(recordCamera);
   const reanchorSelection = useCallback(() => {
     const orbit = controls.current,
@@ -126,6 +138,7 @@ export default function PreviewCamera({
       ![centre.x, centre.y, centre.z].every(Number.isFinite)
     )
       return;
+    cameraIntent.current='manual';
     const delta = new Vector3(centre.x, centre.y, centre.z).sub(orbit.target);
     camera.position.add(delta);
     orbit.target.add(delta);
@@ -135,6 +148,8 @@ export default function PreviewCamera({
   }, [studioCad, selectionPivot, camera, recordCamera, invalidate]);
   const pivotSelection = useRef<string | undefined>(undefined);
   const rotationIntent = useRef(false);
+
+
   useLayoutEffect(() => {
     if (!studioCad) return;
     const element = gl.domElement,
@@ -216,6 +231,7 @@ export default function PreviewCamera({
     lastZoom.current = zoomStep;
     if (!steps || !orbit || !(camera instanceof PerspectiveCamera)) return;
     cancel();
+    cameraIntent.current='manual';
     const delta = camera.position.clone().sub(orbit.target);
     delta.setLength(
       studioCad
@@ -253,8 +269,12 @@ export default function PreviewCamera({
           saved.target.every(Number.isFinite) &&
           Number.isFinite(saved.fov) &&
           saved.fov > 1 &&
-          saved.fov < 150
+          saved.fov < 150 &&
+          !(openingFit && (saved.framingPolicy
+            ? saved.intent==='opening' && saved.framingPolicy!==openingFit.policy
+            : isLegacyStudioOverview(saved,openingFit,overviewDirection,size,padding,surroundings)))
         ) {
+          cameraIntent.current=saved.intent==='overview'?'overview':saved.intent==='opening'?'opening':'manual';
           camera.position.fromArray(saved.position);
           orbit.target.fromArray(saved.target);
           camera.fov = saved.fov;
@@ -370,6 +390,7 @@ export default function PreviewCamera({
       fov: camera.fov,
     };
     const firstFrame = !previous.current;
+    if(previous.current && previous.current.fit!==fit)cameraIntent.current='overview';
     if (studioCad) {
       camera.zoom = 1;
       cadViewport.current = null;
@@ -533,7 +554,7 @@ export default function PreviewCamera({
     ) {
       const direction = camera.position.clone().sub(centre).normalize();
       const oldDistance = camera.position.distanceTo(centre);
-      const tanY = Math.tan((camera.fov * Math.PI) / 360);
+
       const paddingX =
         choiceView === "sides"
           ? 0.88
@@ -547,19 +568,7 @@ export default function PreviewCamera({
               0.5,
               (size.height - (size.height < 320 ? 16 : 40)) / size.height,
             ) * (surroundings ? 0.9 : 1);
-      let distance = 1000;
-      for (const p of fitPoints) {
-        const point = new Vector3(p.x, p.y, p.z).applyMatrix4(
-          camera.matrixWorldInverse,
-        );
-        const depth = point.z + oldDistance;
-        distance = Math.max(
-          distance,
-          depth +
-            Math.abs(point.x) / (tanY * camera.aspect * paddingX * padding),
-          depth + Math.abs(point.y) / (tanY * paddingY * padding),
-        );
-      }
+      const distance=perspectiveFitDistance(camera,fitPoints,oldDistance,paddingX,paddingY,padding);
       // Fit the complete product even on narrow phones. The old unconditional
       // 20% enlargement cut off end posts; customers can still zoom in freely.
       camera.position.copy(centre).addScaledVector(direction, distance);
@@ -623,20 +632,38 @@ export default function PreviewCamera({
     studioCad,
   ]);
 
+  useLayoutEffect(()=>{
+    const orbit=controls.current;
+    if(!sceneObjects||!enabled||!orbit||!(camera instanceof PerspectiveCamera)||size.width<=0||size.height<=0)return;
+    const added=sceneObjects.filter(object=>!visibleObjects.current.has(object.id));
+    visibleObjects.current=new Set(sceneObjects.map(object=>object.id));
+    if(!added.length)return;
+    camera.updateMatrixWorld();
+    const direction=camera.position.clone().sub(orbit.target),before=direction.length();
+    const distance=perspectiveRevealDistance(camera,added.flatMap(object=>object.points),before,.97,Math.max(.5,(size.height-(size.height<320?16:40))/size.height)*(surroundings ? .9 : 1),padding);
+    if(distance===before)return;
+    cancel();
+    camera.position.copy(orbit.target).add(direction.setLength(distance));
+    orbit.update();recordCamera();invalidate();
+  },[sceneObjects,enabled,camera,size.width,size.height,surroundings,padding,cancel,recordCamera,invalidate]);
+
   useLayoutEffect(() => {
     if (
       studioCad &&
       selectionPivot &&
       pivotSelection.current !== selectionPivot.id
     ) {
-      const initial = pivotSelection.current === undefined;
+      const previousSelection=pivotSelection.current;
+      const initial = previousSelection === undefined;
+      const removedSelection=sceneObjects && previousSelection!==undefined && !sceneObjects.some(object=>object.id===previousSelection);
       pivotSelection.current = selectionPivot.id;
-      // Restoring the same saved selection is not a new selection intent.
-      if (initial) return;
+      // Creation/removal selects its object/fallback automatically. Neither is
+      // a deliberate request to replace the user's explored camera target.
+      if (initial || newlyAddedSelection || removedSelection) return;
       cancel();
       reanchorSelection();
     }
-  }, [studioCad, selectionPivot, reanchorSelection, cancel]);
+  }, [studioCad, selectionPivot, newlyAddedSelection, sceneObjects, reanchorSelection, cancel]);
 
   return (
     <OrbitControls
@@ -667,6 +694,7 @@ export default function PreviewCamera({
         if (studioCad && camera instanceof PerspectiveCamera)
           cadViewport.current = { aspect: camera.aspect, zoom: camera.zoom };
         touched.current = true;
+          cameraIntent.current='manual';
         cancel();
       }}
       onChange={recordCamera}

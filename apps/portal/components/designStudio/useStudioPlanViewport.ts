@@ -9,6 +9,7 @@ import {
   studioPlanPoint,
   studioPlanViewBox,
   studioPlanUnits,
+  revealStudioPlanCamera,
   type StudioPlanCamera,
 } from "./studioHousePlanFrame";
 import {
@@ -16,10 +17,13 @@ import {
   studioPlanPointerPoint,
   type StudioPlanPointerMapping,
 } from "./studioPlanPointer";
+import { STUDIO_OPENING_FRAME, isLegacyStudioPlanOverview } from './studioOpeningFrame';
 type Point = { x: number; y: number };
 type Inputs = {
   view: StudioSceneView;
   points: ReadonlyArray<Point>;
+  openingPoints?: ReadonlyArray<Point>;
+  objectFrames?: ReadonlyArray<{id:string;points:ReadonlyArray<Point>}>;
   directFramePoints?: ReadonlyArray<Point>;
   cameraStorageKey?: string;
   persistentViewport: boolean;
@@ -33,6 +37,8 @@ type Inputs = {
 export function useStudioPlanViewport({
   view,
   points,
+  openingPoints,
+  objectFrames,
   directFramePoints,
   cameraStorageKey,
   persistentViewport,
@@ -49,6 +55,7 @@ export function useStudioPlanViewport({
       const v = JSON.parse(
         sessionStorage.getItem(`${cameraStorageKey}:plan`) ?? "null",
       );
+      if(v && openingPoints && isLegacyStudioPlanOverview(v,points))return null;
       return cameraStorageKey &&
         v &&
         [v.x, v.y, v.units].every(Number.isFinite) &&
@@ -75,7 +82,7 @@ export function useStudioPlanViewport({
       try {
         sessionStorage.setItem(
           `${cameraStorageKey}:plan`,
-          JSON.stringify(planCamera),
+          JSON.stringify({...planCamera,framingPolicy:STUDIO_OPENING_FRAME}),
         );
       } catch {}
   }, [cameraStorageKey, planCamera]);
@@ -135,9 +142,9 @@ export function useStudioPlanViewport({
   }, [svgSize.width, svgSize.height]);
   useEffect(() => {
     if (persistentViewport) {
-      if (!planCamera && svg.current && svgSize.width > 0 && svgSize.height > 0)
+      if (!planCamera && svg.current && svg.current.clientWidth > 0 && svg.current.clientHeight > 0)
         setPlanCamera(
-          initialStudioPlanCamera([...points, ...(directFramePoints ?? [])], {
+          initialStudioPlanCamera([...(openingPoints??points), ...(directFramePoints ?? [])], {
             width: svg.current.clientWidth,
             height: svg.current.clientHeight,
           }),
@@ -163,11 +170,21 @@ export function useStudioPlanViewport({
           svgSize,
         ),
       );
-  }, [directFramePoints, svgSize, persistentViewport, planCamera, points]);
+  }, [directFramePoints, svgSize, persistentViewport, planCamera, points, openingPoints]);
   const planFrame =
     persistentViewport && planCamera
       ? studioPlanViewBox(planCamera, svgSize)
       : legacyPlanFrame;
+  const visibleObjects=useRef(new Set(objectFrames?.map(object=>object.id)));
+  useLayoutEffect(()=>{
+    const node=svg.current;
+    // Hidden/zero-sized views cannot establish visibility. Keep their last
+    // inventory until a real viewport can reveal every addition since then.
+    if(!persistentViewport||!planCamera||!objectFrames||!node||node.clientWidth<=0||node.clientHeight<=0)return;
+    const added=objectFrames.filter(object=>!visibleObjects.current.has(object.id));
+    visibleObjects.current=new Set(objectFrames.map(object=>object.id));
+    if(added.length)setPlanCamera(current=>current?revealStudioPlanCamera(current,{width:node.clientWidth,height:node.clientHeight},added.flatMap(object=>object.points)):current);
+  },[objectFrames,persistentViewport,planCamera,view,svgSize]);
   const zoomPlan = (factor: number) => {
     finishTouch(false);
     setPlanCamera((current) =>

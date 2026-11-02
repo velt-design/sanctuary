@@ -101,6 +101,11 @@
 /* House material controls and canonical contiguous Mixed swatch. */
 .houseColour{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center}.houseColour input[type=color]{width:44px;height:38px;padding:3px;cursor:pointer}.materialSwatch .mixedSwatch{display:block;width:100%;height:100%;margin:0;object-fit:fill}
 .panelHint{font-size:12px;line-height:1.4;color:var(--ui-text-muted);margin:8px 0 12px}
+.placementNotice button{pointer-events:auto}
+/* A wrapped subtotal caption must not enlarge the value row's baseline box.
+   Preview changes its value width while a Plan pointer is held. */
+.cadEditor .price{align-items:center}
+.cadEditor .price>span{line-height:14px}
 /* Desktop identity and subtotal are functional tracks, independent of the
    current Saved/Unsaved/Preview text. Keep primary actions anchored. */
 @media(min-width:761px){.cadEditor .header .price{flex:0 0 clamp(260px,25vw,320px);min-width:0;grid-template-columns:minmax(0,1fr) max-content}}

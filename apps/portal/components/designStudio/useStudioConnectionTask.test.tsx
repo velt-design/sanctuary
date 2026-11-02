@@ -23,8 +23,8 @@ function measure(row: ReturnType<typeof websiteComposition>[number]) {
 let changes: number,
   navigate: ReturnType<typeof vi.fn<(request: unknown) => void>>;
 afterEach(() => mounted?.unmount());
-function setup(height = "4000", bound = false, width = "9500") {
-  edit = studioAttachmentFixture(37, "hipped");
+function setup(height = "4000", bound = false, width = "9500",form:'flat'|'mono'|'hipped'='hipped') {
+  edit = studioAttachmentFixture(37, form);
   const house = studioHouseScene(edit.site, edit.spatial)!.houses[0];
   edit = updateStudioHouse(edit, {
     ...house,
@@ -77,6 +77,21 @@ function setup(height = "4000", bound = false, width = "9500") {
   }
   mounted = renderIntoDocument(<Harness />);
 }
+it('explains a disabled sloping edge in keyboard-readable text while level edges remain usable',()=>{
+ setup('4000',false,'9500','mono');
+ act(()=>task.dispatch({kind:'method',method:'facade'}));
+ const select=mounted.container.querySelector<HTMLSelectElement>('select[aria-label="House edge"]')!;
+ const disabled=task.targets.filter(t=>t.error);expect(disabled.length).toBeGreaterThan(0);
+ const reason=[...mounted.container.querySelectorAll<HTMLElement>('[id]')].find(el=>el.id===select.getAttribute('aria-describedby'))!;
+ for(const target of disabled){
+  expect(reason.textContent).toContain(target.error);
+  const option=[...select.options].find(o=>o.value===`${target.houseId}:${target.side}`)!;
+  expect(option.disabled).toBe(true);expect(option.textContent).toContain(target.error);
+ }
+ const valid=task.targets.find(t=>!t.error)!;
+ expect([...select.options].find(o=>o.value===`${valid.houseId}:${valid.side}`)!.disabled).toBe(false);
+ expect(changes).toBe(1);
+});
 it("applies the chosen method in one click on a real nearest edge, retaining optional edge choice and the current view", () => {
   setup();
   expect(

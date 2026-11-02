@@ -8,6 +8,7 @@ import {
 } from "@/lib/designStudio/websiteComposition";
 import { changeStudioProduct, previewStudioAttachment } from "@/lib/designStudio/studioHouseCommands";
 import StudioHouseModel from "./StudioHouseModel";
+import {studioOpeningFrame} from './studioOpeningFrame';
 const host = vi.hoisted(() => ({ renders: 0, props: null as any }));
 vi.mock("@sp/geometry-viewer/react/canvas", () => ({
   SceneCanvas: (props: any) => {
@@ -29,6 +30,15 @@ function nodes(node: any, name: string): any[] {
     ...nodes(node.props?.children, name),
   ];
 }
+it.each([false,true])('opens the actual %s read-only model on pergolas with context, retains explicit overview Fit',readOnly=>{
+ const edit=studioAttachmentFixture(),scene=createStudioSceneResolver().resolve(edit),points=[...scene.houses.flatMap(h=>[...h.walls.flat(),...h.roof.flat()]),...scene.products.flatMap(p=>p.physical!.points.map(v=>({x:v.x,y:v.y,z:v.z})))];
+ const openingPoints=studioOpeningFrame(scene,points),props={cad:true,active:true,scene,selected:'p2',onSelect:()=>{},readOnly,section:'Shape',refinedHouse:true,persistentViewport:true,zoomStep:0,fit:0,framingKey:'opening',focused:null,points,openingPoints,onVisibility:()=>{},isNight:false};
+ mounted=renderIntoDocument(<StudioHouseModel {...props}/>);
+ const opening=nodes(host.props.children,'PreviewCamera')[0].props;
+ expect(opening.fitPoints).toBe(openingPoints);expect(opening.openingFit.overviewPoints).toBe(points);
+ mounted.rerender(<StudioHouseModel {...props} fit={1}/>);
+ expect(nodes(host.props.children,'PreviewCamera')[0].props.fitPoints).toBe(points);
+});
 it('passes the selected white frame to actual live soffit detail instances',()=>{
  let edit=previewStudioAttachment(studioAttachmentFixture(),{objectId:'p2',houseId:'house',edge:'rear',kind:'eave',method:'soffit'});
  const value=websiteComposition(edit)[0].value!;edit=changeStudioProduct(edit,{...value,selection:{...value.selection,roof:{...value.selection.roof,frameFinish:'white'}}});

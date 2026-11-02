@@ -194,3 +194,35 @@ it("discards replies and owned results on scope, epoch and disposal boundaries",
   current.reply();
   expect(h.publications).toHaveLength(count);
 });
+
+it('retries only an explicit same-operation execution failure, retaining peers and rejecting old callbacks and retired contexts',()=>{
+  const h=harness(),a=task('a'),b=task('b');
+  h.scheduler.update({context,tasks:[a,b],selectedId:'a'});
+  h.workers[0].reply();
+  const failed=h.workers[0],old=failed.requests.at(-1)!;
+  failed.onerror?.(new ErrorEvent('error'));
+  expect(h.publications.at(-1)!.get(b.dependencyKey)).toMatchObject({kind:'refused',executionFailure:true});
+  h.scheduler.update({context,tasks:[a,b]});expect(h.workers).toHaveLength(1);
+  expect(h.scheduler.retry({...context,epoch:'retired'},b.dependencyKey)).toBe(false);
+  expect(h.scheduler.retry(context,a.dependencyKey)).toBe(false);
+  expect(h.scheduler.retry(context,b.dependencyKey)).toBe(true);
+  const retry=h.workers[1];
+  expect(h.publications.at(-1)!.get(a.dependencyKey)?.kind).toBe('ready');
+  failed.reply(old);expect(h.publications.at(-1)!.has(b.dependencyKey)).toBe(false);
+  retry.onerror?.(new ErrorEvent('error'));
+  expect(h.publications.at(-1)!.get(b.dependencyKey)).toMatchObject({executionFailure:true});
+  expect(h.scheduler.retry(context,b.dependencyKey)).toBe(true);
+  h.workers[2].reply();expect(h.publications.at(-1)!.get(b.dependencyKey)?.kind).toBe('ready');
+  expect(h.scheduler.retry(context,b.dependencyKey)).toBe(false);
+  h.scheduler.dispose();expect(h.scheduler.retry(context,b.dependencyKey)).toBe(false);
+});
+
+it('offers execution recovery for constructor/postMessage errors but never retries a canonical refusal',()=>{
+  const publications:ReadonlyMap<string,StudioPreparationResult>[]=[],a=task('a');let fail=true;
+  const worker={onmessage:null as ((e:MessageEvent<StudioPreparationReply>)=>void)|null,onerror:null,postMessage(request:StudioPreparationRequest){if(fail)throw Error('Worker transport failed');this.onmessage?.({data:{...reply(request),result:{kind:'refused',reason:'The roof slopes along this edge.'}}} as MessageEvent<StudioPreparationReply>);},terminate(){}};
+  const scheduler=createStudioPlacementPreparation(()=>worker,results=>publications.push(results));
+  scheduler.update({context,tasks:[a]});expect(publications.at(-1)!.get(a.dependencyKey)).toMatchObject({executionFailure:true});
+  fail=false;expect(scheduler.retry(context,a.dependencyKey)).toBe(true);
+  expect(publications.at(-1)!.get(a.dependencyKey)).toEqual({kind:'refused',reason:'The roof slopes along this edge.'});
+  expect(scheduler.retry(context,a.dependencyKey)).toBe(false);scheduler.dispose();
+});
