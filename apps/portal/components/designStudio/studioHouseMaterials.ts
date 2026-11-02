@@ -13,6 +13,7 @@ import {
   type Point3,
   type RoofPlane3D,
 } from "@sp/geometry";
+import {STUDIO_HOUSE_PALETTE} from './studioHousePalette';
 import type { HouseFormAppearance } from "@/lib/drawings/state/objectFirstWorkbenchModel";
 
 /** Display materials only. These textures never displace the canonical surface,
@@ -73,17 +74,14 @@ export function studioHouseMaterial(
   }
   const material = new MeshStandardMaterial({
     color: roof
-      ? (appearance?.roofColour ?? "#343b39")
-      : wall === "brick"
-        ? "#b3a18d"
-        : wall === "weatherboard"
-          ? "#e2e4dc"
-          : "#e4e7e0",
-    roughness: roof ? 0.65 : 0.88,
-    metalness: roof ? 0.2 : 0,
+      ? (appearance?.roofColour ?? STUDIO_HOUSE_PALETTE.roof)
+      : STUDIO_HOUSE_PALETTE[wall],
+    roughness: roof ? 0.92 : 0.96,
+    metalness: 0,
     side: DoubleSide,
     bumpMap: texture,
-    bumpScale: roof ? section.height : wall === "brick" ? 4 : 7,
+    // Shallow display relief only; the physical shared profile stays unchanged.
+    bumpScale: roof ? Math.min(section.height * 0.08, 0.8) : wall === "brick" ? 0.7 : 1.2,
   });
   return {
     material,

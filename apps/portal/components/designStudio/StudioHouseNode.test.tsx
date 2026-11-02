@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { renderIntoDocument } from "../../../../test/reactHarness";
 import { studioAttachmentFixture } from "../../../../test/studioAttachmentFixture";
 import { createStudioSceneResolver } from "@/lib/designStudio/interaction/resolvedScene";
+import {STUDIO_HOUSE_PALETTE} from './studioHousePalette';
 import * as materials from "./studioHouseMaterials";
 import * as slabs from "@sp/geometry-viewer/three";
 import { houseWorld } from "@/lib/designStudio/studioHouseGeometry";
@@ -297,4 +298,10 @@ it("retires real house material/texture resources on a changed appearance and un
   } finally {
     factory.mockRestore();
   }
+});
+
+it('uses the same pale default for roof surfaces and flashings without authoring an appearance',()=>{
+ const edit=studioAttachmentFixture(),geometry=createStudioSceneResolver().resolve(edit).houses[0],before=structuredClone(edit),factory=vi.spyOn(materials,'studioHouseMaterial');
+ const mounted=renderIntoDocument(<StudioHouseNode geometry={geometry} selected={false} onSelect={()=>{}} refined cad/>);
+ try{const roofs=factory.mock.calls.flatMap(([kind],i)=>kind==='roof'?[factory.mock.results[i].value]:[]);expect(roofs.length).toBeGreaterThan(0);for(const roof of roofs)expect(roof.material.color.getHexString()).toBe(STUDIO_HOUSE_PALETTE.roof.slice(1));const flashings=mounted.container.querySelector('group[name="house-roof-flashings"]')!;expect(flashings.querySelectorAll('meshstandardmaterial').length).toBeGreaterThan(0);for(const material of flashings.querySelectorAll('meshstandardmaterial')){expect(material.getAttribute('color')).toBe(STUDIO_HOUSE_PALETTE.roof);expect(material.getAttribute('roughness')).toBe('0.92');expect(material.getAttribute('metalness')).toBe('0');}expect(edit).toEqual(before);expect(geometry.house.source.appearance).toBeUndefined();}finally{mounted.unmount();factory.mockRestore();}
 });

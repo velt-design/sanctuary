@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/studio-house-3d-20261102": false,
       "codex/studio-plan-house-20261102": false,
       "codex/autoresponse-light-20261102": false,
       "codex/studio-focus-alignment-20261102": false,

@@ -4,6 +4,7 @@ import type {
   StudioHouseProperty,
   useStudioHouseDraft,
 } from "./useStudioHouseDraft";
+import {STUDIO_HOUSE_PALETTE} from './studioHousePalette';
 import css from "./StudioWebsite.module.css";
 import {
   REPRESENTATIVE_ROOF_PROFILE_OPTIONS,
@@ -30,7 +31,7 @@ export default function StudioHouseInspector({
   const appearance = currentHouse.source.appearance;
   const colour = /^#[0-9a-fA-F]{6}$/.test(appearance?.roofColour ?? "")
     ? appearance!.roofColour!
-    : "#343b39";
+    : STUDIO_HOUSE_PALETTE.roof;
   const completion = (name: StudioHouseProperty) => ({
     "data-studio-house-field": name,
     onBlur: (event: React.FocusEvent<HTMLInputElement>) =>
@@ -100,9 +101,9 @@ export default function StudioHouseInspector({
         {field("eaveHeightMm", "Eave height (mm)")}
         {heightNotice && <p role="status">{heightNotice.text}</p>}
         <label className={css.field}>
-          Wall material
+          Wall cladding
           <select
-            aria-label="House wall material"
+            aria-label="House wall cladding"
             value={appearance?.wallMaterial ?? "plaster"}
             onChange={(event) =>
               owner.complete(
@@ -111,7 +112,7 @@ export default function StudioHouseInspector({
               )
             }
           >
-            <option value="plaster">Plaster</option>
+            <option value="plaster">Plain / render</option>
             <option value="weatherboard">Weatherboard</option>
             <option value="brick">Brick</option>
           </select>
@@ -240,7 +241,7 @@ export default function StudioHouseInspector({
             <input
               aria-label="House roof colour HEX"
               data-studio-house-field="source.appearance.roofColour"
-              value={appearance?.roofColour ?? "#343b39"}
+              value={appearance?.roofColour ?? STUDIO_HOUSE_PALETTE.roof}
               spellCheck={false}
               autoComplete="off"
               aria-invalid={!!owner.appearanceError}
