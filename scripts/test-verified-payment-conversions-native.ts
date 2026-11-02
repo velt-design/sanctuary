@@ -3,7 +3,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { paymentConversionMigration, paymentId as id, paymentSql, preparePaymentConversions, seedPaymentProject } from '../test/fixtures/verified-payment-conversion-db';
+import { paymentConversionMigration, paymentId as id, paymentSql, preparePaymentConversionAnalytics, seedPaymentProject } from '../test/fixtures/verified-payment-conversion-db';
+import { initialiseRevisedQuoteDatabase } from '../test/support/revisedQuoteDatabase';
 
 const name=`sanctuary_payment_events_${process.pid}_${Date.now()}`;
 assert.match(name,/^sanctuary_payment_events_\d+_\d+$/);
@@ -21,7 +22,7 @@ async function main() {
 let created=false;
 try {
   sql(`create database ${name};`,'postgres');created=true;
-  await preparePaymentConversions(collect);
+  await initialiseRevisedQuoteDatabase(collect);await preparePaymentConversionAnalytics(collect);
   await collect.exec(paymentSql(paymentConversionMigration));
   await collect.exec(`insert into auth.users(id) values('${id(99)}');`);
   await seedPaymentProject(collect,1,1);await seedPaymentProject(collect,2,2);await seedPaymentProject(collect,3,3);
@@ -67,7 +68,7 @@ try {
   const plan=JSON.parse(sql(`explain(analyze,buffers,format json) ${body}`));
   writeFileSync(`${evidence}/native-source-plan.json`,JSON.stringify(plan,null,2));
   const receipt={postgres:sql('show server_version'),concurrentSessions:2,counts,syntheticProjects:1503,largerProjectUnallocatedReceipts:2000,timing,
-    limits:'Existing local PostgreSQL16, synthetic prerequisites plus actual financial/outbox/forward migrations. Not deployed PostgreSQL17, full schema, PostgREST or provider acceptance.'};
+    canonicalRevisedFunding:true,limits:'Existing local PostgreSQL16, synthetic prerequisites plus actual current revised-quote financial/outbox/forward migrations. Not deployed PostgreSQL17, full schema, PostgREST or provider acceptance.'};
   writeFileSync(`${evidence}/native-receipt.json`,JSON.stringify(receipt,null,2));
   console.log(JSON.stringify(receipt,null,2));
 } finally {

@@ -18,22 +18,26 @@ rollback verifies unchanged catalog; only the intended plan constraint and
 reviewed function bodies change. Synthetic tests do not establish Meta acceptance.
 # Testing And QA
 
-## Verified-payment conversion candidate
+## Verified-payment conversion
 
-Run `npx vitest run test/verified-payment-conversion.integration.test.ts`.
+Run `npx vitest run test/verified-payment-conversion.integration.test.ts test/verified-payment-reconciled-scope.integration.test.ts`.
 It executes the real financial/Xero commands, GA4 outbox migration and new forward
 migration on disposable PGlite PostgreSQL18 with explicit synthetic prerequisites.
 Coverage connects whole and partial verified payment through event/outbox,
 claim/preparation and local-only mocked transport completion/retry. It covers
 old-app audit compatibility, immutable family identity/date/value, consent and
 identity skips, reversals, negative cases, late events, role denial and atomic
-outbox-failure rollback. No provider request or customer record is used.
+outbox-failure rollback. The revised-scope suite applies the complete canonical
+revised-quote fixture and proves separate assessment/manual/Xero receipts,
+explicit QUOTE_PAYMENT/NATIVE qualification, later real construction deposits,
+and residual/fully split funding. No provider request or customer record is used.
 
 On the existing Windows/Ubuntu-24.04 local setup,
 `npx tsx scripts/test-verified-payment-conversions-native.ts` creates and drops a
 uniquely named disposable database through the existing noninteractive local
 PostgreSQL16 account. It accepts no remote connection, starts no service, and
-proves two real concurrent sessions produce one payment/event/outbox. Private
+proves two real concurrent sessions produce one payment/event/outbox against
+the current canonical revised-quote financial fixture. Private
 receipts include ordinary/larger-ledger SQL timings and the actual reader plan.
 Neither engine proves deployed PostgreSQL17/full-schema/PostgREST compatibility
 or Google/GA4 acceptance; those remain explicit reviewed release checks.

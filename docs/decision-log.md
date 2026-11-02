@@ -7073,7 +7073,7 @@ Related docs/tests: `apps/marketing/emails/SubmittedContactDetails.tsx`; `apps/m
 
 ## 2026-11-02: Produce payment conversions at the verified accounting boundary
 
-Area: Offline payment lifecycle. Status: local candidate, production approval pending.
+Area: Offline payment lifecycle. Status: verified source contract; environment activation requires release evidence.
 Invoice/ledger and Xero payment commands could record genuine deposits without
 invoking the separate staff stage action that created the GA4 deposit event.
 The forward verified-payment migration evaluates final committed family facts
@@ -7082,5 +7082,12 @@ financial commands through that boundary, including partial/repeated payments,
 reversals and persistence failure. A PAID label is not a ledger receipt. Preserve
 true source dates, freeze the first event's accepted family value, and keep
 provider acceptance/attribution and direct Ads activation separate.
+The initial consumer used immutable invoice family identity and retained
+settlement allocations, missing the already-live revised-quote reconciliation.
+Every selected receipt must itself fund the target: effective-family residual
+after quoted allocations or a permitted target allocation. SEPARATE_CHARGE is
+excluded even when its old invoice remains quote-linked. Test the complete
+current funding fixture and assignment transitions, not only older command owners.
 Owners: `automation-email-audit.md`, `supabase-schema-map.md`; regression:
-`test/verified-payment-conversion.integration.test.ts`.
+`test/verified-payment-conversion.integration.test.ts` and
+`test/verified-payment-reconciled-scope.integration.test.ts`.

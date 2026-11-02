@@ -15,13 +15,27 @@ function functionSql(source: string, name: string) {
   return source.slice(start, source.indexOf('\n$$;', start) + 4);
 }
 
+function publicFunctionSql(source: string, name: string) {
+  const start=source.indexOf(`create or replace function public.${name}(`);
+  if(start<0)throw Error(`Missing funding owner ${name}`);
+  return source.slice(start,source.indexOf('\n$$;',start)+4);
+}
+
 /** Actual financial commands/outbox with explicit synthetic schema prerequisites. */
 export async function preparePaymentConversions(db: PaymentDatabase) {
   await prepareXeroPaymentDatabase((sql: string) => db.exec(sql), paymentSql);
+  const funding=paymentSql('migrations/20261022000001_revised_quote_funding.sql');
+  await db.exec(funding.slice(funding.indexOf('create table public.commercial_invoice_scope_assignments'),funding.indexOf('-- Persist the acceptance decision')));
+  for(const name of ['commercial_invoice_effective_quote','commercial_quote_scope_funding','commercial_invoice_scope_fingerprint','commercial_reconciled_allocation_guard','commercial_reconcile_invoice_scope'])await db.exec(publicFunctionSql(funding,name));
+  await db.exec('create trigger project_payment_allocations_reconciled_scope before insert on public.project_payment_allocations for each row execute function public.commercial_reconciled_allocation_guard()');
+  await preparePaymentConversionAnalytics(db);
+}
+
+export async function preparePaymentConversionAnalytics(db: PaymentDatabase) {
   await db.exec(`create table public.enquiry_requests(id uuid primary key,project_id uuid,created_at timestamptz not null default now(),
     raw_payload jsonb not null default '{}',utm jsonb not null default '{}');
     create index enquiry_requests_project_created on public.enquiry_requests(project_id,created_at,id);
-    create table public.project_operational_states(project_id uuid primary key,state text,closed_outcome text);
+    create table if not exists public.project_operational_states(project_id uuid primary key,state text,closed_outcome text);
     create table public.site_visit_events(id uuid primary key,status text);
     create table private.project_sales_outcomes(project_id uuid primary key,outcome text);
     create index audit_events_project_type on public.audit_events(project_id,type);
