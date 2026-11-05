@@ -887,6 +887,7 @@ Marketing Lighthouse thresholds:
 Security:
 
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
+- Renovate proposes dependency, container, and GitHub Actions updates on a low-noise weekend schedule. It never automerges; major upgrades require an explicit Dependency Dashboard choice, while vulnerability alerts may run immediately.
 - `npm run audit:toolchain` fails closed on every development/toolchain vulnerability except the two no-fix `xlsx` advisories `GHSA-4r6h-8v6p-xvw6` and `GHSA-5pgg-2g8v-p4x9`. The exception is valid only while `xlsx` is a direct root development dependency, is locked development-only, has no fix, and is imported only by `scripts/import-running-jobs-legacy.ts`.
 - The 21 October 2026 toolchain correction pins Vite `7.3.7` through the root override. It fixes bundled launch-editor advisories [GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm), [GHSA-698v-4r3x-3vcv](https://github.com/advisories/GHSA-698v-4r3x-3vcv) and [GHSA-r825-w8mm-5pxw](https://github.com/advisories/GHSA-r825-w8mm-5pxw). Both security gates remain unchanged; no new audit exception is permitted.
 - The 2 November 2026 toolchain correction uses maintained ESLint `10.14.0`,
