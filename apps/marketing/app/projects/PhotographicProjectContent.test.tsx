@@ -29,9 +29,9 @@ describe('project-specific photographic stories', () => {
     }
   });
 
-  it('gives all fourteen remaining projects a complete, distinct story and preserves their capabilities', () => {
+  it('gives every project beyond Warkworth a complete, distinct story and preserves its capabilities', () => {
     const configured = projects.filter(project => getProjectEditorialStory(project));
-    expect(configured).toHaveLength(14);
+    expect(configured).toHaveLength(projects.length - 1);
     expect(getProjectEditorialStory({ slug: 'warkworth-outdoor-room' })).toBeNull();
     for (const project of configured) {
       const { el } = render(project.slug);

@@ -161,6 +161,9 @@ const serviceAudienceByPath = new Map<string, EnquiryAudience>([
 // full project catalogue. The catalogue parity test must be updated with every
 // project so a new route cannot silently inherit an audience.
 const projectAudienceBySlug = new Map<string, Exclude<EnquiryAudience, 'professional'>>([
+  ['tawharanui-coastal-deck', 'residential'],
+  ['whitford-poolside-deck', 'residential'],
+  ['glendowie-outdoor-living', 'residential'],
   ['milford-garden-retreat', 'residential'],
   ['warkworth-outdoor-room', 'residential'],
   ['mt-maunganui-box', 'residential'],

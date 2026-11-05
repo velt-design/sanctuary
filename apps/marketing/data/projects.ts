@@ -1,4 +1,7 @@
 // data/projects.ts
+import { glendowieProject } from './glendowieProject';
+import { whitfordProject } from './whitfordProject';
+import { tawharanuiProject } from './tawharanuiProject';
 import {
   ATELIER_SHU_CASE_STUDY_HERO_IMAGE,
   ATELIER_SHU_CASE_STUDY_HERO_OBJECT_POSITION,
@@ -47,6 +50,9 @@ export type Project = {
 };
 
 const baseProjects: Project[] = [
+  tawharanuiProject,
+  whitfordProject,
+  glendowieProject,
   {
     slug: 'milford-garden-retreat',
     title: 'Milford Garden Retreat',
@@ -1109,6 +1115,9 @@ const projectOrder: string[] = [
   'atelier-shu-cafe',            // Atelier Shu Cafe
   'lilliput-mini-golf',          // Lilliput Mini Golf
   'milford-garden-retreat',      // Milford Garden Retreat
+  'glendowie-outdoor-living',    // Glendowie Outdoor Living
+  'whitford-poolside-deck',      // Whitford Poolside Deck
+  'tawharanui-coastal-deck',     // Tāwharanui Coastal Deck
   'riverhead-gable-pavilion',    // Riverhead Gable Pavilion
   'velskov-forest',              // Velskov Forest
   'tindalls-bay-pavilion',       // Tindalls Bay - Patio & Carport

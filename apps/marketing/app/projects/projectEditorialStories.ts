@@ -11,6 +11,69 @@ export type ProjectEditorialStory = {
 
 /** Published project facts and photographs, edited for each project's actual scope. */
 export function getProjectEditorialStory(project: Pick<Project, 'slug'>): ProjectEditorialStory | null {
+  if (project.slug === 'tawharanui-coastal-deck') return {
+    briefTitle: 'A covered deck at the bach.',
+    decisions: [
+      {
+        title: 'Sky above. Coast beyond.',
+        image: '/images/project-tawharanui-coastal-deck-02-coastal-outlook.jpg',
+        caption: 'Light grey acrylic roofing keeps the sky visible above the deck.',
+        text: 'The aluminium gable extends over the timber deck, with light grey acrylic between the rafters. Its raised centre gives the dining area a sense of height, while the open edges keep the trees and coastal outlook part of the space.',
+      },
+      {
+        title: 'Shelter that adjusts.',
+        image: '/images/project-tawharanui-coastal-deck-03-outdoor-blind.jpg',
+        caption: 'A lowered outdoor blind screens one side of the dining area.',
+        text: 'A single outdoor blind adds an adjustable screen beside the table. Lowered, it creates a more sheltered edge; raised, it opens the deck back to the view. The remaining sides stay open to the garden and coast.',
+      },
+    ],
+    detailSummary: 'An aluminium gable finished in FlaxPod, with light grey acrylic roofing and a single outdoor blind over an existing raised timber deck.',
+    guide: { href: '/gable-pergolas-auckland', label: 'Explore gable pergolas' },
+  };
+  if (project.slug === 'whitford-poolside-deck') return {
+    briefTitle: 'Cover for a west-facing deck.',
+    decisions: [
+      {
+        title: 'Working with the house\'s angles.',
+        image: '/images/project-whitford-poolside-deck-02-house-connection.jpg',
+        caption: 'The covered dining area follows the house beside its glazed doors.',
+        text: 'The pitched design works around the home\'s changing wall angles and roof levels. Appliance White aluminium framing relates to the pale exterior, carrying the cover back towards the house and over the existing dining deck.',
+      },
+      {
+        title: 'Daylight and an open outlook.',
+        image: '/images/project-whitford-poolside-deck-03-dining-outlook.jpg',
+        caption: 'Light grey acrylic above the dining deck, with the pool and garden beyond.',
+        text: 'Light grey acrylic roofing responds to the brief for shade while keeping daylight part of the space. The sides remain open, preserving the outlook across the pool and garden from the table and adjoining rooms.',
+      },
+    ],
+    detailSummary: 'A custom pitched pergola with Appliance White aluminium framing and light grey acrylic roofing, fitted around the existing house and deck.',
+    guide: { href: '/acrylic-roof-pergolas-auckland', label: 'Explore acrylic roof pergolas' },
+  };
+  if (project.slug === 'glendowie-outdoor-living') return {
+    briefTitle: 'Room to stay outside.',
+    decisions: [
+      {
+        title: 'Timber overhead. Daylight at the edges.',
+        image: '/images/project-glendowie-outdoor-living-03-gable-outlook.jpg',
+        caption: 'Cedar lining and acrylic roof strips frame the coastal outlook.',
+        text: 'Western Red Cedar lines the solid roof sections, with acrylic strips alongside. Recessed lights and ceiling-mounted heaters sit within the gable, bringing the fittings into the finished ceiling.',
+      },
+      {
+        title: 'An easy step from the house.',
+        image: '/images/project-glendowie-outdoor-living-04-house-connection.jpg',
+        caption: 'Dining and lounge seating share the deck beside the living spaces.',
+        text: 'The gable sits beside the home\'s wide glazed doors, with room for a dining table and a separate lounge setting. Its dark aluminium frame picks up the lines of the joinery and keeps the connection back to the house clear.',
+      },
+      {
+        title: 'Open to the view. Sheltered when needed.',
+        image: '/images/project-glendowie-outdoor-living-06-enclosed-lighting.jpg',
+        caption: 'Lowered outdoor blinds enclose the seating area beneath the lit cedar ceiling.',
+        text: 'Lowered blinds create a more enclosed setting for dining and relaxing. Raised, they leave the deck open to the garden and coastal outlook.',
+      },
+    ],
+    detailSummary: 'An aluminium gable with Western Red Cedar lining, Coloursteel and acrylic roofing, recessed lighting, ceiling-mounted heaters and outdoor blinds.',
+    guide: { href: '/gable-pergolas-auckland', label: 'Explore gable pergolas' },
+  };
   if (project.slug === 'dairy-flat-estate') return {
     briefTitle: 'Follow the house. Open to the garden.',
     decisions: [

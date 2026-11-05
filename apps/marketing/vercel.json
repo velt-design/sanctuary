@@ -4,6 +4,7 @@
   ],
   "git": {
     "deploymentEnabled": {
+      "codex/glendowie-project-20261105": false,
       "codex/google-funding-validation-20261102": false,
       "codex/verified-payment-events-20261102": false,
       "codex/studio-house-3d-20261102": false,
