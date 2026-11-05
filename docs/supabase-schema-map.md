@@ -1,5 +1,13 @@
 # Supabase Schema Map
 
+## Ordinary Meta ad reporting inventory (5 November 2026)
+
+Forward `20261105073000_meta_ordinary_ad_reporting.sql` adds the operator-only
+`private.meta_ordinary_reporting_ads` table with RLS and no application role
+grants. The existing service-only reporting registry exposes the bounded rows
+to the scoped campaign reader, and the existing Portal outcome query joins
+their exact ad and enrolment dates. See [Marketing Performance](marketing-performance.md#ordinary-ads-in-the-saved-campaign-report).
+
 ## Advertising reconciled funding (2 November 2026)
 
 Forward `20261102000002_advertising_reconciled_funding.sql` replaces only

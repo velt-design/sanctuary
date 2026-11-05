@@ -8,7 +8,7 @@ import { openMetaReportCredential } from '../metaCredentials/runtime';
 import { verifyMeta } from '../meta/verify';
 import type { Boundary } from '../meta/boundary';
 import { supabaseServiceRole } from '../../supabaseClient';
-import { campaignScope, campaignRequest, campaignPeriods, outcomesSchema, registeredCreativeAdSchema, steadyAdSchema } from './contract';
+import { campaignScope, campaignRequest, campaignPeriods, outcomesSchema, registeredCreativeAdSchema, steadyAdSchema, ordinaryAdSchema } from './contract';
 import { readCampaignHealth } from './reader';
 
 export async function campaignHealthResponse(request: Request): Promise<Response> {
@@ -48,10 +48,14 @@ export async function campaignHealthResponse(request: Request): Promise<Response
     // Before additive schema installation an empty registry preserves the existing
     // four-ad contract. Any undeclared extra campaign ad still fails closed below.
     const registry = registryResult.error ? [] : registryResult.data;
-    const inventory = Array.isArray(registry) ? { experimental: z.array(registeredCreativeAdSchema).max(40).parse(registry), steady: [] } :
-      z.object({ version: z.literal(2), experimental: z.array(registeredCreativeAdSchema).max(40), steady: z.array(steadyAdSchema).max(40) }).strict().parse(registry);
+    const lanes = { experimental: z.array(registeredCreativeAdSchema).max(40), steady: z.array(steadyAdSchema).max(40) };
+    const inventory = Array.isArray(registry) ? { experimental: lanes.experimental.parse(registry), steady: [], ordinary: [] } :
+      z.union([
+        z.object({ version: z.literal(2), ...lanes }).strict().transform(value => ({ ...value, ordinary: [] })),
+        z.object({ version: z.literal(3), ...lanes, ordinary: z.array(ordinaryAdSchema).max(40) }).strict(),
+      ]).parse(registry);
     await current();
-    const report = await readCampaignHealth(config, account, boundary, fetcher, now, inventory.experimental, inventory.steady);
+    const report = await readCampaignHealth(config, account, boundary, fetcher, now, inventory.experimental, inventory.steady, inventory.ordinary);
     await current(); await command('complete', claim.operation, signal, { payload: JSON.stringify(report) }); failed = undefined;
     // Source-owned campaign-to-project facts. A failure remains partial coverage.
     let outcomes: z.infer<typeof outcomesSchema> | null = null;

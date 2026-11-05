@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 import { readCampaignHealth } from './reader';
 import * as tracking from './tracking-evidence';
-import { campaignPeriods, type CampaignScope, type RegisteredCreativeAd } from './contract';
+import { campaignPeriods, type CampaignScope, type OrdinaryAd, type RegisteredCreativeAd } from './contract';
 import type { Boundary } from '../meta/boundary';
 const scope: CampaignScope = { account:'99100',campaign:'99200',adset:'99300',ads:[{id:'99401',label:'Riverhead photo'},{id:'99402',label:'Riverhead video'},{id:'99403',label:'Acrylic video'},{id:'99404',label:'Acrylic photo'}],launchDay:'2026-01-01',dailyAverage:100,maximumDay:175,weeklyAllowance:700,weekStartsOn:0,weeklyWindowVerified:true };
 const now = new Date('2026-06-17T00:00:00Z');
@@ -65,6 +65,25 @@ it('keeps optional local projection failure unavailable while preserving core he
  const spy=vi.spyOn(tracking,'projectTrackingEvidence').mockImplementationOnce(()=>{throw Error('private-secret-local-failure');});
  try{const f=fixture({tracking:[]}),report=await readCampaignHealth(config,{currency:'NZD',timezone:'Pacific/Auckland'},boundary,f.fetcher,now);
  expect(report.ads[0]!.trackingEvidence).toEqual({version:1,status:'unavailable'});expect(report.dailyBudget).toBe(100);expect(f.calls).toHaveLength(3);expect(JSON.stringify(report)).not.toContain('private-secret');}finally{spy.mockRestore();}
+});
+
+it('returns exact ordinary ads with unchanged reads and keeps a missing retired row unknown', async () => {
+ const row = { id:'99701', label:'Sample project', path:'/projects/sample-deck', account:scope.account, campaign:scope.campaign,
+   adset:scope.adset, startsAt:'2026-06-14T00:00:00.000Z', retiredAt:null } satisfies OrdinaryAd;
+ const retired = { ...row, id:'99702', retiredAt:'2026-06-16T00:00:00.000Z' };
+ const ids = [...scope.ads.map(ad => ad.id), row.id];
+ const options = { currency:'NZD', timezone:'Pacific/Auckland' };
+ const f = fixture({ ids });
+ const report = await readCampaignHealth(config,options,boundary,f.fetcher,now,[],[],[row,retired]);
+ expect(report.ordinaryAds).toEqual([
+   expect.objectContaining({ id:row.id, status:'ACTIVE', week:expect.objectContaining({ spend:12.5, landingViews:3 }) }),
+   expect.objectContaining({ id:retired.id, status:null, week:expect.objectContaining({ spend:null, landingViews:null }) }),
+ ]);
+ expect(report.creativeAds).toEqual([]);
+ expect(f.calls).toHaveLength(3);
+ await expect(readCampaignHealth(config,options,boundary,fixture({ ids:[...ids,'99703'] }).fetcher,now,[],[],[row,retired])).rejects.toThrow('Campaign scope differs');
+ await expect(readCampaignHealth(config,options,boundary,fixture().fetcher,now,[],[],[row])).rejects.toThrow('Campaign ad coverage differs');
+ await expect(readCampaignHealth(config,options,boundary,fixture().fetcher,now,[],[],[{ ...row, account:'99710' }])).rejects.toThrow('Ordinary ad inventory differs');
 });
 it.each([{rejectTracking:true},{oversize:true}])('retains provider rejection/body-bound semantics without fallback or retries %j',async options=>{
  const f=fixture(options);await expect(readCampaignHealth(config,{currency:'NZD',timezone:'Pacific/Auckland'},boundary,f.fetcher,now)).rejects.toThrow();expect(f.calls).toHaveLength(1);
