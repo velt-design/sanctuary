@@ -226,7 +226,9 @@ describe("autonomous engineering CI routing", () => {
   it("keeps one stable check while running focused gates only for foundation paths", () => {
     expect(
       routeEngineeringCi([
+        ".github/workflows/ai-foundation.yml",
         "apps/portal/app/page.tsx",
+        "evals/ai/synthetic/promptfooconfig.yaml",
         "infra/openclaw/engineering/openclaw.json",
         "packages/ai/src/engineering.ts",
         "scripts/worktree-ownership-report.mjs",
@@ -238,11 +240,15 @@ describe("autonomous engineering CI routing", () => {
       ownershipRequired: true,
       sharedImpactOnly: false,
       relevantPaths: [
+        ".github/workflows/ai-foundation.yml",
+        "evals/ai/synthetic/promptfooconfig.yaml",
         "infra/openclaw/engineering/openclaw.json",
         "packages/ai/src/engineering.ts",
         "scripts/worktree-ownership-report.mjs",
       ],
       ownedPaths: [
+        ".github/workflows/ai-foundation.yml",
+        "evals/ai/synthetic/promptfooconfig.yaml",
         "infra/openclaw/engineering/openclaw.json",
         "packages/ai/src/engineering.ts",
       ],
