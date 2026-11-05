@@ -1,5 +1,27 @@
 # Marketing Performance and Marketing & Sales hub
 
+## Ordinary ads in the saved campaign report
+
+The existing read-only Auckland campaign monitor can report exact ads enrolled
+in the private ordinary ad inventory. Those ads have their own labels, landing
+pages and start times. A retired entry keeps its historical metrics and exact
+saved attribution available separately. An absent retired provider row stays
+unknown; an undeclared provider row or missing current ad still fails the scope
+check. The same campaign-scoped Meta reads supply week spend and landing views.
+
+The Portal joins only consented, non-test receipts with matching campaign,
+ad set and ad IDs saved after the ad began. Project outcomes reuse the existing
+origin-enquiry, qualification, confirmed booking, sent quote, accepted quote
+and recorded deposit rules. Retired ads can still receive delayed saves with
+the exact attribution. The existing correspondence and model cohort keeps its
+original scope. The three lanes for ordinary, experimental and retained ads
+remain distinct in the saved report.
+
+Deploy the Velt reader before the Source producer. Apply the additive database
+migration before privately enrolling reviewed ad IDs. An empty ordinary
+inventory retains the previous payload shape. The existing disposable Meta
+ledger harness covers the native joins and compatibility with older rows.
+
 ## Native Meta UI test reporting (27 October 2026 candidate)
 
 Forward migration `20261027072323_native_creative_reporting.sql` adds one

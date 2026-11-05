@@ -203,7 +203,14 @@ try{
  const manualParser=spawnSync(process.execPath,['--require','tsx/cjs','-e',"const c=require('./apps/portal/lib/marketingIntegrations/campaignMonitor/contract.ts'),r=JSON.parse(require('node:fs').readFileSync(0,'utf8'));r.registry.experimental.forEach(v=>c.registeredCreativeAdSchema.parse(v));c.outcomesSchema.parse(r.outcomes);"],{encoding:'utf8',windowsHide:true,input:JSON.stringify({registry,outcomes}),maxBuffer:2e6});
  if(manualParser.status!==0)throw Error(manualParser.stderr);
  manualReportingNative.currentPortalContracts=true;
- process.stdout.write(JSON.stringify({manualReporting:manualReportingNative,normalization:normalizationNative,retentionSettings:retentionSettingsNative,ownerReviewedBundle:ownerNative,authoredLanding:true,steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
+ const ordinaryMigration=readFileSync('supabase/migrations/20261105073000_meta_ordinary_ad_reporting.sql','utf8');
+ sql(ordinaryMigration);
+ const ordinary=JSON.parse(sql(readFileSync('supabase/tests/meta_ordinary_ad_reporting.sql','utf8')).trim().split('\n').at(-1));
+ const ordinaryParser=spawnSync(process.execPath,['--require','tsx/cjs','-e',"const c=require('./apps/portal/lib/marketingIntegrations/campaignMonitor/contract.ts'),r=JSON.parse(require('node:fs').readFileSync(0,'utf8'));r.registry.ordinary.forEach(v=>c.ordinaryAdSchema.parse(v));c.outcomesSchema.parse(r.outcomes);"],{encoding:'utf8',windowsHide:true,input:JSON.stringify(ordinary),maxBuffer:2e6});
+ if(ordinaryParser.status!==0)throw Error(ordinaryParser.stderr);
+ writeFileSync('.local-evidence/ordinary-reporting-native.json',JSON.stringify(ordinary));
+ sql(readFileSync('supabase/tests/meta_native_creative_reporting.sql','utf8'));
+ process.stdout.write(JSON.stringify({manualReporting:manualReportingNative,ordinaryReporting:true,normalization:normalizationNative,retentionSettings:retentionSettingsNative,ownerReviewedBundle:ownerNative,authoredLanding:true,steadyInventory:true,ambiguityCohort:true,ambiguitySettlement:true,ambiguityCrossRuntimeCases:analysisCases.length,postgres:sql('show server_version').trim(),sourceContract:true,intakeProvenance:true,creativeLedger:true,pausedCreativeAndAd:true,creativeMeasurement:true,formalCohort:true,launchTestExclusions:true,dispatchNoEffectConcurrency:true,crossLaneConcurrency:true,retentionReplacementRecovery:true,retentionAdmitAndDispatchConcurrency:true,disposableOnly:true,liveCalls:0}));
 
 }finally{
  if(started)run('pg_ctl',['-D',directory,'-m','immediate','-w','stop'],undefined,true);
