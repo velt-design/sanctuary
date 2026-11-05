@@ -11,6 +11,25 @@ export type ProjectEditorialStory = {
 
 /** Published project facts and photographs, edited for each project's actual scope. */
 export function getProjectEditorialStory(project: Pick<Project, 'slug'>): ProjectEditorialStory | null {
+  if (project.slug === 'tawharanui-coastal-deck') return {
+    briefTitle: 'A covered deck at the bach.',
+    decisions: [
+      {
+        title: 'Sky above. Coast beyond.',
+        image: '/images/project-tawharanui-coastal-deck-02-coastal-outlook.jpg',
+        caption: 'Light grey acrylic roofing keeps the sky visible above the deck.',
+        text: 'The aluminium gable extends over the timber deck, with light grey acrylic between the rafters. Its raised centre gives the dining area a sense of height, while the open edges keep the trees and coastal outlook part of the space.',
+      },
+      {
+        title: 'Shelter that adjusts.',
+        image: '/images/project-tawharanui-coastal-deck-03-outdoor-blind.jpg',
+        caption: 'A lowered outdoor blind screens one side of the dining area.',
+        text: 'A single outdoor blind adds an adjustable screen beside the table. Lowered, it creates a more sheltered edge; raised, it opens the deck back to the view. The remaining sides stay open to the garden and coast.',
+      },
+    ],
+    detailSummary: 'An aluminium gable finished in FlaxPod, with light grey acrylic roofing and a single outdoor blind over an existing raised timber deck.',
+    guide: { href: '/gable-pergolas-auckland', label: 'Explore gable pergolas' },
+  };
   if (project.slug === 'whitford-poolside-deck') return {
     briefTitle: 'Cover for a west-facing deck.',
     decisions: [
