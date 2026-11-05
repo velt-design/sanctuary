@@ -100,6 +100,7 @@ Marketing Performance implementation, definitions, spend proposal and review evi
 | `marketing-ui-foundation.md` | Current marketing-only UI contract | You are changing the standalone internal marketing catalogue or an existing marketing consumer of its reusable primitives and patterns. It does not apply to the portal. |
 | `sanctuary-project-led-visual-finder-homepage-prototype.md` | Production homepage specification and promotion history | You are implementing or validating the production `/` visual finder, its retired `/home-project-finder` redirect, brief builder, project evidence, enquiry continuation, or analytics contract. |
 | `sanctuary-guided-design-conversation-homepage.md` | Active experimental-homepage specification | You are implementing or validating `/home-guided`, its five-result journey, or guided continuation on the five destination routes. |
+| [Sanctuary copywriting guide](Sanctuary_Pergolas_AI_Copywriting_Context_Pack.md) | Current marketing guidance | You are writing Sanctuary ads, landing pages or sales copy and need the brand voice, project evidence and channel guidance. |
 | `marketing-claims-register.md` | Current governance | You are writing or reviewing public marketing claims and need the approved, pending, or prohibited evidence boundary. |
 | `landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md` | Active implementation programme | You are changing the pergola-guide ecosystem's information architecture, implementation order, or goal status. |
 
