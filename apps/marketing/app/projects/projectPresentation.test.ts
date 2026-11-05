@@ -19,6 +19,8 @@ function getProject(slug: string): Project {
 describe('project presentation', () => {
   it('uses concise governed summaries for every project card and detail intro', () => {
     const expectedSummaries: Record<string, string> = {
+      'whitford-poolside-deck':
+        'A white-framed pergola covers a west-facing dining deck, with light grey acrylic roofing and open views across the pool and garden.',
       'glendowie-outdoor-living':
         'A cedar-lined gable creates a covered dining and lounge space, with acrylic roof strips, outdoor blinds and a coastal outlook.',
       'warkworth-outdoor-room':

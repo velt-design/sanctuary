@@ -11,6 +11,25 @@ export type ProjectEditorialStory = {
 
 /** Published project facts and photographs, edited for each project's actual scope. */
 export function getProjectEditorialStory(project: Pick<Project, 'slug'>): ProjectEditorialStory | null {
+  if (project.slug === 'whitford-poolside-deck') return {
+    briefTitle: 'Cover for a west-facing deck.',
+    decisions: [
+      {
+        title: 'Working with the house\'s angles.',
+        image: '/images/project-whitford-poolside-deck-02-house-connection.jpg',
+        caption: 'The covered dining area follows the house beside its glazed doors.',
+        text: 'The pitched design works around the home\'s changing wall angles and roof levels. Appliance White aluminium framing relates to the pale exterior, carrying the cover back towards the house and over the existing dining deck.',
+      },
+      {
+        title: 'Daylight and an open outlook.',
+        image: '/images/project-whitford-poolside-deck-03-dining-outlook.jpg',
+        caption: 'Light grey acrylic above the dining deck, with the pool and garden beyond.',
+        text: 'Light grey acrylic roofing responds to the brief for shade while keeping daylight part of the space. The sides remain open, preserving the outlook across the pool and garden from the table and adjoining rooms.',
+      },
+    ],
+    detailSummary: 'A custom pitched pergola with Appliance White aluminium framing and light grey acrylic roofing, fitted around the existing house and deck.',
+    guide: { href: '/acrylic-roof-pergolas-auckland', label: 'Explore acrylic roof pergolas' },
+  };
   if (project.slug === 'glendowie-outdoor-living') return {
     briefTitle: 'Room to stay outside.',
     decisions: [
