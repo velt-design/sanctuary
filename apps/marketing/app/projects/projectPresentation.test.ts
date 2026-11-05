@@ -19,6 +19,8 @@ function getProject(slug: string): Project {
 describe('project presentation', () => {
   it('uses concise governed summaries for every project card and detail intro', () => {
     const expectedSummaries: Record<string, string> = {
+      'glendowie-outdoor-living':
+        'A cedar-lined gable creates a covered dining and lounge space, with acrylic roof strips, outdoor blinds and a coastal outlook.',
       'warkworth-outdoor-room':
         'A freestanding gable room combining mixed roofing, cedar lining, a new deck, fireplace and lighting.',
       'mt-maunganui-box':

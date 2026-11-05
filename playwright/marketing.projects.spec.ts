@@ -322,6 +322,8 @@ test('mobile collection omits hidden project detail markup, payload and media re
 test('project filters persist through refresh, filter history, project Back, and reset', async ({
   page,
 }) => {
+  const residentialCount = projects.filter(project => project.type === 'Residential').length;
+  const residentialGableCount = projects.filter(project => project.type === 'Residential' && project.roof === 'Gable').length;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/projects');
   await dismissConsent(page);
@@ -339,25 +341,25 @@ test('project filters persist through refresh, filter history, project Back, and
 
   await main.getByLabel('Filter by audience').selectOption('residential');
   await page.waitForURL(/audience=residential/);
-  await expect(visibleProjectCards(page)).toHaveCount(10);
+  await expect(visibleProjectCards(page)).toHaveCount(residentialCount);
 
   await main.getByLabel('Filter by roof form').selectOption('gable');
   await page.waitForURL(/audience=residential&form=gable/);
-  await expect(visibleProjectCards(page)).toHaveCount(4);
+  await expect(visibleProjectCards(page)).toHaveCount(residentialGableCount);
   await expect(main.locator('.project-navigator__result-count'))
-    .toHaveText('4 of 15 projects');
+    .toHaveText(`${residentialGableCount} of ${projects.length} projects`);
 
   await page.reload();
   await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
   await expect(main.getByLabel('Filter by roof form')).toHaveValue('gable');
-  await expect(visibleProjectCards(page)).toHaveCount(4);
+  await expect(visibleProjectCards(page)).toHaveCount(residentialGableCount);
 
   await page.goBack();
   await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
   await expect(main.getByLabel('Filter by roof form')).toHaveValue('all');
-  await expect(visibleProjectCards(page)).toHaveCount(10);
+  await expect(visibleProjectCards(page)).toHaveCount(residentialCount);
   await page.goForward();
-  await expect(visibleProjectCards(page)).toHaveCount(4);
+  await expect(visibleProjectCards(page)).toHaveCount(residentialGableCount);
 
   const filteredUrl = page.url();
   const firstDestination = await visibleProjectCards(page).first().getAttribute('href');
@@ -365,14 +367,14 @@ test('project filters persist through refresh, filter history, project Back, and
   await expect(page).toHaveURL(firstDestination ?? '');
   await page.goBack();
   await expect(page).toHaveURL(filteredUrl);
-  await expect(visibleProjectCards(page)).toHaveCount(4);
+  await expect(visibleProjectCards(page)).toHaveCount(residentialGableCount);
 
   await main.locator('[data-project-filter-disclosure] summary').click();
   await main.getByRole('button', { name: 'Reset filters' }).click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(visibleProjectCards(page)).toHaveCount(projects.length);
   await page.goBack();
-  await expect(visibleProjectCards(page)).toHaveCount(4);
+  await expect(visibleProjectCards(page)).toHaveCount(residentialGableCount);
 });
 
 test('empty project filters keep a clear all-project recovery', async ({ page }) => {
@@ -383,7 +385,7 @@ test('empty project filters keep a clear all-project recovery', async ({ page })
   const main = visibleProjectsMain(page);
   await expect(visibleProjectCards(page)).toHaveCount(0);
   await expect(main.locator('.project-navigator__result-count'))
-    .toHaveText('0 of 15 projects');
+    .toHaveText(`0 of ${projects.length} projects`);
   await expect(main.locator('.project-navigator__empty'))
     .toContainText('No projects match both filters.');
   const viewAll = main.getByRole('button', { name: 'View all projects' });
@@ -809,7 +811,7 @@ test('desktop view scale snaps, caps density, and restores local preference', as
   await expect(slider).toHaveValue('1');
   await expect(slider).toHaveAttribute('aria-valuetext', 'Editorial, 3 columns');
   await expect(main.locator('[data-project-index-bar]')).toBeVisible();
-  await expect(main.locator('.project-navigator__result-count')).toHaveText('15 projects');
+  await expect(main.locator('.project-navigator__result-count')).toHaveText(`${projects.length} projects`);
   await expect(main.locator('.project-card-size__heading output')).toHaveText('Editorial / 03');
   await expect(main.locator('.project-card-size__stop')).toHaveText(['02', '03', '04', '05']);
   expect((await main.locator('.project-card-size__control').boundingBox())?.height ?? 0)

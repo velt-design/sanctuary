@@ -101,17 +101,18 @@ describe('collection restoration ownership', () => {
 
 describe('collection filter edits', () => {
   it('composes both edits before any render or server navigation settles', async () => {
+    const residentialGableCount = projects.filter(project => project.type === 'Residential' && project.roof === 'Gable').length;
     await render();
     const pushes = vi.spyOn(window.history, 'pushState');
     await act(async () => { select('Filter by audience', 'residential'); select('Filter by roof form', 'gable'); });
     expect(pushes.mock.calls.map(call => call[2])).toEqual(['/projects?utm_source=test&audience=residential', '/projects?utm_source=test&audience=residential&form=gable']);
     await render();
-    expect(host.querySelectorAll('[data-project-card]')).toHaveLength(4);
-    expect(host.textContent).toContain('4 of 15 projects');
+    expect(host.querySelectorAll('[data-project-card]')).toHaveLength(residentialGableCount);
+    expect(host.textContent).toContain(`${residentialGableCount} of ${projects.length} projects`);
     await act(async () => (host.querySelector('.project-navigator__filter-reset') as HTMLButtonElement).click());
     expect(window.location.search).toBe('?utm_source=test');
     await render();
-    expect(host.querySelectorAll('[data-project-card]')).toHaveLength(15);
+    expect(host.querySelectorAll('[data-project-card]')).toHaveLength(projects.length);
     pushes.mockRestore();
   });
 
@@ -121,7 +122,7 @@ describe('collection filter edits', () => {
     expect(host.querySelectorAll('[data-project-card]')).toHaveLength(2);
     window.history.replaceState({}, '', '/projects?audience=residential');
     await render();
-    expect(host.querySelectorAll('[data-project-card]')).toHaveLength(10);
+    expect(host.querySelectorAll('[data-project-card]')).toHaveLength(projects.filter(project => project.type === 'Residential').length);
     await act(async () => root.unmount()); root = createRoot(host);
     await render();
     expect(host.querySelector<HTMLSelectElement>('[aria-label="Filter by audience"]')!.value).toBe('residential');
