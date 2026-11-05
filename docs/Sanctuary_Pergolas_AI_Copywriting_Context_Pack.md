@@ -702,6 +702,15 @@ Lead forms should capture service location, photos, rough dimensions, desired us
 
 Do not use quantified performance, warranty, consent, wind or waterproof claims in creative unless that exact claim has current written approval.
 
+#### Writing a project video ad
+
+1. Pick one recognisable customer concern from the language patterns above, such as covering a deck while keeping the view. Write a short opening that someone can understand before they know the project.
+2. Use one or two visible details from the completed project as proof. Keep the tone calm and specific, and check factual claims against the [marketing claims register](marketing-claims-register.md). Use paraphrased customer language and approved project material.
+3. Choose a landing page that delivers on the opening. If the ad invites someone to see a project, link to that project and check that its enquiry action is easy to find. Read the copy alongside the video and landing page before review.
+4. Use delivery and link clicks to judge whether the opening earns attention. Use landing views, saved enquiries and assessed project fit to decide what to improve next. Compare costs over the same reporting window and keep Meta website leads separate from saved enquiries. When testing copy on its own, keep the video, landing page and delivery setup consistent.
+
+**Approved example:** "Cover the deck. Keep the outlook." The video shows a gable pergola, timber deck and coastal outlook. The Learn More button opens the [T&#257;wharanui Coastal Deck project](https://www.sanctuarypergolas.co.nz/projects/tawharanui-coastal-deck), where visitors can see the same details and enquire about a similar project.
+
 ### Brochures, proposals and sales copy
 
 Brochures should be visually led and organised around customer decisions, not a long company history. Use this order: desired outcome, project examples, design choices, process, proof, claim-approved specifications and next step.
